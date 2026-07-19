@@ -3456,7 +3456,381 @@ MapRenderer.getPolygonFeature =
 
         };
 
+/* =====================================================
+   HANDLE POLYGON CLICK
 
+   TARGET GIS is currently authoritative for map polygons.
+
+   SOURCE GIS may be added later.
+
+   IMPORTANT:
+   Polygon click does NOT resolve case relationships here.
+   It only emits the complete POR-linked polygon context.
+
+   CascadeController remains responsible for:
+   POR → Cases → Accused → Witnesses →
+   Seizures → Articles
+   ===================================================== */
+
+MapRenderer.handlePolygonClick =
+    function (
+
+        entry,
+
+        type,
+
+        leafletEvent = null
+
+    ) {
+
+        if (
+            !entry
+        ) {
+
+            return false;
+
+        }
+
+
+        const normalizedType =
+
+            String(
+                type ||
+                entry.type ||
+                ""
+            )
+                .trim()
+                .toUpperCase();
+
+
+        if (
+
+            normalizedType !==
+                "SOURCE" &&
+
+            normalizedType !==
+                "TARGET"
+
+        ) {
+
+            return false;
+
+        }
+
+
+        /* -----------------------------------------
+           Collect authoritative POR keys
+           ----------------------------------------- */
+
+        const porKeys =
+            [];
+
+
+        const seen =
+            new Set();
+
+
+        const addPor =
+            function (
+                value
+            ) {
+
+                if (
+                    value === null ||
+                    value === undefined ||
+                    value === ""
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    Array.isArray(
+                        value
+                    )
+                ) {
+
+                    value.forEach(
+                        addPor
+                    );
+
+                    return;
+
+                }
+
+
+                const key =
+
+                    typeof HeatmapEngine
+                        .normalizePorKey ===
+                        "function"
+
+                        ? HeatmapEngine
+                            .normalizePorKey(
+                                value
+                            )
+
+                        : String(
+                            value
+                        )
+                            .trim()
+                            .toUpperCase();
+
+
+                if (
+                    !key ||
+                    seen.has(
+                        key
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                seen.add(
+                    key
+                );
+
+
+                porKeys.push(
+                    key
+                );
+
+            };
+
+
+        addPor(
+            entry.porKey
+        );
+
+
+        addPor(
+            entry.porKeys
+        );
+
+
+        addPor(
+            entry.porNo
+        );
+
+
+        addPor(
+            entry.porNumbers
+        );
+
+
+        addPor(
+            entry.refPorNo
+        );
+
+
+        /*
+         * Aggregated polygons may contain the
+         * underlying hotspot/source/target records.
+         */
+
+        [
+            entry.hotspots,
+            entry.entries,
+            entry.items,
+            entry.sources,
+            entry.targets
+        ]
+            .forEach(
+
+                function (
+                    records
+                ) {
+
+                    MapRenderer
+                        .toArray(
+                            records
+                        )
+                        .forEach(
+
+                            function (
+                                record
+                            ) {
+
+                                addPor(
+                                    record?.porKey
+                                );
+
+                                addPor(
+                                    record?.porKeys
+                                );
+
+                                addPor(
+                                    record?.porNo
+                                );
+
+                                addPor(
+                                    record?.refPorNo
+                                );
+
+                            }
+
+                        );
+
+                }
+
+            );
+
+
+        /* -----------------------------------------
+           Stable interaction ID
+
+           This is the polygon interaction ID.
+           It is NOT a CaseID and NOT a POR.
+           ----------------------------------------- */
+
+        const polygonId =
+
+            entry.id ||
+
+            entry.hotspotId ||
+
+            entry.key ||
+
+            [
+                normalizedType,
+
+                entry.spatialType ||
+                entry.type ||
+                "POLYGON",
+
+                entry.range ||
+                entry.compartment ||
+                entry.name ||
+                "UNKNOWN"
+            ]
+                .join(
+                    "::"
+                );
+
+
+        /* -----------------------------------------
+           Build cascade-compatible hotspot payload
+           ----------------------------------------- */
+
+        const hotspot =
+
+            Object.assign(
+
+                {},
+
+                entry,
+
+                {
+
+                    id:
+                        polygonId,
+
+                    type:
+                        normalizedType,
+
+                    porKey:
+                        porKeys[0] ||
+                        null,
+
+                    porKeys:
+                        porKeys
+
+                }
+
+            );
+
+
+        const detail = {
+
+            hotspotId:
+                polygonId,
+
+            type:
+                normalizedType,
+
+            hotspot:
+                hotspot,
+
+            porKey:
+                porKeys[0] ||
+                null,
+
+            porKeys:
+                porKeys,
+
+            polygon:
+                entry,
+
+            spatialType:
+
+                entry.spatialType ||
+                entry.type ||
+                "POLYGON",
+
+            latlng:
+
+                leafletEvent
+                    ?.latlng ||
+
+                null
+
+        };
+
+
+        MapRenderer
+            .dispatchEvent(
+
+                Constants.EVENTS
+                    ?.HOTSPOT_CLICK ||
+
+                "offence:hotspot-click",
+
+                detail
+
+            );
+
+
+        if (
+            Constants.DEBUG
+                ?.ENABLED
+        ) {
+
+            console.log(
+
+                "🔥 Offence Polygon Click",
+
+                {
+
+                    type:
+                        normalizedType,
+
+                    polygonId:
+                        polygonId,
+
+                    porCount:
+                        porKeys.length,
+
+                    porKeys:
+                        porKeys,
+
+                    entry:
+                        entry
+
+                }
+
+            );
+
+        }
+
+
+        return true;
+
+    };
     /* =====================================================
        32. GET POLYGON COUNT
 
@@ -5469,9 +5843,13 @@ MapRenderer.getPolygonFeature =
 
 MapRenderer.createPolygonLayer =
     function (
+
         polygon,
+
         type,
+
         maxWeight = 1
+
     ) {
 
         /*---------------------------------------------
@@ -5483,21 +5861,33 @@ MapRenderer.createPolygonLayer =
             typeof window.L ===
                 "undefined"
         ) {
+
             return null;
+
         }
 
 
         /*---------------------------------------------
           2. Resolve canonical GIS GeoJSON
 
-          getPolygonFeature() may return:
+          May return:
 
           Feature
+
           OR
+
           FeatureCollection
+
+          IMPORTANT:
+
+          TARGET GIS is currently available.
+
+          SOURCE GIS may return null until source
+          spatial GIS is added later.
         ---------------------------------------------*/
 
         const geoJSON =
+
             MapRenderer
                 .getPolygonFeature(
                     polygon
@@ -5514,8 +5904,11 @@ MapRenderer.createPolygonLayer =
             ) {
 
                 console.warn(
+
                     "[OffenceMapRenderer] Polygon GIS resolution failed",
+
                     {
+
                         key:
                             polygon.key,
 
@@ -5536,40 +5929,35 @@ MapRenderer.createPolygonLayer =
 
                         resolution:
                             polygon.resolution
+
                     }
+
                 );
+
             }
 
+
             return null;
+
         }
 
 
         /*---------------------------------------------
           3. Validate GeoJSON contract
-
-          Supported:
-
-          {
-              type: "Feature",
-              geometry: {...}
-          }
-
-          OR
-
-          {
-              type: "FeatureCollection",
-              features: [...]
-          }
         ---------------------------------------------*/
 
         const isFeature =
+
             (
                 geoJSON.type ===
                     "Feature" &&
+
                 geoJSON.geometry &&
+
                 (
                     geoJSON.geometry.type ===
                         "Polygon" ||
+
                     geoJSON.geometry.type ===
                         "MultiPolygon"
                 )
@@ -5577,25 +5965,43 @@ MapRenderer.createPolygonLayer =
 
 
         const isFeatureCollection =
+
             (
                 geoJSON.type ===
                     "FeatureCollection" &&
+
                 Array.isArray(
                     geoJSON.features
                 ) &&
+
                 geoJSON.features
                     .some(
-                        feature =>
-                            feature &&
-                            feature.type ===
-                                "Feature" &&
-                            feature.geometry &&
-                            (
-                                feature.geometry.type ===
-                                    "Polygon" ||
-                                feature.geometry.type ===
-                                    "MultiPolygon"
-                            )
+
+                        function (
+                            feature
+                        ) {
+
+                            return (
+
+                                feature &&
+
+                                feature.type ===
+                                    "Feature" &&
+
+                                feature.geometry &&
+
+                                (
+                                    feature.geometry.type ===
+                                        "Polygon" ||
+
+                                    feature.geometry.type ===
+                                        "MultiPolygon"
+                                )
+
+                            );
+
+                        }
+
                     )
             );
 
@@ -5611,8 +6017,11 @@ MapRenderer.createPolygonLayer =
             ) {
 
                 console.warn(
+
                     "[OffenceMapRenderer] Invalid polygon GeoJSON",
+
                     {
+
                         polygon:
                             polygon,
 
@@ -5624,18 +6033,26 @@ MapRenderer.createPolygonLayer =
                                 ?.type,
 
                         featureCount:
+
                             Array.isArray(
                                 geoJSON.features
                             )
+
                                 ? geoJSON
                                     .features
                                     .length
+
                                 : 0
+
                     }
+
                 );
+
             }
 
+
             return null;
+
         }
 
 
@@ -5644,21 +6061,28 @@ MapRenderer.createPolygonLayer =
         ---------------------------------------------*/
 
         const normalizedType =
+
             String(
+
                 type ||
+
                 polygon.type ||
+
                 ""
+
             )
                 .trim()
                 .toUpperCase();
 
 
         const isSource =
+
             normalizedType ===
                 "SOURCE";
 
 
         const isTarget =
+
             normalizedType ===
                 "TARGET";
 
@@ -5674,8 +6098,11 @@ MapRenderer.createPolygonLayer =
             ) {
 
                 console.warn(
+
                     "[OffenceMapRenderer] Unknown polygon type",
+
                     {
+
                         type:
                             type,
 
@@ -5684,11 +6111,16 @@ MapRenderer.createPolygonLayer =
 
                         polygon:
                             polygon
+
                     }
+
                 );
+
             }
 
+
             return null;
+
         }
 
 
@@ -5697,12 +6129,14 @@ MapRenderer.createPolygonLayer =
         ---------------------------------------------*/
 
         const safeMaxWeight =
+
             (
                 Number.isFinite(
                     Number(
                         maxWeight
                     )
                 ) &&
+
                 Number(
                     maxWeight
                 ) > 0
@@ -5717,17 +6151,6 @@ MapRenderer.createPolygonLayer =
 
         /*---------------------------------------------
           6. Build canonical polygon style
-
-          Preserve existing renderer style helpers.
-
-          SOURCE
-              → createSourcePolygonStyle()
-
-          TARGET
-              → createTargetPolygonStyle()
-
-          Fallback style is used only if a style helper
-          is unavailable.
         ---------------------------------------------*/
 
         let style;
@@ -5737,43 +6160,59 @@ MapRenderer.createPolygonLayer =
 
             if (
                 isSource &&
+
                 typeof MapRenderer
                     .createSourcePolygonStyle ===
                     "function"
             ) {
 
                 style =
+
                     MapRenderer
                         .createSourcePolygonStyle(
+
                             polygon,
+
                             safeMaxWeight
+
                         );
+
             }
 
 
             else if (
                 isTarget &&
+
                 typeof MapRenderer
                     .createTargetPolygonStyle ===
                     "function"
             ) {
 
                 style =
+
                     MapRenderer
                         .createTargetPolygonStyle(
+
                             polygon,
+
                             safeMaxWeight
+
                         );
+
             }
 
         }
+
         catch (
             error
         ) {
 
             console.error(
+
                 "[OffenceMapRenderer] Polygon style creation failed",
+
                 {
+
                     polygon:
                         polygon,
 
@@ -5785,20 +6224,21 @@ MapRenderer.createPolygonLayer =
 
                     error:
                         error
+
                 }
+
             );
+
         }
 
 
         /*---------------------------------------------
           7. Safe fallback style
-
-          This should normally NOT be used when the
-          canonical style helpers are available.
         ---------------------------------------------*/
 
         if (
             !style ||
+
             typeof style !==
                 "object"
         ) {
@@ -5813,7 +6253,9 @@ MapRenderer.createPolygonLayer =
 
                 fillOpacity:
                     0.35
+
             };
+
         }
 
 
@@ -5822,22 +6264,18 @@ MapRenderer.createPolygonLayer =
 
           IMPORTANT:
 
-          Pass the complete GeoJSON object.
+          Pass complete FeatureCollection.
 
-          DO NOT extract only:
-
-              geoJSON.features[0]
-
-          because one RANGE may contain multiple GIS
-          features.
+          One aggregated TARGET range may contain
+          multiple underlying GIS beat features.
 
           Example:
 
-              NMT  → 3 features
-              WRVK → 4 features
+          NMT  → 3 features
+          WRVK → 4 features
 
-          L.geoJSON() creates one child Leaflet layer
-          for every feature in the FeatureCollection.
+          All child features represent ONE aggregated
+          offence polygon interaction.
         ---------------------------------------------*/
 
         let layer;
@@ -5846,86 +6284,139 @@ MapRenderer.createPolygonLayer =
         try {
 
             layer =
+
                 L.geoJSON(
+
                     geoJSON,
+
                     {
 
                         /*---------------------------------
-                          Style every child GIS feature
-                          consistently as one aggregated
-                          offence polygon.
+                          Apply same heat style to every
+                          GIS feature belonging to the
+                          aggregated polygon.
                         ---------------------------------*/
 
                         style:
-                            function (
-                                feature
-                            ) {
+
+                            function () {
 
                                 return {
+
                                     ...style
+
                                 };
+
                             },
 
 
                         /*---------------------------------
-                          Attach canonical offence metadata
-                          and interaction to every child
+                          Attach offence metadata and
+                          interaction to every child
                           Leaflet feature.
                         ---------------------------------*/
 
                         onEachFeature:
+
                             function (
+
                                 feature,
+
                                 featureLayer
+
                             ) {
 
                                 /*-------------------------
-                                  Canonical aggregated
-                                  offence polygon entry
+                                  Aggregated offence entry
                                 -------------------------*/
 
                                 featureLayer
                                     .offencePolygon =
+
                                     polygon;
 
 
                                 featureLayer
                                     .offenceType =
+
                                     normalizedType;
 
 
                                 featureLayer
                                     .offenceSpatialType =
+
                                     polygon.spatialType ||
+
                                     polygon.resolutionType ||
+
                                     polygon.resolution ||
+
                                     "";
 
 
                                 /*-------------------------
-                                  Keep actual GIS feature
-                                  available separately.
+                                  Actual GIS feature
 
-                                  Useful when a RANGE is a
-                                  FeatureCollection containing
-                                  multiple GIS features.
+                                  Kept separately from the
+                                  aggregated offence entry.
                                 -------------------------*/
 
                                 featureLayer
                                     .offenceGISFeature =
+
                                     feature;
 
 
                                 /*-------------------------
-                                  Preserve polygon click
-                                  drill-down.
+                                  Polygon click
+
+                                  IMPORTANT:
+
+                                  Pass:
+
+                                  polygon
+                                  type
+                                  Leaflet event
+
+                                  The complete aggregated
+                                  polygon is passed forward
+                                  so its POR set can drive
+                                  the cascade.
                                 -------------------------*/
 
                                 featureLayer.on(
+
                                     "click",
+
                                     function (
                                         event
                                     ) {
+
+                                        /*-----------------
+                                          Prevent map-level
+                                          click propagation.
+                                        -----------------*/
+
+                                        if (
+                                            event
+                                                ?.originalEvent
+                                        ) {
+
+                                            L.DomEvent
+                                                .stopPropagation(
+
+                                                    event
+                                                        .originalEvent
+
+                                                );
+
+                                        }
+
+
+                                        /*-----------------
+                                          Canonical polygon
+                                          interaction path
+                                        -----------------*/
 
                                         if (
                                             typeof MapRenderer
@@ -5935,46 +6426,79 @@ MapRenderer.createPolygonLayer =
 
                                             MapRenderer
                                                 .handlePolygonClick(
+
                                                     polygon,
+
+                                                    normalizedType,
+
                                                     event
+
                                                 );
 
+
                                             return;
+
                                         }
 
 
+                                        /*-----------------
+                                          Legacy fallback
+
+                                          Keep this so the
+                                          existing flow does
+                                          not break if the
+                                          new polygon handler
+                                          is unavailable.
+                                        -----------------*/
+
                                         if (
+
                                             GG.Offence
                                                 ?.UIController &&
+
                                             typeof GG.Offence
                                                 .UIController
                                                 .handleHotspotClick ===
                                                 "function"
+
                                         ) {
 
                                             GG.Offence
                                                 .UIController
                                                 .handleHotspotClick(
-                                                    polygon
+
+                                                    polygon,
+
+                                                    normalizedType,
+
+                                                    event
+
                                                 );
+
                                         }
 
                                     }
+
                                 );
 
                             }
 
                     }
+
                 );
 
         }
+
         catch (
             error
         ) {
 
             console.error(
+
                 "[OffenceMapRenderer] Polygon layer creation failed",
+
                 {
+
                     polygon:
                         polygon,
 
@@ -5989,10 +6513,14 @@ MapRenderer.createPolygonLayer =
 
                     error:
                         error
+
                 }
+
             );
 
+
             return null;
+
         }
 
 
@@ -6003,51 +6531,92 @@ MapRenderer.createPolygonLayer =
         if (
             !layer
         ) {
+
             return null;
+
         }
 
 
         /*---------------------------------------------
           10. Store canonical metadata on parent layer
 
-          Child layers already contain the same metadata.
+          This allows:
 
-          This allows both:
-
-              parent.offencePolygon
+          parent.offencePolygon
 
           and:
 
-              child.offencePolygon
+          child.offencePolygon
         ---------------------------------------------*/
 
         layer.offencePolygon =
+
             polygon;
 
 
         layer.offenceType =
+
             normalizedType;
 
 
         layer.offenceSpatialType =
+
             polygon.spatialType ||
+
             polygon.resolutionType ||
+
             polygon.resolution ||
+
             "";
 
 
         layer.offenceGeoJSON =
+
             geoJSON;
 
 
         /*---------------------------------------------
-          11. Store FeatureCollection information
+          11. Store interaction metadata
+        ---------------------------------------------*/
 
-          Useful for debugging RANGE polygons composed
-          of multiple GIS features.
+        layer.offenceInteraction = {
+
+            type:
+                normalizedType,
+
+            key:
+                polygon.key ||
+                null,
+
+            id:
+                polygon.id ||
+                polygon.hotspotId ||
+                polygon.key ||
+                null,
+
+            porKey:
+                polygon.porKey ||
+                null,
+
+            porKeys:
+
+                Array.isArray(
+                    polygon.porKeys
+                )
+
+                    ? polygon.porKeys
+
+                    : []
+
+        };
+
+
+        /*---------------------------------------------
+          12. Store FeatureCollection information
         ---------------------------------------------*/
 
         layer.offenceGISFeatureCount =
+
             geoJSON.type ===
                 "FeatureCollection"
 
@@ -6059,7 +6628,7 @@ MapRenderer.createPolygonLayer =
 
 
         /*---------------------------------------------
-          12. Debug
+          13. Debug
         ---------------------------------------------*/
 
         if (
@@ -6068,8 +6637,11 @@ MapRenderer.createPolygonLayer =
         ) {
 
             console.debug(
+
                 "[OffenceMapRenderer] Polygon layer created",
+
                 {
+
                     key:
                         polygon.key,
 
@@ -6080,6 +6652,7 @@ MapRenderer.createPolygonLayer =
                         normalizedType,
 
                     spatialType:
+
                         layer
                             .offenceSpatialType,
 
@@ -6087,18 +6660,38 @@ MapRenderer.createPolygonLayer =
                         geoJSON.type,
 
                     featureCount:
+
                         layer
                             .offenceGISFeatureCount,
 
+                    porCount:
+
+                        Array.isArray(
+                            polygon.porKeys
+                        )
+
+                            ? polygon
+                                .porKeys
+                                .length
+
+                            : polygon.porKey
+
+                                ? 1
+
+                                : 0,
+
                     maxWeight:
                         safeMaxWeight
+
                 }
+
             );
+
         }
 
 
         /*---------------------------------------------
-          13. Return complete Leaflet GeoJSON layer
+          14. Return complete Leaflet GeoJSON layer
         ---------------------------------------------*/
 
         return layer;
