@@ -6,18 +6,57 @@
    js/offence/offenceConstants.js
 
    Purpose:
-   Central constants and configuration for:
-   - Offence Heat Map
-   - Source locations (accused origin/address)
-   - Target locations (offence/seizure place)
-   - Source → Target linkage
-   - Cascading map click data
-   - Future offence analytics
+   - Central configuration for Offence Intelligence
+   - Define Firestore collection names
+   - Define canonical dataset names
+   - Define POR-authoritative relationship keys
+   - Define canonical field names
+   - Define SOURCE and TARGET location rules
+   - Define heatmap configuration
+   - Define cascading click hierarchy
+   - Define cache keys
+   - Define module events
+   - Define update and debugging configuration
+
+   AUTHORITATIVE RELATIONSHIP DESIGN:
+
+   POR No / porKey
+          │
+          ├── offence_cases
+          │
+          ├── offence_accused
+          │       │
+          │       └── SOURCE LOCATION
+          │
+          ├── offence_witnesses
+          │
+          └── offence_seizures
+                  │
+                  ├── TARGET LOCATION
+                  │
+                  └── offence_seized_articles
+                          │
+                          └── linked by SeizureID
 
    IMPORTANT:
-   This file contains NO business logic.
-   This file contains NO Leaflet rendering.
-   This file contains NO Firestore queries.
+
+   POR No is the authoritative cross-collection connector.
+
+   CaseID:
+   - May exist
+   - May be missing
+   - May not match
+   - Is secondary metadata
+
+   SeizureID:
+   - Authoritative connector between
+     offence_seizures and offence_seized_articles.
+
+   This file contains:
+   - NO business logic
+   - NO Firestore queries
+   - NO Leaflet rendering
+   - NO heatmap rendering
    ========================================================= */
 
 (function () {
@@ -32,6 +71,7 @@
     window.GG =
         window.GG ||
         {};
+
 
     GG.Offence =
         GG.Offence ||
@@ -55,19 +95,141 @@
             "OffenceIntelligence",
 
         VERSION:
-            "1.0.0"
+            "2.0.0",
+
+        RELATIONSHIP_MODEL:
+            "POR_AUTHORITATIVE"
 
     };
 
 
     /* =====================================================
-       4. LOCATION TYPES
+       4. FIRESTORE COLLECTIONS
+
+       These names MUST match Firestore exactly.
+       ===================================================== */
+
+    OffenceConstants.COLLECTIONS = {
+
+        CASES:
+            "offence_cases",
+
+        ACCUSED:
+            "offence_accused",
+
+        WITNESSES:
+            "offence_witnesses",
+
+        SEIZURES:
+            "offence_seizures",
+
+        SEIZED_ARTICLES:
+            "offence_seized_articles"
+
+    };
+
+
+    /* =====================================================
+       5. LOGICAL DATASETS
+
+       Internal dataset identifiers.
+
+       These are NOT Firestore collection names.
+       ===================================================== */
+
+    OffenceConstants.DATASETS = {
+
+        CASES:
+            "cases",
+
+        ACCUSED:
+            "accused",
+
+        WITNESSES:
+            "witnesses",
+
+        SEIZURES:
+            "seizures",
+
+        SEIZED_ARTICLES:
+            "seizedArticles"
+
+    };
+
+
+    /* =====================================================
+       6. RELATIONSHIP MODEL
+
+       POR is authoritative.
+
+       CASE ID remains secondary.
+
+       SeizureID connects seizure → articles.
+       ===================================================== */
+
+    OffenceConstants.RELATIONSHIP = {
+
+        AUTHORITATIVE_KEY:
+            "porKey",
+
+        AUTHORITATIVE_RAW_FIELD:
+            "porNo",
+
+        CASE_SECONDARY_KEY:
+            "caseId",
+
+        SEIZURE_ARTICLE_KEY:
+            "seizureId",
+
+        MODEL:
+            "POR_AUTHORITATIVE"
+
+    };
+
+
+    /* =====================================================
+       7. JOIN KEYS
+
+       Canonical relationship fields used across modules.
+       ===================================================== */
+
+    OffenceConstants.JOIN_KEYS = {
+
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
+
+        CASE_ID:
+            "caseId",
+
+        ACCUSED_ID:
+            "accusedId",
+
+        WITNESS_ID:
+            "witnessId",
+
+        SEIZURE_ID:
+            "seizureId",
+
+        ARTICLE_ID:
+            "articleId"
+
+    };
+
+
+    /* =====================================================
+       8. LOCATION TYPES
 
        SOURCE:
-       Where accused/offender comes from.
+       Origin/address of accused/offender.
 
        TARGET:
-       Where offence/seizure occurred.
+       Place where offence/seizure occurred.
        ===================================================== */
 
     OffenceConstants.LOCATION_TYPE = {
@@ -82,7 +244,7 @@
 
 
     /* =====================================================
-       5. MAP LAYERS
+       9. MAP LAYERS
        ===================================================== */
 
     OffenceConstants.LAYERS = {
@@ -100,65 +262,19 @@
             "offenceTargetMarkers",
 
         FLOW_LINES:
-            "offenceFlowLines"
+            "offenceFlowLines",
+
+        SOURCE_CLUSTER:
+            "offenceSourceCluster",
+
+        TARGET_CLUSTER:
+            "offenceTargetCluster"
 
     };
 
 
     /* =====================================================
-       6. DATASETS
-
-       Logical names only.
-
-       Actual Firestore collection names can later
-       be mapped by the data loader.
-       ===================================================== */
-
-    OffenceConstants.DATASETS = {
-
-        CASES:
-            "cases",
-
-        ACCUSED:
-            "accused",
-
-        SEIZURES:
-            "seizures"
-
-    };
-
-
-    /* =====================================================
-       7. JOIN KEYS
-
-       Used for joining:
-
-       CASE
-          ↓
-       ACCUSED / SUSPECT
-          ↓
-       SEIZURE
-       ===================================================== */
-
-    OffenceConstants.JOIN_KEYS = {
-
-        CASE_ID:
-            "caseId",
-
-        POR_NO:
-            "porNo",
-
-        SUSPECT_ID:
-            "suspectId",
-
-        SEIZURE_ID:
-            "seizureId"
-
-    };
-
-
-    /* =====================================================
-       8. CANONICAL CASE FIELDS
+       10. CANONICAL CASE FIELDS
        ===================================================== */
 
     OffenceConstants.CASE_FIELDS = {
@@ -166,14 +282,29 @@
         CASE_ID:
             "caseId",
 
+        POR_KEY:
+            "porKey",
+
         POR_NO:
             "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
 
         CR_NO:
             "crNo",
 
+        ALTERNATE_CR_NO:
+            "alternateCrNo",
+
+        FILLING_NUMBER:
+            "fillingNumber",
+
         RANGE:
             "range",
+
+        COURT:
+            "court",
 
         OFFENCE_DATE:
             "offenceDate",
@@ -190,62 +321,197 @@
         ARTICLES_SEIZED:
             "articlesSeized",
 
+        EO_NAME_DESIGNATION:
+            "nameAndDesignationOfEO",
+
+        POR_STATUS:
+            "porStatus",
+
+        POR_SUBMISSION_DATE:
+            "porSubmissionDate",
+
         CASE_STATUS:
             "caseStatus",
+
+        NEXT_HEARING_DATE:
+            "nextHearingDate",
+
+        PURPOSE_OF_HEARING:
+            "purposeOfHearing",
+
+        WITNESSES_NEXT_HEARING:
+            "witnessesForEvidenceInNextHearingDate",
 
         VERDICT:
             "verdict",
 
         SENTENCE:
-            "sentence"
+            "sentence",
+
+        JUDGMENT_PDF:
+            "judgmentPdf",
+
+        VERIFICATION_STATUS:
+            "verificationStatus",
+
+        MISMATCHES:
+            "mismatches",
+
+        CASE_DOCUMENTS_PDF:
+            "caseDocumentsPdf",
+
+        EMAIL_STATUS:
+            "emailStatus"
 
     };
 
 
     /* =====================================================
-       9. CANONICAL ACCUSED FIELDS
+       11. CANONICAL ACCUSED FIELDS
        ===================================================== */
 
     OffenceConstants.ACCUSED_FIELDS = {
 
-        SUSPECT_ID:
-            "suspectId",
+        ACCUSED_ID:
+            "accusedId",
+
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
+
+        CASE_ID:
+            "caseId",
+
+        SL_NO:
+            "slNo",
 
         NAME:
             "name",
 
-        ALIAS:
-            "alias",
+        AGE:
+            "age",
 
         FATHER_NAME:
             "fatherName",
 
-        PERMANENT_ADDRESS:
-            "permanentAddress",
+        ADDRESS:
+            "address",
+
+        ADDRESS_OF_ACCUSED:
+            "addressOfAccused",
 
         PRESENT_ADDRESS:
             "presentAddress",
 
-        PRIMARY_OCCUPATION:
-            "primaryOccupation",
+        PERMANENT_ADDRESS:
+            "permanentAddress",
 
-        TOTAL_CASES:
-            "totalCases",
+        CONTACT_NO:
+            "contactNo",
 
-        OFFENCE_RECORD:
-            "offenceRecord",
+        ALTERNATE_CONTACT_NO:
+            "alternateContactNo",
 
         PAST_OFFENCE_HISTORY:
             "pastOffenceHistory",
 
         PHOTO:
-            "photo"
+            "accusedPhoto",
+
+        AADHAAR_CARD:
+            "aadhaarCard",
+
+        VOTER_CARD:
+            "voterCard",
+
+        DRIVING_LICENCE:
+            "drivingLicence",
+
+        PAN_CARD:
+            "panCard",
+
+        OTHER_ID:
+            "otherId",
+
+        ARREST_STATUS:
+            "arrestStatus"
 
     };
 
 
     /* =====================================================
-       10. CANONICAL SEIZURE FIELDS
+       12. CANONICAL WITNESS FIELDS
+       ===================================================== */
+
+    OffenceConstants.WITNESS_FIELDS = {
+
+        WITNESS_ID:
+            "witnessId",
+
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
+
+        CASE_ID:
+            "caseId",
+
+        SL_NO:
+            "slNo",
+
+        NAME:
+            "name",
+
+        FULL_ADDRESS:
+            "fullAddress",
+
+        PRESENT_PLACE_OF_POSTING:
+            "presentPlaceOfPosting",
+
+        CONTACT_NO:
+            "contactNo",
+
+        PENDING_EVIDENCE_BEFORE_CHARGE:
+            "witnessWithPendingEvidenceBeforeCharge",
+
+        PENDING_EVIDENCE_AFTER_CHARGE:
+            "witnessWithPendingEvidenceAfterCharge",
+
+        EVIDENCE_COMPLETED:
+            "witnessWithEvidenceCompleted",
+
+        EMAIL:
+            "email",
+
+        VILLAGE:
+            "village",
+
+        STREET_LANE:
+            "streetLane",
+
+        POST_OFFICE:
+            "postOffice",
+
+        DISTRICT:
+            "district",
+
+        PIN_CODE:
+            "pinCode"
+
+    };
+
+
+    /* =====================================================
+       13. CANONICAL SEIZURE FIELDS
        ===================================================== */
 
     OffenceConstants.SEIZURE_FIELDS = {
@@ -253,11 +519,17 @@
         SEIZURE_ID:
             "seizureId",
 
-        CASE_ID:
-            "caseId",
+        POR_KEY:
+            "porKey",
 
         POR_NO:
             "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
+
+        CASE_ID:
+            "caseId",
 
         DATE:
             "seizureDate",
@@ -275,51 +547,203 @@
 
 
     /* =====================================================
-       11. SOURCE LOCATION FIELDS
+       14. CANONICAL SEIZED ARTICLE FIELDS
+       ===================================================== */
 
-       Priority order for locating offender origin.
+    OffenceConstants.SEIZED_ARTICLE_FIELDS = {
+
+        ARTICLE_ID:
+            "articleId",
+
+        SEIZURE_ID:
+            "seizureId",
+
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        REF_POR_NO:
+            "refPorNo",
+
+        CASE_ID:
+            "caseId",
+
+        SL_NO:
+            "slNo",
+
+        DESCRIPTION:
+            "articleDescription",
+
+        QUANTITY:
+            "quantity",
+
+        MEASUREMENT:
+            "measurement",
+
+        VOLUME:
+            "volume",
+
+        SOURCE:
+            "source"
+
+    };
+
+
+    /* =====================================================
+       15. POR FIELD CANDIDATES
+
+       Used by Normalizer/Store when identifying POR values.
+
+       porKey should already be generated by Normalizer,
+       but these aliases support imported legacy records.
+       ===================================================== */
+
+    OffenceConstants.POR_FIELDS = [
+
+        "porNo",
+
+        "refPorNo",
+
+        "porNumber",
+
+        "refPORNo",
+
+        "PORNo",
+
+        "RefPORNo"
+
+    ];
+
+
+    /* =====================================================
+       16. ID FIELD CANDIDATES
+       ===================================================== */
+
+    OffenceConstants.ID_FIELDS = {
+
+        CASES: [
+
+            "caseId",
+
+            "CaseID",
+
+            "id"
+
+        ],
+
+        ACCUSED: [
+
+            "accusedId",
+
+            "AccusedID",
+
+            "id"
+
+        ],
+
+        WITNESSES: [
+
+            "witnessId",
+
+            "WitnessID",
+
+            "id"
+
+        ],
+
+        SEIZURES: [
+
+            "seizureId",
+
+            "SeizureID",
+
+            "id"
+
+        ],
+
+        SEIZED_ARTICLES: [
+
+            "articleId",
+
+            "ArticleID",
+
+            "id"
+
+        ]
+
+    };
+
+
+    /* =====================================================
+       17. SOURCE LOCATION FIELDS
+
+       SOURCE HEATMAP:
+
+       Accused origin / residential address.
+
+       Priority order matters.
        ===================================================== */
 
     OffenceConstants.SOURCE_LOCATION_FIELDS = [
 
+        "address",
+
+        "addressOfAccused",
+
+        "fullAddress",
+
         "presentAddress",
 
-        "permanentAddress"
+        "permanentAddress",
+
+        "village"
 
     ];
 
 
     /* =====================================================
-       12. TARGET LOCATION FIELDS
+       18. TARGET LOCATION FIELDS
 
-       Primary offence location comes from seizure place.
+       TARGET HEATMAP:
+
+       Primary target comes from seizure place.
        ===================================================== */
 
     OffenceConstants.TARGET_LOCATION_FIELDS = [
 
-        "placeOfSeizure"
+        "placeOfSeizure",
+
+        "seizurePlace",
+
+        "place",
+
+        "location",
+
+        "address"
 
     ];
 
 
     /* =====================================================
-       13. CANONICAL LOCATION OBJECT
+       19. CANONICAL LOCATION OBJECT
 
-       Every geocoded source or target should eventually
-       follow this structure.
-
-       Example:
+       Used by OffenceGeocoder and heatmap modules.
 
        {
-           id: "",
-           type: "SOURCE",
-           name: "",
-           rawAddress: "",
-           normalizedAddress: "",
-           latitude: null,
-           longitude: null,
-           caseIds: [],
-           offenceCount: 0
+           id,
+           type,
+           name,
+           rawAddress,
+           normalizedAddress,
+           latitude,
+           longitude,
+           porKey,
+           porNo,
+           caseIds,
+           offenceCount,
+           geocodeStatus
        }
        ===================================================== */
 
@@ -346,26 +770,36 @@
         LONGITUDE:
             "longitude",
 
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
         CASE_IDS:
             "caseIds",
 
         OFFENCE_COUNT:
-            "offenceCount"
+            "offenceCount",
+
+        GEOCODE_STATUS:
+            "geocodeStatus"
 
     };
 
 
     /* =====================================================
-       14. SOURCE → TARGET FLOW OBJECT
+       20. SOURCE → TARGET FLOW OBJECT
 
-       Represents offender movement / offence linkage.
+       POR-authoritative spatial relationship.
 
        SOURCE
-          ↓
+          │
+          │ POR
+          ▼
        TARGET
 
-       One source may connect to many targets.
-       One target may receive many sources.
+       CaseID is retained as secondary metadata.
        ===================================================== */
 
     OffenceConstants.FLOW_FIELDS = {
@@ -373,8 +807,14 @@
         ID:
             "id",
 
-        CASE_ID:
-            "caseId",
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        CASE_IDS:
+            "caseIds",
 
         SOURCE_ID:
             "sourceId",
@@ -404,7 +844,149 @@
 
 
     /* =====================================================
-       15. HEATMAP CONFIGURATION
+       21. CASCADE DATA KEYS
+
+       Standard object structure returned from Store /
+       Geocoder / Heatmap click pipeline.
+       ===================================================== */
+
+    OffenceConstants.CASCADE_FIELDS = {
+
+        POR_KEY:
+            "porKey",
+
+        POR_NO:
+            "porNo",
+
+        CASE:
+            "case",
+
+        CASES:
+            "cases",
+
+        CASE_IDS:
+            "caseIds",
+
+        ACCUSED:
+            "accused",
+
+        WITNESSES:
+            "witnesses",
+
+        SEIZURES:
+            "seizures",
+
+        SEIZED_ARTICLES:
+            "seizedArticles",
+
+        SOURCES:
+            "sources",
+
+        TARGETS:
+            "targets",
+
+        COUNTS:
+            "counts"
+
+    };
+
+
+    /* =====================================================
+       22. CASCADE DISPLAY LEVELS
+
+       Clicking a SOURCE hotspot:
+
+       LOCATION
+          ↓
+       ACCUSED
+          ↓
+       POR
+          ↓
+       CASES
+          ↓
+       WITNESSES
+          ↓
+       SEIZURES
+          ↓
+       SEIZED ARTICLES
+          ↓
+       TARGETS
+
+       Clicking a TARGET hotspot:
+
+       LOCATION
+          ↓
+       SEIZURE
+          ↓
+       SEIZED ARTICLES
+          ↓
+       POR
+          ↓
+       CASES
+          ↓
+       ACCUSED
+          ↓
+       WITNESSES
+          ↓
+       SOURCES
+       ===================================================== */
+
+    OffenceConstants.CASCADE = {
+
+        SOURCE: [
+
+            "LOCATION",
+
+            "ACCUSED",
+
+            "POR",
+
+            "CASES",
+
+            "WITNESSES",
+
+            "SEIZURES",
+
+            "SEIZED_ARTICLES",
+
+            "TARGETS",
+
+            "CASE_DETAIL"
+
+        ],
+
+        TARGET: [
+
+            "LOCATION",
+
+            "SEIZURE",
+
+            "SEIZED_ARTICLES",
+
+            "POR",
+
+            "CASES",
+
+            "ACCUSED",
+
+            "WITNESSES",
+
+            "SOURCES",
+
+            "CASE_DETAIL"
+
+        ]
+
+    };
+
+
+    /* =====================================================
+       23. HEATMAP CONFIGURATION
+
+       These are display defaults.
+
+       Actual heat intensity should be calculated by the
+       heatmap engine.
        ===================================================== */
 
     OffenceConstants.HEATMAP = {
@@ -421,7 +1003,10 @@
                 20,
 
             MAX_ZOOM:
-                17
+                17,
+
+            MIN_OPACITY:
+                0.25
 
         },
 
@@ -437,7 +1022,10 @@
                 22,
 
             MAX_ZOOM:
-                17
+                17,
+
+            MIN_OPACITY:
+                0.25
 
         }
 
@@ -445,14 +1033,17 @@
 
 
     /* =====================================================
-       16. HEAT WEIGHT
+       24. HEAT WEIGHT CONFIGURATION
 
-       offenceCount will normally determine intensity.
-
-       Future options:
+       Heatmap engine can use:
+       - offence count
+       - accused count
+       - seizure count
        - repeat offender score
-       - offence severity
-       - recent offence weighting
+       - recency
+       - severity
+
+       Default remains offence-count based.
        ===================================================== */
 
     OffenceConstants.WEIGHT = {
@@ -464,53 +1055,42 @@
             1,
 
         DEFAULT:
-            0.5
+            0.5,
+
+        STRATEGY:
+            "OFFENCE_COUNT"
 
     };
 
 
     /* =====================================================
-       17. CLICK / CASCADE LEVELS
+       25. AGGREGATION
 
-       Clicking heat areas will progressively reveal
-       detailed information.
+       Controls how identical/resolved locations are grouped.
        ===================================================== */
 
-    OffenceConstants.CASCADE = {
+    OffenceConstants.AGGREGATION = {
 
-        SOURCE: [
+        SOURCE_BY:
+            "NORMALIZED_LOCATION",
 
-            "LOCATION",
+        TARGET_BY:
+            "NORMALIZED_LOCATION",
 
-            "ACCUSED",
+        MERGE_CASE_IDS:
+            true,
 
-            "CASES",
+        MERGE_POR_KEYS:
+            true,
 
-            "TARGETS",
-
-            "CASE_DETAIL"
-
-        ],
-
-        TARGET: [
-
-            "LOCATION",
-
-            "CASES",
-
-            "ACCUSED",
-
-            "SOURCES",
-
-            "CASE_DETAIL"
-
-        ]
+        COUNT_UNIQUE_POR:
+            true
 
     };
 
 
     /* =====================================================
-       18. FILTER TYPES
+       26. FILTER TYPES
        ===================================================== */
 
     OffenceConstants.FILTERS = {
@@ -524,6 +1104,12 @@
         RANGE:
             "range",
 
+        POR_NO:
+            "porNo",
+
+        POR_KEY:
+            "porKey",
+
         OFFENCE_TYPE:
             "offenceType",
 
@@ -536,6 +1122,9 @@
         CASE_STATUS:
             "caseStatus",
 
+        ARREST_STATUS:
+            "arrestStatus",
+
         LOCATION_TYPE:
             "locationType"
 
@@ -543,7 +1132,7 @@
 
 
     /* =====================================================
-       19. MAP DISPLAY MODES
+       27. MAP DISPLAY MODES
        ===================================================== */
 
     OffenceConstants.MAP_MODE = {
@@ -564,20 +1153,17 @@
 
 
     /* =====================================================
-       20. DEFAULT MAP MODE
-
-       Both SOURCE and TARGET heatmaps visible.
+       28. DEFAULT MAP MODE
        ===================================================== */
 
     OffenceConstants.DEFAULT_MAP_MODE =
-        OffenceConstants.MAP_MODE.BOTH;
+        OffenceConstants
+            .MAP_MODE
+            .BOTH;
 
 
     /* =====================================================
-       21. GEOCODING STATUS
-
-       Needed because addresses and seizure places
-       initially exist as text.
+       29. GEOCODING STATUS
        ===================================================== */
 
     OffenceConstants.GEOCODE_STATUS = {
@@ -598,12 +1184,12 @@
 
 
     /* =====================================================
-       22. DATA UPDATE STRATEGY
+       30. DATA UPDATE STRATEGY
 
-       Offence records can increase every day.
+       POR deduplication is authoritative.
 
-       Incremental mode means we should not rebuild
-       the complete historical dataset every refresh.
+       CaseID deduplication remains available but is not
+       used as the primary relationship rule.
        ===================================================== */
 
     OffenceConstants.UPDATE = {
@@ -611,7 +1197,16 @@
         MODE:
             "INCREMENTAL",
 
+        POR_DEDUPLICATION:
+            true,
+
         CASE_ID_DEDUPLICATION:
+            false,
+
+        SEIZURE_ID_DEDUPLICATION:
+            true,
+
+        ARTICLE_ID_DEDUPLICATION:
             true,
 
         AUTO_REBUILD_HEATMAP:
@@ -624,28 +1219,41 @@
 
 
     /* =====================================================
-       23. CACHE KEYS
+       31. CACHE KEYS
+
+       Browser-side cache namespaces.
+
+       These are separate from Firestore collection names.
        ===================================================== */
 
     OffenceConstants.CACHE = {
 
         CASES:
-            "offence_cases",
+            "offence_cache_cases",
 
         ACCUSED:
-            "offence_accused",
+            "offence_cache_accused",
+
+        WITNESSES:
+            "offence_cache_witnesses",
 
         SEIZURES:
-            "offence_seizures",
+            "offence_cache_seizures",
+
+        SEIZED_ARTICLES:
+            "offence_cache_seized_articles",
+
+        POR_CASCADES:
+            "offence_cache_por_cascades",
 
         SOURCES:
-            "offence_sources",
+            "offence_cache_sources",
 
         TARGETS:
-            "offence_targets",
+            "offence_cache_targets",
 
         FLOWS:
-            "offence_flows",
+            "offence_cache_flows",
 
         GEOCODES:
             "offence_geocodes"
@@ -654,18 +1262,82 @@
 
 
     /* =====================================================
-       24. EVENTS
+       32. STORE INDEX NAMES
 
-       Other modules can listen to these events.
+       Standard names for OffenceStore indexes.
+
+       POR indexes are primary.
+       ===================================================== */
+
+    OffenceConstants.INDEXES = {
+
+        CASE_BY_ID:
+            "caseById",
+
+        CASES_BY_POR:
+            "casesByPor",
+
+        ACCUSED_BY_ID:
+            "accusedById",
+
+        ACCUSED_BY_POR:
+            "accusedByPor",
+
+        WITNESS_BY_ID:
+            "witnessById",
+
+        WITNESSES_BY_POR:
+            "witnessesByPor",
+
+        SEIZURE_BY_ID:
+            "seizureById",
+
+        SEIZURES_BY_POR:
+            "seizuresByPor",
+
+        ARTICLE_BY_ID:
+            "articleById",
+
+        ARTICLES_BY_POR:
+            "articlesByPor",
+
+        ARTICLES_BY_SEIZURE:
+            "articlesBySeizure",
+
+        CASCADE_BY_POR:
+            "cascadeByPor"
+
+    };
+
+
+    /* =====================================================
+       33. EVENTS
+
+       Modules may listen for these events.
        ===================================================== */
 
     OffenceConstants.EVENTS = {
 
+        DATA_LOADING:
+            "offence:dataLoading",
+
         DATA_LOADED:
             "offence:dataLoaded",
 
+        DATA_NORMALIZED:
+            "offence:dataNormalized",
+
+        STORE_READY:
+            "offence:storeReady",
+
         DATA_UPDATED:
             "offence:dataUpdated",
+
+        GEOCODING_STARTED:
+            "offence:geocodingStarted",
+
+        GEOCODING_COMPLETE:
+            "offence:geocodingComplete",
 
         HEATMAP_RENDERED:
             "offence:heatmapRendered",
@@ -676,8 +1348,23 @@
         TARGET_CLICKED:
             "offence:targetClicked",
 
+        POR_SELECTED:
+            "offence:porSelected",
+
         CASE_SELECTED:
             "offence:caseSelected",
+
+        ACCUSED_SELECTED:
+            "offence:accusedSelected",
+
+        WITNESS_SELECTED:
+            "offence:witnessSelected",
+
+        SEIZURE_SELECTED:
+            "offence:seizureSelected",
+
+        ARTICLE_SELECTED:
+            "offence:articleSelected",
 
         FILTER_CHANGED:
             "offence:filterChanged"
@@ -686,7 +1373,7 @@
 
 
     /* =====================================================
-       25. DEBUG
+       34. DEBUG
        ===================================================== */
 
     OffenceConstants.DEBUG = {
@@ -695,6 +1382,15 @@
             true,
 
         LOG_DATA:
+            true,
+
+        LOG_NORMALIZATION:
+            true,
+
+        LOG_STORE:
+            true,
+
+        LOG_RELATIONSHIPS:
             true,
 
         LOG_GEOCODING:
@@ -710,24 +1406,249 @@
 
 
     /* =====================================================
-       26. FREEZE CONSTANTS
+       35. FREEZE HELPER
        ===================================================== */
 
-    Object.freeze(
+    function freezeObject(
+        object
+    ) {
+
+        if (
+            object &&
+            typeof object ===
+            "object"
+        ) {
+
+            Object.freeze(
+                object
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       36. FREEZE CONSTANT GROUPS
+       ===================================================== */
+
+    freezeObject(
+        OffenceConstants.MODULE
+    );
+
+
+    freezeObject(
+        OffenceConstants.COLLECTIONS
+    );
+
+
+    freezeObject(
+        OffenceConstants.DATASETS
+    );
+
+
+    freezeObject(
+        OffenceConstants.RELATIONSHIP
+    );
+
+
+    freezeObject(
+        OffenceConstants.JOIN_KEYS
+    );
+
+
+    freezeObject(
         OffenceConstants.LOCATION_TYPE
     );
 
-    Object.freeze(
+
+    freezeObject(
+        OffenceConstants.LAYERS
+    );
+
+
+    freezeObject(
+        OffenceConstants.CASE_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.ACCUSED_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.WITNESS_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.SEIZURE_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.SEIZED_ARTICLE_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.POR_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+            .CASES
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+            .ACCUSED
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+            .WITNESSES
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+            .SEIZURES
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+            .SEIZED_ARTICLES
+    );
+
+
+    freezeObject(
+        OffenceConstants.ID_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.SOURCE_LOCATION_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.TARGET_LOCATION_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.LOCATION_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.FLOW_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.CASCADE_FIELDS
+    );
+
+
+    freezeObject(
+        OffenceConstants.CASCADE
+            .SOURCE
+    );
+
+
+    freezeObject(
+        OffenceConstants.CASCADE
+            .TARGET
+    );
+
+
+    freezeObject(
+        OffenceConstants.CASCADE
+    );
+
+
+    freezeObject(
+        OffenceConstants.HEATMAP
+            .SOURCE
+    );
+
+
+    freezeObject(
+        OffenceConstants.HEATMAP
+            .TARGET
+    );
+
+
+    freezeObject(
+        OffenceConstants.HEATMAP
+    );
+
+
+    freezeObject(
+        OffenceConstants.WEIGHT
+    );
+
+
+    freezeObject(
+        OffenceConstants.AGGREGATION
+    );
+
+
+    freezeObject(
+        OffenceConstants.FILTERS
+    );
+
+
+    freezeObject(
         OffenceConstants.MAP_MODE
     );
 
-    Object.freeze(
+
+    freezeObject(
         OffenceConstants.GEOCODE_STATUS
     );
 
 
+    freezeObject(
+        OffenceConstants.UPDATE
+    );
+
+
+    freezeObject(
+        OffenceConstants.CACHE
+    );
+
+
+    freezeObject(
+        OffenceConstants.INDEXES
+    );
+
+
+    freezeObject(
+        OffenceConstants.EVENTS
+    );
+
+
+    freezeObject(
+        OffenceConstants.DEBUG
+    );
+
+
     /* =====================================================
-       27. EXPORT
+       37. EXPORT
+
+       Do NOT freeze OffenceConstants itself.
+
+       Keeping the root object extensible allows future
+       modules to add optional configuration without
+       replacing the namespace.
        ===================================================== */
 
     GG.Offence.Constants =
@@ -735,16 +1656,45 @@
 
 
     /* =====================================================
-       28. READY LOG
+       38. READY LOG
        ===================================================== */
 
     if (
-        OffenceConstants.DEBUG.ENABLED
+        OffenceConstants.DEBUG
+            .ENABLED
     ) {
 
         console.log(
+
             "🔥 OffenceConstants Loaded",
-            OffenceConstants
+
+            {
+
+                version:
+
+                    OffenceConstants
+                        .MODULE
+                        .VERSION,
+
+                relationshipModel:
+
+                    OffenceConstants
+                        .RELATIONSHIP
+                        .MODEL,
+
+                authoritativeKey:
+
+                    OffenceConstants
+                        .RELATIONSHIP
+                        .AUTHORITATIVE_KEY,
+
+                collections:
+
+                    OffenceConstants
+                        .COLLECTIONS
+
+            }
+
         );
 
     }
