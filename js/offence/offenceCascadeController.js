@@ -5,67 +5,112 @@
    File:
    js/offence/offenceCascadeController.js
 
-   Purpose:
-   - Listen for offence hotspot clicks
-   - Handle SOURCE and TARGET hotspot drill-down
-   - Maintain cascading selection state
-   - Resolve hotspot → cases
-   - Resolve case → accused
-   - Resolve case → seizures
-   - Resolve case → source hotspots
-   - Resolve case → target hotspots
-   - Preserve SOURCE / TARGET entry context
-   - Emit UI-ready cascade events
-   - Support future panel / card / popup renderer
+   Version:
+   2.0.0
 
-   Cascade Flow:
+   PURPOSE:
+   ---------------------------------------------------------
+   Central controller for offence heatmap drill-down.
+
+   AUTHORITATIVE RELATIONSHIP:
+   ---------------------------------------------------------
+
+       POR No / Ref POR No
+              │
+              ▼
+          normalized porKey
+              │
+              ├── offence_cases
+              ├── offence_accused
+              ├── offence_witnesses
+              ├── offence_seizures
+              ├── offence_seized_articles
+              ├── SOURCE hotspots
+              └── TARGET hotspots
+
+   IMPORTANT:
+   ---------------------------------------------------------
+   POR is the authoritative connector.
+
+   CaseID:
+   - may exist
+   - may be missing
+   - may be historical
+   - may not match between imported datasets
+
+   Therefore CaseID is SECONDARY only.
+
+   CASCADE FLOW:
+   ---------------------------------------------------------
 
    SOURCE CLICK
-       ↓
+        ↓
    Source Hotspot
-       ↓
-   Cases linked to source
-       ↓
-   Selected Case
-       ↓
-   Case Details
-       ↓
+        ↓
+   POR Relation(s)
+        ↓
+   Case(s)
+        ↓
    Accused
-       ↓
+   Witnesses
    Seizures
-       ↓
-   Related Target Hotspots
+        ↓
+   Seized Articles
+        ↓
+   Related TARGET Hotspots
+
 
    TARGET CLICK
-       ↓
+        ↓
    Target Hotspot
-       ↓
-   Cases linked to target
-       ↓
-   Selected Case
-       ↓
-   Case Details
-       ↓
+        ↓
+   POR Relation(s)
+        ↓
+   Case(s)
+        ↓
    Accused
-       ↓
+   Witnesses
    Seizures
-       ↓
-   Related Source Hotspots
+        ↓
+   Seized Articles
+        ↓
+   Related SOURCE Hotspots
 
-   Dependencies:
+
+   DEPENDENCIES:
+   ---------------------------------------------------------
    1. offenceConstants.js
    2. offenceStore.js
    3. offenceSourceEngine.js
    4. offenceTargetEngine.js
    5. offenceHeatmapEngine.js
-   6. offenceMapRenderer.js
 
-   IMPORTANT:
-   - NO DOM manipulation
-   - NO HTML generation
-   - NO Leaflet rendering
-   - NO geocoding
-   - NO direct database calls
+   OPTIONAL:
+   ---------------------------------------------------------
+   offenceMapRenderer.js
+
+   RESPONSIBILITIES:
+   ---------------------------------------------------------
+   - Listen for hotspot clicks
+   - Resolve hotspot
+   - Resolve POR relation
+   - Build POR-authoritative cascade
+   - Maintain drill-down state
+   - Select POR
+   - Select Case
+   - Select Accused
+   - Select Witness
+   - Select Seizure
+   - Select Seized Article
+   - Emit UI-ready events
+
+   DOES NOT:
+   ---------------------------------------------------------
+   - manipulate DOM
+   - generate HTML
+   - render Leaflet
+   - geocode
+   - access Firestore directly
 
    ========================================================= */
 
@@ -82,6 +127,7 @@
         window.GG ||
         {};
 
+
     GG.Offence =
         GG.Offence ||
         {};
@@ -94,14 +140,18 @@
     const Constants =
         GG.Offence.Constants;
 
+
     const Store =
         GG.Offence.Store;
+
 
     const SourceEngine =
         GG.Offence.SourceEngine;
 
+
     const TargetEngine =
         GG.Offence.TargetEngine;
+
 
     const HeatmapEngine =
         GG.Offence.HeatmapEngine;
@@ -129,28 +179,6 @@
     }
 
 
-    if (!SourceEngine) {
-
-        console.error(
-            "[OffenceCascadeController] OffenceSourceEngine unavailable."
-        );
-
-        return;
-
-    }
-
-
-    if (!TargetEngine) {
-
-        console.error(
-            "[OffenceCascadeController] OffenceTargetEngine unavailable."
-        );
-
-        return;
-
-    }
-
-
     if (!HeatmapEngine) {
 
         console.error(
@@ -169,177 +197,110 @@
     const CascadeController = {};
 
 
-    /* =====================================================
-       4. MODULE INFO
-       ===================================================== */
-
     CascadeController.VERSION =
-        "1.0.0";
+        "2.0.0";
+
 
     CascadeController.initialized =
         false;
+
 
     CascadeController._eventsBound =
         false;
 
 
     /* =====================================================
-       5. CASCADE LEVELS
+       4. CASCADE LEVELS
        ===================================================== */
 
-    CascadeController.LEVEL = Object.freeze({
+    CascadeController.LEVEL =
+        Object.freeze({
 
-        NONE:
-            "NONE",
+            NONE:
+                "NONE",
 
-        HOTSPOT:
-            "HOTSPOT",
+            HOTSPOT:
+                "HOTSPOT",
 
-        CASE:
-            "CASE",
+            POR:
+                "POR",
 
-        ACCUSED:
-            "ACCUSED",
+            CASE:
+                "CASE",
 
-        SEIZURE:
-            "SEIZURE"
+            ACCUSED:
+                "ACCUSED",
 
-    });
+            WITNESS:
+                "WITNESS",
+
+            SEIZURE:
+                "SEIZURE",
+
+            ARTICLE:
+                "ARTICLE"
+
+        });
 
 
     /* =====================================================
-       6. ENTRY TYPES
+       5. ENTRY TYPES
        ===================================================== */
 
-    CascadeController.TYPE = Object.freeze({
+    CascadeController.TYPE =
+        Object.freeze({
 
-        SOURCE:
-            "SOURCE",
+            SOURCE:
+                "SOURCE",
 
-        TARGET:
-            "TARGET"
+            TARGET:
+                "TARGET"
 
-    });
+        });
 
 
     /* =====================================================
-       7. EVENTS
-
-       UI modules should listen to these events.
-
-       offence:cascade-opened
-
-       offence:cascade-case-selected
-
-       offence:cascade-accused-selected
-
-       offence:cascade-seizure-selected
-
-       offence:cascade-level-changed
-
-       offence:cascade-closed
+       6. EVENTS
        ===================================================== */
 
-    CascadeController.EVENTS = Object.freeze({
+    CascadeController.EVENTS =
+        Object.freeze({
 
-        OPENED:
-            "offence:cascade-opened",
+            OPENED:
+                "offence:cascade-opened",
 
-        CASE_SELECTED:
-            "offence:cascade-case-selected",
+            POR_SELECTED:
+                "offence:cascade-por-selected",
 
-        ACCUSED_SELECTED:
-            "offence:cascade-accused-selected",
+            CASE_SELECTED:
+                "offence:cascade-case-selected",
 
-        SEIZURE_SELECTED:
-            "offence:cascade-seizure-selected",
+            ACCUSED_SELECTED:
+                "offence:cascade-accused-selected",
 
-        LEVEL_CHANGED:
-            "offence:cascade-level-changed",
+            WITNESS_SELECTED:
+                "offence:cascade-witness-selected",
 
-        CLOSED:
-            "offence:cascade-closed",
+            SEIZURE_SELECTED:
+                "offence:cascade-seizure-selected",
 
-        UPDATED:
-            "offence:cascade-updated"
+            ARTICLE_SELECTED:
+                "offence:cascade-article-selected",
 
-    });
+            LEVEL_CHANGED:
+                "offence:cascade-level-changed",
+
+            UPDATED:
+                "offence:cascade-updated",
+
+            CLOSED:
+                "offence:cascade-closed"
+
+        });
 
 
     /* =====================================================
-       8. CASCADE STATE
-
-       This is the single source of truth for the
-       current offence drill-down session.
-       ===================================================== */
-
-    CascadeController.state = {
-
-        open:
-            false,
-
-        level:
-            "NONE",
-
-        entryType:
-            null,
-
-        hotspotId:
-            null,
-
-        hotspot:
-            null,
-
-        hotspotCascade:
-            null,
-
-        caseId:
-            null,
-
-        case:
-            null,
-
-        caseContext:
-            null,
-
-        accusedId:
-            null,
-
-        accused:
-            null,
-
-        seizureId:
-            null,
-
-        seizure:
-            null,
-
-        cases:
-            [],
-
-        accusedList:
-            [],
-
-        seizures:
-            [],
-
-        sourceHotspots:
-            [],
-
-        targetHotspots:
-            [],
-
-        sourceTargetLinks:
-            [],
-
-        latlng:
-            null
-
-    };
-
-
-    /* =====================================================
-       9. CREATE EMPTY STATE
+       7. CREATE EMPTY STATE
        ===================================================== */
 
     CascadeController.createEmptyState =
@@ -351,10 +312,7 @@
                     false,
 
                 level:
-
-                    CascadeController
-                        .LEVEL
-                        .NONE,
+                    CascadeController.LEVEL.NONE,
 
                 entryType:
                     null,
@@ -365,8 +323,33 @@
                 hotspot:
                     null,
 
-                hotspotCascade:
+                latlng:
                     null,
+
+
+                /* -----------------------------------------
+                   POR
+                   ----------------------------------------- */
+
+                porKey:
+                    null,
+
+                porNo:
+                    null,
+
+                porKeys:
+                    [],
+
+                porRelations:
+                    [],
+
+                porRelation:
+                    null,
+
+
+                /* -----------------------------------------
+                   CASE
+                   ----------------------------------------- */
 
                 caseId:
                     null,
@@ -374,8 +357,13 @@
                 case:
                     null,
 
-                caseContext:
-                    null,
+                cases:
+                    [],
+
+
+                /* -----------------------------------------
+                   ACCUSED
+                   ----------------------------------------- */
 
                 accusedId:
                     null,
@@ -383,20 +371,55 @@
                 accused:
                     null,
 
+                accusedList:
+                    [],
+
+
+                /* -----------------------------------------
+                   WITNESSES
+                   ----------------------------------------- */
+
+                witnessId:
+                    null,
+
+                witness:
+                    null,
+
+                witnesses:
+                    [],
+
+
+                /* -----------------------------------------
+                   SEIZURES
+                   ----------------------------------------- */
+
                 seizureId:
                     null,
 
                 seizure:
                     null,
 
-                cases:
-                    [],
-
-                accusedList:
-                    [],
-
                 seizures:
                     [],
+
+
+                /* -----------------------------------------
+                   ARTICLES
+                   ----------------------------------------- */
+
+                articleId:
+                    null,
+
+                article:
+                    null,
+
+                seizedArticles:
+                    [],
+
+
+                /* -----------------------------------------
+                   HEATMAP RELATIONS
+                   ----------------------------------------- */
 
                 sourceHotspots:
                     [],
@@ -405,18 +428,408 @@
                     [],
 
                 sourceTargetLinks:
-                    [],
-
-                latlng:
-                    null
+                    []
 
             };
 
         };
 
 
+    CascadeController.state =
+        CascadeController
+            .createEmptyState();
+
+
     /* =====================================================
-       10. INITIALIZE
+       8. NORMALIZE KEY
+       ===================================================== */
+
+    CascadeController.normalizeKey =
+        function (
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(
+                value
+            )
+                .trim()
+                .toUpperCase();
+
+        };
+
+
+    /* =====================================================
+       9. NORMALIZE POR KEY
+
+       Prefer HeatmapEngine implementation because all
+       SOURCE/TARGET indexes must use identical POR rules.
+       ===================================================== */
+
+    CascadeController.normalizePorKey =
+        function (
+            value
+        ) {
+
+            if (
+                typeof HeatmapEngine.normalizePorKey ===
+                "function"
+            ) {
+
+                return HeatmapEngine
+                    .normalizePorKey(
+                        value
+                    );
+
+            }
+
+
+            return CascadeController
+                .normalizeKey(
+                    value
+                )
+                .replace(
+                    /\s+/g,
+                    " "
+                );
+
+        };
+
+
+    /* =====================================================
+       10. SAFE ARRAY
+       ===================================================== */
+
+    CascadeController.toArray =
+        function (
+            value
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return [];
+
+            }
+
+
+            return Array.isArray(
+                value
+            )
+                ? value
+                : [value];
+
+        };
+
+
+    /* =====================================================
+       11. UNIQUE OBJECTS
+       ===================================================== */
+
+    CascadeController.uniqueObjects =
+        function (
+            records,
+            keyGetter
+        ) {
+
+            const output =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            for (
+                const record
+                of CascadeController.toArray(
+                    records
+                )
+            ) {
+
+                if (!record) {
+
+                    continue;
+
+                }
+
+
+                let key =
+                    "";
+
+
+                try {
+
+                    key =
+                        keyGetter
+                            ? keyGetter(
+                                record
+                            )
+                            : "";
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    key =
+                        "";
+
+                }
+
+
+                key =
+                    CascadeController
+                        .normalizeKey(
+                            key
+                        );
+
+
+                if (!key) {
+
+                    output.push(
+                        record
+                    );
+
+                    continue;
+
+                }
+
+
+                if (
+                    seen.has(
+                        key
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                seen.add(
+                    key
+                );
+
+
+                output.push(
+                    record
+                );
+
+            }
+
+
+            return output;
+
+        };
+
+
+    /* =====================================================
+       12. FIELD HELPERS
+       ===================================================== */
+
+    CascadeController.getCaseId =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.caseId ||
+
+                record.caseID ||
+
+                record.CaseID ||
+
+                record.case_id ||
+
+                record.id ||
+
+                ""
+
+            );
+
+        };
+
+
+    CascadeController.getPorNo =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.porNo ||
+
+                record.porNumber ||
+
+                record.refPorNo ||
+
+                record.refPORNo ||
+
+                record["POR No"] ||
+
+                record["Ref POR No"] ||
+
+                ""
+
+            );
+
+        };
+
+
+    CascadeController.getAccusedId =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.accusedId ||
+
+                record.accusedID ||
+
+                record.AccusedID ||
+
+                record.accused_id ||
+
+                record.id ||
+
+                ""
+
+            );
+
+        };
+
+
+    CascadeController.getWitnessId =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.witnessId ||
+
+                record.witnessID ||
+
+                record.WitnessID ||
+
+                record.witness_id ||
+
+                record.id ||
+
+                ""
+
+            );
+
+        };
+
+
+    CascadeController.getSeizureId =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.seizureId ||
+
+                record.seizureID ||
+
+                record.SeizureID ||
+
+                record.seizure_id ||
+
+                record.id ||
+
+                ""
+
+            );
+
+        };
+
+
+    CascadeController.getArticleId =
+        function (
+            record
+        ) {
+
+            if (!record) {
+
+                return "";
+
+            }
+
+
+            return (
+
+                record.articleId ||
+
+                record.articleID ||
+
+                record.ArticleID ||
+
+                record.article_id ||
+
+                record.id ||
+
+                ""
+
+            );
+
+        };
+
+
+    /* =====================================================
+       13. INITIALIZE
        ===================================================== */
 
     CascadeController.init =
@@ -446,7 +859,17 @@
 
                 console.log(
 
-                    "🔥 OffenceCascadeController Ready"
+                    "🔥 OffenceCascadeController Ready",
+
+                    {
+
+                        version:
+                            CascadeController.VERSION,
+
+                        relationship:
+                            "POR_AUTHORITATIVE"
+
+                    }
 
                 );
 
@@ -459,47 +882,7 @@
 
 
     /* =====================================================
-       11. NORMALIZE KEY
-       ===================================================== */
-
-    CascadeController.normalizeKey =
-        function (
-
-            value
-
-        ) {
-
-            if (
-                value === null ||
-                value === undefined
-            ) {
-
-                return "";
-
-            }
-
-
-            return String(
-
-                value
-
-            )
-
-                .trim()
-
-                .toUpperCase();
-
-        };
-
-
-    /* =====================================================
-       12. BIND EVENTS
-
-       MapRenderer emits:
-
-       offence:hotspot-click
-
-       This controller receives it.
+       14. BIND EVENTS
        ===================================================== */
 
     CascadeController.bindEvents =
@@ -534,7 +917,7 @@
 
 
     /* =====================================================
-       13. UNBIND EVENTS
+       15. UNBIND EVENTS
        ===================================================== */
 
     CascadeController.unbindEvents =
@@ -569,20 +952,16 @@
 
 
     /* =====================================================
-       14. HANDLE HOTSPOT EVENT
+       16. HANDLE HOTSPOT EVENT
        ===================================================== */
 
     CascadeController.handleHotspotEvent =
         function (
-
             event
-
         ) {
 
             const detail =
-
-                event
-                    ?.detail ||
+                event?.detail ||
                 {};
 
 
@@ -596,15 +975,9 @@
                     {
 
                         hotspot:
-
                             detail.hotspot,
 
-                        cascade:
-
-                            detail.cascade,
-
                         latlng:
-
                             detail.latlng
 
                     }
@@ -615,25 +988,234 @@
 
 
     /* =====================================================
-       15. OPEN HOTSPOT CASCADE
+       17. EXTRACT POR KEYS FROM HOTSPOT
 
-       Main entry point after map click.
+       POR is authoritative.
+
+       Supports:
+       - porKey
+       - porKeys
+       - porNo
+       - refPorNo
+       - related POR values
+       ===================================================== */
+
+    CascadeController.extractPorKeysFromHotspot =
+        function (
+            hotspot,
+            entry
+        ) {
+
+            const raw =
+                [];
+
+
+            const add =
+                function (
+                    value
+                ) {
+
+                    if (
+                        value === null ||
+                        value === undefined ||
+                        value === ""
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        Array.isArray(
+                            value
+                        )
+                    ) {
+
+                        value.forEach(
+                            add
+                        );
+
+                        return;
+
+                    }
+
+
+                    raw.push(
+                        value
+                    );
+
+                };
+
+
+            add(
+                hotspot?.porKey
+            );
+
+
+            add(
+                hotspot?.porKeys
+            );
+
+
+            add(
+                hotspot?.porNo
+            );
+
+
+            add(
+                hotspot?.refPorNo
+            );
+
+
+            add(
+                hotspot?.porNumbers
+            );
+
+
+            add(
+                entry?.porKey
+            );
+
+
+            add(
+                entry?.porKeys
+            );
+
+
+            const keys =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            for (
+                const value
+                of raw
+            ) {
+
+                const key =
+
+                    CascadeController
+                        .normalizePorKey(
+                            value
+                        );
+
+
+                if (
+                    !key ||
+                    seen.has(
+                        key
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                seen.add(
+                    key
+                );
+
+
+                keys.push(
+                    key
+                );
+
+            }
+
+
+            return keys;
+
+        };
+
+
+    /* =====================================================
+       18. GET POR RELATION
+
+       HeatmapEngine owns the unified POR relationship index.
+       ===================================================== */
+
+    CascadeController.getPorRelation =
+        function (
+            porKey
+        ) {
+
+            const key =
+
+                CascadeController
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (!key) {
+
+                return null;
+
+            }
+
+
+            if (
+                typeof HeatmapEngine.getByPor ===
+                "function"
+            ) {
+
+                return (
+
+                    HeatmapEngine
+                        .getByPor(
+                            key
+                        ) ||
+
+                    null
+
+                );
+
+            }
+
+
+            if (
+                typeof HeatmapEngine.getPorCascade ===
+                "function"
+            ) {
+
+                return (
+
+                    HeatmapEngine
+                        .getPorCascade(
+                            key
+                        ) ||
+
+                    null
+
+                );
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       19. OPEN HOTSPOT
+
+       Main heatmap entry point.
        ===================================================== */
 
     CascadeController.openHotspot =
         function (
-
             hotspotId,
-
             entryType = null,
-
             options = {}
-
         ) {
 
-            if (
-                !hotspotId
-            ) {
+            if (!hotspotId) {
 
                 return {
 
@@ -648,23 +1230,15 @@
             }
 
 
-            /* -------------------------
-               Resolve unified hotspot
-               ------------------------- */
-
             const entry =
 
                 HeatmapEngine
                     .getHotspotById(
-
                         hotspotId
-
                     );
 
 
-            if (
-                !entry
-            ) {
+            if (!entry) {
 
                 return {
 
@@ -679,10 +1253,6 @@
             }
 
 
-            /* -------------------------
-               Resolve type
-               ------------------------- */
-
             const type =
 
                 CascadeController
@@ -696,13 +1266,11 @@
 
 
             if (
-
                 type !==
                     CascadeController.TYPE.SOURCE &&
 
                 type !==
                     CascadeController.TYPE.TARGET
-
             ) {
 
                 return {
@@ -718,60 +1286,54 @@
             }
 
 
-            /* -------------------------
-               Resolve hotspot
-               ------------------------- */
-
             const hotspot =
 
                 options.hotspot ||
 
-                entry.hotspot;
+                entry.hotspot ||
+
+                entry;
 
 
-            /* -------------------------
-               Resolve cascade
-               ------------------------- */
+            const porKeys =
 
-            let cascade =
+                CascadeController
+                    .extractPorKeysFromHotspot(
 
-                options.cascade ||
+                        hotspot,
 
-                HeatmapEngine
-                    .getCascadeData(
-
-                        hotspotId
+                        entry
 
                     );
 
 
-            /*
-             * HeatmapEngine.getCascadeData()
-             *
-             * returns:
-             *
-             * {
-             *     type: "SOURCE",
-             *     data: {...}
-             * }
-             *
-             * Normalize to inner data.
-             */
+            const porRelations =
+                [];
 
-            if (
-                cascade &&
-                cascade.data
+
+            for (
+                const porKey
+                of porKeys
             ) {
 
-                cascade =
-                    cascade.data;
+                const relation =
+
+                    CascadeController
+                        .getPorRelation(
+                            porKey
+                        );
+
+
+                if (relation) {
+
+                    porRelations.push(
+                        relation
+                    );
+
+                }
 
             }
 
-
-            /* -------------------------
-               Reset previous state
-               ------------------------- */
 
             CascadeController.state =
 
@@ -779,38 +1341,33 @@
                     .createEmptyState();
 
 
-            /* -------------------------
-               Set hotspot state
-               ------------------------- */
+            const state =
+                CascadeController.state;
 
-            CascadeController.state.open =
+
+            state.open =
                 true;
 
 
-            CascadeController.state.level =
-
+            state.level =
                 CascadeController
                     .LEVEL
                     .HOTSPOT;
 
 
-            CascadeController.state.entryType =
+            state.entryType =
                 type;
 
 
-            CascadeController.state.hotspotId =
+            state.hotspotId =
                 hotspotId;
 
 
-            CascadeController.state.hotspot =
+            state.hotspot =
                 hotspot;
 
 
-            CascadeController.state.hotspotCascade =
-                cascade;
-
-
-            CascadeController.state.latlng =
+            state.latlng =
 
                 options.latlng ||
 
@@ -818,36 +1375,73 @@
 
                     lat:
 
-                        hotspot
-                            ?.latitude,
+                        hotspot?.latitude ??
+
+                        hotspot?.lat ??
+
+                        null,
 
                     lng:
 
-                        hotspot
-                            ?.longitude
+                        hotspot?.longitude ??
+
+                        hotspot?.lng ??
+
+                        null
 
                 };
 
 
-            /* -------------------------
-               Build case list
-               ------------------------- */
-
-            CascadeController.state.cases =
-
-                CascadeController
-                    .extractCasesFromCascade(
-
-                        cascade,
-
-                        hotspot
-
-                    );
+            state.porKeys =
+                porKeys;
 
 
-            /* -------------------------
-               Emit opened event
-               ------------------------- */
+            state.porRelations =
+                porRelations;
+
+
+            /*
+             * Aggregate complete hotspot data.
+             */
+
+            CascadeController
+                .aggregateRelationsIntoState(
+                    porRelations
+                );
+
+
+            /*
+             * If hotspot represents exactly one POR,
+             * automatically establish POR context.
+             *
+             * We keep level HOTSPOT so UI can still show
+             * hotspot summary first.
+             */
+
+            if (
+                porRelations.length ===
+                1
+            ) {
+
+                state.porRelation =
+                    porRelations[0];
+
+
+                state.porKey =
+                    porRelations[0].porKey ||
+
+                    porKeys[0] ||
+
+                    null;
+
+
+                state.porNo =
+                    porRelations[0].porNo ||
+
+                    null;
+
+            }
+
 
             const payload =
 
@@ -871,22 +1465,6 @@
                 .dispatchUpdated();
 
 
-            if (
-                Constants.DEBUG
-                    ?.ENABLED
-            ) {
-
-                console.log(
-
-                    "🔥 Offence Cascade Opened",
-
-                    payload
-
-                );
-
-            }
-
-
             return {
 
                 success:
@@ -901,227 +1479,207 @@
 
 
     /* =====================================================
-       16. EXTRACT CASES FROM CASCADE
+       20. AGGREGATE POR RELATIONS INTO STATE
        ===================================================== */
 
-    CascadeController.extractCasesFromCascade =
+    CascadeController.aggregateRelationsIntoState =
         function (
-
-            cascade,
-
-            hotspot
-
+            relations
         ) {
 
-            const cases = [];
-
-            const seen =
-
-                new Set();
+            const state =
+                CascadeController.state;
 
 
-            /* -------------------------
-               Cases already resolved
-               ------------------------- */
-
-            const rawCases =
-
-                Array.isArray(
-                    cascade?.cases
-                )
-
-                    ? cascade.cases
-
-                    : [];
+            let cases =
+                [];
 
 
-            for (
-
-                const item
-
-                of rawCases
-
-            ) {
-
-                /*
-                 * Some engines may return:
-                 *
-                 * case object
-                 *
-                 * OR
-                 *
-                 * {
-                 *    case,
-                 *    accused,
-                 *    seizures
-                 * }
-                 */
-
-                const caseRecord =
-
-                    item?.case ||
-
-                    item;
+            let accused =
+                [];
 
 
-                if (
-                    !caseRecord
-                ) {
-
-                    continue;
-
-                }
+            let witnesses =
+                [];
 
 
-                const caseId =
-
-                    CascadeController
-                        .getCaseId(
-
-                            caseRecord
-
-                        );
+            let seizures =
+                [];
 
 
-                if (
-                    !caseId
-                ) {
-
-                    continue;
-
-                }
+            let articles =
+                [];
 
 
-                const key =
-
-                    CascadeController
-                        .normalizeKey(
-
-                            caseId
-
-                        );
+            let sources =
+                [];
 
 
-                if (
-                    seen.has(
-                        key
-                    )
-                ) {
-
-                    continue;
-
-                }
-
-
-                seen.add(
-                    key
-                );
-
-
-                cases.push(
-
-                    caseRecord
-
-                );
-
-            }
-
-
-            /* -------------------------
-               Fallback to hotspot case IDs
-               ------------------------- */
-
-            const caseIds =
-
-                cascade
-                    ?.caseIds ||
-
-                hotspot
-                    ?.caseIds ||
-
+            let targets =
                 [];
 
 
             for (
-
-                const caseId
-
-                of caseIds
-
+                const relation
+                of CascadeController.toArray(
+                    relations
+                )
             ) {
 
-                const key =
-
-                    CascadeController
-                        .normalizeKey(
-
-                            caseId
-
-                        );
-
-
-                if (
-                    !key ||
-                    seen.has(
-                        key
-                    )
-                ) {
+                if (!relation) {
 
                     continue;
 
                 }
 
 
-                const caseRecord =
-
-                    CascadeController
-                        .getCaseFromStore(
-
-                            caseId
-
-                        );
+                cases.push(
+                    ...CascadeController.toArray(
+                        relation.cases
+                    )
+                );
 
 
-                if (
-                    caseRecord
-                ) {
-
-                    seen.add(
-                        key
-                    );
+                accused.push(
+                    ...CascadeController.toArray(
+                        relation.accused
+                    )
+                );
 
 
-                    cases.push(
+                witnesses.push(
+                    ...CascadeController.toArray(
+                        relation.witnesses
+                    )
+                );
 
-                        caseRecord
 
-                    );
+                seizures.push(
+                    ...CascadeController.toArray(
+                        relation.seizures
+                    )
+                );
 
-                }
+
+                articles.push(
+                    ...CascadeController.toArray(
+                        relation.seizedArticles
+                    )
+                );
+
+
+                sources.push(
+                    ...CascadeController.toArray(
+                        relation.sources
+                    )
+                );
+
+
+                targets.push(
+                    ...CascadeController.toArray(
+                        relation.targets
+                    )
+                );
 
             }
 
 
-            return cases;
+            state.cases =
+
+                CascadeController
+                    .uniqueObjects(
+
+                        cases,
+
+                        CascadeController
+                            .getCaseId
+
+                    );
+
+
+            state.accusedList =
+
+                CascadeController
+                    .uniqueObjects(
+
+                        accused,
+
+                        CascadeController
+                            .getAccusedId
+
+                    );
+
+
+            state.witnesses =
+
+                CascadeController
+                    .uniqueObjects(
+
+                        witnesses,
+
+                        CascadeController
+                            .getWitnessId
+
+                    );
+
+
+            state.seizures =
+
+                CascadeController
+                    .uniqueObjects(
+
+                        seizures,
+
+                        CascadeController
+                            .getSeizureId
+
+                    );
+
+
+            state.seizedArticles =
+
+                CascadeController
+                    .uniqueObjects(
+
+                        articles,
+
+                        CascadeController
+                            .getArticleId
+
+                    );
+
+
+            state.sourceHotspots =
+                sources;
+
+
+            state.targetHotspots =
+                targets;
+
+
+            state.sourceTargetLinks =
+
+                CascadeController
+                    .buildSourceTargetLinks(
+
+                        sources,
+
+                        targets,
+
+                        relations
+
+                    );
 
         };
 
 
     /* =====================================================
-       17. SELECT CASE
-
-       Hotspot
-          ↓
-       Case
-          ↓
-       Full context
+       21. SELECT POR
        ===================================================== */
 
-    CascadeController.selectCase =
+    CascadeController.selectPor =
         function (
-
-            caseId
-
+            porKey
         ) {
 
             if (
@@ -1141,8 +1699,141 @@
             }
 
 
+            const key =
+
+                CascadeController
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (!key) {
+
+                return {
+
+                    success:
+                        false,
+
+                    reason:
+                        "POR_REQUIRED"
+
+                };
+
+            }
+
+
+            const relation =
+
+                CascadeController
+                    .getPorRelation(
+                        key
+                    );
+
+
+            if (!relation) {
+
+                return {
+
+                    success:
+                        false,
+
+                    reason:
+                        "POR_RELATION_NOT_FOUND"
+
+                };
+
+            }
+
+
+            const state =
+                CascadeController.state;
+
+
+            state.level =
+                CascadeController
+                    .LEVEL
+                    .POR;
+
+
+            state.porKey =
+                key;
+
+
+            state.porNo =
+
+                relation.porNo ||
+
+                null;
+
+
+            state.porRelation =
+                relation;
+
+
+            CascadeController
+                .aggregateRelationsIntoState(
+                    [relation]
+                );
+
+
+            CascadeController
+                .clearRecordSelections();
+
+
+            const payload =
+
+                CascadeController
+                    .buildPorPayload();
+
+
+            CascadeController
+                .dispatchEvent(
+
+                    CascadeController
+                        .EVENTS
+                        .POR_SELECTED,
+
+                    payload
+
+                );
+
+
+            CascadeController
+                .dispatchLevelChanged();
+
+
+            CascadeController
+                .dispatchUpdated();
+
+
+            return {
+
+                success:
+                    true,
+
+                data:
+                    payload
+
+            };
+
+        };
+
+
+    /* =====================================================
+       22. SELECT CASE
+
+       Case selection is a UI drill-down.
+
+       POR remains the relationship authority.
+       ===================================================== */
+
+    CascadeController.selectCase =
+        function (
+            caseId
+        ) {
+
             if (
-                !caseId
+                !CascadeController.state.open
             ) {
 
                 return {
@@ -1151,43 +1842,36 @@
                         false,
 
                     reason:
-                        "CASE_ID_REQUIRED"
+                        "CASCADE_NOT_OPEN"
 
                 };
 
             }
 
 
-            /* -------------------------
-               Resolve case context
-               ------------------------- */
-
-            const context =
-
-                CascadeController
-                    .getCaseContext(
-
-                        caseId
-
-                    );
-
-
             const caseRecord =
 
-                context?.case ||
+                CascadeController
+                    .findRecord(
+
+                        CascadeController
+                            .state
+                            .cases,
+
+                        caseId,
+
+                        CascadeController
+                            .getCaseId
+
+                    ) ||
 
                 CascadeController
                     .getCaseFromStore(
-
                         caseId
-
                     );
 
 
-            if (
-                !caseRecord &&
-                !context
-            ) {
+            if (!caseRecord) {
 
                 return {
 
@@ -1202,142 +1886,137 @@
             }
 
 
-            /* -------------------------
-               Resolve relationship
-               ------------------------- */
-
-            const relation =
-
-                HeatmapEngine
-                    .getCaseRelation(
-
-                        caseId
-
-                    ) ||
-
-                {
-
-                    sources:
-                        [],
-
-                    targets:
-                        []
-
-                };
+            const state =
+                CascadeController.state;
 
 
-            /* -------------------------
-               Update state
-               ------------------------- */
-
-            CascadeController.state.level =
-
+            state.level =
                 CascadeController
                     .LEVEL
                     .CASE;
 
 
-            CascadeController.state.caseId =
-                caseId;
+            state.caseId =
+
+                CascadeController
+                    .getCaseId(
+                        caseRecord
+                    );
 
 
-            CascadeController.state.case =
+            state.case =
                 caseRecord;
 
 
-            CascadeController.state.caseContext =
-                context;
+            /*
+             * IMPORTANT:
+             *
+             * Resolve child records by POR first.
+             */
 
-
-            CascadeController.state.accusedList =
+            const casePorKey =
 
                 CascadeController
-                    .extractAccused(
+                    .normalizePorKey(
 
-                        context,
+                        CascadeController
+                            .getPorNo(
+                                caseRecord
+                            ) ||
 
-                        caseId
+                        state.porKey
 
                     );
 
 
-            CascadeController.state.seizures =
+            if (
+                casePorKey &&
+                casePorKey !==
+                    state.porKey
+            ) {
+
+                const relation =
+
+                    CascadeController
+                        .getPorRelation(
+                            casePorKey
+                        );
+
+
+                if (relation) {
+
+                    state.porKey =
+                        casePorKey;
+
+
+                    state.porNo =
+                        relation.porNo ||
+                        null;
+
+
+                    state.porRelation =
+                        relation;
+
+
+                    CascadeController
+                        .aggregateRelationsIntoState(
+                            [relation]
+                        );
+
+                }
+
+            }
+
+
+            state.case =
+                caseRecord;
+
+
+            state.caseId =
 
                 CascadeController
-                    .extractSeizures(
-
-                        context,
-
-                        caseId
-
+                    .getCaseId(
+                        caseRecord
                     );
 
 
-            CascadeController.state.sourceHotspots =
-
-                Array.isArray(
-                    relation.sources
-                )
-
-                    ? relation.sources
-
-                    : [];
-
-
-            CascadeController.state.targetHotspots =
-
-                Array.isArray(
-                    relation.targets
-                )
-
-                    ? relation.targets
-
-                    : [];
-
-
-            CascadeController.state.sourceTargetLinks =
-
-                CascadeController
-                    .getLinksForCase(
-
-                        caseId
-
-                    );
-
-
-            /* -------------------------
-               Clear deeper selections
-               ------------------------- */
-
-            CascadeController.state.accusedId =
+            state.accusedId =
                 null;
 
 
-            CascadeController.state.accused =
+            state.accused =
                 null;
 
 
-            CascadeController.state.seizureId =
+            state.witnessId =
                 null;
 
 
-            CascadeController.state.seizure =
+            state.witness =
                 null;
 
 
-            /* -------------------------
-               Build payload
-               ------------------------- */
+            state.seizureId =
+                null;
+
+
+            state.seizure =
+                null;
+
+
+            state.articleId =
+                null;
+
+
+            state.article =
+                null;
+
 
             const payload =
 
                 CascadeController
                     .buildCasePayload();
 
-
-            /* -------------------------
-               Emit
-               ------------------------- */
 
             CascadeController
                 .dispatchEvent(
@@ -1373,40 +2052,21 @@
 
 
     /* =====================================================
-       18. SELECT ACCUSED
+       23. SELECT ACCUSED
        ===================================================== */
 
     CascadeController.selectAccused =
         function (
-
             accusedId
-
         ) {
-
-            if (
-                !CascadeController.state
-                    .caseId
-            ) {
-
-                return {
-
-                    success:
-                        false,
-
-                    reason:
-                        "CASE_NOT_SELECTED"
-
-                };
-
-            }
-
 
             const accused =
 
                 CascadeController
                     .findRecord(
 
-                        CascadeController.state
+                        CascadeController
+                            .state
                             .accusedList,
 
                         accusedId,
@@ -1417,9 +2077,7 @@
                     );
 
 
-            if (
-                !accused
-            ) {
+            if (!accused) {
 
                 return {
 
@@ -1445,9 +2103,7 @@
 
                 CascadeController
                     .getAccusedId(
-
                         accused
-
                     );
 
 
@@ -1461,7 +2117,6 @@
                     .buildCasePayload(),
 
                 selectedAccused:
-
                     accused
 
             };
@@ -1501,20 +2156,32 @@
 
 
     /* =====================================================
-       19. SELECT SEIZURE
+       24. SELECT WITNESS
        ===================================================== */
 
-    CascadeController.selectSeizure =
+    CascadeController.selectWitness =
         function (
-
-            seizureId
-
+            witnessId
         ) {
 
-            if (
-                !CascadeController.state
-                    .caseId
-            ) {
+            const witness =
+
+                CascadeController
+                    .findRecord(
+
+                        CascadeController
+                            .state
+                            .witnesses,
+
+                        witnessId,
+
+                        CascadeController
+                            .getWitnessId
+
+                    );
+
+
+            if (!witness) {
 
                 return {
 
@@ -1522,19 +2189,92 @@
                         false,
 
                     reason:
-                        "CASE_NOT_SELECTED"
+                        "WITNESS_NOT_FOUND"
 
                 };
 
             }
 
 
+            CascadeController.state.level =
+
+                CascadeController
+                    .LEVEL
+                    .WITNESS;
+
+
+            CascadeController.state.witnessId =
+
+                CascadeController
+                    .getWitnessId(
+                        witness
+                    );
+
+
+            CascadeController.state.witness =
+                witness;
+
+
+            const payload = {
+
+                ...CascadeController
+                    .buildCasePayload(),
+
+                selectedWitness:
+                    witness
+
+            };
+
+
+            CascadeController
+                .dispatchEvent(
+
+                    CascadeController
+                        .EVENTS
+                        .WITNESS_SELECTED,
+
+                    payload
+
+                );
+
+
+            CascadeController
+                .dispatchLevelChanged();
+
+
+            CascadeController
+                .dispatchUpdated();
+
+
+            return {
+
+                success:
+                    true,
+
+                data:
+                    payload
+
+            };
+
+        };
+
+
+    /* =====================================================
+       25. SELECT SEIZURE
+       ===================================================== */
+
+    CascadeController.selectSeizure =
+        function (
+            seizureId
+        ) {
+
             const seizure =
 
                 CascadeController
                     .findRecord(
 
-                        CascadeController.state
+                        CascadeController
+                            .state
                             .seizures,
 
                         seizureId,
@@ -1545,9 +2285,7 @@
                     );
 
 
-            if (
-                !seizure
-            ) {
+            if (!seizure) {
 
                 return {
 
@@ -1562,25 +2300,74 @@
             }
 
 
-            CascadeController.state.level =
+            const state =
+                CascadeController.state;
+
+
+            state.level =
 
                 CascadeController
                     .LEVEL
                     .SEIZURE;
 
 
-            CascadeController.state.seizureId =
+            state.seizureId =
 
                 CascadeController
                     .getSeizureId(
-
                         seizure
-
                     );
 
 
-            CascadeController.state.seizure =
+            state.seizure =
                 seizure;
+
+
+            /*
+             * Filter articles for selected seizure.
+             *
+             * POR remains authoritative for the overall
+             * relationship, SeizureID is valid for this
+             * direct child relationship.
+             */
+
+            const selectedSeizureKey =
+
+                CascadeController
+                    .normalizeKey(
+                        state.seizureId
+                    );
+
+
+            const articlesForSeizure =
+
+                state.seizedArticles
+                    .filter(
+
+                        function (
+                            article
+                        ) {
+
+                            return (
+
+                                CascadeController
+                                    .normalizeKey(
+
+                                        article.seizureId ||
+
+                                        article.seizureID ||
+
+                                        article.SeizureID
+
+                                    ) ===
+
+                                selectedSeizureKey
+
+                            );
+
+                        }
+
+                    );
 
 
             const payload = {
@@ -1589,8 +2376,10 @@
                     .buildCasePayload(),
 
                 selectedSeizure:
+                    seizure,
 
-                    seizure
+                seizureArticles:
+                    articlesForSeizure
 
             };
 
@@ -1629,15 +2418,398 @@
 
 
     /* =====================================================
-       20. BACK TO HOTSPOT
+       26. SELECT ARTICLE
+       ===================================================== */
+
+    CascadeController.selectArticle =
+        function (
+            articleId
+        ) {
+
+            const article =
+
+                CascadeController
+                    .findRecord(
+
+                        CascadeController
+                            .state
+                            .seizedArticles,
+
+                        articleId,
+
+                        CascadeController
+                            .getArticleId
+
+                    );
+
+
+            if (!article) {
+
+                return {
+
+                    success:
+                        false,
+
+                    reason:
+                        "ARTICLE_NOT_FOUND"
+
+                };
+
+            }
+
+
+            CascadeController.state.level =
+
+                CascadeController
+                    .LEVEL
+                    .ARTICLE;
+
+
+            CascadeController.state.articleId =
+
+                CascadeController
+                    .getArticleId(
+                        article
+                    );
+
+
+            CascadeController.state.article =
+                article;
+
+
+            const payload = {
+
+                ...CascadeController
+                    .buildCasePayload(),
+
+                selectedArticle:
+                    article
+
+            };
+
+
+            CascadeController
+                .dispatchEvent(
+
+                    CascadeController
+                        .EVENTS
+                        .ARTICLE_SELECTED,
+
+                    payload
+
+                );
+
+
+            CascadeController
+                .dispatchLevelChanged();
+
+
+            CascadeController
+                .dispatchUpdated();
+
+
+            return {
+
+                success:
+                    true,
+
+                data:
+                    payload
+
+            };
+
+        };
+
+
+    /* =====================================================
+       27. BUILD SOURCE → TARGET LINKS
+
+       Links are generated by shared POR relation.
+
+       NOT CaseID.
+       ===================================================== */
+
+    CascadeController.buildSourceTargetLinks =
+        function (
+            sources,
+            targets,
+            relations
+        ) {
+
+            const links =
+                [];
+
+
+            for (
+                const relation
+                of CascadeController.toArray(
+                    relations
+                )
+            ) {
+
+                if (!relation) {
+
+                    continue;
+
+                }
+
+
+                const porKey =
+
+                    CascadeController
+                        .normalizePorKey(
+                            relation.porKey
+                        );
+
+
+                const relationSources =
+
+                    CascadeController
+                        .toArray(
+                            relation.sources
+                        );
+
+
+                const relationTargets =
+
+                    CascadeController
+                        .toArray(
+                            relation.targets
+                        );
+
+
+                for (
+                    const source
+                    of relationSources
+                ) {
+
+                    for (
+                        const target
+                        of relationTargets
+                    ) {
+
+                        links.push({
+
+                            porKey:
+                                porKey,
+
+                            porNo:
+                                relation.porNo ||
+                                null,
+
+                            source:
+                                source,
+
+                            target:
+                                target
+
+                        });
+
+                    }
+
+                }
+
+            }
+
+
+            return links;
+
+        };
+
+
+    /* =====================================================
+       28. FIND RECORD
+       ===================================================== */
+
+    CascadeController.findRecord =
+        function (
+            records,
+            id,
+            idGetter
+        ) {
+
+            if (
+                !Array.isArray(
+                    records
+                ) ||
+                typeof idGetter !==
+                    "function"
+            ) {
+
+                return null;
+
+            }
+
+
+            const key =
+
+                CascadeController
+                    .normalizeKey(
+                        id
+                    );
+
+
+            if (!key) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                records.find(
+
+                    function (
+                        record
+                    ) {
+
+                        return (
+
+                            CascadeController
+                                .normalizeKey(
+
+                                    idGetter(
+                                        record
+                                    )
+
+                                ) ===
+
+                            key
+
+                        );
+
+                    }
+
+                ) ||
+
+                null
+
+            );
+
+        };
+
+
+    /* =====================================================
+       29. STORE CASE FALLBACK
+       ===================================================== */
+
+    CascadeController.getCaseFromStore =
+        function (
+            caseId
+        ) {
+
+            if (
+                typeof Store.getCaseById ===
+                "function"
+            ) {
+
+                const result =
+
+                    Store
+                        .getCaseById(
+                            caseId
+                        );
+
+
+                if (result) {
+
+                    return result;
+
+                }
+
+            }
+
+
+            if (
+                typeof Store.getCase ===
+                "function"
+            ) {
+
+                const result =
+
+                    Store
+                        .getCase(
+                            caseId
+                        );
+
+
+                if (result) {
+
+                    return result;
+
+                }
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       30. CLEAR RECORD SELECTIONS
+       ===================================================== */
+
+    CascadeController.clearRecordSelections =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            state.caseId =
+                null;
+
+
+            state.case =
+                null;
+
+
+            state.accusedId =
+                null;
+
+
+            state.accused =
+                null;
+
+
+            state.witnessId =
+                null;
+
+
+            state.witness =
+                null;
+
+
+            state.seizureId =
+                null;
+
+
+            state.seizure =
+                null;
+
+
+            state.articleId =
+                null;
+
+
+            state.article =
+                null;
+
+        };
+
+
+    /* =====================================================
+       31. BACK TO HOTSPOT
        ===================================================== */
 
     CascadeController.backToHotspot =
         function () {
 
             if (
-                !CascadeController.state
-                    .open
+                !CascadeController.state.open
             ) {
 
                 return false;
@@ -1652,52 +2824,30 @@
                     .HOTSPOT;
 
 
-            CascadeController.state.caseId =
+            CascadeController.state.porKey =
                 null;
 
 
-            CascadeController.state.case =
+            CascadeController.state.porNo =
                 null;
 
 
-            CascadeController.state.caseContext =
+            CascadeController.state.porRelation =
                 null;
 
 
-            CascadeController.state.accusedId =
-                null;
+            CascadeController
+                .clearRecordSelections();
 
 
-            CascadeController.state.accused =
-                null;
+            CascadeController
+                .aggregateRelationsIntoState(
 
+                    CascadeController
+                        .state
+                        .porRelations
 
-            CascadeController.state.seizureId =
-                null;
-
-
-            CascadeController.state.seizure =
-                null;
-
-
-            CascadeController.state.accusedList =
-                [];
-
-
-            CascadeController.state.seizures =
-                [];
-
-
-            CascadeController.state.sourceHotspots =
-                [];
-
-
-            CascadeController.state.targetHotspots =
-                [];
-
-
-            CascadeController.state.sourceTargetLinks =
-                [];
+                );
 
 
             CascadeController
@@ -1714,18 +2864,63 @@
 
 
     /* =====================================================
-       21. BACK TO CASE
+       32. BACK TO POR
+       ===================================================== */
+
+    CascadeController.backToPor =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            if (
+                !state.porKey
+            ) {
+
+                return CascadeController
+                    .backToHotspot();
+
+            }
+
+
+            state.level =
+
+                CascadeController
+                    .LEVEL
+                    .POR;
+
+
+            CascadeController
+                .clearRecordSelections();
+
+
+            CascadeController
+                .dispatchLevelChanged();
+
+
+            CascadeController
+                .dispatchUpdated();
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       33. BACK TO CASE
        ===================================================== */
 
     CascadeController.backToCase =
         function () {
 
             if (
-                !CascadeController.state
-                    .caseId
+                !CascadeController.state.case
             ) {
 
-                return false;
+                return CascadeController
+                    .backToPor();
 
             }
 
@@ -1745,11 +2940,27 @@
                 null;
 
 
+            CascadeController.state.witnessId =
+                null;
+
+
+            CascadeController.state.witness =
+                null;
+
+
             CascadeController.state.seizureId =
                 null;
 
 
             CascadeController.state.seizure =
+                null;
+
+
+            CascadeController.state.articleId =
+                null;
+
+
+            CascadeController.state.article =
                 null;
 
 
@@ -1767,7 +2978,346 @@
 
 
     /* =====================================================
-       22. CLOSE CASCADE
+       34. BUILD HOTSPOT PAYLOAD
+       ===================================================== */
+
+    CascadeController.buildHotspotPayload =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            return {
+
+                level:
+                    state.level,
+
+                entryType:
+                    state.entryType,
+
+                hotspotId:
+                    state.hotspotId,
+
+                hotspot:
+                    state.hotspot,
+
+                latlng:
+                    state.latlng,
+
+                porCount:
+                    state.porRelations.length,
+
+                porKeys:
+                    [...state.porKeys],
+
+                porRelations:
+                    [...state.porRelations],
+
+                caseCount:
+                    state.cases.length,
+
+                cases:
+                    [...state.cases],
+
+                accusedCount:
+                    state.accusedList.length,
+
+                witnessCount:
+                    state.witnesses.length,
+
+                seizureCount:
+                    state.seizures.length,
+
+                seizedArticleCount:
+                    state.seizedArticles.length,
+
+                sourceHotspots:
+                    [...state.sourceHotspots],
+
+                targetHotspots:
+                    [...state.targetHotspots]
+
+            };
+
+        };
+
+
+    /* =====================================================
+       35. BUILD POR PAYLOAD
+       ===================================================== */
+
+    CascadeController.buildPorPayload =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            return {
+
+                level:
+                    state.level,
+
+                entryType:
+                    state.entryType,
+
+                hotspot:
+                    state.hotspot,
+
+                porKey:
+                    state.porKey,
+
+                porNo:
+                    state.porNo,
+
+                relation:
+                    state.porRelation,
+
+                cases:
+                    [...state.cases],
+
+                accused:
+                    [...state.accusedList],
+
+                witnesses:
+                    [...state.witnesses],
+
+                seizures:
+                    [...state.seizures],
+
+                seizedArticles:
+                    [...state.seizedArticles],
+
+                sourceHotspots:
+                    [...state.sourceHotspots],
+
+                targetHotspots:
+                    [...state.targetHotspots],
+
+                sourceTargetLinks:
+                    [...state.sourceTargetLinks]
+
+            };
+
+        };
+
+
+    /* =====================================================
+       36. BUILD CASE PAYLOAD
+       ===================================================== */
+
+    CascadeController.buildCasePayload =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            return {
+
+                level:
+                    state.level,
+
+                entryType:
+                    state.entryType,
+
+                hotspot:
+                    state.hotspot,
+
+
+                /* POR authority */
+
+                porKey:
+                    state.porKey,
+
+                porNo:
+                    state.porNo,
+
+
+                /* Selected case */
+
+                caseId:
+                    state.caseId,
+
+                case:
+                    state.case,
+
+
+                /* Full POR-linked datasets */
+
+                cases:
+                    [...state.cases],
+
+                accusedCount:
+                    state.accusedList.length,
+
+                accused:
+                    [...state.accusedList],
+
+                witnessCount:
+                    state.witnesses.length,
+
+                witnesses:
+                    [...state.witnesses],
+
+                seizureCount:
+                    state.seizures.length,
+
+                seizures:
+                    [...state.seizures],
+
+                seizedArticleCount:
+                    state.seizedArticles.length,
+
+                seizedArticles:
+                    [...state.seizedArticles],
+
+
+                /* Geography */
+
+                sourceHotspots:
+                    [...state.sourceHotspots],
+
+                targetHotspots:
+                    [...state.targetHotspots],
+
+                sourceTargetLinks:
+                    [...state.sourceTargetLinks],
+
+
+                /* Current selections */
+
+                selectedAccused:
+                    state.accused,
+
+                selectedWitness:
+                    state.witness,
+
+                selectedSeizure:
+                    state.seizure,
+
+                selectedArticle:
+                    state.article
+
+            };
+
+        };
+
+
+    /* =====================================================
+       37. GET STATE
+       ===================================================== */
+
+    CascadeController.getState =
+        function () {
+
+            const state =
+                CascadeController.state;
+
+
+            return {
+
+                ...state,
+
+                porKeys:
+                    [...state.porKeys],
+
+                porRelations:
+                    [...state.porRelations],
+
+                cases:
+                    [...state.cases],
+
+                accusedList:
+                    [...state.accusedList],
+
+                witnesses:
+                    [...state.witnesses],
+
+                seizures:
+                    [...state.seizures],
+
+                seizedArticles:
+                    [...state.seizedArticles],
+
+                sourceHotspots:
+                    [...state.sourceHotspots],
+
+                targetHotspots:
+                    [...state.targetHotspots],
+
+                sourceTargetLinks:
+                    [...state.sourceTargetLinks]
+
+            };
+
+        };
+
+
+    /* =====================================================
+       38. GET CURRENT POR
+       ===================================================== */
+
+    CascadeController.getCurrentPor =
+        function () {
+
+            return {
+
+                porKey:
+                    CascadeController
+                        .state
+                        .porKey,
+
+                porNo:
+                    CascadeController
+                        .state
+                        .porNo,
+
+                relation:
+                    CascadeController
+                        .state
+                        .porRelation
+
+            };
+
+        };
+
+
+    /* =====================================================
+       39. IS OPEN
+       ===================================================== */
+
+    CascadeController.isOpen =
+        function () {
+
+            return (
+
+                CascadeController
+                    .state
+                    .open === true
+
+            );
+
+        };
+
+
+    /* =====================================================
+       40. GET LEVEL
+       ===================================================== */
+
+    CascadeController.getLevel =
+        function () {
+
+            return CascadeController
+                .state
+                .level;
+
+        };
+
+
+    /* =====================================================
+       41. CLOSE
        ===================================================== */
 
     CascadeController.close =
@@ -1808,837 +3358,7 @@
 
 
     /* =====================================================
-       23. GET CASE FROM STORE
-
-       Defensive compatibility layer.
-
-       Store implementation may expose:
-       getCaseById()
-       or getCase()
-       ===================================================== */
-
-    CascadeController.getCaseFromStore =
-        function (
-
-            caseId
-
-        ) {
-
-            if (
-                typeof Store
-                    .getCaseById ===
-                    "function"
-            ) {
-
-                const result =
-
-                    Store
-                        .getCaseById(
-
-                            caseId
-
-                        );
-
-
-                if (
-                    result
-                ) {
-
-                    return result;
-
-                }
-
-            }
-
-
-            if (
-                typeof Store
-                    .getCase ===
-                    "function"
-            ) {
-
-                const result =
-
-                    Store
-                        .getCase(
-
-                            caseId
-
-                        );
-
-
-                if (
-                    result
-                ) {
-
-                    return result;
-
-                }
-
-            }
-
-
-            return null;
-
-        };
-
-
-    /* =====================================================
-       24. GET CASE CONTEXT
-       ===================================================== */
-
-    CascadeController.getCaseContext =
-        function (
-
-            caseId
-
-        ) {
-
-            if (
-                typeof Store
-                    .getCaseContext ===
-                    "function"
-            ) {
-
-                return (
-
-                    Store
-                        .getCaseContext(
-
-                            caseId
-
-                        ) ||
-
-                    null
-
-                );
-
-            }
-
-
-            return null;
-
-        };
-
-
-    /* =====================================================
-       25. EXTRACT ACCUSED
-
-       Tries context first.
-
-       Falls back to Store methods if available.
-       ===================================================== */
-
-    CascadeController.extractAccused =
-        function (
-
-            context,
-
-            caseId
-
-        ) {
-
-            let accused = [];
-
-
-            /* -------------------------
-               Context.accused
-               ------------------------- */
-
-            if (
-                Array.isArray(
-                    context?.accused
-                )
-            ) {
-
-                accused =
-
-                    context.accused;
-
-            }
-
-
-            /* -------------------------
-               Context.accusedList
-               ------------------------- */
-
-            else if (
-                Array.isArray(
-                    context?.accusedList
-                )
-            ) {
-
-                accused =
-
-                    context.accusedList;
-
-            }
-
-
-            /* -------------------------
-               Store fallback
-               ------------------------- */
-
-            else if (
-                typeof Store
-                    .getAccusedByCaseId ===
-                    "function"
-            ) {
-
-                accused =
-
-                    Store
-                        .getAccusedByCaseId(
-
-                            caseId
-
-                        ) ||
-
-                    [];
-
-            }
-
-
-            else if (
-                typeof Store
-                    .getAccusedByCase ===
-                    "function"
-            ) {
-
-                accused =
-
-                    Store
-                        .getAccusedByCase(
-
-                            caseId
-
-                        ) ||
-
-                    [];
-
-            }
-
-
-            return Array.isArray(
-                accused
-            )
-
-                ? accused
-
-                : [];
-
-        };
-
-
-    /* =====================================================
-       26. EXTRACT SEIZURES
-       ===================================================== */
-
-    CascadeController.extractSeizures =
-        function (
-
-            context,
-
-            caseId
-
-        ) {
-
-            let seizures = [];
-
-
-            /* -------------------------
-               Context.seizures
-               ------------------------- */
-
-            if (
-                Array.isArray(
-                    context?.seizures
-                )
-            ) {
-
-                seizures =
-
-                    context.seizures;
-
-            }
-
-
-            /* -------------------------
-               Context.seizure
-               ------------------------- */
-
-            else if (
-                Array.isArray(
-                    context?.seizure
-                )
-            ) {
-
-                seizures =
-
-                    context.seizure;
-
-            }
-
-
-            /* -------------------------
-               Store fallback
-               ------------------------- */
-
-            else if (
-                typeof Store
-                    .getSeizuresByCaseId ===
-                    "function"
-            ) {
-
-                seizures =
-
-                    Store
-                        .getSeizuresByCaseId(
-
-                            caseId
-
-                        ) ||
-
-                    [];
-
-            }
-
-
-            else if (
-                typeof Store
-                    .getSeizuresByCase ===
-                    "function"
-            ) {
-
-                seizures =
-
-                    Store
-                        .getSeizuresByCase(
-
-                            caseId
-
-                        ) ||
-
-                    [];
-
-            }
-
-
-            return Array.isArray(
-                seizures
-            )
-
-                ? seizures
-
-                : [];
-
-        };
-
-
-    /* =====================================================
-       27. GET SOURCE/TARGET LINKS FOR CASE
-       ===================================================== */
-
-    CascadeController.getLinksForCase =
-        function (
-
-            caseId
-
-        ) {
-
-            const key =
-
-                CascadeController
-                    .normalizeKey(
-
-                        caseId
-
-                    );
-
-
-            return HeatmapEngine
-                .getSourceTargetLinks()
-
-                .filter(
-
-                    function (
-
-                        link
-
-                    ) {
-
-                        return (
-
-                            CascadeController
-                                .normalizeKey(
-
-                                    link.caseId
-
-                                ) ===
-
-                            key
-
-                        );
-
-                    }
-
-                );
-
-        };
-
-
-    /* =====================================================
-       28. GET CASE ID
-       ===================================================== */
-
-    CascadeController.getCaseId =
-        function (
-
-            record
-
-        ) {
-
-            if (!record) {
-
-                return "";
-
-            }
-
-
-            return (
-
-                record.caseId ||
-
-                record.caseID ||
-
-                record.case_id ||
-
-                record.porNo ||
-
-                record.porNumber ||
-
-                record.id ||
-
-                ""
-
-            );
-
-        };
-
-
-    /* =====================================================
-       29. GET ACCUSED ID
-       ===================================================== */
-
-    CascadeController.getAccusedId =
-        function (
-
-            record
-
-        ) {
-
-            if (!record) {
-
-                return "";
-
-            }
-
-
-            return (
-
-                record.accusedId ||
-
-                record.accusedID ||
-
-                record.accused_id ||
-
-                record.id ||
-
-                record.name ||
-
-                record.accusedName ||
-
-                ""
-
-            );
-
-        };
-
-
-    /* =====================================================
-       30. GET SEIZURE ID
-       ===================================================== */
-
-    CascadeController.getSeizureId =
-        function (
-
-            record
-
-        ) {
-
-            if (!record) {
-
-                return "";
-
-            }
-
-
-            return (
-
-                record.seizureId ||
-
-                record.seizureID ||
-
-                record.seizure_id ||
-
-                record.id ||
-
-                [
-
-                    record.caseId ||
-
-                    "",
-
-                    record.seizureDate ||
-
-                    "",
-
-                    record.placeOfSeizure ||
-
-                    ""
-
-                ].join(
-                    "|"
-                )
-
-            );
-
-        };
-
-
-    /* =====================================================
-       31. FIND RECORD BY FLEXIBLE ID
-       ===================================================== */
-
-    CascadeController.findRecord =
-        function (
-
-            records,
-
-            id,
-
-            idGetter
-
-        ) {
-
-            if (
-                !Array.isArray(
-                    records
-                ) ||
-                typeof idGetter !==
-                    "function"
-            ) {
-
-                return null;
-
-            }
-
-
-            const key =
-
-                CascadeController
-                    .normalizeKey(
-
-                        id
-
-                    );
-
-
-            if (!key) {
-
-                return null;
-
-            }
-
-
-            return (
-
-                records.find(
-
-                    function (
-
-                        record
-
-                    ) {
-
-                        return (
-
-                            CascadeController
-                                .normalizeKey(
-
-                                    idGetter(
-                                        record
-                                    )
-
-                                ) ===
-
-                            key
-
-                        );
-
-                    }
-
-                ) ||
-
-                null
-
-            );
-
-        };
-
-
-    /* =====================================================
-       32. BUILD HOTSPOT PAYLOAD
-
-       This is what the future UI receives immediately
-       after clicking a heatmap hotspot.
-       ===================================================== */
-
-    CascadeController.buildHotspotPayload =
-        function () {
-
-            const state =
-
-                CascadeController.state;
-
-
-            return {
-
-                level:
-
-                    state.level,
-
-                entryType:
-
-                    state.entryType,
-
-                hotspotId:
-
-                    state.hotspotId,
-
-                hotspot:
-
-                    state.hotspot,
-
-                latlng:
-
-                    state.latlng,
-
-                offenceCount:
-
-                    state.hotspot
-                        ?.offenceCount ||
-
-                    state.cases
-                        .length,
-
-                seizureCount:
-
-                    state.hotspot
-                        ?.seizureCount ||
-
-                    0,
-
-                caseCount:
-
-                    state.cases
-                        .length,
-
-                cases:
-
-                    state.cases
-
-            };
-
-        };
-
-
-    /* =====================================================
-       33. BUILD CASE PAYLOAD
-
-       Complete UI-ready case drill-down object.
-       ===================================================== */
-
-    CascadeController.buildCasePayload =
-        function () {
-
-            const state =
-
-                CascadeController.state;
-
-
-            return {
-
-                level:
-
-                    state.level,
-
-                entryType:
-
-                    state.entryType,
-
-                hotspot:
-
-                    state.hotspot,
-
-                caseId:
-
-                    state.caseId,
-
-                case:
-
-                    state.case,
-
-                caseContext:
-
-                    state.caseContext,
-
-                accusedCount:
-
-                    state.accusedList
-                        .length,
-
-                accused:
-
-                    state.accusedList,
-
-                seizureCount:
-
-                    state.seizures
-                        .length,
-
-                seizures:
-
-                    state.seizures,
-
-                sourceHotspots:
-
-                    state.sourceHotspots,
-
-                targetHotspots:
-
-                    state.targetHotspots,
-
-                sourceTargetLinks:
-
-                    state.sourceTargetLinks,
-
-                selectedAccused:
-
-                    state.accused,
-
-                selectedSeizure:
-
-                    state.seizure
-
-            };
-
-        };
-
-
-    /* =====================================================
-       34. GET STATE
-
-       Returns copy to prevent external mutation of
-       controller state.
-       ===================================================== */
-
-    CascadeController.getState =
-        function () {
-
-            const state =
-
-                CascadeController.state;
-
-
-            return {
-
-                ...state,
-
-                cases:
-
-                    [
-                        ...state.cases
-                    ],
-
-                accusedList:
-
-                    [
-                        ...state.accusedList
-                    ],
-
-                seizures:
-
-                    [
-                        ...state.seizures
-                    ],
-
-                sourceHotspots:
-
-                    [
-                        ...state.sourceHotspots
-                    ],
-
-                targetHotspots:
-
-                    [
-                        ...state.targetHotspots
-                    ],
-
-                sourceTargetLinks:
-
-                    [
-                        ...state.sourceTargetLinks
-                    ]
-
-            };
-
-        };
-
-
-    /* =====================================================
-       35. IS OPEN
-       ===================================================== */
-
-    CascadeController.isOpen =
-        function () {
-
-            return (
-
-                CascadeController.state
-                    .open === true
-
-            );
-
-        };
-
-
-    /* =====================================================
-       36. GET CURRENT LEVEL
-       ===================================================== */
-
-    CascadeController.getLevel =
-        function () {
-
-            return CascadeController
-                .state
-                .level;
-
-        };
-
-
-    /* =====================================================
-       37. DISPATCH LEVEL CHANGED
+       42. DISPATCH LEVEL CHANGED
        ===================================================== */
 
     CascadeController.dispatchLevelChanged =
@@ -2672,7 +3392,7 @@
 
 
     /* =====================================================
-       38. DISPATCH UPDATED
+       43. DISPATCH UPDATED
        ===================================================== */
 
     CascadeController.dispatchUpdated =
@@ -2700,21 +3420,16 @@
 
 
     /* =====================================================
-       39. DISPATCH EVENT
+       44. DISPATCH EVENT
        ===================================================== */
 
     CascadeController.dispatchEvent =
         function (
-
             eventName,
-
             detail = {}
-
         ) {
 
-            if (
-                !eventName
-            ) {
+            if (!eventName) {
 
                 return;
 
@@ -2743,9 +3458,7 @@
             }
 
             catch (
-
                 error
-
             ) {
 
                 if (
@@ -2771,7 +3484,7 @@
 
 
     /* =====================================================
-       40. RESET
+       45. RESET
        ===================================================== */
 
     CascadeController.reset =
@@ -2789,7 +3502,7 @@
 
 
     /* =====================================================
-       41. DESTROY
+       46. DESTROY
        ===================================================== */
 
     CascadeController.destroy =
@@ -2813,7 +3526,7 @@
 
 
     /* =====================================================
-       42. EXPORT
+       47. EXPORT
        ===================================================== */
 
     GG.Offence.CascadeController =
@@ -2821,17 +3534,15 @@
 
 
     /* =====================================================
-       43. INITIALIZE
-
-       Safe because MapRenderer may load before or after.
-       We only bind a window event listener here.
+       48. INITIALIZE
        ===================================================== */
 
-    CascadeController.init();
+    CascadeController
+        .init();
 
 
     /* =====================================================
-       44. READY LOG
+       49. READY LOG
        ===================================================== */
 
     if (
@@ -2843,7 +3554,18 @@
 
             "🔥 OffenceCascadeController Loaded",
 
-            CascadeController
+            {
+
+                version:
+                    CascadeController.VERSION,
+
+                connector:
+                    "POR",
+
+                module:
+                    CascadeController
+
+            }
 
         );
 
