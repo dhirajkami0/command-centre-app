@@ -823,8 +823,7 @@
 
         };
 
-
-    /* =====================================================
+     /* =====================================================
        POR EXTRACTION
        ===================================================== */
 
@@ -850,13 +849,13 @@
 
                     item.porKey ||
 
-                    item.por_key ||
-
                     item.porNo ||
+
+                    item.refPorNo ||
 
                     item.por_no ||
 
-                    item.POR ||
+                    item.por ||
 
                     ""
 
@@ -885,9 +884,13 @@
 
                 item.porNo ||
 
+                item.refPorNo ||
+
                 item.por_no ||
 
-                item.POR ||
+                item.por ||
+
+                item.porKey ||
 
                 ""
 
@@ -897,7 +900,7 @@
 
 
     /* =====================================================
-       RELATION CREATION
+       POR RELATION CREATION
        ===================================================== */
 
 
@@ -908,14 +911,36 @@
 
         ) {
 
+            const normalizedPorKey =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (
+                !normalizedPorKey
+            ) {
+
+                return null;
+
+            }
+
+
             return {
 
                 porKey:
-                    porKey,
+                    normalizedPorKey,
+
 
                 porNo:
                     "",
 
+
+                /*
+                 * Canonical business entities.
+                 */
 
                 cases:
                     [],
@@ -929,9 +954,13 @@
                 seizures:
                     [],
 
-                articles:
+                seizedArticles:
                     [],
 
+
+                /*
+                 * Canonical hotspot relations.
+                 */
 
                 sources:
                     [],
@@ -940,10 +969,23 @@
                     [],
 
 
-                sourceSpatial:
+                /*
+                 * Cross references.
+                 */
+
+                caseIds:
                     [],
 
-                targetSpatial:
+                accusedIds:
+                    [],
+
+                witnessIds:
+                    [],
+
+                seizureIds:
+                    [],
+
+                articleIds:
                     []
 
             };
@@ -954,20 +996,20 @@
     HeatmapEngine.getOrCreatePorRelation =
         function (
 
-            rawPorKey
+            porKey
 
         ) {
 
-            const porKey =
+            const normalizedPorKey =
 
                 HeatmapEngine
                     .normalizePorKey(
-                        rawPorKey
+                        porKey
                     );
 
 
             if (
-                !porKey
+                !normalizedPorKey
             ) {
 
                 return null;
@@ -976,36 +1018,55 @@
 
 
             if (
-                !HeatmapEngine
+                HeatmapEngine
                     .porIndex
                     .has(
-                        porKey
+                        normalizedPorKey
                     )
+            ) {
+
+                return HeatmapEngine
+                    .porIndex
+                    .get(
+                        normalizedPorKey
+                    );
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .createPorRelation(
+                        normalizedPorKey
+                    );
+
+
+            if (
+                relation
             ) {
 
                 HeatmapEngine
                     .porIndex
                     .set(
 
-                        porKey,
+                        normalizedPorKey,
 
-                        HeatmapEngine
-                            .createPorRelation(
-                                porKey
-                            )
+                        relation
 
                     );
 
             }
 
 
-            return HeatmapEngine
-                .porIndex
-                .get(
-                    porKey
-                );
+            return relation;
 
         };
+
+
+    /* =====================================================
+       CASE RELATION CREATION
+       ===================================================== */
 
 
     HeatmapEngine.createCaseRelation =
@@ -1015,18 +1076,50 @@
 
         ) {
 
+            const normalizedCaseId =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        caseId
+                    );
+
+
+            if (
+                !normalizedCaseId
+            ) {
+
+                return null;
+
+            }
+
+
             return {
 
                 caseId:
                     caseId,
 
+
                 porKeys:
                     [],
+
 
                 sources:
                     [],
 
                 targets:
+                    [],
+
+
+                accused:
+                    [],
+
+                witnesses:
+                    [],
+
+                seizures:
+                    [],
+
+                seizedArticles:
                     []
 
             };
@@ -1037,20 +1130,20 @@
     HeatmapEngine.getOrCreateCaseRelation =
         function (
 
-            rawCaseId
+            caseId
 
         ) {
 
-            const caseId =
+            const normalizedCaseId =
 
                 HeatmapEngine
                     .normalizeKey(
-                        rawCaseId
+                        caseId
                     );
 
 
             if (
-                !caseId
+                !normalizedCaseId
             ) {
 
                 return null;
@@ -1059,34 +1152,48 @@
 
 
             if (
-                !HeatmapEngine
+                HeatmapEngine
                     .caseIndex
                     .has(
-                        caseId
+                        normalizedCaseId
                     )
+            ) {
+
+                return HeatmapEngine
+                    .caseIndex
+                    .get(
+                        normalizedCaseId
+                    );
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .createCaseRelation(
+                        caseId
+                    );
+
+
+            if (
+                relation
             ) {
 
                 HeatmapEngine
                     .caseIndex
                     .set(
 
-                        caseId,
+                        normalizedCaseId,
 
-                        HeatmapEngine
-                            .createCaseRelation(
-                                rawCaseId
-                            )
+                        relation
 
                     );
 
             }
 
 
-            return HeatmapEngine
-                .caseIndex
-                .get(
-                    caseId
-                );
+            return relation;
 
         };
 
@@ -1163,6 +1270,11 @@
         };
 
 
+    /* =====================================================
+       SOURCE HOTSPOT REGISTRATION
+       ===================================================== */
+
+
     HeatmapEngine.registerSourceHotspot =
         function (
 
@@ -1234,6 +1346,15 @@
                         .getOrCreatePorRelation(
                             porKey
                         );
+
+
+                if (
+                    !relation
+                ) {
+
+                    continue;
+
+                }
 
 
                 HeatmapEngine
@@ -1322,6 +1443,11 @@
             }
 
         };
+
+
+    /* =====================================================
+       TARGET HOTSPOT REGISTRATION
+       ===================================================== */
 
 
     HeatmapEngine.registerTargetHotspot =
@@ -1397,6 +1523,15 @@
                         );
 
 
+                if (
+                    !relation
+                ) {
+
+                    continue;
+
+                }
+
+
                 HeatmapEngine
                     .addUniqueObject(
 
@@ -1486,39 +1621,1323 @@
 
 
     /* =====================================================
-       GIS FEATURE HELPERS
+       STORE ACCESS
+       ===================================================== */
+
+
+    HeatmapEngine.getStoreCascadeByPor =
+        function (
+
+            porKey
+
+        ) {
+
+            const Store =
+
+                Offence.Store;
+
+
+            if (
+                !Store
+            ) {
+
+                return null;
+
+            }
+
+
+            const normalizedPorKey =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (
+                !normalizedPorKey
+            ) {
+
+                return null;
+
+            }
+
+
+            try {
+
+                if (
+                    typeof Store
+                        .getCascadeByPor ===
+                    "function"
+                ) {
+
+                    return Store
+                        .getCascadeByPor(
+                            normalizedPorKey
+                        );
+
+                }
+
+
+                if (
+                    typeof Store
+                        .getPorCascade ===
+                    "function"
+                ) {
+
+                    return Store
+                        .getPorCascade(
+                            normalizedPorKey
+                        );
+
+                }
+
+            }
+            catch (
+                error
+            ) {
+
+                console.warn(
+
+                    "[OffenceHeatmapEngine] Store POR cascade lookup failed.",
+
+                    {
+
+                        porKey:
+                            normalizedPorKey,
+
+                        error:
+                            error
+
+                    }
+
+                );
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       MERGE STORE CASCADE INTO POR RELATION
+       ===================================================== */
+
+
+    HeatmapEngine.mergeCascadeIntoPorRelation =
+        function (
+
+            relation,
+
+            cascade
+
+        ) {
+
+            if (
+                !relation ||
+                !cascade
+            ) {
+
+                return relation;
+
+            }
+
+
+            /*
+             * POR number.
+             */
+
+            relation.porNo =
+
+                cascade.porNo ||
+
+                cascade.refPorNo ||
+
+                relation.porNo ||
+
+                relation.porKey;
+
+
+            /*
+             * Cases.
+             */
+
+            const cases =
+
+                HeatmapEngine
+                    .toArray(
+
+                        cascade.cases ||
+
+                        cascade.case
+
+                    );
+
+
+            for (
+                const record
+                of cases
+            ) {
+
+                if (
+                    !record
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .addUniqueObject(
+
+                        relation.cases,
+
+                        record,
+
+                        HeatmapEngine
+                            .getCaseId
+
+                    );
+
+
+                HeatmapEngine
+                    .addUnique(
+
+                        relation.caseIds,
+
+                        HeatmapEngine
+                            .getCaseId(
+                                record
+                            )
+
+                    );
+
+            }
+
+
+            /*
+             * Accused.
+             */
+
+            const accused =
+
+                HeatmapEngine
+                    .toArray(
+                        cascade.accused
+                    );
+
+
+            for (
+                const record
+                of accused
+            ) {
+
+                if (
+                    !record
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .addUniqueObject(
+
+                        relation.accused,
+
+                        record,
+
+                        HeatmapEngine
+                            .getAccusedId
+
+                    );
+
+
+                HeatmapEngine
+                    .addUnique(
+
+                        relation.accusedIds,
+
+                        HeatmapEngine
+                            .getAccusedId(
+                                record
+                            )
+
+                    );
+
+            }
+
+
+            /*
+             * Witnesses.
+             */
+
+            const witnesses =
+
+                HeatmapEngine
+                    .toArray(
+                        cascade.witnesses
+                    );
+
+
+            for (
+                const record
+                of witnesses
+            ) {
+
+                if (
+                    !record
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .addUniqueObject(
+
+                        relation.witnesses,
+
+                        record,
+
+                        HeatmapEngine
+                            .getWitnessId
+
+                    );
+
+
+                HeatmapEngine
+                    .addUnique(
+
+                        relation.witnessIds,
+
+                        HeatmapEngine
+                            .getWitnessId(
+                                record
+                            )
+
+                    );
+
+            }
+
+
+            /*
+             * Seizures.
+             */
+
+            const seizures =
+
+                HeatmapEngine
+                    .toArray(
+                        cascade.seizures
+                    );
+
+
+            for (
+                const record
+                of seizures
+            ) {
+
+                if (
+                    !record
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .addUniqueObject(
+
+                        relation.seizures,
+
+                        record,
+
+                        HeatmapEngine
+                            .getSeizureId
+
+                    );
+
+
+                HeatmapEngine
+                    .addUnique(
+
+                        relation.seizureIds,
+
+                        HeatmapEngine
+                            .getSeizureId(
+                                record
+                            )
+
+                    );
+
+            }
+
+
+            /*
+             * Seized articles.
+             */
+
+            const seizedArticles =
+
+                HeatmapEngine
+                    .toArray(
+
+                        cascade.seizedArticles ||
+
+                        cascade.articles
+
+                    );
+
+
+            for (
+                const record
+                of seizedArticles
+            ) {
+
+                if (
+                    !record
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .addUniqueObject(
+
+                        relation.seizedArticles,
+
+                        record,
+
+                        HeatmapEngine
+                            .getArticleId
+
+                    );
+
+
+                HeatmapEngine
+                    .addUnique(
+
+                        relation.articleIds,
+
+                        HeatmapEngine
+                            .getArticleId(
+                                record
+                            )
+
+                    );
+
+            }
+
+
+            return relation;
+
+        };
+       /* =====================================================
+       POR RELATION HYDRATION
+       ===================================================== */
+
+
+    HeatmapEngine.hydratePorRelation =
+        function (
+
+            porKey
+
+        ) {
+
+            const normalizedPorKey =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (
+                !normalizedPorKey
+            ) {
+
+                return null;
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .getOrCreatePorRelation(
+                        normalizedPorKey
+                    );
+
+
+            if (
+                !relation
+            ) {
+
+                return null;
+
+            }
+
+
+            const cascade =
+
+                HeatmapEngine
+                    .getStoreCascadeByPor(
+                        normalizedPorKey
+                    );
+
+
+            if (
+                !cascade
+            ) {
+
+                return relation;
+
+            }
+
+
+            HeatmapEngine
+                .mergeCascadeIntoPorRelation(
+
+                    relation,
+
+                    cascade
+
+                );
+
+
+            return relation;
+
+        };
+
+
+    HeatmapEngine.hydrateAllPorRelations =
+        function () {
+
+            let hydrated =
+                0;
+
+
+            let withoutCascade =
+                0;
+
+
+            const porKeys =
+
+                Array.from(
+
+                    HeatmapEngine
+                        .porIndex
+                        .keys()
+
+                );
+
+
+            for (
+                const porKey
+                of porKeys
+            ) {
+
+                const cascade =
+
+                    HeatmapEngine
+                        .getStoreCascadeByPor(
+                            porKey
+                        );
+
+
+                if (
+                    !cascade
+                ) {
+
+                    withoutCascade++;
+
+                    continue;
+
+                }
+
+
+                const relation =
+
+                    HeatmapEngine
+                        .porIndex
+                        .get(
+                            porKey
+                        );
+
+
+                if (
+                    !relation
+                ) {
+
+                    continue;
+
+                }
+
+
+                HeatmapEngine
+                    .mergeCascadeIntoPorRelation(
+
+                        relation,
+
+                        cascade
+
+                    );
+
+
+                hydrated++;
+
+            }
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "[OffenceHeatmapEngine] POR relations hydrated",
+
+                    {
+
+                        totalPorKeys:
+                            porKeys.length,
+
+                        hydrated:
+                            hydrated,
+
+                        withoutCascade:
+                            withoutCascade
+
+                    }
+
+                );
+
+            }
+
+
+            return {
+
+                totalPorKeys:
+                    porKeys.length,
+
+                hydrated:
+                    hydrated,
+
+                withoutCascade:
+                    withoutCascade
+
+            };
+
+        };
+
+
+    /* =====================================================
+       INDEX RESET
+       ===================================================== */
+
+
+    HeatmapEngine.resetIndexes =
+        function () {
+
+            HeatmapEngine
+                .hotspotIndex
+                .clear();
+
+
+            HeatmapEngine
+                .porIndex
+                .clear();
+
+
+            HeatmapEngine
+                .caseIndex
+                .clear();
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       REBUILD RELATIONSHIP INDEXES
+       ===================================================== */
+
+
+    HeatmapEngine.rebuildIndexes =
+        function () {
+
+            HeatmapEngine
+                .resetIndexes();
+
+
+            const sources =
+
+                Array.isArray(
+                    HeatmapEngine.data.sources
+                )
+
+                    ? HeatmapEngine.data.sources
+
+                    : [];
+
+
+            const targets =
+
+                Array.isArray(
+                    HeatmapEngine.data.targets
+                )
+
+                    ? HeatmapEngine.data.targets
+
+                    : [];
+
+
+            /*
+             * Register source hotspots.
+             */
+
+            for (
+                const source
+                of sources
+            ) {
+
+                HeatmapEngine
+                    .registerSourceHotspot(
+                        source
+                    );
+
+            }
+
+
+            /*
+             * Register target hotspots.
+             */
+
+            for (
+                const target
+                of targets
+            ) {
+
+                HeatmapEngine
+                    .registerTargetHotspot(
+                        target
+                    );
+
+            }
+
+
+            /*
+             * Hydrate POR business relationships
+             * from the canonical OffenceStore.
+             */
+
+            HeatmapEngine
+                .hydrateAllPorRelations();
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "[OffenceHeatmapEngine] Indexes rebuilt",
+
+                    {
+
+                        hotspots:
+                            HeatmapEngine
+                                .hotspotIndex
+                                .size,
+
+                        porRelations:
+                            HeatmapEngine
+                                .porIndex
+                                .size,
+
+                        caseRelations:
+                            HeatmapEngine
+                                .caseIndex
+                                .size
+
+                    }
+
+                );
+
+            }
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       POR RELATION LOOKUPS
+       ===================================================== */
+
+
+    HeatmapEngine.getSourcesByPor =
+        function (
+
+            porKey
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            const relation =
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    );
+
+
+            return (
+
+                relation?.sources ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getTargetsByPor =
+        function (
+
+            porKey
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            const relation =
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    );
+
+
+            return (
+
+                relation?.targets ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getByPor =
+        function (
+
+            porKey
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
+
+        };
+
+
+    HeatmapEngine.getPorCascade =
+        function (
+
+            porKey
+
+        ) {
+
+            const relation =
+
+                HeatmapEngine
+                    .getByPor(
+                        porKey
+                    );
+
+
+            if (
+                relation
+            ) {
+
+                return relation;
+
+            }
+
+
+            /*
+             * Fallback directly to Store.
+             */
+
+            return HeatmapEngine
+                .getStoreCascadeByPor(
+                    porKey
+                );
+
+        };
+
+
+    /* =====================================================
+       HOTSPOT LOOKUP
+       ===================================================== */
+
+
+    HeatmapEngine.getHotspotById =
+        function (
+
+            hotspotId
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        hotspotId
+                    );
+
+
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .hotspotIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
+
+        };
+
+
+    /* =====================================================
+       CASE LOOKUP
+       ===================================================== */
+
+
+    HeatmapEngine.getByCaseId =
+        function (
+
+            caseId
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        caseId
+                    );
+
+
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .caseIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
+
+        };
+
+
+    /* =====================================================
+       CANONICAL HOTSPOT GETTERS
+       ===================================================== */
+
+
+    HeatmapEngine.getSourceHotspots =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.sources
+            )
+
+                ? HeatmapEngine.data.sources
+
+                : [];
+
+        };
+
+
+    HeatmapEngine.getTargetHotspots =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.targets
+            )
+
+                ? HeatmapEngine.data.targets
+
+                : [];
+
+        };
+
+
+    HeatmapEngine.getLinks =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.links
+            )
+
+                ? HeatmapEngine.data.links
+
+                : [];
+
+        };
+
+
+    /* =====================================================
+       GIS ENTITY ACCESS
+       ===================================================== */
+
+
+    HeatmapEngine.getGISEntities =
+        function () {
+
+            return (
+
+                GG.GISEntities ||
+
+                window.GreenGuardAI
+                    ?.GISEntities ||
+
+                null
+
+            );
+
+        };
+
+
+    HeatmapEngine.ensureGISEntitiesReady =
+        function () {
+
+            const GISEntities =
+
+                HeatmapEngine
+                    .getGISEntities();
+
+
+            if (
+                !GISEntities
+            ) {
+
+                return false;
+
+            }
+
+
+            try {
+
+                if (
+                    typeof GISEntities.ready ===
+                    "function" &&
+                    GISEntities.ready()
+                ) {
+
+                    return true;
+
+                }
+
+
+                if (
+                    typeof GISEntities.build ===
+                    "function"
+                ) {
+
+                    GISEntities.build();
+
+                }
+
+
+                if (
+                    typeof GISEntities.ready ===
+                    "function"
+                ) {
+
+                    return !!GISEntities
+                        .ready();
+
+                }
+
+
+                return true;
+
+            }
+            catch (
+                error
+            ) {
+
+                console.warn(
+
+                    "[OffenceHeatmapEngine] GISEntities initialization failed.",
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       GIS FEATURE COLLECTION
        ===================================================== */
 
 
     HeatmapEngine.getGISFeatures =
         function () {
 
+            const features =
+                [];
+
+
+            const seen =
+
+                new Set();
+
+
+            const addFeature =
+                function (
+
+                    feature
+
+                ) {
+
+                    if (
+                        !feature ||
+                        typeof feature !==
+                        "object"
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Accept individual GeoJSON Features.
+                     */
+
+                    if (
+                        feature.type ===
+                        "Feature"
+                    ) {
+
+                        if (
+                            !seen.has(
+                                feature
+                            )
+                        ) {
+
+                            seen.add(
+                                feature
+                            );
+
+
+                            features.push(
+                                feature
+                            );
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Accept GeoJSON FeatureCollections.
+                     */
+
+                    if (
+                        feature.type ===
+                        "FeatureCollection" &&
+                        Array.isArray(
+                            feature.features
+                        )
+                    ) {
+
+                        for (
+                            const child
+                            of feature.features
+                        ) {
+
+                            addFeature(
+                                child
+                            );
+
+                        }
+
+                    }
+
+                };
+
+
+            const addCollection =
+                function (
+
+                    collection
+
+                ) {
+
+                    if (
+                        !collection
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        Array.isArray(
+                            collection
+                        )
+                    ) {
+
+                        for (
+                            const item
+                            of collection
+                        ) {
+
+                            addFeature(
+                                item
+                            );
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+                    addFeature(
+                        collection
+                    );
+
+                };
+
+
             /*
-             * Support several existing GreenGuard
-             * GIS storage locations.
+             * Canonical GIS sources currently used
+             * by the GreenGuard application.
              *
-             * This prevents HeatmapEngine from being
-             * tightly coupled to one GIS module.
+             * IMPORTANT:
+             *
+             * allGISFeatures:
+             *     Division / Range / Beat polygons.
+             *
+             * allCompartmentFeatures:
+             *     Compartment polygons.
              */
 
             const candidates = [
 
-                GG.GIS
-                    ?.features,
+                window.allGISFeatures,
 
-                GG.GIS
-                    ?.data
-                    ?.features,
-
-                GG.Analytics
-                    ?.gis,
-
-                GG.AnalyticsEngine
-                    ?.gis,
+                window.allCompartmentFeatures,
 
                 window.gisFeatures,
 
-                window.allGISFeatures
+                window.GIS_FEATURES,
+
+                window.__gisFeatures,
+
+                GG.allGISFeatures,
+
+                GG.GISFeatures,
+
+                GG.GIS
+                    ?.features
 
             ];
 
@@ -1528,35 +2947,21 @@
                 of candidates
             ) {
 
-                if (
-                    Array.isArray(
-                        candidate
-                    )
-                ) {
-
-                    return candidate;
-
-                }
-
-
-                if (
-                    candidate?.type ===
-                    "FeatureCollection" &&
-                    Array.isArray(
-                        candidate.features
-                    )
-                ) {
-
-                    return candidate.features;
-
-                }
+                addCollection(
+                    candidate
+                );
 
             }
 
 
-            return [];
+            return features;
 
         };
+
+
+    /* =====================================================
+       GIS FEATURE PROPERTY HELPERS
+       ===================================================== */
 
 
     HeatmapEngine.getFeatureProperties =
@@ -1566,13 +2971,21 @@
 
         ) {
 
+            if (
+                !feature
+            ) {
+
+                return {};
+
+            }
+
+
             return (
 
-                feature?.properties ||
+                feature.properties ||
 
-                feature?.data ||
-
-                feature ||
+                feature.feature
+                    ?.properties ||
 
                 {}
 
@@ -1588,7 +3001,7 @@
 
         ) {
 
-            const p =
+            const properties =
 
                 HeatmapEngine
                     .getFeatureProperties(
@@ -1598,13 +3011,20 @@
 
             return (
 
-                p.Compartment ||
+                properties.compartment ||
 
-                p.compartment ||
+                properties.compartmentName ||
 
-                p.COMPARTMENT ||
+                properties.compartment_name ||
 
-                p.name ||
+                properties.comp ||
+
+                /*
+                 * allCompartmentFeatures may use
+                 * generic name as the compartment.
+                 */
+
+                properties.name ||
 
                 ""
 
@@ -1620,7 +3040,7 @@
 
         ) {
 
-            const p =
+            const properties =
 
                 HeatmapEngine
                     .getFeatureProperties(
@@ -1630,25 +3050,28 @@
 
             return (
 
-                p.Range ||
+                properties.range ||
 
-                p.range ||
+                properties.rangeName ||
 
-                p.RANGE ||
+                properties.range_name ||
+
+                properties.forestRange ||
+
+                properties.forest_range ||
 
                 ""
 
             );
 
         };
+       /* =====================================================
+       BUILD SPATIAL GIS INDEXES
+       ===================================================== */
 
 
     HeatmapEngine.buildSpatialIndexes =
-        function (
-
-            features
-
-        ) {
+        function () {
 
             HeatmapEngine
                 .compartmentIndex
@@ -1665,6 +3088,12 @@
                 .clear();
 
 
+            const features =
+
+                HeatmapEngine
+                    .getGISFeatures();
+
+
             for (
                 const feature
                 of features
@@ -1679,48 +3108,7 @@
                 }
 
 
-                const properties =
-
-                    HeatmapEngine
-                        .getFeatureProperties(
-                            feature
-                        );
-
-
-                const featureId =
-
-                    feature.id ||
-
-                    properties[
-                        "GIS Feature ID"
-                    ] ||
-
-                    properties.gisFeatureId ||
-
-                    "";
-
-
-                if (
-                    featureId
-                ) {
-
-                    HeatmapEngine
-                        .gisFeatureIndex
-                        .set(
-
-                            HeatmapEngine
-                                .normalizeKey(
-                                    featureId
-                                ),
-
-                            feature
-
-                        );
-
-                }
-
-
-                const compartment =
+                const compartmentName =
 
                     HeatmapEngine
                         .getCompartmentName(
@@ -1728,32 +3116,7 @@
                         );
 
 
-                const compartmentKey =
-
-                    HeatmapEngine
-                        .normalizeSpatialKey(
-                            compartment
-                        );
-
-
-                if (
-                    compartmentKey
-                ) {
-
-                    HeatmapEngine
-                        .compartmentIndex
-                        .set(
-
-                            compartmentKey,
-
-                            feature
-
-                        );
-
-                }
-
-
-                const range =
+                const rangeName =
 
                     HeatmapEngine
                         .getRangeName(
@@ -1761,56 +3124,179 @@
                         );
 
 
-                const rangeKey =
-
-                    HeatmapEngine
-                        .normalizeRange(
-                            range
-                        );
-
+                /*
+                 * -----------------------------------------
+                 * COMPARTMENT INDEX
+                 * -----------------------------------------
+                 */
 
                 if (
-                    rangeKey
+                    compartmentName
                 ) {
 
+                    const compartmentKey =
+
+                        HeatmapEngine
+                            .normalizeSpatialKey(
+                                compartmentName
+                            );
+
+
                     if (
-                        !HeatmapEngine
-                            .rangeIndex
-                            .has(
-                                rangeKey
-                            )
+                        compartmentKey
                     ) {
 
                         HeatmapEngine
-                            .rangeIndex
+                            .compartmentIndex
                             .set(
 
-                                rangeKey,
+                                compartmentKey,
 
-                                []
+                                feature
+
+                            );
+
+
+                        HeatmapEngine
+                            .gisFeatureIndex
+                            .set(
+
+                                "COMPARTMENT::" +
+                                compartmentKey,
+
+                                feature
 
                             );
 
                     }
 
+                }
 
-                    HeatmapEngine
-                        .rangeIndex
-                        .get(
-                            rangeKey
-                        )
-                        .push(
-                            feature
-                        );
+
+                /*
+                 * -----------------------------------------
+                 * RANGE INDEX
+                 * -----------------------------------------
+                 *
+                 * Multiple GIS features can belong to the
+                 * same Range.
+                 *
+                 * Therefore rangeIndex stores arrays.
+                 */
+
+                if (
+                    rangeName
+                ) {
+
+                    const rangeKey =
+
+                        HeatmapEngine
+                            .normalizeRange(
+                                rangeName
+                            );
+
+
+                    if (
+                        rangeKey
+                    ) {
+
+                        if (
+                            !HeatmapEngine
+                                .rangeIndex
+                                .has(
+                                    rangeKey
+                                )
+                        ) {
+
+                            HeatmapEngine
+                                .rangeIndex
+                                .set(
+
+                                    rangeKey,
+
+                                    []
+
+                                );
+
+                        }
+
+
+                        const rangeFeatures =
+
+                            HeatmapEngine
+                                .rangeIndex
+                                .get(
+                                    rangeKey
+                                );
+
+
+                        if (
+                            !rangeFeatures
+                                .includes(
+                                    feature
+                                )
+                        ) {
+
+                            rangeFeatures
+                                .push(
+                                    feature
+                                );
+
+                        }
+
+
+                        HeatmapEngine
+                            .gisFeatureIndex
+                            .set(
+
+                                "RANGE::" +
+                                rangeKey,
+
+                                rangeFeatures
+
+                            );
+
+                    }
 
                 }
 
             }
 
 
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "[OffenceHeatmapEngine] Spatial GIS indexes built",
+
+                    {
+
+                        gisFeatures:
+                            features.length,
+
+                        compartments:
+                            HeatmapEngine
+                                .compartmentIndex
+                                .size,
+
+                        ranges:
+                            HeatmapEngine
+                                .rangeIndex
+                                .size
+
+                    }
+
+                );
+
+            }
+
+
             return {
 
-                features:
+                gisFeatures:
                     features.length,
 
                 compartments:
@@ -1829,7 +3315,7 @@
 
 
     /* =====================================================
-       POINT VALIDATION
+       COORDINATE RESOLUTION
        ===================================================== */
 
 
@@ -1849,54 +3335,97 @@
             }
 
 
+            /*
+             * IMPORTANT:
+             *
+             * Number(undefined) becomes NaN.
+             *
+             * Number(null) becomes 0.
+             *
+             * Therefore we must first obtain the raw
+             * coordinate values before converting them.
+             */
+
+            const rawLatitude =
+
+                hotspot.latitude ??
+
+                hotspot.lat ??
+
+                hotspot.location
+                    ?.latitude ??
+
+                hotspot.location
+                    ?.lat ??
+
+                hotspot.coordinates
+                    ?.latitude ??
+
+                hotspot.coordinates
+                    ?.lat;
+
+
+            const rawLongitude =
+
+                hotspot.longitude ??
+
+                hotspot.lng ??
+
+                hotspot.lon ??
+
+                hotspot.location
+                    ?.longitude ??
+
+                hotspot.location
+                    ?.lng ??
+
+                hotspot.location
+                    ?.lon ??
+
+                hotspot.coordinates
+                    ?.longitude ??
+
+                hotspot.coordinates
+                    ?.lng ??
+
+                hotspot.coordinates
+                    ?.lon;
+
+
+            /*
+             * Missing values must NOT become 0,0.
+             */
+
+            if (
+                rawLatitude === null ||
+                rawLatitude === undefined ||
+                rawLatitude === "" ||
+                rawLongitude === null ||
+                rawLongitude === undefined ||
+                rawLongitude === ""
+            ) {
+
+                return null;
+
+            }
+
+
             const latitude =
 
                 Number(
-
-                    hotspot.latitude ??
-
-                    hotspot.lat ??
-
-                    hotspot.location
-                        ?.latitude ??
-
-                    hotspot.location
-                        ?.lat
-
+                    rawLatitude
                 );
 
 
             const longitude =
 
                 Number(
-
-                    hotspot.longitude ??
-
-                    hotspot.lng ??
-
-                    hotspot.lon ??
-
-                    hotspot.location
-                        ?.longitude ??
-
-                    hotspot.location
-                        ?.lng ??
-
-                    hotspot.location
-                        ?.lon
-
+                    rawLongitude
                 );
 
 
             /*
-             * IMPORTANT:
-             *
-             * Number(undefined) becomes NaN.
-             * Number(null) becomes 0.
-             *
-             * 0,0 is NOT a valid offence location
-             * for this system and must not become
-             * a Leaflet heat point.
+             * Reject invalid coordinates.
              */
 
             if (
@@ -1905,9 +3434,45 @@
                 ) ||
                 !Number.isFinite(
                     longitude
-                ) ||
-                latitude === 0 ||
-                longitude === 0 ||
+                )
+            ) {
+
+                return null;
+
+            }
+
+
+            /*
+             * Reject default / placeholder 0,0.
+             *
+             * This is critical for the offence pipeline.
+             *
+             * Source and Target engines may contain
+             * latitude: 0 and longitude: 0 when no actual
+             * GPS coordinate exists.
+             *
+             * Such records must fall through to:
+             *
+             * COMPARTMENT
+             * or
+             * RANGE
+             */
+
+            if (
+                latitude === 0 &&
+                longitude === 0
+            ) {
+
+                return null;
+
+            }
+
+
+            /*
+             * Reject impossible latitude / longitude.
+             */
+
+            if (
                 latitude < -90 ||
                 latitude > 90 ||
                 longitude < -180 ||
@@ -1925,6 +3490,17 @@
                     latitude,
 
                 longitude:
+                    longitude,
+
+                /*
+                 * Convenience aliases for consumers such
+                 * as Leaflet renderers.
+                 */
+
+                lat:
+                    latitude,
+
+                lng:
                     longitude
 
             };
@@ -1933,7 +3509,7 @@
 
 
     /* =====================================================
-       SPATIAL FIELD EXTRACTION
+       COMPARTMENT EXTRACTION FROM HOTSPOT
        ===================================================== */
 
 
@@ -1953,24 +3529,139 @@
             }
 
 
-            return (
+            /*
+             * Prefer explicit structured fields.
+             */
+
+            const explicit =
 
                 hotspot.compartment ||
 
-                hotspot.Compartment ||
+                hotspot.compartmentName ||
 
-                hotspot.targetCompartment ||
-
-                hotspot.offenceCompartment ||
+                hotspot.compartment_name ||
 
                 hotspot.location
                     ?.compartment ||
 
-                ""
+                hotspot.context
+                    ?.compartment ||
 
-            );
+                hotspot.gis
+                    ?.compartment ||
+
+                "";
+
+
+            if (
+                explicit
+            ) {
+
+                return String(
+                    explicit
+                )
+                    .trim();
+
+            }
+
+
+            /*
+             * Try address / location text.
+             *
+             * Examples:
+             *
+             * WRVK-9 Compartment
+             * Compartment 9
+             * Compartment No. 9
+             */
+
+            const text =
+
+                String(
+
+                    hotspot.address ||
+
+                    hotspot.name ||
+
+                    hotspot.locationName ||
+
+                    hotspot.location
+                        ?.name ||
+
+                    ""
+
+                );
+
+
+            if (
+                !text
+            ) {
+
+                return "";
+
+            }
+
+
+            const patterns = [
+
+                /*
+                 * WRVK-9 Compartment
+                 */
+
+                /([A-Z0-9()\/\s-]+?)\s+COMPARTMENT\b/i,
+
+
+                /*
+                 * Compartment No. 9
+                 */
+
+                /\bCOMPARTMENT\s*(?:NO\.?|NUMBER)?\s*[-:]?\s*([A-Z0-9\/-]+)/i,
+
+
+                /*
+                 * Compartment 9
+                 */
+
+                /\bCOMPARTMENT\s+([A-Z0-9\/-]+)/i
+
+            ];
+
+
+            for (
+                const pattern
+                of patterns
+            ) {
+
+                const match =
+
+                    text.match(
+                        pattern
+                    );
+
+
+                if (
+                    match &&
+                    match[1]
+                ) {
+
+                    return String(
+                        match[1]
+                    )
+                        .trim();
+
+                }
+
+            }
+
+
+            return "";
 
         };
+
+
+    /* =====================================================
+       RANGE EXTRACTION FROM HOTSPOT
+       ===================================================== */
 
 
     HeatmapEngine.extractRange =
@@ -1989,30 +3680,206 @@
             }
 
 
-            return (
+            /*
+             * Prefer explicit structured Range field.
+             */
+
+            const explicit =
 
                 hotspot.range ||
 
-                hotspot.Range ||
-
                 hotspot.rangeName ||
 
-                hotspot.targetRange ||
+                hotspot.range_name ||
 
-                hotspot.offenceRange ||
+                hotspot.forestRange ||
 
                 hotspot.location
                     ?.range ||
 
-                ""
+                hotspot.context
+                    ?.range ||
 
-            );
+                hotspot.gis
+                    ?.range ||
+
+                "";
+
+
+            if (
+                explicit
+            ) {
+
+                return String(
+                    explicit
+                )
+                    .trim();
+
+            }
+
+
+            /*
+             * Attempt to infer Range from POR keys.
+             *
+             * Example:
+             *
+             * 07/NMT
+             * 53/WRVK
+             * 56/EDPO OF 2019-20
+             */
+
+            const porValues =
+
+                [];
+
+
+            if (
+                hotspot.porKey
+            ) {
+
+                porValues.push(
+                    hotspot.porKey
+                );
+
+            }
+
+
+            if (
+                Array.isArray(
+                    hotspot.porKeys
+                )
+            ) {
+
+                porValues.push(
+                    ...hotspot.porKeys
+                );
+
+            }
+
+
+            if (
+                Array.isArray(
+                    hotspot.porNos
+                )
+            ) {
+
+                porValues.push(
+                    ...hotspot.porNos
+                );
+
+            }
+
+
+            const knownRanges = [
+
+                "WRVK",
+
+                "WDPO",
+
+                "EDPO",
+
+                "PANA",
+
+                "NMT",
+
+                "HTG",
+
+                "ERVK",
+
+                "HQM",
+
+                "MW",
+
+                "RE",
+
+                "AFR(W)",
+
+                "WLMSQ-I",
+
+                "WLMSQ-II"
+
+            ];
+
+
+            for (
+                const value
+                of porValues
+            ) {
+
+                const text =
+
+                    String(
+                        value
+                    )
+                        .toUpperCase();
+
+
+                for (
+                    const range
+                    of knownRanges
+                ) {
+
+                    if (
+                        text.includes(
+                            range
+                        )
+                    ) {
+
+                        return range;
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * Final fallback:
+             * inspect hotspot address/name.
+             */
+
+            const text =
+
+                String(
+
+                    hotspot.address ||
+
+                    hotspot.name ||
+
+                    hotspot.locationName ||
+
+                    ""
+
+                )
+                    .toUpperCase();
+
+
+            for (
+                const range
+                of knownRanges
+            ) {
+
+                if (
+                    text.includes(
+                        range
+                    )
+                ) {
+
+                    return range;
+
+                }
+
+            }
+
+
+            return "";
 
         };
 
 
     /* =====================================================
-       COMPARTMENT MATCHING
+       COMPARTMENT FEATURE LOOKUP
        ===================================================== */
 
 
@@ -2022,6 +3889,15 @@
             rawCompartment
 
         ) {
+
+            if (
+                !rawCompartment
+            ) {
+
+                return null;
+
+            }
+
 
             const key =
 
@@ -2041,7 +3917,151 @@
 
 
             /*
-             * Exact canonical match first.
+             * -----------------------------------------
+             * PRIORITY 1
+             * GreenGuard canonical GISEntities.
+             * -----------------------------------------
+             *
+             * GISEntities indexes:
+             *
+             * window.allCompartmentFeatures
+             *
+             * and uses the application's shared
+             * GG.normalizeName() normalization.
+             */
+
+            const GISEntities =
+
+                HeatmapEngine
+                    .getGISEntities();
+
+
+            if (
+                GISEntities &&
+                typeof GISEntities.search ===
+                "function"
+            ) {
+
+                try {
+
+                    HeatmapEngine
+                        .ensureGISEntitiesReady();
+
+
+                    const entityFeature =
+
+                        GISEntities
+                            .search(
+                                rawCompartment
+                            );
+
+
+                    /*
+                     * Generic GISEntities.search() can
+                     * return another GIS entity type.
+                     *
+                     * Validate that the result represents
+                     * a compartment before accepting it.
+                     */
+
+                    if (
+                        entityFeature
+                    ) {
+
+                        const properties =
+
+                            HeatmapEngine
+                                .getFeatureProperties(
+                                    entityFeature
+                                );
+
+
+                        const compartmentName =
+
+                            properties.compartment ||
+
+                            properties.compartmentName ||
+
+                            properties.compartment_name ||
+
+                            properties.comp;
+
+
+                        if (
+                            compartmentName
+                        ) {
+
+                            return entityFeature;
+
+                        }
+
+
+                        /*
+                         * allCompartmentFeatures may use
+                         * properties.name instead.
+                         *
+                         * Only accept generic name when its
+                         * normalized value exactly matches
+                         * the requested compartment.
+                         */
+
+                        if (
+                            properties.name &&
+                            HeatmapEngine
+                                .normalizeSpatialKey(
+                                    properties.name
+                                ) ===
+                            key
+                        ) {
+
+                            return entityFeature;
+
+                        }
+
+                    }
+
+                }
+                catch (
+                    error
+                ) {
+
+                    /*
+                     * Fall through to local GIS index.
+                     */
+
+                    if (
+                        Constants.DEBUG
+                            ?.ENABLED
+                    ) {
+
+                        console.warn(
+
+                            "[OffenceHeatmapEngine] GISEntities compartment lookup failed.",
+
+                            {
+
+                                compartment:
+                                    rawCompartment,
+
+                                error:
+                                    error
+
+                            }
+
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * -----------------------------------------
+             * PRIORITY 2
+             * Local compartment index.
+             * -----------------------------------------
              */
 
             if (
@@ -2062,10 +4082,16 @@
 
 
             /*
-             * Conservative fallback.
+             * -----------------------------------------
+             * PRIORITY 3
+             * Flexible normalized comparison.
+             * -----------------------------------------
              *
-             * Avoid broad fuzzy matching because
-             * BL1 / BL2 names repeat across ranges.
+             * Useful for values such as:
+             *
+             * WRVK-9
+             * WRVK 9
+             * WRVK9
              */
 
             for (
@@ -2075,11 +4101,28 @@
                 ]
                 of HeatmapEngine
                     .compartmentIndex
+                    .entries()
             ) {
 
                 if (
                     compartmentKey ===
                     key
+                ) {
+
+                    return feature;
+
+                }
+
+
+                if (
+                    compartmentKey
+                        .includes(
+                            key
+                        ) ||
+                    key
+                        .includes(
+                            compartmentKey
+                        )
                 ) {
 
                     return feature;
@@ -2095,7 +4138,7 @@
 
 
     /* =====================================================
-       RANGE MATCHING
+       RANGE FEATURE LOOKUP
        ===================================================== */
 
 
@@ -2105,6 +4148,15 @@
             rawRange
 
         ) {
+
+            if (
+                !rawRange
+            ) {
+
+                return [];
+
+            }
+
 
             const key =
 
@@ -2123,7 +4175,17 @@
             }
 
 
-            return (
+            /*
+             * -----------------------------------------
+             * PRIORITY 1
+             * Local Range index.
+             * -----------------------------------------
+             *
+             * This can return multiple polygons belonging
+             * to the same Range.
+             */
+
+            const indexedFeatures =
 
                 HeatmapEngine
                     .rangeIndex
@@ -2131,15 +4193,175 @@
                         key
                     ) ||
 
-                []
+                [];
 
-            );
+
+            if (
+                indexedFeatures.length
+            ) {
+
+                return indexedFeatures;
+
+            }
+
+
+            /*
+             * -----------------------------------------
+             * PRIORITY 2
+             * GreenGuard GISEntities.
+             * -----------------------------------------
+             */
+
+            const GISEntities =
+
+                HeatmapEngine
+                    .getGISEntities();
+
+
+            if (
+                GISEntities &&
+                typeof GISEntities.search ===
+                "function"
+            ) {
+
+                try {
+
+                    HeatmapEngine
+                        .ensureGISEntitiesReady();
+
+
+                    /*
+                     * First try the original Range value.
+                     */
+
+                    let entityFeature =
+
+                        GISEntities
+                            .search(
+                                rawRange
+                            );
+
+
+                    /*
+                     * If abbreviation lookup failed,
+                     * try normalized canonical Range.
+                     */
+
+                    if (
+                        !entityFeature &&
+                        key !== rawRange
+                    ) {
+
+                        entityFeature =
+
+                            GISEntities
+                                .search(
+                                    key
+                                );
+
+                    }
+
+
+                    if (
+                        entityFeature
+                    ) {
+
+                        const entityRange =
+
+                            HeatmapEngine
+                                .getRangeName(
+                                    entityFeature
+                                );
+
+
+                        /*
+                         * Only accept a feature that has
+                         * an identifiable Range.
+                         */
+
+                        if (
+                            entityRange
+                        ) {
+
+                            return [
+                                entityFeature
+                            ];
+
+                        }
+
+                    }
+
+                }
+                catch (
+                    error
+                ) {
+
+                    if (
+                        Constants.DEBUG
+                            ?.ENABLED
+                    ) {
+
+                        console.warn(
+
+                            "[OffenceHeatmapEngine] GISEntities Range lookup failed.",
+
+                            {
+
+                                range:
+                                    rawRange,
+
+                                normalizedRange:
+                                    key,
+
+                                error:
+                                    error
+
+                            }
+
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * -----------------------------------------
+             * PRIORITY 3
+             * Flexible local Range comparison.
+             * -----------------------------------------
+             */
+
+            for (
+                const [
+                    rangeKey,
+                    features
+                ]
+                of HeatmapEngine
+                    .rangeIndex
+                    .entries()
+            ) {
+
+                if (
+                    rangeKey ===
+                    key
+                ) {
+
+                    return features;
+
+                }
+
+            }
+
+
+            return [];
 
         };
 
-
-    /* =====================================================
-       SPATIAL RESOLUTION
+     /* =====================================================
+       SPATIAL REPRESENTATION RESOLUTION
        ===================================================== */
 
 
@@ -2158,8 +4380,11 @@
 
                 return {
 
-                    type:
+                    spatialType:
                         "UNMAPPED",
+
+                    type:
+                        type,
 
                     hotspot:
                         hotspot
@@ -2170,8 +4395,14 @@
 
 
             /*
+             * =============================================
              * PRIORITY 1
-             * Exact GPS point.
+             * VALID GPS POINT
+             * =============================================
+             *
+             * Only genuine coordinates are accepted.
+             *
+             * 0,0 is rejected by getCoordinates().
              */
 
             const coordinates =
@@ -2197,27 +4428,67 @@
                     hotspot:
                         hotspot,
 
+
                     latitude:
                         coordinates.latitude,
 
                     longitude:
                         coordinates.longitude,
 
+
+                    lat:
+                        coordinates.latitude,
+
+                    lng:
+                        coordinates.longitude,
+
+
                     heatWeight:
-                        hotspot.heatWeight ||
+
+                        Number(
+                            hotspot.heatWeight
+                        ) ||
+
+                        Number(
+                            hotspot.offenceCount
+                        ) ||
+
                         1,
+
 
                     porKey:
                         hotspot.porKey ||
                         "",
 
+
                     porKeys:
-                        hotspot.porKeys ||
-                        [],
+
+                        Array.isArray(
+                            hotspot.porKeys
+                        )
+
+                            ? hotspot.porKeys
+                                .slice()
+
+                            : hotspot.porKey
+
+                                ? [
+                                    hotspot.porKey
+                                ]
+
+                                : [],
+
 
                     caseIds:
-                        hotspot.caseIds ||
-                        []
+
+                        Array.isArray(
+                            hotspot.caseIds
+                        )
+
+                            ? hotspot.caseIds
+                                .slice()
+
+                            : []
 
                 };
 
@@ -2225,8 +4496,13 @@
 
 
             /*
+             * =============================================
              * PRIORITY 2
-             * Compartment polygon.
+             * COMPARTMENT GEOJSON
+             * =============================================
+             *
+             * If no valid GPS exists, attempt to resolve
+             * an exact compartment polygon.
              */
 
             const compartment =
@@ -2264,27 +4540,75 @@
                         hotspot:
                             hotspot,
 
+
                         compartment:
                             compartment,
+
+
+                        /*
+                         * Canonical GeoJSON feature.
+                         */
 
                         feature:
                             feature,
 
+
+                        /*
+                         * Convenience alias for renderers.
+                         */
+
+                        features:
+                            [
+                                feature
+                            ],
+
+
                         heatWeight:
-                            hotspot.heatWeight ||
+
+                            Number(
+                                hotspot.heatWeight
+                            ) ||
+
+                            Number(
+                                hotspot.offenceCount
+                            ) ||
+
                             1,
+
 
                         porKey:
                             hotspot.porKey ||
                             "",
 
+
                         porKeys:
-                            hotspot.porKeys ||
-                            [],
+
+                            Array.isArray(
+                                hotspot.porKeys
+                            )
+
+                                ? hotspot.porKeys
+                                    .slice()
+
+                                : hotspot.porKey
+
+                                    ? [
+                                        hotspot.porKey
+                                    ]
+
+                                    : [],
+
 
                         caseIds:
-                            hotspot.caseIds ||
-                            []
+
+                            Array.isArray(
+                                hotspot.caseIds
+                            )
+
+                                ? hotspot.caseIds
+                                    .slice()
+
+                                : []
 
                     };
 
@@ -2294,8 +4618,17 @@
 
 
             /*
+             * =============================================
              * PRIORITY 3
-             * Range polygon fallback.
+             * RANGE GEOJSON
+             * =============================================
+             *
+             * If no point or compartment can be resolved,
+             * use the Range polygon(s).
+             *
+             * This is particularly important for Source
+             * offences because all offence cases may have
+             * a Range even when no GPS exists.
              */
 
             const range =
@@ -2319,6 +4652,9 @@
 
 
                 if (
+                    Array.isArray(
+                        features
+                    ) &&
                     features.length
                 ) {
 
@@ -2333,33 +4669,81 @@
                         hotspot:
                             hotspot,
 
+
                         range:
                             range,
 
-                        rangeKey:
-                            HeatmapEngine
-                                .normalizeRange(
-                                    range
-                                ),
+
+                        /*
+                         * A Range may resolve to one or
+                         * multiple GeoJSON features.
+                         */
 
                         features:
                             features,
 
+
+                        /*
+                         * Convenience alias when exactly
+                         * one Range feature is available.
+                         */
+
+                        feature:
+
+                            features.length ===
+                            1
+
+                                ? features[0]
+
+                                : null,
+
+
                         heatWeight:
-                            hotspot.heatWeight ||
+
+                            Number(
+                                hotspot.heatWeight
+                            ) ||
+
+                            Number(
+                                hotspot.offenceCount
+                            ) ||
+
                             1,
+
 
                         porKey:
                             hotspot.porKey ||
                             "",
 
+
                         porKeys:
-                            hotspot.porKeys ||
-                            [],
+
+                            Array.isArray(
+                                hotspot.porKeys
+                            )
+
+                                ? hotspot.porKeys
+                                    .slice()
+
+                                : hotspot.porKey
+
+                                    ? [
+                                        hotspot.porKey
+                                    ]
+
+                                    : [],
+
 
                         caseIds:
-                            hotspot.caseIds ||
-                            []
+
+                            Array.isArray(
+                                hotspot.caseIds
+                            )
+
+                                ? hotspot.caseIds
+                                    .slice()
+
+                                : []
 
                     };
 
@@ -2369,7 +4753,10 @@
 
 
             /*
-             * No usable spatial representation.
+             * =============================================
+             * PRIORITY 4
+             * UNMAPPED
+             * =============================================
              */
 
             return {
@@ -2383,17 +4770,50 @@
                 hotspot:
                     hotspot,
 
+
+                attemptedCompartment:
+                    compartment ||
+                    "",
+
+
+                attemptedRange:
+                    range ||
+                    "",
+
+
                 porKey:
                     hotspot.porKey ||
                     "",
 
+
                 porKeys:
-                    hotspot.porKeys ||
-                    [],
+
+                    Array.isArray(
+                        hotspot.porKeys
+                    )
+
+                        ? hotspot.porKeys
+                            .slice()
+
+                        : hotspot.porKey
+
+                            ? [
+                                hotspot.porKey
+                            ]
+
+                            : [],
+
 
                 caseIds:
-                    hotspot.caseIds ||
-                    []
+
+                    Array.isArray(
+                        hotspot.caseIds
+                    )
+
+                        ? hotspot.caseIds
+                            .slice()
+
+                        : []
 
             };
 
@@ -2401,7 +4821,7 @@
 
 
     /* =====================================================
-       SPATIAL REGISTRATION
+       REGISTER SPATIAL REPRESENTATION
        ===================================================== */
 
 
@@ -2418,162 +4838,229 @@
                 !spatial
             ) {
 
-                return;
+                return false;
 
             }
 
 
-            const isSource =
+            const normalizedType =
 
-                type ===
-                "SOURCE";
+                HeatmapEngine
+                    .normalizeKey(
+                        type
+                    );
 
 
-            switch (
-                spatial.spatialType
+            const spatialType =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        spatial.spatialType
+                    );
+
+
+            /*
+             * =============================================
+             * SOURCE
+             * =============================================
+             */
+
+            if (
+                normalizedType ===
+                "SOURCE"
             ) {
-
-                case "POINT":
-
-                    (
-
-                        isSource
-
-                            ? HeatmapEngine
-                                .spatial
-                                .sourcePoints
-
-                            : HeatmapEngine
-                                .spatial
-                                .targetPoints
-
-                    )
-                        .push(
-                            spatial
-                        );
-
-                    break;
-
-
-                case "COMPARTMENT":
-
-                    (
-
-                        isSource
-
-                            ? HeatmapEngine
-                                .spatial
-                                .sourceCompartments
-
-                            : HeatmapEngine
-                                .spatial
-                                .targetCompartments
-
-                    )
-                        .push(
-                            spatial
-                        );
-
-                    break;
-
-
-                case "RANGE":
-
-                    (
-
-                        isSource
-
-                            ? HeatmapEngine
-                                .spatial
-                                .sourceRanges
-
-                            : HeatmapEngine
-                                .spatial
-                                .targetRanges
-
-                    )
-                        .push(
-                            spatial
-                        );
-
-                    break;
-
-
-                default:
-
-                    (
-
-                        isSource
-
-                            ? HeatmapEngine
-                                .spatial
-                                .unmappedSources
-
-                            : HeatmapEngine
-                                .spatial
-                                .unmappedTargets
-
-                    )
-                        .push(
-                            spatial
-                        );
-
-            }
-
-
-            const porKeys =
-
-                spatial.porKeys?.length
-
-                    ? spatial.porKeys
-
-                    : spatial.porKey
-
-                        ? [
-                            spatial.porKey
-                        ]
-
-                        : [];
-
-
-            for (
-                const rawPorKey
-                of porKeys
-            ) {
-
-                const relation =
-
-                    HeatmapEngine
-                        .getOrCreatePorRelation(
-                            rawPorKey
-                        );
-
 
                 if (
-                    !relation
+                    spatialType ===
+                    "POINT"
                 ) {
 
-                    continue;
+                    HeatmapEngine
+                        .spatial
+                        .sourcePoints
+                        .push(
+                            spatial
+                        );
+
+
+                    return true;
 
                 }
 
 
-                const collection =
+                if (
+                    spatialType ===
+                    "COMPARTMENT"
+                ) {
 
-                    isSource
+                    HeatmapEngine
+                        .spatial
+                        .sourceCompartments
+                        .push(
+                            spatial
+                        );
 
-                        ? relation
-                            .sourceSpatial
 
-                        : relation
-                            .targetSpatial;
+                    return true;
+
+                }
 
 
-                collection.push(
-                    spatial
-                );
+                if (
+                    spatialType ===
+                    "RANGE"
+                ) {
+
+                    HeatmapEngine
+                        .spatial
+                        .sourceRanges
+                        .push(
+                            spatial
+                        );
+
+
+                    return true;
+
+                }
+
+
+                HeatmapEngine
+                    .spatial
+                    .unmappedSources
+                    .push(
+                        spatial
+                    );
+
+
+                return true;
 
             }
+
+
+            /*
+             * =============================================
+             * TARGET
+             * =============================================
+             */
+
+            if (
+                normalizedType ===
+                "TARGET"
+            ) {
+
+                if (
+                    spatialType ===
+                    "POINT"
+                ) {
+
+                    HeatmapEngine
+                        .spatial
+                        .targetPoints
+                        .push(
+                            spatial
+                        );
+
+
+                    return true;
+
+                }
+
+
+                if (
+                    spatialType ===
+                    "COMPARTMENT"
+                ) {
+
+                    HeatmapEngine
+                        .spatial
+                        .targetCompartments
+                        .push(
+                            spatial
+                        );
+
+
+                    return true;
+
+                }
+
+
+                if (
+                    spatialType ===
+                    "RANGE"
+                ) {
+
+                    HeatmapEngine
+                        .spatial
+                        .targetRanges
+                        .push(
+                            spatial
+                        );
+
+
+                    return true;
+
+                }
+
+
+                HeatmapEngine
+                    .spatial
+                    .unmappedTargets
+                    .push(
+                        spatial
+                    );
+
+
+                return true;
+
+            }
+
+
+            return false;
+
+        };
+
+
+    /* =====================================================
+       RESET SPATIAL DATA
+       ===================================================== */
+
+
+    HeatmapEngine.resetSpatial =
+        function () {
+
+            HeatmapEngine.spatial = {
+
+                sourcePoints:
+                    [],
+
+                targetPoints:
+                    [],
+
+
+                sourceCompartments:
+                    [],
+
+                targetCompartments:
+                    [],
+
+
+                sourceRanges:
+                    [],
+
+                targetRanges:
+                    [],
+
+
+                unmappedSources:
+                    [],
+
+                unmappedTargets:
+                    []
+
+            };
+
+
+            return HeatmapEngine.spatial;
 
         };
 
@@ -2586,52 +5073,52 @@
     HeatmapEngine.buildSpatialData =
         function () {
 
-            HeatmapEngine.spatial = {
-
-                sourcePoints:
-                    [],
-
-                targetPoints:
-                    [],
-
-                sourceCompartments:
-                    [],
-
-                targetCompartments:
-                    [],
-
-                sourceRanges:
-                    [],
-
-                targetRanges:
-                    [],
-
-                unmappedSources:
-                    [],
-
-                unmappedTargets:
-                    []
-
-            };
-
-
-            const features =
-
-                HeatmapEngine
-                    .getGISFeatures();
-
+            /*
+             * Always start from a clean derived spatial
+             * representation.
+             */
 
             HeatmapEngine
-                .buildSpatialIndexes(
-                    features
-                );
+                .resetSpatial();
+
+
+            /*
+             * Ensure canonical GISEntities is available.
+             *
+             * Failure here is not fatal because the local
+             * GIS indexes can still be used.
+             */
+
+            HeatmapEngine
+                .ensureGISEntitiesReady();
+
+
+            /*
+             * Build local indexes from:
+             *
+             * allGISFeatures
+             * allCompartmentFeatures
+             */
+
+            HeatmapEngine
+                .buildSpatialIndexes();
+
+
+            /*
+             * =============================================
+             * SOURCE HOTSPOTS
+             * =============================================
+             */
+
+            const sources =
+
+                HeatmapEngine
+                    .getSourceHotspots();
 
 
             for (
                 const hotspot
-                of HeatmapEngine
-                    .data
-                    .sources
+                of sources
             ) {
 
                 const spatial =
@@ -2658,11 +5145,21 @@
             }
 
 
+            /*
+             * =============================================
+             * TARGET HOTSPOTS
+             * =============================================
+             */
+
+            const targets =
+
+                HeatmapEngine
+                    .getTargetHotspots();
+
+
             for (
                 const hotspot
-                of HeatmapEngine
-                    .data
-                    .targets
+                of targets
             ) {
 
                 const spatial =
@@ -2689,303 +5186,6 @@
             }
 
 
-            return HeatmapEngine
-                .spatial;
-
-        };
-
-
-    /* =====================================================
-       CASCADE HYDRATION
-       ===================================================== */
-
-
-    HeatmapEngine.mergeCascadeIntoPorRelation =
-        function (
-
-            relation,
-
-            cascade
-
-        ) {
-
-            if (
-                !relation ||
-                !cascade
-            ) {
-
-                return relation;
-
-            }
-
-
-            if (
-                cascade.porNo
-            ) {
-
-                relation.porNo =
-                    cascade.porNo;
-
-            }
-
-
-            const groups = [
-
-                [
-                    "cases",
-                    HeatmapEngine.getCaseId
-                ],
-
-                [
-                    "accused",
-                    HeatmapEngine.getAccusedId
-                ],
-
-                [
-                    "witnesses",
-                    HeatmapEngine.getWitnessId
-                ],
-
-                [
-                    "seizures",
-                    HeatmapEngine.getSeizureId
-                ],
-
-                [
-                    "articles",
-                    HeatmapEngine.getArticleId
-                ]
-
-            ];
-
-
-            for (
-                const [
-                    field,
-                    idGetter
-                ]
-                of groups
-            ) {
-
-                const items =
-
-                    HeatmapEngine
-                        .toArray(
-                            cascade[field]
-                        );
-
-
-                for (
-                    const item
-                    of items
-                ) {
-
-                    HeatmapEngine
-                        .addUniqueObject(
-
-                            relation[field],
-
-                            item,
-
-                            idGetter
-
-                        );
-
-                }
-
-            }
-
-
-            return relation;
-
-        };
-
-
-    HeatmapEngine.getStoreCascadeByPor =
-        function (
-
-            porKey
-
-        ) {
-
-            const Store =
-
-                Offence.Store;
-
-
-            if (
-                !Store
-            ) {
-
-                return null;
-
-            }
-
-
-            const methods = [
-
-                "getPorCascade",
-
-                "getCascadeData",
-
-                "getPorCascadeData",
-
-                "getByPor",
-
-                "getByPorKey"
-
-            ];
-
-
-            for (
-                const method
-                of methods
-            ) {
-
-                if (
-                    typeof Store[method] !==
-                    "function"
-                ) {
-
-                    continue;
-
-                }
-
-
-                try {
-
-                    const result =
-
-                        Store[method](
-                            porKey
-                        );
-
-
-                    if (
-                        result
-                    ) {
-
-                        return result;
-
-                    }
-
-                }
-                catch (
-                    error
-                ) {
-
-                    /*
-                     * Continue to next compatible
-                     * Store method.
-                     */
-
-                }
-
-            }
-
-
-            return null;
-
-        };
-
-
-    HeatmapEngine.hydratePorRelation =
-        function (
-
-            relation
-
-        ) {
-
-            if (
-                !relation
-            ) {
-
-                return relation;
-
-            }
-
-
-            const cascade =
-
-                HeatmapEngine
-                    .getStoreCascadeByPor(
-                        relation.porKey
-                    );
-
-
-            if (
-                cascade
-            ) {
-
-                HeatmapEngine
-                    .mergeCascadeIntoPorRelation(
-
-                        relation,
-
-                        cascade
-
-                    );
-
-            }
-
-
-            return relation;
-
-        };
-
-
-    HeatmapEngine.hydrateAllPorRelations =
-        function () {
-
-            let hydrated =
-                0;
-
-
-            let withoutCascade =
-                0;
-
-
-            for (
-                const relation
-                of HeatmapEngine
-                    .porIndex
-                    .values()
-            ) {
-
-                const cascade =
-
-                    HeatmapEngine
-                        .getStoreCascadeByPor(
-                            relation.porKey
-                        );
-
-
-                if (
-                    cascade
-                ) {
-
-                    HeatmapEngine
-                        .mergeCascadeIntoPorRelation(
-
-                            relation,
-
-                            cascade
-
-                        );
-
-
-                    hydrated++;
-
-                }
-                else {
-
-                    withoutCascade++;
-
-                }
-
-            }
-
-
             if (
                 Constants.DEBUG
                     ?.ENABLED
@@ -2993,159 +5193,9 @@
 
                 console.log(
 
-                    "[OffenceHeatmapEngine] POR relations hydrated",
+                    "[OffenceHeatmapEngine] Spatial data built",
 
                     {
-
-                        totalPorKeys:
-                            HeatmapEngine
-                                .porIndex
-                                .size,
-
-                        hydrated:
-                            hydrated,
-
-                        withoutCascade:
-                            withoutCascade
-
-                    }
-
-                );
-
-            }
-
-
-            return HeatmapEngine;
-
-        };
-
-
-    /* =====================================================
-       INDEX MANAGEMENT
-       ===================================================== */
-
-
-    HeatmapEngine.resetIndexes =
-        function () {
-
-            HeatmapEngine
-                .hotspotIndex
-                .clear();
-
-
-            HeatmapEngine
-                .porIndex
-                .clear();
-
-
-            HeatmapEngine
-                .caseIndex
-                .clear();
-
-
-            return HeatmapEngine;
-
-        };
-
-
-    HeatmapEngine.rebuildIndexes =
-        function () {
-
-            HeatmapEngine
-                .resetIndexes();
-
-
-            const sources =
-
-                Array.isArray(
-                    HeatmapEngine.data.sources
-                )
-
-                    ? HeatmapEngine.data.sources
-
-                    : [];
-
-
-            const targets =
-
-                Array.isArray(
-                    HeatmapEngine.data.targets
-                )
-
-                    ? HeatmapEngine.data.targets
-
-                    : [];
-
-
-            for (
-                const source
-                of sources
-            ) {
-
-                HeatmapEngine
-                    .registerSourceHotspot(
-                        source
-                    );
-
-            }
-
-
-            for (
-                const target
-                of targets
-            ) {
-
-                HeatmapEngine
-                    .registerTargetHotspot(
-                        target
-                    );
-
-            }
-
-
-            /*
-             * Hydrate POR business relationships
-             * BEFORE spatial registration.
-             */
-
-            HeatmapEngine
-                .hydrateAllPorRelations();
-
-
-            /*
-             * Build POINT > COMPARTMENT > RANGE
-             * spatial representations.
-             */
-
-            HeatmapEngine
-                .buildSpatialData();
-
-
-            if (
-                Constants.DEBUG
-                    ?.ENABLED
-            ) {
-
-                console.log(
-
-                    "[OffenceHeatmapEngine] Indexes rebuilt",
-
-                    {
-
-                        hotspots:
-                            HeatmapEngine
-                                .hotspotIndex
-                                .size,
-
-                        porRelations:
-                            HeatmapEngine
-                                .porIndex
-                                .size,
-
-                        caseRelations:
-                            HeatmapEngine
-                                .caseIndex
-                                .size,
 
                         sourcePoints:
                             HeatmapEngine
@@ -3165,6 +5215,13 @@
                                 .sourceRanges
                                 .length,
 
+                        unmappedSources:
+                            HeatmapEngine
+                                .spatial
+                                .unmappedSources
+                                .length,
+
+
                         targetPoints:
                             HeatmapEngine
                                 .spatial
@@ -3181,6 +5238,12 @@
                             HeatmapEngine
                                 .spatial
                                 .targetRanges
+                                .length,
+
+                        unmappedTargets:
+                            HeatmapEngine
+                                .spatial
+                                .unmappedTargets
                                 .length
 
                     }
@@ -3190,106 +5253,1189 @@
             }
 
 
-            return HeatmapEngine;
+            return HeatmapEngine.spatial;
 
         };
 
 
     /* =====================================================
-       BUILD
+       SPATIAL DATA GETTERS
        ===================================================== */
 
 
-    HeatmapEngine.build =
+    HeatmapEngine.getSpatialData =
+        function () {
+
+            return HeatmapEngine.spatial;
+
+        };
+
+
+    HeatmapEngine.getSourcePoints =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .sourcePoints ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getTargetPoints =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .targetPoints ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getSourceCompartments =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .sourceCompartments ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getTargetCompartments =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .targetCompartments ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getSourceRanges =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .sourceRanges ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getTargetRanges =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .targetRanges ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getUnmappedSources =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .unmappedSources ||
+
+                []
+
+            );
+
+        };
+
+
+    HeatmapEngine.getUnmappedTargets =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .spatial
+                    .unmappedTargets ||
+
+                []
+
+            );
+
+        };
+
+     /* =====================================================
+       SPATIAL SUMMARY
+       ===================================================== */
+
+
+    HeatmapEngine.getSpatialStats =
+        function () {
+
+            const spatial =
+
+                HeatmapEngine.spatial ||
+
+                {};
+
+
+            const sourcePoints =
+
+                Array.isArray(
+                    spatial.sourcePoints
+                )
+
+                    ? spatial.sourcePoints
+
+                    : [];
+
+
+            const targetPoints =
+
+                Array.isArray(
+                    spatial.targetPoints
+                )
+
+                    ? spatial.targetPoints
+
+                    : [];
+
+
+            const sourceCompartments =
+
+                Array.isArray(
+                    spatial.sourceCompartments
+                )
+
+                    ? spatial.sourceCompartments
+
+                    : [];
+
+
+            const targetCompartments =
+
+                Array.isArray(
+                    spatial.targetCompartments
+                )
+
+                    ? spatial.targetCompartments
+
+                    : [];
+
+
+            const sourceRanges =
+
+                Array.isArray(
+                    spatial.sourceRanges
+                )
+
+                    ? spatial.sourceRanges
+
+                    : [];
+
+
+            const targetRanges =
+
+                Array.isArray(
+                    spatial.targetRanges
+                )
+
+                    ? spatial.targetRanges
+
+                    : [];
+
+
+            const unmappedSources =
+
+                Array.isArray(
+                    spatial.unmappedSources
+                )
+
+                    ? spatial.unmappedSources
+
+                    : [];
+
+
+            const unmappedTargets =
+
+                Array.isArray(
+                    spatial.unmappedTargets
+                )
+
+                    ? spatial.unmappedTargets
+
+                    : [];
+
+
+            return {
+
+                source: {
+
+                    total:
+
+                        sourcePoints.length +
+
+                        sourceCompartments.length +
+
+                        sourceRanges.length +
+
+                        unmappedSources.length,
+
+
+                    points:
+                        sourcePoints.length,
+
+
+                    compartments:
+                        sourceCompartments.length,
+
+
+                    ranges:
+                        sourceRanges.length,
+
+
+                    unmapped:
+                        unmappedSources.length
+
+                },
+
+
+                target: {
+
+                    total:
+
+                        targetPoints.length +
+
+                        targetCompartments.length +
+
+                        targetRanges.length +
+
+                        unmappedTargets.length,
+
+
+                    points:
+                        targetPoints.length,
+
+
+                    compartments:
+                        targetCompartments.length,
+
+
+                    ranges:
+                        targetRanges.length,
+
+
+                    unmapped:
+                        unmappedTargets.length
+
+                }
+
+            };
+
+        };
+
+
+    /* =====================================================
+       HEAT POINT CONVERSION
+       ===================================================== */
+
+
+    HeatmapEngine.createHeatPoint =
         function (
 
-            sources,
-
-            targets
+            spatial
 
         ) {
 
             if (
-                HeatmapEngine.building
+                !spatial
             ) {
 
-                return HeatmapEngine
-                    .getHeatmapData();
+                return null;
 
             }
 
 
-            HeatmapEngine.building =
-                true;
+            if (
+                spatial.spatialType !==
+                "POINT"
+            ) {
 
-
-            HeatmapEngine.ready =
-                false;
-
-
-            try {
-
-                HeatmapEngine.data = {
-
-                    resolvedContexts:
-                        [],
-
-                    sources:
-                        Array.isArray(
-                            sources
-                        )
-
-                            ? sources.slice()
-
-                            : [],
-
-                    targets:
-                        Array.isArray(
-                            targets
-                        )
-
-                            ? targets.slice()
-
-                            : [],
-
-                    links:
-                        []
-
-                };
-
-
-                HeatmapEngine
-                    .rebuildIndexes();
-
-
-                HeatmapEngine
-                    .buildLinks();
-
-
-                HeatmapEngine.ready =
-                    true;
-
-
-                HeatmapEngine.lastBuildAt =
-                    Date.now();
-
-
-                return HeatmapEngine
-                    .getHeatmapData();
+                return null;
 
             }
-            finally {
 
-                HeatmapEngine.building =
-                    false;
+
+            const latitude =
+
+                Number(
+
+                    spatial.latitude ??
+
+                    spatial.lat
+
+                );
+
+
+            const longitude =
+
+                Number(
+
+                    spatial.longitude ??
+
+                    spatial.lng
+
+                );
+
+
+            /*
+             * Reject invalid coordinates and 0,0.
+             */
+
+            if (
+                !Number.isFinite(
+                    latitude
+                ) ||
+
+                !Number.isFinite(
+                    longitude
+                ) ||
+
+                (
+                    latitude === 0 &&
+                    longitude === 0
+                )
+            ) {
+
+                return null;
 
             }
+
+
+            let weight =
+
+                Number(
+                    spatial.heatWeight
+                );
+
+
+            if (
+                !Number.isFinite(
+                    weight
+                ) ||
+
+                weight <= 0
+            ) {
+
+                weight =
+                    1;
+
+            }
+
+
+            return [
+
+                latitude,
+
+                longitude,
+
+                weight
+
+            ];
 
         };
 
 
     /* =====================================================
-       LINKS
+       POINT HEATMAP DATA
+       ===================================================== */
+
+
+    HeatmapEngine.getSourceHeatPoints =
+        function () {
+
+            return HeatmapEngine
+                .getSourcePoints()
+                .map(
+
+                    HeatmapEngine
+                        .createHeatPoint
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    HeatmapEngine.getTargetHeatPoints =
+        function () {
+
+            return HeatmapEngine
+                .getTargetPoints()
+                .map(
+
+                    HeatmapEngine
+                        .createHeatPoint
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    /* =====================================================
+       POLYGON REPRESENTATION HELPERS
+       ===================================================== */
+
+
+    HeatmapEngine.createPolygonEntry =
+        function (
+
+            spatial
+
+        ) {
+
+            if (
+                !spatial
+            ) {
+
+                return null;
+
+            }
+
+
+            const spatialType =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        spatial.spatialType
+                    );
+
+
+            if (
+                spatialType !==
+                "COMPARTMENT" &&
+
+                spatialType !==
+                "RANGE"
+            ) {
+
+                return null;
+
+            }
+
+
+            let features =
+
+                [];
+
+
+            if (
+                Array.isArray(
+                    spatial.features
+                )
+            ) {
+
+                features =
+
+                    spatial.features
+                        .filter(
+                            Boolean
+                        );
+
+            }
+
+
+            if (
+                !features.length &&
+                spatial.feature
+            ) {
+
+                features =
+
+                    [
+                        spatial.feature
+                    ];
+
+            }
+
+
+            if (
+                !features.length
+            ) {
+
+                return null;
+
+            }
+
+
+            return {
+
+                spatialType:
+                    spatial.spatialType,
+
+
+                type:
+                    spatial.type,
+
+
+                hotspot:
+                    spatial.hotspot,
+
+
+                feature:
+
+                    features.length ===
+                    1
+
+                        ? features[0]
+
+                        : null,
+
+
+                features:
+                    features,
+
+
+                compartment:
+                    spatial.compartment ||
+                    "",
+
+
+                range:
+                    spatial.range ||
+                    "",
+
+
+                heatWeight:
+
+                    Number(
+                        spatial.heatWeight
+                    ) ||
+
+                    1,
+
+
+                porKey:
+                    spatial.porKey ||
+                    "",
+
+
+                porKeys:
+
+                    Array.isArray(
+                        spatial.porKeys
+                    )
+
+                        ? spatial.porKeys
+                            .slice()
+
+                        : [],
+
+
+                caseIds:
+
+                    Array.isArray(
+                        spatial.caseIds
+                    )
+
+                        ? spatial.caseIds
+                            .slice()
+
+                        : []
+
+            };
+
+        };
+
+
+    /* =====================================================
+       SOURCE POLYGON DATA
+       ===================================================== */
+
+
+    HeatmapEngine.getSourceCompartmentPolygons =
+        function () {
+
+            return HeatmapEngine
+                .getSourceCompartments()
+                .map(
+
+                    HeatmapEngine
+                        .createPolygonEntry
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    HeatmapEngine.getSourceRangePolygons =
+        function () {
+
+            return HeatmapEngine
+                .getSourceRanges()
+                .map(
+
+                    HeatmapEngine
+                        .createPolygonEntry
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    /* =====================================================
+       TARGET POLYGON DATA
+       ===================================================== */
+
+
+    HeatmapEngine.getTargetCompartmentPolygons =
+        function () {
+
+            return HeatmapEngine
+                .getTargetCompartments()
+                .map(
+
+                    HeatmapEngine
+                        .createPolygonEntry
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    HeatmapEngine.getTargetRangePolygons =
+        function () {
+
+            return HeatmapEngine
+                .getTargetRanges()
+                .map(
+
+                    HeatmapEngine
+                        .createPolygonEntry
+
+                )
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    /* =====================================================
+       ALL SOURCE POLYGONS
+       ===================================================== */
+
+
+    HeatmapEngine.getSourcePolygons =
+        function () {
+
+            return [
+
+                ...HeatmapEngine
+                    .getSourceCompartmentPolygons(),
+
+                ...HeatmapEngine
+                    .getSourceRangePolygons()
+
+            ];
+
+        };
+
+
+    /* =====================================================
+       ALL TARGET POLYGONS
+       ===================================================== */
+
+
+    HeatmapEngine.getTargetPolygons =
+        function () {
+
+            return [
+
+                ...HeatmapEngine
+                    .getTargetCompartmentPolygons(),
+
+                ...HeatmapEngine
+                    .getTargetRangePolygons()
+
+            ];
+
+        };
+
+
+    /* =====================================================
+       POLYGON AGGREGATION
+       ===================================================== */
+
+
+    HeatmapEngine.aggregatePolygonEntries =
+        function (
+
+            entries
+
+        ) {
+
+            const result =
+
+                new Map();
+
+
+            for (
+                const entry
+                of (
+                    Array.isArray(
+                        entries
+                    )
+
+                        ? entries
+
+                        : []
+                )
+            ) {
+
+                if (
+                    !entry
+                ) {
+
+                    continue;
+
+                }
+
+
+                const spatialType =
+
+                    HeatmapEngine
+                        .normalizeKey(
+                            entry.spatialType
+                        );
+
+
+                const name =
+
+                    spatialType ===
+                    "COMPARTMENT"
+
+                        ? entry.compartment
+
+                        : entry.range;
+
+
+                const normalizedName =
+
+                    HeatmapEngine
+                        .normalizeGISName(
+                            name
+                        );
+
+
+                if (
+                    !normalizedName
+                ) {
+
+                    continue;
+
+                }
+
+
+                const key =
+
+                    spatialType +
+
+                    "::" +
+
+                    normalizedName;
+
+
+                if (
+                    !result.has(
+                        key
+                    )
+                ) {
+
+                    result.set(
+
+                        key,
+
+                        {
+
+                            key:
+                                key,
+
+
+                            spatialType:
+                                entry.spatialType,
+
+
+                            type:
+                                entry.type,
+
+
+                            name:
+                                name,
+
+
+                            compartment:
+
+                                spatialType ===
+                                "COMPARTMENT"
+
+                                    ? name
+
+                                    : "",
+
+
+                            range:
+
+                                spatialType ===
+                                "RANGE"
+
+                                    ? name
+
+                                    : "",
+
+
+                            features:
+
+                                Array.isArray(
+                                    entry.features
+                                )
+
+                                    ? entry.features
+                                        .slice()
+
+                                    : [],
+
+
+                            heatWeight:
+                                0,
+
+
+                            offenceCount:
+                                0,
+
+
+                            hotspotCount:
+                                0,
+
+
+                            hotspots:
+                                [],
+
+
+                            porKeys:
+                                [],
+
+
+                            caseIds:
+                                []
+
+                        }
+
+                    );
+
+                }
+
+
+                const aggregate =
+
+                    result.get(
+                        key
+                    );
+
+
+                aggregate.hotspotCount +=
+                    1;
+
+
+                aggregate.heatWeight +=
+
+                    Number(
+                        entry.heatWeight
+                    ) ||
+
+                    1;
+
+
+                aggregate.offenceCount +=
+
+                    Number(
+                        entry.hotspot
+                            ?.offenceCount
+                    ) ||
+
+                    1;
+
+
+                if (
+                    entry.hotspot
+                ) {
+
+                    HeatmapEngine
+                        .addUniqueObject(
+
+                            aggregate.hotspots,
+
+                            entry.hotspot,
+
+                            HeatmapEngine
+                                .getHotspotId
+
+                        );
+
+                }
+
+
+                for (
+                    const porKey
+                    of (
+                        Array.isArray(
+                            entry.porKeys
+                        )
+
+                            ? entry.porKeys
+
+                            : []
+                    )
+                ) {
+
+                    HeatmapEngine
+                        .addUnique(
+
+                            aggregate.porKeys,
+
+                            porKey,
+
+                            HeatmapEngine
+                                .normalizePorKey
+
+                        );
+
+                }
+
+
+                for (
+                    const caseId
+                    of (
+                        Array.isArray(
+                            entry.caseIds
+                        )
+
+                            ? entry.caseIds
+
+                            : []
+                    )
+                ) {
+
+                    HeatmapEngine
+                        .addUnique(
+
+                            aggregate.caseIds,
+
+                            caseId,
+
+                            HeatmapEngine
+                                .normalizeKey
+
+                        );
+
+                }
+
+            }
+
+
+            return Array.from(
+                result.values()
+            );
+
+        };
+
+
+    /* =====================================================
+       AGGREGATED SOURCE POLYGONS
+       ===================================================== */
+
+
+    HeatmapEngine.getAggregatedSourcePolygons =
+        function () {
+
+            return HeatmapEngine
+                .aggregatePolygonEntries(
+
+                    HeatmapEngine
+                        .getSourcePolygons()
+
+                );
+
+        };
+
+
+    /* =====================================================
+       AGGREGATED TARGET POLYGONS
+       ===================================================== */
+
+
+    HeatmapEngine.getAggregatedTargetPolygons =
+        function () {
+
+            return HeatmapEngine
+                .aggregatePolygonEntries(
+
+                    HeatmapEngine
+                        .getTargetPolygons()
+
+                );
+
+        };
+
+
+    /* =====================================================
+       CANONICAL SPATIAL OUTPUT
+       ===================================================== */
+
+
+    HeatmapEngine.getSpatialHeatmapData =
+        function () {
+
+            return {
+
+                /*
+                 * Leaflet.heat-compatible point arrays.
+                 */
+
+                sourceHeat:
+
+                    HeatmapEngine
+                        .getSourceHeatPoints(),
+
+
+                targetHeat:
+
+                    HeatmapEngine
+                        .getTargetHeatPoints(),
+
+
+                /*
+                 * Individual polygon representations.
+                 */
+
+                sourceCompartments:
+
+                    HeatmapEngine
+                        .getSourceCompartmentPolygons(),
+
+
+                targetCompartments:
+
+                    HeatmapEngine
+                        .getTargetCompartmentPolygons(),
+
+
+                sourceRanges:
+
+                    HeatmapEngine
+                        .getSourceRangePolygons(),
+
+
+                targetRanges:
+
+                    HeatmapEngine
+                        .getTargetRangePolygons(),
+
+
+                /*
+                 * Aggregated polygon heat layers.
+                 *
+                 * These are intended for MapRenderer.
+                 */
+
+                sourcePolygons:
+
+                    HeatmapEngine
+                        .getAggregatedSourcePolygons(),
+
+
+                targetPolygons:
+
+                    HeatmapEngine
+                        .getAggregatedTargetPolygons(),
+
+
+                /*
+                 * Diagnostic data.
+                 */
+
+                unmappedSources:
+
+                    HeatmapEngine
+                        .getUnmappedSources(),
+
+
+                unmappedTargets:
+
+                    HeatmapEngine
+                        .getUnmappedTargets(),
+
+
+                stats:
+
+                    HeatmapEngine
+                        .getSpatialStats()
+
+            };
+
+        };
+
+
+    /* =====================================================
+       BUILD SOURCE → TARGET LINKS
        ===================================================== */
 
 
@@ -3297,19 +6443,67 @@
         function () {
 
             const links =
+
                 [];
 
 
+            const seen =
+
+                new Set();
+
+
             for (
-                const relation
+                const [
+                    porKey,
+                    relation
+                ]
                 of HeatmapEngine
                     .porIndex
-                    .values()
+                    .entries()
             ) {
 
                 if (
-                    !relation.sources.length ||
-                    !relation.targets.length
+                    !relation
+                ) {
+
+                    continue;
+
+                }
+
+
+                const sources =
+
+                    Array.isArray(
+                        relation.sources
+                    )
+
+                        ? relation.sources
+
+                        : [];
+
+
+                const targets =
+
+                    Array.isArray(
+                        relation.targets
+                    )
+
+                        ? relation.targets
+
+                        : [];
+
+
+                /*
+                 * A POR relationship may have only a
+                 * source or only a target.
+                 *
+                 * A visual link requires both.
+                 */
+
+                if (
+                    !sources.length ||
+
+                    !targets.length
                 ) {
 
                     continue;
@@ -3319,36 +6513,117 @@
 
                 for (
                     const source
-                    of relation.sources
+                    of sources
                 ) {
+
+                    const sourceId =
+
+                        HeatmapEngine
+                            .getHotspotId(
+                                source
+                            );
+
+
+                    if (
+                        !sourceId
+                    ) {
+
+                        continue;
+
+                    }
+
 
                     for (
                         const target
-                        of relation.targets
+                        of targets
                     ) {
+
+                        const targetId =
+
+                            HeatmapEngine
+                                .getHotspotId(
+                                    target
+                                );
+
+
+                        if (
+                            !targetId
+                        ) {
+
+                            continue;
+
+                        }
+
+
+                        const linkKey =
+
+                            HeatmapEngine
+                                .normalizeKey(
+                                    porKey
+                                ) +
+
+                            "::" +
+
+                            HeatmapEngine
+                                .normalizeKey(
+                                    sourceId
+                                ) +
+
+                            "::" +
+
+                            HeatmapEngine
+                                .normalizeKey(
+                                    targetId
+                                );
+
+
+                        if (
+                            seen.has(
+                                linkKey
+                            )
+                        ) {
+
+                            continue;
+
+                        }
+
+
+                        seen.add(
+                            linkKey
+                        );
+
 
                         links.push({
 
+                            id:
+                                linkKey,
+
+
                             porKey:
-                                relation.porKey,
+                                porKey,
+
+
+                            porNo:
+
+                                relation.porNo ||
+
+                                porKey,
+
+
+                            sourceId:
+                                sourceId,
+
+
+                            targetId:
+                                targetId,
+
 
                             source:
                                 source,
 
+
                             target:
-                                target,
-
-                            sourceId:
-                                HeatmapEngine
-                                    .getHotspotId(
-                                        source
-                                    ),
-
-                            targetId:
-                                HeatmapEngine
-                                    .getHotspotId(
-                                        target
-                                    )
+                                target
 
                         });
 
@@ -3360,6 +6635,7 @@
 
 
             HeatmapEngine.data.links =
+
                 links;
 
 
@@ -3367,9 +6643,8 @@
 
         };
 
-
-    /* =====================================================
-       QUERY API
+     /* =====================================================
+       GET SOURCE HOTSPOTS BY POR
        ===================================================== */
 
 
@@ -3380,19 +6655,55 @@
 
         ) {
 
-            return (
+            const key =
 
                 HeatmapEngine
-                    .getOrCreatePorRelation(
+                    .normalizePorKey(
                         porKey
-                    )
-                    ?.sources ||
+                    );
 
-                []
 
-            );
+            if (
+                !key
+            ) {
+
+                return [];
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    );
+
+
+            if (
+                !relation
+            ) {
+
+                return [];
+
+            }
+
+
+            return Array.isArray(
+                relation.sources
+            )
+
+                ? relation.sources
+
+                : [];
 
         };
+
+
+    /* =====================================================
+       GET TARGET HOTSPOTS BY POR
+       ===================================================== */
 
 
     HeatmapEngine.getTargetsByPor =
@@ -3402,19 +6713,55 @@
 
         ) {
 
-            return (
+            const key =
 
                 HeatmapEngine
-                    .getOrCreatePorRelation(
+                    .normalizePorKey(
                         porKey
-                    )
-                    ?.targets ||
+                    );
 
-                []
 
-            );
+            if (
+                !key
+            ) {
+
+                return [];
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    );
+
+
+            if (
+                !relation
+            ) {
+
+                return [];
+
+            }
+
+
+            return Array.isArray(
+                relation.targets
+            )
+
+                ? relation.targets
+
+                : [];
 
         };
+
+
+    /* =====================================================
+       GET RELATION BY POR
+       ===================================================== */
 
 
     HeatmapEngine.getByPor =
@@ -3424,20 +6771,41 @@
 
         ) {
 
-            return HeatmapEngine
-                .porIndex
-                .get(
+            const key =
 
-                    HeatmapEngine
-                        .normalizePorKey(
-                            porKey
-                        )
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
 
-                ) ||
 
-                null;
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
 
         };
+
+
+    /* =====================================================
+       GET POR CASCADE
+       ===================================================== */
 
 
     HeatmapEngine.getPorCascade =
@@ -3447,12 +6815,58 @@
 
         ) {
 
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine
+                    .porIndex
+                    .get(
+                        key
+                    );
+
+
+            if (
+                relation
+            ) {
+
+                return relation;
+
+            }
+
+
+            /*
+             * Fallback directly to OffenceStore.
+             *
+             * POR remains the authoritative connector.
+             */
+
             return HeatmapEngine
-                .getByPor(
-                    porKey
+                .getStoreCascadeByPor(
+                    key
                 );
 
         };
+
+
+    /* =====================================================
+       GET HOTSPOT BY ID
+       ===================================================== */
 
 
     HeatmapEngine.getHotspotById =
@@ -3462,20 +6876,49 @@
 
         ) {
 
-            return HeatmapEngine
-                .hotspotIndex
-                .get(
+            const key =
 
-                    HeatmapEngine
-                        .normalizeKey(
-                            hotspotId
-                        )
+                HeatmapEngine
+                    .normalizeKey(
+                        hotspotId
+                    );
 
-                ) ||
 
-                null;
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            const entry =
+
+                HeatmapEngine
+                    .hotspotIndex
+                    .get(
+                        key
+                    );
+
+
+            if (
+                !entry
+            ) {
+
+                return null;
+
+            }
+
+
+            return entry;
 
         };
+
+
+    /* =====================================================
+       GET RELATION BY CASE ID
+       ===================================================== */
 
 
     HeatmapEngine.getByCaseId =
@@ -3485,27 +6928,49 @@
 
         ) {
 
-            return HeatmapEngine
-                .caseIndex
-                .get(
+            const key =
 
-                    HeatmapEngine
-                        .normalizeKey(
-                            caseId
-                        )
+                HeatmapEngine
+                    .normalizeKey(
+                        caseId
+                    );
 
-                ) ||
 
-                null;
+            if (
+                !key
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .caseIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
 
         };
+
+
+    /* =====================================================
+       GET SOURCE HOTSPOTS
+       ===================================================== */
 
 
     HeatmapEngine.getSourceHotspots =
         function () {
 
             return Array.isArray(
-                HeatmapEngine.data.sources
+                HeatmapEngine.data
+                    ?.sources
             )
 
                 ? HeatmapEngine
@@ -3517,11 +6982,17 @@
         };
 
 
+    /* =====================================================
+       GET TARGET HOTSPOTS
+       ===================================================== */
+
+
     HeatmapEngine.getTargetHotspots =
         function () {
 
             return Array.isArray(
-                HeatmapEngine.data.targets
+                HeatmapEngine.data
+                    ?.targets
             )
 
                 ? HeatmapEngine
@@ -3533,11 +7004,17 @@
         };
 
 
+    /* =====================================================
+       GET LINKS
+       ===================================================== */
+
+
     HeatmapEngine.getLinks =
         function () {
 
             return Array.isArray(
-                HeatmapEngine.data.links
+                HeatmapEngine.data
+                    ?.links
             )
 
                 ? HeatmapEngine
@@ -3545,91 +7022,6 @@
                     .links
 
                 : [];
-
-        };
-
-
-    /* =====================================================
-       SPATIAL QUERY API
-       ===================================================== */
-
-
-    HeatmapEngine.getSourcePoints =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .sourcePoints;
-
-        };
-
-
-    HeatmapEngine.getTargetPoints =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .targetPoints;
-
-        };
-
-
-    HeatmapEngine.getSourceCompartments =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .sourceCompartments;
-
-        };
-
-
-    HeatmapEngine.getTargetCompartments =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .targetCompartments;
-
-        };
-
-
-    HeatmapEngine.getSourceRanges =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .sourceRanges;
-
-        };
-
-
-    HeatmapEngine.getTargetRanges =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .targetRanges;
-
-        };
-
-
-    HeatmapEngine.getUnmappedSources =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .unmappedSources;
-
-        };
-
-
-    HeatmapEngine.getUnmappedTargets =
-        function () {
-
-            return HeatmapEngine
-                .spatial
-                .unmappedTargets;
 
         };
 
@@ -3662,17 +7054,45 @@
                     );
 
 
-            if (
-                normalized ===
-                "SOURCE" ||
-                normalized ===
-                "TARGET" ||
-                normalized ===
-                "BOTH"
+            switch (
+                normalized
             ) {
 
-                HeatmapEngine.mode =
-                    normalized;
+                case "SOURCE":
+
+                    HeatmapEngine.mode =
+
+                        HeatmapEngine
+                            .MODE
+                            .SOURCE;
+
+                    break;
+
+
+                case "TARGET":
+
+                    HeatmapEngine.mode =
+
+                        HeatmapEngine
+                            .MODE
+                            .TARGET;
+
+                    break;
+
+
+                case "ALL":
+
+                case "BOTH":
+
+                default:
+
+                    HeatmapEngine.mode =
+
+                        HeatmapEngine
+                            .MODE
+                            .BOTH;
+
+                    break;
 
             }
 
@@ -3683,17 +7103,109 @@
 
 
     /* =====================================================
-       HEATMAP OUTPUT
+       CANONICAL HEATMAP OUTPUT
        ===================================================== */
 
 
     HeatmapEngine.getHeatmapData =
         function () {
 
+            const spatial =
+
+                HeatmapEngine
+                    .getSpatialHeatmapData();
+
+
+            const mode =
+
+                HeatmapEngine.mode;
+
+
+            /*
+             * Canonical hotspot arrays remain available.
+             *
+             * These arrays are authoritative business
+             * intelligence objects.
+             */
+
+            const sources =
+
+                HeatmapEngine
+                    .getSourceHotspots();
+
+
+            const targets =
+
+                HeatmapEngine
+                    .getTargetHotspots();
+
+
+            const links =
+
+                HeatmapEngine
+                    .getLinks();
+
+
+            /*
+             * Mode filtering applies to renderable output.
+             */
+
+            let sourceHeat =
+
+                spatial.sourceHeat;
+
+
+            let targetHeat =
+
+                spatial.targetHeat;
+
+
+            let sourcePolygons =
+
+                spatial.sourcePolygons;
+
+
+            let targetPolygons =
+
+                spatial.targetPolygons;
+
+
+            if (
+                mode ===
+                HeatmapEngine.MODE.SOURCE
+            ) {
+
+                targetHeat =
+                    [];
+
+                targetPolygons =
+                    [];
+
+            }
+
+
+            if (
+                mode ===
+                HeatmapEngine.MODE.TARGET
+            ) {
+
+                sourceHeat =
+                    [];
+
+                sourcePolygons =
+                    [];
+
+            }
+
+
             return {
 
+                /*
+                 * Current visualization mode.
+                 */
+
                 mode:
-                    HeatmapEngine.mode,
+                    mode,
 
 
                 /*
@@ -3701,16 +7213,19 @@
                  */
 
                 sources:
-                    HeatmapEngine
-                        .getSourceHotspots(),
+                    sources,
+
 
                 targets:
-                    HeatmapEngine
-                        .getTargetHotspots(),
+                    targets,
+
+
+                /*
+                 * POR-authoritative source-target links.
+                 */
 
                 links:
-                    HeatmapEngine
-                        .getLinks(),
+                    links,
 
 
                 /*
@@ -3718,82 +7233,99 @@
                  */
 
                 sourceHeat:
-
-                    HeatmapEngine
-                        .spatial
-                        .sourcePoints
-                        .map(
-
-                            item => [
-
-                                item.latitude,
-
-                                item.longitude,
-
-                                item.heatWeight ||
-                                1
-
-                            ]
-
-                        ),
+                    sourceHeat,
 
 
                 targetHeat:
-
-                    HeatmapEngine
-                        .spatial
-                        .targetPoints
-                        .map(
-
-                            item => [
-
-                                item.latitude,
-
-                                item.longitude,
-
-                                item.heatWeight ||
-                                1
-
-                            ]
-
-                        ),
+                    targetHeat,
 
 
                 /*
-                 * Polygon heat data.
+                 * Polygon fallback data.
+                 *
+                 * Priority was already resolved as:
+                 *
+                 * POINT
+                 *   ↓
+                 * COMPARTMENT
+                 *   ↓
+                 * RANGE
+                 */
+
+                sourcePolygons:
+                    sourcePolygons,
+
+
+                targetPolygons:
+                    targetPolygons,
+
+
+                /*
+                 * Detailed polygon categories.
                  */
 
                 sourceCompartments:
-                    HeatmapEngine
-                        .spatial
-                        .sourceCompartments,
+
+                    mode ===
+                    HeatmapEngine.MODE.TARGET
+
+                        ? []
+
+                        : spatial
+                            .sourceCompartments,
+
 
                 targetCompartments:
-                    HeatmapEngine
-                        .spatial
-                        .targetCompartments,
+
+                    mode ===
+                    HeatmapEngine.MODE.SOURCE
+
+                        ? []
+
+                        : spatial
+                            .targetCompartments,
 
 
                 sourceRanges:
-                    HeatmapEngine
-                        .spatial
-                        .sourceRanges,
+
+                    mode ===
+                    HeatmapEngine.MODE.TARGET
+
+                        ? []
+
+                        : spatial
+                            .sourceRanges,
+
 
                 targetRanges:
-                    HeatmapEngine
-                        .spatial
-                        .targetRanges,
 
+                    mode ===
+                    HeatmapEngine.MODE.SOURCE
+
+                        ? []
+
+                        : spatial
+                            .targetRanges,
+
+
+                /*
+                 * Diagnostics.
+                 */
 
                 unmappedSources:
-                    HeatmapEngine
-                        .spatial
-                        .unmappedSources,
+                    spatial.unmappedSources,
+
 
                 unmappedTargets:
-                    HeatmapEngine
-                        .spatial
-                        .unmappedTargets
+                    spatial.unmappedTargets,
+
+
+                spatialStats:
+                    spatial.stats,
+
+
+                ready:
+                    HeatmapEngine.ready
 
             };
 
@@ -3801,121 +7333,163 @@
 
 
     /* =====================================================
-       STATE
+       ENGINE STATE
        ===================================================== */
 
 
     HeatmapEngine.getState =
         function () {
 
+            const sources =
+
+                HeatmapEngine
+                    .getSourceHotspots();
+
+
+            const targets =
+
+                HeatmapEngine
+                    .getTargetHotspots();
+
+
+            const links =
+
+                HeatmapEngine
+                    .getLinks();
+
+
+            const spatialStats =
+
+                HeatmapEngine
+                    .getSpatialStats();
+
+
             return {
 
                 version:
                     HeatmapEngine.VERSION,
 
+
                 initialized:
                     HeatmapEngine.initialized,
+
 
                 building:
                     HeatmapEngine.building,
 
+
                 ready:
                     HeatmapEngine.ready,
 
+
                 mode:
                     HeatmapEngine.mode,
+
 
                 lastBuildAt:
                     HeatmapEngine.lastBuildAt,
 
 
-                sources:
-                    HeatmapEngine
-                        .data
-                        .sources
-                        .length,
+                /*
+                 * Canonical hotspot counts.
+                 */
 
-                targets:
-                    HeatmapEngine
-                        .data
-                        .targets
-                        .length,
+                sourceHotspots:
+                    sources.length,
 
-                links:
-                    HeatmapEngine
-                        .data
-                        .links
-                        .length,
 
+                targetHotspots:
+                    targets.length,
+
+
+                /*
+                 * POR relationship indexes.
+                 */
 
                 hotspotIndex:
                     HeatmapEngine
                         .hotspotIndex
                         .size,
 
-                porIndex:
+
+                porRelations:
                     HeatmapEngine
                         .porIndex
                         .size,
 
-                caseIndex:
+
+                caseRelations:
                     HeatmapEngine
                         .caseIndex
                         .size,
 
 
-                spatial: {
-
-                    sourcePoints:
-                        HeatmapEngine
-                            .spatial
-                            .sourcePoints
-                            .length,
-
-                    sourceCompartments:
-                        HeatmapEngine
-                            .spatial
-                            .sourceCompartments
-                            .length,
-
-                    sourceRanges:
-                        HeatmapEngine
-                            .spatial
-                            .sourceRanges
-                            .length,
-
-                    unmappedSources:
-                        HeatmapEngine
-                            .spatial
-                            .unmappedSources
-                            .length,
+                links:
+                    links.length,
 
 
-                    targetPoints:
-                        HeatmapEngine
-                            .spatial
-                            .targetPoints
-                            .length,
+                /*
+                 * Spatial rendering state.
+                 */
 
-                    targetCompartments:
-                        HeatmapEngine
-                            .spatial
-                            .targetCompartments
-                            .length,
+                spatial:
+                    spatialStats,
 
-                    targetRanges:
-                        HeatmapEngine
-                            .spatial
-                            .targetRanges
-                            .length,
 
-                    unmappedTargets:
-                        HeatmapEngine
-                            .spatial
-                            .unmappedTargets
-                            .length
+                sourcePoints:
 
-                }
+                    spatialStats
+                        .source
+                        .points,
+
+
+                sourceCompartments:
+
+                    spatialStats
+                        .source
+                        .compartments,
+
+
+                sourceRanges:
+
+                    spatialStats
+                        .source
+                        .ranges,
+
+
+                unmappedSources:
+
+                    spatialStats
+                        .source
+                        .unmapped,
+
+
+                targetPoints:
+
+                    spatialStats
+                        .target
+                        .points,
+
+
+                targetCompartments:
+
+                    spatialStats
+                        .target
+                        .compartments,
+
+
+                targetRanges:
+
+                    spatialStats
+                        .target
+                        .ranges,
+
+
+                unmappedTargets:
+
+                    spatialStats
+                        .target
+                        .unmapped
 
             };
 
@@ -3929,6 +7503,10 @@
 
     HeatmapEngine.clear =
         function () {
+
+            /*
+             * Canonical engine data.
+             */
 
             HeatmapEngine.data = {
 
@@ -3947,34 +7525,9 @@
             };
 
 
-            HeatmapEngine.spatial = {
-
-                sourcePoints:
-                    [],
-
-                targetPoints:
-                    [],
-
-                sourceCompartments:
-                    [],
-
-                targetCompartments:
-                    [],
-
-                sourceRanges:
-                    [],
-
-                targetRanges:
-                    [],
-
-                unmappedSources:
-                    [],
-
-                unmappedTargets:
-                    []
-
-            };
-
+            /*
+             * Relationship indexes.
+             */
 
             HeatmapEngine
                 .hotspotIndex
@@ -3991,20 +7544,52 @@
                 .clear();
 
 
+            /*
+             * Spatial indexes.
+             *
+             * These indexes are rebuilt from current GIS
+             * globals during the next spatial build.
+             */
+
+            if (
+                HeatmapEngine
+                    .spatialIndex
+                    ?.compartments
+            ) {
+
+                HeatmapEngine
+                    .spatialIndex
+                    .compartments
+                    .clear();
+
+            }
+
+
+            if (
+                HeatmapEngine
+                    .spatialIndex
+                    ?.ranges
+            ) {
+
+                HeatmapEngine
+                    .spatialIndex
+                    .ranges
+                    .clear();
+
+            }
+
+
+            /*
+             * Derived spatial output.
+             */
+
             HeatmapEngine
-                .compartmentIndex
-                .clear();
+                .resetSpatial();
 
 
-            HeatmapEngine
-                .rangeIndex
-                .clear();
-
-
-            HeatmapEngine
-                .gisFeatureIndex
-                .clear();
-
+            /*
+             * Runtime state.
+             */
 
             HeatmapEngine.ready =
                 false;
@@ -4024,15 +7609,1290 @@
 
 
     /* =====================================================
-       REGISTER MODULE
+       REBUILD INDEXES
+       ===================================================== */
+
+
+    HeatmapEngine.rebuildIndexes =
+        function () {
+
+            HeatmapEngine
+                .resetIndexes();
+
+
+            const sources =
+
+                HeatmapEngine
+                    .getSourceHotspots();
+
+
+            const targets =
+
+                HeatmapEngine
+                    .getTargetHotspots();
+
+
+            /*
+             * =============================================
+             * REGISTER SOURCES
+             * =============================================
+             */
+
+            for (
+                const source
+                of sources
+            ) {
+
+                HeatmapEngine
+                    .registerSourceHotspot(
+                        source
+                    );
+
+            }
+
+
+            /*
+             * =============================================
+             * REGISTER TARGETS
+             * =============================================
+             */
+
+            for (
+                const target
+                of targets
+            ) {
+
+                HeatmapEngine
+                    .registerTargetHotspot(
+                        target
+                    );
+
+            }
+
+
+            /*
+             * =============================================
+             * HYDRATE BUSINESS DATA BY POR
+             * =============================================
+             */
+
+            HeatmapEngine
+                .hydrateAllPorRelations();
+
+
+            /*
+             * =============================================
+             * BUILD SOURCE → TARGET POR LINKS
+             * =============================================
+             */
+
+            HeatmapEngine
+                .buildLinks();
+
+
+            /*
+             * =============================================
+             * BUILD GIS SPATIAL REPRESENTATION
+             * =============================================
+             *
+             * Every hotspot is resolved using:
+             *
+             * 1. Valid GPS point
+             * 2. Compartment GeoJSON
+             * 3. Range GeoJSON
+             * 4. Unmapped
+             */
+
+            HeatmapEngine
+                .buildSpatialData();
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                const spatialStats =
+
+                    HeatmapEngine
+                        .getSpatialStats();
+
+
+                console.log(
+
+                    "[OffenceHeatmapEngine] Indexes rebuilt",
+
+                    {
+
+                        hotspots:
+
+                            HeatmapEngine
+                                .hotspotIndex
+                                .size,
+
+
+                        porRelations:
+
+                            HeatmapEngine
+                                .porIndex
+                                .size,
+
+
+                        caseRelations:
+
+                            HeatmapEngine
+                                .caseIndex
+                                .size,
+
+
+                        links:
+
+                            HeatmapEngine
+                                .getLinks()
+                                .length,
+
+
+                        sourcePoints:
+
+                            spatialStats
+                                .source
+                                .points,
+
+
+                        sourceCompartments:
+
+                            spatialStats
+                                .source
+                                .compartments,
+
+
+                        sourceRanges:
+
+                            spatialStats
+                                .source
+                                .ranges,
+
+
+                        targetPoints:
+
+                            spatialStats
+                                .target
+                                .points,
+
+
+                        targetCompartments:
+
+                            spatialStats
+                                .target
+                                .compartments,
+
+
+                        targetRanges:
+
+                            spatialStats
+                                .target
+                                .ranges
+
+                    }
+
+                );
+
+            }
+
+
+            return HeatmapEngine;
+
+        };
+
+     /* =====================================================
+       BUILD ENGINE
+       ===================================================== */
+
+
+    HeatmapEngine.build =
+        async function (
+
+            options = {}
+
+        ) {
+
+            if (
+                HeatmapEngine.building
+            ) {
+
+                return HeatmapEngine
+                    .getHeatmapData();
+
+            }
+
+
+            HeatmapEngine.building =
+                true;
+
+
+            HeatmapEngine.ready =
+                false;
+
+
+            const startedAt =
+
+                Date.now();
+
+
+            try {
+
+
+                /*
+                 * =========================================
+                 * RESOLVE DEPENDENCIES
+                 * =========================================
+                 */
+
+                const SourceEngine =
+
+                    GG.Offence
+                        .SourceEngine;
+
+
+                const TargetEngine =
+
+                    GG.Offence
+                        .TargetEngine;
+
+
+                if (
+                    !SourceEngine
+                ) {
+
+                    throw new Error(
+
+                        "OffenceSourceEngine unavailable."
+
+                    );
+
+                }
+
+
+                if (
+                    !TargetEngine
+                ) {
+
+                    throw new Error(
+
+                        "OffenceTargetEngine unavailable."
+
+                    );
+
+                }
+
+
+                /*
+                 * =========================================
+                 * INITIALIZE ENGINES
+                 * =========================================
+                 */
+
+                if (
+                    typeof SourceEngine.init ===
+                    "function"
+                ) {
+
+                    SourceEngine
+                        .init();
+
+                }
+
+
+                if (
+                    typeof TargetEngine.init ===
+                    "function"
+                ) {
+
+                    TargetEngine
+                        .init();
+
+                }
+
+
+                /*
+                 * =========================================
+                 * OPTIONAL SOURCE / TARGET BUILD
+                 * =========================================
+                 *
+                 * UIController may already have built both
+                 * engines.
+                 *
+                 * Rebuilding is therefore optional.
+                 */
+
+                if (
+                    options.buildEngines ===
+                    true
+                ) {
+
+                    if (
+                        typeof SourceEngine
+                            .buildFromStore ===
+                        "function"
+                    ) {
+
+                        await SourceEngine
+                            .buildFromStore();
+
+                    }
+
+                    else if (
+                        typeof SourceEngine
+                            .build ===
+                        "function"
+                    ) {
+
+                        await SourceEngine
+                            .build();
+
+                    }
+
+
+                    if (
+                        typeof TargetEngine
+                            .buildFromStore ===
+                        "function"
+                    ) {
+
+                        await TargetEngine
+                            .buildFromStore();
+
+                    }
+
+                    else if (
+                        typeof TargetEngine
+                            .build ===
+                        "function"
+                    ) {
+
+                        await TargetEngine
+                            .build();
+
+                    }
+
+                }
+
+
+                /*
+                 * =========================================
+                 * GET CANONICAL HOTSPOTS
+                 * =========================================
+                 */
+
+                const sources =
+
+                    typeof SourceEngine
+                        .getHotspots ===
+                    "function"
+
+                        ? SourceEngine
+                            .getHotspots()
+
+                        : [];
+
+
+                const targets =
+
+                    typeof TargetEngine
+                        .getHotspots ===
+                    "function"
+
+                        ? TargetEngine
+                            .getHotspots()
+
+                        : [];
+
+
+                /*
+                 * =========================================
+                 * RESET CANONICAL DATA
+                 * =========================================
+                 *
+                 * IMPORTANT:
+                 *
+                 * Do NOT call clear() after assigning
+                 * sources and targets because clear()
+                 * empties canonical data.
+                 */
+
+                HeatmapEngine.data = {
+
+                    resolvedContexts:
+                        [],
+
+
+                    sources:
+
+                        Array.isArray(
+                            sources
+                        )
+
+                            ? sources
+                                .slice()
+
+                            : [],
+
+
+                    targets:
+
+                        Array.isArray(
+                            targets
+                        )
+
+                            ? targets
+                                .slice()
+
+                            : [],
+
+
+                    links:
+                        []
+
+                };
+
+
+                /*
+                 * =========================================
+                 * REBUILD RELATIONSHIP + SPATIAL INDEXES
+                 * =========================================
+                 */
+
+                HeatmapEngine
+                    .rebuildIndexes();
+
+
+                /*
+                 * =========================================
+                 * ENGINE READY
+                 * =========================================
+                 */
+
+                HeatmapEngine.ready =
+                    true;
+
+
+                HeatmapEngine.lastBuildAt =
+                    Date.now();
+
+
+                const result =
+
+                    HeatmapEngine
+                        .getHeatmapData();
+
+
+                if (
+                    Constants.DEBUG
+                        ?.ENABLED
+                ) {
+
+                    const spatialStats =
+
+                        HeatmapEngine
+                            .getSpatialStats();
+
+
+                    console.log(
+
+                        "🔥 OffenceHeatmapEngine Built",
+
+                        {
+
+                            version:
+                                HeatmapEngine.VERSION,
+
+
+                            sourceHotspots:
+
+                                HeatmapEngine
+                                    .getSourceHotspots()
+                                    .length,
+
+
+                            targetHotspots:
+
+                                HeatmapEngine
+                                    .getTargetHotspots()
+                                    .length,
+
+
+                            sourcePoints:
+
+                                spatialStats
+                                    .source
+                                    .points,
+
+
+                            sourceCompartments:
+
+                                spatialStats
+                                    .source
+                                    .compartments,
+
+
+                            sourceRanges:
+
+                                spatialStats
+                                    .source
+                                    .ranges,
+
+
+                            unmappedSources:
+
+                                spatialStats
+                                    .source
+                                    .unmapped,
+
+
+                            targetPoints:
+
+                                spatialStats
+                                    .target
+                                    .points,
+
+
+                            targetCompartments:
+
+                                spatialStats
+                                    .target
+                                    .compartments,
+
+
+                            targetRanges:
+
+                                spatialStats
+                                    .target
+                                    .ranges,
+
+
+                            unmappedTargets:
+
+                                spatialStats
+                                    .target
+                                    .unmapped,
+
+
+                            porRelations:
+
+                                HeatmapEngine
+                                    .porIndex
+                                    .size,
+
+
+                            links:
+
+                                HeatmapEngine
+                                    .getLinks()
+                                    .length,
+
+
+                            duration:
+
+                                Date.now() -
+                                startedAt
+
+                        }
+
+                    );
+
+                }
+
+
+                return result;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                HeatmapEngine.ready =
+                    false;
+
+
+                console.error(
+
+                    "[OffenceHeatmapEngine] Build failed.",
+
+                    error
+
+                );
+
+
+                throw error;
+
+            }
+
+            finally {
+
+                HeatmapEngine.building =
+                    false;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       BUILD FROM ENGINES
+       ===================================================== */
+
+
+    HeatmapEngine.buildFromEngines =
+        async function () {
+
+            return HeatmapEngine
+                .build({
+
+                    buildEngines:
+                        false
+
+                });
+
+        };
+
+
+    /* =====================================================
+       BUILD FROM STORE
+       ===================================================== */
+
+
+    HeatmapEngine.buildFromStore =
+        async function () {
+
+            return HeatmapEngine
+                .build({
+
+                    buildEngines:
+                        true
+
+                });
+
+        };
+
+
+    /* =====================================================
+       REFRESH
+       ===================================================== */
+
+
+    HeatmapEngine.refresh =
+        async function (
+
+            options = {}
+
+        ) {
+
+            return HeatmapEngine
+                .build(
+
+                    options
+
+                );
+
+        };
+
+
+    /* =====================================================
+       REBUILD SPATIAL DATA ONLY
+       ===================================================== */
+
+
+    HeatmapEngine.refreshSpatial =
+        function () {
+
+            /*
+             * Useful when GIS GeoJSON loads after the
+             * offence intelligence pipeline.
+             *
+             * No offence data needs to be rebuilt.
+             */
+
+            HeatmapEngine
+                .buildSpatialData();
+
+
+            return HeatmapEngine
+                .getSpatialHeatmapData();
+
+        };
+
+
+    /* =====================================================
+       GIS READY REFRESH
+       ===================================================== */
+
+
+    HeatmapEngine.handleGISReady =
+        function () {
+
+            if (
+                !HeatmapEngine.ready
+            ) {
+
+                return false;
+
+            }
+
+
+            try {
+
+                HeatmapEngine
+                    .refreshSpatial();
+
+
+                /*
+                 * Notify renderer that spatial data changed.
+                 */
+
+                HeatmapEngine
+                    .dispatchEvent(
+
+                        Constants.EVENTS
+                            ?.HEATMAP_UPDATED ||
+
+                        "offence:heatmap-updated",
+
+                        {
+
+                            source:
+                                "GIS_READY",
+
+
+                            heatmap:
+
+                                HeatmapEngine
+                                    .getHeatmapData(),
+
+
+                            state:
+
+                                HeatmapEngine
+                                    .getState()
+
+                        }
+
+                    );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "[OffenceHeatmapEngine] GIS refresh failed.",
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       EVENT DISPATCH
+       ===================================================== */
+
+
+    HeatmapEngine.dispatchEvent =
+        function (
+
+            eventName,
+
+            detail = {}
+
+        ) {
+
+            if (
+                !eventName
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                typeof window
+                    .dispatchEvent !==
+                "function"
+            ) {
+
+                return false;
+
+            }
+
+
+            try {
+
+                window
+                    .dispatchEvent(
+
+                        new CustomEvent(
+
+                            eventName,
+
+                            {
+
+                                detail:
+                                    detail
+
+                            }
+
+                        )
+
+                    );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "[OffenceHeatmapEngine] Event dispatch failed.",
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       DISPATCH UPDATED
+       ===================================================== */
+
+
+    HeatmapEngine.dispatchUpdated =
+        function (
+
+            source = "BUILD"
+
+        ) {
+
+            return HeatmapEngine
+                .dispatchEvent(
+
+                    Constants.EVENTS
+                        ?.HEATMAP_UPDATED ||
+
+                    "offence:heatmap-updated",
+
+                    {
+
+                        source:
+                            source,
+
+
+                        heatmap:
+
+                            HeatmapEngine
+                                .getHeatmapData(),
+
+
+                        state:
+
+                            HeatmapEngine
+                                .getState()
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       FULL BUILD + DISPATCH
+       ===================================================== */
+
+
+    HeatmapEngine.buildAndDispatch =
+        async function (
+
+            options = {}
+
+        ) {
+
+            const result =
+
+                await HeatmapEngine
+                    .build(
+                        options
+                    );
+
+
+            HeatmapEngine
+                .dispatchUpdated(
+                    "BUILD"
+                );
+
+
+            return result;
+
+        };
+
+
+    /* =====================================================
+       GIS EVENT BINDING
+       ===================================================== */
+
+
+    HeatmapEngine._gisEventsBound =
+        false;
+
+
+    HeatmapEngine.bindGISEvents =
+        function () {
+
+            if (
+                HeatmapEngine
+                    ._gisEventsBound
+            ) {
+
+                return HeatmapEngine;
+
+            }
+
+
+            /*
+             * Different parts of GreenGuard may announce
+             * GIS availability using different events.
+             *
+             * All listeners call the same safe refresh.
+             */
+
+            const events = [
+
+                "gis:ready",
+
+                "gis:data-ready",
+
+                "gis:loaded",
+
+                "greenguard:gis-ready"
+
+            ];
+
+
+            for (
+                const eventName
+                of events
+            ) {
+
+                window
+                    .addEventListener(
+
+                        eventName,
+
+                        HeatmapEngine
+                            .handleGISReady
+
+                    );
+
+            }
+
+
+            HeatmapEngine
+                ._gisEventsBound =
+                true;
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       GIS EVENT UNBINDING
+       ===================================================== */
+
+
+    HeatmapEngine.unbindGISEvents =
+        function () {
+
+            if (
+                !HeatmapEngine
+                    ._gisEventsBound
+            ) {
+
+                return HeatmapEngine;
+
+            }
+
+
+            const events = [
+
+                "gis:ready",
+
+                "gis:data-ready",
+
+                "gis:loaded",
+
+                "greenguard:gis-ready"
+
+            ];
+
+
+            for (
+                const eventName
+                of events
+            ) {
+
+                window
+                    .removeEventListener(
+
+                        eventName,
+
+                        HeatmapEngine
+                            .handleGISReady
+
+                    );
+
+            }
+
+
+            HeatmapEngine
+                ._gisEventsBound =
+                false;
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       INITIALIZE
+       ===================================================== */
+
+
+    HeatmapEngine.init =
+        function () {
+
+            if (
+                HeatmapEngine.initialized
+            ) {
+
+                /*
+                 * Ensure GIS listeners exist even when
+                 * init() is called more than once.
+                 */
+
+                HeatmapEngine
+                    .bindGISEvents();
+
+
+                return HeatmapEngine;
+
+            }
+
+
+            HeatmapEngine.initialized =
+                true;
+
+
+            /*
+             * Prepare GIS entity index if available.
+             */
+
+            HeatmapEngine
+                .ensureGISEntitiesReady();
+
+
+            /*
+             * Bind late-GIS refresh support.
+             */
+
+            HeatmapEngine
+                .bindGISEvents();
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "🔥 OffenceHeatmapEngine Ready",
+
+                    {
+
+                        version:
+                            HeatmapEngine.VERSION,
+
+
+                        relationshipModel:
+
+                            Constants.RELATIONSHIP
+                                ?.MODEL ||
+
+                            "POR_AUTHORITATIVE",
+
+
+                        spatialPriority:
+
+                            [
+                                "POINT",
+                                "COMPARTMENT",
+                                "RANGE",
+                                "UNMAPPED"
+                            ]
+
+                    }
+
+                );
+
+            }
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       DESTROY
+       ===================================================== */
+
+
+    HeatmapEngine.destroy =
+        function () {
+
+            HeatmapEngine
+                .unbindGISEvents();
+
+
+            HeatmapEngine
+                .clear();
+
+
+            HeatmapEngine.initialized =
+                false;
+
+
+            return HeatmapEngine;
+
+        };
+       /* =====================================================
+       EXPORT MODULE
        ===================================================== */
 
 
     GG.Offence.HeatmapEngine =
+
         HeatmapEngine;
 
 
-    HeatmapEngine.init();
+    /* =====================================================
+       AUTO INITIALIZE
+       ===================================================== */
 
 
-})();
+    HeatmapEngine
+        .init();
+
+
+    /* =====================================================
+       READY LOG
+       ===================================================== */
+
+
+    if (
+        Constants.DEBUG
+            ?.ENABLED
+    ) {
+
+        console.log(
+
+            "🔥 OffenceHeatmapEngine Module Loaded",
+
+            {
+
+                version:
+                    HeatmapEngine.VERSION,
+
+
+                initialized:
+                    HeatmapEngine.initialized,
+
+
+                authoritativeConnector:
+                    "POR",
+
+
+                spatialPriority:
+
+                    [
+                        "POINT",
+                        "COMPARTMENT",
+                        "RANGE",
+                        "UNMAPPED"
+                    ],
+
+
+                gisEntityIntegration:
+
+                    !!GG.GISEntities,
+
+
+                capabilities: {
+
+                    pointHeatmap:
+                        true,
+
+                    compartmentPolygon:
+                        true,
+
+                    rangePolygon:
+                        true,
+
+                    porCascade:
+                        true,
+
+                    sourceTargetLinks:
+                        true,
+
+                    lateGISRefresh:
+                        true
+
+                }
+
+            }
+
+        );
+
+    }
+
+
+})(
+
+    window.GreenGuardAI
+
+);
