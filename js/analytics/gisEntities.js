@@ -1,10 +1,60 @@
 /*=========================================================
   GreenGuard AI
   GIS Entities
+
+  Version:
+  2.0.0
+
+  PURPOSE
+  ---------------------------------------------------------
+  Provides canonical GIS entity lookup for GreenGuard.
+
+  BACKWARD COMPATIBILITY
+  ---------------------------------------------------------
+  Existing API preserved:
+
+      GG.GISEntities.build()
+      GG.GISEntities.ready()
+      GG.GISEntities.search()
+
+  Existing search() contract remains:
+
+      search(name)
+          -> ONE matching entity / feature
+          -> null when not found
+
+  OFFENCE GIS EXTENSIONS
+  ---------------------------------------------------------
+  Added:
+
+      resolveRangeAlias()
+      searchRange()
+      searchRangeFeatures()
+      searchRangeFeatureCollection()
+
+      searchCompartment()
+      searchCompartmentFeatures()
+
+      getRangeNames()
+      getRangeFeatureCount()
+
+      reset()
+      rebuild()
+
+  IMPORTANT
+  ---------------------------------------------------------
+  index.ranges continues storing ONE feature.
+
+  index.rangeGroups stores ALL features belonging
+  to a range.
+
+  Therefore existing consumers are not forced to
+  handle arrays.
 =========================================================*/
 
 window.GreenGuardAI =
     window.GreenGuardAI || {};
+
 
 (function (
 
@@ -14,446 +64,1758 @@ window.GreenGuardAI =
 
     "use strict";
 
+
     const GISEntities = {};
+
 
     GISEntities.VERSION =
 
-        "1.0.0";
+        "2.0.0";
+
+
+    /*
+     * Internal index.
+     *
+     * This variable remains private.
+     */
 
     let index =
 
         null;
 
-    /*--------------------------------------------------
-      Build
-    --------------------------------------------------*/
 
-GISEntities.build = function () {
+    /*=====================================================
+      NAME NORMALIZER
+    =====================================================*/
 
-    if (
 
-        index
+    /*
+     * Preserve the existing GreenGuard canonical
+     * normalization contract.
+     *
+     * This function intentionally does NOT contain
+     * offence range aliases such as:
+     *
+     * NMT -> Nimati
+     * WRVK -> WestRajabhatkhawa
+     *
+     * Those aliases belong to resolveRangeAlias().
+     *
+     * Keeping them separate prevents offence-specific
+     * abbreviations from affecting unrelated GIS,
+     * Staff, AI, or search modules.
+     */
 
-    ) {
-
-        return index;
-
-    }
-
-    index = {
-
-        divisions: {},
-
-        ranges: {},
-
-        beats: {},
-
-        compartments: {},
-
-        villages: {}
-
-    };
-
-    (
-        window.allGISFeatures ||
-
-        []
-
-    ).forEach(
-
+    GG.normalizeName =
         function (
-
-            feature
-
-        ) {
-
-            const p =
-
-                feature.properties ||
-
-                {};
-
-            if (
-
-                p.division
-
-            ) {
-
-                index.divisions[
-
-                    GG.normalizeName(
-
-                        p.division
-
-                    )
-
-                ] = feature;
-
-            }
-
-            if (
-
-                p.range
-
-            ) {
-
-                index.ranges[
-
-                    GG.normalizeName(
-
-                        p.range
-
-                    )
-
-                ] = feature;
-
-            }
-
-            if (
-
-                p.beat
-
-            ) {
-
-                index.beats[
-
-                    GG.normalizeName(
-
-                        p.beat
-
-                    )
-
-                ] = feature;
-
-            }
-
-        }
-
-    );
-
-    (
-
-        window.allCompartmentFeatures ||
-
-        []
-
-    ).forEach(
-
-        function (
-
-            feature
-
-        ) {
-
-            const p =
-
-                feature.properties ||
-
-                {};
-
-            const name =
-
-                p.compartment ||
-
-                p.name;
-
-            if (
-
-                name
-
-            ) {
-
-                index.compartments[
-
-                    GG.normalizeName(
-
-                        name
-
-                    )
-
-                ] = feature;
-
-            }
-
-        }
-
-    );
-
-    (
-
-        window.__villageCache ||
-
-        []
-
-    ).forEach(
-
-        function (
-
-            village
-
-        ) {
-
-            const name =
-
-                village.name ||
-
-                village.village;
-
-            if (
-
-                name
-
-            ) {
-
-                index.villages[
-
-                    GG.normalizeName(
-
-                        name
-
-                    )
-
-                ] = village;
-
-            }
-
-        }
-
-    );
-
-    return index;
-
-};
-
-    /*--------------------------------------------------
-      Ready
-    --------------------------------------------------*/
-
-    GISEntities.ready = function () {
-
-        return !!index;
-
-    };
-
-    /*--------------------------------------------------
-      Search
-    --------------------------------------------------*/
-
-/*=========================================================
-  GreenGuard AI
-  Name Normalizer
-=========================================================*/
-
-/*=========================================================
-  GreenGuard AI
-  Name Normalizer
-=========================================================*/
-
-GG.normalizeName = function (
-
-    value
-
-) {
-
-    if (
-
-        value == null
-
-    ) {
-
-        return "";
-
-    }
-
-    let text =
-
-        String(
 
             value
 
-        )
+        ) {
 
-        .normalize(
+            if (
 
-            "NFKD"
+                value == null
 
-        )
+            ) {
 
-        .replace(
+                return "";
 
-            /[\u0300-\u036f]/g,
+            }
 
-            ""
 
-        )
+            let text =
 
-        .toUpperCase()
+                String(
 
-        .trim();
+                    value
 
-    /*----------------------------------
-      Common Symbols
-    ----------------------------------*/
+                )
 
-    text =
+                    .normalize(
 
-        text
+                        "NFKD"
 
-            .replace(
+                    )
 
-                /&/g,
+                    .replace(
 
-                "AND"
+                        /[\u0300-\u036f]/g,
 
-            )
+                        ""
 
-            .replace(
+                    )
 
-                /[(){}\[\].,_\-\/\\]/g,
+                    .toUpperCase()
 
-                " "
+                    .trim();
 
-            )
 
-            .replace(
+            /*---------------------------------------------
+              Common Symbols
+            ---------------------------------------------*/
+
+            text =
+
+                text
+
+                    .replace(
+
+                        /&/g,
+
+                        "AND"
+
+                    )
+
+                    .replace(
+
+                        /[(){}\[\].,_\-\/\\]/g,
+
+                        " "
+
+                    )
+
+                    .replace(
+
+                        /\s+/g,
+
+                        " "
+
+                    )
+
+                    .trim();
+
+
+            /*---------------------------------------------
+              Known Existing GreenGuard Aliases
+            ---------------------------------------------*/
+
+            const aliases = {
+
+                "BTR W":
+
+                    "BTR WEST",
+
+                "BTRW":
+
+                    "BTR WEST",
+
+                "BTR WEST":
+
+                    "BTR WEST",
+
+                "BTR WEST DIVISION":
+
+                    "BTR WEST",
+
+                "BTR WEST RANGE":
+
+                    "BTR WEST",
+
+                "BTR WEST CIRCLE":
+
+                    "BTR WEST",
+
+                "BTR WEST FOREST DIVISION":
+
+                    "BTR WEST",
+
+
+                "BTR E":
+
+                    "BTR EAST",
+
+                "BTRE":
+
+                    "BTR EAST",
+
+                "BTR EAST":
+
+                    "BTR EAST"
+
+            };
+
+
+            if (
+
+                aliases[
+                    text
+                ]
+
+            ) {
+
+                text =
+
+                    aliases[
+                        text
+                    ];
+
+            }
+
+
+            /*---------------------------------------------
+              Canonical Key
+            ---------------------------------------------*/
+
+            return text.replace(
 
                 /\s+/g,
 
-                " "
+                ""
 
-            )
+            );
 
-            .trim();
+        };
 
-    /*----------------------------------
-      Known Aliases
-    ----------------------------------*/
 
-    const aliases = {
+    /*=====================================================
+      INTERNAL HELPERS
+    =====================================================*/
 
-        "BTR W":
 
-            "BTR WEST",
+    /*
+     * Add a feature to a grouped index.
+     *
+     * Example:
+     *
+     * rangeGroups.NIMATI = [
+     *     Nimati-East feature,
+     *     Nimati-West feature,
+     *     Poro-West feature
+     * ]
+     */
 
-        "BTRW":
+    GISEntities.addToGroup =
+        function (
 
-            "BTR WEST",
+            group,
 
-        "BTR WEST":
+            key,
 
-            "BTR WEST",
+            value
 
-        "BTR WEST DIVISION":
+        ) {
 
-            "BTR WEST",
+            if (
 
-        "BTR WEST RANGE":
+                !group ||
 
-            "BTR WEST",
+                !key ||
 
-        "BTR WEST CIRCLE":
+                !value
 
-            "BTR WEST",
+            ) {
 
-        "BTR WEST FOREST DIVISION":
+                return;
 
-            "BTR WEST",
+            }
 
-        "BTR E":
 
-            "BTR EAST",
+            if (
 
-        "BTRE":
+                !Array.isArray(
 
-            "BTR EAST",
+                    group[
+                        key
+                    ]
 
-        "BTR EAST":
+                )
 
-            "BTR EAST"
+            ) {
 
-    };
+                group[
+                    key
+                ] = [];
 
-    if (
+            }
 
-        aliases[text]
 
-    ) {
+            /*
+             * Avoid duplicate object references.
+             */
 
-        text =
+            if (
 
-            aliases[text];
+                !group[
+                    key
+                ].includes(
 
-    }
+                    value
 
-    /*----------------------------------
-      Canonical Key
-    ----------------------------------*/
+                )
 
-    return text.replace(
+            ) {
 
-        /\s+/g,
+                group[
+                    key
+                ].push(
 
-        ""
+                    value
 
-    );
+                );
 
-};
+            }
 
-/*--------------------------------------------------
-  Search
---------------------------------------------------*/
+        };
 
-GISEntities.search = function (
 
-    text
+    /*
+     * Convert an array of GeoJSON Features into
+     * a standard FeatureCollection.
+     *
+     * This is useful for Leaflet:
+     *
+     * L.geoJSON(
+     *     featureCollection
+     * )
+     */
 
-) {
+    GISEntities.createFeatureCollection =
+        function (
 
-    if (
+            features
 
-        !text
+        ) {
 
-    ) {
+            return {
 
-        return null;
+                type:
 
-    }
+                    "FeatureCollection",
 
-    if (
+                features:
 
-        !index
+                    Array.isArray(
 
-    ) {
+                        features
 
-        GISEntities.build();
+                    )
 
-    }
+                        ? features.filter(
 
-    text =
+                            function (
 
-        GG.normalizeName(
+                                feature
+
+                            ) {
+
+                                return (
+
+                                    feature &&
+
+                                    feature.type ===
+                                        "Feature" &&
+
+                                    feature.geometry
+
+                                );
+
+                            }
+
+                        )
+
+                        : []
+
+            };
+
+        };
+
+
+    /*=====================================================
+      BUILD
+    =====================================================*/
+
+
+    GISEntities.build =
+        function () {
+
+            /*
+             * Preserve original cached build behavior.
+             */
+
+            if (
+
+                index
+
+            ) {
+
+                return index;
+
+            }
+
+
+            /*
+             * Existing indexes are preserved.
+             *
+             * New grouped indexes are additive.
+             */
+
+            index = {
+
+                /*
+                 * Existing single-result indexes.
+                 */
+
+                divisions:
+
+                    {},
+
+                ranges:
+
+                    {},
+
+                beats:
+
+                    {},
+
+                compartments:
+
+                    {},
+
+                villages:
+
+                    {},
+
+
+                /*
+                 * New grouped indexes.
+                 *
+                 * These DO NOT change the existing
+                 * single-result API.
+                 */
+
+                divisionGroups:
+
+                    {},
+
+                rangeGroups:
+
+                    {},
+
+                beatGroups:
+
+                    {},
+
+                compartmentGroups:
+
+                    {}
+
+            };
+
+
+            /*=================================================
+              BUILD GIS FEATURE INDEXES
+            =================================================*/
+
+
+            (
+
+                window.allGISFeatures ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    feature
+
+                ) {
+
+                    if (
+
+                        !feature
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const p =
+
+                        feature.properties ||
+
+                        {};
+
+
+                    /*-----------------------------------------
+                      DIVISION
+                    -----------------------------------------*/
+
+                    if (
+
+                        p.division
+
+                    ) {
+
+                        const divisionKey =
+
+                            GG.normalizeName(
+
+                                p.division
+
+                            );
+
+
+                        if (
+
+                            divisionKey
+
+                        ) {
+
+                            /*
+                             * Preserve original behavior.
+                             *
+                             * Last matching feature remains
+                             * available from the single index.
+                             */
+
+                            index.divisions[
+
+                                divisionKey
+
+                            ] = feature;
+
+
+                            /*
+                             * New grouped index.
+                             */
+
+                            GISEntities
+                                .addToGroup(
+
+                                    index.divisionGroups,
+
+                                    divisionKey,
+
+                                    feature
+
+                                );
+
+                        }
+
+                    }
+
+
+                    /*-----------------------------------------
+                      RANGE
+                    -----------------------------------------*/
+
+                    if (
+
+                        p.range
+
+                    ) {
+
+                        const rangeKey =
+
+                            GG.normalizeName(
+
+                                p.range
+
+                            );
+
+
+                        if (
+
+                            rangeKey
+
+                        ) {
+
+                            /*
+                             * IMPORTANT:
+                             *
+                             * Preserve original contract.
+                             *
+                             * Existing:
+                             *
+                             * GISEntities.search("Nimati")
+                             *
+                             * still returns ONE Feature.
+                             */
+
+                            index.ranges[
+
+                                rangeKey
+
+                            ] = feature;
+
+
+                            /*
+                             * New grouped range index.
+                             *
+                             * Example:
+                             *
+                             * NIMATI
+                             *   -> Nimati-East
+                             *   -> Nimati-West
+                             *   -> Poro-West
+                             */
+
+                            GISEntities
+                                .addToGroup(
+
+                                    index.rangeGroups,
+
+                                    rangeKey,
+
+                                    feature
+
+                                );
+
+                        }
+
+                    }
+
+
+                    /*-----------------------------------------
+                      BEAT
+                    -----------------------------------------*/
+
+                    if (
+
+                        p.beat
+
+                    ) {
+
+                        const beatKey =
+
+                            GG.normalizeName(
+
+                                p.beat
+
+                            );
+
+
+                        if (
+
+                            beatKey
+
+                        ) {
+
+                            /*
+                             * Preserve original behavior.
+                             */
+
+                            index.beats[
+
+                                beatKey
+
+                            ] = feature;
+
+
+                            /*
+                             * Grouped beat index.
+                             */
+
+                            GISEntities
+                                .addToGroup(
+
+                                    index.beatGroups,
+
+                                    beatKey,
+
+                                    feature
+
+                                );
+
+                        }
+
+                    }
+
+                }
+
+            );
+
+
+            /*=================================================
+              BUILD COMPARTMENT INDEX
+            =================================================*/
+
+
+            (
+
+                window.allCompartmentFeatures ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    feature
+
+                ) {
+
+                    if (
+
+                        !feature
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const p =
+
+                        feature.properties ||
+
+                        {};
+
+
+                    const name =
+
+                        p.compartment ||
+
+                        p.name;
+
+
+                    if (
+
+                        !name
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const compartmentKey =
+
+                        GG.normalizeName(
+
+                            name
+
+                        );
+
+
+                    if (
+
+                        !compartmentKey
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Preserve original behavior.
+                     */
+
+                    index.compartments[
+
+                        compartmentKey
+
+                    ] = feature;
+
+
+                    /*
+                     * New grouped compartment index.
+                     *
+                     * Usually a compartment will contain
+                     * one feature, but this safely supports
+                     * multipart datasets.
+                     */
+
+                    GISEntities
+                        .addToGroup(
+
+                            index.compartmentGroups,
+
+                            compartmentKey,
+
+                            feature
+
+                        );
+
+                }
+
+            );
+
+
+            /*=================================================
+              BUILD VILLAGE INDEX
+            =================================================*/
+
+
+            (
+
+                window.__villageCache ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    village
+
+                ) {
+
+                    if (
+
+                        !village
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const name =
+
+                        village.name ||
+
+                        village.village;
+
+
+                    if (
+
+                        !name
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const villageKey =
+
+                        GG.normalizeName(
+
+                            name
+
+                        );
+
+
+                    if (
+
+                        !villageKey
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Preserve original behavior.
+                     */
+
+                    index.villages[
+
+                        villageKey
+
+                    ] = village;
+
+                }
+
+            );
+
+
+            return index;
+
+        };
+
+
+    /*=====================================================
+      READY
+    =====================================================*/
+
+
+    GISEntities.ready =
+        function () {
+
+            return !!index;
+
+        };
+
+
+    /*=====================================================
+      RESET
+    =====================================================*/
+
+
+    /*
+     * Useful when GIS data is loaded asynchronously.
+     *
+     * Example:
+     *
+     * allGISFeatures loaded
+     *      ↓
+     * GISEntities.rebuild()
+     */
+
+    GISEntities.reset =
+        function () {
+
+            index =
+
+                null;
+
+
+            return GISEntities;
+
+        };
+
+
+    /*=====================================================
+      REBUILD
+    =====================================================*/
+
+
+    GISEntities.rebuild =
+        function () {
+
+            GISEntities
+                .reset();
+
+
+            return GISEntities
+                .build();
+
+        };
+
+
+    /*=====================================================
+      EXISTING GENERIC SEARCH
+    =====================================================*/
+
+
+    /*
+     * IMPORTANT:
+     *
+     * This function intentionally preserves the original
+     * return contract.
+     *
+     * It returns ONE entity / feature.
+     *
+     * Existing callers therefore remain compatible.
+     */
+
+    GISEntities.search =
+        function (
 
             text
 
-        );
+        ) {
 
-    return (
+            if (
 
-        index.divisions[text] ||
+                !text
 
-        index.ranges[text] ||
+            ) {
 
-        index.beats[text] ||
+                return null;
 
-        index.compartments[text] ||
+            }
 
-        index.villages[text] ||
 
-        null
+            if (
 
-    );
+                !index
 
-};
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    text
+
+                );
+
+
+            return (
+
+                index.divisions[
+                    key
+                ] ||
+
+                index.ranges[
+                    key
+                ] ||
+
+                index.beats[
+                    key
+                ] ||
+
+                index.compartments[
+                    key
+                ] ||
+
+                index.villages[
+                    key
+                ] ||
+
+                null
+
+            );
+
+        };
+
+
+    /*=====================================================
+      OFFENCE RANGE ALIAS RESOLUTION
+    =====================================================*/
+
+
+    /*
+     * Converts confirmed offence database range codes
+     * into canonical GeoJSON range names.
+     *
+     * IMPORTANT:
+     *
+     * These aliases are intentionally NOT added to
+     * GG.normalizeName().
+     *
+     * This keeps offence-specific abbreviations isolated
+     * from the rest of GreenGuard.
+     *
+     * Confirmed mappings from current Buxa GIS:
+     *
+     * NMT
+     *     -> Nimati
+     *
+     * WRVK
+     *     -> WestRajabhatkhawa
+     *
+     * WDPO
+     *     -> WestDamanpur
+     *
+     * PANA
+     *     -> Pana
+     *
+     * HTG
+     *     -> Hamiltonganj
+     *
+     * EDPO
+     *     -> EastDamanpur
+     *
+     * ERVK
+     *     -> EastRajabhatkhawa
+     */
+
+    GISEntities.resolveRangeAlias =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                value == null
+
+            ) {
+
+                return "";
+
+            }
+
+
+            const raw =
+
+                String(
+
+                    value
+
+                )
+
+                    .trim();
+
+
+            if (
+
+                !raw
+
+            ) {
+
+                return "";
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    raw
+
+                );
+
+
+            const aliases = {
+
+                /*
+                 * Buxa Tiger Reserve West
+                 */
+
+                NMT:
+
+                    "Nimati",
+
+                WRVK:
+
+                    "WestRajabhatkhawa",
+
+                WDPO:
+
+                    "WestDamanpur",
+
+                PANA:
+
+                    "Pana",
+
+                HTG:
+
+                    "Hamiltonganj",
+
+                EDPO:
+
+                    "EastDamanpur",
+
+                ERVK:
+
+                    "EastRajabhatkhawa"
+
+            };
+
+
+            return (
+
+                aliases[
+                    key
+                ] ||
+
+                raw
+
+            );
+
+        };
+
+
+    /*=====================================================
+      SEARCH SINGLE RANGE
+    =====================================================*/
+
+
+    /*
+     * Returns ONE GeoJSON feature.
+     *
+     * Supports:
+     *
+     * searchRange("NMT")
+     * searchRange("Nimati")
+     *
+     * Both resolve to the existing single-feature
+     * range index.
+     */
+
+    GISEntities.searchRange =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return null;
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const resolved =
+
+                GISEntities
+                    .resolveRangeAlias(
+
+                        value
+
+                    );
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    resolved
+
+                );
+
+
+            return (
+
+                index.ranges[
+                    key
+                ] ||
+
+                null
+
+            );
+
+        };
+
+
+    /*=====================================================
+      SEARCH ALL RANGE FEATURES
+    =====================================================*/
+
+
+    /*
+     * Returns ALL GIS features belonging to the range.
+     *
+     * Designed for OffenceMapRenderer.
+     *
+     * Example:
+     *
+     * searchRangeFeatures(
+     *     "NMT"
+     * )
+     *
+     * resolves:
+     *
+     * NMT
+     *      ↓
+     * Nimati
+     *      ↓
+     * [
+     *     Nimati-East,
+     *     Nimati-West,
+     *     Poro-West
+     * ]
+     */
+
+    GISEntities.searchRangeFeatures =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return [];
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const resolved =
+
+                GISEntities
+                    .resolveRangeAlias(
+
+                        value
+
+                    );
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    resolved
+
+                );
+
+
+            const features =
+
+                index.rangeGroups[
+
+                    key
+
+                ];
+
+
+            return Array.isArray(
+
+                features
+
+            )
+
+                ? features.slice()
+
+                : [];
+
+        };
+
+
+    /*=====================================================
+      SEARCH RANGE FEATURE COLLECTION
+    =====================================================*/
+
+
+    /*
+     * Returns a standard GeoJSON FeatureCollection.
+     *
+     * This is the preferred method for rendering the
+     * COMPLETE range in Leaflet.
+     *
+     * Example:
+     *
+     * const collection =
+     *
+     *     GG.GISEntities
+     *         .searchRangeFeatureCollection(
+     *             "NMT"
+     *         );
+     *
+     * L.geoJSON(
+     *     collection
+     * );
+     */
+
+    GISEntities.searchRangeFeatureCollection =
+        function (
+
+            value
+
+        ) {
+
+            const features =
+
+                GISEntities
+                    .searchRangeFeatures(
+
+                        value
+
+                    );
+
+
+            return GISEntities
+                .createFeatureCollection(
+
+                    features
+
+                );
+
+        };
+
+
+    /*=====================================================
+      SEARCH SINGLE COMPARTMENT
+    =====================================================*/
+
+
+    /*
+     * Returns ONE compartment GeoJSON feature.
+     *
+     * This keeps compartment resolution separate from
+     * generic search and is useful for OffenceHeatmapEngine
+     * and OffenceMapRenderer.
+     */
+
+    GISEntities.searchCompartment =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return null;
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    value
+
+                );
+
+
+            return (
+
+                index.compartments[
+                    key
+                ] ||
+
+                null
+
+            );
+
+        };
+
+
+    /*=====================================================
+      SEARCH ALL COMPARTMENT FEATURES
+    =====================================================*/
+
+
+    /*
+     * Returns all matching compartment features.
+     *
+     * Usually one feature is expected.
+     *
+     * Multiple features are supported for future
+     * multipart compartment datasets.
+     */
+
+    GISEntities.searchCompartmentFeatures =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return [];
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    value
+
+                );
+
+
+            const features =
+
+                index.compartmentGroups[
+
+                    key
+
+                ];
+
+
+            return Array.isArray(
+
+                features
+
+            )
+
+                ? features.slice()
+
+                : [];
+
+        };
+
+
+    /*=====================================================
+      SEARCH COMPARTMENT FEATURE COLLECTION
+    =====================================================*/
+
+
+    GISEntities.searchCompartmentFeatureCollection =
+        function (
+
+            value
+
+        ) {
+
+            const features =
+
+                GISEntities
+                    .searchCompartmentFeatures(
+
+                        value
+
+                    );
+
+
+            return GISEntities
+                .createFeatureCollection(
+
+                    features
+
+                );
+
+        };
+
+
+    /*=====================================================
+      RANGE NAMES
+    =====================================================*/
+
+
+    /*
+     * Returns all canonical range keys currently indexed.
+     *
+     * Primarily useful for diagnostics.
+     */
+
+    GISEntities.getRangeNames =
+        function () {
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            return Object.keys(
+
+                index.ranges
+
+            );
+
+        };
+
+
+    /*=====================================================
+      RANGE FEATURE COUNT
+    =====================================================*/
+
+
+    GISEntities.getRangeFeatureCount =
+        function (
+
+            value
+
+        ) {
+
+            return GISEntities
+                .searchRangeFeatures(
+
+                    value
+
+                )
+                .length;
+
+        };
+
+
+    /*=====================================================
+      GET INDEX STATS
+    =====================================================*/
+
+
+    /*
+     * Diagnostic helper.
+     *
+     * Does not expose the mutable internal index itself.
+     */
+
+    GISEntities.getStats =
+        function () {
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            return {
+
+                version:
+
+                    GISEntities.VERSION,
+
+
+                divisions:
+
+                    Object.keys(
+
+                        index.divisions
+
+                    ).length,
+
+
+                ranges:
+
+                    Object.keys(
+
+                        index.ranges
+
+                    ).length,
+
+
+                rangeGroups:
+
+                    Object.keys(
+
+                        index.rangeGroups
+
+                    ).length,
+
+
+                rangeFeatures:
+
+                    Object.values(
+
+                        index.rangeGroups
+
+                    ).reduce(
+
+                        function (
+
+                            total,
+
+                            features
+
+                        ) {
+
+                            return (
+
+                                total +
+
+                                (
+
+                                    Array.isArray(
+
+                                        features
+
+                                    )
+
+                                        ? features.length
+
+                                        : 0
+
+                                )
+
+                            );
+
+                        },
+
+                        0
+
+                    ),
+
+
+                beats:
+
+                    Object.keys(
+
+                        index.beats
+
+                    ).length,
+
+
+                compartments:
+
+                    Object.keys(
+
+                        index.compartments
+
+                    ).length,
+
+
+                villages:
+
+                    Object.keys(
+
+                        index.villages
+
+                    ).length
+
+            };
+
+        };
+
+
+    /*=====================================================
+      REGISTER
+    =====================================================*/
+
+
+    /*
+     * Freeze the public module exactly as before.
+     *
+     * Internal index data remains managed privately.
+     */
 
     GG.GISEntities =
 
@@ -463,7 +1825,9 @@ GISEntities.search = function (
 
         );
 
+
 })(
 
     window.GreenGuardAI
+
 );
