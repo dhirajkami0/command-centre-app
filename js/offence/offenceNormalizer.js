@@ -1,59 +1,38 @@
-/* =========================================================
-   GreenGuard
-   Offence Intelligence Module
-
-   File:
-   js/offence/offenceNormalizer.js
-
-   Purpose:
-   Normalize raw offence datasets into canonical objects.
-
-   Input:
-   - Case records
-   - Accused / suspect records
-   - Seizure records
-
-   Output:
-   - Canonical case objects
-   - Canonical accused objects
-   - Canonical seizure objects
-
-   IMPORTANT:
-   - NO Leaflet rendering
-   - NO geocoding
-   - NO Firestore queries
-   - NO heatmap logic
-   ========================================================= */
-
-(function () {
+(function (window) {
 
     "use strict";
 
 
-    /* =====================================================
-       1. GLOBAL NAMESPACE
-       ===================================================== */
+    /*=========================================================
+      NAMESPACE
+    =========================================================*/
 
-    window.GG =
-        window.GG ||
-        {};
+    const GG =
+
+        window.GreenGuardAI =
+
+        window.GreenGuardAI || {};
+
 
     GG.Offence =
-        GG.Offence ||
-        {};
+
+        GG.Offence || {};
 
 
-    /* =====================================================
-       2. DEPENDENCY
-       ===================================================== */
+    /*=========================================================
+      PREVENT DOUBLE LOADING
+    =========================================================*/
 
-    const Constants =
-        GG.Offence.Constants;
+    if (
 
-    if (!Constants) {
+        GG.Offence.Normalizer
 
-        console.error(
-            "[OffenceNormalizer] OffenceConstants unavailable."
+    ) {
+
+        console.warn(
+
+            "[GreenGuardAI] Offence Normalizer already loaded."
+
         );
 
         return;
@@ -61,175 +40,176 @@
     }
 
 
-    /* =====================================================
-       3. NORMALIZER OBJECT
-       ===================================================== */
+    /*=========================================================
+      MODULE
+    =========================================================*/
 
-    const OffenceNormalizer = {};
-
-
-    /* =====================================================
-       4. MODULE INFO
-       ===================================================== */
-
-    OffenceNormalizer.VERSION =
-        "1.0.0";
+    const Normalizer = {};
 
 
-    /* =====================================================
-       5. BASIC VALUE NORMALIZER
-       ===================================================== */
+    /*=========================================================
+      VERSION
+    =========================================================*/
 
-    OffenceNormalizer.cleanValue = function (
+    Normalizer.VERSION =
 
-        value
+        "2.0.0";
 
-    ) {
 
-        if (
-            value === null ||
-            value === undefined
-        ) {
+    /*=========================================================
+      ENTITY TYPES
+    =========================================================*/
 
-            return "";
+    Normalizer.TYPES = {
 
-        }
+        CASE:
 
-        if (
-            typeof value === "string"
-        ) {
+            "case",
 
-            return value
-                .replace(/\s+/g, " ")
-                .trim();
+        ACCUSED:
 
-        }
+            "accused",
 
-        return value;
+        WITNESS:
+
+            "witness",
+
+        SEIZURE:
+
+            "seizure",
+
+        SEIZED_ARTICLE:
+
+            "seized_article"
 
     };
 
 
-    /* =====================================================
-       6. STRING NORMALIZER
-       ===================================================== */
+    /*=========================================================
+      BASIC STRING NORMALIZER
 
-    OffenceNormalizer.cleanString = function (
+      Does NOT destroy original field values.
+
+      Used only for canonical/index fields.
+    =========================================================*/
+
+    Normalizer.string = function (
 
         value
 
     ) {
 
-        const cleaned =
-            OffenceNormalizer.cleanValue(
-                value
-            );
-
         if (
-            cleaned === ""
+
+            value === null ||
+
+            value === undefined
+
         ) {
 
             return "";
 
         }
+
 
         return String(
-            cleaned
-        ).trim();
 
-    };
+            value
 
-
-    /* =====================================================
-       7. NUMBER NORMALIZER
-       ===================================================== */
-
-    OffenceNormalizer.cleanNumber = function (
-
-        value,
-
-        fallback = 0
-
-    ) {
-
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        ) {
-
-            return fallback;
-
-        }
-
-        const number =
-            Number(
-                value
-            );
-
-        return Number.isFinite(
-            number
         )
-            ? number
-            : fallback;
+
+            .replace(
+
+                /\r?\n/g,
+
+                " "
+
+            )
+
+            .replace(
+
+                /\s+/g,
+
+                " "
+
+            )
+
+            .trim();
 
     };
 
 
-    /* =====================================================
-       8. GET FIELD
+    /*=========================================================
+      FIRST NON-EMPTY VALUE
 
-       Supports multiple possible raw column names.
+      Allows compatibility with different historical field names.
+    =========================================================*/
 
-       Example:
-
-       getField(record, [
-           "CaseID",
-           "Case ID",
-           "caseId"
-       ])
-       ===================================================== */
-
-    OffenceNormalizer.getField = function (
+    Normalizer.firstValue = function (
 
         record,
 
-        aliases = []
+        fields
 
     ) {
 
         if (
+
             !record ||
-            typeof record !== "object"
+
+            typeof record !==
+
+            "object"
+
         ) {
 
             return "";
 
         }
 
+
         for (
-            const key
-            of aliases
+
+            let i = 0;
+
+            i < fields.length;
+
+            i++
+
         ) {
 
+            const field =
+
+                fields[i];
+
+
             if (
-                Object.prototype
-                    .hasOwnProperty
-                    .call(
-                        record,
-                        key
-                    )
+
+                record[field] !==
+
+                    undefined &&
+
+                record[field] !==
+
+                    null
+
             ) {
 
                 const value =
-                    record[
-                        key
-                    ];
+
+                    Normalizer
+
+                        .string(
+
+                            record[field]
+
+                        );
+
 
                 if (
-                    value !== null &&
-                    value !== undefined &&
-                    value !== ""
+
+                    value
+
                 ) {
 
                     return value;
@@ -240,155 +220,761 @@
 
         }
 
+
         return "";
 
     };
 
 
-    /* =====================================================
-       9. NORMALIZE DATE
+    /*=========================================================
+      NORMALIZE ID
+    =========================================================*/
 
-       Preserves original date string.
-
-       We do NOT force JavaScript Date conversion here
-       because source data may use DD/MM/YYYY.
-
-       Example:
-       21/03/2023
-       ===================================================== */
-
-    OffenceNormalizer.normalizeDate = function (
+    Normalizer.normalizeId = function (
 
         value
 
     ) {
 
-        return OffenceNormalizer.cleanString(
-            value
-        );
+        return Normalizer
+
+            .string(
+
+                value
+
+            );
 
     };
 
 
-    /* =====================================================
-       10. NORMALIZE ADDRESS
-       ===================================================== */
+    /*=========================================================
+      NORMALIZE POR NUMBER
 
-    OffenceNormalizer.normalizeAddress = function (
+      THIS IS THE MOST IMPORTANT FUNCTION IN THIS MODULE.
+
+      POR No. is the authoritative business connector.
+
+      Examples:
+
+      "53/HTG of 2025-26"
+              ↓
+      "53/HTG OF 2025-26"
+
+      " 53 / HTG   of 2025-26 "
+              ↓
+      "53/HTG OF 2025-26"
+
+      Important:
+
+      This normalization is intentionally conservative.
+
+      It DOES NOT try to guess that:
+
+      "10/P-15 of 2023-24"
+
+      and
+
+      "10/PANA of 2023-24"
+
+      are the same POR.
+
+      Such alias/mapping logic must be explicit, not guessed.
+    =========================================================*/
+
+    Normalizer.normalizePor = function (
 
         value
 
     ) {
 
-        let address =
-            OffenceNormalizer.cleanString(
-                value
-            );
+        let por =
 
-        if (!address) {
+            Normalizer
+
+                .string(
+
+                    value
+
+                );
+
+
+        if (
+
+            !por
+
+        ) {
 
             return "";
 
         }
 
-        address =
-            address
-                .replace(/\s*,\s*/g, ", ")
-                .replace(/,+/g, ",")
-                .replace(/\s+/g, " ")
-                .trim();
 
-        return address;
+        por =
 
-    };
+            por
 
+                .toUpperCase()
 
-    /* =====================================================
-       11. NORMALIZE CASE ID
-       ===================================================== */
+                /*----------------------------------
+                  Normalize Unicode dashes
+                ----------------------------------*/
 
-    OffenceNormalizer.normalizeCaseId = function (
+                .replace(
 
-        value
+                    /[–—−]/g,
 
-    ) {
-
-        return OffenceNormalizer.cleanString(
-            value
-        );
-
-    };
-
-
-    /* =====================================================
-       12. NORMALIZE POR NUMBER
-       ===================================================== */
-
-    OffenceNormalizer.normalizePorNo = function (
-
-        value
-
-    ) {
-
-        return OffenceNormalizer.cleanString(
-            value
-        );
-
-    };
-
-
-    /* =====================================================
-       13. NORMALIZE CASE RECORD
-       ===================================================== */
-
-    OffenceNormalizer.normalizeCase = function (
-
-        raw = {}
-
-    ) {
-
-        const caseId =
-
-            OffenceNormalizer.normalizeCaseId(
-
-                OffenceNormalizer.getField(
-
-                    raw,
-
-                    [
-                        "CaseID",
-                        "Case ID",
-                        "caseId",
-                        "case_id"
-                    ]
+                    "-"
 
                 )
 
+                /*----------------------------------
+                  Normalize slash spacing
+                ----------------------------------*/
+
+                .replace(
+
+                    /\s*\/\s*/g,
+
+                    "/"
+
+                )
+
+                /*----------------------------------
+                  Normalize hyphen spacing
+                ----------------------------------*/
+
+                .replace(
+
+                    /\s*-\s*/g,
+
+                    "-"
+
+                )
+
+                /*----------------------------------
+                  Normalize spaces
+                ----------------------------------*/
+
+                .replace(
+
+                    /\s+/g,
+
+                    " "
+
+                )
+
+                .trim();
+
+
+        return por;
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE POR ALIAS
+
+      Public alias.
+
+      Other modules can use:
+
+      GG.Offence.Normalizer.normalizePorNo(...)
+    =========================================================*/
+
+    Normalizer.normalizePorNo =
+
+        Normalizer.normalizePor;
+
+
+    /*=========================================================
+      GET POR NUMBER FROM ANY ENTITY
+
+      Cases normally:
+          porNo
+
+      Child collections normally:
+          refPorNo
+
+      Compatibility fallbacks included.
+    =========================================================*/
+
+    Normalizer.getPorNo = function (
+
+        record
+
+    ) {
+
+        return Normalizer
+
+            .firstValue(
+
+                record,
+
+                [
+
+                    "refPorNo",
+
+                    "porNo",
+
+                    "por",
+
+                    "PORNo",
+
+                    "POR",
+
+                    "refPORNo",
+
+                    "refPor",
+
+                    "referencePorNo"
+
+                ]
+
             );
+
+    };
+
+
+    /*=========================================================
+      GET POR KEY
+    =========================================================*/
+
+    Normalizer.getPorKey = function (
+
+        record
+
+    ) {
+
+        return Normalizer
+
+            .normalizePor(
+
+                Normalizer
+
+                    .getPorNo(
+
+                        record
+
+                    )
+
+            );
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE BOOLEAN
+
+      Preserves null when unknown.
+    =========================================================*/
+
+    Normalizer.boolean = function (
+
+        value
+
+    ) {
+
+        if (
+
+            value === true ||
+
+            value === false
+
+        ) {
+
+            return value;
+
+        }
+
+
+        const normalized =
+
+            Normalizer
+
+                .string(
+
+                    value
+
+                )
+
+                .toLowerCase();
+
+
+        if (
+
+            [
+
+                "true",
+
+                "yes",
+
+                "y",
+
+                "1"
+
+            ].includes(
+
+                normalized
+
+            )
+
+        ) {
+
+            return true;
+
+        }
+
+
+        if (
+
+            [
+
+                "false",
+
+                "no",
+
+                "n",
+
+                "0"
+
+            ].includes(
+
+                normalized
+
+            )
+
+        ) {
+
+            return false;
+
+        }
+
+
+        return null;
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE NUMBER
+
+      Returns null if unavailable.
+    =========================================================*/
+
+    Normalizer.number = function (
+
+        value
+
+    ) {
+
+        if (
+
+            value === null ||
+
+            value === undefined ||
+
+            value === ""
+
+        ) {
+
+            return null;
+
+        }
+
+
+        const number =
+
+            Number(
+
+                value
+
+            );
+
+
+        if (
+
+            !Number.isFinite(
+
+                number
+
+            )
+
+        ) {
+
+            return null;
+
+        }
+
+
+        return number;
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE DATE
+
+      IMPORTANT:
+
+      Firestore Timestamp is preserved.
+
+      String dates are kept as strings.
+
+      We do not guess DD/MM/YYYY versus MM/DD/YYYY.
+    =========================================================*/
+
+    Normalizer.date = function (
+
+        value
+
+    ) {
+
+        if (
+
+            !value
+
+        ) {
+
+            return null;
+
+        }
+
+
+        /*----------------------------------
+          Firestore Timestamp
+        ----------------------------------*/
+
+        if (
+
+            typeof value.toDate ===
+
+            "function"
+
+        ) {
+
+            try {
+
+                return value
+
+                    .toDate();
+
+            }
+
+            catch (
+
+                error
+
+            ) {
+
+                return value;
+
+            }
+
+        }
+
+
+        /*----------------------------------
+          JavaScript Date
+        ----------------------------------*/
+
+        if (
+
+            value instanceof Date
+
+        ) {
+
+            return value;
+
+        }
+
+
+        /*----------------------------------
+          Preserve date string
+        ----------------------------------*/
+
+        return Normalizer
+
+            .string(
+
+                value
+
+            );
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE ARRAY
+
+      Useful if any imported field is already an array.
+    =========================================================*/
+
+    Normalizer.array = function (
+
+        value
+
+    ) {
+
+        if (
+
+            Array.isArray(
+
+                value
+
+            )
+
+        ) {
+
+            return value;
+
+        }
+
+
+        if (
+
+            value === null ||
+
+            value === undefined ||
+
+            value === ""
+
+        ) {
+
+            return [];
+
+        }
+
+
+        return [
+
+            value
+
+        ];
+
+    };
+
+
+    /*=========================================================
+      COPY RAW RECORD
+
+      We preserve original Firestore fields.
+
+      The normalized entity extends the original object.
+    =========================================================*/
+
+    Normalizer.copyRaw = function (
+
+        record
+
+    ) {
+
+        if (
+
+            !record ||
+
+            typeof record !==
+
+            "object"
+
+        ) {
+
+            return {};
+
+        }
+
+
+        return {
+
+            ...record
+
+        };
+
+    };
+
+
+    /*=========================================================
+      GET DOCUMENT ID
+
+      DataLoader adds Firestore document ID as:
+
+          id
+    =========================================================*/
+
+    Normalizer.getDocumentId = function (
+
+        record
+
+    ) {
+
+        return Normalizer
+
+            .firstValue(
+
+                record,
+
+                [
+
+                    "id",
+
+                    "documentId",
+
+                    "docId"
+
+                ]
+
+            );
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE CASE
+
+      Firestore:
+          offence_cases
+
+      Important fields include:
+
+          caseId
+          porNo
+          crNo
+          fillingNumber
+          range
+          court
+          offenceDate
+          natureOfOffence
+          act
+          section
+          articlesSeized
+          nameAndDesignationOfEO
+          porStatus
+          porSubmissionDate
+          caseStatus
+          nextHearingDate
+          purposeOfHearing
+          witnessesForEvidenceInNextHearingDate
+          verdictOfTheCase
+          sentence
+          judgmentPdf
+          verificationStatus
+          mismatches
+          caseDocumentsPdf
+          alternateCrNo
+          emailStatus
+    =========================================================*/
+
+    Normalizer.normalizeCase = function (
+
+        record
+
+    ) {
+
+        const raw =
+
+            Normalizer
+
+                .copyRaw(
+
+                    record
+
+                );
+
+
+        const documentId =
+
+            Normalizer
+
+                .getDocumentId(
+
+                    record
+
+                );
+
+
+        const caseId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "caseId",
+
+                        "CaseID",
+
+                        "caseID",
+
+                        "id"
+
+                    ]
+
+                );
 
 
         const porNo =
 
-            OffenceNormalizer.normalizePorNo(
+            Normalizer
 
-                OffenceNormalizer.getField(
+                .firstValue(
 
-                    raw,
+                    record,
 
                     [
-                        "POR No",
-                        "POR NO",
-                        "POR Number",
+
                         "porNo",
-                        "por_no"
+
+                        "refPorNo",
+
+                        "PORNo",
+
+                        "por"
+
                     ]
 
-                )
+                );
 
-            );
+
+        const porKey =
+
+            Normalizer
+
+                .normalizePor(
+
+                    porNo
+
+                );
 
 
         return {
+
+            ...raw,
+
+
+            /*----------------------------------
+              Runtime Metadata
+            ----------------------------------*/
+
+            entityType:
+
+                Normalizer.TYPES.CASE,
+
+            documentId:
+
+                documentId,
+
+            id:
+
+                documentId ||
+
+                caseId,
+
+
+            /*----------------------------------
+              Identity
+            ----------------------------------*/
 
             caseId:
 
@@ -398,874 +984,2109 @@
 
                 porNo,
 
+            refPorNo:
+
+                porNo,
+
+            porKey:
+
+                porKey,
+
+
+            /*----------------------------------
+              Case References
+            ----------------------------------*/
+
             crNo:
 
-                OffenceNormalizer.cleanString(
+                Normalizer
 
-                    OffenceNormalizer.getField(
+                    .firstValue(
 
-                        raw,
-
-                        [
-                            "CR No",
-                            "CR NO",
-                            "CR Number",
-                            "crNo"
-                        ]
-
-                    )
-
-                ),
-
-            range:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
+                        record,
 
                         [
-                            "Range",
-                            "range"
-                        ]
 
-                    )
+                            "crNo",
 
-                ),
+                            "CRNo"
 
-            offenceDate:
-
-                OffenceNormalizer.normalizeDate(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Offence Date",
-                            "Offense Date",
-                            "offenceDate",
-                            "offenseDate"
-                        ]
-
-                    )
-
-                ),
-
-            natureOfOffence:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Nature of Offence",
-                            "Nature Of Offence",
-                            "Nature of Offense",
-                            "natureOfOffence",
-                            "offenceType"
-                        ]
-
-                    )
-
-                ),
-
-            act:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Act",
-                            "ACT",
-                            "act"
-                        ]
-
-                    )
-
-                ),
-
-            section:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Section",
-                            "SECTION",
-                            "section"
-                        ]
-
-                    )
-
-                ),
-
-            articlesSeized:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Articles Seized",
-                            "Article Seized",
-                            "articlesSeized"
-                        ]
-
-                    )
-
-                ),
-
-            caseStatus:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Case Status",
-                            "Status",
-                            "caseStatus"
-                        ]
-
-                    )
-
-                ),
-
-            verdict:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Verdict of the Case",
-                            "Verdict",
-                            "verdict"
-                        ]
-
-                    )
-
-                ),
-
-            sentence:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Sentence",
-                            "sentence"
-                        ]
-
-                    )
-
-                ),
-
-            raw:
-
-                raw
-
-        };
-
-    };
-
-
-    /* =====================================================
-       14. NORMALIZE ACCUSED RECORD
-       ===================================================== */
-
-    OffenceNormalizer.normalizeAccused = function (
-
-        raw = {}
-
-    ) {
-
-        return {
-
-            suspectId:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Suspect ID",
-                            "SuspectID",
-                            "suspectId",
-                            "suspect_id"
-                        ]
-
-                    )
-
-                ),
-
-            name:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Name of Accused",
-                            "Accused Name",
-                            "Name",
-                            "name"
-                        ]
-
-                    )
-
-                ),
-
-            alias:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Alias",
-                            "alias"
-                        ]
-
-                    )
-
-                ),
-
-            fatherName:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Father's Name",
-                            "Father Name",
-                            "Fathers Name",
-                            "fatherName"
-                        ]
-
-                    )
-
-                ),
-
-            permanentAddress:
-
-                OffenceNormalizer.normalizeAddress(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Permanent Address",
-                            "PermanentAddress",
-                            "permanentAddress"
-                        ]
-
-                    )
-
-                ),
-
-            presentAddress:
-
-                OffenceNormalizer.normalizeAddress(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Present Address",
-                            "PresentAddress",
-                            "presentAddress"
-                        ]
-
-                    )
-
-                ),
-
-            primaryOccupation:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Primary Occupation",
-                            "Occupation",
-                            "primaryOccupation"
-                        ]
-
-                    )
-
-                ),
-
-            totalCases:
-
-                OffenceNormalizer.cleanNumber(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Total WDPO Cases",
-                            "Total Cases",
-                            "totalCases"
                         ]
 
                     ),
 
-                    0
+            alternateCrNo:
 
-                ),
+                Normalizer
 
-            offenceRecord:
+                    .firstValue(
 
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
+                        record,
 
                         [
-                            "Offence Record",
-                            "Offense Record",
-                            "offenceRecord"
+
+                            "alternateCrNo"
+
+                        ]
+
+                    ),
+
+            fillingNumber:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "fillingNumber",
+
+                            "filingNumber"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Jurisdiction
+            ----------------------------------*/
+
+            range:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "range"
+
+                        ]
+
+                    ),
+
+            court:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "court"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Offence
+            ----------------------------------*/
+
+            offenceDate:
+
+                Normalizer
+
+                    .date(
+
+                        record.offenceDate
+
+                    ),
+
+            natureOfOffence:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "natureOfOffence"
+
+                        ]
+
+                    ),
+
+            act:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "act"
+
+                        ]
+
+                    ),
+
+            section:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "section"
+
+                        ]
+
+                    ),
+
+            articlesSeized:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "articlesSeized"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Enquiry / POR
+            ----------------------------------*/
+
+            nameAndDesignationOfEO:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "nameAndDesignationOfEO",
+
+                            "nameAndDesignationOfEo"
+
+                        ]
+
+                    ),
+
+            porStatus:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "porStatus"
+
+                        ]
+
+                    ),
+
+            porSubmissionDate:
+
+                Normalizer
+
+                    .date(
+
+                        record.porSubmissionDate
+
+                    ),
+
+
+            /*----------------------------------
+              Court Case
+            ----------------------------------*/
+
+            caseStatus:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "caseStatus"
+
+                        ]
+
+                    ),
+
+            nextHearingDate:
+
+                Normalizer
+
+                    .date(
+
+                        record.nextHearingDate
+
+                    ),
+
+            purposeOfHearing:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "purposeOfHearing"
+
+                        ]
+
+                    ),
+
+            witnessesForEvidenceInNextHearingDate:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "witnessesForEvidenceInNextHearingDate"
+
+                        ]
+
+                    ),
+
+            verdictOfTheCase:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "verdictOfTheCase",
+
+                            "verdict"
+
+                        ]
+
+                    ),
+
+            sentence:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "sentence"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Documents / Verification
+            ----------------------------------*/
+
+            judgmentPdf:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "judgmentPdf",
+
+                            "judgmentPDF"
+
+                        ]
+
+                    ),
+
+            verificationStatus:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "verificationStatus"
+
+                        ]
+
+                    ),
+
+            mismatches:
+
+                record.mismatches ||
+
+                "",
+
+            caseDocumentsPdf:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "caseDocumentsPdf",
+
+                            "caseDocumentsPDF"
+
+                        ]
+
+                    ),
+
+            emailStatus:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "emailStatus"
+
                         ]
 
                     )
-
-                ),
-
-            pastOffenceHistory:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Past Offence History",
-                            "Past Offense History",
-                            "pastOffenceHistory"
-                        ]
-
-                    )
-
-                ),
-
-            photo:
-
-                OffenceNormalizer.cleanString(
-
-                    OffenceNormalizer.getField(
-
-                        raw,
-
-                        [
-                            "Photo Link",
-                            "Photo",
-                            "photo"
-                        ]
-
-                    )
-
-                ),
-
-            raw:
-
-                raw
 
         };
 
     };
 
 
-    /* =====================================================
-       15. NORMALIZE SEIZURE RECORD
-       ===================================================== */
+    /*=========================================================
+      NORMALIZE ACCUSED
 
-    OffenceNormalizer.normalizeSeizure = function (
+      Firestore:
+          offence_accused
 
-        raw = {}
+      Current structure:
+
+          accusedId
+          caseId
+          refPorNo
+          slNo
+          name
+          age
+          fatherName
+          address
+          contactNo
+          alternateContactNo
+          pastOffenceHistory
+          accusedPhoto
+          aadhaarCard
+          voterCard
+          drivingLicence
+          panCard
+          otherId
+          arrestStatus
+
+      Address remains exactly one free-text field.
+    =========================================================*/
+
+    Normalizer.normalizeAccused = function (
+
+        record
 
     ) {
+
+        const raw =
+
+            Normalizer
+
+                .copyRaw(
+
+                    record
+
+                );
+
+
+        const documentId =
+
+            Normalizer
+
+                .getDocumentId(
+
+                    record
+
+                );
+
+
+        const accusedId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "accusedId",
+
+                        "AccusedID",
+
+                        "id"
+
+                    ]
+
+                );
+
+
+        const caseId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "caseId",
+
+                        "CaseID"
+
+                    ]
+
+                );
+
+
+        const refPorNo =
+
+            Normalizer
+
+                .getPorNo(
+
+                    record
+
+                );
+
 
         return {
 
-            seizureId:
+            ...raw,
 
-                OffenceNormalizer.cleanString(
 
-                    OffenceNormalizer.getField(
+            entityType:
 
-                        raw,
+                Normalizer.TYPES.ACCUSED,
 
-                        [
-                            "SeizureID",
-                            "Seizure ID",
-                            "seizureId",
-                            "seizure_id"
-                        ]
+            documentId:
 
-                    )
+                documentId,
 
-                ),
+            id:
+
+                documentId ||
+
+                accusedId,
+
+
+            /*----------------------------------
+              Identity
+            ----------------------------------*/
+
+            accusedId:
+
+                accusedId,
+
+
+            /*----------------------------------
+              Relationship
+
+              POR KEY IS AUTHORITATIVE
+              caseId is retained as secondary reference
+            ----------------------------------*/
 
             caseId:
 
-                OffenceNormalizer.normalizeCaseId(
+                caseId,
 
-                    OffenceNormalizer.getField(
+            refPorNo:
 
-                        raw,
-
-                        [
-                            "CaseID",
-                            "Case ID",
-                            "caseId",
-                            "case_id"
-                        ]
-
-                    )
-
-                ),
+                refPorNo,
 
             porNo:
 
-                OffenceNormalizer.normalizePorNo(
+                refPorNo,
 
-                    OffenceNormalizer.getField(
+            porKey:
 
-                        raw,
+                Normalizer
+
+                    .normalizePor(
+
+                        refPorNo
+
+                    ),
+
+
+            /*----------------------------------
+              Accused Details
+            ----------------------------------*/
+
+            slNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
 
                         [
-                            "Ref POR No",
-                            "POR No",
-                            "POR Number",
-                            "porNo"
+
+                            "slNo"
+
+                        ]
+
+                    ),
+
+            name:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "name",
+
+                            "nameOfAccused"
+
+                        ]
+
+                    ),
+
+            age:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "age"
+
+                        ]
+
+                    ),
+
+            fatherName:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "fatherName",
+
+                            "fathersName"
+
+                        ]
+
+                    ),
+
+            address:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "address",
+
+                            "addressOfAccused"
+
+                        ]
+
+                    ),
+
+            contactNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "contactNo"
+
+                        ]
+
+                    ),
+
+            alternateContactNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "alternateContactNo"
+
+                        ]
+
+                    ),
+
+            pastOffenceHistory:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "pastOffenceHistory"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Documents
+            ----------------------------------*/
+
+            accusedPhoto:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "accusedPhoto"
+
+                        ]
+
+                    ),
+
+            aadhaarCard:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "aadhaarCard"
+
+                        ]
+
+                    ),
+
+            voterCard:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "voterCard"
+
+                        ]
+
+                    ),
+
+            drivingLicence:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "drivingLicence",
+
+                            "drvingLicence"
+
+                        ]
+
+                    ),
+
+            panCard:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "panCard"
+
+                        ]
+
+                    ),
+
+            otherId:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "otherId"
+
+                        ]
+
+                    ),
+
+            arrestStatus:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "arrestStatus"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Existing / Future Location Object
+
+              Do not geocode here.
+            ----------------------------------*/
+
+            location:
+
+                record.location ||
+
+                null
+
+        };
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE WITNESS
+
+      Firestore:
+          offence_witnesses
+
+      Current source fields:
+
+          witnessId
+          refPorNo
+          caseId
+          slNo
+          name
+          fullAddress
+          presentPlaceOfPosting
+          contactNo
+          witnessWithPendingEvidenceBeforeChargeChief
+          witnessWithPendingEvidenceAfterChargeChief
+          witnessWithEvidenceCompleted
+          email
+          village
+          streetLane
+          postOffice
+          district
+          pinCode
+    =========================================================*/
+
+    Normalizer.normalizeWitness = function (
+
+        record
+
+    ) {
+
+        const raw =
+
+            Normalizer
+
+                .copyRaw(
+
+                    record
+
+                );
+
+
+        const documentId =
+
+            Normalizer
+
+                .getDocumentId(
+
+                    record
+
+                );
+
+
+        const witnessId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "witnessId",
+
+                        "WitnessID",
+
+                        "id"
+
+                    ]
+
+                );
+
+
+        const refPorNo =
+
+            Normalizer
+
+                .getPorNo(
+
+                    record
+
+                );
+
+
+        return {
+
+            ...raw,
+
+
+            entityType:
+
+                Normalizer.TYPES.WITNESS,
+
+            documentId:
+
+                documentId,
+
+            id:
+
+                documentId ||
+
+                witnessId,
+
+
+            /*----------------------------------
+              Identity
+            ----------------------------------*/
+
+            witnessId:
+
+                witnessId,
+
+
+            /*----------------------------------
+              Relationship
+            ----------------------------------*/
+
+            caseId:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "caseId",
+
+                            "CaseID"
+
+                        ]
+
+                    ),
+
+            refPorNo:
+
+                refPorNo,
+
+            porNo:
+
+                refPorNo,
+
+            porKey:
+
+                Normalizer
+
+                    .normalizePor(
+
+                        refPorNo
+
+                    ),
+
+
+            /*----------------------------------
+              Witness Details
+            ----------------------------------*/
+
+            slNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "slNo"
+
+                        ]
+
+                    ),
+
+            name:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "name",
+
+                            "nameOfWitness"
+
+                        ]
+
+                    ),
+
+            fullAddress:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "fullAddress",
+
+                            "address"
+
+                        ]
+
+                    ),
+
+            presentPlaceOfPosting:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "presentPlaceOfPosting"
+
+                        ]
+
+                    ),
+
+            contactNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "contactNo"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Evidence Status
+            ----------------------------------*/
+
+            witnessWithPendingEvidenceBeforeChargeChief:
+
+                Normalizer
+
+                    .boolean(
+
+                        record
+
+                            .witnessWithPendingEvidenceBeforeChargeChief
+
+                    ),
+
+            witnessWithPendingEvidenceAfterChargeChief:
+
+                Normalizer
+
+                    .boolean(
+
+                        record
+
+                            .witnessWithPendingEvidenceAfterChargeChief
+
+                    ),
+
+            witnessWithEvidenceCompleted:
+
+                Normalizer
+
+                    .boolean(
+
+                        record
+
+                            .witnessWithEvidenceCompleted
+
+                    ),
+
+
+            /*----------------------------------
+              Contact / Address Components
+            ----------------------------------*/
+
+            email:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "email"
+
+                        ]
+
+                    ),
+
+            village:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "village"
+
+                        ]
+
+                    ),
+
+            streetLane:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "streetLane"
+
+                        ]
+
+                    ),
+
+            postOffice:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "postOffice"
+
+                        ]
+
+                    ),
+
+            district:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "district"
+
+                        ]
+
+                    ),
+
+            pinCode:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "pinCode"
+
                         ]
 
                     )
 
-                ),
+        };
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE SEIZURE
+
+      Firestore:
+          offence_seizures
+
+      Current structure:
+
+          seizureId
+          caseId
+          refPorNo
+          seizureDate
+          seizureTime
+          placeOfSeizure
+          remarks
+    =========================================================*/
+
+    Normalizer.normalizeSeizure = function (
+
+        record
+
+    ) {
+
+        const raw =
+
+            Normalizer
+
+                .copyRaw(
+
+                    record
+
+                );
+
+
+        const documentId =
+
+            Normalizer
+
+                .getDocumentId(
+
+                    record
+
+                );
+
+
+        const seizureId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "seizureId",
+
+                        "SeizureID",
+
+                        "id"
+
+                    ]
+
+                );
+
+
+        const refPorNo =
+
+            Normalizer
+
+                .getPorNo(
+
+                    record
+
+                );
+
+
+        return {
+
+            ...raw,
+
+
+            entityType:
+
+                Normalizer.TYPES.SEIZURE,
+
+            documentId:
+
+                documentId,
+
+            id:
+
+                documentId ||
+
+                seizureId,
+
+
+            /*----------------------------------
+              Identity
+            ----------------------------------*/
+
+            seizureId:
+
+                seizureId,
+
+
+            /*----------------------------------
+              Relationship
+            ----------------------------------*/
+
+            caseId:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "caseId",
+
+                            "CaseID"
+
+                        ]
+
+                    ),
+
+            refPorNo:
+
+                refPorNo,
+
+            porNo:
+
+                refPorNo,
+
+            porKey:
+
+                Normalizer
+
+                    .normalizePor(
+
+                        refPorNo
+
+                    ),
+
+
+            /*----------------------------------
+              Seizure Details
+            ----------------------------------*/
 
             seizureDate:
 
-                OffenceNormalizer.normalizeDate(
+                Normalizer
 
-                    OffenceNormalizer.getField(
+                    .date(
 
-                        raw,
+                        record.seizureDate
 
-                        [
-                            "Seizure Date",
-                            "Date of Seizure",
-                            "seizureDate"
-                        ]
-
-                    )
-
-                ),
+                    ),
 
             seizureTime:
 
-                OffenceNormalizer.cleanString(
+                Normalizer
 
-                    OffenceNormalizer.getField(
+                    .firstValue(
 
-                        raw,
+                        record,
 
                         [
-                            "Seizure Time",
-                            "Time of Seizure",
+
                             "seizureTime"
+
                         ]
 
-                    )
-
-                ),
+                    ),
 
             placeOfSeizure:
 
-                OffenceNormalizer.normalizeAddress(
+                Normalizer
 
-                    OffenceNormalizer.getField(
+                    .firstValue(
 
-                        raw,
+                        record,
 
                         [
-                            "Place of Seizure",
-                            "Seizure Place",
-                            "Place",
+
                             "placeOfSeizure"
+
                         ]
 
-                    )
-
-                ),
+                    ),
 
             remarks:
 
-                OffenceNormalizer.cleanString(
+                Normalizer
 
-                    OffenceNormalizer.getField(
+                    .firstValue(
 
-                        raw,
+                        record,
 
                         [
-                            "Remarks",
-                            "Remark",
+
                             "remarks"
+
+                        ]
+
+                    ),
+
+
+            /*----------------------------------
+              Existing / Future Geocoding
+
+              Preserve if importer or resolver adds it.
+            ----------------------------------*/
+
+            location:
+
+                record.location ||
+
+                null
+
+        };
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE SEIZED ARTICLE
+
+      Firestore:
+          offence_seized_articles
+
+      Current source structure:
+
+          articleId
+          seizureId
+          refPorNo
+          slNo
+          articleDescription
+          quantity
+          measurement
+          volume
+          source
+
+      POR is authoritative for cross-collection cascade.
+
+      seizureId remains available for direct
+      seizure -> article relationship.
+    =========================================================*/
+
+    Normalizer.normalizeSeizedArticle = function (
+
+        record
+
+    ) {
+
+        const raw =
+
+            Normalizer
+
+                .copyRaw(
+
+                    record
+
+                );
+
+
+        const documentId =
+
+            Normalizer
+
+                .getDocumentId(
+
+                    record
+
+                );
+
+
+        const articleId =
+
+            Normalizer
+
+                .firstValue(
+
+                    record,
+
+                    [
+
+                        "articleId",
+
+                        "ArticleID",
+
+                        "id"
+
+                    ]
+
+                );
+
+
+        const refPorNo =
+
+            Normalizer
+
+                .getPorNo(
+
+                    record
+
+                );
+
+
+        return {
+
+            ...raw,
+
+
+            entityType:
+
+                Normalizer.TYPES.SEIZED_ARTICLE,
+
+            documentId:
+
+                documentId,
+
+            id:
+
+                documentId ||
+
+                articleId,
+
+
+            /*----------------------------------
+              Identity
+            ----------------------------------*/
+
+            articleId:
+
+                articleId,
+
+
+            /*----------------------------------
+              Relationships
+            ----------------------------------*/
+
+            caseId:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "caseId",
+
+                            "CaseID"
+
+                        ]
+
+                    ),
+
+            seizureId:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "seizureId",
+
+                            "SeizureID"
+
+                        ]
+
+                    ),
+
+            refPorNo:
+
+                refPorNo,
+
+            porNo:
+
+                refPorNo,
+
+            porKey:
+
+                Normalizer
+
+                    .normalizePor(
+
+                        refPorNo
+
+                    ),
+
+
+            /*----------------------------------
+              Article Details
+            ----------------------------------*/
+
+            slNo:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "slNo"
+
+                        ]
+
+                    ),
+
+            articleDescription:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "articleDescription",
+
+                            "description"
+
+                        ]
+
+                    ),
+
+            quantity:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "quantity"
+
+                        ]
+
+                    ),
+
+            measurement:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "measurement"
+
+                        ]
+
+                    ),
+
+            volume:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "volume"
+
+                        ]
+
+                    ),
+
+            source:
+
+                Normalizer
+
+                    .firstValue(
+
+                        record,
+
+                        [
+
+                            "source"
+
                         ]
 
                     )
 
-                ),
-
-            raw:
-
-                raw
-
         };
 
     };
 
 
-    /* =====================================================
-       16. NORMALIZE CASE COLLECTION
-       ===================================================== */
+    /*=========================================================
+      NORMALIZE GENERIC ENTITY BY TYPE
+    =========================================================*/
 
-    OffenceNormalizer.normalizeCases = function (
+    Normalizer.normalize = function (
 
-        records = []
+        type,
 
-    ) {
-
-        if (
-            !Array.isArray(
-                records
-            )
-        ) {
-
-            return [];
-
-        }
-
-        const result = [];
-
-        const seen =
-            new Set();
-
-
-        for (
-            const raw
-            of records
-        ) {
-
-            const item =
-                OffenceNormalizer.normalizeCase(
-                    raw
-                );
-
-            /*
-             * Do not discard records merely because
-             * CaseID is unavailable.
-             */
-
-            const key =
-
-                item.caseId ||
-
-                item.porNo;
-
-
-            if (
-                Constants.UPDATE
-                    .CASE_ID_DEDUPLICATION &&
-                key
-            ) {
-
-                if (
-                    seen.has(
-                        key
-                    )
-                ) {
-
-                    continue;
-
-                }
-
-                seen.add(
-                    key
-                );
-
-            }
-
-
-            result.push(
-                item
-            );
-
-        }
-
-
-        return result;
-
-    };
-
-
-    /* =====================================================
-       17. NORMALIZE ACCUSED COLLECTION
-       ===================================================== */
-
-    OffenceNormalizer.normalizeAccusedCollection =
-        function (
-
-            records = []
-
-        ) {
-
-            if (
-                !Array.isArray(
-                    records
-                )
-            ) {
-
-                return [];
-
-            }
-
-
-            return records.map(
-
-                function (
-                    raw
-                ) {
-
-                    return OffenceNormalizer
-                        .normalizeAccused(
-                            raw
-                        );
-
-                }
-
-            );
-
-        };
-
-
-    /* =====================================================
-       18. NORMALIZE SEIZURE COLLECTION
-       ===================================================== */
-
-    OffenceNormalizer.normalizeSeizures = function (
-
-        records = []
+        record
 
     ) {
 
-        if (
-            !Array.isArray(
-                records
-            )
+        switch (
+
+            type
+
         ) {
 
-            return [];
+            case Normalizer.TYPES.CASE:
 
-        }
+                return Normalizer
 
+                    .normalizeCase(
 
-        const result = [];
+                        record
 
-        const seen =
-            new Set();
-
-
-        for (
-            const raw
-            of records
-        ) {
-
-            const item =
-                OffenceNormalizer
-                    .normalizeSeizure(
-                        raw
                     );
 
 
-            const key =
+            case Normalizer.TYPES.ACCUSED:
 
-                item.seizureId ||
+                return Normalizer
 
-                [
-                    item.caseId,
-                    item.seizureDate,
-                    item.placeOfSeizure
-                ].join(
-                    "|"
+                    .normalizeAccused(
+
+                        record
+
+                    );
+
+
+            case Normalizer.TYPES.WITNESS:
+
+                return Normalizer
+
+                    .normalizeWitness(
+
+                        record
+
+                    );
+
+
+            case Normalizer.TYPES.SEIZURE:
+
+                return Normalizer
+
+                    .normalizeSeizure(
+
+                        record
+
+                    );
+
+
+            case Normalizer.TYPES.SEIZED_ARTICLE:
+
+                return Normalizer
+
+                    .normalizeSeizedArticle(
+
+                        record
+
+                    );
+
+
+            default:
+
+                console.warn(
+
+                    "[OffenceNormalizer] Unknown entity type:",
+
+                    type
+
                 );
 
 
-            if (
-                key &&
-                seen.has(
-                    key
-                )
-            ) {
+                return Normalizer
 
-                continue;
+                    .copyRaw(
 
-            }
+                        record
 
-
-            if (
-                key
-            ) {
-
-                seen.add(
-                    key
-                );
-
-            }
-
-
-            result.push(
-                item
-            );
+                    );
 
         }
-
-
-        return result;
 
     };
 
 
-    /* =====================================================
-       19. NORMALIZE ALL DATASETS
-       ===================================================== */
+    /*=========================================================
+      NORMALIZE COLLECTION
 
-    OffenceNormalizer.normalizeAll = function (
+      Invalid values are skipped safely.
+    =========================================================*/
 
-        data = {}
+    Normalizer.normalizeCollection = function (
+
+        records,
+
+        normalizerFunction
 
     ) {
 
-        const cases =
+        if (
 
-            OffenceNormalizer
-                .normalizeCases(
+            !Array.isArray(
 
-                    data.cases ||
+                records
 
-                    []
+            )
 
-                );
+        ) {
 
+            return [];
 
-        const accused =
-
-            OffenceNormalizer
-                .normalizeAccusedCollection(
-
-                    data.accused ||
-
-                    []
-
-                );
+        }
 
 
-        const seizures =
+        if (
 
-            OffenceNormalizer
-                .normalizeSeizures(
+            typeof normalizerFunction !==
 
-                    data.seizures ||
+            "function"
 
-                    []
+        ) {
 
-                );
+            return [];
+
+        }
+
+
+        const normalized = [];
+
+
+        records.forEach(
+
+            function (
+
+                record
+
+            ) {
+
+                if (
+
+                    !record ||
+
+                    typeof record !==
+
+                    "object"
+
+                ) {
+
+                    return;
+
+                }
+
+
+                try {
+
+                    normalized.push(
+
+                        normalizerFunction(
+
+                            record
+
+                        )
+
+                    );
+
+                }
+
+                catch (
+
+                    error
+
+                ) {
+
+                    console.error(
+
+                        "[OffenceNormalizer] Record normalization failed:",
+
+                        record,
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+        );
+
+
+        return normalized;
+
+    };
+
+
+    /*=========================================================
+      NORMALIZE ALL DATASETS
+
+      Input from offenceDataLoader.js:
+
+      {
+          cases,
+          accused,
+          witnesses,
+          seizures,
+          seizedArticles
+      }
+
+      Output has exactly the same dataset structure.
+    =========================================================*/
+
+    Normalizer.normalizeAll = function (
+
+        data
+
+    ) {
+
+        data =
+
+            data ||
+
+            {};
+
+
+        const startedAt =
+
+            Date.now();
 
 
         const result = {
 
             cases:
 
-                cases,
+                Normalizer
+
+                    .normalizeCollection(
+
+                        data.cases,
+
+                        Normalizer
+
+                            .normalizeCase
+
+                    ),
 
             accused:
 
-                accused,
+                Normalizer
+
+                    .normalizeCollection(
+
+                        data.accused,
+
+                        Normalizer
+
+                            .normalizeAccused
+
+                    ),
+
+            witnesses:
+
+                Normalizer
+
+                    .normalizeCollection(
+
+                        data.witnesses,
+
+                        Normalizer
+
+                            .normalizeWitness
+
+                    ),
 
             seizures:
 
-                seizures,
+                Normalizer
 
-            stats: {
+                    .normalizeCollection(
 
-                cases:
+                        data.seizures,
 
-                    cases.length,
+                        Normalizer
 
-                accused:
+                            .normalizeSeizure
 
-                    accused.length,
+                    ),
 
-                seizures:
+            seizedArticles:
 
-                    seizures.length
+                Normalizer
 
-            }
+                    .normalizeCollection(
+
+                        data.seizedArticles,
+
+                        Normalizer
+
+                            .normalizeSeizedArticle
+
+                    )
 
         };
 
 
-        if (
-            Constants.DEBUG
-                ?.LOG_DATA
-        ) {
+        console.log(
 
-            console.log(
+            "🔥 Offence Data Normalized",
 
-                "🔥 OffenceNormalizer.normalizeAll",
+            {
 
-                result.stats
+                cases:
 
-            );
+                    result.cases.length,
 
-        }
+                accused:
+
+                    result.accused.length,
+
+                witnesses:
+
+                    result.witnesses.length,
+
+                seizures:
+
+                    result.seizures.length,
+
+                seizedArticles:
+
+                    result.seizedArticles.length,
+
+                duration:
+
+                    Date.now() -
+
+                    startedAt
+
+            }
+
+        );
 
 
         return result;
@@ -1273,96 +3094,307 @@
     };
 
 
-    /* =====================================================
-       20. VALIDATE CANONICAL DATA
-       ===================================================== */
+    /*=========================================================
+      ALIAS
 
-    OffenceNormalizer.validate = function (
+      Store may call either:
 
-        data = {}
+          Normalizer.normalizeAll(data)
+
+      OR
+
+          Normalizer.normalizeData(data)
+    =========================================================*/
+
+    Normalizer.normalizeData =
+
+        Normalizer.normalizeAll;
+
+
+    /*=========================================================
+      GET RELATIONSHIP KEY
+
+      AUTHORITATIVE CONNECTOR = POR KEY
+    =========================================================*/
+
+    Normalizer.getRelationshipKey = function (
+
+        record
 
     ) {
 
-        const errors = [];
-
-
         if (
-            !Array.isArray(
-                data.cases
-            )
+
+            !record
+
         ) {
 
-            errors.push(
-                "cases must be an array"
-            );
+            return "";
 
         }
 
 
         if (
-            !Array.isArray(
-                data.accused
-            )
+
+            record.porKey
+
         ) {
 
-            errors.push(
-                "accused must be an array"
-            );
+            return Normalizer
+
+                .normalizePor(
+
+                    record.porKey
+
+                );
 
         }
 
 
-        if (
-            !Array.isArray(
-                data.seizures
-            )
+        return Normalizer
+
+            .getPorKey(
+
+                record
+
+            );
+
+    };
+
+
+    /*=========================================================
+      HAS VALID POR
+    =========================================================*/
+
+    Normalizer.hasPor = function (
+
+        record
+
+    ) {
+
+        return Boolean(
+
+            Normalizer
+
+                .getRelationshipKey(
+
+                    record
+
+                )
+
+        );
+
+    };
+
+
+    /*=========================================================
+      BUILD POR DIAGNOSTIC
+
+      Useful before Store indexing.
+    =========================================================*/
+
+    Normalizer.getPorStats = function (
+
+        data
+
+    ) {
+
+        data =
+
+            data ||
+
+            {};
+
+
+        function stats(
+
+            records
+
         ) {
 
-            errors.push(
-                "seizures must be an array"
+            records =
+
+                Array.isArray(
+
+                    records
+
+                )
+
+                    ? records
+
+                    : [];
+
+
+            let withPor =
+
+                0;
+
+
+            let withoutPor =
+
+                0;
+
+
+            const unique =
+
+                new Set();
+
+
+            records.forEach(
+
+                function (
+
+                    record
+
+                ) {
+
+                    const porKey =
+
+                        Normalizer
+
+                            .getRelationshipKey(
+
+                                record
+
+                            );
+
+
+                    if (
+
+                        porKey
+
+                    ) {
+
+                        withPor++;
+
+
+                        unique.add(
+
+                            porKey
+
+                        );
+
+                    }
+
+                    else {
+
+                        withoutPor++;
+
+                    }
+
+                }
+
             );
+
+
+            return {
+
+                total:
+
+                    records.length,
+
+                withPor:
+
+                    withPor,
+
+                withoutPor:
+
+                    withoutPor,
+
+                uniquePor:
+
+                    unique.size
+
+            };
 
         }
 
 
         return {
 
-            valid:
+            cases:
 
-                errors.length === 0,
+                stats(
 
-            errors:
+                    data.cases
 
-                errors
+                ),
+
+            accused:
+
+                stats(
+
+                    data.accused
+
+                ),
+
+            witnesses:
+
+                stats(
+
+                    data.witnesses
+
+                ),
+
+            seizures:
+
+                stats(
+
+                    data.seizures
+
+                ),
+
+            seizedArticles:
+
+                stats(
+
+                    data.seizedArticles
+
+                )
 
         };
 
     };
 
 
-    /* =====================================================
-       21. EXPORT
-       ===================================================== */
+    /*=========================================================
+      REGISTER
+    =========================================================*/
 
     GG.Offence.Normalizer =
-        OffenceNormalizer;
+
+        Normalizer;
 
 
-    /* =====================================================
-       22. READY LOG
-       ===================================================== */
+    /*=========================================================
+      READY
+    =========================================================*/
 
-    if (
-        Constants.DEBUG
-            ?.ENABLED
-    ) {
+    console.log(
 
-        console.log(
-            "🔥 OffenceNormalizer Loaded",
-            OffenceNormalizer
-        );
+        "%cOffence Normalizer Ready",
 
-    }
+        "color:#d32f2f;font-weight:bold;"
+
+    );
 
 
-})();
+    console.log(
+
+        "[OffenceNormalizer] Version:",
+
+        Normalizer.VERSION
+
+    );
+
+
+    console.log(
+
+        "[OffenceNormalizer] Relationship strategy:",
+
+        "POR KEY AUTHORITATIVE"
+
+    );
+
+
+})(window);
