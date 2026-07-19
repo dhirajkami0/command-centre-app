@@ -653,7 +653,7 @@
        12. GET STATE
        ===================================================== */
 
-    CascadeRenderer.getState =
+    CascadeRenderer.getCascadeState =
         function () {
 
             if (
@@ -700,8 +700,8 @@
 
             state =
                 state ||
-                CascadeRenderer
-                    .getState();
+CascadeRenderer
+    .getCascadeState();
 
 
             if (
