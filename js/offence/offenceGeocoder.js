@@ -6,12 +6,38 @@
    js/offence/offenceGeocoder.js
 
    Purpose:
-   - Resolve SOURCE locations
-   - Resolve TARGET locations
+   - Resolve SOURCE locations from accused addresses
+   - Resolve TARGET locations from seizure places
+   - Use POR No / porKey as authoritative relationship context
+   - Preserve CaseID as secondary metadata
    - Cache geocoded locations
-   - Avoid repeated geocoding
+   - Avoid duplicate simultaneous geocoding
    - Support manual/pre-resolved coordinates
-   - Prepare locations for heatmap processing
+   - Prepare spatial data for SOURCE/TARGET heatmaps
+
+   Architecture:
+
+   Firestore
+      ↓
+   offenceDataLoader.js
+      ↓
+   offenceNormalizer.js
+      ↓
+   offenceStore.js
+      ↓
+   POR-authoritative cascades
+      │
+      ├── Cases
+      ├── Accused
+      │      ↓
+      │    SOURCE
+      │
+      ├── Witnesses
+      └── Seizures
+             │
+             ├── Seized Articles
+             ↓
+           TARGET
 
    IMPORTANT:
    - NO Leaflet rendering
@@ -32,6 +58,7 @@
         window.GG ||
         {};
 
+
     GG.Offence =
         GG.Offence ||
         {};
@@ -43,6 +70,7 @@
 
     const Constants =
         GG.Offence.Constants;
+
 
     const Store =
         GG.Offence.Store;
@@ -82,7 +110,7 @@
        ===================================================== */
 
     OffenceGeocoder.VERSION =
-        "1.0.0";
+        "2.0.0";
 
 
     OffenceGeocoder.initialized =
@@ -92,8 +120,16 @@
     /* =====================================================
        5. MEMORY CACHE
 
-       normalized location text
-                ↓
+       Cache key:
+
+       SOURCE::NORMALIZED ADDRESS
+
+       or
+
+       TARGET::NORMALIZED ADDRESS
+
+       Value:
+
        {
            latitude,
            longitude,
@@ -108,8 +144,7 @@
     /* =====================================================
        6. PENDING REQUESTS
 
-       Prevents multiple simultaneous requests for
-       the same location.
+       Prevent duplicate simultaneous geocoding requests.
        ===================================================== */
 
     OffenceGeocoder.pending =
@@ -117,7 +152,50 @@
 
 
     /* =====================================================
-       7. INIT
+       7. SAFE CONSTANT HELPERS
+       ===================================================== */
+
+    OffenceGeocoder.getSourceType =
+        function () {
+
+            return (
+                Constants.LOCATION_TYPE
+                    ?.SOURCE ||
+                "SOURCE"
+            );
+
+        };
+
+
+    OffenceGeocoder.getTargetType =
+        function () {
+
+            return (
+                Constants.LOCATION_TYPE
+                    ?.TARGET ||
+                "TARGET"
+            );
+
+        };
+
+
+    OffenceGeocoder.getGeocodeStatus =
+        function (
+            name,
+            fallback
+        ) {
+
+            return (
+                Constants.GEOCODE_STATUS
+                    ?.[name] ||
+                fallback
+            );
+
+        };
+
+
+    /* =====================================================
+       8. INIT
        ===================================================== */
 
     OffenceGeocoder.init =
@@ -146,7 +224,13 @@
             ) {
 
                 console.log(
-                    "🔥 OffenceGeocoder Ready"
+                    "🔥 OffenceGeocoder Ready",
+                    {
+                        version:
+                            OffenceGeocoder.VERSION,
+                        porAuthoritative:
+                            true
+                    }
                 );
 
             }
@@ -158,22 +242,14 @@
 
 
     /* =====================================================
-       8. NORMALIZE LOCATION KEY
+       9. NORMALIZE LOCATION KEY
 
-       This is used for caching only.
-
-       Example:
-
-       "  Damanpur   Beat "
-              ↓
-       "DAMANPUR BEAT"
+       Used for geocode cache grouping only.
        ===================================================== */
 
     OffenceGeocoder.normalizeKey =
         function (
-
             value
-
         ) {
 
             if (
@@ -203,16 +279,71 @@
 
 
     /* =====================================================
-       9. VALIDATE COORDINATES
+       10. NORMALIZE POR KEY
+
+       Prefer Store normalization when available.
+
+       POR is authoritative for relationships.
+       ===================================================== */
+
+    OffenceGeocoder.normalizePorKey =
+        function (
+            value
+        ) {
+
+            if (
+                typeof Store
+                    .normalizePorKey ===
+                "function"
+            ) {
+
+                return Store
+                    .normalizePorKey(
+                        value
+                    );
+
+            }
+
+
+            if (
+                typeof Store
+                    .normalizePor ===
+                "function"
+            ) {
+
+                return Store
+                    .normalizePor(
+                        value
+                    );
+
+            }
+
+
+            return String(
+                value ||
+                ""
+            )
+
+                .trim()
+
+                .replace(
+                    /\s+/g,
+                    " "
+                )
+
+                .toUpperCase();
+
+        };
+
+
+    /* =====================================================
+       11. VALIDATE COORDINATES
        ===================================================== */
 
     OffenceGeocoder.isValidCoordinate =
         function (
-
             latitude,
-
             longitude
-
         ) {
 
             latitude =
@@ -251,16 +382,13 @@
 
 
     /* =====================================================
-       10. CREATE LOCATION ID
+       12. CREATE LOCATION ID
        ===================================================== */
 
     OffenceGeocoder.createLocationId =
         function (
-
             type,
-
             location
-
         ) {
 
             const key =
@@ -292,12 +420,14 @@
                     type ||
                     "LOCATION"
                 )
-
                     .toUpperCase() +
 
                 "_" +
 
-                safe
+                (
+                    safe ||
+                    "UNKNOWN"
+                )
 
             );
 
@@ -305,32 +435,29 @@
 
 
     /* =====================================================
-       11. CREATE CANONICAL LOCATION
+       13. CREATE CANONICAL LOCATION
+
+       Spatial object used by downstream heatmap engine.
        ===================================================== */
 
     OffenceGeocoder.createLocation =
         function (
-
             options = {}
-
         ) {
 
             const type =
 
                 options.type ||
 
-                Constants.LOCATION_TYPE
-                    .SOURCE;
+                OffenceGeocoder
+                    .getSourceType();
 
 
             const rawAddress =
 
                 String(
-
                     options.rawAddress ||
-
                     ""
-
                 ).trim();
 
 
@@ -338,16 +465,13 @@
 
                 OffenceGeocoder
                     .normalizeKey(
-
                         rawAddress
-
                     );
 
 
             const latitude =
 
                 options.latitude === null ||
-
                 options.latitude === undefined
 
                     ? null
@@ -360,7 +484,6 @@
             const longitude =
 
                 options.longitude === null ||
-
                 options.longitude === undefined
 
                     ? null
@@ -374,11 +497,8 @@
 
                 OffenceGeocoder
                     .isValidCoordinate(
-
                         latitude,
-
                         longitude
-
                     );
 
 
@@ -390,29 +510,22 @@
 
                     OffenceGeocoder
                         .createLocationId(
-
                             type,
-
                             rawAddress
-
                         ),
 
                 type:
-
                     type,
 
                 name:
 
                     options.name ||
-
                     rawAddress,
 
                 rawAddress:
-
                     rawAddress,
 
                 normalizedAddress:
-
                     normalizedAddress,
 
                 latitude:
@@ -427,24 +540,33 @@
                         ? longitude
                         : null,
 
+                porKey:
+
+                    options.porKey ||
+                    "",
+
+                porNo:
+
+                    options.porNo ||
+                    "",
+
                 caseIds:
 
                     Array.isArray(
                         options.caseIds
                     )
 
-                        ? options.caseIds
+                        ? [
+                            ...options.caseIds
+                        ]
 
                         : [],
 
                 offenceCount:
 
                     Number(
-
                         options.offenceCount ||
-
                         0
-
                     ),
 
                 geocodeStatus:
@@ -452,18 +574,24 @@
                     resolved
 
                         ? (
-
                             options.geocodeStatus ||
 
-                            Constants
-                                .GEOCODE_STATUS
-                                .RESOLVED
-
+                            OffenceGeocoder
+                                .getGeocodeStatus(
+                                    "RESOLVED",
+                                    "RESOLVED"
+                                )
                         )
 
-                        : Constants
-                            .GEOCODE_STATUS
-                            .PENDING
+                        : (
+                            options.geocodeStatus ||
+
+                            OffenceGeocoder
+                                .getGeocodeStatus(
+                                    "PENDING",
+                                    "PENDING"
+                                )
+                        )
 
             };
 
@@ -471,39 +599,30 @@
 
 
     /* =====================================================
-       12. CACHE KEY
+       14. CACHE KEY
 
-       SOURCE and TARGET use separate cache namespaces.
-
-       Same text may represent different semantic locations.
+       SOURCE and TARGET remain separate namespaces.
        ===================================================== */
 
     OffenceGeocoder.getCacheKey =
         function (
-
             type,
-
             address
-
         ) {
 
             return (
 
                 String(
-
                     type ||
-
                     "LOCATION"
-
-                ).toUpperCase() +
+                )
+                    .toUpperCase() +
 
                 "::" +
 
                 OffenceGeocoder
                     .normalizeKey(
-
                         address
-
                     )
 
             );
@@ -512,27 +631,21 @@
 
 
     /* =====================================================
-       13. GET CACHE
+       15. GET CACHE
        ===================================================== */
 
     OffenceGeocoder.getCached =
         function (
-
             type,
-
             address
-
         ) {
 
             const key =
 
                 OffenceGeocoder
                     .getCacheKey(
-
                         type,
-
                         address
-
                     );
 
 
@@ -552,18 +665,14 @@
 
 
     /* =====================================================
-       14. SET CACHE
+       16. SET CACHE
        ===================================================== */
 
     OffenceGeocoder.setCached =
         function (
-
             type,
-
             address,
-
             result
-
         ) {
 
             if (
@@ -580,22 +689,16 @@
 
                 OffenceGeocoder
                     .getCacheKey(
-
                         type,
-
                         address
-
                     );
 
 
             OffenceGeocoder
                 .cache
                 .set(
-
                     key,
-
                     result
-
                 );
 
 
@@ -609,13 +712,7 @@
 
 
     /* =====================================================
-       15. LOAD PERSISTENT CACHE
-
-       localStorage is used only as a lightweight
-       frontend cache.
-
-       This can later be replaced by Firestore or
-       IndexedDB without changing other modules.
+       17. LOAD PERSISTENT CACHE
        ===================================================== */
 
     OffenceGeocoder.loadCache =
@@ -623,8 +720,22 @@
 
             if (
                 Constants.UPDATE
-                    ?.PRESERVE_GEOCODE_CACHE !== true
+                    ?.PRESERVE_GEOCODE_CACHE !==
+                true
             ) {
+
+                return;
+
+            }
+
+
+            const cacheKey =
+
+                Constants.CACHE
+                    ?.GEOCODES;
+
+
+            if (!cacheKey) {
 
                 return;
 
@@ -635,12 +746,10 @@
 
                 const raw =
 
-                    localStorage.getItem(
-
-                        Constants.CACHE
-                            .GEOCODES
-
-                    );
+                    localStorage
+                        .getItem(
+                            cacheKey
+                        );
 
 
                 if (!raw) {
@@ -659,7 +768,8 @@
 
                 if (
                     !parsed ||
-                    typeof parsed !== "object"
+                    typeof parsed !==
+                    "object"
                 ) {
 
                     return;
@@ -668,52 +778,41 @@
 
 
                 Object.entries(
-
                     parsed
+                )
+                    .forEach(
 
-                ).forEach(
+                        function (
+                            entry
+                        ) {
 
-                    function (
+                            const key =
+                                entry[0];
 
-                        entry
-
-                    ) {
-
-                        const key =
-                            entry[0];
-
-                        const value =
-                            entry[1];
+                            const value =
+                                entry[1];
 
 
-                        OffenceGeocoder
-                            .cache
-                            .set(
+                            OffenceGeocoder
+                                .cache
+                                .set(
+                                    key,
+                                    value
+                                );
 
-                                key,
+                        }
 
-                                value
-
-                            );
-
-                    }
-
-                );
+                    );
 
             }
 
             catch (
-
                 error
-
             ) {
 
                 console.warn(
-
                     "[OffenceGeocoder] Cache load failed",
-
                     error
-
                 );
 
             }
@@ -722,7 +821,7 @@
 
 
     /* =====================================================
-       16. SAVE PERSISTENT CACHE
+       18. SAVE PERSISTENT CACHE
        ===================================================== */
 
     OffenceGeocoder.saveCache =
@@ -730,8 +829,22 @@
 
             if (
                 Constants.UPDATE
-                    ?.PRESERVE_GEOCODE_CACHE !== true
+                    ?.PRESERVE_GEOCODE_CACHE !==
+                true
             ) {
+
+                return;
+
+            }
+
+
+            const cacheKey =
+
+                Constants.CACHE
+                    ?.GEOCODES;
+
+
+            if (!cacheKey) {
 
                 return;
 
@@ -743,30 +856,25 @@
                 const data =
 
                     Object.fromEntries(
-
-                        OffenceGeocoder
-                            .cache
-
+                        OffenceGeocoder.cache
                     );
 
 
-                localStorage.setItem(
+                localStorage
+                    .setItem(
 
-                    Constants.CACHE
-                        .GEOCODES,
+                        cacheKey,
 
-                    JSON.stringify(
-                        data
-                    )
+                        JSON.stringify(
+                            data
+                        )
 
-                );
+                    );
 
             }
 
             catch (
-
                 error
-
             ) {
 
                 if (
@@ -775,11 +883,8 @@
                 ) {
 
                     console.warn(
-
                         "[OffenceGeocoder] Cache save failed",
-
                         error
-
                     );
 
                 }
@@ -790,44 +895,33 @@
 
 
     /* =====================================================
-       17. REGISTER MANUAL LOCATION
+       19. REGISTER MANUAL LOCATION
 
-       Important for known places.
-
-       Example:
-
-       registerManual(
-           "TARGET",
-           "Damanpur Beat",
-           26.55,
-           89.52
-       );
-
-       This avoids external geocoding for known
-       forest jurisdictions.
+       Useful for known forest locations.
        ===================================================== */
 
     OffenceGeocoder.registerManual =
         function (
-
             type,
-
             address,
-
             latitude,
-
             longitude
-
         ) {
+
+            if (
+                !address
+            ) {
+
+                return false;
+
+            }
+
 
             if (
                 !OffenceGeocoder
                     .isValidCoordinate(
-
                         latitude,
-
                         longitude
-
                     )
             ) {
 
@@ -852,22 +946,20 @@
 
                 status:
 
-                    Constants
-                        .GEOCODE_STATUS
-                        .MANUAL
+                    OffenceGeocoder
+                        .getGeocodeStatus(
+                            "MANUAL",
+                            "MANUAL"
+                        )
 
             };
 
 
             OffenceGeocoder
                 .setCached(
-
                     type,
-
                     address,
-
                     result
-
                 );
 
 
@@ -877,33 +969,25 @@
 
 
     /* =====================================================
-       18. RESOLVE FROM CACHE
+       20. RESOLVE FROM CACHE
        ===================================================== */
 
     OffenceGeocoder.resolveCached =
         function (
-
             type,
-
             address
-
         ) {
 
             const cached =
 
                 OffenceGeocoder
                     .getCached(
-
                         type,
-
                         address
-
                     );
 
 
-            if (
-                !cached
-            ) {
+            if (!cached) {
 
                 return null;
 
@@ -913,11 +997,8 @@
             if (
                 !OffenceGeocoder
                     .isValidCoordinate(
-
                         cached.latitude,
-
                         cached.longitude
-
                     )
             ) {
 
@@ -944,9 +1025,11 @@
 
                     cached.status ||
 
-                    Constants
-                        .GEOCODE_STATUS
-                        .RESOLVED
+                    OffenceGeocoder
+                        .getGeocodeStatus(
+                            "RESOLVED",
+                            "RESOLVED"
+                        )
 
             };
 
@@ -954,130 +1037,125 @@
 
 
     /* =====================================================
-       19. EXTERNAL GEOCODER HOOK
+       21. EXTRACT PRE-RESOLVED COORDINATES
 
-       IMPORTANT:
+       Allows Firestore/Normalizer records to already contain
+       coordinates.
 
-       This function intentionally does NOT hardcode
-       Google Maps, Nominatim, Mapbox, etc.
+       Supported examples:
 
-       Later you can connect your own backend geocoder.
+       latitude / longitude
+       lat / lng
+       sourceLatitude / sourceLongitude
+       targetLatitude / targetLongitude
 
-       Expected return:
-
-       {
-           latitude: 26.55,
-           longitude: 89.52
-       }
-
-       If no external geocoder exists, returns null.
+       Also supports:
+       location.latitude / location.longitude
        ===================================================== */
 
-    OffenceGeocoder.callExternal =
-        async function (
-
-            address,
-
+    OffenceGeocoder.extractCoordinates =
+        function (
+            record,
             type
-
         ) {
 
-            /*
-             * Optional application-level hook.
-             *
-             * You can later define:
-             *
-             * GG.Offence.resolveLocation =
-             * async function(address, type) {
-             *     ...
-             * };
-             */
+            if (!record) {
 
-            if (
+                return null;
 
-                typeof GG.Offence
-                    .resolveLocation ===
-                "function"
+            }
 
+
+            const isSource =
+
+                type ===
+                OffenceGeocoder
+                    .getSourceType();
+
+
+            const candidates = [
+
+                {
+                    latitude:
+                        record.latitude,
+                    longitude:
+                        record.longitude
+                },
+
+                {
+                    latitude:
+                        record.lat,
+                    longitude:
+                        record.lng
+                },
+
+                {
+                    latitude:
+                        record.location
+                            ?.latitude,
+                    longitude:
+                        record.location
+                            ?.longitude
+                },
+
+                {
+                    latitude:
+                        record.location
+                            ?.lat,
+                    longitude:
+                        record.location
+                            ?.lng
+                },
+
+                isSource
+
+                    ? {
+                        latitude:
+                            record.sourceLatitude,
+                        longitude:
+                            record.sourceLongitude
+                    }
+
+                    : {
+                        latitude:
+                            record.targetLatitude,
+                        longitude:
+                            record.targetLongitude
+                    }
+
+            ];
+
+
+            for (
+                const candidate
+                of candidates
             ) {
 
-                try {
-
-                    const result =
-
-                        await GG.Offence
-                            .resolveLocation(
-
-                                address,
-
-                                type
-
-                            );
-
-
-                    if (
-
-                        result &&
-
-                        OffenceGeocoder
-                            .isValidCoordinate(
-
-                                result.latitude,
-
-                                result.longitude
-
-                            )
-
-                    ) {
-
-                        return {
-
-                            latitude:
-
-                                Number(
-                                    result.latitude
-                                ),
-
-                            longitude:
-
-                                Number(
-                                    result.longitude
-                                ),
-
-                            status:
-
-                                Constants
-                                    .GEOCODE_STATUS
-                                    .RESOLVED
-
-                        };
-
-                    }
-
-                }
-
-                catch (
-
-                    error
-
+                if (
+                    OffenceGeocoder
+                        .isValidCoordinate(
+                            candidate
+                                ?.latitude,
+                            candidate
+                                ?.longitude
+                        )
                 ) {
 
-                    if (
-                        Constants.DEBUG
-                            ?.LOG_GEOCODING
-                    ) {
+                    return {
 
-                        console.warn(
+                        latitude:
 
-                            "[OffenceGeocoder] External geocoder failed",
+                            Number(
+                                candidate.latitude
+                            ),
 
-                            address,
+                        longitude:
 
-                            error
+                            Number(
+                                candidate.longitude
+                            )
 
-                        );
-
-                    }
+                    };
 
                 }
 
@@ -1090,26 +1168,135 @@
 
 
     /* =====================================================
-       20. RESOLVE LOCATION
+       22. EXTERNAL GEOCODER HOOK
+
+       Optional application hook:
+
+       GG.Offence.resolveLocation =
+           async function(address, type) {
+
+               return {
+                   latitude: 26.55,
+                   longitude: 89.52
+               };
+
+           };
+       ===================================================== */
+
+    OffenceGeocoder.callExternal =
+        async function (
+            address,
+            type
+        ) {
+
+            if (
+                typeof GG.Offence
+                    .resolveLocation !==
+                "function"
+            ) {
+
+                return null;
+
+            }
+
+
+            try {
+
+                const result =
+
+                    await GG.Offence
+                        .resolveLocation(
+                            address,
+                            type
+                        );
+
+
+                if (
+                    result &&
+
+                    OffenceGeocoder
+                        .isValidCoordinate(
+                            result.latitude,
+                            result.longitude
+                        )
+                ) {
+
+                    return {
+
+                        latitude:
+
+                            Number(
+                                result.latitude
+                            ),
+
+                        longitude:
+
+                            Number(
+                                result.longitude
+                            ),
+
+                        status:
+
+                            result.status ||
+
+                            OffenceGeocoder
+                                .getGeocodeStatus(
+                                    "RESOLVED",
+                                    "RESOLVED"
+                                )
+
+                    };
+
+                }
+
+            }
+
+            catch (
+                error
+            ) {
+
+                if (
+                    Constants.DEBUG
+                        ?.LOG_GEOCODING
+                ) {
+
+                    console.warn(
+                        "[OffenceGeocoder] External geocoder failed",
+                        address,
+                        error
+                    );
+
+                }
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       23. RESOLVE LOCATION
+
+       Priority:
+
+       1. Cache
+       2. External geocoder
+       3. Failed status
        ===================================================== */
 
     OffenceGeocoder.resolve =
         async function (
-
             address,
-
             type
-
         ) {
 
             address =
 
                 String(
-
                     address ||
-
                     ""
-
                 ).trim();
 
 
@@ -1124,49 +1311,40 @@
 
                 type ||
 
-                Constants
-                    .LOCATION_TYPE
-                    .SOURCE;
+                OffenceGeocoder
+                    .getSourceType();
 
 
-            /* -------------------------
-               Check cache
-               ------------------------- */
+            /* ---------------------------------------------
+               CACHE
+               --------------------------------------------- */
 
             const cached =
 
                 OffenceGeocoder
                     .resolveCached(
-
                         type,
-
                         address
-
                     );
 
 
-            if (
-                cached
-            ) {
+            if (cached) {
 
                 return cached;
 
             }
 
 
-            /* -------------------------
-               Prevent duplicate requests
-               ------------------------- */
+            /* ---------------------------------------------
+               DUPLICATE REQUEST PROTECTION
+               --------------------------------------------- */
 
             const pendingKey =
 
                 OffenceGeocoder
                     .getCacheKey(
-
                         type,
-
                         address
-
                     );
 
 
@@ -1187,9 +1365,9 @@
             }
 
 
-            /* -------------------------
-               Create request
-               ------------------------- */
+            /* ---------------------------------------------
+               CREATE REQUEST
+               --------------------------------------------- */
 
             const promise =
 
@@ -1199,27 +1377,18 @@
 
                         await OffenceGeocoder
                             .callExternal(
-
                                 address,
-
                                 type
-
                             );
 
 
-                    if (
-                        result
-                    ) {
+                    if (result) {
 
                         OffenceGeocoder
                             .setCached(
-
                                 type,
-
                                 address,
-
                                 result
-
                             );
 
 
@@ -1238,9 +1407,11 @@
 
                         status:
 
-                            Constants
-                                .GEOCODE_STATUS
-                                .FAILED
+                            OffenceGeocoder
+                                .getGeocodeStatus(
+                                    "FAILED",
+                                    "FAILED"
+                                )
 
                     };
 
@@ -1250,11 +1421,8 @@
             OffenceGeocoder
                 .pending
                 .set(
-
                     pendingKey,
-
                     promise
-
                 );
 
 
@@ -1269,9 +1437,7 @@
                 OffenceGeocoder
                     .pending
                     .delete(
-
                         pendingKey
-
                     );
 
             }
@@ -1280,19 +1446,18 @@
 
 
     /* =====================================================
-       21. GET SOURCE ADDRESS
+       24. GET SOURCE ADDRESS
 
-       Priority:
+       SOURCE = accused origin/address.
 
-       1. Present Address
-       2. Permanent Address
+       Constants.SOURCE_LOCATION_FIELDS is preferred.
+
+       Fallback fields support current/legacy normalized data.
        ===================================================== */
 
     OffenceGeocoder.getSourceAddress =
         function (
-
             accused
-
         ) {
 
             if (!accused) {
@@ -1302,17 +1467,39 @@
             }
 
 
+            const fields =
+
+                Array.isArray(
+                    Constants
+                        .SOURCE_LOCATION_FIELDS
+                )
+
+                    ? Constants
+                        .SOURCE_LOCATION_FIELDS
+
+                    : [
+
+                        "address",
+
+                        "addressOfAccused",
+
+                        "fullAddress",
+
+                        "presentAddress",
+
+                        "permanentAddress",
+
+                        "village"
+
+                    ];
+
+
             for (
-
                 const field
-
-                of Constants
-                    .SOURCE_LOCATION_FIELDS
-
+                of fields
             ) {
 
                 const value =
-
                     accused[
                         field
                     ];
@@ -1340,14 +1527,18 @@
 
 
     /* =====================================================
-       22. GET TARGET ADDRESS
+       25. GET TARGET ADDRESS
+
+       TARGET = seizure/offence location.
+
+       Constants.TARGET_LOCATION_FIELDS is preferred.
+
+       Fallback fields support current normalized data.
        ===================================================== */
 
     OffenceGeocoder.getTargetAddress =
         function (
-
             seizure
-
         ) {
 
             if (!seizure) {
@@ -1357,32 +1548,51 @@
             }
 
 
+            const fields =
+
+                Array.isArray(
+                    Constants
+                        .TARGET_LOCATION_FIELDS
+                )
+
+                    ? Constants
+                        .TARGET_LOCATION_FIELDS
+
+                    : [
+
+                        "placeOfSeizure",
+
+                        "seizurePlace",
+
+                        "place",
+
+                        "location",
+
+                        "address"
+
+                    ];
+
+
             for (
-
                 const field
-
-                of Constants
-                    .TARGET_LOCATION_FIELDS
-
+                of fields
             ) {
 
                 const value =
-
                     seizure[
                         field
                     ];
 
 
                 if (
-                    value &&
-                    String(
-                        value
-                    ).trim()
+                    typeof value ===
+                    "string" &&
+
+                    value.trim()
                 ) {
 
-                    return String(
-                        value
-                    ).trim();
+                    return value
+                        .trim();
 
                 }
 
@@ -1395,23 +1605,32 @@
 
 
     /* =====================================================
-       23. RESOLVE SOURCE
+       26. RESOLVE SOURCE
+
+       Accused
+          ↓
+       Address
+          ↓
+       SOURCE location
        ===================================================== */
 
     OffenceGeocoder.resolveSource =
         async function (
-
             accused
-
         ) {
+
+            if (!accused) {
+
+                return null;
+
+            }
+
 
             const address =
 
                 OffenceGeocoder
                     .getSourceAddress(
-
                         accused
-
                     );
 
 
@@ -1422,49 +1641,84 @@
             }
 
 
-            const result =
+            const type =
 
-                await OffenceGeocoder
-                    .resolve(
+                OffenceGeocoder
+                    .getSourceType();
 
-                        address,
 
-                        Constants
-                            .LOCATION_TYPE
-                            .SOURCE
+            /* ---------------------------------------------
+               USE PRE-RESOLVED COORDINATES FIRST
+               --------------------------------------------- */
 
+            const coordinates =
+
+                OffenceGeocoder
+                    .extractCoordinates(
+                        accused,
+                        type
                     );
+
+
+            let result;
+
+
+            if (coordinates) {
+
+                result = {
+
+                    latitude:
+                        coordinates.latitude,
+
+                    longitude:
+                        coordinates.longitude,
+
+                    status:
+
+                        OffenceGeocoder
+                            .getGeocodeStatus(
+                                "RESOLVED",
+                                "RESOLVED"
+                            )
+
+                };
+
+            }
+
+            else {
+
+                result =
+
+                    await OffenceGeocoder
+                        .resolve(
+                            address,
+                            type
+                        );
+
+            }
 
 
             return OffenceGeocoder
                 .createLocation({
 
                     type:
-
-                        Constants
-                            .LOCATION_TYPE
-                            .SOURCE,
+                        type,
 
                     name:
-
                         address,
 
                     rawAddress:
-
                         address,
 
                     latitude:
-
                         result
                             ?.latitude,
 
                     longitude:
-
                         result
                             ?.longitude,
 
                     geocodeStatus:
-
                         result
                             ?.status
 
@@ -1474,23 +1728,32 @@
 
 
     /* =====================================================
-       24. RESOLVE TARGET
+       27. RESOLVE TARGET
+
+       Seizure
+          ↓
+       Place of Seizure
+          ↓
+       TARGET location
        ===================================================== */
 
     OffenceGeocoder.resolveTarget =
         async function (
-
             seizure
-
         ) {
+
+            if (!seizure) {
+
+                return null;
+
+            }
+
 
             const address =
 
                 OffenceGeocoder
                     .getTargetAddress(
-
                         seizure
-
                     );
 
 
@@ -1501,49 +1764,84 @@
             }
 
 
-            const result =
+            const type =
 
-                await OffenceGeocoder
-                    .resolve(
+                OffenceGeocoder
+                    .getTargetType();
 
-                        address,
 
-                        Constants
-                            .LOCATION_TYPE
-                            .TARGET
+            /* ---------------------------------------------
+               USE PRE-RESOLVED COORDINATES FIRST
+               --------------------------------------------- */
 
+            const coordinates =
+
+                OffenceGeocoder
+                    .extractCoordinates(
+                        seizure,
+                        type
                     );
+
+
+            let result;
+
+
+            if (coordinates) {
+
+                result = {
+
+                    latitude:
+                        coordinates.latitude,
+
+                    longitude:
+                        coordinates.longitude,
+
+                    status:
+
+                        OffenceGeocoder
+                            .getGeocodeStatus(
+                                "RESOLVED",
+                                "RESOLVED"
+                            )
+
+                };
+
+            }
+
+            else {
+
+                result =
+
+                    await OffenceGeocoder
+                        .resolve(
+                            address,
+                            type
+                        );
+
+            }
 
 
             return OffenceGeocoder
                 .createLocation({
 
                     type:
-
-                        Constants
-                            .LOCATION_TYPE
-                            .TARGET,
+                        type,
 
                     name:
-
                         address,
 
                     rawAddress:
-
                         address,
 
                     latitude:
-
                         result
                             ?.latitude,
 
                     longitude:
-
                         result
                             ?.longitude,
 
                     geocodeStatus:
-
                         result
                             ?.status
 
@@ -1553,176 +1851,101 @@
 
 
     /* =====================================================
-       25. RESOLVE CASE CONTEXT
+       28. GET CASCADE POR INFORMATION
 
-       CASE
-          │
-          ├── Accused → SOURCE
-          │
-          └── Seizure → TARGET
+       Handles slight differences in Store cascade structure.
        ===================================================== */
 
-    OffenceGeocoder.resolveCaseContext =
-        async function (
-
-            context
-
+    OffenceGeocoder.getCascadePorInfo =
+        function (
+            cascade
         ) {
 
-            if (
-                !context ||
-                !context.case
-            ) {
+            if (!cascade) {
 
-                return null;
+                return {
+
+                    porKey:
+                        "",
+
+                    porNo:
+                        ""
+
+                };
 
             }
 
 
-            const sources = [];
+            const cases =
 
-            const targets = [];
-
-
-            /* -------------------------
-               Resolve Sources
-               ------------------------- */
-
-            for (
-
-                const accused
-
-                of (
-                    context.accused ||
-                    []
+                Array.isArray(
+                    cascade.cases
                 )
 
-            ) {
+                    ? cascade.cases
 
-                const source =
+                    : (
+                        cascade.case
 
-                    await OffenceGeocoder
-                        .resolveSource(
+                            ? [
+                                cascade.case
+                            ]
 
-                            accused
-
-                        );
-
-
-                if (
-                    source
-                ) {
-
-                    source.caseIds = [
-
-                        context.case
-                            .caseId
-
-                    ];
+                            : []
+                    );
 
 
-                    source.offenceCount =
-                        1;
+            const primaryCase =
+
+                cascade.case ||
+
+                cases[0] ||
+
+                null;
 
 
-                    sources.push({
+            const porNo =
 
-                        location:
+                String(
 
-                            source,
+                    cascade.porNo ||
 
-                        accused:
+                    cascade.refPorNo ||
 
-                            accused
+                    primaryCase
+                        ?.porNo ||
 
-                    });
+                    primaryCase
+                        ?.refPorNo ||
 
-                }
+                    ""
 
-            }
-
-
-            /* -------------------------
-               Resolve Targets
-               ------------------------- */
-
-            for (
-
-                const seizure
-
-                of (
-                    context.seizures ||
-                    []
-                )
-
-            ) {
-
-                const target =
-
-                    await OffenceGeocoder
-                        .resolveTarget(
-
-                            seizure
-
-                        );
+                ).trim();
 
 
-                if (
-                    target
-                ) {
+            const porKey =
 
-                    target.caseIds = [
+                String(
 
-                        context.case
-                            .caseId
+                    cascade.porKey ||
 
-                    ];
+                    OffenceGeocoder
+                        .normalizePorKey(
+                            porNo
+                        ) ||
 
+                    ""
 
-                    target.offenceCount =
-                        1;
-
-
-                    targets.push({
-
-                        location:
-
-                            target,
-
-                        seizure:
-
-                            seizure
-
-                    });
-
-                }
-
-            }
+                ).trim();
 
 
             return {
 
-                case:
+                porKey:
+                    porKey,
 
-                    context.case,
-
-                accused:
-
-                    context.accused ||
-                    [],
-
-                seizures:
-
-                    context.seizures ||
-                    [],
-
-                sources:
-
-                    sources,
-
-                targets:
-
-                    targets
+                porNo:
+                    porNo
 
             };
 
@@ -1730,56 +1953,790 @@
 
 
     /* =====================================================
-       26. RESOLVE ALL STORE DATA
+       29. GET CASE IDS FROM CASCADE
 
-       This prepares the complete spatial dataset.
+       CaseID remains secondary metadata.
+       It is NOT used as authoritative connector here.
+       ===================================================== */
 
-       NOTE:
-       For large datasets this should later be processed
-       in controlled batches.
+    OffenceGeocoder.getCascadeCaseIds =
+        function (
+            cascade
+        ) {
+
+            if (!cascade) {
+
+                return [];
+
+            }
+
+
+            const cases =
+
+                Array.isArray(
+                    cascade.cases
+                )
+
+                    ? cascade.cases
+
+                    : (
+                        cascade.case
+
+                            ? [
+                                cascade.case
+                            ]
+
+                            : []
+                    );
+
+
+            return [
+
+                ...new Set(
+
+                    cases
+
+                        .map(
+
+                            function (
+                                caseRecord
+                            ) {
+
+                                return String(
+
+                                    caseRecord
+                                        ?.caseId ||
+
+                                    caseRecord
+                                        ?.id ||
+
+                                    ""
+
+                                ).trim();
+
+                            }
+
+                        )
+
+                        .filter(
+                            Boolean
+                        )
+
+                )
+
+            ];
+
+        };
+
+
+    /* =====================================================
+       30. GET ARTICLES FOR SEIZURE
+
+       Prefer articles already attached to the cascade.
+
+       Fall back to Store lookup when available.
+       ===================================================== */
+
+    OffenceGeocoder.getArticlesForSeizure =
+        function (
+            seizure,
+            cascade
+        ) {
+
+            if (!seizure) {
+
+                return [];
+
+            }
+
+
+            const seizureId =
+
+                String(
+
+                    seizure.seizureId ||
+
+                    seizure.id ||
+
+                    ""
+
+                ).trim();
+
+
+            if (!seizureId) {
+
+                return [];
+
+            }
+
+
+            const cascadeArticles =
+
+                Array.isArray(
+                    cascade
+                        ?.seizedArticles
+                )
+
+                    ? cascade
+                        .seizedArticles
+
+                    : [];
+
+
+            const matching =
+
+                cascadeArticles
+                    .filter(
+
+                        function (
+                            article
+                        ) {
+
+                            return String(
+
+                                article
+                                    ?.seizureId ||
+
+                                ""
+
+                            ).trim() ===
+                            seizureId;
+
+                        }
+
+                    );
+
+
+            if (
+                matching.length > 0
+            ) {
+
+                return matching;
+
+            }
+
+
+            if (
+                typeof Store
+                    .getArticlesBySeizureId ===
+                "function"
+            ) {
+
+                const articles =
+
+                    Store
+                        .getArticlesBySeizureId(
+                            seizureId
+                        );
+
+
+                return Array.isArray(
+                    articles
+                )
+
+                    ? articles
+
+                    : [];
+
+            }
+
+
+            return [];
+
+        };
+
+
+    /* =====================================================
+       31. RESOLVE POR CASCADE
+
+       POR IS AUTHORITATIVE.
+
+       POR
+        │
+        ├── CASE(S)
+        │
+        ├── ACCUSED
+        │     ↓
+        │   SOURCE
+        │
+        ├── WITNESSES
+        │
+        └── SEIZURES
+              │
+              ├── ARTICLES
+              ↓
+            TARGET
+       ===================================================== */
+
+    OffenceGeocoder.resolvePorCascade =
+        async function (
+            cascade
+        ) {
+
+            if (!cascade) {
+
+                return null;
+
+            }
+
+
+            const porInfo =
+
+                OffenceGeocoder
+                    .getCascadePorInfo(
+                        cascade
+                    );
+
+
+            /*
+             * POR is authoritative.
+             *
+             * Do not create a spatial cascade when there
+             * is no usable POR identity.
+             */
+
+            if (
+                !porInfo.porKey &&
+                !porInfo.porNo
+            ) {
+
+                return null;
+
+            }
+
+
+            const cases =
+
+                Array.isArray(
+                    cascade.cases
+                )
+
+                    ? cascade.cases
+
+                    : (
+                        cascade.case
+
+                            ? [
+                                cascade.case
+                            ]
+
+                            : []
+                    );
+
+
+            const primaryCase =
+
+                cascade.case ||
+
+                cases[0] ||
+
+                null;
+
+
+            const accusedList =
+
+                Array.isArray(
+                    cascade.accused
+                )
+
+                    ? cascade.accused
+
+                    : [];
+
+
+            const witnesses =
+
+                Array.isArray(
+                    cascade.witnesses
+                )
+
+                    ? cascade.witnesses
+
+                    : [];
+
+
+            const seizures =
+
+                Array.isArray(
+                    cascade.seizures
+                )
+
+                    ? cascade.seizures
+
+                    : [];
+
+
+            const seizedArticles =
+
+                Array.isArray(
+                    cascade.seizedArticles
+                )
+
+                    ? cascade.seizedArticles
+
+                    : [];
+
+
+            const caseIds =
+
+                OffenceGeocoder
+                    .getCascadeCaseIds(
+                        cascade
+                    );
+
+
+            const sources = [];
+
+            const targets = [];
+
+
+            /* =================================================
+               ACCUSED → SOURCE LOCATIONS
+               ================================================= */
+
+            for (
+                const accused
+                of accusedList
+            ) {
+
+                const source =
+
+                    await OffenceGeocoder
+                        .resolveSource(
+                            accused
+                        );
+
+
+                if (!source) {
+
+                    continue;
+
+                }
+
+
+                source.porKey =
+                    porInfo.porKey;
+
+
+                source.porNo =
+                    porInfo.porNo;
+
+
+                source.caseIds =
+                    [
+                        ...caseIds
+                    ];
+
+
+                source.offenceCount =
+                    Math.max(
+                        cases.length,
+                        1
+                    );
+
+
+                sources.push({
+
+                    type:
+
+                        OffenceGeocoder
+                            .getSourceType(),
+
+                    porKey:
+                        porInfo.porKey,
+
+                    porNo:
+                        porInfo.porNo,
+
+                    case:
+                        primaryCase,
+
+                    cases:
+                        cases,
+
+                    caseIds:
+                        caseIds,
+
+                    accused:
+                        accused,
+
+                    location:
+                        source
+
+                });
+
+            }
+
+
+            /* =================================================
+               SEIZURES → TARGET LOCATIONS
+               ================================================= */
+
+            for (
+                const seizure
+                of seizures
+            ) {
+
+                const target =
+
+                    await OffenceGeocoder
+                        .resolveTarget(
+                            seizure
+                        );
+
+
+                if (!target) {
+
+                    continue;
+
+                }
+
+
+                target.porKey =
+                    porInfo.porKey;
+
+
+                target.porNo =
+                    porInfo.porNo;
+
+
+                target.caseIds =
+                    [
+                        ...caseIds
+                    ];
+
+
+                target.offenceCount =
+                    Math.max(
+                        cases.length,
+                        1
+                    );
+
+
+                const articles =
+
+                    OffenceGeocoder
+                        .getArticlesForSeizure(
+                            seizure,
+                            cascade
+                        );
+
+
+                targets.push({
+
+                    type:
+
+                        OffenceGeocoder
+                            .getTargetType(),
+
+                    porKey:
+                        porInfo.porKey,
+
+                    porNo:
+                        porInfo.porNo,
+
+                    case:
+                        primaryCase,
+
+                    cases:
+                        cases,
+
+                    caseIds:
+                        caseIds,
+
+                    seizure:
+                        seizure,
+
+                    seizedArticles:
+                        articles,
+
+                    location:
+                        target
+
+                });
+
+            }
+
+
+            return {
+
+                porKey:
+                    porInfo.porKey,
+
+                porNo:
+                    porInfo.porNo,
+
+                case:
+                    primaryCase,
+
+                cases:
+                    cases,
+
+                caseIds:
+                    caseIds,
+
+                accused:
+                    accusedList,
+
+                witnesses:
+                    witnesses,
+
+                seizures:
+                    seizures,
+
+                seizedArticles:
+                    seizedArticles,
+
+                sources:
+                    sources,
+
+                targets:
+                    targets,
+
+                counts: {
+
+                    cases:
+                        cases.length,
+
+                    accused:
+                        accusedList.length,
+
+                    witnesses:
+                        witnesses.length,
+
+                    seizures:
+                        seizures.length,
+
+                    seizedArticles:
+                        seizedArticles.length,
+
+                    sources:
+                        sources.length,
+
+                    targets:
+                        targets.length
+
+                }
+
+            };
+
+        };
+
+
+    /* =====================================================
+       32. BACKWARD COMPATIBILITY
+
+       Old downstream code may still call:
+
+       resolveCaseContext(context)
+
+       It now routes through POR-authoritative resolution.
+       ===================================================== */
+
+    OffenceGeocoder.resolveCaseContext =
+        async function (
+            context
+        ) {
+
+            return await OffenceGeocoder
+                .resolvePorCascade(
+                    context
+                );
+
+        };
+
+
+    /* =====================================================
+       33. GET STORE CASCADES
+
+       Preferred Store API:
+
+       Store.getCaseCascades()
+
+       Fallbacks:
+       Store.getAllCascades()
+       Store.getAllCaseContexts()
+
+       This keeps the module compatible during migration.
+       ===================================================== */
+
+    OffenceGeocoder.getStoreCascades =
+        function () {
+
+            if (
+                typeof Store
+                    .getCaseCascades ===
+                "function"
+            ) {
+
+                const cascades =
+
+                    Store
+                        .getCaseCascades();
+
+
+                return Array.isArray(
+                    cascades
+                )
+
+                    ? cascades
+
+                    : [];
+
+            }
+
+
+            if (
+                typeof Store
+                    .getAllCascades ===
+                "function"
+            ) {
+
+                const cascades =
+
+                    Store
+                        .getAllCascades();
+
+
+                return Array.isArray(
+                    cascades
+                )
+
+                    ? cascades
+
+                    : [];
+
+            }
+
+
+            if (
+                typeof Store
+                    .getAllCaseContexts ===
+                "function"
+            ) {
+
+                const contexts =
+
+                    Store
+                        .getAllCaseContexts();
+
+
+                return Array.isArray(
+                    contexts
+                )
+
+                    ? contexts
+
+                    : [];
+
+            }
+
+
+            console.warn(
+                "[OffenceGeocoder] No supported Store cascade API found."
+            );
+
+
+            return [];
+
+        };
+
+
+    /* =====================================================
+       34. RESOLVE ALL STORE DATA
+
+       Produces complete POR-authoritative spatial contexts.
+
+       Result:
+
+       [
+           {
+               porKey,
+               porNo,
+               cases,
+               accused,
+               witnesses,
+               seizures,
+               seizedArticles,
+               sources,
+               targets
+           }
+       ]
        ===================================================== */
 
     OffenceGeocoder.resolveAll =
         async function () {
 
-            const contexts =
+            if (
+                Store.ready ===
+                false
+            ) {
 
-                Store
-                    .getAllCaseContexts();
+                console.warn(
+                    "[OffenceGeocoder] OffenceStore is not ready."
+                );
+
+                return [];
+
+            }
+
+
+            const cascades =
+
+                OffenceGeocoder
+                    .getStoreCascades();
 
 
             const results = [];
 
 
+            let sourceCount =
+                0;
+
+
+            let targetCount =
+                0;
+
+
             for (
-
-                const context
-
-                of contexts
-
+                const cascade
+                of cascades
             ) {
 
                 const resolved =
 
                     await OffenceGeocoder
-                        .resolveCaseContext(
-
-                            context
-
+                        .resolvePorCascade(
+                            cascade
                         );
 
 
-                if (
-                    resolved
-                ) {
+                if (!resolved) {
 
-                    results.push(
-
-                        resolved
-
-                    );
+                    continue;
 
                 }
+
+
+                sourceCount +=
+
+                    resolved.sources
+                        ?.length ||
+
+                    0;
+
+
+                targetCount +=
+
+                    resolved.targets
+                        ?.length ||
+
+                    0;
+
+
+                results.push(
+                    resolved
+                );
 
             }
 
@@ -1795,14 +2752,23 @@
 
                     {
 
-                        cases:
-
+                        porCascades:
                             results.length,
 
-                        cache:
+                        sources:
+                            sourceCount,
 
+                        targets:
+                            targetCount,
+
+                        cache:
                             OffenceGeocoder
                                 .cache
+                                .size,
+
+                        pending:
+                            OffenceGeocoder
+                                .pending
                                 .size
 
                     }
@@ -1818,35 +2784,200 @@
 
 
     /* =====================================================
-       27. GET CACHE STATS
+       35. FLATTEN SOURCE LOCATIONS
+
+       Convenient input for SOURCE heatmap builder.
+       ===================================================== */
+
+    OffenceGeocoder.getResolvedSources =
+        async function () {
+
+            const cascades =
+
+                await OffenceGeocoder
+                    .resolveAll();
+
+
+            return cascades
+                .flatMap(
+
+                    function (
+                        cascade
+                    ) {
+
+                        return (
+                            cascade.sources ||
+                            []
+                        );
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       36. FLATTEN TARGET LOCATIONS
+
+       Convenient input for TARGET heatmap builder.
+       ===================================================== */
+
+    OffenceGeocoder.getResolvedTargets =
+        async function () {
+
+            const cascades =
+
+                await OffenceGeocoder
+                    .resolveAll();
+
+
+            return cascades
+                .flatMap(
+
+                    function (
+                        cascade
+                    ) {
+
+                        return (
+                            cascade.targets ||
+                            []
+                        );
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       37. GET ONLY MAPPABLE SOURCES
+
+       Removes unresolved coordinates.
+       ===================================================== */
+
+    OffenceGeocoder.getMappableSources =
+        async function () {
+
+            const sources =
+
+                await OffenceGeocoder
+                    .getResolvedSources();
+
+
+            return sources
+                .filter(
+
+                    function (
+                        item
+                    ) {
+
+                        return (
+
+                            item
+                                ?.location &&
+
+                            OffenceGeocoder
+                                .isValidCoordinate(
+
+                                    item.location
+                                        .latitude,
+
+                                    item.location
+                                        .longitude
+
+                                )
+
+                        );
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       38. GET ONLY MAPPABLE TARGETS
+       ===================================================== */
+
+    OffenceGeocoder.getMappableTargets =
+        async function () {
+
+            const targets =
+
+                await OffenceGeocoder
+                    .getResolvedTargets();
+
+
+            return targets
+                .filter(
+
+                    function (
+                        item
+                    ) {
+
+                        return (
+
+                            item
+                                ?.location &&
+
+                            OffenceGeocoder
+                                .isValidCoordinate(
+
+                                    item.location
+                                        .latitude,
+
+                                    item.location
+                                        .longitude
+
+                                )
+
+                        );
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       39. GET CACHE STATS
        ===================================================== */
 
     OffenceGeocoder.getStats =
         function () {
 
-            let resolved = 0;
+            let resolved =
+                0;
 
-            let failed = 0;
 
-            let manual = 0;
+            let failed =
+                0;
+
+
+            let manual =
+                0;
 
 
             for (
-
                 const item
-
                 of OffenceGeocoder
                     .cache
                     .values()
-
             ) {
 
                 if (
 
                     item.status ===
-                    Constants
-                        .GEOCODE_STATUS
-                        .MANUAL
+
+                    OffenceGeocoder
+                        .getGeocodeStatus(
+                            "MANUAL",
+                            "MANUAL"
+                        )
 
                 ) {
 
@@ -1858,11 +2989,8 @@
 
                     OffenceGeocoder
                         .isValidCoordinate(
-
                             item.latitude,
-
                             item.longitude
-
                         )
 
                 ) {
@@ -1889,15 +3017,12 @@
                         .size,
 
                 resolved:
-
                     resolved,
 
                 manual:
-
                     manual,
 
                 failed:
-
                     failed,
 
                 pending:
@@ -1912,7 +3037,7 @@
 
 
     /* =====================================================
-       28. CLEAR CACHE
+       40. CLEAR CACHE
        ===================================================== */
 
     OffenceGeocoder.clearCache =
@@ -1928,24 +3053,30 @@
                 .clear();
 
 
-            try {
+            const cacheKey =
 
-                localStorage.removeItem(
+                Constants.CACHE
+                    ?.GEOCODES;
 
-                    Constants.CACHE
-                        .GEOCODES
 
-                );
+            if (cacheKey) {
 
-            }
+                try {
 
-            catch (
+                    localStorage
+                        .removeItem(
+                            cacheKey
+                        );
 
-                error
+                }
 
-            ) {
+                catch (
+                    error
+                ) {
 
-                // Ignore storage failure.
+                    // Ignore localStorage failure.
+
+                }
 
             }
 
@@ -1956,7 +3087,7 @@
 
 
     /* =====================================================
-       29. EXPORT
+       41. EXPORT
        ===================================================== */
 
     GG.Offence.Geocoder =
@@ -1964,14 +3095,15 @@
 
 
     /* =====================================================
-       30. INITIALIZE
+       42. INITIALIZE
        ===================================================== */
 
-    OffenceGeocoder.init();
+    OffenceGeocoder
+        .init();
 
 
     /* =====================================================
-       31. READY LOG
+       43. READY LOG
        ===================================================== */
 
     if (
@@ -1983,7 +3115,25 @@
 
             "🔥 OffenceGeocoder Loaded",
 
-            OffenceGeocoder
+            {
+
+                version:
+                    OffenceGeocoder.VERSION,
+
+                porAuthoritative:
+                    true,
+
+                sourceType:
+
+                    OffenceGeocoder
+                        .getSourceType(),
+
+                targetType:
+
+                    OffenceGeocoder
+                        .getTargetType()
+
+            }
 
         );
 
