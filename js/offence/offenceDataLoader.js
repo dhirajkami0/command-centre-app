@@ -48,13 +48,17 @@
 
 
     /*=========================================================
-      INFO
+      VERSION
     =========================================================*/
 
     DataLoader.VERSION =
 
-        "1.0.0";
+        "2.0.0";
 
+
+    /*=========================================================
+      STATE
+    =========================================================*/
 
     DataLoader.initialized =
 
@@ -88,24 +92,68 @@
 
     /*=========================================================
       CONFIGURATION
+
+      IMPORTANT:
+
+      DataLoader only loads raw Firestore collections.
+
+      POR relationship resolution belongs to:
+
+      offenceNormalizer.js
+              ↓
+      offenceStore.js
+
+      Authoritative business connector:
+
+      POR No.
+              ↓
+      normalized POR key
+
     =========================================================*/
 
-    /*
-     * Change this only if your backend action/function
-     * has a different name.
-     */
+    DataLoader.COLLECTIONS = {
+
+        CASES:
+
+            "offence_cases",
+
+        ACCUSED:
+
+            "offence_accused",
+
+        WITNESSES:
+
+            "offence_witnesses",
+
+        SEIZURES:
+
+            "offence_seizures",
+
+        SEIZED_ARTICLES:
+
+            "offence_seized_articles"
+
+    };
+
+
+    /*=========================================================
+      OPTIONAL BACKEND CONFIGURATION
+
+      Firestore is now the primary source.
+
+      BACKEND_ACTION is retained only for compatibility.
+
+    =========================================================*/
 
     DataLoader.BACKEND_ACTION =
 
         "getOffenceData";
 
 
-    /*
-     * Auto-load when application starts.
-     *
-     * Keep FALSE initially until getOffenceData exists
-     * in your backend.
-     */
+    DataLoader.SOURCE =
+
+        "firestore";
+
 
     DataLoader.AUTO_LOAD =
 
@@ -143,13 +191,42 @@
         );
 
 
+        console.log(
+
+            "[OffenceDataLoader] Version:",
+
+            DataLoader.VERSION
+
+        );
+
+
+        console.log(
+
+            "[OffenceDataLoader] Source:",
+
+            DataLoader.SOURCE
+
+        );
+
+
+        console.log(
+
+            "[OffenceDataLoader] Collections:",
+
+            DataLoader.COLLECTIONS
+
+        );
+
+
         if (
 
             DataLoader.AUTO_LOAD
 
         ) {
 
-            DataLoader.load()
+            DataLoader
+
+                .load()
 
                 .catch(
 
@@ -225,7 +302,44 @@
 
 
     /*=========================================================
-      NORMALIZE ARRAY
+      GET FIRESTORE
+    =========================================================*/
+
+    DataLoader.getFirestore = function () {
+
+        const db =
+
+            window.db ||
+
+            GG.db ||
+
+            GG.Firebase?.db ||
+
+            null;
+
+
+        if (
+
+            !db
+
+        ) {
+
+            throw new Error(
+
+                "Firestore database unavailable."
+
+            );
+
+        }
+
+
+        return db;
+
+    };
+
+
+    /*=========================================================
+      ENSURE ARRAY
     =========================================================*/
 
     DataLoader.ensureArray = function (
@@ -255,7 +369,10 @@
 
 
     /*=========================================================
-      PARSE JSON IF REQUIRED
+      PARSE JSON
+
+      Retained for compatibility with manual/backend loading.
+
     =========================================================*/
 
     DataLoader.parseJSON = function (
@@ -311,7 +428,7 @@
 
             console.warn(
 
-                "[OffenceDataLoader] Response is not JSON string."
+                "[OffenceDataLoader] Response is not valid JSON."
 
             );
 
@@ -324,7 +441,34 @@
 
 
     /*=========================================================
-      UNWRAP BACKEND RESPONSE
+      UNWRAP RESPONSE
+
+      Supported:
+
+      {
+          cases: [],
+          accused: [],
+          witnesses: [],
+          seizures: [],
+          seizedArticles: []
+      }
+
+      OR
+
+      {
+          data: {
+              ...
+          }
+      }
+
+      OR
+
+      {
+          result: {
+              ...
+          }
+      }
+
     =========================================================*/
 
     DataLoader.unwrapResponse = function (
@@ -335,11 +479,13 @@
 
         let data =
 
-            DataLoader.parseJSON(
+            DataLoader
 
-                response
+                .parseJSON(
 
-            );
+                    response
+
+                );
 
 
         if (
@@ -355,38 +501,6 @@
             return {};
 
         }
-
-
-        /*
-         * Supported response shapes:
-         *
-         * {
-         *     cases: [],
-         *     accused: [],
-         *     seizures: []
-         * }
-         *
-         * {
-         *     data: {
-         *         cases: [],
-         *         accused: [],
-         *         seizures: []
-         *     }
-         * }
-         *
-         * {
-         *     result: {
-         *         cases: [],
-         *         accused: [],
-         *         seizures: []
-         *     }
-         * }
-         *
-         * {
-         *     success: true,
-         *     data: {...}
-         * }
-         */
 
 
         if (
@@ -410,7 +524,6 @@
                 data.data;
 
         }
-
 
         else if (
 
@@ -442,6 +555,17 @@
 
     /*=========================================================
       EXTRACT DATASETS
+
+      Canonical output:
+
+      {
+          cases: [],
+          accused: [],
+          witnesses: [],
+          seizures: [],
+          seizedArticles: []
+      }
+
     =========================================================*/
 
     DataLoader.extractData = function (
@@ -461,19 +585,9 @@
                 );
 
 
-        /*
-         * Canonical output expected by OffenceStore:
-         *
-         * {
-         *     cases: [],
-         *     accused: [],
-         *     seizures: []
-         * }
-         *
-         * A few aliases are accepted so backend naming
-         * can evolve without breaking the frontend.
-         */
-
+        /*----------------------------------
+          Cases
+        ----------------------------------*/
 
         const cases =
 
@@ -485,8 +599,14 @@
 
             data.offenceCases ||
 
+            data.offence_cases ||
+
             [];
 
+
+        /*----------------------------------
+          Accused
+        ----------------------------------*/
 
         const accused =
 
@@ -496,10 +616,37 @@
 
             data.accusedRecords ||
 
+            data.offenceAccused ||
+
+            data.offence_accused ||
+
             data.suspects ||
 
             [];
 
+
+        /*----------------------------------
+          Witnesses
+        ----------------------------------*/
+
+        const witnesses =
+
+            data.witnesses ||
+
+            data.witnessData ||
+
+            data.witnessRecords ||
+
+            data.offenceWitnesses ||
+
+            data.offence_witnesses ||
+
+            [];
+
+
+        /*----------------------------------
+          Seizures
+        ----------------------------------*/
 
         const seizures =
 
@@ -508,6 +655,31 @@
             data.seizureData ||
 
             data.seizureRecords ||
+
+            data.offenceSeizures ||
+
+            data.offence_seizures ||
+
+            [];
+
+
+        /*----------------------------------
+          Seized Articles
+        ----------------------------------*/
+
+        const seizedArticles =
+
+            data.seizedArticles ||
+
+            data.seizedArticleData ||
+
+            data.seizedArticleRecords ||
+
+            data.articles ||
+
+            data.offenceSeizedArticles ||
+
+            data.offence_seized_articles ||
 
             [];
 
@@ -530,11 +702,27 @@
 
                 ),
 
+            witnesses:
+
+                DataLoader.ensureArray(
+
+                    witnesses
+
+                ),
+
             seizures:
 
                 DataLoader.ensureArray(
 
                     seizures
+
+                ),
+
+            seizedArticles:
+
+                DataLoader.ensureArray(
+
+                    seizedArticles
 
                 )
 
@@ -544,7 +732,7 @@
 
 
     /*=========================================================
-      VALIDATE DATA
+      VALIDATE DATASETS
     =========================================================*/
 
     DataLoader.validateData = function (
@@ -578,77 +766,61 @@
         }
 
 
-        if (
+        const requiredDatasets = [
 
-            !Array.isArray(
+            "cases",
 
-                data.cases
+            "accused",
 
-            )
+            "witnesses",
 
-        ) {
+            "seizures",
 
-            return {
+            "seizedArticles"
 
-                valid:
-
-                    false,
-
-                error:
-
-                    "Cases dataset is invalid."
-
-            };
-
-        }
+        ];
 
 
-        if (
+        for (
 
-            !Array.isArray(
+            let i = 0;
 
-                data.accused
+            i < requiredDatasets.length;
 
-            )
+            i++
 
         ) {
 
-            return {
+            const datasetName =
 
-                valid:
-
-                    false,
-
-                error:
-
-                    "Accused dataset is invalid."
-
-            };
-
-        }
+                requiredDatasets[i];
 
 
-        if (
+            if (
 
-            !Array.isArray(
+                !Array.isArray(
 
-                data.seizures
+                    data[datasetName]
 
-            )
+                )
 
-        ) {
+            ) {
 
-            return {
+                return {
 
-                valid:
+                    valid:
 
-                    false,
+                        false,
 
-                error:
+                    error:
 
-                    "Seizures dataset is invalid."
+                        datasetName +
 
-            };
+                        " dataset is invalid."
+
+                };
+
+            }
 
         }
 
@@ -669,251 +841,408 @@
 
 
     /*=========================================================
-      CALL BACKEND
+      SNAPSHOT TO ARRAY
+
+      IMPORTANT:
+
+      Firestore document ID is preserved as:
+
+          id
+
+      Existing document fields are also retained.
+
     =========================================================*/
 
-/*=========================================================
-  FIRESTORE COLLECTIONS
-=========================================================*/
+    DataLoader.snapshotToArray = function (
 
-DataLoader.COLLECTIONS = {
-
-    CASES:
-
-        "offence_cases",
-
-    ACCUSED:
-
-        "offence_accused",
-
-    SEIZURES:
-
-        "offence_seizures"
-
-};
-
-
-/*=========================================================
-  GET FIRESTORE
-=========================================================*/
-
-DataLoader.getFirestore = function () {
-
-    const db =
-
-        window.db ||
-
-        GG.db ||
-
-        GG.Firebase?.db ||
-
-        null;
-
-
-    if (
-
-        !db
+        snapshot
 
     ) {
 
-        throw new Error(
-
-            "Firestore database unavailable."
-
-        );
-
-    }
+        const records = [];
 
 
-    return db;
+        if (
 
-};
-
-
-/*=========================================================
-  SNAPSHOT TO ARRAY
-=========================================================*/
-
-DataLoader.snapshotToArray = function (
-
-    snapshot
-
-) {
-
-    const records = [];
-
-
-    snapshot.forEach(
-
-        function (
-
-            doc
+            !snapshot
 
         ) {
 
-            records.push({
-
-                id:
-
-                    doc.id,
-
-                ...doc.data()
-
-            });
+            return records;
 
         }
 
-    );
 
+        snapshot.forEach(
 
-    return records;
+            function (
 
-};
+                doc
 
+            ) {
 
-/*=========================================================
-  FETCH FROM FIRESTORE
-=========================================================*/
+                const data =
 
-DataLoader.fetchFromFirestore = async function () {
+                    doc.data() ||
 
-    const db =
+                    {};
 
-        DataLoader
 
-            .getFirestore();
+                records.push({
 
+                    ...data,
 
-    const collections =
+                    id:
 
-        DataLoader.COLLECTIONS;
+                        doc.id
 
+                });
 
-    console.log(
+            }
 
-        "🔥 Fetching Offence Data From Firestore",
+        );
 
-        collections
 
-    );
-
-
-    /*----------------------------------
-      Fetch Collections In Parallel
-    ----------------------------------*/
-
-    const [
-
-        caseSnapshot,
-
-        accusedSnapshot,
-
-        seizureSnapshot
-
-    ] =
-
-        await Promise.all([
-
-            db.collection(
-
-                collections.CASES
-
-            ).get(),
-
-
-            db.collection(
-
-                collections.ACCUSED
-
-            ).get(),
-
-
-            db.collection(
-
-                collections.SEIZURES
-
-            ).get()
-
-        ]);
-
-
-    /*----------------------------------
-      Convert Snapshots
-    ----------------------------------*/
-
-    const cases =
-
-        DataLoader
-
-            .snapshotToArray(
-
-                caseSnapshot
-
-            );
-
-
-    const accused =
-
-        DataLoader
-
-            .snapshotToArray(
-
-                accusedSnapshot
-
-            );
-
-
-    const seizures =
-
-        DataLoader
-
-            .snapshotToArray(
-
-                seizureSnapshot
-
-            );
-
-
-    console.log(
-
-        "🔥 Firestore Offence Data",
-
-        {
-
-            cases:
-
-                cases.length,
-
-            accused:
-
-                accused.length,
-
-            seizures:
-
-                seizures.length
-
-        }
-
-    );
-
-
-    return {
-
-        cases:
-
-            cases,
-
-        accused:
-
-            accused,
-
-        seizures:
-
-            seizures
+        return records;
 
     };
 
-};
+
+    /*=========================================================
+      FETCH FIRESTORE COLLECTION
+
+      Helper allows collection-level diagnostics.
+
+    =========================================================*/
+
+    DataLoader.fetchCollection = async function (
+
+        db,
+
+        collectionName
+
+    ) {
+
+        const startedAt =
+
+            Date.now();
+
+
+        const snapshot =
+
+            await db
+
+                .collection(
+
+                    collectionName
+
+                )
+
+                .get();
+
+
+        const records =
+
+            DataLoader
+
+                .snapshotToArray(
+
+                    snapshot
+
+                );
+
+
+        console.log(
+
+            "[OffenceDataLoader] Collection loaded:",
+
+            {
+
+                collection:
+
+                    collectionName,
+
+                records:
+
+                    records.length,
+
+                duration:
+
+                    Date.now() -
+
+                    startedAt
+
+            }
+
+        );
+
+
+        return records;
+
+    };
+
+
+    /*=========================================================
+      FETCH FROM FIRESTORE
+
+      All five collections are fetched in parallel.
+
+    =========================================================*/
+
+    DataLoader.fetchFromFirestore = async function () {
+
+        const db =
+
+            DataLoader
+
+                .getFirestore();
+
+
+        const collections =
+
+            DataLoader.COLLECTIONS;
+
+
+        console.log(
+
+            "🔥 Fetching Offence Data From Firestore",
+
+            collections
+
+        );
+
+
+        const [
+
+            cases,
+
+            accused,
+
+            witnesses,
+
+            seizures,
+
+            seizedArticles
+
+        ] =
+
+            await Promise.all([
+
+                DataLoader
+
+                    .fetchCollection(
+
+                        db,
+
+                        collections.CASES
+
+                    ),
+
+                DataLoader
+
+                    .fetchCollection(
+
+                        db,
+
+                        collections.ACCUSED
+
+                    ),
+
+                DataLoader
+
+                    .fetchCollection(
+
+                        db,
+
+                        collections.WITNESSES
+
+                    ),
+
+                DataLoader
+
+                    .fetchCollection(
+
+                        db,
+
+                        collections.SEIZURES
+
+                    ),
+
+                DataLoader
+
+                    .fetchCollection(
+
+                        db,
+
+                        collections.SEIZED_ARTICLES
+
+                    )
+
+            ]);
+
+
+        const result = {
+
+            cases:
+
+                cases,
+
+            accused:
+
+                accused,
+
+            witnesses:
+
+                witnesses,
+
+            seizures:
+
+                seizures,
+
+            seizedArticles:
+
+                seizedArticles
+
+        };
+
+
+        console.log(
+
+            "🔥 Firestore Offence Data Loaded",
+
+            {
+
+                cases:
+
+                    result.cases.length,
+
+                accused:
+
+                    result.accused.length,
+
+                witnesses:
+
+                    result.witnesses.length,
+
+                seizures:
+
+                    result.seizures.length,
+
+                seizedArticles:
+
+                    result.seizedArticles.length
+
+            }
+
+        );
+
+
+        return result;
+
+    };
+
+
+    /*=========================================================
+      FETCH DATA
+
+      Firestore is authoritative data source.
+
+      This function replaces dependence on old backend loading.
+
+    =========================================================*/
+
+    DataLoader.fetchFromBackend = async function () {
+
+        return DataLoader
+
+            .fetchFromFirestore();
+
+    };
+
+
+    /*=========================================================
+      GET DATASET COUNTS
+    =========================================================*/
+
+    DataLoader.getCounts = function (
+
+        data
+
+    ) {
+
+        data =
+
+            data ||
+
+            {};
+
+
+        return {
+
+            cases:
+
+                DataLoader
+
+                    .ensureArray(
+
+                        data.cases
+
+                    )
+
+                    .length,
+
+            accused:
+
+                DataLoader
+
+                    .ensureArray(
+
+                        data.accused
+
+                    )
+
+                    .length,
+
+            witnesses:
+
+                DataLoader
+
+                    .ensureArray(
+
+                        data.witnesses
+
+                    )
+
+                    .length,
+
+            seizures:
+
+                DataLoader
+
+                    .ensureArray(
+
+                        data.seizures
+
+                    )
+
+                    .length,
+
+            seizedArticles:
+
+                DataLoader
+
+                    .ensureArray(
+
+                        data.seizedArticles
+
+                    )
+
+                    .length
+
+        };
+
+    };
+
 
     /*=========================================================
       DISPATCH EVENT
@@ -972,6 +1301,23 @@ DataLoader.fetchFromFirestore = async function () {
 
     /*=========================================================
       LOAD DATA INTO STORE
+
+      DataLoader does NOT resolve relationships.
+
+      Store receives all five datasets.
+
+      Next architecture:
+
+      DataLoader
+          ↓
+      Normalizer
+          ↓
+      POR normalization
+          ↓
+      Store
+          ↓
+      POR indexes
+
     =========================================================*/
 
     DataLoader.loadIntoStore = function (
@@ -1013,110 +1359,97 @@ DataLoader.fetchFromFirestore = async function () {
         }
 
 
+        const counts =
+
+            DataLoader
+
+                .getCounts(
+
+                    data
+
+                );
+
+
         console.log(
 
             "🔥 Loading Offence Store",
 
-            {
-
-                cases:
-
-                    data.cases.length,
-
-                accused:
-
-                    data.accused.length,
-
-                seizures:
-
-                    data.seizures.length
-
-            }
+            counts
 
         );
 
 
-        const result =
+        return Store
 
-            Store.load(
+            .load(
 
                 data
 
             );
 
-
-        return result;
-
     };
 
 
     /*=========================================================
-      REFRESH ACTIVE INTELLIGENCE
+      GET STORE STATS SAFELY
     =========================================================*/
 
-    DataLoader.refreshActiveUI = async function () {
+    DataLoader.getStoreStats = function () {
 
-        const UIController =
+        const Store =
 
-            GG.Offence
-
-                .UIController;
+            GG.Offence.Store;
 
 
         if (
 
-            !UIController
+            Store &&
 
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-
-            !UIController.active
-
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-
-            typeof UIController.refresh !==
+            typeof Store.getStats ===
 
             "function"
 
         ) {
 
-            return;
+            return Store
+
+                .getStats();
 
         }
 
 
-        /*
-         * UIController already listens for store update
-         * events in some configurations.
-         *
-         * Therefore this function is kept available but
-         * is NOT automatically called by load().
-         *
-         * This prevents duplicate heatmap rebuilds.
-         */
+        return {
 
-        await UIController
+            cases:
 
-            .refresh();
+                0,
+
+            accused:
+
+                0,
+
+            witnesses:
+
+                0,
+
+            seizures:
+
+                0,
+
+            seizedArticles:
+
+                0
+
+        };
 
     };
 
 
     /*=========================================================
       LOAD
+
+      Full initial load.
+
     =========================================================*/
 
     DataLoader.load = async function (
@@ -1170,27 +1503,18 @@ DataLoader.fetchFromFirestore = async function () {
 
 
             /*----------------------------------
-              Fetch
+              Fetch Firestore
             ----------------------------------*/
 
             const response =
 
                 await DataLoader
 
-                    .fetchFromBackend();
-
-
-            console.log(
-
-                "Raw Response:",
-
-                response
-
-            );
+                    .fetchFromFirestore();
 
 
             /*----------------------------------
-              Extract
+              Extract Canonical Shape
             ----------------------------------*/
 
             const data =
@@ -1204,25 +1528,22 @@ DataLoader.fetchFromFirestore = async function () {
                     );
 
 
+            const counts =
+
+                DataLoader
+
+                    .getCounts(
+
+                        data
+
+                    );
+
+
             console.log(
 
-                "Extracted Data:",
+                "Extracted Offence Data:",
 
-                {
-
-                    cases:
-
-                        data.cases.length,
-
-                    accused:
-
-                        data.accused.length,
-
-                    seizures:
-
-                        data.seizures.length
-
-                }
+                counts
 
             );
 
@@ -1273,18 +1594,18 @@ DataLoader.fetchFromFirestore = async function () {
 
 
             /*----------------------------------
-              Stats
+              Store Stats
             ----------------------------------*/
 
             const stats =
 
-                GG.Offence.Store
+                DataLoader
 
-                    .getStats();
+                    .getStoreStats();
 
 
             /*----------------------------------
-              State
+              Update State
             ----------------------------------*/
 
             DataLoader.loaded =
@@ -1302,6 +1623,18 @@ DataLoader.fetchFromFirestore = async function () {
                 success:
 
                     true,
+
+                source:
+
+                    "firestore",
+
+                version:
+
+                    DataLoader.VERSION,
+
+                counts:
+
+                    counts,
 
                 stats:
 
@@ -1321,7 +1654,7 @@ DataLoader.fetchFromFirestore = async function () {
 
 
             /*----------------------------------
-              Notify Application
+              Events
             ----------------------------------*/
 
             DataLoader
@@ -1332,9 +1665,17 @@ DataLoader.fetchFromFirestore = async function () {
 
                     {
 
+                        counts:
+
+                            counts,
+
                         stats:
 
-                            stats
+                            stats,
+
+                        source:
+
+                            "firestore"
 
                     }
 
@@ -1349,9 +1690,17 @@ DataLoader.fetchFromFirestore = async function () {
 
                     {
 
+                        counts:
+
+                            counts,
+
                         stats:
 
-                            stats
+                            stats,
+
+                        source:
+
+                            "firestore"
 
                     }
 
@@ -1395,6 +1744,14 @@ DataLoader.fetchFromFirestore = async function () {
 
                     false,
 
+                source:
+
+                    "firestore",
+
+                version:
+
+                    DataLoader.VERSION,
+
                 error:
 
                     error.message,
@@ -1427,7 +1784,11 @@ DataLoader.fetchFromFirestore = async function () {
 
                         error:
 
-                            error.message
+                            error.message,
+
+                        source:
+
+                            "firestore"
 
                     }
 
@@ -1453,7 +1814,10 @@ DataLoader.fetchFromFirestore = async function () {
 
 
     /*=========================================================
-      UPDATE
+      UPDATE / REFRESH DATA
+
+      Re-fetch all five Firestore collections.
+
     =========================================================*/
 
     DataLoader.update = async function () {
@@ -1464,6 +1828,13 @@ DataLoader.fetchFromFirestore = async function () {
 
         ) {
 
+            console.warn(
+
+                "[OffenceDataLoader] Update skipped. Load in progress."
+
+            );
+
+
             return DataLoader
 
                 .lastResult;
@@ -1471,145 +1842,361 @@ DataLoader.fetchFromFirestore = async function () {
         }
 
 
-        const response =
+        DataLoader.loading =
 
-            await DataLoader
-
-                .fetchFromBackend();
+            true;
 
 
-        const data =
+        DataLoader.lastError =
 
-            DataLoader
-
-                .extractData(
-
-                    response
-
-                );
+            null;
 
 
-        const validation =
+        const startedAt =
 
-            DataLoader
-
-                .validateData(
-
-                    data
-
-                );
+            Date.now();
 
 
-        if (
+        try {
 
-            !validation.valid
+            console.group(
 
-        ) {
-
-            throw new Error(
-
-                validation.error
+                "🔥 OFFENCE DATA UPDATE"
 
             );
 
-        }
+
+            const response =
+
+                await DataLoader
+
+                    .fetchFromFirestore();
 
 
-        const Store =
+            const data =
+
+                DataLoader
+
+                    .extractData(
+
+                        response
+
+                    );
+
+
+            const validation =
+
+                DataLoader
+
+                    .validateData(
+
+                        data
+
+                    );
+
+
+            if (
+
+                !validation.valid
+
+            ) {
+
+                throw new Error(
+
+                    validation.error
+
+                );
+
+            }
+
+
+            const Store =
+
+                DataLoader
+
+                    .getStore();
+
+
+            let storeResult;
+
+
+            if (
+
+                typeof Store.update ===
+
+                "function"
+
+            ) {
+
+                storeResult =
+
+                    Store
+
+                        .update(
+
+                            data
+
+                        );
+
+            }
+
+            else {
+
+                storeResult =
+
+                    Store
+
+                        .load(
+
+                            data
+
+                        );
+
+            }
+
+
+            const counts =
+
+                DataLoader
+
+                    .getCounts(
+
+                        data
+
+                    );
+
+
+            const stats =
+
+                DataLoader
+
+                    .getStoreStats();
+
+
+            DataLoader.loaded =
+
+                true;
+
+
+            DataLoader.lastLoadedAt =
+
+                Date.now();
+
+
+            DataLoader.lastResult = {
+
+                success:
+
+                    true,
+
+                source:
+
+                    "firestore",
+
+                version:
+
+                    DataLoader.VERSION,
+
+                counts:
+
+                    counts,
+
+                stats:
+
+                    stats,
+
+                storeResult:
+
+                    storeResult,
+
+                duration:
+
+                    Date.now() -
+
+                    startedAt
+
+            };
+
 
             DataLoader
 
-                .getStore();
+                .dispatchEvent(
+
+                    "offence:data-updated",
+
+                    {
+
+                        counts:
+
+                            counts,
+
+                        stats:
+
+                            stats,
+
+                        source:
+
+                            "firestore"
+
+                    }
+
+                );
 
 
-        let result;
+            console.log(
+
+                "🔥 Offence Data Updated",
+
+                DataLoader.lastResult
+
+            );
 
 
-        /*
-         * Prefer incremental Store.update()
-         * if available.
-         *
-         * Otherwise perform full Store.load().
-         */
+            return DataLoader
+
+                .lastResult;
+
+        }
+
+        catch (
+
+            error
+
+        ) {
+
+            DataLoader.lastError =
+
+                error;
+
+
+            DataLoader.lastResult = {
+
+                success:
+
+                    false,
+
+                source:
+
+                    "firestore",
+
+                version:
+
+                    DataLoader.VERSION,
+
+                error:
+
+                    error.message,
+
+                duration:
+
+                    Date.now() -
+
+                    startedAt
+
+            };
+
+
+            console.error(
+
+                "[OffenceDataLoader] Update failed:",
+
+                error
+
+            );
+
+
+            DataLoader
+
+                .dispatchEvent(
+
+                    "offence:data-error",
+
+                    {
+
+                        error:
+
+                            error.message,
+
+                        source:
+
+                            "firestore"
+
+                    }
+
+                );
+
+
+            throw error;
+
+        }
+
+        finally {
+
+            DataLoader.loading =
+
+                false;
+
+
+            console.groupEnd();
+
+        }
+
+    };
+
+
+    /*=========================================================
+      REFRESH ALIAS
+    =========================================================*/
+
+    DataLoader.refresh = function () {
+
+        return DataLoader
+
+            .update();
+
+    };
+
+
+    /*=========================================================
+      REFRESH ACTIVE UI
+
+      Kept for compatibility.
+
+      Normally UI listens to:
+
+      offence:data-updated
+
+    =========================================================*/
+
+    DataLoader.refreshActiveUI = async function () {
+
+        const UIController =
+
+            GG.Offence
+
+                .UIController;
+
 
         if (
 
-            typeof Store.update ===
+            !UIController ||
+
+            !UIController.active ||
+
+            typeof UIController.refresh !==
 
             "function"
 
         ) {
 
-            result =
-
-                Store.update(
-
-                    data
-
-                );
-
-        }
-
-        else {
-
-            result =
-
-                Store.load(
-
-                    data
-
-                );
+            return;
 
         }
 
 
-        DataLoader.loaded =
+        await UIController
 
-            true;
-
-
-        DataLoader.lastLoadedAt =
-
-            Date.now();
-
-
-        DataLoader.lastResult = {
-
-            success:
-
-                true,
-
-            stats:
-
-                Store.getStats(),
-
-            storeResult:
-
-                result
-
-        };
-
-
-        DataLoader
-
-            .dispatchEvent(
-
-                "offence:data-updated",
-
-                {
-
-                    stats:
-
-                        Store.getStats()
-
-                }
-
-            );
-
-
-        return DataLoader
-
-            .lastResult;
+            .refresh();
 
     };
 
@@ -1621,6 +2208,14 @@ DataLoader.fetchFromFirestore = async function () {
     DataLoader.getStatus = function () {
 
         return {
+
+            version:
+
+                DataLoader.VERSION,
+
+            source:
+
+                DataLoader.SOURCE,
 
             initialized:
 
@@ -1650,27 +2245,23 @@ DataLoader.fetchFromFirestore = async function () {
 
                     : null,
 
-            backendAction:
-
-                DataLoader
-
-                    .BACKEND_ACTION,
-
-            stats:
-
-                GG.Offence.Store
-
-                    ?.getStats?.() ||
+            collections:
 
                 {
 
-                    cases: 0,
+                    ...DataLoader.COLLECTIONS
 
-                    accused: 0,
+                },
 
-                    seizures: 0
+            stats:
 
-                }
+                DataLoader
+
+                    .getStoreStats(),
+
+            lastResult:
+
+                DataLoader.lastResult
 
         };
 
@@ -1729,9 +2320,24 @@ DataLoader.fetchFromFirestore = async function () {
 
             .dispatchEvent(
 
-                "offence:data-reset"
+                "offence:data-reset",
+
+                {
+
+                    source:
+
+                        "firestore"
+
+                }
 
             );
+
+
+        console.log(
+
+            "[OffenceDataLoader] Reset complete."
+
+        );
 
     };
 
