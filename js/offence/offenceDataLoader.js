@@ -53,7 +53,7 @@
 
     DataLoader.VERSION =
 
-        "2.0.0";
+        "2.1.0";
 
 
     /*=========================================================
@@ -139,7 +139,7 @@
     /*=========================================================
       OPTIONAL BACKEND CONFIGURATION
 
-      Firestore is now the primary source.
+      Firestore is the primary source.
 
       BACKEND_ACTION is retained only for compatibility.
 
@@ -281,7 +281,7 @@
 
         if (
 
-            typeof Store.load !==
+            typeof Store.build !==
 
             "function"
 
@@ -289,7 +289,7 @@
 
             throw new Error(
 
-                "OffenceStore.load() unavailable."
+                "OffenceStore.build() unavailable."
 
             );
 
@@ -302,20 +302,75 @@
 
 
     /*=========================================================
+      GET FIREBASE MODULAR HELPERS
+
+      GreenGuard Firebase architecture:
+
+      window.fb
+          ├── collection()
+          ├── getDocs()
+          └── other modular Firebase functions
+
+    =========================================================*/
+
+    DataLoader.getFirebase = function () {
+
+        return window.fb || null;
+
+    };
+
+
+    /*=========================================================
       GET FIRESTORE
+
+      GreenGuard Firestore architecture:
+
+      window.db
+          ↓
+      Firebase modular Firestore instance
+
     =========================================================*/
 
     DataLoader.getFirestore = function () {
 
+        return window.db || null;
+
+    };
+
+
+    /*=========================================================
+      VALIDATE FIREBASE
+
+      This follows the same modular Firebase pattern used by
+      the existing GreenGuard StaffEntities module.
+
+    =========================================================*/
+
+    DataLoader.validateFirebase = function () {
+
+        const fb =
+
+            DataLoader.getFirebase();
+
+
         const db =
 
-            window.db ||
+            DataLoader.getFirestore();
 
-            GG.db ||
 
-            GG.Firebase?.db ||
+        if (
 
-            null;
+            !fb
+
+        ) {
+
+            throw new Error(
+
+                "Firebase SDK not initialized."
+
+            );
+
+        }
 
 
         if (
@@ -333,7 +388,47 @@
         }
 
 
-        return db;
+        if (
+
+            typeof fb.collection !==
+
+            "function"
+
+        ) {
+
+            throw new Error(
+
+                "Firebase collection() unavailable."
+
+            );
+
+        }
+
+
+        if (
+
+            typeof fb.getDocs !==
+
+            "function"
+
+        ) {
+
+            throw new Error(
+
+                "Firebase getDocs() unavailable."
+
+            );
+
+        }
+
+
+        return {
+
+            fb,
+
+            db
+
+        };
 
     };
 
@@ -911,13 +1006,28 @@
     /*=========================================================
       FETCH FIRESTORE COLLECTION
 
-      Helper allows collection-level diagnostics.
+      IMPORTANT:
+
+      Firebase v9+ modular API.
+
+      Correct:
+
+          fb.collection(
+              db,
+              collectionName
+          )
+
+          fb.getDocs(
+              collectionReference
+          )
+
+      NOT:
+
+          db.collection(...).get()
 
     =========================================================*/
 
     DataLoader.fetchCollection = async function (
-
-        db,
 
         collectionName
 
@@ -928,17 +1038,37 @@
             Date.now();
 
 
+        const {
+
+            fb,
+
+            db
+
+        } =
+
+            DataLoader
+
+                .validateFirebase();
+
+
+        const collectionReference =
+
+            fb.collection(
+
+                db,
+
+                collectionName
+
+            );
+
+
         const snapshot =
 
-            await db
+            await fb.getDocs(
 
-                .collection(
+                collectionReference
 
-                    collectionName
-
-                )
-
-                .get();
+            );
 
 
         const records =
@@ -991,11 +1121,13 @@
 
     DataLoader.fetchFromFirestore = async function () {
 
-        const db =
+        /*----------------------------------
+          Validate Firebase First
+        ----------------------------------*/
 
-            DataLoader
+        DataLoader
 
-                .getFirestore();
+            .validateFirebase();
 
 
         const collections =
@@ -1032,8 +1164,6 @@
 
                     .fetchCollection(
 
-                        db,
-
                         collections.CASES
 
                     ),
@@ -1041,8 +1171,6 @@
                 DataLoader
 
                     .fetchCollection(
-
-                        db,
 
                         collections.ACCUSED
 
@@ -1052,8 +1180,6 @@
 
                     .fetchCollection(
 
-                        db,
-
                         collections.WITNESSES
 
                     ),
@@ -1062,8 +1188,6 @@
 
                     .fetchCollection(
 
-                        db,
-
                         collections.SEIZURES
 
                     ),
@@ -1071,8 +1195,6 @@
                 DataLoader
 
                     .fetchCollection(
-
-                        db,
 
                         collections.SEIZED_ARTICLES
 
@@ -1318,6 +1440,12 @@
           ↓
       POR indexes
 
+      IMPORTANT:
+
+      OffenceStore authoritative build API:
+
+          Store.build(data)
+
     =========================================================*/
 
     DataLoader.loadIntoStore = function (
@@ -1372,7 +1500,7 @@
 
         console.log(
 
-            "🔥 Loading Offence Store",
+            "🔥 Building Offence Store",
 
             counts
 
@@ -1381,7 +1509,7 @@
 
         return Store
 
-            .load(
+            .build(
 
                 data
 
@@ -1579,18 +1707,22 @@
 
 
             /*----------------------------------
-              Load Store
+              Build Store
             ----------------------------------*/
 
             const storeResult =
 
-                DataLoader
+                await Promise.resolve(
 
-                    .loadIntoStore(
+                    DataLoader
 
-                        data
+                        .loadIntoStore(
 
-                    );
+                            data
+
+                        )
+
+                );
 
 
             /*----------------------------------
@@ -1818,6 +1950,9 @@
 
       Re-fetch all five Firestore collections.
 
+      Store.build() is authoritative and rebuilds the complete
+      POR-connected store from the latest raw collections.
+
     =========================================================*/
 
     DataLoader.update = async function () {
@@ -1917,42 +2052,27 @@
                     .getStore();
 
 
-            let storeResult;
+            /*
+             * Full Firestore refresh is authoritative.
+             *
+             * Rebuild the Store from all five datasets so
+             * indexes and POR relationships cannot retain
+             * stale records from a previous load.
+             */
 
+            const storeResult =
 
-            if (
-
-                typeof Store.update ===
-
-                "function"
-
-            ) {
-
-                storeResult =
-
-                    Store
-
-                        .update(
-
-                            data
-
-                        );
-
-            }
-
-            else {
-
-                storeResult =
+                await Promise.resolve(
 
                     Store
 
-                        .load(
+                        .build(
 
                             data
 
-                        );
+                        )
 
-            }
+                );
 
 
             const counts =
@@ -2164,7 +2284,7 @@
 
       Normally UI listens to:
 
-      offence:data-updated
+          offence:data-updated
 
     =========================================================*/
 
