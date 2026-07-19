@@ -672,55 +672,248 @@
       CALL BACKEND
     =========================================================*/
 
-    DataLoader.fetchFromBackend = async function () {
+/*=========================================================
+  FIRESTORE COLLECTIONS
+=========================================================*/
 
-        if (
+DataLoader.COLLECTIONS = {
 
-            typeof window.callBackend !==
+    CASES:
 
-            "function"
+        "offence_cases",
 
-        ) {
+    ACCUSED:
 
-            throw new Error(
+        "offence_accused",
 
-                "window.callBackend() unavailable."
+    SEIZURES:
 
-            );
+        "offence_seizures"
 
-        }
+};
 
 
-        console.log(
+/*=========================================================
+  GET FIRESTORE
+=========================================================*/
 
-            "🔥 Fetching Offence Data:",
+DataLoader.getFirestore = function () {
 
-            DataLoader.BACKEND_ACTION
+    const db =
+
+        window.db ||
+
+        GG.db ||
+
+        GG.Firebase?.db ||
+
+        null;
+
+
+    if (
+
+        !db
+
+    ) {
+
+        throw new Error(
+
+            "Firestore database unavailable."
 
         );
 
+    }
 
-        /*
-         * Your GreenGuard application already uses
-         * callBackend(action).
-         *
-         * If your callBackend signature later requires
-         * parameters, modify only this method.
-         */
 
-        const response =
+    return db;
 
-            await window.callBackend(
+};
 
-                DataLoader.BACKEND_ACTION
+
+/*=========================================================
+  SNAPSHOT TO ARRAY
+=========================================================*/
+
+DataLoader.snapshotToArray = function (
+
+    snapshot
+
+) {
+
+    const records = [];
+
+
+    snapshot.forEach(
+
+        function (
+
+            doc
+
+        ) {
+
+            records.push({
+
+                id:
+
+                    doc.id,
+
+                ...doc.data()
+
+            });
+
+        }
+
+    );
+
+
+    return records;
+
+};
+
+
+/*=========================================================
+  FETCH FROM FIRESTORE
+=========================================================*/
+
+DataLoader.fetchFromFirestore = async function () {
+
+    const db =
+
+        DataLoader
+
+            .getFirestore();
+
+
+    const collections =
+
+        DataLoader.COLLECTIONS;
+
+
+    console.log(
+
+        "🔥 Fetching Offence Data From Firestore",
+
+        collections
+
+    );
+
+
+    /*----------------------------------
+      Fetch Collections In Parallel
+    ----------------------------------*/
+
+    const [
+
+        caseSnapshot,
+
+        accusedSnapshot,
+
+        seizureSnapshot
+
+    ] =
+
+        await Promise.all([
+
+            db.collection(
+
+                collections.CASES
+
+            ).get(),
+
+
+            db.collection(
+
+                collections.ACCUSED
+
+            ).get(),
+
+
+            db.collection(
+
+                collections.SEIZURES
+
+            ).get()
+
+        ]);
+
+
+    /*----------------------------------
+      Convert Snapshots
+    ----------------------------------*/
+
+    const cases =
+
+        DataLoader
+
+            .snapshotToArray(
+
+                caseSnapshot
 
             );
 
 
-        return response;
+    const accused =
+
+        DataLoader
+
+            .snapshotToArray(
+
+                accusedSnapshot
+
+            );
+
+
+    const seizures =
+
+        DataLoader
+
+            .snapshotToArray(
+
+                seizureSnapshot
+
+            );
+
+
+    console.log(
+
+        "🔥 Firestore Offence Data",
+
+        {
+
+            cases:
+
+                cases.length,
+
+            accused:
+
+                accused.length,
+
+            seizures:
+
+                seizures.length
+
+        }
+
+    );
+
+
+    return {
+
+        cases:
+
+            cases,
+
+        accused:
+
+            accused,
+
+        seizures:
+
+            seizures
 
     };
 
+};
 
     /*=========================================================
       DISPATCH EVENT
