@@ -21878,30 +21878,107 @@ layer.setStyle(originalStyle);
 });
 
 layer.on(
-"click",
-async function(e){
+    "click",
+    async function(e){
 
-try{
+        try{
 
-L.DomEvent.stopPropagation(e);
+            L.DomEvent.stopPropagation(e);
 
-if(
-window.activePopupContext.level
-!== "division"
-){
-return;
-}
 
-await showDivisionAnalyticsPanel();
+            if(
+                window.activePopupContext?.level
+                !== "division"
+            ){
 
-}
-catch(err){
+                return;
 
-console.error(err);
+            }
 
-}
 
-}
+            const props =
+                feature.properties ||
+                {};
+
+
+            let division =
+
+                String(
+
+                    props.Division ||
+
+                    props.division ||
+
+                    window.gisFilter?.division ||
+
+                    ""
+
+                ).trim();
+
+
+            // ======================================
+            // FIRESTORE DIVISION NORMALIZATION
+            // ======================================
+
+            if(
+                division === "BTR_W"
+            ){
+
+                division =
+                    "BuxaTR_WEST";
+
+            }
+
+
+            if(
+                division === "BTR_E"
+            ){
+
+                division =
+                    "BuxaTR_EAST";
+
+            }
+
+
+            if(
+                !division
+            ){
+
+                console.warn(
+                    "⚠ Division analytics: division missing."
+                );
+
+                return;
+
+            }
+
+
+            console.log(
+                "🌍 DIVISION ANALYTICS:",
+                division
+            );
+
+
+            await showBTRAnalyticsPanel(
+
+                "gis_analytics_btr",
+
+                division
+
+            );
+
+        }
+
+        catch(err){
+
+            console.error(
+                "❌ Division analytics click:",
+                err
+            );
+
+        }
+
+    }
 );
 
 }
@@ -22004,34 +22081,161 @@ layer.setStyle(originalStyle);
 });
 
 layer.on(
-"click",
-async function(e){
+    "click",
+    async function(e){
 
-try{
+        try{
 
-L.DomEvent.stopPropagation(e);
+            L.DomEvent.stopPropagation(e);
 
-if(
-window.activePopupContext.level
-!== "range"
-){
-return;
-}
 
-await showRangeAnalyticsPanel(
-range
+            if(
+                window.activePopupContext?.level
+                !== "range"
+            ){
+
+                return;
+
+            }
+
+
+            const division =
+
+                String(
+
+                    window.gisFilter?.division ||
+
+                    feature.properties?.Division ||
+
+                    feature.properties?.division ||
+
+                    ""
+
+                ).trim();
+
+
+            let firestoreDivision =
+                division;
+
+
+            if(
+                division === "BTR_W"
+            ){
+
+                firestoreDivision =
+                    "BuxaTR_WEST";
+
+            }
+
+
+            if(
+                division === "BTR_E"
+            ){
+
+                firestoreDivision =
+                    "BuxaTR_EAST";
+
+            }
+
+
+            let safeRange =
+
+                String(
+                    range ||
+                    ""
+                ).trim();
+
+
+            safeRange =
+
+                safeRange
+
+                    .replace(
+                        /^West([A-Z])/,
+                        "West_$1"
+                    )
+
+                    .replace(
+                        /^East([A-Z])/,
+                        "East_$1"
+                    )
+
+                    .replace(
+                        /^North([A-Z])/,
+                        "North_$1"
+                    )
+
+                    .replace(
+                        /^South([A-Z])/,
+                        "South_$1"
+                    )
+
+                    .replace(
+                        /\s+/g,
+                        "_"
+                    )
+
+                    .replace(
+                        /__+/g,
+                        "_"
+                    )
+
+                    .trim();
+
+
+            if(
+                !firestoreDivision ||
+                !safeRange
+            ){
+
+                console.warn(
+                    "⚠ Range analytics context incomplete.",
+                    {
+                        division:
+                            firestoreDivision,
+
+                        range:
+                            safeRange
+                    }
+                );
+
+                return;
+
+            }
+
+
+            const rangeDocId =
+
+                `${firestoreDivision}_${safeRange}`;
+
+
+            console.log(
+                "🟩 RANGE ANALYTICS:",
+                rangeDocId
+            );
+
+
+            await showBTRAnalyticsPanel(
+
+                "gis_range_analytics",
+
+                rangeDocId
+
+            );
+
+        }
+
+        catch(err){
+
+            console.error(
+                "❌ Range analytics click:",
+                err
+            );
+
+        }
+
+    }
 );
-
-}
-catch(err){
-
-console.error(err);
-
-}
-
-}
-);
-
 }
 
 })
@@ -22136,32 +22340,133 @@ layer.setStyle(originalStyle);
 });
 
 layer.on(
-"click",
-async function(e){
+    "click",
+    async function(e){
 
-try{
+        try{
 
-L.DomEvent.stopPropagation(e);
+            L.DomEvent.stopPropagation(e);
 
-if(
-window.activePopupContext.level
-!== "beat"
-){
-return;
-}
 
-await showBeatAnalyticsPanel(
-beat
-);
+            if(
+                window.activePopupContext?.level
+                !== "beat"
+            ){
 
-}
-catch(err){
+                return;
 
-console.error(err);
+            }
 
-}
 
-}
+            let safeBeat =
+
+                String(
+                    beat ||
+                    ""
+                ).trim();
+
+
+            safeBeat =
+
+                safeBeat
+
+                    .replace(
+                        /^PoroEast$/i,
+                        "Poro-East"
+                    )
+
+                    .replace(
+                        /^PoroWest$/i,
+                        "Poro-West"
+                    )
+
+                    .replace(
+                        /^GaramEast$/i,
+                        "Garam-East"
+                    )
+
+                    .replace(
+                        /^GaramWest$/i,
+                        "Garam-West"
+                    )
+
+                    .replace(
+                        /^NimatiEast$/i,
+                        "Nimati-East"
+                    )
+
+                    .replace(
+                        /^NimatiWest$/i,
+                        "Nimati-West"
+                    )
+
+                    .replace(
+                        /^EastDamanpur$/i,
+                        "East_Damanpur"
+                    )
+
+                    .replace(
+                        /^WestDamanpur$/i,
+                        "West_Damanpur"
+                    )
+
+                    .replace(
+                        /^EastRajabhatkhawa$/i,
+                        "East_Rajabhatkhawa"
+                    )
+
+                    .replace(
+                        /^NorthRydak$/i,
+                        "North_Rydak"
+                    )
+
+                    .replace(
+                        /^SouthRydak$/i,
+                        "South_Rydak"
+                    )
+
+                    .trim();
+
+
+            if(
+                !safeBeat
+            ){
+
+                console.warn(
+                    "⚠ Beat analytics: beat missing."
+                );
+
+                return;
+
+            }
+
+
+            console.log(
+                "🟨 BEAT ANALYTICS:",
+                safeBeat
+            );
+
+
+            await showBTRAnalyticsPanel(
+
+                "gis_beat_analytics",
+
+                safeBeat
+
+            );
+
+        }
+
+        catch(err){
+
+            console.error(
+                "❌ Beat analytics click:",
+                err
+            );
+
+        }
+
+    }
 );
 
 }
