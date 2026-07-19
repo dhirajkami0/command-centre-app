@@ -355,6 +355,34 @@
                 [];
 
 
+            /*
+             * Authoritative offence data pipeline.
+             *
+             * DataLoader
+             *      ↓
+             * Store
+             *      ↓
+             * SourceEngine / TargetEngine
+             *      ↓
+             * HeatmapEngine
+             *      ↓
+             * MapRenderer
+             *      ↓
+             * Cascade
+             */
+
+
+            if (
+                !GG.Offence.DataLoader
+            ) {
+
+                missing.push(
+                    "OffenceDataLoader"
+                );
+
+            }
+
+
             if (
                 !GG.Offence.Store
             ) {
@@ -1895,6 +1923,44 @@
 
     /* =====================================================
        24. BUILD HEATMAP ENGINE
+
+       AUTHORITATIVE RUNTIME CONTRACT:
+       -----------------------------------------------------
+
+       SourceEngine.getHotspots()
+                    ↓
+       HeatmapEngine.data.sources
+
+       TargetEngine.getHotspots()
+                    ↓
+       HeatmapEngine.data.targets
+
+                    ↓
+       HeatmapEngine.rebuildIndexes()
+
+                    ↓
+       POR hydration
+       hotspotIndex
+       porIndex
+       caseIndex
+
+                    ↓
+       HeatmapEngine.ready = true
+
+       IMPORTANT:
+       -----------------------------------------------------
+
+       Current OffenceHeatmapEngine v2.0.0 does NOT expose:
+
+       - build()
+       - buildFromEngines()
+
+       Therefore UIController must bridge the already-built
+       SourceEngine / TargetEngine hotspot arrays into the
+       canonical HeatmapEngine.data contract.
+
+       POR remains the authoritative relationship connector.
+
        ===================================================== */
 
     UIController.buildHeatmap =
@@ -1918,6 +1984,10 @@
                     .TargetEngine;
 
 
+            /* ---------------------------------------------
+               Validate HeatmapEngine
+               --------------------------------------------- */
+
             if (!HeatmapEngine) {
 
                 throw new Error(
@@ -1927,76 +1997,484 @@
             }
 
 
-            /*
-             * Preferred current architecture.
-             */
+            /* ---------------------------------------------
+               Validate SourceEngine
+               --------------------------------------------- */
 
-            if (
-                typeof HeatmapEngine
-                    .buildFromEngines ===
-                    "function"
-            ) {
+            if (!SourceEngine) {
 
-                return await HeatmapEngine
-                    .buildFromEngines();
+                throw new Error(
+                    "OffenceSourceEngine unavailable."
+                );
 
             }
 
 
-            /*
-             * Compatible fallback.
-             */
+            /* ---------------------------------------------
+               Validate TargetEngine
+               --------------------------------------------- */
 
-            if (
-                typeof HeatmapEngine
-                    .build ===
-                    "function"
-            ) {
+            if (!TargetEngine) {
 
-                const source =
-
-                    typeof SourceEngine
-                        ?.getHotspots ===
-                        "function"
-
-                        ? SourceEngine
-                            .getHotspots()
-
-                        : [];
-
-
-                const target =
-
-                    typeof TargetEngine
-                        ?.getHotspots ===
-                        "function"
-
-                        ? TargetEngine
-                            .getHotspots()
-
-                        : [];
-
-
-                return await HeatmapEngine
-                    .build({
-
-                        source:
-                            source,
-
-                        target:
-                            target
-
-                    });
+                throw new Error(
+                    "OffenceTargetEngine unavailable."
+                );
 
             }
 
 
-            throw new Error(
-                "No compatible HeatmapEngine build method found."
-            );
+            /* ---------------------------------------------
+               Read canonical SOURCE hotspots
+
+               SourceEngine has already been built by:
+
+               UIController.buildData()
+
+               Therefore DO NOT rebuild it here.
+               --------------------------------------------- */
+
+            const sourceHotspots =
+
+                typeof SourceEngine
+                    .getHotspots ===
+                    "function"
+
+                    ? SourceEngine
+                        .getHotspots()
+
+                    : [];
+
+
+            /* ---------------------------------------------
+               Read canonical TARGET hotspots
+
+               TargetEngine has already been built by:
+
+               UIController.buildData()
+
+               Therefore DO NOT rebuild it here.
+               --------------------------------------------- */
+
+            const targetHotspots =
+
+                typeof TargetEngine
+                    .getHotspots ===
+                    "function"
+
+                    ? TargetEngine
+                        .getHotspots()
+
+                    : [];
+
+
+            /* ---------------------------------------------
+               Normalize arrays
+               --------------------------------------------- */
+
+            const sources =
+
+                Array.isArray(
+                    sourceHotspots
+                )
+
+                    ? sourceHotspots
+
+                    : [];
+
+
+            const targets =
+
+                Array.isArray(
+                    targetHotspots
+                )
+
+                    ? targetHotspots
+
+                    : [];
+
+
+            /* ---------------------------------------------
+               Initialize HeatmapEngine if required
+               --------------------------------------------- */
+
+            if (
+                typeof HeatmapEngine
+                    .init ===
+                    "function"
+            ) {
+
+                HeatmapEngine
+                    .init();
+
+            }
+
+
+            /* ---------------------------------------------
+               Reset previous canonical heatmap state
+
+               clear() resets:
+
+               data.resolvedContexts
+               data.sources
+               data.targets
+               data.links
+
+               hotspotIndex
+               porIndex
+               caseIndex
+
+               ready
+               building
+               lastBuildAt
+
+               It does NOT destroy SourceEngine or
+               TargetEngine hotspot data.
+               --------------------------------------------- */
+
+            if (
+                typeof HeatmapEngine
+                    .clear ===
+                    "function"
+            ) {
+
+                HeatmapEngine
+                    .clear();
+
+            }
+
+
+            /* ---------------------------------------------
+               Mark build in progress
+               --------------------------------------------- */
+
+            HeatmapEngine.building =
+                true;
+
+
+            try {
+
+                /* -----------------------------------------
+                   Guarantee canonical data container
+                   ----------------------------------------- */
+
+                if (
+                    !HeatmapEngine.data ||
+                    typeof HeatmapEngine.data !==
+                        "object"
+                ) {
+
+                    HeatmapEngine.data = {
+
+                        resolvedContexts:
+                            [],
+
+                        sources:
+                            [],
+
+                        targets:
+                            [],
+
+                        links:
+                            []
+
+                    };
+
+                }
+
+
+                /* -----------------------------------------
+                   Preserve canonical data properties
+                   ----------------------------------------- */
+
+                if (
+                    !Array.isArray(
+                        HeatmapEngine
+                            .data
+                            .resolvedContexts
+                    )
+                ) {
+
+                    HeatmapEngine
+                        .data
+                        .resolvedContexts =
+                        [];
+
+                }
+
+
+                /* -----------------------------------------
+                   SOURCE ENGINE
+                        ↓
+                   HEATMAP ENGINE
+
+                   Use copies of arrays so HeatmapEngine
+                   cannot accidentally mutate SourceEngine
+                   internal hotspot collection.
+                   ----------------------------------------- */
+
+                HeatmapEngine
+                    .data
+                    .sources =
+
+                    sources.slice();
+
+
+                /* -----------------------------------------
+                   TARGET ENGINE
+                        ↓
+                   HEATMAP ENGINE
+                   ----------------------------------------- */
+
+                HeatmapEngine
+                    .data
+                    .targets =
+
+                    targets.slice();
+
+
+                /* -----------------------------------------
+                   Links
+
+                   Current architecture does not require
+                   links for SOURCE / TARGET heat rendering.
+
+                   POR relationships are resolved through:
+
+                   porIndex
+                       ↓
+                   Store.getCascadeByPor()
+                       ↓
+                   POR-authoritative cascade
+
+                   Therefore an empty links array is valid.
+
+                   Future source-target spatial link
+                   generation can populate this array
+                   without changing this orchestration.
+                   ----------------------------------------- */
+
+                HeatmapEngine
+                    .data
+                    .links =
+                    [];
+
+
+                /* -----------------------------------------
+                   Rebuild canonical indexes
+
+                   This performs:
+
+                   SOURCE registration
+                   TARGET registration
+
+                        ↓
+
+                   hotspotIndex
+
+                        ↓
+
+                   porIndex
+
+                        ↓
+
+                   caseIndex
+
+                        ↓
+
+                   hydrateAllPorRelations()
+
+                   This is the proven runtime contract.
+                   ----------------------------------------- */
+
+                if (
+                    typeof HeatmapEngine
+                        .rebuildIndexes !==
+                        "function"
+                ) {
+
+                    throw new Error(
+                        "OffenceHeatmapEngine.rebuildIndexes unavailable."
+                    );
+
+                }
+
+
+                HeatmapEngine
+                    .rebuildIndexes();
+
+
+                /* -----------------------------------------
+                   Mark canonical engine ready
+                   ----------------------------------------- */
+
+                HeatmapEngine.ready =
+                    true;
+
+
+                HeatmapEngine.lastBuildAt =
+                    Date.now();
+
+
+                /* -----------------------------------------
+                   Build result
+                   ----------------------------------------- */
+
+                const result = {
+
+                    success:
+                        true,
+
+                    sourceHotspots:
+                        HeatmapEngine
+                            .getSourceHotspots()
+                            .length,
+
+                    targetHotspots:
+                        HeatmapEngine
+                            .getTargetHotspots()
+                            .length,
+
+                    hotspotIndex:
+
+                        HeatmapEngine
+                            .hotspotIndex
+                            ?.size ||
+
+                        0,
+
+                    porIndex:
+
+                        HeatmapEngine
+                            .porIndex
+                            ?.size ||
+
+                        0,
+
+                    caseIndex:
+
+                        HeatmapEngine
+                            .caseIndex
+                            ?.size ||
+
+                        0,
+
+                    links:
+
+                        typeof HeatmapEngine
+                            .getLinks ===
+                            "function"
+
+                            ? HeatmapEngine
+                                .getLinks()
+                                .length
+
+                            : 0,
+
+                    ready:
+                        HeatmapEngine.ready,
+
+                    lastBuildAt:
+                        HeatmapEngine.lastBuildAt
+
+                };
+
+
+                /* -----------------------------------------
+                   Debug
+                   ----------------------------------------- */
+
+                if (
+                    UIController
+                        .isDebugEnabled()
+                ) {
+
+                    console.log(
+
+                        "🔥 Offence Heatmap Bridge Built",
+
+                        {
+
+                            sourceEngine:
+                                sources.length,
+
+                            targetEngine:
+                                targets.length,
+
+                            heatmapSources:
+                                result
+                                    .sourceHotspots,
+
+                            heatmapTargets:
+                                result
+                                    .targetHotspots,
+
+                            hotspotIndex:
+                                result
+                                    .hotspotIndex,
+
+                            porIndex:
+                                result
+                                    .porIndex,
+
+                            caseIndex:
+                                result
+                                    .caseIndex,
+
+                            links:
+                                result
+                                    .links,
+
+                            ready:
+                                result
+                                    .ready,
+
+                            connector:
+                                "POR"
+
+                        }
+
+                    );
+
+                }
+
+
+                return result;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                /* -----------------------------------------
+                   Build failed
+                   ----------------------------------------- */
+
+                HeatmapEngine.ready =
+                    false;
+
+
+                console.error(
+
+                    "[OffenceUIController] Heatmap build failed:",
+
+                    error
+
+                );
+
+
+                throw error;
+
+            }
+
+            finally {
+
+                HeatmapEngine.building =
+                    false;
+
+            }
 
         };
-
 
     /* =====================================================
        25. RENDER CURRENT MODE
@@ -2357,7 +2835,88 @@
                         /*
                          * Build SOURCE + TARGET.
                          */
+                        /*
+                         * Ensure authoritative offence data
+                         * is loaded before derived intelligence
+                         * engines are built.
+                         *
+                         * DataLoader owns:
+                         *
+                         * Firestore
+                         *      ↓
+                         * Normalizer
+                         *      ↓
+                         * Store
+                         *
+                         * UIController only orchestrates it.
+                         */
 
+                        const DataLoader =
+
+                            GG.Offence
+                                .DataLoader;
+
+
+                        const Store =
+
+                            GG.Offence
+                                .Store;
+
+
+                        if (
+                            DataLoader &&
+                            (
+                                !Store?.initialized ||
+                                !Store?.ready
+                            )
+                        ) {
+
+                            UIController.setStatus(
+                                "Loading offence data..."
+                            );
+
+
+                            if (
+                                typeof DataLoader.load !==
+                                    "function"
+                            ) {
+
+                                throw new Error(
+                                    "OffenceDataLoader.load unavailable."
+                                );
+
+                            }
+
+
+                            await DataLoader
+                                .load();
+
+                        }
+
+
+                        if (
+                            !Store?.initialized ||
+                            !Store?.ready
+                        ) {
+
+                            throw new Error(
+                                "OffenceStore is not ready after data load."
+                            );
+
+                        }
+
+
+                        UIController.setStatus(
+                            "Building offence intelligence..."
+                        );
+
+
+                        /*
+                         * Build SOURCE + TARGET.
+                         */
+
+                        await UIController
+                            .buildData();
                         await UIController
                             .buildData();
 
