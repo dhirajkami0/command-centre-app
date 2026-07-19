@@ -22964,49 +22964,211 @@ layer.setStyle(originalStyle);
 // 🔥 ORIGINAL CLICK LOGIC
 // ==============================================
 
+// ==============================================
+// 📦 COMPARTMENT CLICK → ANALYTICS
+// ==============================================
+
 layer.on(
 
-"click",
+    "click",
 
-async function(e){
+    async function(e){
 
-try{
+        try{
 
-L.DomEvent.stopPropagation(e);
+            // ==========================================
+            // STOP CLICK FROM REACHING BACKGROUND MAP
+            // ==========================================
 
-if(
+            L.DomEvent.stopPropagation(
+                e
+            );
 
-window.activePopupContext.level
 
-!== "compartment"
+            // ==========================================
+            // ONLY WHEN COMPARTMENT LEVEL IS ACTIVE
+            // ==========================================
 
-){
+            if(
 
-return;
+                window.activePopupContext
+                    ?.level !==
+                "compartment"
 
-}
+            ){
 
-await showCompartmentAnalyticsPanel(
+                return;
 
-compartment
+            }
 
-);
 
-}
+            // ==========================================
+            // GET CLICKED COMPARTMENT
+            // ==========================================
 
-catch(err){
+            const clickedProps =
 
-console.error(
+                feature.properties ||
 
-"❌ COMP CLICK ROUTER",
+                {};
 
-err
 
-);
+            const clickedCompartment =
 
-}
+                String(
 
-}
+                    clickedProps.compartment ||
+
+                    clickedProps.compartmen ||
+
+                    clickedProps.Compartment ||
+
+                    compartment ||
+
+                    ""
+
+                ).trim();
+
+
+            // ==========================================
+            // VALIDATE
+            // ==========================================
+
+            if(
+
+                !clickedCompartment ||
+
+                clickedCompartment ===
+                    "-"
+
+            ){
+
+                console.warn(
+
+                    "⚠ Compartment analytics: " +
+                    "compartment name missing."
+
+                );
+
+                return;
+
+            }
+
+
+            // ==========================================
+            // FIRESTORE DOCUMENT ID
+            //
+            // Examples:
+            //
+            // Adma BL1
+            //     ↓
+            // Adma_BL1
+            //
+            // C Rydak BL1
+            //     ↓
+            // C_Rydak_BL1
+            // ==========================================
+
+            const compartmentDocId =
+
+                clickedCompartment
+
+                    .replace(
+                        /\s+/g,
+                        "_"
+                    )
+
+                    .replace(
+                        /__+/g,
+                        "_"
+                    )
+
+                    .trim();
+
+
+            if(
+                !compartmentDocId
+            ){
+
+                console.warn(
+
+                    "⚠ Compartment analytics: " +
+                    "invalid document ID."
+
+                );
+
+                return;
+
+            }
+
+
+            // ==========================================
+            // DEBUG
+            // ==========================================
+
+            console.log(
+
+                "📦 COMPARTMENT ANALYTICS:",
+
+                {
+
+                    compartment:
+                        clickedCompartment,
+
+                    documentId:
+                        compartmentDocId
+
+                }
+
+            );
+
+
+            // ==========================================
+            // OPEN UNIFIED ANALYTICS PANEL
+            // ==========================================
+
+            if(
+
+                typeof showBTRAnalyticsPanel !==
+                "function"
+
+            ){
+
+                console.error(
+
+                    "❌ showBTRAnalyticsPanel " +
+                    "is not available."
+
+                );
+
+                return;
+
+            }
+
+
+            await showBTRAnalyticsPanel(
+
+                "gis_compartment_analytics",
+
+                compartmentDocId
+
+            );
+
+        }
+
+        catch(err){
+
+            console.error(
+
+                "❌ COMPARTMENT ANALYTICS CLICK",
+
+                err
+
+            );
+
+        }
+
+    }
 
 );
 
