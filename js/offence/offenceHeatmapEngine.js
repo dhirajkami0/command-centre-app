@@ -5,28 +5,68 @@
    File:
    js/offence/offenceHeatmapEngine.js
 
+   Version:
+   2.0.0
+
    Purpose:
-   - Combine SOURCE and TARGET hotspots
-   - Manage SOURCE / TARGET / BOTH display modes
-   - Prepare Leaflet.heat-compatible data
+   - Coordinate SOURCE and TARGET hotspot engines
+   - Build SOURCE and TARGET heatmap datasets
+   - Maintain POR-authoritative spatial relationships
+   - Prepare Leaflet.heat-compatible datasets
    - Preserve full hotspot metadata
-   - Provide unified click/cascade lookup
-   - Provide case-to-source/target relationships
-   - Support refresh when daily offence data changes
+   - Provide unified hotspot lookup
+   - Provide POR-based cascade lookup
+   - Provide secondary CaseID lookup
+   - Build SOURCE → TARGET relationships by POR
+   - Support incremental refresh
+
+   AUTHORITATIVE RELATIONSHIP:
+
+   SOURCE
+   Accused Address
+        │
+        │
+      porKey
+        │
+        ▼
+   POR CASCADE
+        │
+        ├── Cases
+        ├── Accused
+        ├── Witnesses
+        ├── Seizures
+        └── Seized Articles
+                │
+                ▼
+             TARGET
+        Place of Seizure
 
    IMPORTANT:
+
+   POR / porKey is the authoritative connector.
+
+   CaseID:
+   - May exist
+   - May be missing
+   - May be mismatched
+   - Is secondary metadata only
+
+   SeizureID:
+   - Connects seizure → seized articles
+
+   This module performs:
    - NO direct Leaflet rendering
-   - NO popup HTML
+   - NO popup HTML generation
    - NO DOM manipulation
-   - NO geocoding API calls
+   - NO Firestore queries
+   - NO external geocoding API calls
 
    Dependencies:
    1. offenceConstants.js
-   2. offenceNormalizer.js
-   3. offenceStore.js
-   4. offenceGeocoder.js
-   5. offenceSourceEngine.js
-   6. offenceTargetEngine.js
+   2. offenceStore.js
+   3. offenceGeocoder.js
+   4. offenceSourceEngine.js
+   5. offenceTargetEngine.js
    ========================================================= */
 
 (function () {
@@ -42,6 +82,7 @@
         window.GG ||
         {};
 
+
     GG.Offence =
         GG.Offence ||
         {};
@@ -54,14 +95,18 @@
     const Constants =
         GG.Offence.Constants;
 
+
     const Store =
         GG.Offence.Store;
+
 
     const Geocoder =
         GG.Offence.Geocoder;
 
+
     const SourceEngine =
         GG.Offence.SourceEngine;
+
 
     const TargetEngine =
         GG.Offence.TargetEngine;
@@ -130,81 +175,86 @@
 
 
     /* =====================================================
-       4. MODULE INFO
+       4. MODULE INFORMATION
        ===================================================== */
 
     HeatmapEngine.VERSION =
-        "1.0.0";
+        "2.0.0";
+
 
     HeatmapEngine.initialized =
         false;
 
+
     HeatmapEngine.building =
         false;
 
+
     HeatmapEngine.ready =
         false;
+
+
+    HeatmapEngine.lastBuildAt =
+        null;
 
 
     /* =====================================================
        5. DISPLAY MODES
        ===================================================== */
 
-    HeatmapEngine.MODE = Object.freeze({
+    HeatmapEngine.MODE =
+        Object.freeze({
 
-        SOURCE:
-            "SOURCE",
+            SOURCE:
+                "SOURCE",
 
-        TARGET:
-            "TARGET",
+            TARGET:
+                "TARGET",
 
-        BOTH:
-            "BOTH"
+            BOTH:
+                "BOTH",
 
-    });
+            FLOW:
+                "FLOW"
+
+        });
 
 
     /* =====================================================
-       6. CURRENT MODE
-
-       Default is BOTH because your map requirement is:
-
-       SOURCE + TARGET visible together.
+       6. CURRENT DISPLAY MODE
        ===================================================== */
 
     HeatmapEngine.mode =
+        Constants.DEFAULT_MAP_MODE ||
         HeatmapEngine.MODE.BOTH;
 
 
     /* =====================================================
-       7. MASTER DATA
-
-       resolvedContexts:
-           Complete geocoded case contexts.
-
-       sources:
-           Aggregated SOURCE hotspots.
-
-       targets:
-           Aggregated TARGET hotspots.
+       7. MASTER SPATIAL DATA
        ===================================================== */
 
     HeatmapEngine.data = {
 
-        resolvedContexts: [],
+        resolvedContexts:
+            [],
 
-        sources: [],
+        sources:
+            [],
 
-        targets: []
+        targets:
+            [],
+
+        links:
+            []
 
     };
 
 
     /* =====================================================
-       8. UNIFIED HOTSPOT INDEX
+       8. HOTSPOT INDEX
 
-       hotspot ID
-            ↓
+       hotspotId
+           ↓
        {
            type,
            hotspot
@@ -216,23 +266,50 @@
 
 
     /* =====================================================
-       9. CASE RELATION INDEX
+       9. POR RELATION INDEX
 
-       CaseID
+       AUTHORITATIVE INDEX
+
+       porKey
           ↓
        {
-           case,
+           porKey,
+           porNo,
+
+           cases: [],
+           accused: [],
+           witnesses: [],
+           seizures: [],
+           seizedArticles: [],
+
            sources: [],
            targets: []
        }
 
-       Useful later for:
+       This is the PRIMARY relationship index.
+       ===================================================== */
 
-       Click case
+    HeatmapEngine.porIndex =
+        new Map();
+
+
+    /* =====================================================
+       10. CASE RELATION INDEX
+
+       SECONDARY INDEX ONLY
+
+       CaseID
           ↓
-       Highlight source
-          ↓
-       Highlight target
+       {
+           caseId,
+           case,
+           porKeys: [],
+           sources: [],
+           targets: []
+       }
+
+       CaseID is NOT used as the authoritative
+       SOURCE → TARGET connector.
        ===================================================== */
 
     HeatmapEngine.caseIndex =
@@ -240,7 +317,7 @@
 
 
     /* =====================================================
-       10. INITIALIZE
+       11. INITIALIZE
        ===================================================== */
 
     HeatmapEngine.init =
@@ -265,7 +342,21 @@
             ) {
 
                 console.log(
-                    "🔥 OffenceHeatmapEngine Ready"
+
+                    "🔥 OffenceHeatmapEngine Ready",
+
+                    {
+
+                        version:
+                            HeatmapEngine.VERSION,
+
+                        relationshipModel:
+                            Constants.RELATIONSHIP
+                                ?.MODEL ||
+                            "POR_AUTHORITATIVE"
+
+                    }
+
                 );
 
             }
@@ -277,7 +368,7 @@
 
 
     /* =====================================================
-       11. NORMALIZE KEY
+       12. NORMALIZE GENERIC KEY
        ===================================================== */
 
     HeatmapEngine.normalizeKey =
@@ -309,7 +400,324 @@
 
 
     /* =====================================================
-       12. VALIDATE MODE
+       13. NORMALIZE POR KEY
+
+       Prefer Normalizer-generated porKey.
+
+       This fallback normalization is intentionally
+       conservative.
+
+       It does NOT attempt dangerous fuzzy POR matching.
+       ===================================================== */
+
+    HeatmapEngine.normalizePorKey =
+        function (
+
+            value
+
+        ) {
+
+            if (
+                value === null ||
+                value === undefined
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(
+                value
+            )
+
+                .replace(
+                    /\r?\n/g,
+                    " "
+                )
+
+                .replace(
+                    /\s+/g,
+                    " "
+                )
+
+                .trim()
+
+                .toUpperCase();
+
+        };
+
+
+    /* =====================================================
+       14. UNIQUE ARRAY
+       ===================================================== */
+
+    HeatmapEngine.unique =
+        function (
+
+            values
+
+        ) {
+
+            if (
+                !Array.isArray(
+                    values
+                )
+            ) {
+
+                return [];
+
+            }
+
+
+            const seen =
+                new Set();
+
+
+            const output =
+                [];
+
+
+            for (
+                const value
+                of values
+            ) {
+
+                if (
+                    value === null ||
+                    value === undefined ||
+                    value === ""
+                ) {
+
+                    continue;
+
+                }
+
+
+                const key =
+
+                    typeof value ===
+                    "object"
+
+                        ? (
+                            value.id ||
+                            value.caseId ||
+                            value.accusedId ||
+                            value.witnessId ||
+                            value.seizureId ||
+                            value.articleId ||
+                            JSON.stringify(
+                                value
+                            )
+                        )
+
+                        : String(
+                            value
+                        );
+
+
+                if (
+                    seen.has(
+                        key
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                seen.add(
+                    key
+                );
+
+
+                output.push(
+                    value
+                );
+
+            }
+
+
+            return output;
+
+        };
+
+
+    /* =====================================================
+       15. GET HOTSPOT POR KEYS
+
+       Supports both current and legacy hotspot structures.
+       ===================================================== */
+
+    HeatmapEngine.getHotspotPorKeys =
+        function (
+
+            hotspot
+
+        ) {
+
+            if (!hotspot) {
+
+                return [];
+
+            }
+
+
+            const keys =
+                [];
+
+
+            if (
+                hotspot.porKey
+            ) {
+
+                keys.push(
+                    hotspot.porKey
+                );
+
+            }
+
+
+            if (
+                Array.isArray(
+                    hotspot.porKeys
+                )
+            ) {
+
+                keys.push(
+                    ...hotspot.porKeys
+                );
+
+            }
+
+
+            if (
+                hotspot.porNo
+            ) {
+
+                keys.push(
+                    hotspot.porNo
+                );
+
+            }
+
+
+            if (
+                Array.isArray(
+                    hotspot.porNos
+                )
+            ) {
+
+                keys.push(
+                    ...hotspot.porNos
+                );
+
+            }
+
+
+            return HeatmapEngine
+                .unique(
+
+                    keys.map(
+
+                        function (
+                            key
+                        ) {
+
+                            return HeatmapEngine
+                                .normalizePorKey(
+                                    key
+                                );
+
+                        }
+
+                    )
+
+                )
+
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    /* =====================================================
+       16. GET HOTSPOT CASE IDS
+       ===================================================== */
+
+    HeatmapEngine.getHotspotCaseIds =
+        function (
+
+            hotspot
+
+        ) {
+
+            if (!hotspot) {
+
+                return [];
+
+            }
+
+
+            const ids =
+                [];
+
+
+            if (
+                hotspot.caseId
+            ) {
+
+                ids.push(
+                    hotspot.caseId
+                );
+
+            }
+
+
+            if (
+                Array.isArray(
+                    hotspot.caseIds
+                )
+            ) {
+
+                ids.push(
+                    ...hotspot.caseIds
+                );
+
+            }
+
+
+            return HeatmapEngine
+                .unique(
+
+                    ids.map(
+
+                        function (
+                            id
+                        ) {
+
+                            return HeatmapEngine
+                                .normalizeKey(
+                                    id
+                                );
+
+                        }
+
+                    )
+
+                )
+
+                .filter(
+                    Boolean
+                );
+
+        };
+
+
+    /* =====================================================
+       17. VALIDATE DISPLAY MODE
        ===================================================== */
 
     HeatmapEngine.isValidMode =
@@ -319,18 +727,21 @@
 
         ) {
 
+            const normalized =
+
+                HeatmapEngine
+                    .normalizeKey(
+                        mode
+                    );
+
+
             return Object.values(
 
                 HeatmapEngine.MODE
 
             ).includes(
 
-                HeatmapEngine
-                    .normalizeKey(
-
-                        mode
-
-                    )
+                normalized
 
             );
 
@@ -338,7 +749,7 @@
 
 
     /* =====================================================
-       13. SET MODE
+       18. SET DISPLAY MODE
        ===================================================== */
 
     HeatmapEngine.setMode =
@@ -352,18 +763,14 @@
 
                 HeatmapEngine
                     .normalizeKey(
-
                         mode
-
                     );
 
 
             if (
                 !HeatmapEngine
                     .isValidMode(
-
                         mode
-
                     )
             ) {
 
@@ -405,7 +812,7 @@
 
 
     /* =====================================================
-       14. GET MODE
+       19. GET DISPLAY MODE
        ===================================================== */
 
     HeatmapEngine.getMode =
@@ -417,18 +824,23 @@
 
 
     /* =====================================================
-       15. BUILD COMPLETE SPATIAL DATASET
+       20. BUILD COMPLETE SPATIAL DATASET
 
-       IMPORTANT:
+       Pipeline:
 
-       Geocoder.resolveAll() runs ONCE.
-
-       The same resolved contexts are passed to BOTH:
-
-       SourceEngine
-       TargetEngine
-
-       This prevents duplicate geocoding work.
+       Store
+         ↓
+       Geocoder.resolveAll()
+         ↓
+       resolved POR contexts
+         ↓
+       SourceEngine.build()
+         ↓
+       TargetEngine.build()
+         ↓
+       rebuild POR indexes
+         ↓
+       build SOURCE → TARGET links
        ===================================================== */
 
     HeatmapEngine.build =
@@ -455,11 +867,16 @@
                 true;
 
 
+            HeatmapEngine.ready =
+                false;
+
+
             try {
 
-                /* -------------------------
-                   Resolve all case contexts
-                   ------------------------- */
+
+                /* =============================================
+                   20.1 RESOLVE SPATIAL CONTEXTS
+                   ============================================= */
 
                 const resolvedContexts =
 
@@ -479,31 +896,17 @@
                         : [];
 
 
-                /* -------------------------
-                   Build SOURCE hotspots
-                   ------------------------- */
+                /* =============================================
+                   20.2 BUILD SOURCE HOTSPOTS
+                   ============================================= */
 
                 const sources =
 
                     SourceEngine
                         .build(
 
-                            HeatmapEngine.data
-                                .resolvedContexts
-
-                        );
-
-
-                /* -------------------------
-                   Build TARGET hotspots
-                   ------------------------- */
-
-                const targets =
-
-                    TargetEngine
-                        .build(
-
-                            HeatmapEngine.data
+                            HeatmapEngine
+                                .data
                                 .resolvedContexts
 
                         );
@@ -520,6 +923,22 @@
                         : [];
 
 
+                /* =============================================
+                   20.3 BUILD TARGET HOTSPOTS
+                   ============================================= */
+
+                const targets =
+
+                    TargetEngine
+                        .build(
+
+                            HeatmapEngine
+                                .data
+                                .resolvedContexts
+
+                        );
+
+
                 HeatmapEngine.data.targets =
 
                     Array.isArray(
@@ -531,16 +950,30 @@
                         : [];
 
 
-                /* -------------------------
-                   Build unified indexes
-                   ------------------------- */
+                /* =============================================
+                   20.4 REBUILD ALL INDEXES
+                   ============================================= */
 
                 HeatmapEngine
                     .rebuildIndexes();
 
 
+                /* =============================================
+                   20.5 BUILD POR SOURCE → TARGET LINKS
+                   ============================================= */
+
+                HeatmapEngine.data.links =
+
+                    HeatmapEngine
+                        .buildSourceTargetLinks();
+
+
                 HeatmapEngine.ready =
                     true;
+
+
+                HeatmapEngine.lastBuildAt =
+                    new Date();
 
 
                 const stats =
@@ -552,9 +985,9 @@
                 HeatmapEngine.dispatchEvent(
 
                     Constants.EVENTS
-                        ?.HEATMAP_UPDATED ||
+                        ?.HEATMAP_RENDERED ||
 
-                    "offence:heatmap-updated",
+                    "offence:heatmapRendered",
 
                     stats
 
@@ -587,22 +1020,28 @@
 
                     sources:
 
-                        HeatmapEngine.data
+                        HeatmapEngine
+                            .data
                             .sources,
 
                     targets:
 
-                        HeatmapEngine.data
-                            .targets
+                        HeatmapEngine
+                            .data
+                            .targets,
+
+                    links:
+
+                        HeatmapEngine
+                            .data
+                            .links
 
                 };
 
             }
 
             catch (
-
                 error
-
             ) {
 
                 HeatmapEngine.ready =
@@ -641,7 +1080,7 @@
 
 
     /* =====================================================
-       16. REBUILD INDEXES
+       21. REBUILD ALL INDEXES
        ===================================================== */
 
     HeatmapEngine.rebuildIndexes =
@@ -651,168 +1090,219 @@
                 .clear();
 
 
+            HeatmapEngine.porIndex
+                .clear();
+
+
             HeatmapEngine.caseIndex
                 .clear();
 
 
-            /* =================================================
-               SOURCE HOTSPOTS
-               ================================================= */
+            /* =============================================
+               21.1 SOURCE HOTSPOTS
+               ============================================= */
 
             for (
-
                 const hotspot
-
                 of HeatmapEngine.data.sources
-
             ) {
 
-                HeatmapEngine.hotspotIndex
-                    .set(
+                HeatmapEngine
+                    .indexHotspot(
 
-                        HeatmapEngine
-                            .normalizeKey(
+                        hotspot,
 
-                                hotspot.id
-
-                            ),
-
-                        {
-
-                            type:
-
-                                HeatmapEngine
-                                    .MODE
-                                    .SOURCE,
-
-                            hotspot:
-
-                                hotspot
-
-                        }
+                        HeatmapEngine.MODE
+                            .SOURCE
 
                     );
-
-
-                for (
-
-                    const caseId
-
-                    of (
-                        hotspot.caseIds ||
-                        []
-                    )
-
-                ) {
-
-                    HeatmapEngine
-                        .addCaseRelation(
-
-                            caseId,
-
-                            "sources",
-
-                            hotspot
-
-                        );
-
-                }
 
             }
 
 
-            /* =================================================
-               TARGET HOTSPOTS
-               ================================================= */
+            /* =============================================
+               21.2 TARGET HOTSPOTS
+               ============================================= */
 
             for (
-
                 const hotspot
-
                 of HeatmapEngine.data.targets
+            ) {
 
+                HeatmapEngine
+                    .indexHotspot(
+
+                        hotspot,
+
+                        HeatmapEngine.MODE
+                            .TARGET
+
+                    );
+
+            }
+
+
+            /* =============================================
+               21.3 HYDRATE POR CASCADES FROM STORE
+               ============================================= */
+
+            for (
+                const [
+                    porKey,
+                    relation
+                ]
+                of HeatmapEngine.porIndex
+            ) {
+
+                HeatmapEngine
+                    .hydratePorRelation(
+
+                        porKey,
+
+                        relation
+
+                    );
+
+            }
+
+
+            /* =============================================
+               21.4 HYDRATE SECONDARY CASE INDEX
+               ============================================= */
+
+            HeatmapEngine
+                .hydrateCaseIndex();
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       22. INDEX HOTSPOT
+       ===================================================== */
+
+    HeatmapEngine.indexHotspot =
+        function (
+
+            hotspot,
+
+            type
+
+        ) {
+
+            if (!hotspot) {
+
+                return;
+
+            }
+
+
+            const hotspotId =
+
+                HeatmapEngine
+                    .normalizeKey(
+
+                        hotspot.id
+
+                    );
+
+
+            if (
+                hotspotId
             ) {
 
                 HeatmapEngine.hotspotIndex
                     .set(
 
-                        HeatmapEngine
-                            .normalizeKey(
-
-                                hotspot.id
-
-                            ),
+                        hotspotId,
 
                         {
 
                             type:
-
-                                HeatmapEngine
-                                    .MODE
-                                    .TARGET,
+                                type,
 
                             hotspot:
-
                                 hotspot
 
                         }
 
                     );
 
+            }
 
-                for (
 
-                    const caseId
+            /* =============================================
+               POR RELATIONSHIPS
+               ============================================= */
 
-                    of (
-                        hotspot.caseIds ||
-                        []
-                    )
+            const porKeys =
 
-                ) {
+                HeatmapEngine
+                    .getHotspotPorKeys(
+                        hotspot
+                    );
 
-                    HeatmapEngine
-                        .addCaseRelation(
 
-                            caseId,
+            for (
+                const porKey
+                of porKeys
+            ) {
 
-                            "targets",
+                HeatmapEngine
+                    .addPorRelation(
 
-                            hotspot
+                        porKey,
 
-                        );
+                        type ===
+                        HeatmapEngine.MODE.SOURCE
 
-                }
+                            ? "sources"
+
+                            : "targets",
+
+                        hotspot
+
+                    );
 
             }
 
 
-            /* =================================================
-               ATTACH CASE RECORDS
-               ================================================= */
+            /* =============================================
+               SECONDARY CASE RELATIONSHIPS
+               ============================================= */
+
+            const caseIds =
+
+                HeatmapEngine
+                    .getHotspotCaseIds(
+                        hotspot
+                    );
+
 
             for (
-
-                const [
-
-                    caseKey,
-
-                    relation
-
-                ]
-
-                of HeatmapEngine.caseIndex
-
+                const caseId
+                of caseIds
             ) {
 
-                relation.case =
+                HeatmapEngine
+                    .addCaseRelation(
 
-                    Store
-                        .getCaseById(
+                        caseId,
 
-                            caseKey
+                        type ===
+                        HeatmapEngine.MODE.SOURCE
 
-                        );
+                            ? "sources"
+
+                            : "targets",
+
+                        hotspot,
+
+                        porKeys
+
+                    );
 
             }
 
@@ -820,13 +1310,58 @@
 
 
     /* =====================================================
-       17. ADD CASE RELATION
+       23. CREATE EMPTY POR RELATION
        ===================================================== */
 
-    HeatmapEngine.addCaseRelation =
+    HeatmapEngine.createPorRelation =
         function (
 
-            caseId,
+            porKey
+
+        ) {
+
+            return {
+
+                porKey:
+                    porKey,
+
+                porNo:
+                    "",
+
+                cases:
+                    [],
+
+                accused:
+                    [],
+
+                witnesses:
+                    [],
+
+                seizures:
+                    [],
+
+                seizedArticles:
+                    [],
+
+                sources:
+                    [],
+
+                targets:
+                    []
+
+            };
+
+        };
+
+
+    /* =====================================================
+       24. ADD POR RELATION
+       ===================================================== */
+
+    HeatmapEngine.addPorRelation =
+        function (
+
+            porKey,
 
             relationType,
 
@@ -837,10 +1372,325 @@
             const key =
 
                 HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (!key) {
+
+                return;
+
+            }
+
+
+            if (
+                !HeatmapEngine.porIndex
+                    .has(
+                        key
+                    )
+            ) {
+
+                HeatmapEngine.porIndex
+                    .set(
+
+                        key,
+
+                        HeatmapEngine
+                            .createPorRelation(
+                                key
+                            )
+
+                    );
+
+            }
+
+
+            const relation =
+
+                HeatmapEngine.porIndex
+                    .get(
+                        key
+                    );
+
+
+            if (
+                !Array.isArray(
+                    relation[
+                        relationType
+                    ]
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            const exists =
+
+                relation[
+                    relationType
+                ]
+                    .some(
+
+                        function (
+                            existing
+                        ) {
+
+                            return (
+
+                                existing.id ===
+                                hotspot.id
+
+                            );
+
+                        }
+
+                    );
+
+
+            if (!exists) {
+
+                relation[
+                    relationType
+                ]
+                    .push(
+                        hotspot
+                    );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       25. GET STORE POR CASCADE
+
+       Supports several possible Store method names so the
+       engine remains compatible with the current Store and
+       future naming refinements.
+       ===================================================== */
+
+    HeatmapEngine.getStorePorCascade =
+        function (
+
+            porKey
+
+        ) {
+
+            try {
+
+
+                if (
+                    typeof Store.getCascadeByPor ===
+                    "function"
+                ) {
+
+                    return (
+
+                        Store.getCascadeByPor(
+                            porKey
+                        ) ||
+
+                        null
+
+                    );
+
+                }
+
+
+                if (
+                    typeof Store.getPorCascade ===
+                    "function"
+                ) {
+
+                    return (
+
+                        Store.getPorCascade(
+                            porKey
+                        ) ||
+
+                        null
+
+                    );
+
+                }
+
+
+                if (
+                    typeof Store.getByPor ===
+                    "function"
+                ) {
+
+                    return (
+
+                        Store.getByPor(
+                            porKey
+                        ) ||
+
+                        null
+
+                    );
+
+                }
+
+
+                return null;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                if (
+                    Constants.DEBUG
+                        ?.ENABLED
+                ) {
+
+                    console.warn(
+
+                        "[OffenceHeatmapEngine] POR cascade lookup failed",
+
+                        porKey,
+
+                        error
+
+                    );
+
+                }
+
+
+                return null;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       26. HYDRATE POR RELATION FROM STORE
+       ===================================================== */
+
+    HeatmapEngine.hydratePorRelation =
+        function (
+
+            porKey,
+
+            relation
+
+        ) {
+
+            if (!relation) {
+
+                return;
+
+            }
+
+
+            const cascade =
+
+                HeatmapEngine
+                    .getStorePorCascade(
+                        porKey
+                    );
+
+
+            if (!cascade) {
+
+                return;
+
+            }
+
+
+            relation.porNo =
+
+                cascade.porNo ||
+
+                cascade.refPorNo ||
+
+                relation.porNo ||
+
+                "";
+
+
+            relation.cases =
+
+                HeatmapEngine.unique(
+
+                    cascade.cases ||
+                    []
+
+                );
+
+
+            relation.accused =
+
+                HeatmapEngine.unique(
+
+                    cascade.accused ||
+                    []
+
+                );
+
+
+            relation.witnesses =
+
+                HeatmapEngine.unique(
+
+                    cascade.witnesses ||
+                    []
+
+                );
+
+
+            relation.seizures =
+
+                HeatmapEngine.unique(
+
+                    cascade.seizures ||
+                    []
+
+                );
+
+
+            relation.seizedArticles =
+
+                HeatmapEngine.unique(
+
+                    cascade.seizedArticles ||
+                    cascade.articles ||
+                    []
+
+                );
+
+        };
+
+
+    /* =====================================================
+       27. ADD SECONDARY CASE RELATION
+       ===================================================== */
+
+    HeatmapEngine.addCaseRelation =
+        function (
+
+            caseId,
+
+            relationType,
+
+            hotspot,
+
+            porKeys =
+                []
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
                     .normalizeKey(
-
                         caseId
-
                     );
 
 
@@ -865,8 +1715,14 @@
 
                         {
 
+                            caseId:
+                                key,
+
                             case:
                                 null,
+
+                            porKeys:
+                                [],
 
                             sources:
                                 [],
@@ -889,13 +1745,26 @@
                     );
 
 
+            relation.porKeys =
+
+                HeatmapEngine.unique(
+
+                    [
+
+                        ...relation.porKeys,
+
+                        ...porKeys
+
+                    ]
+
+                );
+
+
             if (
                 !Array.isArray(
-
                     relation[
                         relationType
                     ]
-
                 )
             ) {
 
@@ -912,9 +1781,7 @@
                     .some(
 
                         function (
-
                             existing
-
                         ) {
 
                             return (
@@ -929,17 +1796,13 @@
                     );
 
 
-            if (
-                !exists
-            ) {
+            if (!exists) {
 
                 relation[
                     relationType
                 ]
                     .push(
-
                         hotspot
-
                     );
 
             }
@@ -948,59 +1811,296 @@
 
 
     /* =====================================================
-       18. GET SOURCE HEAT DATA
+       28. HYDRATE SECONDARY CASE INDEX
+       ===================================================== */
+
+    HeatmapEngine.hydrateCaseIndex =
+        function () {
+
+            for (
+                const [
+                    caseKey,
+                    relation
+                ]
+                of HeatmapEngine.caseIndex
+            ) {
+
+                if (
+                    typeof Store.getCaseById ===
+                    "function"
+                ) {
+
+                    relation.case =
+
+                        Store
+                            .getCaseById(
+                                caseKey
+                            ) ||
+
+                        null;
+
+                }
+
+            }
+
+        };
+
+
+    /* =====================================================
+       29. BUILD SOURCE → TARGET LINKS
+
+       IMPORTANT:
+
+       This is POR-based.
+
+       NOT CaseID-based.
+
+       If one POR has:
+
+       2 source hotspots
+       3 target hotspots
+
+       Output:
+
+       6 source-target links.
+       ===================================================== */
+
+    HeatmapEngine.buildSourceTargetLinks =
+        function () {
+
+            const links =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            for (
+                const [
+                    porKey,
+                    relation
+                ]
+                of HeatmapEngine.porIndex
+            ) {
+
+                if (
+                    !relation.sources.length ||
+                    !relation.targets.length
+                ) {
+
+                    continue;
+
+                }
+
+
+                for (
+                    const source
+                    of relation.sources
+                ) {
+
+                    for (
+                        const target
+                        of relation.targets
+                    ) {
+
+                        const linkId =
+
+                            [
+
+                                porKey,
+
+                                source.id,
+
+                                target.id
+
+                            ].join(
+                                "::"
+                            );
+
+
+                        if (
+                            seen.has(
+                                linkId
+                            )
+                        ) {
+
+                            continue;
+
+                        }
+
+
+                        seen.add(
+                            linkId
+                        );
+
+
+                        links.push({
+
+                            id:
+                                linkId,
+
+                            porKey:
+                                porKey,
+
+                            porNo:
+                                relation.porNo ||
+                                "",
+
+                            caseIds:
+
+                                HeatmapEngine
+                                    .unique(
+
+                                        [
+
+                                            ...HeatmapEngine
+                                                .getHotspotCaseIds(
+                                                    source
+                                                ),
+
+                                            ...HeatmapEngine
+                                                .getHotspotCaseIds(
+                                                    target
+                                                )
+
+                                        ]
+
+                                    ),
+
+                            source:
+                                source,
+
+                            target:
+                                target,
+
+                            sourceId:
+                                source.id,
+
+                            targetId:
+                                target.id,
+
+                            sourceLat:
+
+                                source.latitude ??
+                                source.lat ??
+                                null,
+
+                            sourceLng:
+
+                                source.longitude ??
+                                source.lng ??
+                                null,
+
+                            targetLat:
+
+                                target.latitude ??
+                                target.lat ??
+                                null,
+
+                            targetLng:
+
+                                target.longitude ??
+                                target.lng ??
+                                null
+
+                        });
+
+                    }
+
+                }
+
+            }
+
+
+            return links;
+
+        };
+
+
+    /* =====================================================
+       30. GET SOURCE → TARGET LINKS
+       ===================================================== */
+
+    HeatmapEngine.getSourceTargetLinks =
+        function () {
+
+            return [
+
+                ...HeatmapEngine
+                    .data
+                    .links
+
+            ];
+
+        };
+
+
+    /* =====================================================
+       31. GET SOURCE HEAT DATA
        ===================================================== */
 
     HeatmapEngine.getSourceHeatData =
         function () {
 
-            return SourceEngine
-                .getHeatmapData();
+            if (
+                typeof SourceEngine.getHeatmapData ===
+                "function"
+            ) {
+
+                return (
+
+                    SourceEngine
+                        .getHeatmapData() ||
+
+                    []
+
+                );
+
+            }
+
+
+            return [];
 
         };
 
 
     /* =====================================================
-       19. GET TARGET HEAT DATA
+       32. GET TARGET HEAT DATA
        ===================================================== */
 
     HeatmapEngine.getTargetHeatData =
         function () {
 
-            return TargetEngine
-                .getHeatmapData();
+            if (
+                typeof TargetEngine.getHeatmapData ===
+                "function"
+            ) {
+
+                return (
+
+                    TargetEngine
+                        .getHeatmapData() ||
+
+                    []
+
+                );
+
+            }
+
+
+            return [];
 
         };
 
 
     /* =====================================================
-       20. GET HEAT DATA BY MODE
+       33. GET HEAT DATA BY MODE
 
-       SOURCE:
-       {
-           sources: [...],
-           targets: []
-       }
+       SOURCE and TARGET remain separate.
 
-       TARGET:
-       {
-           sources: [],
-           targets: [...]
-       }
-
-       BOTH:
-       {
-           sources: [...],
-           targets: [...]
-       }
-
-       IMPORTANT:
-
-       SOURCE and TARGET remain separate arrays.
-
-       We do NOT merge them into one heat layer because
-       later the Leaflet renderer must be able to visually
-       distinguish the two datasets.
+       They must NOT be merged because the renderer may
+       style them independently.
        ===================================================== */
 
     HeatmapEngine.getHeatData =
@@ -1015,10 +2115,22 @@
 
                 HeatmapEngine
                     .normalizeKey(
-
                         mode
-
                     );
+
+
+            if (
+                !HeatmapEngine
+                    .isValidMode(
+                        mode
+                    )
+            ) {
+
+                mode =
+                    HeatmapEngine.MODE
+                        .BOTH;
+
+            }
 
 
             const result = {
@@ -1030,6 +2142,9 @@
                     [],
 
                 targets:
+                    [],
+
+                links:
                     []
 
             };
@@ -1041,7 +2156,10 @@
                 HeatmapEngine.MODE.SOURCE ||
 
                 mode ===
-                HeatmapEngine.MODE.BOTH
+                HeatmapEngine.MODE.BOTH ||
+
+                mode ===
+                HeatmapEngine.MODE.FLOW
 
             ) {
 
@@ -1059,7 +2177,10 @@
                 HeatmapEngine.MODE.TARGET ||
 
                 mode ===
-                HeatmapEngine.MODE.BOTH
+                HeatmapEngine.MODE.BOTH ||
+
+                mode ===
+                HeatmapEngine.MODE.FLOW
 
             ) {
 
@@ -1071,16 +2192,26 @@
             }
 
 
+            if (
+                mode ===
+                HeatmapEngine.MODE.FLOW
+            ) {
+
+                result.links =
+
+                    HeatmapEngine
+                        .getSourceTargetLinks();
+
+            }
+
+
             return result;
 
         };
 
 
     /* =====================================================
-       21. GET MARKER DATA BY MODE
-
-       These full hotspot objects are used for
-       clickable markers / hit targets.
+       34. GET MARKER DATA BY MODE
        ===================================================== */
 
     HeatmapEngine.getMarkerData =
@@ -1095,10 +2226,22 @@
 
                 HeatmapEngine
                     .normalizeKey(
-
                         mode
-
                     );
+
+
+            if (
+                !HeatmapEngine
+                    .isValidMode(
+                        mode
+                    )
+            ) {
+
+                mode =
+                    HeatmapEngine.MODE
+                        .BOTH;
+
+            }
 
 
             const result = {
@@ -1121,14 +2264,27 @@
                 HeatmapEngine.MODE.SOURCE ||
 
                 mode ===
-                HeatmapEngine.MODE.BOTH
+                HeatmapEngine.MODE.BOTH ||
+
+                mode ===
+                HeatmapEngine.MODE.FLOW
 
             ) {
 
                 result.sources =
 
-                    SourceEngine
-                        .getMarkerData();
+                    typeof SourceEngine.getMarkerData ===
+                    "function"
+
+                        ? (
+                            SourceEngine
+                                .getMarkerData() ||
+                            []
+                        )
+
+                        : HeatmapEngine
+                            .data
+                            .sources;
 
             }
 
@@ -1139,14 +2295,27 @@
                 HeatmapEngine.MODE.TARGET ||
 
                 mode ===
-                HeatmapEngine.MODE.BOTH
+                HeatmapEngine.MODE.BOTH ||
+
+                mode ===
+                HeatmapEngine.MODE.FLOW
 
             ) {
 
                 result.targets =
 
-                    TargetEngine
-                        .getMarkerData();
+                    typeof TargetEngine.getMarkerData ===
+                    "function"
+
+                        ? (
+                            TargetEngine
+                                .getMarkerData() ||
+                            []
+                        )
+
+                        : HeatmapEngine
+                            .data
+                            .targets;
 
             }
 
@@ -1157,7 +2326,7 @@
 
 
     /* =====================================================
-       22. GET HOTSPOT BY ID
+       35. GET HOTSPOT BY ID
        ===================================================== */
 
     HeatmapEngine.getHotspotById =
@@ -1171,10 +2340,15 @@
 
                 HeatmapEngine
                     .normalizeKey(
-
                         hotspotId
-
                     );
+
+
+            if (!key) {
+
+                return null;
+
+            }
 
 
             return (
@@ -1192,10 +2366,190 @@
 
 
     /* =====================================================
-       23. GET HOTSPOT CASCADE DATA
+       36. GET POR RELATION
+       ===================================================== */
 
-       Automatically detects whether clicked hotspot
-       belongs to SOURCE or TARGET.
+    HeatmapEngine.getPorRelation =
+        function (
+
+            porKey
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (!key) {
+
+                return null;
+
+            }
+
+
+            return (
+
+                HeatmapEngine.porIndex
+                    .get(
+                        key
+                    ) ||
+
+                null
+
+            );
+
+        };
+
+
+    /* =====================================================
+       37. GET ALL POR RELATIONS
+       ===================================================== */
+
+    HeatmapEngine.getPorRelations =
+        function () {
+
+            return Array.from(
+
+                HeatmapEngine.porIndex
+                    .values()
+
+            );
+
+        };
+
+
+    /* =====================================================
+       38. GET POR CASCADE
+
+       This is the primary cascade lookup.
+
+       Returns:
+
+       POR
+       ├── cases
+       ├── accused
+       ├── witnesses
+       ├── seizures
+       ├── seizedArticles
+       ├── sources
+       └── targets
+       ===================================================== */
+
+    HeatmapEngine.getPorCascade =
+        function (
+
+            porKey
+
+        ) {
+
+            const relation =
+
+                HeatmapEngine
+                    .getPorRelation(
+                        porKey
+                    );
+
+
+            if (!relation) {
+
+                return null;
+
+            }
+
+
+            return {
+
+                porKey:
+                    relation.porKey,
+
+                porNo:
+                    relation.porNo,
+
+                cases:
+
+                    [
+                        ...relation.cases
+                    ],
+
+                accused:
+
+                    [
+                        ...relation.accused
+                    ],
+
+                witnesses:
+
+                    [
+                        ...relation.witnesses
+                    ],
+
+                seizures:
+
+                    [
+                        ...relation.seizures
+                    ],
+
+                seizedArticles:
+
+                    [
+                        ...relation.seizedArticles
+                    ],
+
+                sources:
+
+                    [
+                        ...relation.sources
+                    ],
+
+                targets:
+
+                    [
+                        ...relation.targets
+                    ],
+
+                counts: {
+
+                    cases:
+                        relation.cases.length,
+
+                    accused:
+                        relation.accused.length,
+
+                    witnesses:
+                        relation.witnesses.length,
+
+                    seizures:
+                        relation.seizures.length,
+
+                    seizedArticles:
+                        relation.seizedArticles.length,
+
+                    sources:
+                        relation.sources.length,
+
+                    targets:
+                        relation.targets.length
+
+                }
+
+            };
+
+        };
+
+
+    /* =====================================================
+       39. GET HOTSPOT CASCADE DATA
+
+       A hotspot may contain multiple PORs because several
+       offences can aggregate into the same geographic
+       hotspot.
+
+       Therefore cascade result contains all related POR
+       cascades.
        ===================================================== */
 
     HeatmapEngine.getCascadeData =
@@ -1209,97 +2563,86 @@
 
                 HeatmapEngine
                     .getHotspotById(
-
                         hotspotId
-
                     );
 
 
-            if (
-                !entry
-            ) {
+            if (!entry) {
 
                 return null;
 
             }
 
 
-            if (
-
-                entry.type ===
-                HeatmapEngine.MODE.SOURCE
-
-            ) {
-
-                return {
-
-                    type:
-
-                        HeatmapEngine
-                            .MODE
-                            .SOURCE,
-
-                    data:
-
-                        SourceEngine
-                            .getCascadeData(
-
-                                hotspotId
-
-                            )
-
-                };
-
-            }
+            const hotspot =
+                entry.hotspot;
 
 
-            if (
+            const porKeys =
 
-                entry.type ===
-                HeatmapEngine.MODE.TARGET
-
-            ) {
-
-                return {
-
-                    type:
-
-                        HeatmapEngine
-                            .MODE
-                            .TARGET,
-
-                    data:
-
-                        TargetEngine
-                            .getCascadeData(
-
-                                hotspotId
-
-                            )
-
-                };
-
-            }
+                HeatmapEngine
+                    .getHotspotPorKeys(
+                        hotspot
+                    );
 
 
-            return null;
+            const cascades =
+
+                porKeys
+
+                    .map(
+
+                        function (
+                            porKey
+                        ) {
+
+                            return HeatmapEngine
+                                .getPorCascade(
+                                    porKey
+                                );
+
+                        }
+
+                    )
+
+                    .filter(
+                        Boolean
+                    );
+
+
+            return {
+
+                type:
+                    entry.type,
+
+                hotspot:
+                    hotspot,
+
+                porKeys:
+                    porKeys,
+
+                cascades:
+                    cascades,
+
+                counts: {
+
+                    pors:
+                        porKeys.length,
+
+                    cascades:
+                        cascades.length
+
+                }
+
+            };
 
         };
 
 
     /* =====================================================
-       24. GET CASE RELATION
+       40. GET CASE RELATION
 
-       Example:
-
-       Case C-101
-          │
-          ├── SOURCE → accused home
-          │
-          └── TARGET → seizure location
-
-       This becomes useful later for drawing
-       source-to-target movement lines.
+       Secondary lookup only.
        ===================================================== */
 
     HeatmapEngine.getCaseRelation =
@@ -1313,9 +2656,7 @@
 
                 HeatmapEngine
                     .normalizeKey(
-
                         caseId
-
                     );
 
 
@@ -1341,7 +2682,7 @@
 
 
     /* =====================================================
-       25. GET ALL CASE RELATIONS
+       41. GET ALL CASE RELATIONS
        ===================================================== */
 
     HeatmapEngine.getCaseRelations =
@@ -1350,37 +2691,7 @@
             return Array.from(
 
                 HeatmapEngine.caseIndex
-                    .entries()
-
-            ).map(
-
-                function (
-
-                    entry
-
-                ) {
-
-                    return {
-
-                        caseId:
-
-                            entry[0],
-
-                        case:
-
-                            entry[1].case,
-
-                        sources:
-
-                            entry[1].sources,
-
-                        targets:
-
-                            entry[1].targets
-
-                    };
-
-                }
+                    .values()
 
             );
 
@@ -1388,167 +2699,241 @@
 
 
     /* =====================================================
-       26. GET SOURCE → TARGET LINKS
-
-       Future use:
-
-       Source address
-             │
-             │ offence relationship
-             ▼
-       Target offence/seizure location
-
-       Output:
-
-       [
-           {
-               caseId,
-               source,
-               target
-           }
-       ]
-
-       If one case has:
-       2 sources
-       2 targets
-
-       It produces:
-       4 relationships.
+       42. GET LINKS BY POR
        ===================================================== */
 
-    HeatmapEngine.getSourceTargetLinks =
+    HeatmapEngine.getLinksByPor =
+        function (
+
+            porKey
+
+        ) {
+
+            const key =
+
+                HeatmapEngine
+                    .normalizePorKey(
+                        porKey
+                    );
+
+
+            if (!key) {
+
+                return [];
+
+            }
+
+
+            return HeatmapEngine
+                .data
+                .links
+
+                .filter(
+
+                    function (
+                        link
+                    ) {
+
+                        return (
+
+                            HeatmapEngine
+                                .normalizePorKey(
+                                    link.porKey
+                                ) ===
+                            key
+
+                        );
+
+                    }
+
+                );
+
+        };
+
+
+    /* =====================================================
+       43. GET STATS
+       ===================================================== */
+
+    HeatmapEngine.getStats =
         function () {
 
-            const links = [];
+            let sourceStats =
+                {};
+
+
+            let targetStats =
+                {};
+
+
+            if (
+                typeof SourceEngine.getStats ===
+                "function"
+            ) {
+
+                sourceStats =
+
+                    SourceEngine
+                        .getStats() ||
+                    {};
+
+            }
+
+
+            if (
+                typeof TargetEngine.getStats ===
+                "function"
+            ) {
+
+                targetStats =
+
+                    TargetEngine
+                        .getStats() ||
+                    {};
+
+            }
+
+
+            let porWithSources =
+                0;
+
+
+            let porWithTargets =
+                0;
+
+
+            let porWithSourceAndTarget =
+                0;
 
 
             for (
-
-                const [
-
-                    caseId,
-
-                    relation
-
-                ]
-
-                of HeatmapEngine.caseIndex
-
+                const relation
+                of HeatmapEngine.porIndex
+                    .values()
             ) {
 
-                for (
+                const hasSource =
 
-                    const source
+                    relation.sources.length >
+                    0;
 
-                    of relation.sources
 
+                const hasTarget =
+
+                    relation.targets.length >
+                    0;
+
+
+                if (hasSource) {
+
+                    porWithSources++;
+
+                }
+
+
+                if (hasTarget) {
+
+                    porWithTargets++;
+
+                }
+
+
+                if (
+                    hasSource &&
+                    hasTarget
                 ) {
 
-                    for (
-
-                        const target
-
-                        of relation.targets
-
-                    ) {
-
-                        links.push({
-
-                            caseId:
-
-                                caseId,
-
-                            case:
-
-                                relation.case,
-
-                            source:
-
-                                source,
-
-                            target:
-
-                                target
-
-                        });
-
-                    }
+                    porWithSourceAndTarget++;
 
                 }
 
             }
 
 
-            return links;
-
-        };
-
-
-    /* =====================================================
-       27. GET STATS
-       ===================================================== */
-
-    HeatmapEngine.getStats =
-        function () {
-
-            const sourceStats =
-
-                SourceEngine
-                    .getStats();
-
-
-            const targetStats =
-
-                TargetEngine
-                    .getStats();
-
-
-            const links =
-
-                HeatmapEngine
-                    .getSourceTargetLinks();
-
-
             return {
 
-                ready:
+                version:
+                    HeatmapEngine.VERSION,
 
+                ready:
                     HeatmapEngine.ready,
 
-                mode:
+                building:
+                    HeatmapEngine.building,
 
+                mode:
                     HeatmapEngine.mode,
 
-                resolvedCases:
+                relationshipModel:
 
-                    HeatmapEngine.data
+                    Constants.RELATIONSHIP
+                        ?.MODEL ||
+
+                    "POR_AUTHORITATIVE",
+
+                resolvedContexts:
+
+                    HeatmapEngine
+                        .data
                         .resolvedContexts
                         .length,
 
                 sourceHotspots:
 
-                    sourceStats.hotspots,
+                    HeatmapEngine
+                        .data
+                        .sources
+                        .length,
 
                 targetHotspots:
 
-                    targetStats.hotspots,
+                    HeatmapEngine
+                        .data
+                        .targets
+                        .length,
 
                 sourceOffences:
 
-                    sourceStats.totalOffences,
+                    sourceStats.totalOffences ??
+                    sourceStats.offences ??
+                    null,
 
                 targetOffences:
 
-                    targetStats.totalOffences,
+                    targetStats.totalOffences ??
+                    targetStats.offences ??
+                    null,
 
-                linkedCases:
+                porRelations:
+
+                    HeatmapEngine.porIndex
+                        .size,
+
+                porWithSources:
+                    porWithSources,
+
+                porWithTargets:
+                    porWithTargets,
+
+                porWithSourceAndTarget:
+                    porWithSourceAndTarget,
+
+                secondaryCaseRelations:
 
                     HeatmapEngine.caseIndex
                         .size,
 
                 sourceTargetLinks:
 
-                    links.length
+                    HeatmapEngine
+                        .data
+                        .links
+                        .length,
+
+                lastBuildAt:
+
+                    HeatmapEngine
+                        .lastBuildAt
 
             };
 
@@ -1556,25 +2941,9 @@
 
 
     /* =====================================================
-       28. REFRESH
+       44. REFRESH
 
-       Use after daily offence data changes.
-
-       Expected flow:
-
-       New offence data
-            ↓
-       OffenceStore.update(...)
-            ↓
-       HeatmapEngine.refresh()
-            ↓
-       Geocoder cache reused
-            ↓
-       SOURCE rebuilt
-            ↓
-       TARGET rebuilt
-            ↓
-       Map renderer receives update event
+       Reuses Geocoder cache where available.
        ===================================================== */
 
     HeatmapEngine.refresh =
@@ -1587,39 +2956,57 @@
 
 
     /* =====================================================
-       29. UPDATE DATA AND REFRESH
+       45. UPDATE STORE AND REFRESH
 
-       Convenience method for daily updates.
+       Supports all five datasets:
 
-       Example:
-
-       await GG.Offence.HeatmapEngine.update({
-           cases: newCases,
-           accused: newAccused,
-           seizures: newSeizures
-       });
+       {
+           cases,
+           accused,
+           witnesses,
+           seizures,
+           seizedArticles
+       }
        ===================================================== */
 
     HeatmapEngine.update =
         async function (
 
-            rawData = {}
+            rawData =
+                {}
 
         ) {
+
+            if (
+                typeof Store.update !==
+                "function"
+            ) {
+
+                return {
+
+                    success:
+                        false,
+
+                    reason:
+                        "STORE_UPDATE_UNAVAILABLE"
+
+                };
+
+            }
+
 
             const updateResult =
 
                 Store
                     .update(
-
                         rawData
-
                     );
 
 
             if (
                 !updateResult ||
-                updateResult.success !== true
+                updateResult.success !==
+                true
             ) {
 
                 return {
@@ -1631,7 +3018,6 @@
                         "STORE_UPDATE_FAILED",
 
                     store:
-
                         updateResult
 
                 };
@@ -1650,14 +3036,13 @@
                 success:
 
                     buildResult
-                        ?.success === true,
+                        ?.success ===
+                    true,
 
                 store:
-
                     updateResult,
 
                 heatmap:
-
                     buildResult
 
             };
@@ -1666,7 +3051,7 @@
 
 
     /* =====================================================
-       30. RESET
+       46. RESET
        ===================================================== */
 
     HeatmapEngine.reset =
@@ -1681,6 +3066,9 @@
                     [],
 
                 targets:
+                    [],
+
+                links:
                     []
 
             };
@@ -1690,20 +3078,46 @@
                 .clear();
 
 
+            HeatmapEngine.porIndex
+                .clear();
+
+
             HeatmapEngine.caseIndex
                 .clear();
 
 
-            SourceEngine
-                .reset();
+            if (
+                typeof SourceEngine.reset ===
+                "function"
+            ) {
+
+                SourceEngine
+                    .reset();
+
+            }
 
 
-            TargetEngine
-                .reset();
+            if (
+                typeof TargetEngine.reset ===
+                "function"
+            ) {
+
+                TargetEngine
+                    .reset();
+
+            }
 
 
             HeatmapEngine.ready =
                 false;
+
+
+            HeatmapEngine.building =
+                false;
+
+
+            HeatmapEngine.lastBuildAt =
+                null;
 
 
             return true;
@@ -1712,7 +3126,7 @@
 
 
     /* =====================================================
-       31. DISPATCH EVENT
+       47. DISPATCH EVENT
        ===================================================== */
 
     HeatmapEngine.dispatchEvent =
@@ -1720,13 +3134,12 @@
 
             eventName,
 
-            detail = {}
+            detail =
+                {}
 
         ) {
 
-            if (
-                !eventName
-            ) {
+            if (!eventName) {
 
                 return;
 
@@ -1755,9 +3168,7 @@
             }
 
             catch (
-
                 error
-
             ) {
 
                 if (
@@ -1783,7 +3194,7 @@
 
 
     /* =====================================================
-       32. EXPORT
+       48. EXPORT
        ===================================================== */
 
     GG.Offence.HeatmapEngine =
@@ -1791,14 +3202,15 @@
 
 
     /* =====================================================
-       33. INITIALIZE
+       49. INITIALIZE
        ===================================================== */
 
-    HeatmapEngine.init();
+    HeatmapEngine
+        .init();
 
 
     /* =====================================================
-       34. READY LOG
+       50. READY LOG
        ===================================================== */
 
     if (
@@ -1810,7 +3222,18 @@
 
             "🔥 OffenceHeatmapEngine Loaded",
 
-            HeatmapEngine
+            {
+
+                version:
+                    HeatmapEngine.VERSION,
+
+                mode:
+                    HeatmapEngine.mode,
+
+                authoritativeConnector:
+                    "porKey"
+
+            }
 
         );
 
