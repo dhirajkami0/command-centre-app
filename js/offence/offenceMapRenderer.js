@@ -3473,9 +3473,10 @@ MapRenderer.getPolygonFeature =
    ===================================================== */
 
 MapRenderer.handlePolygonClick =
+
     function (
 
-        entry,
+        polygon,
 
         type,
 
@@ -3483,352 +3484,311 @@ MapRenderer.handlePolygonClick =
 
     ) {
 
-        if (
-            !entry
-        ) {
+        try {
 
-            return false;
+            // =============================================
+            // 1. VALIDATE
+            // =============================================
 
-        }
-
-
-        const normalizedType =
-
-            String(
-                type ||
-                entry.type ||
-                ""
-            )
-                .trim()
-                .toUpperCase();
-
-
-        if (
-
-            normalizedType !==
-                "SOURCE" &&
-
-            normalizedType !==
-                "TARGET"
-
-        ) {
-
-            return false;
-
-        }
-
-
-        /* -----------------------------------------
-           Collect authoritative POR keys
-           ----------------------------------------- */
-
-        const porKeys =
-            [];
-
-
-        const seen =
-            new Set();
-
-
-        const addPor =
-            function (
-                value
+            if (
+                !polygon
             ) {
 
-                if (
-                    value === null ||
-                    value === undefined ||
-                    value === ""
-                ) {
+                return {
 
-                    return;
+                    success:
+                        false,
 
-                }
+                    reason:
+                        "POLYGON_REQUIRED"
 
+                };
 
-                if (
-                    Array.isArray(
-                        value
-                    )
-                ) {
+            }
 
-                    value.forEach(
-                        addPor
-                    );
 
-                    return;
+            // =============================================
+            // 2. NORMALIZE TYPE
+            // =============================================
 
-                }
+            const normalizedType =
 
+                String(
 
-                const key =
+                    type ||
 
-                    typeof HeatmapEngine
-                        .normalizePorKey ===
-                        "function"
+                    polygon.type ||
 
-                        ? HeatmapEngine
-                            .normalizePorKey(
-                                value
-                            )
+                    ""
 
-                        : String(
-                            value
-                        )
-                            .trim()
-                            .toUpperCase();
+                )
+                    .trim()
+                    .toUpperCase();
 
 
-                if (
-                    !key ||
-                    seen.has(
-                        key
-                    )
-                ) {
+            if (
 
-                    return;
+                normalizedType !==
+                    "SOURCE" &&
 
-                }
+                normalizedType !==
+                    "TARGET"
 
+            ) {
 
-                seen.add(
-                    key
-                );
+                return {
 
+                    success:
+                        false,
 
-                porKeys.push(
-                    key
-                );
+                    reason:
+                        "INVALID_POLYGON_TYPE"
 
-            };
+                };
 
+            }
 
-        addPor(
-            entry.porKey
-        );
 
+            // =============================================
+            // 3. CANONICAL HOTSPOT ID
+            // =============================================
 
-        addPor(
-            entry.porKeys
-        );
+            const hotspotId =
 
+                polygon.hotspotId ||
 
-        addPor(
-            entry.porNo
-        );
+                polygon.id ||
 
+                polygon.key ||
 
-        addPor(
-            entry.porNumbers
-        );
+                null;
 
 
-        addPor(
-            entry.refPorNo
-        );
+            if (
+                !hotspotId
+            ) {
 
+                return {
 
-        /*
-         * Aggregated polygons may contain the
-         * underlying hotspot/source/target records.
-         */
+                    success:
+                        false,
 
-        [
-            entry.hotspots,
-            entry.entries,
-            entry.items,
-            entry.sources,
-            entry.targets
-        ]
-            .forEach(
+                    reason:
+                        "HOTSPOT_ID_REQUIRED"
 
-                function (
-                    records
-                ) {
+                };
 
-                    MapRenderer
-                        .toArray(
-                            records
-                        )
-                        .forEach(
+            }
 
-                            function (
-                                record
-                            ) {
 
-                                addPor(
-                                    record?.porKey
-                                );
+            // =============================================
+            // 4. SPATIAL CONTEXT
+            // =============================================
 
-                                addPor(
-                                    record?.porKeys
-                                );
+            const spatialType =
 
-                                addPor(
-                                    record?.porNo
-                                );
+                polygon.spatialType ||
 
-                                addPor(
-                                    record?.refPorNo
-                                );
+                polygon.resolutionType ||
 
-                            }
+                polygon.resolution ||
 
-                        );
+                null;
 
-                }
 
-            );
+            const spatialName =
 
+                polygon.range ||
 
-        /* -----------------------------------------
-           Stable interaction ID
+                polygon.compartment ||
 
-           This is the polygon interaction ID.
-           It is NOT a CaseID and NOT a POR.
-           ----------------------------------------- */
+                polygon.name ||
 
-        const polygonId =
+                null;
 
-            entry.id ||
 
-            entry.hotspotId ||
+            // =============================================
+            // 5. POR RELATIONSHIP CONTEXT
+            // =============================================
 
-            entry.key ||
+            const porKeys =
 
-            [
-                normalizedType,
+                Array.isArray(
+                    polygon.porKeys
+                )
 
-                entry.spatialType ||
-                entry.type ||
-                "POLYGON",
+                    ? polygon
+                        .porKeys
+                        .slice()
 
-                entry.range ||
-                entry.compartment ||
-                entry.name ||
-                "UNKNOWN"
-            ]
-                .join(
-                    "::"
-                );
+                    : [];
 
 
-        /* -----------------------------------------
-           Build cascade-compatible hotspot payload
-           ----------------------------------------- */
+            // =============================================
+            // 6. CLICK LOCATION
+            // =============================================
 
-        const hotspot =
-
-            Object.assign(
-
-                {},
-
-                entry,
-
-                {
-
-                    id:
-                        polygonId,
-
-                    type:
-                        normalizedType,
-
-                    porKey:
-                        porKeys[0] ||
-                        null,
-
-                    porKeys:
-                        porKeys
-
-                }
-
-            );
-
-
-        const detail = {
-
-            hotspotId:
-                polygonId,
-
-            type:
-                normalizedType,
-
-            hotspot:
-                hotspot,
-
-            porKey:
-                porKeys[0] ||
-                null,
-
-            porKeys:
-                porKeys,
-
-            polygon:
-                entry,
-
-            spatialType:
-
-                entry.spatialType ||
-                entry.type ||
-                "POLYGON",
-
-            latlng:
+            const latlng =
 
                 leafletEvent
                     ?.latlng ||
 
-                null
-
-        };
+                null;
 
 
-        MapRenderer
-            .dispatchEvent(
+            // =============================================
+            // 7. BUILD CANONICAL EVENT DETAIL
+            //
+            // polygon and hotspot intentionally reference
+            // the aggregated polygon.
+            //
+            // CascadeController.openHotspot() already
+            // supports this contract.
+            // =============================================
 
-                Constants.EVENTS
-                    ?.HOTSPOT_CLICK ||
+            const detail = {
 
-                "offence:hotspot-click",
+                hotspotId:
+                    hotspotId,
 
-                detail
+                type:
+                    normalizedType,
+
+                hotspot:
+                    polygon,
+
+                polygon:
+                    polygon,
+
+                porKeys:
+                    porKeys,
+
+                spatialType:
+                    spatialType,
+
+                spatialName:
+                    spatialName,
+
+                latlng:
+                    latlng,
+
+                leafletEvent:
+                    leafletEvent
+
+            };
+
+
+            // =============================================
+            // 8. DEBUG
+            // =============================================
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "🔥 Offence Polygon Event Dispatch",
+
+                    {
+
+                        hotspotId:
+                            hotspotId,
+
+                        type:
+                            normalizedType,
+
+                        hasHotspot:
+                            true,
+
+                        hasPolygon:
+                            true,
+
+                        spatialType:
+                            spatialType,
+
+                        spatialName:
+                            spatialName,
+
+                        porCount:
+                            porKeys.length,
+
+                        latlng:
+                            latlng
+
+                    }
+
+                );
+
+            }
+
+
+            // =============================================
+            // 9. DISPATCH EXISTING HOTSPOT EVENT
+            //
+            // IMPORTANT:
+            // Use the SAME event name already consumed by
+            // CascadeController.bindEvents().
+            // =============================================
+
+            window.dispatchEvent(
+
+                new CustomEvent(
+
+                    "offence:hotspot-click",
+
+                    {
+
+                        detail:
+                            detail
+
+                    }
+
+                )
 
             );
 
 
-        if (
-            Constants.DEBUG
-                ?.ENABLED
-        ) {
+            return {
 
-            console.log(
+                success:
+                    true,
 
-                "🔥 Offence Polygon Click",
+                data:
+                    detail
 
-                {
-
-                    type:
-                        normalizedType,
-
-                    polygonId:
-                        polygonId,
-
-                    porCount:
-                        porKeys.length,
-
-                    porKeys:
-                        porKeys,
-
-                    entry:
-                        entry
-
-                }
-
-            );
+            };
 
         }
 
+        catch (
+            error
+        ) {
 
-        return true;
+            console.error(
+
+                "[OffenceMapRenderer] handlePolygonClick failed",
+
+                error
+
+            );
+
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "POLYGON_CLICK_FAILED",
+
+                error:
+                    error
+
+            };
+
+        }
 
     };
     /* =====================================================
