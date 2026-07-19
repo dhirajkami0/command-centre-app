@@ -3098,371 +3098,659 @@ UIController.buildData =
        29. ACTIVATE
        ===================================================== */
 
-    UIController.activate =
-        async function () {
+/*=========================================================
+  ACTIVATE OFFENCE HEATMAP
+
+  Authoritative startup lifecycle:
+
+      GIS Ready
+          ↓
+      GISEntities.rebuild()
+          ↓
+      DataLoader.load()
+          ↓
+      buildData()
+          ↓
+      buildHeatmap()
+          ↓
+      MapRenderer.render()
+
+  IMPORTANT:
+
+  This function prevents modules from being treated as
+  operational merely because initialized === true.
+
+  Data readiness is determined by actual runtime data.
+=========================================================*/
+
+UIController.activate =
+    async function () {
+
+        /*
+         * Prevent concurrent activation.
+         */
+
+        if (
+            UIController.activating
+        ) {
+
+            return false;
+
+        }
+
+
+        UIController.activating =
+            true;
+
+
+        try {
+
+            const Offence =
+                GG.Offence;
+
+
+            const GIS =
+                GG.GISEntities;
+
+
+            const DataLoader =
+                Offence.DataLoader;
+
+
+            const Store =
+                Offence.Store;
+
+
+            const SourceEngine =
+                Offence.SourceEngine;
+
+
+            const TargetEngine =
+                Offence.TargetEngine;
+
+
+            const HeatmapEngine =
+                Offence.HeatmapEngine;
+
+
+            const MapRenderer =
+                Offence.MapRenderer;
+
+
+            /*----------------------------------------------
+              1. MODULE VALIDATION
+            ----------------------------------------------*/
 
             if (
-                UIController.active &&
-                !UIController.loading
+                !GIS ||
+                !DataLoader ||
+                !Store ||
+                !SourceEngine ||
+                !TargetEngine ||
+                !HeatmapEngine ||
+                !MapRenderer
             ) {
 
-                UIController
-                    .showMenu();
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "Required offence modules unavailable.",
+
+                    {
+
+                        GISEntities:
+                            !!GIS,
+
+                        DataLoader:
+                            !!DataLoader,
+
+                        Store:
+                            !!Store,
+
+                        SourceEngine:
+                            !!SourceEngine,
+
+                        TargetEngine:
+                            !!TargetEngine,
+
+                        HeatmapEngine:
+                            !!HeatmapEngine,
+
+                        MapRenderer:
+                            !!MapRenderer
+
+                    }
+
+                );
 
 
-                const Renderer =
+                return false;
 
-                    GG.Offence
-                        .MapRenderer;
+            }
 
+
+            /*----------------------------------------------
+              2. WAIT FOR RAW GIS DATA
+
+              allGISFeatures is populated asynchronously.
+
+              Do not allow GISEntities to build permanently
+              against an empty GIS array.
+            ----------------------------------------------*/
+
+            const GIS_WAIT_TIMEOUT =
+                15000;
+
+
+            const GIS_WAIT_INTERVAL =
+                100;
+
+
+            const gisStartedAt =
+                Date.now();
+
+
+            while (
+
+                !Array.isArray(
+                    window.allGISFeatures
+                ) ||
+
+                window.allGISFeatures.length ===
+                    0
+
+            ) {
 
                 if (
-                    typeof Renderer
-                        ?.show ===
-                        "function"
+
+                    Date.now() -
+                    gisStartedAt >=
+                    GIS_WAIT_TIMEOUT
+
                 ) {
 
-                    Renderer.show();
+                    console.error(
+
+                        "[OffenceUIController] " +
+                        "GIS data unavailable after timeout."
+
+                    );
+
+
+                    return false;
 
                 }
 
 
-                return true;
+                await new Promise(
+
+                    resolve =>
+                        setTimeout(
+
+                            resolve,
+
+                            GIS_WAIT_INTERVAL
+
+                        )
+
+                );
 
             }
+
+
+            /*----------------------------------------------
+              3. REBUILD GIS ENTITY INDEX
+
+              Critical fix:
+
+              GISEntities may have been initialized before
+              allGISFeatures was populated.
+
+              Always rebuild here from the current GIS data.
+            ----------------------------------------------*/
+
+            if (
+                typeof GIS.rebuild ===
+                    "function"
+            ) {
+
+                GIS.rebuild();
+
+            }
+
+            else if (
+                typeof GIS.build ===
+                    "function"
+            ) {
+
+                GIS.build();
+
+            }
+
+
+            /*
+             * Confirm GIS index is operational.
+             */
+
+            if (
+
+                typeof GIS.ready ===
+                    "function" &&
+
+                !GIS.ready()
+
+            ) {
+
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "GISEntities failed to become ready."
+
+                );
+
+
+                return false;
+
+            }
+
+
+            /*----------------------------------------------
+              4. LOAD OFFENCE DATA
+
+              DataLoader.load() is authoritative for:
+
+                  Firestore
+                      ↓
+                  Normalizer
+                      ↓
+                  OffenceStore
+            ----------------------------------------------*/
+
+            const loadResult =
+
+                await DataLoader
+                    .load();
 
 
             if (
-                UIController.activationPromise
+                loadResult?.success ===
+                    false
             ) {
 
-                return UIController
-                    .activationPromise;
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "OffenceDataLoader failed.",
+
+                    loadResult
+
+                );
+
+
+                return false;
 
             }
 
 
-            UIController.activationPromise =
+            /*----------------------------------------------
+              5. VERIFY STORE HAS REAL DATA
 
-                (async function () {
+              Do not rely only on:
+                  initialized
+                  ready
 
-                    const dependencyCheck =
+              The previous bug allowed initialized modules
+              to exist with zero cases.
+            ----------------------------------------------*/
 
-                        UIController
-                            .checkDependencies();
+            const cases =
 
+                typeof Store.getCases ===
+                    "function"
 
-                    if (
-                        !dependencyCheck.success
-                    ) {
+                    ? Store.getCases()
 
-                        console.error(
-
-                            "[OffenceUIController] Missing dependencies:",
-
-                            dependencyCheck.missing
-
-                        );
+                    : [];
 
 
-                        UIController.setStatus(
+            if (
 
-                            "Missing: " +
-                            dependencyCheck
-                                .missing
-                                .join(", ")
+                !Array.isArray(
+                    cases
+                ) ||
 
-                        );
+                cases.length ===
+                    0
+
+            ) {
+
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "OffenceStore is empty after load."
+
+                );
 
 
-                        return false;
+                return false;
+
+            }
+
+
+            /*----------------------------------------------
+              6. BUILD SOURCE + TARGET DATA
+
+              Existing proven buildData() contract:
+
+                  Store
+                      ↓
+                  OffenceGeocoder.resolveAll()
+                      ↓
+                  resolvedContexts
+                      ↓
+                  SourceEngine.build(contexts)
+                  TargetEngine.build(contexts)
+            ----------------------------------------------*/
+
+            const dataResult =
+
+                await UIController
+                    .buildData();
+
+
+            /*
+             * Validate actual engine output.
+             */
+
+            const sourceHotspots =
+
+                typeof SourceEngine
+                    .getHotspots ===
+                    "function"
+
+                    ? SourceEngine
+                        .getHotspots()
+
+                    : [];
+
+
+            const targetHotspots =
+
+                typeof TargetEngine
+                    .getHotspots ===
+                    "function"
+
+                    ? TargetEngine
+                        .getHotspots()
+
+                    : [];
+
+
+            if (
+
+                !sourceHotspots.length &&
+
+                !targetHotspots.length
+
+            ) {
+
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "Source and Target engines are empty " +
+                    "after buildData().",
+
+                    {
+
+                        dataResult:
+                            dataResult
 
                     }
 
-
-                    UIController.setLoading(
-                        true
-                    );
+                );
 
 
-                    try {
+                return false;
 
-                        UIController
-                            .showMenu();
-
-
-                        UIController.setStatus(
-                            "Building offence intelligence..."
-                        );
+            }
 
 
-                        /*
-                         * Cascade panel remains hidden until
-                         * a hotspot is clicked.
-                         */
+            /*----------------------------------------------
+              7. BUILD HEATMAP
 
-                        if (
-                            typeof GG.Offence
-                                .CascadeRenderer
-                                ?.hide ===
-                                "function"
-                        ) {
+              Existing proven buildHeatmap() contract:
 
-                            GG.Offence
-                                .CascadeRenderer
-                                .hide();
+                  SourceEngine
+                  TargetEngine
+                      ↓
+                  HeatmapEngine
+                      ↓
+                  spatial aggregation
+            ----------------------------------------------*/
 
-                        }
+            await UIController
+                .buildHeatmap();
 
 
-                        /*
-                         * Ensure map renderer has map reference.
-                         */
+            const spatial =
 
-                        UIController
-                            .initializeMapRenderer();
+                HeatmapEngine
+                    .getSpatialHeatmapData();
 
 
-                        /*
-                         * Build SOURCE + TARGET.
-                         */
-                        /*
-                         * Ensure authoritative offence data
-                         * is loaded before derived intelligence
-                         * engines are built.
-                         *
-                         * DataLoader owns:
-                         *
-                         * Firestore
-                         *      ↓
-                         * Normalizer
-                         *      ↓
-                         * Store
-                         *
-                         * UIController only orchestrates it.
-                         */
+            const sourcePolygons =
 
-                        const DataLoader =
+                spatial
+                    ?.sourcePolygons ||
 
-                            GG.Offence
-                                .DataLoader;
+                [];
 
 
-                        const Store =
+            const targetPolygons =
 
-                            GG.Offence
-                                .Store;
+                spatial
+                    ?.targetPolygons ||
+
+                [];
 
 
-                        if (
-                            DataLoader &&
-                            (
-                                !Store?.initialized ||
-                                !Store?.ready
+            /*----------------------------------------------
+              8. VALIDATE GIS POLYGON RESOLUTION
+
+              Do not require exactly 7 + 6 permanently.
+
+              Those are current dataset counts and may
+              legitimately change as offence data changes.
+
+              Instead, verify that existing aggregated
+              polygons can resolve to GIS geometry.
+            ----------------------------------------------*/
+
+            const unresolvedSource =
+
+                sourcePolygons.filter(
+
+                    polygon =>
+
+                        !MapRenderer
+                            .getPolygonFeature(
+                                polygon
                             )
-                        ) {
 
-                            UIController.setStatus(
-                                "Loading offence data..."
-                            );
+                );
 
 
-                            if (
-                                typeof DataLoader.load !==
-                                    "function"
-                            ) {
+            const unresolvedTarget =
 
-                                throw new Error(
-                                    "OffenceDataLoader.load unavailable."
-                                );
+                targetPolygons.filter(
 
-                            }
+                    polygon =>
 
+                        !MapRenderer
+                            .getPolygonFeature(
+                                polygon
+                            )
 
-                            await DataLoader
-                                .load();
-
-                        }
+                );
 
 
-                        if (
-                            !Store?.initialized ||
-                            !Store?.ready
-                        ) {
+            if (
 
-                            throw new Error(
-                                "OffenceStore is not ready after data load."
-                            );
+                unresolvedSource.length ||
 
-                        }
+                unresolvedTarget.length
 
+            ) {
 
-                        UIController.setStatus(
-                            "Building offence intelligence..."
-                        );
+                console.warn(
 
+                    "[OffenceUIController] " +
+                    "Some offence polygons could not " +
+                    "resolve to GIS geometry.",
 
-                        /*
-                         * Build SOURCE + TARGET.
-                         */
+                    {
 
-await UIController
-    .buildData();
+                        sourcePolygons:
+                            sourcePolygons.length,
 
-await UIController
-    .buildHeatmap();
+                        unresolvedSource:
+                            unresolvedSource.length,
 
-await UIController
-    .render();
+                        targetPolygons:
+                            targetPolygons.length,
 
-
-                        UIController.active =
-                            true;
-
-
-                        UIController
-                            .updateModeUI();
-
-
-                        const stats =
-
-                            UIController
-                                .updateStatus();
-
-
-                        const button =
-
-                            UIController
-                                .getElement(
-
-                                    UIController
-                                        .IDS
-                                        .button
-
-                                );
-
-
-                        if (button) {
-
-                            button.classList.add(
-                                "is-active"
-                            );
-
-                        }
-
-
-                        UIController
-                            .dispatchEvent(
-
-                                UIController
-                                    .EVENTS
-                                    .ACTIVATED,
-
-                                {
-
-                                    mode:
-                                        UIController.mode,
-
-                                    source:
-                                        stats.source,
-
-                                    target:
-                                        stats.target
-
-                                }
-
-                            );
-
-
-                        if (
-                            UIController
-                                .isDebugEnabled()
-                        ) {
-
-                            console.log(
-
-                                "🔥 Offence Intelligence Active",
-
-                                {
-
-                                    mode:
-                                        UIController.mode,
-
-                                    source:
-                                        stats.source,
-
-                                    target:
-                                        stats.target
-
-                                }
-
-                            );
-
-                        }
-
-
-                        return true;
+                        unresolvedTarget:
+                            unresolvedTarget.length
 
                     }
 
-                    catch (
-                        error
-                    ) {
-
-                        UIController.active =
-                            false;
-
-
-                        console.error(
-
-                            "[OffenceUIController] Activation failed:",
-
-                            error
-
-                        );
-
-
-                        UIController.setStatus(
-                            "Unable to activate"
-                        );
-
-
-                        UIController
-                            .dispatchError(
-                                error
-                            );
-
-
-                        return false;
-
-                    }
-
-                    finally {
-
-                        UIController.setLoading(
-                            false
-                        );
-
-                    }
-
-                })();
-
-
-            try {
-
-                return await UIController
-                    .activationPromise;
+                );
 
             }
 
-            finally {
 
-                UIController.activationPromise =
-                    null;
+            /*----------------------------------------------
+              9. RENDER MAP
+
+              At this point:
+
+                  GIS index        ready
+                  Store            populated
+                  SourceEngine     built
+                  TargetEngine     built
+                  HeatmapEngine    built
+                  Polygon GIS      resolvable
+            ----------------------------------------------*/
+
+            const renderResult =
+
+                MapRenderer
+                    .render();
+
+
+            if (
+                renderResult ===
+                    false
+            ) {
+
+                console.error(
+
+                    "[OffenceUIController] " +
+                    "MapRenderer.render() failed."
+
+                );
+
+
+                return false;
 
             }
 
-        };
+
+            /*----------------------------------------------
+              10. FINAL RUNTIME STATE
+            ----------------------------------------------*/
+
+            UIController.active =
+                true;
+
+
+            console.log(
+
+                "🔥 Offence Heatmap Activated",
+
+                {
+
+                    rawGISFeatures:
+
+                        window
+                            .allGISFeatures
+                            ?.length || 0,
+
+                    cases:
+                        cases.length,
+
+                    resolvedContexts:
+
+                        dataResult
+                            ?.resolvedContexts
+                            ?.length || 0,
+
+                    sourceHotspots:
+                        sourceHotspots.length,
+
+                    targetHotspots:
+                        targetHotspots.length,
+
+                    sourcePolygons:
+                        sourcePolygons.length,
+
+                    targetPolygons:
+                        targetPolygons.length,
+
+                    unresolvedSource:
+                        unresolvedSource.length,
+
+                    unresolvedTarget:
+                        unresolvedTarget.length,
+
+                    rendered:
+                        true
+
+                }
+
+            );
+
+
+            return true;
+
+        }
+
+        catch (
+            error
+        ) {
+
+            console.error(
+
+                "[OffenceUIController] " +
+                "Activation failed.",
+
+                error
+
+            );
+
+
+            return false;
+
+        }
+
+        finally {
+
+            UIController.activating =
+                false;
+
+        }
+
+    };
 
 
     /* =====================================================
