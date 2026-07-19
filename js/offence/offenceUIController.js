@@ -1803,122 +1803,513 @@
        23. BUILD SOURCE + TARGET ENGINES
        ===================================================== */
 
-    UIController.buildData =
-        async function () {
+/* =====================================================
+   23. BUILD SOURCE + TARGET ENGINES
 
-            const SourceEngine =
+   AUTHORITATIVE PIPELINE:
 
-                GG.Offence
-                    .SourceEngine;
+   OffenceStore
+        ↓
+   OffenceGeocoder.resolveAll()
+        ↓
+   resolvedContexts
+        ↓
+   SourceEngine.build(resolvedContexts)
+        ↓
+   TargetEngine.build(resolvedContexts)
+
+   IMPORTANT:
+
+   SourceEngine.build() and TargetEngine.build()
+   require resolvedContexts.
+
+   Never call:
+
+       SourceEngine.build()
+       TargetEngine.build()
+
+   without resolvedContexts.
+
+   POR / porKey remains the authoritative
+   relationship connector.
+   ===================================================== */
+
+UIController.buildData =
+    async function () {
+
+        const Store =
+
+            GG.Offence
+                .Store;
 
 
-            const TargetEngine =
+        const Geocoder =
 
-                GG.Offence
-                    .TargetEngine;
+            GG.Offence
+                .Geocoder;
 
 
-            if (
-                !SourceEngine ||
-                !TargetEngine
-            ) {
+        const SourceEngine =
 
-                throw new Error(
-                    "SourceEngine or TargetEngine unavailable."
+            GG.Offence
+                .SourceEngine;
+
+
+        const TargetEngine =
+
+            GG.Offence
+                .TargetEngine;
+
+
+        /* ---------------------------------------------
+           Validate Store
+           --------------------------------------------- */
+
+        if (!Store) {
+
+            throw new Error(
+                "OffenceStore unavailable."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Validate Store readiness
+
+           DataLoader must already have completed:
+
+           Firestore
+                ↓
+           Normalizer
+                ↓
+           Store.build()
+           --------------------------------------------- */
+
+        if (
+            !Store.initialized ||
+            !Store.ready
+        ) {
+
+            throw new Error(
+                "OffenceStore is not ready."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Validate Geocoder
+           --------------------------------------------- */
+
+        if (!Geocoder) {
+
+            throw new Error(
+                "OffenceGeocoder unavailable."
+            );
+
+        }
+
+
+        if (
+            typeof Geocoder.resolveAll !==
+            "function"
+        ) {
+
+            throw new Error(
+                "OffenceGeocoder.resolveAll unavailable."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Validate SourceEngine
+           --------------------------------------------- */
+
+        if (!SourceEngine) {
+
+            throw new Error(
+                "OffenceSourceEngine unavailable."
+            );
+
+        }
+
+
+        if (
+            typeof SourceEngine.build !==
+            "function"
+        ) {
+
+            throw new Error(
+                "OffenceSourceEngine.build unavailable."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Validate TargetEngine
+           --------------------------------------------- */
+
+        if (!TargetEngine) {
+
+            throw new Error(
+                "OffenceTargetEngine unavailable."
+            );
+
+        }
+
+
+        if (
+            typeof TargetEngine.build !==
+            "function"
+        ) {
+
+            throw new Error(
+                "OffenceTargetEngine.build unavailable."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Resolve offence contexts
+
+           Expected runtime:
+
+           Store
+                ↓
+           Geocoder.resolveAll()
+                ↓
+           approximately 573 resolved contexts
+
+           Each context may contain:
+
+           {
+               case,
+               caseId,
+               porKey,
+               porNo,
+               sources: [],
+               targets: []
+           }
+           --------------------------------------------- */
+
+        const resolvedResult =
+
+            await Geocoder
+                .resolveAll();
+
+
+        /* ---------------------------------------------
+           Normalize Geocoder result
+
+           Primary contract:
+
+               resolveAll() → Array
+
+           Compatibility support is retained in case
+           the Geocoder returns a wrapper object such as:
+
+               {
+                   resolvedContexts: [...]
+               }
+
+           or:
+
+               {
+                   contexts: [...]
+               }
+
+           or:
+
+               {
+                   data: [...]
+               }
+           --------------------------------------------- */
+
+        let resolvedContexts =
+            [];
+
+
+        if (
+            Array.isArray(
+                resolvedResult
+            )
+        ) {
+
+            resolvedContexts =
+
+                resolvedResult;
+
+        }
+
+        else if (
+            Array.isArray(
+                resolvedResult
+                    ?.resolvedContexts
+            )
+        ) {
+
+            resolvedContexts =
+
+                resolvedResult
+                    .resolvedContexts;
+
+        }
+
+        else if (
+            Array.isArray(
+                resolvedResult
+                    ?.contexts
+            )
+        ) {
+
+            resolvedContexts =
+
+                resolvedResult
+                    .contexts;
+
+        }
+
+        else if (
+            Array.isArray(
+                resolvedResult
+                    ?.data
+            )
+        ) {
+
+            resolvedContexts =
+
+                resolvedResult
+                    .data;
+
+        }
+
+
+        /* ---------------------------------------------
+           Validate resolved contexts
+
+           Do not silently build empty engines.
+
+           Calling:
+
+               SourceEngine.build([])
+               TargetEngine.build([])
+
+           would reset both engines and reproduce the
+           exact zero-hotspot failure.
+           --------------------------------------------- */
+
+        if (
+            resolvedContexts.length ===
+            0
+        ) {
+
+            throw new Error(
+                "OffenceGeocoder.resolveAll() returned no resolved contexts."
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Build SOURCE intelligence
+
+           Contract:
+
+           SourceEngine.build(
+               resolvedContexts
+           )
+
+           Expected from current dataset:
+
+               resolvedContexts ≈ 573
+               raw sources      ≈ 768
+               source hotspots  ≈ 570
+           --------------------------------------------- */
+
+        const source =
+
+            await SourceEngine
+                .build(
+
+                    resolvedContexts
+
                 );
 
-            }
+
+        /* ---------------------------------------------
+           Build TARGET intelligence
+
+           IMPORTANT:
+
+           Use the SAME resolvedContexts used by
+           SourceEngine.
+
+           Expected from current dataset:
+
+               raw targets      ≈ 85
+               target hotspots  ≈ 83
+           --------------------------------------------- */
+
+        const target =
+
+            await TargetEngine
+                .build(
+
+                    resolvedContexts
+
+                );
 
 
-            let source =
-                [];
+        /* ---------------------------------------------
+           Normalize engine results
+           --------------------------------------------- */
 
+        const sourceHotspots =
 
-            let target =
-                [];
+            Array.isArray(
+                source
+            )
 
+                ? source
 
-            /*
-             * Build SOURCE intelligence.
-             */
+                : (
 
-            if (
-                typeof SourceEngine
-                    .buildFromStore ===
-                    "function"
-            ) {
+                    typeof SourceEngine
+                        .getHotspots ===
+                        "function"
 
-                source =
+                        ? SourceEngine
+                            .getHotspots()
 
-                    await SourceEngine
-                        .buildFromStore();
-
-            }
-
-            else if (
-                typeof SourceEngine
-                    .build ===
-                    "function"
-            ) {
-
-                source =
-
-                    await SourceEngine
-                        .build();
-
-            }
-
-
-            /*
-             * Build TARGET intelligence.
-             */
-
-            if (
-                typeof TargetEngine
-                    .buildFromStore ===
-                    "function"
-            ) {
-
-                target =
-
-                    await TargetEngine
-                        .buildFromStore();
-
-            }
-
-            else if (
-                typeof TargetEngine
-                    .build ===
-                    "function"
-            ) {
-
-                target =
-
-                    await TargetEngine
-                        .build();
-
-            }
-
-
-            return {
-
-                source:
-                    Array.isArray(
-                        source
-                    )
-                        ? source
-                        : [],
-
-                target:
-                    Array.isArray(
-                        target
-                    )
-                        ? target
                         : []
 
-            };
+                );
+
+
+        const targetHotspots =
+
+            Array.isArray(
+                target
+            )
+
+                ? target
+
+                : (
+
+                    typeof TargetEngine
+                        .getHotspots ===
+                        "function"
+
+                        ? TargetEngine
+                            .getHotspots()
+
+                        : []
+
+                );
+
+
+        /* ---------------------------------------------
+           Runtime validation
+
+           A non-empty resolved context collection with
+           zero SOURCE and zero TARGET hotspots usually
+           indicates a Geocoder → Engine contract problem.
+           --------------------------------------------- */
+
+        if (
+            resolvedContexts.length > 0 &&
+            sourceHotspots.length === 0 &&
+            targetHotspots.length === 0
+        ) {
+
+            console.warn(
+
+                "[OffenceUIController] " +
+                "Resolved contexts exist but both " +
+                "SourceEngine and TargetEngine are empty.",
+
+                {
+
+                    resolvedContexts:
+                        resolvedContexts.length,
+
+                    sourceHotspots:
+                        sourceHotspots.length,
+
+                    targetHotspots:
+                        targetHotspots.length
+
+                }
+
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Debug
+           --------------------------------------------- */
+
+        if (
+            UIController
+                .isDebugEnabled()
+        ) {
+
+            console.log(
+
+                "🔥 Offence Source / Target Built",
+
+                {
+
+                    resolvedContexts:
+                        resolvedContexts.length,
+
+                    sourceHotspots:
+                        sourceHotspots.length,
+
+                    targetHotspots:
+                        targetHotspots.length,
+
+                    connector:
+                        "POR",
+
+                    authoritativeConnector:
+                        "porKey"
+
+                }
+
+            );
+
+        }
+
+
+        /* ---------------------------------------------
+           Return canonical build result
+
+           resolvedContexts is intentionally returned.
+
+           This allows future HeatmapEngine lifecycle
+           alignment without re-running Geocoder.
+           --------------------------------------------- */
+
+        return {
+
+            resolvedContexts:
+                resolvedContexts,
+
+            source:
+                sourceHotspots,
+
+            target:
+                targetHotspots
 
         };
+
+    };
 
 
     /* =====================================================
@@ -2915,26 +3306,14 @@
                          * Build SOURCE + TARGET.
                          */
 
-                        await UIController
-                            .buildData();
-                        await UIController
-                            .buildData();
+await UIController
+    .buildData();
 
+await UIController
+    .buildHeatmap();
 
-                        /*
-                         * Build unified heatmap model.
-                         */
-
-                        await UIController
-                            .buildHeatmap();
-
-
-                        /*
-                         * Render active mode.
-                         */
-
-                        await UIController
-                            .render();
+await UIController
+    .render();
 
 
                         UIController.active =
