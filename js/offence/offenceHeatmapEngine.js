@@ -6010,7 +6010,486 @@
 
         };
 
+    /* =====================================================
+       NORMALIZE GIS NAME
+       ===================================================== */
 
+    /* =====================================================
+       NORMALIZE GIS NAME
+       ===================================================== */
+
+    HeatmapEngine.normalizeGISName =
+        function (
+
+            value
+
+        ) {
+
+            /*
+             * =============================================
+             * NULL / EMPTY GUARD
+             * =============================================
+             */
+
+            if (
+                value == null
+            ) {
+
+                return "";
+
+            }
+
+
+            const rawValue =
+
+                String(
+                    value
+                )
+                    .trim();
+
+
+            if (
+                !rawValue
+            ) {
+
+                return "";
+
+            }
+
+
+            /*
+             * =============================================
+             * CANONICAL GREENGUARD NORMALIZER
+             * =============================================
+             *
+             * GG.normalizeName() is the authoritative
+             * normalizer used by GISEntities.
+             *
+             * HeatmapEngine must use the same normalization
+             * contract whenever it is available.
+             */
+
+            if (
+                typeof GG.normalizeName ===
+                "function"
+            ) {
+
+                try {
+
+                    const normalized =
+
+                        GG.normalizeName(
+                            rawValue
+                        );
+
+
+                    if (
+                        normalized
+                    ) {
+
+                        return normalized;
+
+                    }
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    /*
+                     * Do not fail spatial resolution because
+                     * the shared normalizer failed.
+                     *
+                     * Continue through the local fallback.
+                     */
+
+                    if (
+                        Constants.DEBUG
+                            ?.ENABLED
+                    ) {
+
+                        console.warn(
+
+                            "[OffenceHeatmapEngine] " +
+                            "GG.normalizeName() failed. " +
+                            "Using local GIS normalization.",
+
+                            {
+
+                                value:
+                                    rawValue,
+
+                                error:
+                                    error
+
+                            }
+
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * =============================================
+             * LOCAL FALLBACK NORMALIZATION
+             * =============================================
+             *
+             * This fallback mirrors the canonical
+             * GISEntities normalization strategy.
+             *
+             * Examples:
+             *
+             * BTR_W
+             *      → BTR W
+             *      → BUXATR WEST
+             *      → BUXATRWEST
+             *
+             * BuxaTR_West
+             *      → BUXATR WEST
+             *      → BUXATRWEST
+             *
+             * BTR_E
+             *      → BTR E
+             *      → BUXATR EAST
+             *      → BUXATREAST
+             *
+             * BuxaTR_East
+             *      → BUXATR EAST
+             *      → BUXATREAST
+             *
+             * WRVK
+             *      → WRVK
+             *
+             * WDPO
+             *      → WDPO
+             *
+             * PANA
+             *      → PANA
+             */
+
+            let text =
+
+                rawValue
+
+                    .normalize(
+                        "NFKD"
+                    )
+
+                    .replace(
+                        /[\u0300-\u036f]/g,
+                        ""
+                    )
+
+                    .toUpperCase()
+
+                    .trim();
+
+
+            /*
+             * =============================================
+             * NORMALIZE SYMBOLS
+             * =============================================
+             *
+             * Underscore is intentionally converted to
+             * whitespace here.
+             *
+             * Therefore:
+             *
+             * BTR_W
+             *      → BTR W
+             *
+             * BuxaTR_West
+             *      → BUXATR WEST
+             */
+
+            text =
+
+                text
+
+                    .replace(
+                        /&/g,
+                        "AND"
+                    )
+
+                    .replace(
+                        /[(){}\[\].,_\-\/\\]/g,
+                        " "
+                    )
+
+                    .replace(
+                        /\s+/g,
+                        " "
+                    )
+
+                    .trim();
+
+
+            /*
+             * =============================================
+             * CANONICAL GIS ALIASES
+             * =============================================
+             *
+             * IMPORTANT:
+             *
+             * Multiple historical naming conventions
+             * resolve to one canonical identity.
+             *
+             * WEST:
+             *
+             * BTR_W
+             * BTRW
+             * BTR WEST
+             * BuxaTR_West
+             * Buxa TR West
+             * Buxa Tiger Reserve West
+             *
+             *          ↓
+             *
+             * BUXATRWEST
+             *
+             *
+             * EAST:
+             *
+             * BTR_E
+             * BTRE
+             * BTR EAST
+             * BuxaTR_East
+             * Buxa TR East
+             * Buxa Tiger Reserve East
+             *
+             *          ↓
+             *
+             * BUXATREAST
+             */
+
+            const aliases = {
+
+
+                /*
+                 * =========================================
+                 * BUXA TIGER RESERVE WEST
+                 * =========================================
+                 */
+
+                "BTR W":
+
+                    "BUXATR WEST",
+
+
+                "BTRW":
+
+                    "BUXATR WEST",
+
+
+                "BTR WEST":
+
+                    "BUXATR WEST",
+
+
+                "BTR WEST DIVISION":
+
+                    "BUXATR WEST",
+
+
+                "BTR WEST FOREST DIVISION":
+
+                    "BUXATR WEST",
+
+
+                "BTR WEST RANGE":
+
+                    "BUXATR WEST",
+
+
+                "BTR WEST CIRCLE":
+
+                    "BUXATR WEST",
+
+
+                /*
+                 * BuxaTR_West becomes
+                 * BUXATR WEST before alias lookup.
+                 */
+
+                "BUXATR WEST":
+
+                    "BUXATR WEST",
+
+
+                "BUXA TR WEST":
+
+                    "BUXATR WEST",
+
+
+                "BUXA TIGER RESERVE WEST":
+
+                    "BUXATR WEST",
+
+
+                "BUXA TIGER RESERVE WEST DIVISION":
+
+                    "BUXATR WEST",
+
+
+                "BUXA TIGER RESERVE WEST FOREST DIVISION":
+
+                    "BUXATR WEST",
+
+
+                /*
+                 * =========================================
+                 * BUXA TIGER RESERVE EAST
+                 * =========================================
+                 */
+
+                "BTR E":
+
+                    "BUXATR EAST",
+
+
+                "BTRE":
+
+                    "BUXATR EAST",
+
+
+                "BTR EAST":
+
+                    "BUXATR EAST",
+
+
+                "BTR EAST DIVISION":
+
+                    "BUXATR EAST",
+
+
+                "BTR EAST FOREST DIVISION":
+
+                    "BUXATR EAST",
+
+
+                "BTR EAST RANGE":
+
+                    "BUXATR EAST",
+
+
+                "BTR EAST CIRCLE":
+
+                    "BUXATR EAST",
+
+
+                /*
+                 * BuxaTR_East becomes
+                 * BUXATR EAST before alias lookup.
+                 */
+
+                "BUXATR EAST":
+
+                    "BUXATR EAST",
+
+
+                "BUXA TR EAST":
+
+                    "BUXATR EAST",
+
+
+                "BUXA TIGER RESERVE EAST":
+
+                    "BUXATR EAST",
+
+
+                "BUXA TIGER RESERVE EAST DIVISION":
+
+                    "BUXATR EAST",
+
+
+                "BUXA TIGER RESERVE EAST FOREST DIVISION":
+
+                    "BUXATR EAST"
+
+            };
+
+
+            /*
+             * =============================================
+             * APPLY ALIAS
+             * =============================================
+             */
+
+            if (
+                Object.prototype
+                    .hasOwnProperty
+                    .call(
+                        aliases,
+                        text
+                    )
+            ) {
+
+                text =
+
+                    aliases[
+                        text
+                    ];
+
+            }
+
+
+            /*
+             * =============================================
+             * REMOVE GENERIC GIS SUFFIX
+             * =============================================
+             *
+             * This is intentionally conservative.
+             *
+             * Do NOT remove RANGE from arbitrary range
+             * names because the actual GeoJSON property
+             * may depend on it.
+             *
+             * Known BTR aliases have already been handled
+             * above.
+             */
+
+
+            /*
+             * =============================================
+             * FINAL CANONICAL KEY
+             * =============================================
+             *
+             * Remove whitespace only after alias resolution.
+             *
+             * Examples:
+             *
+             * BTR_W
+             *      → BUXATRWEST
+             *
+             * BuxaTR_West
+             *      → BUXATRWEST
+             *
+             * BTR_E
+             *      → BUXATREAST
+             *
+             * BuxaTR_East
+             *      → BUXATREAST
+             *
+             * WRVK
+             *      → WRVK
+             *
+             * WLMSQ-II
+             *      → WLMSQII
+             */
+
+            return text
+
+                .replace(
+                    /\s+/g,
+                    ""
+                );
+
+        };
     /* =====================================================
        POLYGON AGGREGATION
        ===================================================== */
