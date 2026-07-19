@@ -955,36 +955,461 @@
        16. HANDLE HOTSPOT EVENT
        ===================================================== */
 
-    CascadeController.handleHotspotEvent =
-        function (
+/* =====================================================
+   HANDLE HOTSPOT EVENT
+
+   Receives the canonical event emitted by MapRenderer:
+
+       offence:hotspot-click
+
+   Supports:
+
+   1. Individual SOURCE hotspot
+   2. Individual TARGET hotspot
+   3. Aggregated TARGET GIS polygon
+   4. Future aggregated SOURCE GIS polygon
+
+   IMPORTANT:
+
+   The complete hotspot / polygon context must be
+   forwarded into openHotspot().
+
+   This allows aggregated polygons such as:
+
+       RANGE::NMT
+       RANGE::WRVK
+
+   to enter the POR-authoritative cascade even when
+   they are not individual HeatmapEngine hotspot IDs.
+   ===================================================== */
+
+CascadeController.handleHotspotEvent =
+    function (
+
+        event
+
+    ) {
+
+        /*---------------------------------------------
+          1. Extract event detail
+        ---------------------------------------------*/
+
+        const detail =
+
             event
+                ?.detail ||
+
+            {};
+
+
+        /*---------------------------------------------
+          2. Extract canonical hotspot ID
+        ---------------------------------------------*/
+
+        const hotspotId =
+
+            detail.hotspotId ||
+
+            detail.hotspot?.hotspotId ||
+
+            detail.hotspot?.id ||
+
+            detail.polygon?.hotspotId ||
+
+            detail.polygon?.id ||
+
+            detail.polygon?.key ||
+
+            null;
+
+
+        if (
+            !hotspotId
         ) {
 
-            const detail =
-                event?.detail ||
-                {};
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
 
+                console.warn(
 
-            CascadeController
-                .openHotspot(
-
-                    detail.hotspotId,
-
-                    detail.type,
+                    "[OffenceCascadeController] Hotspot event ignored: missing hotspotId",
 
                     {
 
-                        hotspot:
-                            detail.hotspot,
-
-                        latlng:
-                            detail.latlng
+                        detail:
+                            detail
 
                     }
 
                 );
 
+            }
+
+
+            return {
+
+                success:
+                    false,
+
+                reason:
+                    "HOTSPOT_ID_REQUIRED"
+
+            };
+
+        }
+
+
+        /*---------------------------------------------
+          3. Resolve canonical entry type
+
+          Priority:
+
+          event detail
+              ↓
+          hotspot
+              ↓
+          polygon
+        ---------------------------------------------*/
+
+        const entryType =
+
+            detail.type ||
+
+            detail.hotspot?.type ||
+
+            detail.polygon?.type ||
+
+            null;
+
+
+        /*---------------------------------------------
+          4. Resolve hotspot context
+
+          MapRenderer.handlePolygonClick() should
+          provide detail.hotspot.
+
+          Fallback to polygon itself so an aggregated
+          polygon is never lost between:
+
+          MapRenderer
+              ↓
+          CustomEvent
+              ↓
+          CascadeController
+        ---------------------------------------------*/
+
+        const hotspot =
+
+            detail.hotspot ||
+
+            detail.polygon ||
+
+            null;
+
+
+        /*---------------------------------------------
+          5. Resolve polygon context
+
+          Individual point hotspot:
+              null
+
+          Aggregated GIS polygon:
+              original polygon entry
+        ---------------------------------------------*/
+
+        const polygon =
+
+            detail.polygon ||
+
+            null;
+
+
+        /*---------------------------------------------
+          6. Resolve spatial type
+
+          Examples:
+
+          POINT
+          COMPARTMENT
+          RANGE
+        ---------------------------------------------*/
+
+        const spatialType =
+
+            detail.spatialType ||
+
+            polygon?.spatialType ||
+
+            polygon?.resolutionType ||
+
+            polygon?.resolution ||
+
+            hotspot?.spatialType ||
+
+            hotspot?.resolutionType ||
+
+            hotspot?.resolution ||
+
+            null;
+
+
+        /*---------------------------------------------
+          7. Resolve spatial name
+
+          Examples:
+
+          NMT
+          WRVK
+          compartment name
+        ---------------------------------------------*/
+
+        const spatialName =
+
+            detail.spatialName ||
+
+            polygon?.range ||
+
+            polygon?.compartment ||
+
+            polygon?.name ||
+
+            hotspot?.range ||
+
+            hotspot?.compartment ||
+
+            hotspot?.name ||
+
+            null;
+
+
+        /*---------------------------------------------
+          8. Resolve map coordinates
+
+          Aggregated polygon clicks normally use
+          Leaflet click coordinates.
+
+          Individual hotspots may already provide
+          lat/lng.
+        ---------------------------------------------*/
+
+        const latlng =
+
+            detail.latlng ||
+
+            (
+
+                detail.lat != null &&
+                detail.lng != null
+
+                    ? {
+
+                        lat:
+                            detail.lat,
+
+                        lng:
+                            detail.lng
+
+                    }
+
+                    : null
+
+            );
+
+
+        /*---------------------------------------------
+          9. Build complete openHotspot options
+
+          IMPORTANT:
+
+          hotspot:
+              cascade relationship context
+
+          polygon:
+              original aggregated spatial context
+
+          latlng:
+              map interaction location
+
+          spatialType:
+              POINT / COMPARTMENT / RANGE
+
+          spatialName:
+              range / compartment / place name
+        ---------------------------------------------*/
+
+        const options = {
+
+            hotspot:
+                hotspot,
+
+            polygon:
+                polygon,
+
+            latlng:
+                latlng,
+
+            spatialType:
+                spatialType,
+
+            spatialName:
+                spatialName,
+
+            /*-----------------------------------------
+              Preserve POR metadata from event.
+
+              openHotspot() primarily extracts POR
+              information from hotspot, but retaining
+              these values keeps the event contract
+              complete for future use.
+            -----------------------------------------*/
+
+            porKey:
+
+                detail.porKey ||
+
+                hotspot?.porKey ||
+
+                null,
+
+            porKeys:
+
+                Array.isArray(
+                    detail.porKeys
+                )
+
+                    ? detail.porKeys
+
+                    : Array.isArray(
+                        hotspot?.porKeys
+                    )
+
+                        ? hotspot.porKeys
+
+                        : [],
+
+            /*-----------------------------------------
+              Preserve Leaflet event when available.
+            -----------------------------------------*/
+
+            leafletEvent:
+
+                detail.leafletEvent ||
+
+                null,
+
+            /*-----------------------------------------
+              Preserve legacy cascade payload.
+
+              This keeps compatibility with your older
+              event contract, which already forwarded
+              detail.cascade.
+            -----------------------------------------*/
+
+            cascade:
+
+                detail.cascade ||
+
+                null
+
         };
+
+
+        /*---------------------------------------------
+          10. Open canonical cascade
+        ---------------------------------------------*/
+
+        const result =
+
+            CascadeController
+                .openHotspot(
+
+                    hotspotId,
+
+                    entryType,
+
+                    options
+
+                );
+
+
+        /*---------------------------------------------
+          11. Debug
+        ---------------------------------------------*/
+
+        if (
+            Constants.DEBUG
+                ?.ENABLED
+        ) {
+
+            console.log(
+
+                "🔥 Offence Hotspot Event Received",
+
+                {
+
+                    hotspotId:
+                        hotspotId,
+
+                    type:
+                        entryType,
+
+                    hasHotspot:
+                        !!hotspot,
+
+                    hasPolygon:
+                        !!polygon,
+
+                    spatialType:
+                        spatialType,
+
+                    spatialName:
+                        spatialName,
+
+                    porCount:
+
+                        Array.isArray(
+                            options.porKeys
+                        )
+
+                            ? options
+                                .porKeys
+                                .length
+
+                            : 0,
+
+                    latlng:
+                        latlng,
+
+                    success:
+                        result?.success ===
+                        true,
+
+                    reason:
+
+                        result?.reason ||
+
+                        null
+
+                }
+
+            );
+
+        }
+
+
+        /*---------------------------------------------
+          12. Return result
+
+          Useful for direct/manual testing even though
+          browser event dispatch does not consume the
+          return value.
+        ---------------------------------------------*/
+
+        return result;
+
+    };
 
 
     /* =====================================================
