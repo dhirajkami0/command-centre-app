@@ -6,22 +6,55 @@
    js/offence/offenceMapRenderer.js
 
    Version:
-   2.2.0
+   3.0.0
 
    Purpose:
-   - Render SOURCE offence heatmap
-   - Render TARGET offence heatmap
+   - Render SOURCE offence point heatmap
+   - Render TARGET offence point heatmap
+   - Render SOURCE compartment/range polygons
+   - Render TARGET compartment/range polygons
+   - Support POINT → COMPARTMENT → RANGE spatial hierarchy
    - Render SOURCE + TARGET simultaneously
-   - Create clickable hotspot interaction markers
+   - Create clickable point hotspot interaction markers
+   - Create clickable GIS polygon interaction layers
    - Support SOURCE / TARGET / BOTH modes
    - Handle heatmap refresh
    - Emit POR-authoritative hotspot click events
    - Keep Leaflet rendering separate from data engines
 
    AUTHORITATIVE RELATIONSHIP CONNECTOR:
+
    POR / Ref POR No
+
    normalized internally as:
+
    porKey
+
+
+   SPATIAL RESOLUTION MODEL:
+
+   1. POINT
+      Exact latitude / longitude available.
+
+   2. COMPARTMENT
+      No valid point available but offence location
+      resolves to a known compartment GeoJSON feature.
+
+   3. RANGE
+      No valid point or compartment available but
+      offence record resolves to a known range GeoJSON
+      feature.
+
+   4. UNMAPPED
+      No point, compartment, or range can be resolved.
+
+
+   GIS SOURCE:
+
+   GreenGuardAI.GISEntities
+   window.allGISFeatures
+   window.allCompartmentFeatures
+
 
    ARCHITECTURE:
 
@@ -30,7 +63,21 @@
    OffenceSourceEngine
    OffenceTargetEngine
         ↓
-   OffenceHeatmapEngine
+   OffenceHeatmapEngine v3
+        ↓
+   Spatial Resolution
+        │
+        ├── POINT
+        │      ↓
+        │   Leaflet.heat
+        │
+        ├── COMPARTMENT
+        │      ↓
+        │   GeoJSON Polygon
+        │
+        └── RANGE
+               ↓
+            GeoJSON Polygon
         ↓
    OffenceMapRenderer
         ↓
@@ -42,15 +89,26 @@
         ↓
    OffenceCascadeRenderer
 
+
    IMPORTANT:
 
-   - CaseID is NOT the authoritative cross-collection connector.
-   - SeizureID is NOT the authoritative cross-collection connector.
    - POR / porKey is authoritative.
+   - CaseID is NOT the authoritative
+     cross-collection connector.
+   - SeizureID is NOT the authoritative
+     cross-collection connector.
    - CaseID and SeizureID remain record identifiers.
+   - GIS names are NOT relationship connectors.
+   - Compartments and ranges are spatial render targets.
    - This renderer DOES NOT resolve offence relationships.
    - This renderer DOES NOT build cascade HTML.
+   - This renderer DOES NOT decide POINT vs COMPARTMENT
+     vs RANGE.
+   - Spatial resolution belongs to OffenceHeatmapEngine.
+   - This renderer consumes canonical HeatmapEngine output.
+
    ========================================================= */
+
 
 (function () {
 
@@ -83,11 +141,14 @@
         GG.Offence.HeatmapEngine;
 
 
-    if (!Constants) {
+    if (
+        !Constants
+    ) {
 
         console.error(
 
-            "[OffenceMapRenderer] OffenceConstants unavailable."
+            "[OffenceMapRenderer] " +
+            "OffenceConstants unavailable."
 
         );
 
@@ -96,11 +157,14 @@
     }
 
 
-    if (!HeatmapEngine) {
+    if (
+        !HeatmapEngine
+    ) {
 
         console.error(
 
-            "[OffenceMapRenderer] OffenceHeatmapEngine unavailable."
+            "[OffenceMapRenderer] " +
+            "OffenceHeatmapEngine unavailable."
 
         );
 
@@ -122,7 +186,7 @@
        ===================================================== */
 
     MapRenderer.VERSION =
-        "2.2.0";
+        "3.0.0";
 
 
     MapRenderer.CONNECTOR =
@@ -131,6 +195,10 @@
 
     MapRenderer.AUTHORITATIVE_CONNECTOR =
         "porKey";
+
+
+    MapRenderer.SPATIAL_MODEL =
+        "POINT_COMPARTMENT_RANGE";
 
 
     MapRenderer.initialized =
@@ -145,8 +213,20 @@
         false;
 
 
+    MapRenderer.rendering =
+        false;
+
+
+    MapRenderer.lastRenderAt =
+        null;
+
+
     MapRenderer._eventsBound =
         false;
+
+
+    MapRenderer._eventHandlers =
+        {};
 
 
     /* =====================================================
@@ -176,7 +256,49 @@
 
 
     /* =====================================================
-       7. LAYERS
+       7. SPATIAL RESOLUTION TYPES
+       ===================================================== */
+
+    MapRenderer.RESOLUTION = {
+
+        POINT:
+            "POINT",
+
+        COMPARTMENT:
+            "COMPARTMENT",
+
+        RANGE:
+            "RANGE",
+
+        UNMAPPED:
+            "UNMAPPED"
+
+    };
+
+
+    /* =====================================================
+       8. LAYERS
+
+       IMPORTANT:
+
+       Point heat layers:
+       - sourceHeatLayer
+       - targetHeatLayer
+
+       Invisible point interaction markers:
+       - sourceMarkerLayer
+       - targetMarkerLayer
+
+       GIS polygon layers:
+       - sourcePolygonLayer
+       - targetPolygonLayer
+
+       Polygon layers contain both:
+       - COMPARTMENT polygons
+       - RANGE polygons
+
+       HeatmapEngine determines the spatial resolution.
+       Renderer only draws the supplied data.
        ===================================================== */
 
     MapRenderer.layers = {
@@ -191,16 +313,26 @@
             null,
 
         targetMarkerLayer:
+            null,
+
+        sourcePolygonLayer:
+            null,
+
+        targetPolygonLayer:
             null
 
     };
 
 
     /* =====================================================
-       8. CONFIGURATION
+       9. CONFIGURATION
        ===================================================== */
 
     MapRenderer.config = {
+
+        /* -------------------------------------------------
+           SOURCE POINT HEATMAP
+           ------------------------------------------------- */
 
         source: {
 
@@ -238,6 +370,10 @@
         },
 
 
+        /* -------------------------------------------------
+           TARGET POINT HEATMAP
+           ------------------------------------------------- */
+
         target: {
 
             radius:
@@ -274,6 +410,12 @@
         },
 
 
+        /* -------------------------------------------------
+           INVISIBLE INTERACTION MARKERS
+
+           Used only for point-based hotspot clicks.
+           ------------------------------------------------- */
+
         marker: {
 
             radius:
@@ -285,13 +427,89 @@
             fillOpacity:
                 0.01
 
+        },
+
+
+        /* -------------------------------------------------
+           SOURCE GIS POLYGONS
+
+           Used for compartment/range fallback rendering.
+           ------------------------------------------------- */
+
+        sourcePolygon: {
+
+            weight:
+                2,
+
+            opacity:
+                0.85,
+
+            fillOpacity:
+                0.35,
+
+            color:
+                "#2b83ba",
+
+            fillColor:
+                "#00ccbc"
+
+        },
+
+
+        /* -------------------------------------------------
+           TARGET GIS POLYGONS
+           ------------------------------------------------- */
+
+        targetPolygon: {
+
+            weight:
+                2,
+
+            opacity:
+                0.90,
+
+            fillOpacity:
+                0.40,
+
+            color:
+                "#bd0026",
+
+            fillColor:
+                "#fd8d3c"
+
+        },
+
+
+        /* -------------------------------------------------
+           POLYGON HEAT INTENSITY
+
+           Polygon fill opacity is dynamically scaled
+           using aggregated heatWeight/offenceCount.
+
+           These are safety bounds.
+           ------------------------------------------------- */
+
+        polygonHeat: {
+
+            minFillOpacity:
+                0.20,
+
+            maxFillOpacity:
+                0.75,
+
+            minWeight:
+                1,
+
+            maxWeight:
+                4
+
         }
 
     };
 
 
     /* =====================================================
-       9. DEBUG
+       10. DEBUG
        ===================================================== */
 
     MapRenderer.debug =
@@ -322,7 +540,7 @@
 
 
     /* =====================================================
-       10. INITIALIZE
+       11. INITIALIZE
        ===================================================== */
 
     MapRenderer.init =
@@ -332,9 +550,14 @@
 
         ) {
 
+            /*
+             * Already initialized with a valid map.
+             */
+
             if (
 
                 MapRenderer.initialized &&
+
                 MapRenderer.map
 
             ) {
@@ -344,9 +567,9 @@
             }
 
 
-            /* -------------------------
+            /* -------------------------------------------------
                Validate Leaflet
-               ------------------------- */
+               ------------------------------------------------- */
 
             if (
 
@@ -357,7 +580,8 @@
 
                 console.error(
 
-                    "[OffenceMapRenderer] Leaflet unavailable."
+                    "[OffenceMapRenderer] " +
+                    "Leaflet unavailable."
 
                 );
 
@@ -366,9 +590,9 @@
             }
 
 
-            /* -------------------------
-               Resolve map
-               ------------------------- */
+            /* -------------------------------------------------
+               Resolve Leaflet map
+               ------------------------------------------------- */
 
             MapRenderer.map =
 
@@ -387,7 +611,8 @@
 
                 console.error(
 
-                    "[OffenceMapRenderer] Leaflet map unavailable."
+                    "[OffenceMapRenderer] " +
+                    "Leaflet map unavailable."
 
                 );
 
@@ -396,9 +621,20 @@
             }
 
 
-            /* -------------------------
-               Validate Leaflet.heat
-               ------------------------- */
+            /* -------------------------------------------------
+               Leaflet.heat
+
+               Point heatmap rendering requires
+               L.heatLayer.
+
+               IMPORTANT:
+
+               Polygon rendering does NOT require
+               Leaflet.heat.
+
+               Therefore failure of Leaflet.heat should
+               not completely disable the renderer.
+               ------------------------------------------------- */
 
             if (
 
@@ -407,20 +643,21 @@
 
             ) {
 
-                console.error(
+                console.warn(
 
-                    "[OffenceMapRenderer] Leaflet.heat plugin unavailable."
+                    "[OffenceMapRenderer] " +
+                    "Leaflet.heat unavailable. " +
+                    "Point heat layers will be skipped. " +
+                    "GIS polygon layers remain available."
 
                 );
-
-                return null;
 
             }
 
 
-            /* -------------------------
-               Marker groups
-               ------------------------- */
+            /* -------------------------------------------------
+               Create canonical layer groups
+               ------------------------------------------------- */
 
             MapRenderer.layers
                 .sourceMarkerLayer =
@@ -430,6 +667,18 @@
 
             MapRenderer.layers
                 .targetMarkerLayer =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers
+                .sourcePolygonLayer =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers
+                .targetPolygonLayer =
 
                 L.layerGroup();
 
@@ -449,13 +698,27 @@
                 {
 
                     version:
+
                         MapRenderer.VERSION,
 
                     connector:
+
                         MapRenderer.CONNECTOR,
 
                     authoritativeConnector:
-                        MapRenderer.AUTHORITATIVE_CONNECTOR
+
+                        MapRenderer
+                            .AUTHORITATIVE_CONNECTOR,
+
+                    spatialModel:
+
+                        MapRenderer
+                            .SPATIAL_MODEL,
+
+                    leafletHeat:
+
+                        typeof L.heatLayer ===
+                        "function"
 
                 }
 
@@ -468,7 +731,7 @@
 
 
     /* =====================================================
-       11. BIND EVENTS
+       12. BIND EVENTS
        ===================================================== */
 
     MapRenderer.bindEvents =
@@ -489,16 +752,12 @@
                 true;
 
 
-            /* -------------------------
-               Heatmap rebuilt
-               ------------------------- */
+            /* -------------------------------------------------
+               HEATMAP UPDATED
+               ------------------------------------------------- */
 
-            window.addEventListener(
-
-                Constants.EVENTS
-                    ?.HEATMAP_UPDATED ||
-
-                "offence:heatmap-updated",
+            MapRenderer._eventHandlers
+                .heatmapUpdated =
 
                 function () {
 
@@ -513,18 +772,29 @@
 
                     }
 
-                }
+                };
+
+
+            window.addEventListener(
+
+                Constants.EVENTS
+                    ?.HEATMAP_UPDATED ||
+
+                "offence:heatmap-updated",
+
+                MapRenderer
+                    ._eventHandlers
+                    .heatmapUpdated
 
             );
 
 
-            /* -------------------------
-               Mode changed
-               ------------------------- */
+            /* -------------------------------------------------
+               MODE CHANGED
+               ------------------------------------------------- */
 
-            window.addEventListener(
-
-                "offence:heatmap-mode-changed",
+            MapRenderer._eventHandlers
+                .modeChanged =
 
                 function () {
 
@@ -539,7 +809,16 @@
 
                     }
 
-                }
+                };
+
+
+            window.addEventListener(
+
+                "offence:heatmap-mode-changed",
+
+                MapRenderer
+                    ._eventHandlers
+                    .modeChanged
 
             );
 
@@ -547,455 +826,74 @@
 
 
     /* =====================================================
-       12. CREATE SOURCE HEAT LAYER
+       13. UNBIND EVENTS
        ===================================================== */
 
-    MapRenderer.createSourceHeatLayer =
-        function (
-
-            heatData = []
-
-        ) {
-
-            return L.heatLayer(
-
-                heatData,
-
-                {
-
-                    radius:
-
-                        MapRenderer.config
-                            .source
-                            .radius,
-
-                    blur:
-
-                        MapRenderer.config
-                            .source
-                            .blur,
-
-                    maxZoom:
-
-                        MapRenderer.config
-                            .source
-                            .maxZoom,
-
-                    minOpacity:
-
-                        MapRenderer.config
-                            .source
-                            .minOpacity,
-
-                    gradient:
-
-                        MapRenderer.config
-                            .source
-                            .gradient
-
-                }
-
-            );
-
-        };
-
-
-    /* =====================================================
-       13. CREATE TARGET HEAT LAYER
-       ===================================================== */
-
-    MapRenderer.createTargetHeatLayer =
-        function (
-
-            heatData = []
-
-        ) {
-
-            return L.heatLayer(
-
-                heatData,
-
-                {
-
-                    radius:
-
-                        MapRenderer.config
-                            .target
-                            .radius,
-
-                    blur:
-
-                        MapRenderer.config
-                            .target
-                            .blur,
-
-                    maxZoom:
-
-                        MapRenderer.config
-                            .target
-                            .maxZoom,
-
-                    minOpacity:
-
-                        MapRenderer.config
-                            .target
-                            .minOpacity,
-
-                    gradient:
-
-                        MapRenderer.config
-                            .target
-                            .gradient
-
-                }
-
-            );
-
-        };
-
-
-    /* =====================================================
-       14. GET MODE
-       ===================================================== */
-
-    MapRenderer.getMode =
+    MapRenderer.unbindEvents =
         function () {
 
             if (
 
-                typeof HeatmapEngine
-                    .getMode ===
-                "function"
+                !MapRenderer._eventsBound
 
             ) {
 
-                return HeatmapEngine
-                    .getMode();
+                return true;
 
             }
 
 
-            return (
-
-                HeatmapEngine
-                    .MODE
-                    ?.BOTH ||
-
-                MapRenderer.MODE.BOTH
-
-            );
-
-        };
-
-
-    /* =====================================================
-       15. GET BOTH MODE
-       ===================================================== */
-
-    MapRenderer.getBothMode =
-        function () {
-
-            return (
-
-                HeatmapEngine
-                    .MODE
-                    ?.BOTH ||
-
-                MapRenderer.MODE.BOTH
-
-            );
-
-        };
-
-
-    /* =====================================================
-       16. RENDER
-       ===================================================== */
-
-    MapRenderer.render =
-        function () {
-
             if (
 
-                !MapRenderer.initialized
+                MapRenderer
+                    ._eventHandlers
+                    .heatmapUpdated
 
             ) {
 
-                const initialized =
+                window.removeEventListener(
+
+                    Constants.EVENTS
+                        ?.HEATMAP_UPDATED ||
+
+                    "offence:heatmap-updated",
 
                     MapRenderer
-                        .init();
+                        ._eventHandlers
+                        .heatmapUpdated
 
-
-                if (
-
-                    !initialized
-
-                ) {
-
-                    return false;
-
-                }
+                );
 
             }
-
-
-            MapRenderer
-                .clearLayers();
-
-
-            /* -------------------------
-               Get heat data
-               ------------------------- */
-
-            let heatData = {
-
-                sources:
-                    [],
-
-                targets:
-                    []
-
-            };
 
 
             if (
 
-                typeof HeatmapEngine
-                    .getHeatData ===
-                "function"
+                MapRenderer
+                    ._eventHandlers
+                    .modeChanged
 
             ) {
 
-                heatData =
+                window.removeEventListener(
 
-                    HeatmapEngine
-                        .getHeatData(
+                    "offence:heatmap-mode-changed",
 
-                            MapRenderer
-                                .getBothMode()
+                    MapRenderer
+                        ._eventHandlers
+                        .modeChanged
 
-                        ) ||
-
-                    heatData;
+                );
 
             }
 
 
-            /* -------------------------
-               Get marker data
-               ------------------------- */
+            MapRenderer._eventHandlers =
+                {};
 
-            let markerData = {
 
-                sources:
-                    [],
-
-                targets:
-                    []
-
-            };
-
-
-            if (
-
-                typeof HeatmapEngine
-                    .getMarkerData ===
-                "function"
-
-            ) {
-
-                markerData =
-
-                    HeatmapEngine
-                        .getMarkerData(
-
-                            MapRenderer
-                                .getBothMode()
-
-                        ) ||
-
-                    markerData;
-
-            }
-
-
-            /* -------------------------
-               SOURCE heat
-               ------------------------- */
-
-            MapRenderer.layers
-                .sourceHeatLayer =
-
-                MapRenderer
-                    .createSourceHeatLayer(
-
-                        heatData.sources ||
-
-                        []
-
-                    );
-
-
-            /* -------------------------
-               TARGET heat
-               ------------------------- */
-
-            MapRenderer.layers
-                .targetHeatLayer =
-
-                MapRenderer
-                    .createTargetHeatLayer(
-
-                        heatData.targets ||
-
-                        []
-
-                    );
-
-
-            /* -------------------------
-               Marker groups
-               ------------------------- */
-
-            MapRenderer.layers
-                .sourceMarkerLayer =
-
-                L.layerGroup();
-
-
-            MapRenderer.layers
-                .targetMarkerLayer =
-
-                L.layerGroup();
-
-
-            /* -------------------------
-               SOURCE markers
-               ------------------------- */
-
-            MapRenderer
-                .buildSourceMarkers(
-
-                    markerData.sources ||
-
-                    []
-
-                );
-
-
-            /* -------------------------
-               TARGET markers
-               ------------------------- */
-
-            MapRenderer
-                .buildTargetMarkers(
-
-                    markerData.targets ||
-
-                    []
-
-                );
-
-
-            /* -------------------------
-               Apply current mode
-               ------------------------- */
-
-            MapRenderer
-                .applyMode();
-
-
-            MapRenderer.rendered =
-                true;
-
-
-            MapRenderer.visible =
-                true;
-
-
-            MapRenderer.debug(
-
-                "Rendered",
-
-                {
-
-                    sourceHeatPoints:
-
-                        heatData.sources
-                            ?.length ||
-
-                        0,
-
-                    targetHeatPoints:
-
-                        heatData.targets
-                            ?.length ||
-
-                        0,
-
-                    sourceMarkers:
-
-                        markerData.sources
-                            ?.length ||
-
-                        0,
-
-                    targetMarkers:
-
-                        markerData.targets
-                            ?.length ||
-
-                        0,
-
-                    mode:
-
-                        MapRenderer
-                            .getMode()
-
-                }
-
-            );
-
-
-            MapRenderer
-                .dispatchEvent(
-
-                    "offence:map-rendered",
-
-                    {
-
-                        sourceHeatPoints:
-
-                            heatData.sources
-                                ?.length ||
-
-                            0,
-
-                        targetHeatPoints:
-
-                            heatData.targets
-                                ?.length ||
-
-                            0,
-
-                        sourceMarkers:
-
-                            markerData.sources
-                                ?.length ||
-
-                            0,
-
-                        targetMarkers:
-
-                            markerData.targets
-                                ?.length ||
-
-                            0
-
-                    }
-
-                );
+            MapRenderer._eventsBound =
+                false;
 
 
             return true;
@@ -1004,143 +902,190 @@
 
 
     /* =====================================================
-       17. BUILD SOURCE MARKERS
+       14. NORMALIZE ARRAY
+
+       HeatmapEngine v3 methods should return arrays.
+
+       This helper protects the renderer from:
+       - null
+       - undefined
+       - Set
+       - Map
+       - iterable values
        ===================================================== */
 
-    MapRenderer.buildSourceMarkers =
+    MapRenderer.toArray =
         function (
 
-            hotspots = []
+            value
 
         ) {
 
             if (
 
-                !Array.isArray(
-                    hotspots
+                Array.isArray(
+                    value
                 )
 
             ) {
 
-                return;
+                return value;
 
             }
 
 
-            for (
+            if (
 
-                const hotspot
-
-                of hotspots
+                value instanceof Set
 
             ) {
 
-                const marker =
+                return Array.from(
+                    value
+                );
 
-                    MapRenderer
-                        .createInteractionMarker(
-
-                            hotspot,
-
-                            HeatmapEngine
-                                .MODE
-                                ?.SOURCE ||
-
-                            MapRenderer.MODE.SOURCE
-
-                        );
+            }
 
 
-                if (
+            if (
 
-                    marker
+                value instanceof Map
 
+            ) {
+
+                return Array.from(
+
+                    value.values()
+
+                );
+
+            }
+
+
+            if (
+
+                value &&
+
+                typeof value[
+                    Symbol.iterator
+                ] ===
+                "function" &&
+
+                typeof value !==
+                "string"
+
+            ) {
+
+                try {
+
+                    return Array.from(
+                        value
+                    );
+
+                }
+
+                catch (
+                    error
                 ) {
 
-                    marker.addTo(
-
-                        MapRenderer.layers
-                            .sourceMarkerLayer
-
-                    );
+                    return [];
 
                 }
 
             }
 
+
+            return [];
+
         };
 
 
     /* =====================================================
-       18. BUILD TARGET MARKERS
+       15. VALID NUMBER
        ===================================================== */
 
-    MapRenderer.buildTargetMarkers =
+    MapRenderer.toFiniteNumber =
         function (
 
-            hotspots = []
+            value,
+
+            fallback = null
 
         ) {
 
             if (
 
-                !Array.isArray(
-                    hotspots
-                )
+                value ===
+                null ||
+
+                value ===
+                undefined ||
+
+                value ===
+                ""
 
             ) {
 
-                return;
+                return fallback;
 
             }
 
 
-            for (
+            const number =
 
-                const hotspot
-
-                of hotspots
-
-            ) {
-
-                const marker =
-
-                    MapRenderer
-                        .createInteractionMarker(
-
-                            hotspot,
-
-                            HeatmapEngine
-                                .MODE
-                                ?.TARGET ||
-
-                            MapRenderer.MODE.TARGET
-
-                        );
+                Number(
+                    value
+                );
 
 
-                if (
+            return Number.isFinite(
+                number
+            )
 
-                    marker
+                ? number
 
-                ) {
-
-                    marker.addTo(
-
-                        MapRenderer.layers
-                            .targetMarkerLayer
-
-                    );
-
-                }
-
-            }
+                : fallback;
 
         };
 
 
     /* =====================================================
-       19. GET HOTSPOT COORDINATES
+       16. GET HOTSPOT COORDINATES
+
+       IMPORTANT FIX:
+
+       The previous implementation returned:
+
+       {
+           latitude,
+           longitude
+       }
+
+       while some test code expected:
+
+       {
+           lat,
+           lng
+       }
+
+       v3 returns BOTH aliases:
+
+       {
+           latitude,
+           longitude,
+           lat,
+           lng
+       }
+
+       Also:
+
+       latitude = 0
+       longitude = 0
+
+       is treated as unresolved for offence mapping.
+
+       This prevents unresolved geocoder placeholders
+       from being rendered at 0,0.
        ===================================================== */
 
     MapRenderer.getCoordinates =
@@ -1163,52 +1108,117 @@
 
             const latitude =
 
-                Number(
+                MapRenderer
+                    .toFiniteNumber(
 
-                    hotspot.latitude ??
+                        hotspot.latitude ??
 
-                    hotspot.lat ??
+                        hotspot.lat ??
 
-                    hotspot.location
-                        ?.latitude ??
+                        hotspot.coordinates
+                            ?.latitude ??
 
-                    hotspot.location
-                        ?.lat
+                        hotspot.coordinates
+                            ?.lat ??
 
-                );
+                        hotspot.location
+                            ?.latitude ??
+
+                        hotspot.location
+                            ?.lat,
+
+                        null
+
+                    );
 
 
             const longitude =
 
-                Number(
+                MapRenderer
+                    .toFiniteNumber(
 
-                    hotspot.longitude ??
+                        hotspot.longitude ??
 
-                    hotspot.lng ??
+                        hotspot.lng ??
 
-                    hotspot.lon ??
+                        hotspot.lon ??
 
-                    hotspot.location
-                        ?.longitude ??
+                        hotspot.coordinates
+                            ?.longitude ??
 
-                    hotspot.location
-                        ?.lng ??
+                        hotspot.coordinates
+                            ?.lng ??
 
-                    hotspot.location
-                        ?.lon
+                        hotspot.coordinates
+                            ?.lon ??
 
-                );
+                        hotspot.location
+                            ?.longitude ??
+
+                        hotspot.location
+                            ?.lng ??
+
+                        hotspot.location
+                            ?.lon,
+
+                        null
+
+                    );
 
 
             if (
 
-                !Number.isFinite(
-                    latitude
-                ) ||
+                latitude ===
+                null ||
 
-                !Number.isFinite(
-                    longitude
-                )
+                longitude ===
+                null
+
+            ) {
+
+                return null;
+
+            }
+
+
+            /*
+             * Reject geocoder placeholder:
+             *
+             * 0,0
+             */
+
+            if (
+
+                latitude ===
+                0 &&
+
+                longitude ===
+                0
+
+            ) {
+
+                return null;
+
+            }
+
+
+            /*
+             * Geographic coordinate validation.
+             */
+
+            if (
+
+                latitude <
+                -90 ||
+
+                latitude >
+                90 ||
+
+                longitude <
+                -180 ||
+
+                longitude >
+                180
 
             ) {
 
@@ -1223,6 +1233,12 @@
                     latitude,
 
                 longitude:
+                    longitude,
+
+                lat:
+                    latitude,
+
+                lng:
                     longitude
 
             };
@@ -1231,12 +1247,2562 @@
 
 
     /* =====================================================
-       20. NORMALIZE POR KEY
+       17. NORMALIZE SPATIAL RESOLUTION
+       ===================================================== */
 
-       Fallback normalization only.
+    MapRenderer.normalizeResolution =
+        function (
 
-       The authoritative porKey should normally already
-       come from OffenceNormalizer / Store / Engines.
+            value
+
+        ) {
+
+            const normalized =
+
+                String(
+
+                    value ||
+
+                    ""
+
+                )
+
+                    .trim()
+
+                    .toUpperCase();
+
+
+            if (
+
+                normalized ===
+                MapRenderer.RESOLUTION.POINT
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .POINT;
+
+            }
+
+
+            if (
+
+                normalized ===
+                MapRenderer.RESOLUTION.COMPARTMENT
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .COMPARTMENT;
+
+            }
+
+
+            if (
+
+                normalized ===
+                MapRenderer.RESOLUTION.RANGE
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .RANGE;
+
+            }
+
+
+            return MapRenderer
+                .RESOLUTION
+                .UNMAPPED;
+
+        };
+
+
+    /* =====================================================
+       18. GET MODE
+       ===================================================== */
+
+    MapRenderer.getMode =
+        function () {
+
+            if (
+
+                typeof HeatmapEngine
+                    .getMode ===
+                "function"
+
+            ) {
+
+                return HeatmapEngine
+                    .getMode();
+
+            }
+
+
+            return (
+
+                HeatmapEngine
+                    .mode ||
+
+                HeatmapEngine
+                    .MODE
+                    ?.BOTH ||
+
+                MapRenderer
+                    .MODE
+                    .BOTH
+
+            );
+
+        };
+
+
+    /* =====================================================
+       19. GET BOTH MODE
+       ===================================================== */
+
+    MapRenderer.getBothMode =
+        function () {
+
+            return (
+
+                HeatmapEngine
+                    .MODE
+                    ?.BOTH ||
+
+                MapRenderer
+                    .MODE
+                    .BOTH
+
+            );
+
+        };
+
+
+    /* =====================================================
+       20. GET CANONICAL HEATMAP DATA
+
+       OffenceHeatmapEngine v3 is authoritative.
+
+       Expected canonical output can contain:
+
+       {
+           mode,
+
+           sources,
+           targets,
+
+           sourceHeat,
+           targetHeat,
+
+           sourcePoints,
+           targetPoints,
+
+           sourcePolygons,
+           targetPolygons,
+
+           sourceCompartments,
+           targetCompartments,
+
+           sourceRanges,
+           targetRanges,
+
+           links
+       }
+
+       The renderer does NOT spatially resolve hotspots.
+       It only normalizes the returned contract.
+       ===================================================== */
+
+    MapRenderer.getCanonicalData =
+        function () {
+
+            let data =
+                null;
+
+
+            /*
+             * Primary v3 API.
+             */
+
+            if (
+
+                typeof HeatmapEngine
+                    .getHeatmapData ===
+                "function"
+
+            ) {
+
+                try {
+
+                    data =
+
+                        HeatmapEngine
+                            .getHeatmapData(
+
+                                MapRenderer
+                                    .getBothMode()
+
+                            );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.error(
+
+                        "[OffenceMapRenderer] " +
+                        "getHeatmapData() failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            /*
+             * Spatial API fallback.
+             */
+
+            if (
+
+                !data &&
+
+                typeof HeatmapEngine
+                    .getSpatialHeatmapData ===
+                "function"
+
+            ) {
+
+                try {
+
+                    data =
+
+                        HeatmapEngine
+                            .getSpatialHeatmapData(
+
+                                MapRenderer
+                                    .getBothMode()
+
+                            );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.error(
+
+                        "[OffenceMapRenderer] " +
+                        "getSpatialHeatmapData() failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            data =
+                data ||
+                {};
+
+
+            /*
+             * Canonical raw hotspots.
+             */
+
+            const sources =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sources ??
+
+                        (
+
+                            typeof HeatmapEngine
+                                .getSourceHotspots ===
+                            "function"
+
+                                ? HeatmapEngine
+                                    .getSourceHotspots()
+
+                                : []
+
+                        )
+
+                    );
+
+
+            const targets =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targets ??
+
+                        (
+
+                            typeof HeatmapEngine
+                                .getTargetHotspots ===
+                            "function"
+
+                                ? HeatmapEngine
+                                    .getTargetHotspots()
+
+                                : []
+
+                        )
+
+                    );
+
+
+            /*
+             * Canonical POINT-resolved records.
+             */
+
+            const sourcePoints =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sourcePoints ??
+
+                        data.points
+                            ?.sources ??
+
+                        data.spatial
+                            ?.sourcePoints ??
+
+                        []
+
+                    );
+
+
+            const targetPoints =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targetPoints ??
+
+                        data.points
+                            ?.targets ??
+
+                        data.spatial
+                            ?.targetPoints ??
+
+                        []
+
+                    );
+
+
+            /*
+             * Canonical COMPARTMENT records.
+             */
+
+            const sourceCompartments =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sourceCompartments ??
+
+                        data.compartments
+                            ?.sources ??
+
+                        data.spatial
+                            ?.sourceCompartments ??
+
+                        []
+
+                    );
+
+
+            const targetCompartments =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targetCompartments ??
+
+                        data.compartments
+                            ?.targets ??
+
+                        data.spatial
+                            ?.targetCompartments ??
+
+                        []
+
+                    );
+
+
+            /*
+             * Canonical RANGE fallback records.
+             */
+
+            const sourceRanges =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sourceRanges ??
+
+                        data.ranges
+                            ?.sources ??
+
+                        data.spatial
+                            ?.sourceRanges ??
+
+                        []
+
+                    );
+
+
+            const targetRanges =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targetRanges ??
+
+                        data.ranges
+                            ?.targets ??
+
+                        data.spatial
+                            ?.targetRanges ??
+
+                        []
+
+                    );
+
+
+            /*
+             * Canonical aggregated polygon records.
+             *
+             * Prefer aggregated polygons generated by
+             * HeatmapEngine because multiple offences may
+             * resolve to the same compartment/range.
+             */
+
+            const sourcePolygons =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sourcePolygons ??
+
+                        data.polygons
+                            ?.sources ??
+
+                        data.spatial
+                            ?.sourcePolygons ??
+
+                        []
+
+                    );
+
+
+            const targetPolygons =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targetPolygons ??
+
+                        data.polygons
+                            ?.targets ??
+
+                        data.spatial
+                            ?.targetPolygons ??
+
+                        []
+
+                    );
+
+
+            /*
+             * Point heat arrays.
+             *
+             * These may already be Leaflet.heat arrays:
+             *
+             * [lat, lng, intensity]
+             *
+             * or may contain point objects.
+             *
+             * Conversion is handled later.
+             */
+
+            const sourceHeat =
+
+                MapRenderer
+                    .toArray(
+
+                        data.sourceHeat ??
+
+                        data.heat
+                            ?.sources ??
+
+                        []
+
+                    );
+
+
+            const targetHeat =
+
+                MapRenderer
+                    .toArray(
+
+                        data.targetHeat ??
+
+                        data.heat
+                            ?.targets ??
+
+                        []
+
+                    );
+
+
+            return {
+
+                mode:
+
+                    data.mode ||
+
+                    MapRenderer
+                        .getMode(),
+
+                sources:
+                    sources,
+
+                targets:
+                    targets,
+
+                sourceHeat:
+                    sourceHeat,
+
+                targetHeat:
+                    targetHeat,
+
+                sourcePoints:
+                    sourcePoints,
+
+                targetPoints:
+                    targetPoints,
+
+                sourceCompartments:
+                    sourceCompartments,
+
+                targetCompartments:
+                    targetCompartments,
+
+                sourceRanges:
+                    sourceRanges,
+
+                targetRanges:
+                    targetRanges,
+
+                sourcePolygons:
+                    sourcePolygons,
+
+                targetPolygons:
+                    targetPolygons,
+
+                links:
+
+                    MapRenderer
+                        .toArray(
+
+                            data.links ??
+
+                            (
+
+                                typeof HeatmapEngine
+                                    .getLinks ===
+                                "function"
+
+                                    ? HeatmapEngine
+                                        .getLinks()
+
+                                    : []
+
+                            )
+
+                        ),
+
+                raw:
+                    data
+
+            };
+
+        };
+
+
+    /* =====================================================
+       END OF PART 1
+
+       NEXT PART:
+
+       21. Heat intensity normalization
+       22. Convert point → Leaflet.heat format
+       23. Build canonical source heat data
+       24. Build canonical target heat data
+       25. Create source heat layer
+       26. Create target heat layer
+       27. GeoJSON feature extraction
+       28. Polygon feature validation
+       29. Polygon heat styling
+       30. Source polygon styling
+       31. Target polygon styling
+
+       DO NOT close the IIFE here.
+       Part 2 continues directly below.
+       ===================================================== */
+
+     /* =====================================================
+       21. NORMALIZE HEAT INTENSITY
+       ===================================================== */
+
+    MapRenderer.normalizeHeatIntensity =
+        function (
+
+            value,
+
+            fallback = 1
+
+        ) {
+
+            const number =
+
+                MapRenderer
+                    .toFiniteNumber(
+
+                        value,
+
+                        fallback
+
+                    );
+
+
+            if (
+
+                number ===
+                null
+
+            ) {
+
+                return fallback;
+
+            }
+
+
+            /*
+             * Leaflet.heat accepts arbitrary positive
+             * intensity values.
+             *
+             * We only prevent negative / invalid values.
+             */
+
+            return Math.max(
+
+                0,
+
+                number
+
+            );
+
+        };
+
+
+    /* =====================================================
+       22. GET HOTSPOT HEAT WEIGHT
+       ===================================================== */
+
+    MapRenderer.getHeatWeight =
+        function (
+
+            item,
+
+            fallback = 1
+
+        ) {
+
+            if (
+
+                !item
+
+            ) {
+
+                return fallback;
+
+            }
+
+
+            return MapRenderer
+                .normalizeHeatIntensity(
+
+                    item.heatWeight ??
+
+                    item.weight ??
+
+                    item.intensity ??
+
+                    item.offenceCount ??
+
+                    item.count ??
+
+                    fallback,
+
+                    fallback
+
+                );
+
+        };
+
+
+    /* =====================================================
+       23. CONVERT POINT TO LEAFLET.HEAT FORMAT
+
+       Supported inputs:
+
+       [lat, lng]
+       [lat, lng, intensity]
+
+       or canonical hotspot / point object.
+
+       Output:
+
+       [lat, lng, intensity]
+
+       Invalid coordinates return null.
+       ===================================================== */
+
+    MapRenderer.toHeatPoint =
+        function (
+
+            item
+
+        ) {
+
+            if (
+
+                !item
+
+            ) {
+
+                return null;
+
+            }
+
+
+            /* -------------------------------------------------
+               Existing Leaflet.heat array
+               ------------------------------------------------- */
+
+            if (
+
+                Array.isArray(
+                    item
+                )
+
+            ) {
+
+                const latitude =
+
+                    MapRenderer
+                        .toFiniteNumber(
+
+                            item[0],
+
+                            null
+
+                        );
+
+
+                const longitude =
+
+                    MapRenderer
+                        .toFiniteNumber(
+
+                            item[1],
+
+                            null
+
+                        );
+
+
+                const intensity =
+
+                    MapRenderer
+                        .normalizeHeatIntensity(
+
+                            item[2] ??
+
+                            1,
+
+                            1
+
+                        );
+
+
+                if (
+
+                    latitude ===
+                    null ||
+
+                    longitude ===
+                    null
+
+                ) {
+
+                    return null;
+
+                }
+
+
+                if (
+
+                    latitude ===
+                    0 &&
+
+                    longitude ===
+                    0
+
+                ) {
+
+                    return null;
+
+                }
+
+
+                if (
+
+                    latitude <
+                    -90 ||
+
+                    latitude >
+                    90 ||
+
+                    longitude <
+                    -180 ||
+
+                    longitude >
+                    180
+
+                ) {
+
+                    return null;
+
+                }
+
+
+                return [
+
+                    latitude,
+
+                    longitude,
+
+                    intensity
+
+                ];
+
+            }
+
+
+            /* -------------------------------------------------
+               Canonical point / hotspot object
+               ------------------------------------------------- */
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        item
+                    );
+
+
+            if (
+
+                !coordinates
+
+            ) {
+
+                return null;
+
+            }
+
+
+            return [
+
+                coordinates.latitude,
+
+                coordinates.longitude,
+
+                MapRenderer
+                    .getHeatWeight(
+
+                        item,
+
+                        1
+
+                    )
+
+            ];
+
+        };
+
+
+    /* =====================================================
+       24. BUILD POINT HEAT DATA
+
+       Priority:
+
+       1. Explicit HeatmapEngine sourceHeat / targetHeat
+       2. Explicit spatial sourcePoints / targetPoints
+
+       IMPORTANT:
+
+       Raw source/target hotspots are NOT used as a
+       fallback here.
+
+       Why:
+
+       HeatmapEngine v3 already decided whether each
+       hotspot resolves as:
+
+       POINT
+       COMPARTMENT
+       RANGE
+       UNMAPPED
+
+       A RANGE-resolved hotspot may still contain
+       latitude: 0 / longitude: 0 placeholders.
+
+       Renderer must not override HeatmapEngine's
+       spatial resolution decision.
+       ===================================================== */
+
+    MapRenderer.buildPointHeatData =
+        function (
+
+            heatData,
+
+            pointData
+
+        ) {
+
+            const explicitHeat =
+
+                MapRenderer
+                    .toArray(
+                        heatData
+                    );
+
+
+            const explicitPoints =
+
+                MapRenderer
+                    .toArray(
+                        pointData
+                    );
+
+
+            const input =
+
+                explicitHeat.length
+
+                    ? explicitHeat
+
+                    : explicitPoints;
+
+
+            const output =
+                [];
+
+
+            for (
+
+                const item
+                of input
+
+            ) {
+
+                const point =
+
+                    MapRenderer
+                        .toHeatPoint(
+                            item
+                        );
+
+
+                if (
+
+                    point
+
+                ) {
+
+                    output.push(
+                        point
+                    );
+
+                }
+
+            }
+
+
+            return output;
+
+        };
+
+
+    /* =====================================================
+       25. GET SOURCE POINT HEAT DATA
+       ===================================================== */
+
+    MapRenderer.getSourceHeatData =
+        function (
+
+            canonicalData = null
+
+        ) {
+
+            const data =
+
+                canonicalData ||
+
+                MapRenderer
+                    .getCanonicalData();
+
+
+            return MapRenderer
+                .buildPointHeatData(
+
+                    data.sourceHeat,
+
+                    data.sourcePoints
+
+                );
+
+        };
+
+
+    /* =====================================================
+       26. GET TARGET POINT HEAT DATA
+       ===================================================== */
+
+    MapRenderer.getTargetHeatData =
+        function (
+
+            canonicalData = null
+
+        ) {
+
+            const data =
+
+                canonicalData ||
+
+                MapRenderer
+                    .getCanonicalData();
+
+
+            return MapRenderer
+                .buildPointHeatData(
+
+                    data.targetHeat,
+
+                    data.targetPoints
+
+                );
+
+        };
+
+
+    /* =====================================================
+       27. CREATE SOURCE HEAT LAYER
+       ===================================================== */
+
+    MapRenderer.createSourceHeatLayer =
+        function (
+
+            heatData = []
+
+        ) {
+
+            /*
+             * Remove old source heat layer first.
+             */
+
+            if (
+
+                MapRenderer.layers
+                    .sourceHeatLayer
+
+            ) {
+
+                MapRenderer
+                    .removeLayer(
+
+                        MapRenderer.layers
+                            .sourceHeatLayer
+
+                    );
+
+
+                MapRenderer.layers
+                    .sourceHeatLayer =
+                    null;
+
+            }
+
+
+            /*
+             * Leaflet.heat unavailable.
+             *
+             * Polygon rendering can still continue.
+             */
+
+            if (
+
+                typeof window.L ===
+                    "undefined" ||
+
+                typeof L.heatLayer !==
+                    "function"
+
+            ) {
+
+                return null;
+
+            }
+
+
+            const points =
+
+                MapRenderer
+                    .toArray(
+                        heatData
+                    )
+
+                    .map(
+
+                        item =>
+
+                            MapRenderer
+                                .toHeatPoint(
+                                    item
+                                )
+
+                    )
+
+                    .filter(
+                        Boolean
+                    );
+
+
+            if (
+
+                !points.length
+
+            ) {
+
+                return null;
+
+            }
+
+
+            MapRenderer.layers
+                .sourceHeatLayer =
+
+                L.heatLayer(
+
+                    points,
+
+                    {
+
+                        radius:
+
+                            MapRenderer
+                                .config
+                                .source
+                                .radius,
+
+                        blur:
+
+                            MapRenderer
+                                .config
+                                .source
+                                .blur,
+
+                        maxZoom:
+
+                            MapRenderer
+                                .config
+                                .source
+                                .maxZoom,
+
+                        minOpacity:
+
+                            MapRenderer
+                                .config
+                                .source
+                                .minOpacity,
+
+                        gradient:
+
+                            MapRenderer
+                                .config
+                                .source
+                                .gradient
+
+                    }
+
+                );
+
+
+            return MapRenderer.layers
+                .sourceHeatLayer;
+
+        };
+
+
+    /* =====================================================
+       28. CREATE TARGET HEAT LAYER
+       ===================================================== */
+
+    MapRenderer.createTargetHeatLayer =
+        function (
+
+            heatData = []
+
+        ) {
+
+            /*
+             * Remove old target heat layer first.
+             */
+
+            if (
+
+                MapRenderer.layers
+                    .targetHeatLayer
+
+            ) {
+
+                MapRenderer
+                    .removeLayer(
+
+                        MapRenderer.layers
+                            .targetHeatLayer
+
+                    );
+
+
+                MapRenderer.layers
+                    .targetHeatLayer =
+                    null;
+
+            }
+
+
+            if (
+
+                typeof window.L ===
+                    "undefined" ||
+
+                typeof L.heatLayer !==
+                    "function"
+
+            ) {
+
+                return null;
+
+            }
+
+
+            const points =
+
+                MapRenderer
+                    .toArray(
+                        heatData
+                    )
+
+                    .map(
+
+                        item =>
+
+                            MapRenderer
+                                .toHeatPoint(
+                                    item
+                                )
+
+                    )
+
+                    .filter(
+                        Boolean
+                    );
+
+
+            if (
+
+                !points.length
+
+            ) {
+
+                return null;
+
+            }
+
+
+            MapRenderer.layers
+                .targetHeatLayer =
+
+                L.heatLayer(
+
+                    points,
+
+                    {
+
+                        radius:
+
+                            MapRenderer
+                                .config
+                                .target
+                                .radius,
+
+                        blur:
+
+                            MapRenderer
+                                .config
+                                .target
+                                .blur,
+
+                        maxZoom:
+
+                            MapRenderer
+                                .config
+                                .target
+                                .maxZoom,
+
+                        minOpacity:
+
+                            MapRenderer
+                                .config
+                                .target
+                                .minOpacity,
+
+                        gradient:
+
+                            MapRenderer
+                                .config
+                                .target
+                                .gradient
+
+                    }
+
+                );
+
+
+            return MapRenderer.layers
+                .targetHeatLayer;
+
+        };
+
+
+    /* =====================================================
+       29. GET GEOJSON FEATURE FROM POLYGON ENTRY
+
+       HeatmapEngine v3 aggregated polygon entries may
+       expose their GeoJSON through different canonical
+       wrappers depending on resolution stage.
+
+       Supported:
+
+       entry.feature
+       entry.geoJSON
+       entry.geojson
+       entry.geometryFeature
+       entry.gisFeature
+       entry.spatialFeature
+
+       or the entry itself may already be:
+
+       {
+           type: "Feature",
+           geometry: ...
+       }
+       ===================================================== */
+
+    MapRenderer.getPolygonFeature =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return null;
+
+            }
+
+
+            /*
+             * Entry itself is a GeoJSON Feature.
+             */
+
+            if (
+
+                entry.type ===
+                    "Feature" &&
+
+                entry.geometry
+
+            ) {
+
+                return entry;
+
+            }
+
+
+            const candidates = [
+
+                entry.feature,
+
+                entry.geoJSON,
+
+                entry.geojson,
+
+                entry.geometryFeature,
+
+                entry.gisFeature,
+
+                entry.spatialFeature,
+
+                entry.polygon,
+
+                entry.resolvedFeature,
+
+                entry.locationFeature
+
+            ];
+
+
+            for (
+
+                const candidate
+                of candidates
+
+            ) {
+
+                if (
+
+                    candidate &&
+
+                    candidate.type ===
+                        "Feature" &&
+
+                    candidate.geometry
+
+                ) {
+
+                    return candidate;
+
+                }
+
+            }
+
+
+            /*
+             * Raw GeoJSON geometry.
+             */
+
+            if (
+
+                entry.geometry &&
+
+                (
+
+                    entry.geometry.type ===
+                        "Polygon" ||
+
+                    entry.geometry.type ===
+                        "MultiPolygon"
+
+                )
+
+            ) {
+
+                return {
+
+                    type:
+                        "Feature",
+
+                    properties:
+
+                        entry.properties ||
+
+                        {},
+
+                    geometry:
+                        entry.geometry
+
+                };
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       30. VALIDATE POLYGON FEATURE
+       ===================================================== */
+
+    MapRenderer.isValidPolygonFeature =
+        function (
+
+            feature
+
+        ) {
+
+            if (
+
+                !feature ||
+
+                feature.type !==
+                    "Feature" ||
+
+                !feature.geometry
+
+            ) {
+
+                return false;
+
+            }
+
+
+            const geometryType =
+
+                feature.geometry
+                    .type;
+
+
+            if (
+
+                geometryType !==
+                    "Polygon" &&
+
+                geometryType !==
+                    "MultiPolygon"
+
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+
+                !Array.isArray(
+
+                    feature.geometry
+                        .coordinates
+
+                ) ||
+
+                !feature.geometry
+                    .coordinates
+                    .length
+
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       31. GET POLYGON RESOLUTION
+
+       Prefer explicit HeatmapEngine metadata.
+
+       Aggregated entries should normally expose either:
+
+       resolution
+       resolutionType
+       spatialResolution
+       level
+       gisLevel
+       type
+
+       IMPORTANT:
+
+       "SOURCE" / "TARGET" are not spatial resolutions.
+       ===================================================== */
+
+    MapRenderer.getPolygonResolution =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .UNMAPPED;
+
+            }
+
+
+            const candidates = [
+
+                entry.resolution,
+
+                entry.resolutionType,
+
+                entry.spatialResolution,
+
+                entry.spatialType,
+
+                entry.level,
+
+                entry.gisLevel,
+
+                entry.locationLevel
+
+            ];
+
+
+            for (
+
+                const candidate
+                of candidates
+
+            ) {
+
+                const resolution =
+
+                    MapRenderer
+                        .normalizeResolution(
+                            candidate
+                        );
+
+
+                if (
+
+                    resolution !==
+                    MapRenderer
+                        .RESOLUTION
+                        .UNMAPPED
+
+                ) {
+
+                    return resolution;
+
+                }
+
+            }
+
+
+            /*
+             * Infer from known compartment/range metadata.
+             */
+
+            if (
+
+                entry.compartment ||
+
+                entry.compartmentName ||
+
+                entry.compartmentKey
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .COMPARTMENT;
+
+            }
+
+
+            if (
+
+                entry.range ||
+
+                entry.rangeName ||
+
+                entry.rangeKey
+
+            ) {
+
+                return MapRenderer
+                    .RESOLUTION
+                    .RANGE;
+
+            }
+
+
+            return MapRenderer
+                .RESOLUTION
+                .UNMAPPED;
+
+        };
+
+
+    /* =====================================================
+       32. GET POLYGON COUNT
+
+       Used for polygon heat intensity.
+
+       Aggregated polygon entries may expose:
+
+       offenceCount
+       hotspotCount
+       count
+       total
+       sourceCount
+       targetCount
+
+       If unavailable, fallback to related hotspot arrays.
+       ===================================================== */
+
+    MapRenderer.getPolygonCount =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            const direct =
+
+                MapRenderer
+                    .toFiniteNumber(
+
+                        entry.offenceCount ??
+
+                        entry.hotspotCount ??
+
+                        entry.count ??
+
+                        entry.total ??
+
+                        entry.sourceCount ??
+
+                        entry.targetCount,
+
+                        null
+
+                    );
+
+
+            if (
+
+                direct !==
+                null
+
+            ) {
+
+                return Math.max(
+
+                    0,
+
+                    direct
+
+                );
+
+            }
+
+
+            const possibleArrays = [
+
+                entry.hotspots,
+
+                entry.sources,
+
+                entry.targets,
+
+                entry.entries,
+
+                entry.items,
+
+                entry.offences
+
+            ];
+
+
+            for (
+
+                const value
+                of possibleArrays
+
+            ) {
+
+                const array =
+
+                    MapRenderer
+                        .toArray(
+                            value
+                        );
+
+
+                if (
+
+                    array.length
+
+                ) {
+
+                    return array.length;
+
+                }
+
+            }
+
+
+            return 1;
+
+        };
+
+
+    /* =====================================================
+       33. GET POLYGON HEAT WEIGHT
+       ===================================================== */
+
+    MapRenderer.getPolygonHeatWeight =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            const explicit =
+
+                MapRenderer
+                    .toFiniteNumber(
+
+                        entry.heatWeight ??
+
+                        entry.weight ??
+
+                        entry.intensity,
+
+                        null
+
+                    );
+
+
+            if (
+
+                explicit !==
+                null
+
+            ) {
+
+                return Math.max(
+
+                    0,
+
+                    explicit
+
+                );
+
+            }
+
+
+            return MapRenderer
+                .getPolygonCount(
+                    entry
+                );
+
+        };
+
+
+    /* =====================================================
+       34. GET MAX POLYGON HEAT WEIGHT
+
+       Used to normalize polygon intensity within the
+       current SOURCE or TARGET polygon collection.
+       ===================================================== */
+
+    MapRenderer.getMaxPolygonHeatWeight =
+        function (
+
+            entries
+
+        ) {
+
+            const polygons =
+
+                MapRenderer
+                    .toArray(
+                        entries
+                    );
+
+
+            let max =
+                0;
+
+
+            for (
+
+                const entry
+                of polygons
+
+            ) {
+
+                const weight =
+
+                    MapRenderer
+                        .getPolygonHeatWeight(
+                            entry
+                        );
+
+
+                if (
+
+                    weight >
+                    max
+
+                ) {
+
+                    max =
+                        weight;
+
+                }
+
+            }
+
+
+            return max > 0
+
+                ? max
+
+                : 1;
+
+        };
+
+
+    /* =====================================================
+       35. NORMALIZE POLYGON INTENSITY
+
+       Returns 0 → 1.
+       ===================================================== */
+
+    MapRenderer.normalizePolygonIntensity =
+        function (
+
+            entry,
+
+            maxWeight
+
+        ) {
+
+            const weight =
+
+                MapRenderer
+                    .getPolygonHeatWeight(
+                        entry
+                    );
+
+
+            const maximum =
+
+                Map.maxPolygonWeight =
+                    Math.max(
+
+                        1,
+
+                        MapRenderer
+                            .toFiniteNumber(
+
+                                maxWeight,
+
+                                1
+
+                            )
+
+                    );
+
+
+            if (
+
+                weight <=
+                0
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            return Math.min(
+
+                1,
+
+                weight /
+                maximum
+
+            );
+
+        };
+
+
+    /* =====================================================
+       36. INTERPOLATE NUMBER
+
+       Used for polygon opacity and border weight.
+       ===================================================== */
+
+    MapRenderer.interpolateNumber =
+        function (
+
+            minimum,
+
+            maximum,
+
+            intensity
+
+        ) {
+
+            const normalized =
+
+                Math.max(
+
+                    0,
+
+                    Math.min(
+
+                        1,
+
+                        MapRenderer
+                            .toFiniteNumber(
+
+                                intensity,
+
+                                0
+
+                            )
+
+                    )
+
+                );
+
+
+            return (
+
+                minimum +
+
+                (
+
+                    maximum -
+                    minimum
+
+                ) *
+
+                normalized
+
+            );
+
+        };
+
+
+    /* =====================================================
+       37. CREATE POLYGON STYLE
+
+       Polygon heat is represented by:
+
+       - fill opacity
+       - border weight
+
+       SOURCE and TARGET retain separate visual identity.
+       ===================================================== */
+
+    MapRenderer.createPolygonStyle =
+        function (
+
+            entry,
+
+            type,
+
+            maxWeight = 1
+
+        ) {
+
+            const isTarget =
+
+                String(
+                    type ||
+                    ""
+                )
+                    .toUpperCase() ===
+                "TARGET";
+
+
+            const baseConfig =
+
+                isTarget
+
+                    ? MapRenderer
+                        .config
+                        .targetPolygon
+
+                    : MapRenderer
+                        .config
+                        .sourcePolygon;
+
+
+            const heatConfig =
+
+                MapRenderer
+                    .config
+                    .polygonHeat;
+
+
+            const intensity =
+
+                MapRenderer
+                    .normalizePolygonIntensity(
+
+                        entry,
+
+                        maxWeight
+
+                    );
+
+
+            const fillOpacity =
+
+                MapRenderer
+                    .interpolateNumber(
+
+                        heatConfig
+                            .minFillOpacity,
+
+                        heatConfig
+                            .maxFillOpacity,
+
+                        intensity
+
+                    );
+
+
+            const weight =
+
+                MapRenderer
+                    .interpolateNumber(
+
+                        heatConfig
+                            .minWeight,
+
+                        heatConfig
+                            .maxWeight,
+
+                        intensity
+
+                    );
+
+
+            return {
+
+                color:
+
+                    baseConfig
+                        .color,
+
+                fillColor:
+
+                    baseConfig
+                        .fillColor,
+
+                opacity:
+
+                    baseConfig
+                        .opacity,
+
+                fillOpacity:
+
+                    fillOpacity,
+
+                weight:
+
+                    weight
+
+            };
+
+        };
+
+
+    /* =====================================================
+       38. CREATE SOURCE POLYGON STYLE
+       ===================================================== */
+
+    MapRenderer.createSourcePolygonStyle =
+        function (
+
+            entry,
+
+            maxWeight = 1
+
+        ) {
+
+            return MapRenderer
+                .createPolygonStyle(
+
+                    entry,
+
+                    "SOURCE",
+
+                    maxWeight
+
+                );
+
+        };
+
+
+    /* =====================================================
+       39. CREATE TARGET POLYGON STYLE
+       ===================================================== */
+
+    MapRenderer.createTargetPolygonStyle =
+        function (
+
+            entry,
+
+            maxWeight = 1
+
+        ) {
+
+            return MapRenderer
+                .createPolygonStyle(
+
+                    entry,
+
+                    "TARGET",
+
+                    maxWeight
+
+                );
+
+        };
+
+
+    /* =====================================================
+       40. GET POLYGON NAME
+       ===================================================== */
+
+    MapRenderer.getPolygonName =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return "";
+
+            }
+
+
+            const feature =
+
+                MapRenderer
+                    .getPolygonFeature(
+                        entry
+                    );
+
+
+            const properties =
+
+                feature
+                    ?.properties ||
+
+                {};
+
+
+            return String(
+
+                entry.name ??
+
+                entry.locationName ??
+
+                entry.compartmentName ??
+
+                entry.compartment ??
+
+                entry.rangeName ??
+
+                entry.range ??
+
+                properties.compartment ??
+
+                properties.range ??
+
+                properties.name ??
+
+                ""
+
+            )
+                .trim();
+
+        };
+
+
+    /* =====================================================
+       41. GET POLYGON POR KEYS
+
+       POR remains authoritative.
+
+       Aggregated polygon entries may represent multiple
+       offences and therefore multiple POR keys.
+       ===================================================== */
+
+    MapRenderer.getPolygonPorKeys =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return [];
+
+            }
+
+
+            const result =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            const add =
+
+                function (
+
+                    value
+
+                ) {
+
+                    const key =
+
+                        MapRenderer
+                            .normalizePorKey(
+                                value
+                            );
+
+
+                    if (
+
+                        !key ||
+
+                        seen.has(
+                            key
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    seen.add(
+                        key
+                    );
+
+
+                    result.push(
+                        key
+                    );
+
+                };
+
+
+            const directKeys =
+
+                MapRenderer
+                    .toArray(
+
+                        entry.porKeys
+
+                    );
+
+
+            for (
+
+                const value
+                of directKeys
+
+            ) {
+
+                add(
+                    value
+                );
+
+            }
+
+
+            add(
+
+                entry.porKey
+
+            );
+
+
+            const hotspots = [
+
+                ...MapRenderer
+                    .toArray(
+                        entry.hotspots
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.sources
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.targets
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.entries
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.items
+                    )
+
+            ];
+
+
+            for (
+
+                const hotspot
+                of hotspots
+
+            ) {
+
+                const keys =
+
+                    MapRenderer
+                        .extractPorKeys(
+                            hotspot
+                        );
+
+
+                for (
+
+                    const key
+                    of keys
+
+                ) {
+
+                    add(
+                        key
+                    );
+
+                }
+
+            }
+
+
+            return result;
+
+        };
+
+
+    /* =====================================================
+       END OF PART 2
+
+       NEXT PART:
+
+       42. normalizePorKey
+       43. getRefPorNo
+       44. extractPorKeys
+       45. getPrimaryPorKey
+       46. Build source point interaction markers
+       47. Build target point interaction markers
+       48. Create interaction marker
+       49. Build source polygon layers
+       50. Build target polygon layers
+       51. Create individual polygon layer
+       52. Polygon tooltip
+       53. Polygon click → POR cascade event
+
+       IMPORTANT:
+       Do NOT close the IIFE.
+       Part 3 continues directly below.
+       ===================================================== */
+
+     /* =====================================================
+       42. NORMALIZE POR KEY
        ===================================================== */
 
     MapRenderer.normalizePorKey =
@@ -1249,10 +3815,10 @@
             if (
 
                 value ===
-                undefined ||
+                    null ||
 
                 value ===
-                null
+                    undefined
 
             ) {
 
@@ -1264,30 +3830,41 @@
             return String(
                 value
             )
+
                 .trim()
+
                 .toUpperCase()
+
                 .replace(
                     /\s+/g,
-                    ""
+                    " "
                 );
 
         };
 
 
     /* =====================================================
-       21. GET REF POR NO
+       43. GET REF POR NUMBER
+
+       Extract the human-readable POR reference.
+
+       POR / Ref POR No remains the authoritative
+       relationship connector.
+
+       Supported canonical aliases are retained only for
+       compatibility with normalized offence records.
        ===================================================== */
 
     MapRenderer.getRefPorNo =
         function (
 
-            record
+            hotspot
 
         ) {
 
             if (
 
-                !record
+                !hotspot
 
             ) {
 
@@ -1296,34 +3873,48 @@
             }
 
 
+            const value =
+
+                hotspot.porNo ??
+
+                hotspot.refPorNo ??
+
+                hotspot.refPORNo ??
+
+                hotspot.porNumber ??
+
+                hotspot.POR_NO ??
+
+                hotspot["POR No"] ??
+
+                hotspot["Ref POR No"] ??
+
+                hotspot.porKey ??
+
+                "";
+
+
             return String(
-
-                record.refPorNo ??
-
-                record.refPORNo ??
-
-                record.refPor ??
-
-                record.porNo ??
-
-                record.PORNo ??
-
-                record["Ref POR No"] ??
-
-                record["POR No"] ??
-
-                ""
-
-            ).trim();
+                value
+            )
+                .trim();
 
         };
 
 
     /* =====================================================
-       22. EXTRACT POR KEYS
+       44. EXTRACT POR KEYS
 
-       A hotspot may represent multiple offence records.
-       Therefore it may contain one OR multiple POR keys.
+       A hotspot may be linked to one or more PORs.
+
+       Priority:
+
+       1. hotspot.porKeys
+       2. hotspot.porKey
+       3. hotspot.porNos
+       4. hotspot.porNo / Ref POR No
+
+       Output is normalized and unique.
        ===================================================== */
 
     MapRenderer.extractPorKeys =
@@ -1344,239 +3935,151 @@
             }
 
 
-            const keys =
+            const result =
+                [];
+
+
+            const seen =
                 new Set();
 
 
-            function addKey(
+            const add =
 
-                value
+                function (
 
-            ) {
-
-                const key =
-
-                    MapRenderer
-                        .normalizePorKey(
-
-                            value
-
-                        );
-
-
-                if (
-
-                    key
+                    value
 
                 ) {
 
-                    keys.add(
+                    const key =
+
+                        MapRenderer
+                            .normalizePorKey(
+                                value
+                            );
+
+
+                    if (
+
+                        !key ||
+
+                        seen.has(
+                            key
+                        )
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    seen.add(
                         key
                     );
 
-                }
+
+                    result.push(
+                        key
+                    );
+
+                };
+
+
+            /* -------------------------------------------------
+               Canonical POR key array
+               ------------------------------------------------- */
+
+            const porKeys =
+
+                MapRenderer
+                    .toArray(
+
+                        hotspot.porKeys
+
+                    );
+
+
+            for (
+
+                const porKey
+                of porKeys
+
+            ) {
+
+                add(
+                    porKey
+                );
 
             }
 
 
-            /* -------------------------
-               Direct porKey
-               ------------------------- */
+            /* -------------------------------------------------
+               Canonical primary POR key
+               ------------------------------------------------- */
 
-            addKey(
+            add(
 
                 hotspot.porKey
 
             );
 
 
-            /* -------------------------
-               Direct POR number
-               ------------------------- */
+            /* -------------------------------------------------
+               Human-readable POR numbers
+               ------------------------------------------------- */
 
-            addKey(
+            const porNos =
+
+                MapRenderer
+                    .toArray(
+
+                        hotspot.porNos
+
+                    );
+
+
+            for (
+
+                const porNo
+                of porNos
+
+            ) {
+
+                add(
+                    porNo
+                );
+
+            }
+
+
+            /* -------------------------------------------------
+               Single POR fallback
+               ------------------------------------------------- */
+
+            add(
 
                 MapRenderer
                     .getRefPorNo(
-
                         hotspot
-
                     )
 
             );
 
 
-            /* -------------------------
-               porKeys array
-               ------------------------- */
-
-            if (
-
-                Array.isArray(
-                    hotspot.porKeys
-                )
-
-            ) {
-
-                hotspot.porKeys
-                    .forEach(
-
-                        addKey
-
-                    );
-
-            }
-
-
-            /* -------------------------
-               POR number arrays
-               ------------------------- */
-
-            const porArrays = [
-
-                hotspot.refPorNos,
-
-                hotspot.porNos,
-
-                hotspot.pors
-
-            ];
-
-
-            porArrays
-                .forEach(
-
-                    function (
-
-                        values
-
-                    ) {
-
-                        if (
-
-                            Array.isArray(
-                                values
-                            )
-
-                        ) {
-
-                            values
-                                .forEach(
-
-                                    addKey
-
-                                );
-
-                        }
-
-                    }
-
-                );
-
-
-            /* -------------------------
-               Nested records
-               ------------------------- */
-
-            const recordArrays = [
-
-                hotspot.records,
-
-                hotspot.items,
-
-                hotspot.cases,
-
-                hotspot.accused,
-
-                hotspot.witnesses,
-
-                hotspot.seizures,
-
-                hotspot.articles,
-
-                hotspot.seizedArticles
-
-            ];
-
-
-            recordArrays
-                .forEach(
-
-                    function (
-
-                        records
-
-                    ) {
-
-                        if (
-
-                            !Array.isArray(
-                                records
-                            )
-
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        records
-                            .forEach(
-
-                                function (
-
-                                    record
-
-                                ) {
-
-                                    if (
-
-                                        !record
-
-                                    ) {
-
-                                        return;
-
-                                    }
-
-
-                                    addKey(
-
-                                        record.porKey
-
-                                    );
-
-
-                                    addKey(
-
-                                        MapRenderer
-                                            .getRefPorNo(
-
-                                                record
-
-                                            )
-
-                                    );
-
-                                }
-
-                            );
-
-                    }
-
-                );
-
-
-            return Array.from(
-                keys
-            );
+            return result;
 
         };
 
 
     /* =====================================================
-       23. GET PRIMARY POR KEY
+       45. GET PRIMARY POR KEY
+
+       Used for the primary cascade request when one
+       interaction object contains multiple PORs.
+
+       The complete porKeys array is still included in
+       the dispatched event.
        ===================================================== */
 
     MapRenderer.getPrimaryPorKey =
@@ -1586,13 +4089,22 @@
 
         ) {
 
+            if (
+
+                !hotspot
+
+            ) {
+
+                return "";
+
+            }
+
+
             const porKeys =
 
                 MapRenderer
                     .extractPorKeys(
-
                         hotspot
-
                     );
 
 
@@ -1608,7 +4120,56 @@
 
 
     /* =====================================================
-       24. CREATE INTERACTION MARKER
+       46. GET HOTSPOT ID
+       ===================================================== */
+
+    MapRenderer.getHotspotId =
+        function (
+
+            hotspot
+
+        ) {
+
+            if (
+
+                !hotspot
+
+            ) {
+
+                return "";
+
+            }
+
+
+            return String(
+
+                hotspot.id ??
+
+                hotspot.hotspotId ??
+
+                hotspot.key ??
+
+                ""
+
+            )
+                .trim();
+
+        };
+
+
+    /* =====================================================
+       47. CREATE POINT INTERACTION MARKER
+
+       Leaflet.heat layers themselves are not practical
+       click targets.
+
+       Therefore an almost-transparent circle marker is
+       created for every POINT-resolved hotspot.
+
+       The marker carries the canonical hotspot object.
+
+       Clicking it dispatches the POR-authoritative
+       offence:hotspot-click event.
        ===================================================== */
 
     MapRenderer.createInteractionMarker =
@@ -1622,7 +4183,10 @@
 
             if (
 
-                !hotspot
+                !hotspot ||
+
+                typeof window.L ===
+                    "undefined"
 
             ) {
 
@@ -1635,9 +4199,7 @@
 
                 MapRenderer
                     .getCoordinates(
-
                         hotspot
-
                     );
 
 
@@ -1650,6 +4212,23 @@
                 return null;
 
             }
+
+
+            const normalizedType =
+
+                String(
+
+                    type ||
+
+                    hotspot.type ||
+
+                    ""
+
+                )
+
+                    .trim()
+
+                    .toUpperCase();
 
 
             const marker =
@@ -1668,19 +4247,22 @@
 
                         radius:
 
-                            MapRenderer.config
+                            MapRenderer
+                                .config
                                 .marker
                                 .radius,
 
                         opacity:
 
-                            MapRenderer.config
+                            MapRenderer
+                                .config
                                 .marker
                                 .opacity,
 
                         fillOpacity:
 
-                            MapRenderer.config
+                            MapRenderer
+                                .config
                                 .marker
                                 .fillOpacity,
 
@@ -1695,36 +4277,24 @@
                 );
 
 
-            /* -------------------------
-               Attach metadata
-               ------------------------- */
+            /*
+             * Preserve canonical offence metadata directly
+             * on the Leaflet marker.
+             */
 
-            marker._offenceHotspotId =
-
-                hotspot.id ||
-
-                hotspot.hotspotId ||
-
-                null;
+            marker.__offenceHotspot =
+                hotspot;
 
 
-            marker._offenceHotspotType =
-                type;
+            marker.__offenceType =
+                normalizedType;
 
 
-            marker._offencePorKeys =
-
+            marker.__offenceResolution =
                 MapRenderer
-                    .extractPorKeys(
+                    .RESOLUTION
+                    .POINT;
 
-                        hotspot
-
-                    );
-
-
-            /* -------------------------
-               Click
-               ------------------------- */
 
             marker.on(
 
@@ -1736,14 +4306,45 @@
 
                 ) {
 
+                    if (
+
+                        event
+                            ?.originalEvent
+
+                    ) {
+
+                        L.DomEvent
+                            .stopPropagation(
+
+                                event.originalEvent
+
+                            );
+
+                    }
+
+
                     MapRenderer
                         .handleHotspotClick(
 
                             hotspot,
 
-                            type,
+                            normalizedType,
 
-                            event
+                            {
+
+                                resolution:
+
+                                    MapRenderer
+                                        .RESOLUTION
+                                        .POINT,
+
+                                leafletEvent:
+                                    event,
+
+                                layer:
+                                    marker
+
+                            }
 
                         );
 
@@ -1758,30 +4359,1198 @@
 
 
     /* =====================================================
-       25. HANDLE HOTSPOT CLICK
+       48. BUILD SOURCE POINT INTERACTION MARKERS
 
        IMPORTANT:
 
-       MapRenderer does NOT resolve relationships.
+       Only POINT-resolved source entries are used.
 
-       It only emits:
+       Raw SourceEngine hotspots must not automatically
+       become point markers because HeatmapEngine v3 may
+       have resolved them to RANGE or COMPARTMENT.
+       ===================================================== */
 
-       hotspot
-       hotspotId
-       type
-       porKey
-       porKeys
-       coordinates
+    MapRenderer.buildSourceMarkers =
+        function (
 
-       CascadeController then resolves:
+            sourcePoints = []
 
-       POR
-        ↓
-       Cases
-       Accused
-       Witnesses
-       Seizures
-       Seized Articles
+        ) {
+
+            if (
+
+                typeof window.L ===
+                "undefined"
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            if (
+
+                !MapRenderer.layers
+                    .sourceMarkerLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .sourceMarkerLayer =
+
+                    L.layerGroup();
+
+            }
+
+
+            MapRenderer.layers
+                .sourceMarkerLayer
+                .clearLayers();
+
+
+            const points =
+
+                MapRenderer
+                    .toArray(
+                        sourcePoints
+                    );
+
+
+            let count =
+                0;
+
+
+            for (
+
+                const point
+                of points
+
+            ) {
+
+                /*
+                 * A raw Leaflet.heat array does not carry
+                 * enough POR metadata for cascade clicks.
+                 */
+
+                if (
+
+                    Array.isArray(
+                        point
+                    )
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                const marker =
+
+                    MapRenderer
+                        .createInteractionMarker(
+
+                            point,
+
+                            "SOURCE"
+
+                        );
+
+
+                if (
+
+                    !marker
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                MapRenderer.layers
+                    .sourceMarkerLayer
+                    .addLayer(
+                        marker
+                    );
+
+
+                count++;
+
+            }
+
+
+            return count;
+
+        };
+
+
+    /* =====================================================
+       49. BUILD TARGET POINT INTERACTION MARKERS
+       ===================================================== */
+
+    MapRenderer.buildTargetMarkers =
+        function (
+
+            targetPoints = []
+
+        ) {
+
+            if (
+
+                typeof window.L ===
+                "undefined"
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            if (
+
+                !MapRenderer.layers
+                    .targetMarkerLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .targetMarkerLayer =
+
+                    L.layerGroup();
+
+            }
+
+
+            MapRenderer.layers
+                .targetMarkerLayer
+                .clearLayers();
+
+
+            const points =
+
+                MapRenderer
+                    .toArray(
+                        targetPoints
+                    );
+
+
+            let count =
+                0;
+
+
+            for (
+
+                const point
+                of points
+
+            ) {
+
+                if (
+
+                    Array.isArray(
+                        point
+                    )
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                const marker =
+
+                    MapRenderer
+                        .createInteractionMarker(
+
+                            point,
+
+                            "TARGET"
+
+                        );
+
+
+                if (
+
+                    !marker
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                MapRenderer.layers
+                    .targetMarkerLayer
+                    .addLayer(
+                        marker
+                    );
+
+
+                count++;
+
+            }
+
+
+            return count;
+
+        };
+
+
+    /* =====================================================
+       50. GET POLYGON HOTSPOTS
+
+       Aggregated polygon entries may expose the
+       contributing hotspots under different canonical
+       properties.
+
+       Return a unique array using hotspot ID where
+       possible.
+       ===================================================== */
+
+    MapRenderer.getPolygonHotspots =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return [];
+
+            }
+
+
+            const candidates = [
+
+                ...MapRenderer
+                    .toArray(
+                        entry.hotspots
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.sources
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.targets
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.entries
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.items
+                    ),
+
+                ...MapRenderer
+                    .toArray(
+                        entry.offences
+                    )
+
+            ];
+
+
+            const output =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            for (
+
+                const hotspot
+                of candidates
+
+            ) {
+
+                if (
+
+                    !hotspot
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                const id =
+
+                    MapRenderer
+                        .getHotspotId(
+                            hotspot
+                        );
+
+
+                const key =
+
+                    id ||
+
+                    JSON.stringify(
+
+                        MapRenderer
+                            .extractPorKeys(
+                                hotspot
+                            )
+
+                    );
+
+
+                if (
+
+                    key &&
+
+                    seen.has(
+                        key
+                    )
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                if (
+
+                    key
+
+                ) {
+
+                    seen.add(
+                        key
+                    );
+
+                }
+
+
+                output.push(
+                    hotspot
+                );
+
+            }
+
+
+            return output;
+
+        };
+
+
+    /* =====================================================
+       51. GET POLYGON PRIMARY HOTSPOT
+
+       Used only as the interaction payload anchor.
+
+       The complete aggregated polygon entry remains
+       available in event metadata.
+       ===================================================== */
+
+    MapRenderer.getPolygonPrimaryHotspot =
+        function (
+
+            entry
+
+        ) {
+
+            if (
+
+                !entry
+
+            ) {
+
+                return null;
+
+            }
+
+
+            const hotspots =
+
+                MapRenderer
+                    .getPolygonHotspots(
+                        entry
+                    );
+
+
+            if (
+
+                hotspots.length
+
+            ) {
+
+                return hotspots[0];
+
+            }
+
+
+            /*
+             * The aggregated polygon itself may already
+             * carry porKey / porKeys.
+             */
+
+            if (
+
+                MapRenderer
+                    .getPolygonPorKeys(
+                        entry
+                    )
+                    .length
+
+            ) {
+
+                return entry;
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       52. BUILD POLYGON TOOLTIP TEXT
+
+       Keep tooltip concise.
+
+       Detailed offence information belongs to the
+       CascadeRenderer after click.
+       ===================================================== */
+
+    MapRenderer.buildPolygonTooltip =
+        function (
+
+            entry,
+
+            type
+
+        ) {
+
+            const name =
+
+                MapRenderer
+                    .getPolygonName(
+                        entry
+                    );
+
+
+            const resolution =
+
+                MapRenderer
+                    .getPolygonResolution(
+                        entry
+                    );
+
+
+            const count =
+
+                MapRenderer
+                    .getPolygonCount(
+                        entry
+                    );
+
+
+            const normalizedType =
+
+                String(
+
+                    type ||
+
+                    ""
+
+                )
+                    .toUpperCase();
+
+
+            const parts =
+                [];
+
+
+            if (
+
+                name
+
+            ) {
+
+                parts.push(
+                    name
+                );
+
+            }
+
+
+            if (
+
+                resolution !==
+                MapRenderer
+                    .RESOLUTION
+                    .UNMAPPED
+
+            ) {
+
+                parts.push(
+                    resolution
+                );
+
+            }
+
+
+            parts.push(
+
+                normalizedType ===
+                    "TARGET"
+
+                    ? (
+                        count +
+                        " target offence" +
+                        (
+                            count === 1
+                                ? ""
+                                : "s"
+                        )
+                    )
+
+                    : (
+                        count +
+                        " source offence" +
+                        (
+                            count === 1
+                                ? ""
+                                : "s"
+                        )
+                    )
+
+            );
+
+
+            return parts.join(
+                " • "
+            );
+
+        };
+
+
+    /* =====================================================
+       53. CREATE POLYGON INTERACTION LAYER
+
+       One aggregated HeatmapEngine polygon entry becomes
+       one Leaflet GeoJSON layer.
+
+       The geometry comes from the GIS feature already
+       resolved by HeatmapEngine.
+
+       The renderer does NOT search GISEntities again.
+       ===================================================== */
+
+    MapRenderer.createPolygonLayer =
+        function (
+
+            entry,
+
+            type,
+
+            maxWeight = 1
+
+        ) {
+
+            if (
+
+                !entry ||
+
+                typeof window.L ===
+                    "undefined"
+
+            ) {
+
+                return null;
+
+            }
+
+
+            const feature =
+
+                MapRenderer
+                    .getPolygonFeature(
+                        entry
+                    );
+
+
+            if (
+
+                !MapRenderer
+                    .isValidPolygonFeature(
+                        feature
+                    )
+
+            ) {
+
+                return null;
+
+            }
+
+
+            const normalizedType =
+
+                String(
+
+                    type ||
+
+                    ""
+
+                )
+
+                    .trim()
+
+                    .toUpperCase();
+
+
+            const resolution =
+
+                MapRenderer
+                    .getPolygonResolution(
+                        entry
+                    );
+
+
+            const style =
+
+                normalizedType ===
+                    "TARGET"
+
+                    ? MapRenderer
+                        .createTargetPolygonStyle(
+
+                            entry,
+
+                            maxWeight
+
+                        )
+
+                    : MapRenderer
+                        .createSourcePolygonStyle(
+
+                            entry,
+
+                            maxWeight
+
+                        );
+
+
+            const geoJsonLayer =
+
+                L.geoJSON(
+
+                    feature,
+
+                    {
+
+                        style:
+
+                            function () {
+
+                                return style;
+
+                            },
+
+                        onEachFeature:
+
+                            function (
+
+                                geoFeature,
+
+                                layer
+
+                            ) {
+
+                                layer.__offencePolygon =
+                                    entry;
+
+
+                                layer.__offenceFeature =
+                                    geoFeature;
+
+
+                                layer.__offenceType =
+                                    normalizedType;
+
+
+                                layer.__offenceResolution =
+                                    resolution;
+
+
+                                const tooltip =
+
+                                    MapRenderer
+                                        .buildPolygonTooltip(
+
+                                            entry,
+
+                                            normalizedType
+
+                                        );
+
+
+                                if (
+
+                                    tooltip &&
+
+                                    typeof layer
+                                        .bindTooltip ===
+                                    "function"
+
+                                ) {
+
+                                    layer.bindTooltip(
+
+                                        tooltip,
+
+                                        {
+
+                                            sticky:
+                                                true
+
+                                        }
+
+                                    );
+
+                                }
+
+
+                                layer.on(
+
+                                    "click",
+
+                                    function (
+
+                                        event
+
+                                    ) {
+
+                                        if (
+
+                                            event
+                                                ?.originalEvent
+
+                                        ) {
+
+                                            L.DomEvent
+                                                .stopPropagation(
+
+                                                    event
+                                                        .originalEvent
+
+                                                );
+
+                                        }
+
+
+                                        const primaryHotspot =
+
+                                            MapRenderer
+                                                .getPolygonPrimaryHotspot(
+                                                    entry
+                                                );
+
+
+                                        MapRenderer
+                                            .handleHotspotClick(
+
+                                                primaryHotspot ||
+
+                                                entry,
+
+                                                normalizedType,
+
+                                                {
+
+                                                    resolution:
+                                                        resolution,
+
+                                                    polygonEntry:
+                                                        entry,
+
+                                                    feature:
+                                                        geoFeature,
+
+                                                    leafletEvent:
+                                                        event,
+
+                                                    layer:
+                                                        layer,
+
+                                                    porKeys:
+
+                                                        MapRenderer
+                                                            .getPolygonPorKeys(
+                                                                entry
+                                                            )
+
+                                                }
+
+                                            );
+
+                                    }
+
+                                );
+
+                            }
+
+                    }
+
+                );
+
+
+            /*
+             * Preserve metadata on the outer GeoJSON layer.
+             */
+
+            geoJsonLayer.__offencePolygon =
+                entry;
+
+
+            geoJsonLayer.__offenceType =
+                normalizedType;
+
+
+            geoJsonLayer.__offenceResolution =
+                resolution;
+
+
+            return geoJsonLayer;
+
+        };
+
+
+    /* =====================================================
+       54. BUILD SOURCE POLYGON LAYERS
+
+       sourcePolygons should already be aggregated by
+       HeatmapEngine.
+
+       Expected contents:
+
+       COMPARTMENT polygons
+       RANGE polygons
+
+       If sourcePolygons is unavailable, the renderer
+       can combine sourceCompartments + sourceRanges.
+       ===================================================== */
+
+    MapRenderer.buildSourcePolygons =
+        function (
+
+            sourcePolygons = [],
+
+            sourceCompartments = [],
+
+            sourceRanges = []
+
+        ) {
+
+            if (
+
+                typeof window.L ===
+                "undefined"
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            if (
+
+                !MapRenderer.layers
+                    .sourcePolygonLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .sourcePolygonLayer =
+
+                    L.layerGroup();
+
+            }
+
+
+            MapRenderer.layers
+                .sourcePolygonLayer
+                .clearLayers();
+
+
+            let entries =
+
+                MapRenderer
+                    .toArray(
+                        sourcePolygons
+                    );
+
+
+            /*
+             * Fallback only when aggregated polygons were
+             * not supplied.
+             */
+
+            if (
+
+                !entries.length
+
+            ) {
+
+                entries = [
+
+                    ...MapRenderer
+                        .toArray(
+                            sourceCompartments
+                        ),
+
+                    ...MapRenderer
+                        .toArray(
+                            sourceRanges
+                        )
+
+                ];
+
+            }
+
+
+            const maxWeight =
+
+                MapRenderer
+                    .getMaxPolygonHeatWeight(
+                        entries
+                    );
+
+
+            let count =
+                0;
+
+
+            for (
+
+                const entry
+                of entries
+
+            ) {
+
+                const layer =
+
+                    MapRenderer
+                        .createPolygonLayer(
+
+                            entry,
+
+                            "SOURCE",
+
+                            maxWeight
+
+                        );
+
+
+                if (
+
+                    !layer
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                MapRenderer.layers
+                    .sourcePolygonLayer
+                    .addLayer(
+                        layer
+                    );
+
+
+                count++;
+
+            }
+
+
+            return count;
+
+        };
+
+
+    /* =====================================================
+       55. BUILD TARGET POLYGON LAYERS
+       ===================================================== */
+
+    MapRenderer.buildTargetPolygons =
+        function (
+
+            targetPolygons = [],
+
+            targetCompartments = [],
+
+            targetRanges = []
+
+        ) {
+
+            if (
+
+                typeof window.L ===
+                "undefined"
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            if (
+
+                !MapRenderer.layers
+                    .targetPolygonLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .targetPolygonLayer =
+
+                    L.layerGroup();
+
+            }
+
+
+            MapRenderer.layers
+                .targetPolygonLayer
+                .clearLayers();
+
+
+            let entries =
+
+                MapRenderer
+                    .toArray(
+                        targetPolygons
+                    );
+
+
+            if (
+
+                !entries.length
+
+            ) {
+
+                entries = [
+
+                    ...MapRenderer
+                        .toArray(
+                            targetCompartments
+                        ),
+
+                    ...MapRenderer
+                        .toArray(
+                            targetRanges
+                        )
+
+                ];
+
+            }
+
+
+            const maxWeight =
+
+                MapRenderer
+                    .getMaxPolygonHeatWeight(
+                        entries
+                    );
+
+
+            let count =
+                0;
+
+
+            for (
+
+                const entry
+                of entries
+
+            ) {
+
+                const layer =
+
+                    MapRenderer
+                        .createPolygonLayer(
+
+                            entry,
+
+                            "TARGET",
+
+                            maxWeight
+
+                        );
+
+
+                if (
+
+                    !layer
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                MapRenderer.layers
+                    .targetPolygonLayer
+                    .addLayer(
+                        layer
+                    );
+
+
+                count++;
+
+            }
+
+
+            return count;
+
+        };
+
+
+    /* =====================================================
+       56. HANDLE HOTSPOT CLICK
+
+       AUTHORITATIVE CONNECTOR:
+
+       POR / porKey
+
+       The renderer emits one normalized event.
+
+       CascadeController remains responsible for resolving
+       the complete POR relationship graph.
+
+       For aggregated compartment/range polygons, multiple
+       POR keys may exist.
+
+       primary porKey:
+       first authoritative POR used as interaction anchor.
+
+       porKeys:
+       complete set represented by the clicked polygon.
        ===================================================== */
 
     MapRenderer.handleHotspotClick =
@@ -1791,7 +5560,7 @@
 
             type,
 
-            leafletEvent = null
+            metadata = {}
 
         ) {
 
@@ -1806,117 +5575,242 @@
             }
 
 
-            const porKeys =
+            const normalizedType =
+
+                String(
+
+                    type ||
+
+                    hotspot.type ||
+
+                    ""
+
+                )
+
+                    .trim()
+
+                    .toUpperCase();
+
+
+            let porKeys =
 
                 MapRenderer
                     .extractPorKeys(
-
                         hotspot
+                    );
+
+
+            /*
+             * Polygon metadata may contain additional PORs
+             * not present on the primary hotspot.
+             */
+
+            const metadataPorKeys =
+
+                MapRenderer
+                    .toArray(
+
+                        metadata.porKeys
 
                     );
 
 
-            const primaryPorKey =
+            const seen =
+
+                new Set(
+                    porKeys
+                );
+
+
+            for (
+
+                const rawPorKey
+                of metadataPorKeys
+
+            ) {
+
+                const porKey =
+
+                    MapRenderer
+                        .normalizePorKey(
+                            rawPorKey
+                        );
+
+
+                if (
+
+                    !porKey ||
+
+                    seen.has(
+                        porKey
+                    )
+
+                ) {
+
+                    continue;
+
+                }
+
+
+                seen.add(
+                    porKey
+                );
+
+
+                porKeys.push(
+                    porKey
+                );
+
+            }
+
+
+            const porKey =
 
                 porKeys[0] ||
 
-                "";
-
-
-            const coordinates =
-
                 MapRenderer
-                    .getCoordinates(
-
+                    .getPrimaryPorKey(
                         hotspot
-
                     );
+
+
+            if (
+
+                !porKey
+
+            ) {
+
+                console.warn(
+
+                    "[OffenceMapRenderer] " +
+                    "Hotspot click ignored because " +
+                    "no POR key is available.",
+
+                    {
+
+                        hotspot:
+                            hotspot,
+
+                        type:
+                            normalizedType,
+
+                        metadata:
+                            metadata
+
+                    }
+
+                );
+
+
+                return false;
+
+            }
 
 
             const detail = {
 
-                hotspotId:
-
-                    hotspot.id ||
-
-                    hotspot.hotspotId ||
-
-                    null,
-
-                type:
-                    type,
-
-                hotspot:
-                    hotspot,
-
-                /*
-                 * Authoritative relationship connector.
-                 */
-
-                porKey:
-                    primaryPorKey,
-
-                porKeys:
-                    porKeys,
-
-                /*
-                 * Raw POR retained for display/debugging.
-                 */
-
-                refPorNo:
+                connector:
 
                     MapRenderer
-                        .getRefPorNo(
-
-                            hotspot
-
-                        ),
-
-                /*
-                 * Map coordinates.
-                 */
-
-                latlng:
-
-                    leafletEvent
-                        ?.latlng ||
-
-                    (
-
-                        coordinates
-
-                            ? {
-
-                                lat:
-
-                                    coordinates
-                                        .latitude,
-
-                                lng:
-
-                                    coordinates
-                                        .longitude
-
-                            }
-
-                            : null
-
-                    ),
-
-                /*
-                 * Explicit connector metadata.
-                 */
-
-                connector:
-                    MapRenderer.CONNECTOR,
+                        .CONNECTOR,
 
                 authoritativeConnector:
 
                     MapRenderer
-                        .AUTHORITATIVE_CONNECTOR
+                        .AUTHORITATIVE_CONNECTOR,
+
+                porKey:
+                    porKey,
+
+                porKeys:
+                    porKeys,
+
+                porNo:
+
+                    MapRenderer
+                        .getRefPorNo(
+                            hotspot
+                        ) ||
+
+                    porKey,
+
+                type:
+                    normalizedType,
+
+                resolution:
+
+                    metadata.resolution ||
+
+                    MapRenderer
+                        .RESOLUTION
+                        .POINT,
+
+                hotspot:
+                    hotspot,
+
+                hotspotId:
+
+                    MapRenderer
+                        .getHotspotId(
+                            hotspot
+                        ),
+
+                polygonEntry:
+
+                    metadata.polygonEntry ||
+
+                    null,
+
+                feature:
+
+                    metadata.feature ||
+
+                    null,
+
+                layer:
+
+                    metadata.layer ||
+
+                    null,
+
+                originalEvent:
+
+                    metadata.leafletEvent ||
+
+                    null
 
             };
 
+
+            MapRenderer.debug(
+
+                "Hotspot clicked",
+
+                {
+
+                    type:
+                        detail.type,
+
+                    resolution:
+                        detail.resolution,
+
+                    porKey:
+                        detail.porKey,
+
+                    porKeys:
+                        detail.porKeys,
+
+                    hotspotId:
+                        detail.hotspotId
+
+                }
+
+            );
+
+
+            /*
+             * Canonical offence hotspot event.
+             */
 
             MapRenderer
                 .dispatchEvent(
@@ -1931,234 +5825,39 @@
                 );
 
 
-            MapRenderer.debug(
-
-                "Hotspot Click",
-
-                detail
-
-            );
-
-
-            return detail;
-
-        };
-
-
-    /* =====================================================
-       26. APPLY DISPLAY MODE
-       ===================================================== */
-
-    MapRenderer.applyMode =
-        function () {
-
-            if (
-
-                !MapRenderer.map
-
-            ) {
-
-                return false;
-
-            }
-
-
-            const mode =
-
-                MapRenderer
-                    .getMode();
-
-
-            /* -------------------------
-               Remove everything first
-               ------------------------- */
-
-            MapRenderer
-                .removeLayer(
-
-                    MapRenderer.layers
-                        .sourceHeatLayer
-
-                );
-
-
-            MapRenderer
-                .removeLayer(
-
-                    MapRenderer.layers
-                        .targetHeatLayer
-
-                );
-
-
-            MapRenderer
-                .removeLayer(
-
-                    MapRenderer.layers
-                        .sourceMarkerLayer
-
-                );
-
-
-            MapRenderer
-                .removeLayer(
-
-                    MapRenderer.layers
-                        .targetMarkerLayer
-
-                );
-
-
-            const SOURCE_MODE =
-
-                HeatmapEngine
-                    .MODE
-                    ?.SOURCE ||
-
-                MapRenderer.MODE.SOURCE;
-
-
-            const TARGET_MODE =
-
-                HeatmapEngine
-                    .MODE
-                    ?.TARGET ||
-
-                MapRenderer.MODE.TARGET;
-
-
-            /* -------------------------
-               SOURCE
-               ------------------------- */
-
-            if (
-
-                mode ===
-                SOURCE_MODE
-
-            ) {
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .sourceHeatLayer
-
-                    );
-
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .sourceMarkerLayer
-
-                    );
-
-            }
-
-
-            /* -------------------------
-               TARGET
-               ------------------------- */
-
-            else if (
-
-                mode ===
-                TARGET_MODE
-
-            ) {
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .targetHeatLayer
-
-                    );
-
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .targetMarkerLayer
-
-                    );
-
-            }
-
-
-            /* -------------------------
-               BOTH
-               ------------------------- */
-
-            else {
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .sourceHeatLayer
-
-                    );
-
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .targetHeatLayer
-
-                    );
-
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .sourceMarkerLayer
-
-                    );
-
-
-                MapRenderer
-                    .addLayer(
-
-                        MapRenderer.layers
-                            .targetMarkerLayer
-
-                    );
-
-            }
-
-
-            MapRenderer.visible =
-                true;
-
-
-            MapRenderer
-                .dispatchEvent(
-
-                    "offence:map-mode-applied",
-
-                    {
-
-                        mode:
-                            mode
-
-                    }
-
-                );
-
-
             return true;
 
         };
 
 
     /* =====================================================
-       27. ADD LAYER SAFELY
+       END OF PART 3
+
+       NEXT PART:
+
+       57. addLayer
+       58. removeLayer
+       59. clearLayers
+       60. render
+       61. applyMode
+       62. showSource
+       63. showTarget
+       64. showBoth
+       65. hide / show / toggle
+       66. refresh
+       67. fitBounds
+       68. getLayerStatus
+       69. dispatchEvent
+       70. destroy
+       71. module registration
+
+       IMPORTANT:
+       Do NOT close the IIFE here.
+       Part 4 continues directly below.
+       ===================================================== 
+
+       /* =====================================================
+       57. ADD LAYER
        ===================================================== */
 
     MapRenderer.addLayer =
@@ -2170,9 +5869,9 @@
 
             if (
 
-                !layer ||
+                !MapRenderer.map ||
 
-                !MapRenderer.map
+                !layer
 
             ) {
 
@@ -2183,31 +5882,56 @@
 
             if (
 
-                !MapRenderer.map
+                typeof MapRenderer.map
+                    .hasLayer ===
+                    "function" &&
+
+                MapRenderer.map
                     .hasLayer(
-
                         layer
-
                     )
 
             ) {
 
-                layer.addTo(
-
-                    MapRenderer.map
-
-                );
+                return true;
 
             }
 
 
-            return true;
+            try {
+
+                layer.addTo(
+                    MapRenderer.map
+                );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "[OffenceMapRenderer] " +
+                    "Failed to add layer.",
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
 
         };
 
 
     /* =====================================================
-       28. REMOVE LAYER SAFELY
+       58. REMOVE LAYER
        ===================================================== */
 
     MapRenderer.removeLayer =
@@ -2219,9 +5943,9 @@
 
             if (
 
-                !layer ||
+                !MapRenderer.map ||
 
-                !MapRenderer.map
+                !layer
 
             ) {
 
@@ -2230,38 +5954,70 @@
             }
 
 
-            if (
+            try {
 
-                MapRenderer.map
-                    .hasLayer(
+                if (
 
-                        layer
+                    typeof MapRenderer.map
+                        .hasLayer ===
+                        "function" &&
 
-                    )
+                    MapRenderer.map
+                        .hasLayer(
+                            layer
+                        )
 
-            ) {
+                ) {
 
-                MapRenderer.map
-                    .removeLayer(
+                    MapRenderer.map
+                        .removeLayer(
+                            layer
+                        );
 
-                        layer
+                }
 
-                    );
+
+                return true;
 
             }
 
+            catch (
+                error
+            ) {
 
-            return true;
+                console.error(
+
+                    "[OffenceMapRenderer] " +
+                    "Failed to remove layer.",
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
 
         };
 
 
     /* =====================================================
-       29. CLEAR LAYERS
+       59. CLEAR LAYERS
+
+       Removes all offence layers from the map and clears
+       internal marker/polygon groups.
+
+       Layer group objects themselves are preserved so the
+       renderer can reuse them on refresh.
        ===================================================== */
 
     MapRenderer.clearLayers =
         function () {
+
+            /* -------------------------------------------------
+               Remove point heat layers
+               ------------------------------------------------- */
 
             MapRenderer
                 .removeLayer(
@@ -2280,6 +6036,20 @@
 
                 );
 
+
+            MapRenderer.layers
+                .sourceHeatLayer =
+                null;
+
+
+            MapRenderer.layers
+                .targetHeatLayer =
+                null;
+
+
+            /* -------------------------------------------------
+               Remove interaction marker groups
+               ------------------------------------------------- */
 
             MapRenderer
                 .removeLayer(
@@ -2307,7 +6077,7 @@
                 typeof MapRenderer.layers
                     .sourceMarkerLayer
                     .clearLayers ===
-                "function"
+                    "function"
 
             ) {
 
@@ -2326,7 +6096,7 @@
                 typeof MapRenderer.layers
                     .targetMarkerLayer
                     .clearLayers ===
-                "function"
+                    "function"
 
             ) {
 
@@ -2337,14 +6107,72 @@
             }
 
 
-            MapRenderer.layers
-                .sourceHeatLayer =
-                null;
+            /* -------------------------------------------------
+               Remove GIS polygon groups
+               ------------------------------------------------- */
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .sourcePolygonLayer
+
+                );
 
 
-            MapRenderer.layers
-                .targetHeatLayer =
-                null;
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .targetPolygonLayer
+
+                );
+
+
+            if (
+
+                MapRenderer.layers
+                    .sourcePolygonLayer &&
+
+                typeof MapRenderer.layers
+                    .sourcePolygonLayer
+                    .clearLayers ===
+                    "function"
+
+            ) {
+
+                MapRenderer.layers
+                    .sourcePolygonLayer
+                    .clearLayers();
+
+            }
+
+
+            if (
+
+                MapRenderer.layers
+                    .targetPolygonLayer &&
+
+                typeof MapRenderer.layers
+                    .targetPolygonLayer
+                    .clearLayers ===
+                    "function"
+
+            ) {
+
+                MapRenderer.layers
+                    .targetPolygonLayer
+                    .clearLayers();
+
+            }
+
+
+            MapRenderer.rendered =
+                false;
+
+
+            MapRenderer.visible =
+                false;
 
 
             return true;
@@ -2353,77 +6181,350 @@
 
 
     /* =====================================================
-       30. REFRESH
+       60. RENDER
+
+       Canonical rendering pipeline:
+
+       HeatmapEngine
+           ↓
+       getCanonicalData()
+           │
+           ├── sourcePoints
+           │       ↓
+           │   Leaflet.heat
+           │   Interaction markers
+           │
+           ├── targetPoints
+           │       ↓
+           │   Leaflet.heat
+           │   Interaction markers
+           │
+           ├── sourcePolygons
+           │       ↓
+           │   Compartment / Range GeoJSON
+           │
+           └── targetPolygons
+                   ↓
+               Compartment / Range GeoJSON
+
+       IMPORTANT:
+
+       The renderer never decides whether an offence is:
+
+       POINT
+       COMPARTMENT
+       RANGE
+
+       That decision belongs exclusively to
+       OffenceHeatmapEngine v3.
        ===================================================== */
 
-    MapRenderer.refresh =
-        async function () {
+    MapRenderer.render =
+        function () {
 
             if (
 
-                typeof HeatmapEngine
-                    .refresh !==
-                "function"
+                MapRenderer.rendering
 
             ) {
 
-                return {
+                MapRenderer.debug(
 
-                    success:
-                        false,
+                    "Render already in progress."
 
-                    reason:
-                        "HEATMAP_REFRESH_UNAVAILABLE"
+                );
 
-                };
+
+                return false;
+
+            }
+
+
+            if (
+
+                !MapRenderer.initialized
+
+            ) {
+
+                const initialized =
+
+                    MapRenderer
+                        .init();
+
+
+                if (
+
+                    !initialized
+
+                ) {
+
+                    return false;
+
+                }
 
             }
 
 
-            try {
+            if (
 
-                const result =
-
-                    await HeatmapEngine
-                        .refresh();
-
-
-                /*
-                 * HeatmapEngine normally emits
-                 * offence:heatmap-updated.
-                 *
-                 * That event triggers render().
-                 */
-
-
-                return result;
-
-            }
-
-            catch (
-
-                error
+                !MapRenderer.map
 
             ) {
 
                 console.error(
 
-                    "[OffenceMapRenderer] Refresh failed.",
+                    "[OffenceMapRenderer] " +
+                    "Cannot render without Leaflet map."
+
+                );
+
+
+                return false;
+
+            }
+
+
+            MapRenderer.rendering =
+                true;
+
+
+            try {
+
+                /* -------------------------------------------------
+                   Get canonical HeatmapEngine v3 output
+                   ------------------------------------------------- */
+
+                const data =
+
+                    MapRenderer
+                        .getCanonicalData();
+
+
+                /* -------------------------------------------------
+                   POINT HEAT DATA
+                   ------------------------------------------------- */
+
+                const sourceHeat =
+
+                    MapRenderer
+                        .getSourceHeatData(
+                            data
+                        );
+
+
+                const targetHeat =
+
+                    MapRenderer
+                        .getTargetHeatData(
+                            data
+                        );
+
+
+                /* -------------------------------------------------
+                   Create Leaflet.heat layers
+                   ------------------------------------------------- */
+
+                MapRenderer
+                    .createSourceHeatLayer(
+
+                        sourceHeat
+
+                    );
+
+
+                MapRenderer
+                    .createTargetHeatLayer(
+
+                        targetHeat
+
+                    );
+
+
+                /* -------------------------------------------------
+                   Build POINT interaction markers
+
+                   Use canonical spatial point objects,
+                   not sourceHeat/targetHeat arrays.
+
+                   This preserves POR metadata.
+                   ------------------------------------------------- */
+
+                const sourceMarkerCount =
+
+                    MapRenderer
+                        .buildSourceMarkers(
+
+                            data.sourcePoints
+
+                        );
+
+
+                const targetMarkerCount =
+
+                    MapRenderer
+                        .buildTargetMarkers(
+
+                            data.targetPoints
+
+                        );
+
+
+                /* -------------------------------------------------
+                   Build SOURCE polygons
+
+                   Priority:
+                   sourcePolygons
+
+                   Fallback:
+                   sourceCompartments + sourceRanges
+                   ------------------------------------------------- */
+
+                const sourcePolygonCount =
+
+                    MapRenderer
+                        .buildSourcePolygons(
+
+                            data.sourcePolygons,
+
+                            data.sourceCompartments,
+
+                            data.sourceRanges
+
+                        );
+
+
+                /* -------------------------------------------------
+                   Build TARGET polygons
+                   ------------------------------------------------- */
+
+                const targetPolygonCount =
+
+                    MapRenderer
+                        .buildTargetPolygons(
+
+                            data.targetPolygons,
+
+                            data.targetCompartments,
+
+                            data.targetRanges
+
+                        );
+
+
+                /* -------------------------------------------------
+                   Mark renderer ready before mode application.
+                   ------------------------------------------------- */
+
+                MapRenderer.rendered =
+                    true;
+
+
+                MapRenderer.lastRenderAt =
+                    Date.now();
+
+
+                /* -------------------------------------------------
+                   Apply current HeatmapEngine mode
+                   ------------------------------------------------- */
+
+                MapRenderer
+                    .applyMode();
+
+
+                MapRenderer.debug(
+
+                    "Rendered",
+
+                    {
+
+                        sourceHeatPoints:
+
+                            sourceHeat.length,
+
+                        targetHeatPoints:
+
+                            targetHeat.length,
+
+                        sourceMarkers:
+
+                            sourceMarkerCount,
+
+                        targetMarkers:
+
+                            targetMarkerCount,
+
+                        sourcePolygons:
+
+                            sourcePolygonCount,
+
+                        targetPolygons:
+
+                            targetPolygonCount,
+
+                        sourceCompartments:
+
+                            data
+                                .sourceCompartments
+                                .length,
+
+                        targetCompartments:
+
+                            data
+                                .targetCompartments
+                                .length,
+
+                        sourceRanges:
+
+                            data
+                                .sourceRanges
+                                .length,
+
+                        targetRanges:
+
+                            data
+                                .targetRanges
+                                .length,
+
+                        mode:
+
+                            MapRenderer
+                                .getMode()
+
+                    }
+
+                );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                MapRenderer.rendered =
+                    false;
+
+
+                console.error(
+
+                    "[OffenceMapRenderer] " +
+                    "Render failed.",
 
                     error
 
                 );
 
 
-                return {
+                return false;
 
-                    success:
-                        false,
+            }
 
-                    error:
-                        error
+            finally {
 
-                };
+                MapRenderer.rendering =
+                    false;
 
             }
 
@@ -2431,7 +6532,91 @@
 
 
     /* =====================================================
-       31. SHOW SOURCE
+       61. APPLY MODE
+
+       SOURCE:
+       - source point heat
+       - source point markers
+       - source GIS polygons
+
+       TARGET:
+       - target point heat
+       - target point markers
+       - target GIS polygons
+
+       BOTH:
+       - all source layers
+       - all target layers
+       ===================================================== */
+
+    MapRenderer.applyMode =
+        function () {
+
+            if (
+
+                !MapRenderer.initialized ||
+
+                !MapRenderer.map
+
+            ) {
+
+                return false;
+
+            }
+
+
+            const mode =
+
+                String(
+
+                    MapRenderer
+                        .getMode() ||
+
+                    MapRenderer
+                        .MODE
+                        .BOTH
+
+                )
+
+                    .trim()
+
+                    .toUpperCase();
+
+
+            if (
+
+                mode ===
+                MapRenderer.MODE.SOURCE
+
+            ) {
+
+                return MapRenderer
+                    .showSource();
+
+            }
+
+
+            if (
+
+                mode ===
+                MapRenderer.MODE.TARGET
+
+            ) {
+
+                return MapRenderer
+                    .showTarget();
+
+            }
+
+
+            return MapRenderer
+                .showBoth();
+
+        };
+
+
+    /* =====================================================
+       62. SHOW SOURCE
        ===================================================== */
 
     MapRenderer.showSource =
@@ -2439,24 +6624,75 @@
 
             if (
 
-                typeof HeatmapEngine
-                    .setMode ===
-                "function"
+                !MapRenderer.map
 
             ) {
 
-                HeatmapEngine
-                    .setMode(
-
-                        HeatmapEngine
-                            .MODE
-                            ?.SOURCE ||
-
-                        MapRenderer.MODE.SOURCE
-
-                    );
+                return false;
 
             }
+
+
+            /* -------------------------------------------------
+               Remove TARGET
+               ------------------------------------------------- */
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .targetHeatLayer
+
+                );
+
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .targetMarkerLayer
+
+                );
+
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .targetPolygonLayer
+
+                );
+
+
+            /* -------------------------------------------------
+               Add SOURCE
+               ------------------------------------------------- */
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourcePolygonLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourceHeatLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourceMarkerLayer
+
+                );
 
 
             MapRenderer.visible =
@@ -2469,7 +6705,7 @@
 
 
     /* =====================================================
-       32. SHOW TARGET
+       63. SHOW TARGET
        ===================================================== */
 
     MapRenderer.showTarget =
@@ -2477,24 +6713,75 @@
 
             if (
 
-                typeof HeatmapEngine
-                    .setMode ===
-                "function"
+                !MapRenderer.map
 
             ) {
 
-                HeatmapEngine
-                    .setMode(
-
-                        HeatmapEngine
-                            .MODE
-                            ?.TARGET ||
-
-                        MapRenderer.MODE.TARGET
-
-                    );
+                return false;
 
             }
+
+
+            /* -------------------------------------------------
+               Remove SOURCE
+               ------------------------------------------------- */
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .sourceHeatLayer
+
+                );
+
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .sourceMarkerLayer
+
+                );
+
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .sourcePolygonLayer
+
+                );
+
+
+            /* -------------------------------------------------
+               Add TARGET
+               ------------------------------------------------- */
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetPolygonLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetHeatLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetMarkerLayer
+
+                );
 
 
             MapRenderer.visible =
@@ -2507,7 +6794,7 @@
 
 
     /* =====================================================
-       33. SHOW BOTH
+       64. SHOW BOTH
        ===================================================== */
 
     MapRenderer.showBoth =
@@ -2515,24 +6802,74 @@
 
             if (
 
-                typeof HeatmapEngine
-                    .setMode ===
-                "function"
+                !MapRenderer.map
 
             ) {
 
-                HeatmapEngine
-                    .setMode(
-
-                        HeatmapEngine
-                            .MODE
-                            ?.BOTH ||
-
-                        MapRenderer.MODE.BOTH
-
-                    );
+                return false;
 
             }
+
+
+            /*
+             * Polygon layers first.
+             *
+             * Point heat and interaction markers are added
+             * afterwards.
+             */
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourcePolygonLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetPolygonLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourceHeatLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetHeatLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .sourceMarkerLayer
+
+                );
+
+
+            MapRenderer
+                .addLayer(
+
+                    MapRenderer.layers
+                        .targetMarkerLayer
+
+                );
 
 
             MapRenderer.visible =
@@ -2545,7 +6882,7 @@
 
 
     /* =====================================================
-       34. HIDE
+       65. HIDE
        ===================================================== */
 
     MapRenderer.hide =
@@ -2587,6 +6924,24 @@
                 );
 
 
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .sourcePolygonLayer
+
+                );
+
+
+            MapRenderer
+                .removeLayer(
+
+                    MapRenderer.layers
+                        .targetPolygonLayer
+
+                );
+
+
             MapRenderer.visible =
                 false;
 
@@ -2597,7 +6952,7 @@
 
 
     /* =====================================================
-       35. SHOW
+       66. SHOW
        ===================================================== */
 
     MapRenderer.show =
@@ -2615,10 +6970,6 @@
             }
 
 
-            MapRenderer.visible =
-                true;
-
-
             return MapRenderer
                 .applyMode();
 
@@ -2626,43 +6977,11 @@
 
 
     /* =====================================================
-       36. TOGGLE
+       67. TOGGLE
        ===================================================== */
 
     MapRenderer.toggle =
-        function (
-
-            force = null
-
-        ) {
-
-            if (
-
-                force ===
-                true
-
-            ) {
-
-                MapRenderer.show();
-
-                return true;
-
-            }
-
-
-            if (
-
-                force ===
-                false
-
-            ) {
-
-                MapRenderer.hide();
-
-                return false;
-
-            }
-
+        function () {
 
             if (
 
@@ -2670,168 +6989,93 @@
 
             ) {
 
-                MapRenderer.hide();
-
-                return false;
+                return MapRenderer
+                    .hide();
 
             }
 
 
-            MapRenderer.show();
-
-            return true;
+            return MapRenderer
+                .show();
 
         };
 
 
     /* =====================================================
-       37. FIT MAP TO HOTSPOTS
+       68. REFRESH
+
+       Rebuild all Leaflet rendering from the current
+       canonical HeatmapEngine state.
        ===================================================== */
 
-    MapRenderer.fitBounds =
+    MapRenderer.refresh =
         function () {
 
             if (
 
-                !MapRenderer.map
+                !MapRenderer.initialized
 
             ) {
 
-                return false;
-
-            }
-
-
-            if (
-
-                typeof HeatmapEngine
-                    .getMarkerData !==
-                "function"
-
-            ) {
-
-                return false;
-
-            }
-
-
-            const markerData =
-
-                HeatmapEngine
-                    .getMarkerData(
-
-                        MapRenderer
-                            .getBothMode()
-
-                    ) ||
-
-                {
-
-                    sources:
-                        [],
-
-                    targets:
-                        []
-
-                };
-
-
-            const points =
-                [];
-
-
-            const hotspots =
-
-                []
-
-                    .concat(
-
-                        markerData.sources ||
-
-                        []
-
-                    )
-
-                    .concat(
-
-                        markerData.targets ||
-
-                        []
-
-                    );
-
-
-            for (
-
-                const hotspot
-
-                of hotspots
-
-            ) {
-
-                const coordinates =
+                const initialized =
 
                     MapRenderer
-                        .getCoordinates(
-
-                            hotspot
-
-                        );
+                        .init();
 
 
                 if (
 
-                    coordinates
+                    !initialized
 
                 ) {
 
-                    points.push(
-
-                        [
-
-                            coordinates.latitude,
-
-                            coordinates.longitude
-
-                        ]
-
-                    );
+                    return false;
 
                 }
 
             }
 
 
+            return MapRenderer
+                .render();
+
+        };
+
+
+    /* =====================================================
+       69. FIT BOUNDS
+
+       Fits map to all currently available offence layers.
+
+       Includes:
+
+       - source point markers
+       - target point markers
+       - source polygons
+       - target polygons
+
+       Leaflet.heat layers do not expose useful bounds,
+       therefore their corresponding point marker groups
+       provide the point bounds.
+       ===================================================== */
+
+    MapRenderer.fitBounds =
+        function (
+
+            options = {}
+
+        ) {
+
             if (
 
-                points.length ===
-                0
+                !MapRenderer.map ||
+
+                typeof window.L ===
+                    "undefined"
 
             ) {
 
                 return false;
-
-            }
-
-
-            if (
-
-                points.length ===
-                1
-
-            ) {
-
-                MapRenderer.map
-                    .setView(
-
-                        points[0],
-
-                        14
-
-                    );
-
-
-                return true;
 
             }
 
@@ -2839,10 +7083,259 @@
             const bounds =
 
                 L.latLngBounds(
-
-                    points
-
+                    []
                 );
+
+
+            const extendLayerBounds =
+
+                function (
+
+                    layer
+
+                ) {
+
+                    if (
+
+                        !layer
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * GeoJSON / FeatureGroup / LayerGroup
+                     * may expose getBounds().
+                     */
+
+                    if (
+
+                        typeof layer
+                            .getBounds ===
+                        "function"
+
+                    ) {
+
+                        try {
+
+                            const layerBounds =
+
+                                layer
+                                    .getBounds();
+
+
+                            if (
+
+                                layerBounds &&
+
+                                typeof layerBounds
+                                    .isValid ===
+                                    "function" &&
+
+                                layerBounds
+                                    .isValid()
+
+                            ) {
+
+                                bounds.extend(
+                                    layerBounds
+                                );
+
+                            }
+
+                        }
+
+                        catch (
+                            error
+                        ) {
+
+                            /*
+                             * Ignore invalid individual
+                             * layer bounds.
+                             */
+
+                        }
+
+                    }
+
+
+                    /*
+                     * LayerGroup fallback.
+                     */
+
+                    if (
+
+                        typeof layer
+                            .eachLayer ===
+                        "function"
+
+                    ) {
+
+                        layer.eachLayer(
+
+                            function (
+
+                                child
+
+                            ) {
+
+                                if (
+
+                                    typeof child
+                                        .getLatLng ===
+                                        "function"
+
+                                ) {
+
+                                    try {
+
+                                        bounds.extend(
+
+                                            child
+                                                .getLatLng()
+
+                                        );
+
+                                    }
+
+                                    catch (
+                                        error
+                                    ) {
+
+                                        /*
+                                         * Ignore invalid child.
+                                         */
+
+                                    }
+
+                                }
+
+
+                                if (
+
+                                    typeof child
+                                        .getBounds ===
+                                        "function"
+
+                                ) {
+
+                                    try {
+
+                                        const childBounds =
+
+                                            child
+                                                .getBounds();
+
+
+                                        if (
+
+                                            childBounds &&
+
+                                            typeof childBounds
+                                                .isValid ===
+                                                "function" &&
+
+                                            childBounds
+                                                .isValid()
+
+                                        ) {
+
+                                            bounds.extend(
+                                                childBounds
+                                            );
+
+                                        }
+
+                                    }
+
+                                    catch (
+                                        error
+                                    ) {
+
+                                        /*
+                                         * Ignore invalid child.
+                                         */
+
+                                    }
+
+                                }
+
+                            }
+
+                        );
+
+                    }
+
+                };
+
+
+            extendLayerBounds(
+
+                MapRenderer.layers
+                    .sourceMarkerLayer
+
+            );
+
+
+            extendLayerBounds(
+
+                MapRenderer.layers
+                    .targetMarkerLayer
+
+            );
+
+
+            extendLayerBounds(
+
+                MapRenderer.layers
+                    .sourcePolygonLayer
+
+            );
+
+
+            extendLayerBounds(
+
+                MapRenderer.layers
+                    .targetPolygonLayer
+
+            );
+
+
+            if (
+
+                !bounds.isValid()
+
+            ) {
+
+                return false;
+
+            }
+
+
+            const fitOptions = {
+
+                padding:
+
+                    options.padding ||
+
+                    [
+
+                        30,
+
+                        30
+
+                    ],
+
+                maxZoom:
+
+                    options.maxZoom ??
+
+                    15
+
+            };
 
 
             MapRenderer.map
@@ -2850,22 +7343,7 @@
 
                     bounds,
 
-                    {
-
-                        padding:
-
-                            [
-
-                                30,
-
-                                30
-
-                            ],
-
-                        maxZoom:
-                            15
-
-                    }
+                    fitOptions
 
                 );
 
@@ -2876,7 +7354,63 @@
 
 
     /* =====================================================
-       38. GET LAYER STATUS
+       70. GET LAYER COUNT
+       ===================================================== */
+
+    MapRenderer.getLayerCount =
+        function (
+
+            layer
+
+        ) {
+
+            if (
+
+                !layer
+
+            ) {
+
+                return 0;
+
+            }
+
+
+            if (
+
+                typeof layer
+                    .getLayers ===
+                "function"
+
+            ) {
+
+                try {
+
+                    return layer
+                        .getLayers()
+                        .length;
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    return 0;
+
+                }
+
+            }
+
+
+            return 0;
+
+        };
+
+
+    /* =====================================================
+       71. GET LAYER STATUS
+
+       Useful for runtime diagnostics.
        ===================================================== */
 
     MapRenderer.getLayerStatus =
@@ -2885,6 +7419,51 @@
             const map =
 
                 MapRenderer.map;
+
+
+            const hasLayer =
+
+                function (
+
+                    layer
+
+                ) {
+
+                    if (
+
+                        !map ||
+
+                        !layer ||
+
+                        typeof map
+                            .hasLayer !==
+                            "function"
+
+                    ) {
+
+                        return false;
+
+                    }
+
+
+                    try {
+
+                        return map
+                            .hasLayer(
+                                layer
+                            );
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        return false;
+
+                    }
+
+                };
 
 
             return {
@@ -2902,6 +7481,11 @@
                     MapRenderer
                         .AUTHORITATIVE_CONNECTOR,
 
+                spatialModel:
+
+                    MapRenderer
+                        .SPATIAL_MODEL,
+
                 initialized:
 
                     MapRenderer.initialized,
@@ -2909,6 +7493,10 @@
                 rendered:
 
                     MapRenderer.rendered,
+
+                rendering:
+
+                    MapRenderer.rendering,
 
                 visible:
 
@@ -2919,75 +7507,123 @@
                     MapRenderer
                         .getMode(),
 
+                lastRenderAt:
+
+                    MapRenderer
+                        .lastRenderAt,
+
+                leaflet:
+
+                    typeof window.L ===
+                    "object",
+
+                leafletHeat:
+
+                    typeof window.L
+                        ?.heatLayer ===
+                    "function",
+
+                sourceHeatLayer:
+
+                    !!MapRenderer.layers
+                        .sourceHeatLayer,
+
+                targetHeatLayer:
+
+                    !!MapRenderer.layers
+                        .targetHeatLayer,
+
                 sourceHeatVisible:
 
-                    !!(
-
-                        map &&
+                    hasLayer(
 
                         MapRenderer.layers
-                            .sourceHeatLayer &&
-
-                        map.hasLayer(
-
-                            MapRenderer.layers
-                                .sourceHeatLayer
-
-                        )
+                            .sourceHeatLayer
 
                     ),
 
                 targetHeatVisible:
 
-                    !!(
-
-                        map &&
+                    hasLayer(
 
                         MapRenderer.layers
-                            .targetHeatLayer &&
-
-                        map.hasLayer(
-
-                            MapRenderer.layers
-                                .targetHeatLayer
-
-                        )
+                            .targetHeatLayer
 
                     ),
 
-                sourceMarkersVisible:
+                sourceMarkerCount:
 
-                    !!(
-
-                        map &&
-
-                        MapRenderer.layers
-                            .sourceMarkerLayer &&
-
-                        map.hasLayer(
+                    MapRenderer
+                        .getLayerCount(
 
                             MapRenderer.layers
                                 .sourceMarkerLayer
 
-                        )
+                        ),
+
+                targetMarkerCount:
+
+                    MapRenderer
+                        .getLayerCount(
+
+                            MapRenderer.layers
+                                .targetMarkerLayer
+
+                        ),
+
+                sourcePolygonCount:
+
+                    MapRenderer
+                        .getLayerCount(
+
+                            MapRenderer.layers
+                                .sourcePolygonLayer
+
+                        ),
+
+                targetPolygonCount:
+
+                    MapRenderer
+                        .getLayerCount(
+
+                            MapRenderer.layers
+                                .targetPolygonLayer
+
+                        ),
+
+                sourceMarkersVisible:
+
+                    hasLayer(
+
+                        MapRenderer.layers
+                            .sourceMarkerLayer
 
                     ),
 
                 targetMarkersVisible:
 
-                    !!(
-
-                        map &&
+                    hasLayer(
 
                         MapRenderer.layers
-                            .targetMarkerLayer &&
+                            .targetMarkerLayer
 
-                        map.hasLayer(
+                    ),
 
-                            MapRenderer.layers
-                                .targetMarkerLayer
+                sourcePolygonsVisible:
 
-                        )
+                    hasLayer(
+
+                        MapRenderer.layers
+                            .sourcePolygonLayer
+
+                    ),
+
+                targetPolygonsVisible:
+
+                    hasLayer(
+
+                        MapRenderer.layers
+                            .targetPolygonLayer
 
                     )
 
@@ -2997,7 +7633,7 @@
 
 
     /* =====================================================
-       39. DISPATCH EVENT
+       72. DISPATCH EVENT
        ===================================================== */
 
     MapRenderer.dispatchEvent =
@@ -3045,18 +7681,23 @@
             }
 
             catch (
-
                 error
-
             ) {
 
-                console.warn(
+                console.error(
 
-                    "[OffenceMapRenderer] Event dispatch failed.",
+                    "[OffenceMapRenderer] " +
+                    "Event dispatch failed.",
 
-                    eventName,
+                    {
 
-                    error
+                        eventName:
+                            eventName,
+
+                        error:
+                            error
+
+                    }
 
                 );
 
@@ -3069,14 +7710,105 @@
 
 
     /* =====================================================
-       40. DESTROY
+       73. DESTROY
        ===================================================== */
 
     MapRenderer.destroy =
         function () {
 
             MapRenderer
-                .clearLayers();
+                .hide();
+
+
+            MapRenderer
+                .unbindEvents();
+
+
+            /*
+             * Clear all group contents.
+             */
+
+            if (
+
+                MapRenderer.layers
+                    .sourceMarkerLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .sourceMarkerLayer
+                    .clearLayers();
+
+            }
+
+
+            if (
+
+                MapRenderer.layers
+                    .targetMarkerLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .targetMarkerLayer
+                    .clearLayers();
+
+            }
+
+
+            if (
+
+                MapRenderer.layers
+                    .sourcePolygonLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .sourcePolygonLayer
+                    .clearLayers();
+
+            }
+
+
+            if (
+
+                MapRenderer.layers
+                    .targetPolygonLayer
+
+            ) {
+
+                MapRenderer.layers
+                    .targetPolygonLayer
+                    .clearLayers();
+
+            }
+
+
+            /*
+             * Reset layer references.
+             */
+
+            MapRenderer.layers = {
+
+                sourceHeatLayer:
+                    null,
+
+                targetHeatLayer:
+                    null,
+
+                sourceMarkerLayer:
+                    null,
+
+                targetMarkerLayer:
+                    null,
+
+                sourcePolygonLayer:
+                    null,
+
+                targetPolygonLayer:
+                    null
+
+            };
 
 
             MapRenderer.map =
@@ -3095,13 +7827,28 @@
                 false;
 
 
+            MapRenderer.rendering =
+                false;
+
+
+            MapRenderer.lastRenderAt =
+                null;
+
+
+            MapRenderer.debug(
+
+                "Destroyed"
+
+            );
+
+
             return true;
 
         };
 
 
     /* =====================================================
-       41. EXPORT
+       74. REGISTER MODULE
        ===================================================== */
 
     GG.Offence.MapRenderer =
@@ -3109,12 +7856,12 @@
 
 
     /* =====================================================
-       42. READY LOG
+       75. MODULE READY LOG
        ===================================================== */
 
-    console.log(
+    MapRenderer.debug(
 
-        "🔥 OffenceMapRenderer Loaded",
+        "Module loaded",
 
         {
 
@@ -3131,9 +7878,10 @@
                 MapRenderer
                     .AUTHORITATIVE_CONNECTOR,
 
-            module:
+            spatialModel:
 
                 MapRenderer
+                    .SPATIAL_MODEL
 
         }
 
@@ -3141,3 +7889,9 @@
 
 
 })();
+
+
+/* =========================================================
+   END OF FILE
+   offenceMapRenderer.js
+   ========================================================= */
