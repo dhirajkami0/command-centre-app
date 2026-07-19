@@ -1810,7 +1810,59 @@ window.GreenGuardAI =
       REGISTER
     =====================================================*/
 
+/*--------------------------------------------------
+  Reset GIS Index
 
+  Clears the cached GIS entity index.
+
+  This does NOT modify:
+  - window.allGISFeatures
+  - window.allCompartmentFeatures
+  - window.__villageCache
+
+  It only clears the internal derived index.
+--------------------------------------------------*/
+
+GISEntities.reset =
+    function () {
+
+        index =
+            null;
+
+        return GISEntities;
+
+    };
+
+
+/*--------------------------------------------------
+  Rebuild GIS Index
+
+  Required when GIS data is loaded after
+  GISEntities.build() was previously called.
+
+  This prevents an early empty/stale index from
+  remaining authoritative for the page lifetime.
+--------------------------------------------------*/
+
+GISEntities.rebuild =
+    function () {
+
+        /*
+         * Clear cached derived index.
+         */
+
+        index =
+            null;
+
+
+        /*
+         * Rebuild from current runtime GIS sources.
+         */
+
+        return GISEntities
+            .build();
+
+    };
     /*
      * Freeze the public module exactly as before.
      *
