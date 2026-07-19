@@ -1823,15 +1823,7 @@ window.GreenGuardAI =
   It only clears the internal derived index.
 --------------------------------------------------*/
 
-GISEntities.reset =
-    function () {
 
-        index =
-            null;
-
-        return GISEntities;
-
-    };
 
 
 /*--------------------------------------------------
@@ -1844,25 +1836,7 @@ GISEntities.reset =
   remaining authoritative for the page lifetime.
 --------------------------------------------------*/
 
-GISEntities.rebuild =
-    function () {
 
-        /*
-         * Clear cached derived index.
-         */
-
-        index =
-            null;
-
-
-        /*
-         * Rebuild from current runtime GIS sources.
-         */
-
-        return GISEntities
-            .build();
-
-    };
     /*
      * Freeze the public module exactly as before.
      *
