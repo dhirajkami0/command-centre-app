@@ -6,7 +6,7 @@
    js/offence/offenceMapRenderer.js
 
    Version:
-   2.0.0
+   2.1.0
 
    PURPOSE:
    ---------------------------------------------------------
@@ -59,9 +59,9 @@
    ---------------------------------------------------------
 
    POR No / Ref POR No
-           ↓
-       normalized porKey
-           ↓
+       ↓
+   normalized porKey
+       ↓
    Cases / Accused / Witnesses /
    Seizures / Seized Articles /
    SOURCE / TARGET
@@ -69,18 +69,22 @@
 
    IMPORTANT:
    ---------------------------------------------------------
+
    This module:
 
    - DOES render Leaflet layers
-   - DOES render hotspot interaction markers
+   - DOES render SOURCE heatmaps
+   - DOES render TARGET heatmaps
+   - DOES create hotspot interaction markers
    - DOES emit hotspot-click events
+   - DOES pass POR information to cascade layer
 
    This module DOES NOT:
 
    - access Firestore
-   - geocode
+   - geocode addresses
    - normalize offence records
-   - resolve case relationships
+   - resolve POR relationships
    - build cascade UI
    - manipulate CascadeController state
 
@@ -161,7 +165,7 @@
 
 
     MapRenderer.VERSION =
-        "2.0.0";
+        "2.1.0";
 
 
     MapRenderer.initialized =
@@ -201,6 +205,14 @@
                 "TARGET"
 
         });
+
+
+    MapRenderer.TYPE_SOURCE =
+        "SOURCE";
+
+
+    MapRenderer.TYPE_TARGET =
+        "TARGET";
 
 
     /* =====================================================
@@ -325,13 +337,21 @@
             options = {}
         ) {
 
+            /*
+             * Already initialized.
+             *
+             * Allow a map to be attached later if the module
+             * was initialized before Leaflet map creation.
+             */
+
             if (
                 MapRenderer.initialized
             ) {
 
                 if (
                     map &&
-                    !MapRenderer.map
+                    MapRenderer.map !==
+                        map
                 ) {
 
                     MapRenderer
@@ -347,6 +367,10 @@
             }
 
 
+            /*
+             * Apply optional runtime configuration.
+             */
+
             if (
                 options &&
                 typeof options ===
@@ -360,6 +384,10 @@
 
             }
 
+
+            /*
+             * Resolve Leaflet map.
+             */
 
             const resolvedMap =
 
@@ -385,9 +413,17 @@
                 resolvedMap;
 
 
+            /*
+             * Build offence-specific Leaflet layer hierarchy.
+             */
+
             MapRenderer
                 .createLayers();
 
+
+            /*
+             * Listen for offence engine updates.
+             */
 
             MapRenderer
                 .bindEvents();
@@ -412,7 +448,13 @@
                             MapRenderer.VERSION,
 
                         mode:
-                            MapRenderer.currentMode
+                            MapRenderer.currentMode,
+
+                        mapAvailable:
+                            !!MapRenderer.map,
+
+                        connector:
+                            "POR"
 
                     }
 
@@ -436,7 +478,9 @@
         ) {
 
             if (
-                options.source
+                options.source &&
+                typeof options.source ===
+                    "object"
             ) {
 
                 Object.assign(
@@ -453,7 +497,9 @@
 
 
             if (
-                options.target
+                options.target &&
+                typeof options.target ===
+                    "object"
             ) {
 
                 Object.assign(
@@ -470,7 +516,9 @@
 
 
             if (
-                options.interaction
+                options.interaction &&
+                typeof options.interaction ===
+                    "object"
             ) {
 
                 Object.assign(
@@ -487,7 +535,9 @@
 
 
             if (
-                options.hotspotMarker
+                options.hotspotMarker &&
+                typeof options.hotspotMarker ===
+                    "object"
             ) {
 
                 Object.assign(
@@ -502,6 +552,9 @@
 
             }
 
+
+            return MapRenderer.CONFIG;
+
         };
 
 
@@ -510,8 +563,10 @@
 
        Supports common GreenGuard map globals.
 
-       Prefer explicit:
+       Preferred initialization:
+
        GG.Offence.MapRenderer.init(map)
+
        ===================================================== */
 
     MapRenderer.resolveMap =
@@ -546,6 +601,8 @@
                     typeof candidate.addLayer ===
                         "function" &&
                     typeof candidate.removeLayer ===
+                        "function" &&
+                    typeof candidate.hasLayer ===
                         "function"
                 ) {
 
@@ -563,6 +620,10 @@
 
     /* =====================================================
        10. SET MAP
+
+       Allows the Leaflet map to be attached or replaced
+       after this module has loaded.
+
        ===================================================== */
 
     MapRenderer.setMap =
@@ -571,6 +632,22 @@
         ) {
 
             if (!map) {
+
+                return false;
+
+            }
+
+
+            if (
+                typeof map.addLayer !==
+                    "function" ||
+                typeof map.removeLayer !==
+                    "function"
+            ) {
+
+                console.error(
+                    "[OffenceMapRenderer] Invalid Leaflet map instance."
+                );
 
                 return false;
 
@@ -587,6 +664,10 @@
             }
 
 
+            /*
+             * Remove layers from previous map.
+             */
+
             MapRenderer
                 .removeLayers();
 
@@ -595,9 +676,17 @@
                 map;
 
 
+            /*
+             * Recreate offence layer structure.
+             */
+
             MapRenderer
                 .createLayers();
 
+
+            /*
+             * Restore visibility if offence heatmap was active.
+             */
 
             if (
                 MapRenderer.visible
@@ -616,6 +705,20 @@
 
     /* =====================================================
        11. CREATE LAYERS
+
+       Layer hierarchy:
+
+       root
+       ├── source
+       │   ├── sourceHeat
+       │   ├── sourceInteraction
+       │   └── sourceMarkers
+       │
+       └── target
+           ├── targetHeat
+           ├── targetInteraction
+           └── targetMarkers
+
        ===================================================== */
 
     MapRenderer.createLayers =
@@ -628,6 +731,15 @@
                 return false;
 
             }
+
+
+            /*
+             * Remove any existing offence layers before
+             * rebuilding the hierarchy.
+             */
+
+            MapRenderer
+                .removeLayers();
 
 
             MapRenderer.layers.root =
@@ -665,6 +777,10 @@
                 L.layerGroup();
 
 
+            /*
+             * SOURCE children.
+             */
+
             MapRenderer.layers.source.addLayer(
 
                 MapRenderer
@@ -683,6 +799,10 @@
             );
 
 
+            /*
+             * TARGET children.
+             */
+
             MapRenderer.layers.target.addLayer(
 
                 MapRenderer
@@ -700,6 +820,10 @@
 
             );
 
+
+            /*
+             * Add SOURCE and TARGET groups to root.
+             */
 
             MapRenderer.layers.root.addLayer(
 
@@ -726,6 +850,15 @@
 
     /* =====================================================
        12. BIND EVENTS
+
+       MapRenderer reacts to:
+
+       offence:heatmap-updated
+           → HeatmapEngine rebuilt hotspot data
+
+       offence:data-ready
+           → offence data pipeline completed
+
        ===================================================== */
 
     MapRenderer.bindEvents =
@@ -835,8 +968,26 @@
     MapRenderer.handleHeatmapUpdated =
         function () {
 
+            /*
+             * Only render if a map has already been attached.
+             */
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                return;
+
+            }
+
+
             MapRenderer
-                .render();
+                .render({
+
+                    show:
+                        MapRenderer.visible
+
+                });
 
         };
 
@@ -848,8 +999,53 @@
     MapRenderer.handleDataReady =
         function () {
 
+            /*
+             * Data may become ready before Leaflet map.
+             * Try resolving the map again.
+             */
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                const resolvedMap =
+
+                    MapRenderer
+                        .resolveMap();
+
+
+                if (
+                    resolvedMap
+                ) {
+
+                    MapRenderer.map =
+                        resolvedMap;
+
+
+                    MapRenderer
+                        .createLayers();
+
+                }
+
+            }
+
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                return;
+
+            }
+
+
             MapRenderer
-                .render();
+                .render({
+
+                    show:
+                        MapRenderer.visible
+
+                });
 
         };
 
@@ -857,7 +1053,23 @@
     /* =====================================================
        16. RENDER
 
-       Main rendering entry point.
+       MAIN RENDERING ENTRY POINT
+
+       Reads hotspot aggregates from:
+
+       GG.Offence.HeatmapEngine
+
+       Depending on mode:
+
+       ALL
+           → SOURCE + TARGET
+
+       SOURCE
+           → SOURCE only
+
+       TARGET
+           → TARGET only
+
        ===================================================== */
 
     MapRenderer.render =
@@ -865,12 +1077,50 @@
             options = {}
         ) {
 
+            /*
+             * Initialize lazily if required.
+             */
+
             if (
                 !MapRenderer.initialized
             ) {
 
                 MapRenderer
                     .init();
+
+            }
+
+
+            /*
+             * Map may have become available after module load.
+             */
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                const resolvedMap =
+
+                    MapRenderer
+                        .resolveMap();
+
+
+                if (
+                    resolvedMap
+                ) {
+
+                    MapRenderer.map =
+                        resolvedMap;
+
+
+                    MapRenderer
+                        .createLayers();
+
+
+                    MapRenderer.initialized =
+                        true;
+
+                }
 
             }
 
@@ -892,6 +1142,24 @@
             }
 
 
+            /*
+             * Ensure layers exist.
+             */
+
+            if (
+                !MapRenderer.layers.root
+            ) {
+
+                MapRenderer
+                    .createLayers();
+
+            }
+
+
+            /*
+             * Optional mode override.
+             */
+
             if (
                 options.mode
             ) {
@@ -906,6 +1174,10 @@
             }
 
 
+            /*
+             * Get latest hotspot aggregates.
+             */
+
             const sourceHotspots =
 
                 MapRenderer
@@ -918,9 +1190,17 @@
                     .getTargetHotspots();
 
 
+            /*
+             * Remove previous heatmap rendering.
+             */
+
             MapRenderer
                 .clearRenderedLayers();
 
+
+            /*
+             * SOURCE.
+             */
 
             if (
                 MapRenderer.currentMode ===
@@ -938,6 +1218,10 @@
             }
 
 
+            /*
+             * TARGET.
+             */
+
             if (
                 MapRenderer.currentMode ===
                     MapRenderer.MODE.ALL ||
@@ -953,6 +1237,10 @@
 
             }
 
+
+            /*
+             * Show root layer unless explicitly disabled.
+             */
 
             if (
                 options.show !==
@@ -977,10 +1265,17 @@
                     sourceHotspots.length,
 
                 targetCount:
-                    targetHotspots.length
+                    targetHotspots.length,
+
+                visible:
+                    MapRenderer.visible
 
             };
 
+
+            /*
+             * Notify UIController and other consumers.
+             */
 
             MapRenderer
                 .dispatchEvent(
@@ -1018,6 +1313,15 @@
 
     /* =====================================================
        17. GET SOURCE HOTSPOTS
+
+       Supports current and fallback HeatmapEngine APIs.
+
+       Preferred:
+       HeatmapEngine.getSourceHotspots()
+
+       Fallback:
+       HeatmapEngine.getHotspots("SOURCE")
+
        ===================================================== */
 
     MapRenderer.getSourceHotspots =
@@ -1041,6 +1345,7 @@
 
             }
 
+
             else if (
                 typeof HeatmapEngine.getHotspots ===
                     "function"
@@ -1056,6 +1361,7 @@
                     [];
 
             }
+
 
             else if (
                 Array.isArray(
@@ -1080,6 +1386,13 @@
 
     /* =====================================================
        18. GET TARGET HOTSPOTS
+
+       Preferred:
+       HeatmapEngine.getTargetHotspots()
+
+       Fallback:
+       HeatmapEngine.getHotspots("TARGET")
+
        ===================================================== */
 
     MapRenderer.getTargetHotspots =
@@ -1103,6 +1416,7 @@
 
             }
 
+
             else if (
                 typeof HeatmapEngine.getHotspots ===
                     "function"
@@ -1118,6 +1432,7 @@
                     [];
 
             }
+
 
             else if (
                 Array.isArray(
@@ -1141,13 +1456,64 @@
 
 
     /* =====================================================
+       PART 1 END
+
+       PART 2 CONTINUES WITH:
+
+       19. renderSource()
+       20. renderTarget()
+       21. createInteractionMarker()
+       22. handleHotspotClick()
+       23. POR payload construction
+       24. getHotspotId()
+       25. getCoordinates()
+
+       DO NOT ADD:
+
+       })();
+
+       HERE.
+
+       PART 2 CONTINUES INSIDE THE SAME IIFE.
+       ===================================================== */
+
+     /* =====================================================
        19. RENDER SOURCE
+
+       SOURCE hotspots represent:
+
+       accused / offender origin locations
+
+       Examples:
+
+       - accused address
+       - village
+       - residential location
+       - known source location
+
        ===================================================== */
 
     MapRenderer.renderSource =
         function (
-            hotspots
+            hotspots = []
         ) {
+
+            if (
+                !MapRenderer.layers.source
+            ) {
+
+                return {
+
+                    success:
+                        false,
+
+                    rendered:
+                        0
+
+                };
+
+            }
+
 
             if (
                 !Array.isArray(
@@ -1155,7 +1521,8 @@
                 )
             ) {
 
-                return;
+                hotspots =
+                    [];
 
             }
 
@@ -1164,71 +1531,169 @@
                 [];
 
 
-            for (
-                const hotspot
-                of hotspots
-            ) {
-
-                const coordinates =
-
-                    MapRenderer
-                        .getCoordinates(
-                            hotspot
-                        );
+            let rendered =
+                0;
 
 
-                if (!coordinates) {
+            hotspots.forEach(
 
-                    continue;
+                function (
+                    hotspot,
+                    index
+                ) {
 
-                }
+                    const coordinates =
 
-
-                const intensity =
-
-                    MapRenderer
-                        .getIntensity(
-                            hotspot
-                        );
-
-
-                heatPoints.push([
-
-                    coordinates.lat,
-
-                    coordinates.lng,
-
-                    intensity
-
-                ]);
+                        MapRenderer
+                            .getCoordinates(
+                                hotspot
+                            );
 
 
-                MapRenderer
-                    .createInteractionMarker(
+                    if (
+                        !coordinates
+                    ) {
 
-                        hotspot,
+                        return;
 
-                        MapRenderer.TYPE_SOURCE,
+                    }
 
-                        coordinates,
+
+                    const lat =
+                        coordinates.lat;
+
+
+                    const lng =
+                        coordinates.lng;
+
+
+                    const intensity =
+
+                        MapRenderer
+                            .getHotspotIntensity(
+                                hotspot
+                            );
+
+
+                    /*
+                     * Leaflet.heat format:
+                     *
+                     * [
+                     *     latitude,
+                     *     longitude,
+                     *     intensity
+                     * ]
+                     */
+
+                    heatPoints.push([
+
+                        lat,
+
+                        lng,
+
+                        intensity
+
+                    ]);
+
+
+                    /*
+                     * Invisible / nearly invisible clickable
+                     * interaction marker.
+                     *
+                     * Heat layers themselves do not provide
+                     * reliable click interaction.
+                     */
+
+                    const interactionMarker =
+
+                        MapRenderer
+                            .createInteractionMarker(
+
+                                hotspot,
+
+                                MapRenderer.TYPE_SOURCE,
+
+                                index
+
+                            );
+
+
+                    if (
+                        interactionMarker &&
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+                    ) {
 
                         MapRenderer
                             .layers
                             .sourceInteraction
+                            .addLayer(
+                                interactionMarker
+                            );
 
-                    );
+                    }
 
-            }
+
+                    /*
+                     * Optional visible hotspot marker.
+                     */
+
+                    if (
+                        MapRenderer
+                            .shouldRenderVisibleMarker(
+                                hotspot
+                            )
+                    ) {
+
+                        const visibleMarker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_SOURCE,
+
+                                    index
+
+                                );
+
+
+                        if (
+                            visibleMarker &&
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                                .addLayer(
+                                    visibleMarker
+                                );
+
+                        }
+
+                    }
+
+
+                    rendered++;
+
+                }
+
+            );
 
 
             /*
-             * Heat layer.
+             * Create Leaflet heat layer if plugin exists.
              */
 
             if (
+                heatPoints.length > 0 &&
                 typeof L.heatLayer ===
-                    "function" &&
-                heatPoints.length > 0
+                    "function"
             ) {
 
                 MapRenderer.layers.sourceHeat =
@@ -1240,28 +1705,24 @@
                         {
 
                             radius:
-
                                 MapRenderer
                                     .CONFIG
                                     .source
                                     .radius,
 
                             blur:
-
                                 MapRenderer
                                     .CONFIG
                                     .source
                                     .blur,
 
                             maxZoom:
-
                                 MapRenderer
                                     .CONFIG
                                     .source
                                     .maxZoom,
 
                             minOpacity:
-
                                 MapRenderer
                                     .CONFIG
                                     .source
@@ -1272,30 +1733,68 @@
                     );
 
 
-                MapRenderer.layers.source.addLayer(
-
-                    MapRenderer
-                        .layers
-                        .sourceHeat
-
-                );
-
-            }
-
-
-            /*
-             * Fallback visible markers if Leaflet.heat
-             * is unavailable.
-             */
-
-            else {
+                /*
+                 * Heat layer should remain below interaction
+                 * and visible marker layers.
+                 */
 
                 MapRenderer
-                    .renderFallbackMarkers(
+                    .layers
+                    .source
+                    .addLayer(
 
-                        hotspots,
+                        MapRenderer
+                            .layers
+                            .sourceHeat
 
-                        "SOURCE",
+                    );
+
+
+                /*
+                 * Re-add interaction layers so they stay
+                 * above the heat layer.
+                 */
+
+                MapRenderer
+                    .layers
+                    .source
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceMarkers
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .addLayer(
 
                         MapRenderer
                             .layers
@@ -1305,17 +1804,122 @@
 
             }
 
+
+            /*
+             * Fallback:
+             *
+             * If Leaflet.heat is unavailable, visible
+             * circle markers still allow hotspot display
+             * and interaction.
+             */
+
+            else if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer !==
+                    "function"
+            ) {
+
+                console.warn(
+                    "[OffenceMapRenderer] Leaflet.heat plugin unavailable. SOURCE rendered using markers only."
+                );
+
+
+                hotspots.forEach(
+
+                    function (
+                        hotspot,
+                        index
+                    ) {
+
+                        const marker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_SOURCE,
+
+                                    index,
+
+                                    true
+
+                                );
+
+
+                        if (
+                            marker
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                                .addLayer(
+                                    marker
+                                );
+
+                        }
+
+                    }
+
+                );
+
+            }
+
+
+            return {
+
+                success:
+                    true,
+
+                rendered:
+                    rendered,
+
+                heatPoints:
+                    heatPoints.length
+
+            };
+
         };
 
 
     /* =====================================================
        20. RENDER TARGET
+
+       TARGET hotspots represent:
+
+       offence / seizure / target locations
+
+       Examples:
+
+       - place of offence
+       - seizure location
+       - destination
+       - target location
+
        ===================================================== */
 
     MapRenderer.renderTarget =
         function (
-            hotspots
+            hotspots = []
         ) {
+
+            if (
+                !MapRenderer.layers.target
+            ) {
+
+                return {
+
+                    success:
+                        false,
+
+                    rendered:
+                        0
+
+                };
+
+            }
+
 
             if (
                 !Array.isArray(
@@ -1323,7 +1927,8 @@
                 )
             ) {
 
-                return;
+                hotspots =
+                    [];
 
             }
 
@@ -1332,67 +1937,151 @@
                 [];
 
 
-            for (
-                const hotspot
-                of hotspots
-            ) {
-
-                const coordinates =
-
-                    MapRenderer
-                        .getCoordinates(
-                            hotspot
-                        );
+            let rendered =
+                0;
 
 
-                if (!coordinates) {
+            hotspots.forEach(
 
-                    continue;
+                function (
+                    hotspot,
+                    index
+                ) {
 
-                }
+                    const coordinates =
 
-
-                const intensity =
-
-                    MapRenderer
-                        .getIntensity(
-                            hotspot
-                        );
-
-
-                heatPoints.push([
-
-                    coordinates.lat,
-
-                    coordinates.lng,
-
-                    intensity
-
-                ]);
+                        MapRenderer
+                            .getCoordinates(
+                                hotspot
+                            );
 
 
-                MapRenderer
-                    .createInteractionMarker(
+                    if (
+                        !coordinates
+                    ) {
 
-                        hotspot,
+                        return;
 
-                        MapRenderer.TYPE_TARGET,
+                    }
 
-                        coordinates,
+
+                    const lat =
+                        coordinates.lat;
+
+
+                    const lng =
+                        coordinates.lng;
+
+
+                    const intensity =
+
+                        MapRenderer
+                            .getHotspotIntensity(
+                                hotspot
+                            );
+
+
+                    heatPoints.push([
+
+                        lat,
+
+                        lng,
+
+                        intensity
+
+                    ]);
+
+
+                    /*
+                     * Clickable target hotspot.
+                     */
+
+                    const interactionMarker =
+
+                        MapRenderer
+                            .createInteractionMarker(
+
+                                hotspot,
+
+                                MapRenderer.TYPE_TARGET,
+
+                                index
+
+                            );
+
+
+                    if (
+                        interactionMarker &&
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+                    ) {
 
                         MapRenderer
                             .layers
                             .targetInteraction
+                            .addLayer(
+                                interactionMarker
+                            );
 
-                    );
+                    }
 
-            }
+
+                    /*
+                     * Optional visible target marker.
+                     */
+
+                    if (
+                        MapRenderer
+                            .shouldRenderVisibleMarker(
+                                hotspot
+                            )
+                    ) {
+
+                        const visibleMarker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_TARGET,
+
+                                    index
+
+                                );
+
+
+                        if (
+                            visibleMarker &&
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                                .addLayer(
+                                    visibleMarker
+                                );
+
+                        }
+
+                    }
+
+
+                    rendered++;
+
+                }
+
+            );
 
 
             if (
+                heatPoints.length > 0 &&
                 typeof L.heatLayer ===
-                    "function" &&
-                heatPoints.length > 0
+                    "function"
             ) {
 
                 MapRenderer.layers.targetHeat =
@@ -1404,28 +2093,24 @@
                         {
 
                             radius:
-
                                 MapRenderer
                                     .CONFIG
                                     .target
                                     .radius,
 
                             blur:
-
                                 MapRenderer
                                     .CONFIG
                                     .target
                                     .blur,
 
                             maxZoom:
-
                                 MapRenderer
                                     .CONFIG
                                     .target
                                     .maxZoom,
 
                             minOpacity:
-
                                 MapRenderer
                                     .CONFIG
                                     .target
@@ -1436,25 +2121,62 @@
                     );
 
 
-                MapRenderer.layers.target.addLayer(
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
 
-                    MapRenderer
-                        .layers
-                        .targetHeat
+                        MapRenderer
+                            .layers
+                            .targetHeat
 
-                );
-
-            }
+                    );
 
 
-            else {
+                /*
+                 * Keep clickable layers above heat layer.
+                 */
 
                 MapRenderer
-                    .renderFallbackMarkers(
+                    .layers
+                    .target
+                    .removeLayer(
 
-                        hotspots,
+                        MapRenderer
+                            .layers
+                            .targetInteraction
 
-                        "TARGET",
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetMarkers
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
 
                         MapRenderer
                             .layers
@@ -1464,42 +2186,104 @@
 
             }
 
+
+            else if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer !==
+                    "function"
+            ) {
+
+                console.warn(
+                    "[OffenceMapRenderer] Leaflet.heat plugin unavailable. TARGET rendered using markers only."
+                );
+
+
+                hotspots.forEach(
+
+                    function (
+                        hotspot,
+                        index
+                    ) {
+
+                        const marker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_TARGET,
+
+                                    index,
+
+                                    true
+
+                                );
+
+
+                        if (
+                            marker
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                                .addLayer(
+                                    marker
+                                );
+
+                        }
+
+                    }
+
+                );
+
+            }
+
+
+            return {
+
+                success:
+                    true,
+
+                rendered:
+                    rendered,
+
+                heatPoints:
+                    heatPoints.length
+
+            };
+
         };
 
 
     /* =====================================================
-       21. TYPE CONSTANTS
-       ===================================================== */
+       21. CREATE INTERACTION MARKER
 
-    MapRenderer.TYPE_SOURCE =
-        "SOURCE";
+       Heat layers are visual only.
 
+       A transparent Leaflet circleMarker is created over
+       each hotspot to capture clicks.
 
-    MapRenderer.TYPE_TARGET =
-        "TARGET";
-
-
-    /* =====================================================
-       22. CREATE INTERACTION MARKER
-
-       Heat layers themselves do not reliably expose
-       individual hotspot click events.
-
-       Transparent circle markers provide click targets.
        ===================================================== */
 
     MapRenderer.createInteractionMarker =
         function (
             hotspot,
             type,
-            coordinates,
-            layer
+            index = 0
         ) {
 
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
             if (
-                !hotspot ||
-                !coordinates ||
-                !layer
+                !coordinates
             ) {
 
                 return null;
@@ -1522,28 +2306,24 @@
                     {
 
                         radius:
-
                             MapRenderer
                                 .CONFIG
                                 .interaction
                                 .radius,
 
                         fillOpacity:
-
                             MapRenderer
                                 .CONFIG
                                 .interaction
                                 .fillOpacity,
 
                         opacity:
-
                             MapRenderer
                                 .CONFIG
                                 .interaction
                                 .opacity,
 
                         weight:
-
                             MapRenderer
                                 .CONFIG
                                 .interaction
@@ -1568,16 +2348,173 @@
                     event
                 ) {
 
-                    if (
-                        event?.originalEvent
-                    ) {
+                    MapRenderer
+                        .handleHotspotClick(
 
-                        L.DomEvent.stopPropagation(
-                            event.originalEvent
+                            hotspot,
+
+                            type,
+
+                            event,
+
+                            index
+
                         );
+
+                }
+
+            );
+
+
+            /*
+             * Store metadata directly on Leaflet layer.
+             */
+
+            marker.__ggOffenceHotspot =
+                hotspot;
+
+
+            marker.__ggOffenceType =
+                type;
+
+
+            marker.__ggOffenceIndex =
+                index;
+
+
+            return marker;
+
+        };
+
+
+    /* =====================================================
+       22. CREATE VISIBLE HOTSPOT MARKER
+
+       These markers supplement the heat layer and make
+       individual hotspots easier to discover.
+
+       ===================================================== */
+
+    MapRenderer.createVisibleHotspotMarker =
+        function (
+            hotspot,
+            type,
+            index = 0,
+            fallbackMode = false
+        ) {
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            if (
+                !coordinates
+            ) {
+
+                return null;
+
+            }
+
+
+            const intensity =
+
+                MapRenderer
+                    .getHotspotIntensity(
+                        hotspot
+                    );
+
+
+            const baseRadius =
+
+                MapRenderer
+                    .CONFIG
+                    .hotspotMarker
+                    .radius;
+
+
+            /*
+             * Slightly scale marker based on hotspot
+             * intensity, with an upper limit.
+             */
+
+            const radius =
+
+                Math.min(
+
+                    baseRadius +
+                    Math.sqrt(
+                        Math.max(
+                            intensity,
+                            1
+                        )
+                    ),
+
+                    18
+
+                );
+
+
+            const marker =
+
+                L.circleMarker(
+
+                    [
+
+                        coordinates.lat,
+
+                        coordinates.lng
+
+                    ],
+
+                    {
+
+                        radius:
+                            fallbackMode
+                                ? radius + 2
+                                : radius,
+
+                        weight:
+                            MapRenderer
+                                .CONFIG
+                                .hotspotMarker
+                                .weight,
+
+                        opacity:
+                            MapRenderer
+                                .CONFIG
+                                .hotspotMarker
+                                .opacity,
+
+                        fillOpacity:
+                            fallbackMode
+                                ? 0.6
+                                : MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .fillOpacity,
+
+                        interactive:
+                            true,
+
+                        bubblingMouseEvents:
+                            false
 
                     }
 
+                );
+
+
+            marker.on(
+
+                "click",
+
+                function (
+                    event
+                ) {
 
                     MapRenderer
                         .handleHotspotClick(
@@ -1586,7 +2523,9 @@
 
                             type,
 
-                            event
+                            event,
+
+                            index
 
                         );
 
@@ -1595,45 +2534,52 @@
             );
 
 
-            marker.on(
+            /*
+             * Tooltip provides quick context without
+             * replacing the full cascade UI.
+             */
 
-                "mouseover",
+            const tooltipText =
 
-                function () {
+                MapRenderer
+                    .buildHotspotTooltip(
 
-                    MapRenderer
-                        .dispatchEvent(
+                        hotspot,
 
-                            "offence:hotspot-hover",
+                        type
 
-                            {
-
-                                hotspotId:
-
-                                    MapRenderer
-                                        .getHotspotId(
-                                            hotspot,
-                                            type
-                                        ),
-
-                                type:
-                                    type,
-
-                                hotspot:
-                                    hotspot
-
-                            }
-
-                        );
-
-                }
-
-            );
+                    );
 
 
-            marker.addTo(
-                layer
-            );
+            if (
+                tooltipText
+            ) {
+
+                marker.bindTooltip(
+
+                    tooltipText,
+
+                    {
+
+                        direction:
+                            "top",
+
+                        sticky:
+                            true
+
+                    }
+
+                );
+
+            }
+
+
+            marker.__ggOffenceHotspot =
+                hotspot;
+
+
+            marker.__ggOffenceType =
+                type;
 
 
             return marker;
@@ -1644,59 +2590,31 @@
     /* =====================================================
        23. HANDLE HOTSPOT CLICK
 
-       IMPORTANT:
-
        This is the bridge:
 
-       Map
-           ↓
        MapRenderer
            ↓
        offence:hotspot-click
            ↓
-       CascadeController.openHotspot()
-           ↓
-       POR cascade
+       CascadeController
+
+       POR is passed as authoritative relationship data.
+
        ===================================================== */
 
     MapRenderer.handleHotspotClick =
         function (
             hotspot,
             type,
-            event = null
+            leafletEvent = null,
+            index = 0
         ) {
 
-            const hotspotId =
+            if (
+                !hotspot
+            ) {
 
-                MapRenderer
-                    .getHotspotId(
-
-                        hotspot,
-
-                        type
-
-                    );
-
-
-            if (!hotspotId) {
-
-                if (
-                    Constants.DEBUG
-                        ?.ENABLED
-                ) {
-
-                    console.warn(
-
-                        "[OffenceMapRenderer] Hotspot has no ID.",
-
-                        hotspot
-
-                    );
-
-                }
-
-
-                return false;
+                return null;
 
             }
 
@@ -1709,61 +2627,124 @@
                     );
 
 
-            const latlng =
+            const porKeys =
 
-                event?.latlng ||
-
-                (
-
-                    coordinates
-
-                        ? {
-
-                            lat:
-                                coordinates.lat,
-
-                            lng:
-                                coordinates.lng
-
-                        }
-
-                        : null
-
-                );
+                MapRenderer
+                    .getPorKeys(
+                        hotspot
+                    );
 
 
-            const detail = {
+            const primaryPorKey =
+
+                MapRenderer
+                    .getPrimaryPorKey(
+                        hotspot,
+                        porKeys
+                    );
+
+
+            const hotspotId =
+
+                MapRenderer
+                    .getHotspotId(
+
+                        hotspot,
+
+                        type,
+
+                        index
+
+                    );
+
+
+            const payload = {
 
                 hotspotId:
                     hotspotId,
 
                 type:
-                    type,
+                    MapRenderer
+                        .normalizeHotspotType(
+                            type
+                        ),
 
                 hotspot:
                     hotspot,
 
+                /*
+                 * POR-authoritative connector.
+                 */
+
                 porKey:
-
-                    hotspot.porKey ||
-
-                    null,
+                    primaryPorKey,
 
                 porKeys:
+                    porKeys,
 
-                    Array.isArray(
-                        hotspot.porKeys
-                    )
+                /*
+                 * Convenience aliases.
+                 */
 
-                        ? [...hotspot.porKeys]
+                refPorNo:
+                    MapRenderer
+                        .getRefPorNo(
+                            hotspot
+                        ),
 
-                        : [],
+                porNo:
+                    MapRenderer
+                        .getRefPorNo(
+                            hotspot
+                        ),
+
+                /*
+                 * Coordinates.
+                 */
+
+                lat:
+                    coordinates
+                        ?.lat ??
+                    null,
+
+                lng:
+                    coordinates
+                        ?.lng ??
+                    null,
 
                 latlng:
-                    latlng
+                    leafletEvent
+                        ?.latlng ||
+
+                    (
+                        coordinates
+                            ? {
+                                lat:
+                                    coordinates.lat,
+
+                                lng:
+                                    coordinates.lng
+                            }
+                            : null
+                    ),
+
+                /*
+                 * Original Leaflet event is intentionally
+                 * included for consumers that need it.
+                 */
+
+                leafletEvent:
+                    leafletEvent,
+
+                timestamp:
+                    Date.now()
 
             };
 
+
+            /*
+             * Dispatch canonical event.
+             */
 
             MapRenderer
                 .dispatchEvent(
@@ -1771,11 +2752,66 @@
                     Constants.EVENTS
                         ?.HOTSPOT_CLICK ||
 
+                    Constants.EVENTS
+                        ?.HOTSPOT_CLICKED ||
+
                     "offence:hotspot-click",
 
-                    detail
+                    payload
 
                 );
+
+
+            /*
+             * Optional direct controller integration.
+             *
+             * Event-driven integration remains preferred.
+             *
+             * Direct invocation is only used when explicitly
+             * supported by the controller and it has not
+             * declared itself event-bound.
+             */
+
+            const CascadeController =
+
+                GG.Offence
+                    .CascadeController;
+
+
+            if (
+                CascadeController &&
+                CascadeController
+                    .DIRECT_MAP_INTEGRATION ===
+                    true &&
+                typeof CascadeController
+                    .handleHotspotClick ===
+                    "function"
+            ) {
+
+                try {
+
+                    CascadeController
+                        .handleHotspotClick(
+                            payload
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.error(
+
+                        "[OffenceMapRenderer] CascadeController hotspot handling failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
 
 
             if (
@@ -1787,47 +2823,645 @@
 
                     "🔥 Offence Hotspot Click",
 
-                    detail
+                    {
+
+                        hotspotId:
+                            payload.hotspotId,
+
+                        type:
+                            payload.type,
+
+                        porKey:
+                            payload.porKey,
+
+                        porKeys:
+                            payload.porKeys,
+
+                        lat:
+                            payload.lat,
+
+                        lng:
+                            payload.lng
+
+                    }
 
                 );
 
             }
 
 
-            return true;
+            return payload;
 
         };
 
 
     /* =====================================================
-       24. GET HOTSPOT ID
+       24. GET POR KEYS
+
+       POR is the authoritative connector.
+
+       Supports hotspot structures containing:
+
+       porKey
+       porKeys
+       normalizedPor
+       normalizedPorNo
+       refPorNo
+       porNo
+       casePorNo
+       records[].porKey
+
        ===================================================== */
 
-    MapRenderer.getHotspotId =
+    MapRenderer.getPorKeys =
         function (
-            hotspot,
-            type = ""
+            hotspot
         ) {
 
-            if (!hotspot) {
+            if (
+                !hotspot ||
+                typeof hotspot !==
+                    "object"
+            ) {
+
+                return [];
+
+            }
+
+
+            const values =
+                [];
+
+
+            /*
+             * Explicit porKeys.
+             */
+
+            if (
+                Array.isArray(
+                    hotspot.porKeys
+                )
+            ) {
+
+                hotspot
+                    .porKeys
+                    .forEach(
+
+                        function (
+                            value
+                        ) {
+
+                            values.push(
+                                value
+                            );
+
+                        }
+
+                    );
+
+            }
+
+
+            /*
+             * Direct POR fields.
+             */
+
+            values.push(
+
+                hotspot.porKey,
+
+                hotspot.normalizedPor,
+
+                hotspot.normalizedPorNo,
+
+                hotspot.refPorNo,
+
+                hotspot.refPORNo,
+
+                hotspot.porNo,
+
+                hotspot.casePorNo
+
+            );
+
+
+            /*
+             * Associated records.
+             */
+
+            const recordCollections = [
+
+                hotspot.records,
+
+                hotspot.items,
+
+                hotspot.cases,
+
+                hotspot.accused,
+
+                hotspot.seizures,
+
+                hotspot.witnesses
+
+            ];
+
+
+            recordCollections.forEach(
+
+                function (
+                    collection
+                ) {
+
+                    if (
+                        !Array.isArray(
+                            collection
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    collection.forEach(
+
+                        function (
+                            record
+                        ) {
+
+                            if (
+                                !record ||
+                                typeof record !==
+                                    "object"
+                            ) {
+
+                                return;
+
+                            }
+
+
+                            values.push(
+
+                                record.porKey,
+
+                                record.normalizedPor,
+
+                                record.normalizedPorNo,
+
+                                record.refPorNo,
+
+                                record.refPORNo,
+
+                                record.porNo
+
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+
+            /*
+             * Normalize and deduplicate.
+             */
+
+            const normalized =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            values.forEach(
+
+                function (
+                    value
+                ) {
+
+                    const porKey =
+
+                        MapRenderer
+                            .normalizePorKey(
+                                value
+                            );
+
+
+                    if (
+                        !porKey ||
+                        seen.has(
+                            porKey
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    seen.add(
+                        porKey
+                    );
+
+
+                    normalized.push(
+                        porKey
+                    );
+
+                }
+
+            );
+
+
+            return normalized;
+
+        };
+
+
+    /* =====================================================
+       25. GET PRIMARY POR KEY
+       ===================================================== */
+
+    MapRenderer.getPrimaryPorKey =
+        function (
+            hotspot,
+            porKeys = null
+        ) {
+
+            const direct =
+
+                MapRenderer
+                    .normalizePorKey(
+
+                        hotspot
+                            ?.porKey ||
+
+                        hotspot
+                            ?.normalizedPor ||
+
+                        hotspot
+                            ?.normalizedPorNo
+
+                    );
+
+
+            if (
+                direct
+            ) {
+
+                return direct;
+
+            }
+
+
+            const keys =
+
+                Array.isArray(
+                    porKeys
+                )
+
+                    ? porKeys
+
+                    : MapRenderer
+                        .getPorKeys(
+                            hotspot
+                        );
+
+
+            return keys.length > 0
+                ? keys[0]
+                : "";
+
+        };
+
+
+    /* =====================================================
+       26. NORMALIZE POR KEY
+
+       Prefer canonical normalizer when available.
+
+       IMPORTANT:
+       This helper does not establish relationships.
+       It only creates a safe comparison representation.
+
+       ===================================================== */
+
+    MapRenderer.normalizePorKey =
+        function (
+            value
+        ) {
+
+            if (
+                value ===
+                    undefined ||
+                value ===
+                    null
+            ) {
 
                 return "";
 
             }
 
 
-            const directId =
+            /*
+             * Prefer OffenceNormalizer.
+             */
 
-                hotspot.hotspotId ||
+            const Normalizer =
 
-                hotspot.id;
+                GG.Offence
+                    .Normalizer;
 
 
-            if (directId) {
+            if (
+                Normalizer
+            ) {
+
+                if (
+                    typeof Normalizer.normalizePorKey ===
+                        "function"
+                ) {
+
+                    try {
+
+                        return String(
+
+                            Normalizer
+                                .normalizePorKey(
+                                    value
+                                ) || ""
+
+                        ).trim();
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        /*
+                         * Continue with local fallback.
+                         */
+
+                    }
+
+                }
+
+
+                if (
+                    typeof Normalizer.normalizePorNo ===
+                        "function"
+                ) {
+
+                    try {
+
+                        return String(
+
+                            Normalizer
+                                .normalizePorNo(
+                                    value
+                                ) || ""
+
+                        ).trim();
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        /*
+                         * Continue with local fallback.
+                         */
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * Prefer Constants helper if available.
+             */
+
+            if (
+                typeof Constants.normalizePorKey ===
+                    "function"
+            ) {
+
+                try {
+
+                    return String(
+
+                        Constants
+                            .normalizePorKey(
+                                value
+                            ) || ""
+
+                    ).trim();
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    /*
+                     * Continue with fallback.
+                     */
+
+                }
+
+            }
+
+
+            /*
+             * Safe local normalization.
+             *
+             * Preserve POR semantic structure while removing
+             * inconsistent spacing and case differences.
+             */
+
+            return String(
+                value
+            )
+                .replace(
+                    /\r?\n/g,
+                    " "
+                )
+                .replace(
+                    /\s+/g,
+                    " "
+                )
+                .trim()
+                .toUpperCase();
+
+        };
+
+
+    /* =====================================================
+       27. GET REF POR NUMBER
+
+       Returns display-friendly POR number.
+
+       This is separate from normalized porKey.
+
+       ===================================================== */
+
+    MapRenderer.getRefPorNo =
+        function (
+            hotspot
+        ) {
+
+            if (
+                !hotspot
+            ) {
+
+                return "";
+
+            }
+
+
+            const value =
+
+                hotspot.refPorNo ||
+
+                hotspot.refPORNo ||
+
+                hotspot.porNo ||
+
+                hotspot.casePorNo ||
+
+                hotspot.por ||
+
+                "";
+
+
+            if (
+                value
+            ) {
 
                 return String(
-                    directId
-                );
+                    value
+                ).trim();
+
+            }
+
+
+            /*
+             * Look inside associated records.
+             */
+
+            const collections = [
+
+                hotspot.records,
+
+                hotspot.items,
+
+                hotspot.cases,
+
+                hotspot.accused,
+
+                hotspot.seizures
+
+            ];
+
+
+            for (
+                const collection
+                of collections
+            ) {
+
+                if (
+                    !Array.isArray(
+                        collection
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                for (
+                    const record
+                    of collection
+                ) {
+
+                    const recordValue =
+
+                        record
+                            ?.refPorNo ||
+
+                        record
+                            ?.refPORNo ||
+
+                        record
+                            ?.porNo;
+
+
+                    if (
+                        recordValue
+                    ) {
+
+                        return String(
+                            recordValue
+                        ).trim();
+
+                    }
+
+                }
+
+            }
+
+
+            return "";
+
+        };
+
+
+    /* =====================================================
+       28. GET HOTSPOT ID
+       ===================================================== */
+
+    MapRenderer.getHotspotId =
+        function (
+            hotspot,
+            type,
+            index = 0
+        ) {
+
+            if (
+                hotspot
+            ) {
+
+                const explicitId =
+
+                    hotspot.hotspotId ||
+
+                    hotspot.id ||
+
+                    hotspot.locationId ||
+
+                    hotspot.clusterId ||
+
+                    hotspot.key;
+
+
+                if (
+                    explicitId
+                ) {
+
+                    return String(
+                        explicitId
+                    );
+
+                }
 
             }
 
@@ -1840,82 +3474,2313 @@
                     );
 
 
-            const locationKey =
+            const latPart =
 
-                hotspot.locationKey ||
-
-                hotspot.location ||
-
-                hotspot.place ||
-
-                hotspot.village ||
-
-                hotspot.address ||
-
-                "";
-
-
-            const porKey =
-
-                hotspot.porKey ||
-
-                (
-
-                    Array.isArray(
-                        hotspot.porKeys
+                coordinates
+                    ? Number(
+                        coordinates.lat
+                    ).toFixed(
+                        6
                     )
+                    : "NA";
 
-                        ? hotspot.porKeys
-                            .join("|")
 
-                        : ""
+            const lngPart =
 
-                );
+                coordinates
+                    ? Number(
+                        coordinates.lng
+                    ).toFixed(
+                        6
+                    )
+                    : "NA";
 
+
+            return [
+
+                "OFFENCE",
+
+                MapRenderer
+                    .normalizeHotspotType(
+                        type
+                    ),
+
+                latPart,
+
+                lngPart,
+
+                index
+
+            ].join(
+                "-"
+            );
+
+        };
+
+
+    /* =====================================================
+       29. GET COORDINATES
+
+       Supports common hotspot structures:
+
+       hotspot.lat / hotspot.lng
+       hotspot.latitude / hotspot.longitude
+       hotspot.location.lat / lng
+       hotspot.coordinates.lat / lng
+       hotspot.geo.lat / lng
+       hotspot.position.lat / lng
+
+       Also supports GeoJSON:
+       [longitude, latitude]
+
+       ===================================================== */
+
+    MapRenderer.getCoordinates =
+        function (
+            hotspot
+        ) {
 
             if (
-                coordinates
+                !hotspot ||
+                typeof hotspot !==
+                    "object"
             ) {
 
-                return [
+                return null;
 
-                    type ||
-                    hotspot.type ||
-                    "HOTSPOT",
+            }
 
-                    coordinates.lat,
 
-                    coordinates.lng,
+            const candidates = [
 
-                    locationKey,
+                {
 
-                    porKey
+                    lat:
+                        hotspot.lat,
 
-                ].join(
-                    "::"
-                );
+                    lng:
+                        hotspot.lng
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.latitude,
+
+                    lng:
+                        hotspot.longitude
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.location
+                            ?.lat,
+
+                    lng:
+                        hotspot.location
+                            ?.lng
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.location
+                            ?.latitude,
+
+                    lng:
+                        hotspot.location
+                            ?.longitude
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.coordinates
+                            ?.lat,
+
+                    lng:
+                        hotspot.coordinates
+                            ?.lng
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.geo
+                            ?.lat,
+
+                    lng:
+                        hotspot.geo
+                            ?.lng
+
+                },
+
+                {
+
+                    lat:
+                        hotspot.position
+                            ?.lat,
+
+                    lng:
+                        hotspot.position
+                            ?.lng
+
+                }
+
+            ];
+
+
+            for (
+                const candidate
+                of candidates
+            ) {
+
+                const lat =
+                    Number(
+                        candidate.lat
+                    );
+
+
+                const lng =
+                    Number(
+                        candidate.lng
+                    );
+
+
+                if (
+                    MapRenderer
+                        .isValidCoordinate(
+                            lat,
+                            lng
+                        )
+                ) {
+
+                    return {
+
+                        lat:
+                            lat,
+
+                        lng:
+                            lng
+
+                    };
+
+                }
+
+            }
+
+
+            /*
+             * GeoJSON coordinate array:
+             *
+             * [longitude, latitude]
+             */
+
+            const coordinateArrays = [
+
+                hotspot.coordinates,
+
+                hotspot.geometry
+                    ?.coordinates,
+
+                hotspot.location
+                    ?.coordinates
+
+            ];
+
+
+            for (
+                const coordinates
+                of coordinateArrays
+            ) {
+
+                if (
+                    !Array.isArray(
+                        coordinates
+                    ) ||
+                    coordinates.length <
+                        2
+                ) {
+
+                    continue;
+
+                }
+
+
+                const lng =
+                    Number(
+                        coordinates[0]
+                    );
+
+
+                const lat =
+                    Number(
+                        coordinates[1]
+                    );
+
+
+                if (
+                    MapRenderer
+                        .isValidCoordinate(
+                            lat,
+                            lng
+                        )
+                ) {
+
+                    return {
+
+                        lat:
+                            lat,
+
+                        lng:
+                            lng
+
+                    };
+
+                }
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /* =====================================================
+       30. VALIDATE COORDINATES
+       ===================================================== */
+
+    MapRenderer.isValidCoordinate =
+        function (
+            lat,
+            lng
+        ) {
+
+            if (
+                !Number.isFinite(
+                    lat
+                ) ||
+                !Number.isFinite(
+                    lng
+                )
+            ) {
+
+                return false;
 
             }
 
 
             if (
-                locationKey ||
-                porKey
+                lat < -90 ||
+                lat > 90
             ) {
 
-                return [
+                return false;
 
-                    type ||
-                    hotspot.type ||
-                    "HOTSPOT",
+            }
 
-                    locationKey,
 
-                    porKey
+            if (
+                lng < -180 ||
+                lng > 180
+            ) {
 
-                ].join(
-                    "::"
+                return false;
+
+            }
+
+
+            /*
+             * Reject common empty coordinate placeholder.
+             */
+
+            if (
+                lat === 0 &&
+                lng === 0
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       PART 2 END
+
+       PART 3 CONTINUES WITH:
+
+       31. getHotspotIntensity()
+       32. shouldRenderVisibleMarker()
+       33. buildHotspotTooltip()
+       34. normalizeHotspotType()
+       35. normalizeMode()
+       36. setMode()
+       37. show()
+       38. hide()
+       39. toggle()
+       40. clearRenderedLayers()
+       41. removeLayers()
+       42. refresh()
+       43. fitToHotspots()
+       44. dispatchEvent()
+       45. getState()
+       46. destroy()
+       47. expose module
+       48. close IIFE
+
+       DO NOT ADD })(); HERE.
+       ===================================================== */
+     /* =====================================================
+       19. RENDER SOURCE
+
+       SOURCE hotspots represent:
+
+       accused / offender origin locations
+
+       Examples:
+
+       - accused address
+       - village
+       - residential location
+       - known source location
+
+       ===================================================== */
+
+    MapRenderer.renderSource =
+        function (
+            hotspots = []
+        ) {
+
+            if (
+                !MapRenderer.layers.source
+            ) {
+
+                return {
+
+                    success:
+                        false,
+
+                    rendered:
+                        0
+
+                };
+
+            }
+
+
+            if (
+                !Array.isArray(
+                    hotspots
+                )
+            ) {
+
+                hotspots =
+                    [];
+
+            }
+
+
+            const heatPoints =
+                [];
+
+
+            let rendered =
+                0;
+
+
+            hotspots.forEach(
+
+                function (
+                    hotspot,
+                    index
+                ) {
+
+                    const coordinates =
+
+                        MapRenderer
+                            .getCoordinates(
+                                hotspot
+                            );
+
+
+                    if (
+                        !coordinates
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const lat =
+                        coordinates.lat;
+
+
+                    const lng =
+                        coordinates.lng;
+
+
+                    const intensity =
+
+                        MapRenderer
+                            .getHotspotIntensity(
+                                hotspot
+                            );
+
+
+                    /*
+                     * Leaflet.heat format:
+                     *
+                     * [
+                     *     latitude,
+                     *     longitude,
+                     *     intensity
+                     * ]
+                     */
+
+                    heatPoints.push([
+
+                        lat,
+
+                        lng,
+
+                        intensity
+
+                    ]);
+
+
+                    /*
+                     * Invisible / nearly invisible clickable
+                     * interaction marker.
+                     *
+                     * Heat layers themselves do not provide
+                     * reliable click interaction.
+                     */
+
+                    const interactionMarker =
+
+                        MapRenderer
+                            .createInteractionMarker(
+
+                                hotspot,
+
+                                MapRenderer.TYPE_SOURCE,
+
+                                index
+
+                            );
+
+
+                    if (
+                        interactionMarker &&
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+                    ) {
+
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+                            .addLayer(
+                                interactionMarker
+                            );
+
+                    }
+
+
+                    /*
+                     * Optional visible hotspot marker.
+                     */
+
+                    if (
+                        MapRenderer
+                            .shouldRenderVisibleMarker(
+                                hotspot
+                            )
+                    ) {
+
+                        const visibleMarker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_SOURCE,
+
+                                    index
+
+                                );
+
+
+                        if (
+                            visibleMarker &&
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                                .addLayer(
+                                    visibleMarker
+                                );
+
+                        }
+
+                    }
+
+
+                    rendered++;
+
+                }
+
+            );
+
+
+            /*
+             * Create Leaflet heat layer if plugin exists.
+             */
+
+            if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer ===
+                    "function"
+            ) {
+
+                MapRenderer.layers.sourceHeat =
+
+                    L.heatLayer(
+
+                        heatPoints,
+
+                        {
+
+                            radius:
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .radius,
+
+                            blur:
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .blur,
+
+                            maxZoom:
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .maxZoom,
+
+                            minOpacity:
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .minOpacity
+
+                        }
+
+                    );
+
+
+                /*
+                 * Heat layer should remain below interaction
+                 * and visible marker layers.
+                 */
+
+                MapRenderer
+                    .layers
+                    .source
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceHeat
+
+                    );
+
+
+                /*
+                 * Re-add interaction layers so they stay
+                 * above the heat layer.
+                 */
+
+                MapRenderer
+                    .layers
+                    .source
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceMarkers
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .source
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .sourceMarkers
+
+                    );
+
+            }
+
+
+            /*
+             * Fallback:
+             *
+             * If Leaflet.heat is unavailable, visible
+             * circle markers still allow hotspot display
+             * and interaction.
+             */
+
+            else if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer !==
+                    "function"
+            ) {
+
+                console.warn(
+                    "[OffenceMapRenderer] Leaflet.heat plugin unavailable. SOURCE rendered using markers only."
                 );
+
+
+                hotspots.forEach(
+
+                    function (
+                        hotspot,
+                        index
+                    ) {
+
+                        const marker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_SOURCE,
+
+                                    index,
+
+                                    true
+
+                                );
+
+
+                        if (
+                            marker
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .sourceMarkers
+                                .addLayer(
+                                    marker
+                                );
+
+                        }
+
+                    }
+
+                );
+
+            }
+
+
+            return {
+
+                success:
+                    true,
+
+                rendered:
+                    rendered,
+
+                heatPoints:
+                    heatPoints.length
+
+            };
+
+        };
+
+
+    /* =====================================================
+       20. RENDER TARGET
+
+       TARGET hotspots represent:
+
+       offence / seizure / target locations
+
+       Examples:
+
+       - place of offence
+       - seizure location
+       - destination
+       - target location
+
+       ===================================================== */
+
+    MapRenderer.renderTarget =
+        function (
+            hotspots = []
+        ) {
+
+            if (
+                !MapRenderer.layers.target
+            ) {
+
+                return {
+
+                    success:
+                        false,
+
+                    rendered:
+                        0
+
+                };
+
+            }
+
+
+            if (
+                !Array.isArray(
+                    hotspots
+                )
+            ) {
+
+                hotspots =
+                    [];
+
+            }
+
+
+            const heatPoints =
+                [];
+
+
+            let rendered =
+                0;
+
+
+            hotspots.forEach(
+
+                function (
+                    hotspot,
+                    index
+                ) {
+
+                    const coordinates =
+
+                        MapRenderer
+                            .getCoordinates(
+                                hotspot
+                            );
+
+
+                    if (
+                        !coordinates
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const lat =
+                        coordinates.lat;
+
+
+                    const lng =
+                        coordinates.lng;
+
+
+                    const intensity =
+
+                        MapRenderer
+                            .getHotspotIntensity(
+                                hotspot
+                            );
+
+
+                    heatPoints.push([
+
+                        lat,
+
+                        lng,
+
+                        intensity
+
+                    ]);
+
+
+                    /*
+                     * Clickable target hotspot.
+                     */
+
+                    const interactionMarker =
+
+                        MapRenderer
+                            .createInteractionMarker(
+
+                                hotspot,
+
+                                MapRenderer.TYPE_TARGET,
+
+                                index
+
+                            );
+
+
+                    if (
+                        interactionMarker &&
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+                    ) {
+
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+                            .addLayer(
+                                interactionMarker
+                            );
+
+                    }
+
+
+                    /*
+                     * Optional visible target marker.
+                     */
+
+                    if (
+                        MapRenderer
+                            .shouldRenderVisibleMarker(
+                                hotspot
+                            )
+                    ) {
+
+                        const visibleMarker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_TARGET,
+
+                                    index
+
+                                );
+
+
+                        if (
+                            visibleMarker &&
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                                .addLayer(
+                                    visibleMarker
+                                );
+
+                        }
+
+                    }
+
+
+                    rendered++;
+
+                }
+
+            );
+
+
+            if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer ===
+                    "function"
+            ) {
+
+                MapRenderer.layers.targetHeat =
+
+                    L.heatLayer(
+
+                        heatPoints,
+
+                        {
+
+                            radius:
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .radius,
+
+                            blur:
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .blur,
+
+                            maxZoom:
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .maxZoom,
+
+                            minOpacity:
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .minOpacity
+
+                        }
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetHeat
+
+                    );
+
+
+                /*
+                 * Keep clickable layers above heat layer.
+                 */
+
+                MapRenderer
+                    .layers
+                    .target
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .removeLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetMarkers
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+
+                    );
+
+
+                MapRenderer
+                    .layers
+                    .target
+                    .addLayer(
+
+                        MapRenderer
+                            .layers
+                            .targetMarkers
+
+                    );
+
+            }
+
+
+            else if (
+                heatPoints.length > 0 &&
+                typeof L.heatLayer !==
+                    "function"
+            ) {
+
+                console.warn(
+                    "[OffenceMapRenderer] Leaflet.heat plugin unavailable. TARGET rendered using markers only."
+                );
+
+
+                hotspots.forEach(
+
+                    function (
+                        hotspot,
+                        index
+                    ) {
+
+                        const marker =
+
+                            MapRenderer
+                                .createVisibleHotspotMarker(
+
+                                    hotspot,
+
+                                    MapRenderer.TYPE_TARGET,
+
+                                    index,
+
+                                    true
+
+                                );
+
+
+                        if (
+                            marker
+                        ) {
+
+                            MapRenderer
+                                .layers
+                                .targetMarkers
+                                .addLayer(
+                                    marker
+                                );
+
+                        }
+
+                    }
+
+                );
+
+            }
+
+
+            return {
+
+                success:
+                    true,
+
+                rendered:
+                    rendered,
+
+                heatPoints:
+                    heatPoints.length
+
+            };
+
+        };
+
+
+    /* =====================================================
+       21. CREATE INTERACTION MARKER
+
+       Heat layers are visual only.
+
+       A transparent Leaflet circleMarker is created over
+       each hotspot to capture clicks.
+
+       ===================================================== */
+
+    MapRenderer.createInteractionMarker =
+        function (
+            hotspot,
+            type,
+            index = 0
+        ) {
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            if (
+                !coordinates
+            ) {
+
+                return null;
+
+            }
+
+
+            const marker =
+
+                L.circleMarker(
+
+                    [
+
+                        coordinates.lat,
+
+                        coordinates.lng
+
+                    ],
+
+                    {
+
+                        radius:
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .radius,
+
+                        fillOpacity:
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .fillOpacity,
+
+                        opacity:
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .opacity,
+
+                        weight:
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .weight,
+
+                        interactive:
+                            true,
+
+                        bubblingMouseEvents:
+                            false
+
+                    }
+
+                );
+
+
+            marker.on(
+
+                "click",
+
+                function (
+                    event
+                ) {
+
+                    MapRenderer
+                        .handleHotspotClick(
+
+                            hotspot,
+
+                            type,
+
+                            event,
+
+                            index
+
+                        );
+
+                }
+
+            );
+
+
+            /*
+             * Store metadata directly on Leaflet layer.
+             */
+
+            marker.__ggOffenceHotspot =
+                hotspot;
+
+
+            marker.__ggOffenceType =
+                type;
+
+
+            marker.__ggOffenceIndex =
+                index;
+
+
+            return marker;
+
+        };
+
+
+    /* =====================================================
+       22. CREATE VISIBLE HOTSPOT MARKER
+
+       These markers supplement the heat layer and make
+       individual hotspots easier to discover.
+
+       ===================================================== */
+
+    MapRenderer.createVisibleHotspotMarker =
+        function (
+            hotspot,
+            type,
+            index = 0,
+            fallbackMode = false
+        ) {
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            if (
+                !coordinates
+            ) {
+
+                return null;
+
+            }
+
+
+            const intensity =
+
+                MapRenderer
+                    .getHotspotIntensity(
+                        hotspot
+                    );
+
+
+            const baseRadius =
+
+                MapRenderer
+                    .CONFIG
+                    .hotspotMarker
+                    .radius;
+
+
+            /*
+             * Slightly scale marker based on hotspot
+             * intensity, with an upper limit.
+             */
+
+            const radius =
+
+                Math.min(
+
+                    baseRadius +
+                    Math.sqrt(
+                        Math.max(
+                            intensity,
+                            1
+                        )
+                    ),
+
+                    18
+
+                );
+
+
+            const marker =
+
+                L.circleMarker(
+
+                    [
+
+                        coordinates.lat,
+
+                        coordinates.lng
+
+                    ],
+
+                    {
+
+                        radius:
+                            fallbackMode
+                                ? radius + 2
+                                : radius,
+
+                        weight:
+                            MapRenderer
+                                .CONFIG
+                                .hotspotMarker
+                                .weight,
+
+                        opacity:
+                            MapRenderer
+                                .CONFIG
+                                .hotspotMarker
+                                .opacity,
+
+                        fillOpacity:
+                            fallbackMode
+                                ? 0.6
+                                : MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .fillOpacity,
+
+                        interactive:
+                            true,
+
+                        bubblingMouseEvents:
+                            false
+
+                    }
+
+                );
+
+
+            marker.on(
+
+                "click",
+
+                function (
+                    event
+                ) {
+
+                    MapRenderer
+                        .handleHotspotClick(
+
+                            hotspot,
+
+                            type,
+
+                            event,
+
+                            index
+
+                        );
+
+                }
+
+            );
+
+
+            /*
+             * Tooltip provides quick context without
+             * replacing the full cascade UI.
+             */
+
+            const tooltipText =
+
+                MapRenderer
+                    .buildHotspotTooltip(
+
+                        hotspot,
+
+                        type
+
+                    );
+
+
+            if (
+                tooltipText
+            ) {
+
+                marker.bindTooltip(
+
+                    tooltipText,
+
+                    {
+
+                        direction:
+                            "top",
+
+                        sticky:
+                            true
+
+                    }
+
+                );
+
+            }
+
+
+            marker.__ggOffenceHotspot =
+                hotspot;
+
+
+            marker.__ggOffenceType =
+                type;
+
+
+            return marker;
+
+        };
+
+
+    /* =====================================================
+       23. HANDLE HOTSPOT CLICK
+
+       This is the bridge:
+
+       MapRenderer
+           ↓
+       offence:hotspot-click
+           ↓
+       CascadeController
+
+       POR is passed as authoritative relationship data.
+
+       ===================================================== */
+
+    MapRenderer.handleHotspotClick =
+        function (
+            hotspot,
+            type,
+            leafletEvent = null,
+            index = 0
+        ) {
+
+            if (
+                !hotspot
+            ) {
+
+                return null;
+
+            }
+
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            const porKeys =
+
+                MapRenderer
+                    .getPorKeys(
+                        hotspot
+                    );
+
+
+            const primaryPorKey =
+
+                MapRenderer
+                    .getPrimaryPorKey(
+                        hotspot,
+                        porKeys
+                    );
+
+
+            const hotspotId =
+
+                MapRenderer
+                    .getHotspotId(
+
+                        hotspot,
+
+                        type,
+
+                        index
+
+                    );
+
+
+            const payload = {
+
+                hotspotId:
+                    hotspotId,
+
+                type:
+                    MapRenderer
+                        .normalizeHotspotType(
+                            type
+                        ),
+
+                hotspot:
+                    hotspot,
+
+                /*
+                 * POR-authoritative connector.
+                 */
+
+                porKey:
+                    primaryPorKey,
+
+                porKeys:
+                    porKeys,
+
+                /*
+                 * Convenience aliases.
+                 */
+
+                refPorNo:
+                    MapRenderer
+                        .getRefPorNo(
+                            hotspot
+                        ),
+
+                porNo:
+                    MapRenderer
+                        .getRefPorNo(
+                            hotspot
+                        ),
+
+                /*
+                 * Coordinates.
+                 */
+
+                lat:
+                    coordinates
+                        ?.lat ??
+                    null,
+
+                lng:
+                    coordinates
+                        ?.lng ??
+                    null,
+
+                latlng:
+                    leafletEvent
+                        ?.latlng ||
+
+                    (
+                        coordinates
+                            ? {
+                                lat:
+                                    coordinates.lat,
+
+                                lng:
+                                    coordinates.lng
+                            }
+                            : null
+                    ),
+
+                /*
+                 * Original Leaflet event is intentionally
+                 * included for consumers that need it.
+                 */
+
+                leafletEvent:
+                    leafletEvent,
+
+                timestamp:
+                    Date.now()
+
+            };
+
+
+            /*
+             * Dispatch canonical event.
+             */
+
+            MapRenderer
+                .dispatchEvent(
+
+                    Constants.EVENTS
+                        ?.HOTSPOT_CLICK ||
+
+                    Constants.EVENTS
+                        ?.HOTSPOT_CLICKED ||
+
+                    "offence:hotspot-click",
+
+                    payload
+
+                );
+
+
+            /*
+             * Optional direct controller integration.
+             *
+             * Event-driven integration remains preferred.
+             *
+             * Direct invocation is only used when explicitly
+             * supported by the controller and it has not
+             * declared itself event-bound.
+             */
+
+            const CascadeController =
+
+                GG.Offence
+                    .CascadeController;
+
+
+            if (
+                CascadeController &&
+                CascadeController
+                    .DIRECT_MAP_INTEGRATION ===
+                    true &&
+                typeof CascadeController
+                    .handleHotspotClick ===
+                    "function"
+            ) {
+
+                try {
+
+                    CascadeController
+                        .handleHotspotClick(
+                            payload
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.error(
+
+                        "[OffenceMapRenderer] CascadeController hotspot handling failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "🔥 Offence Hotspot Click",
+
+                    {
+
+                        hotspotId:
+                            payload.hotspotId,
+
+                        type:
+                            payload.type,
+
+                        porKey:
+                            payload.porKey,
+
+                        porKeys:
+                            payload.porKeys,
+
+                        lat:
+                            payload.lat,
+
+                        lng:
+                            payload.lng
+
+                    }
+
+                );
+
+            }
+
+
+            return payload;
+
+        };
+
+
+    /* =====================================================
+       24. GET POR KEYS
+
+       POR is the authoritative connector.
+
+       Supports hotspot structures containing:
+
+       porKey
+       porKeys
+       normalizedPor
+       normalizedPorNo
+       refPorNo
+       porNo
+       casePorNo
+       records[].porKey
+
+       ===================================================== */
+
+    MapRenderer.getPorKeys =
+        function (
+            hotspot
+        ) {
+
+            if (
+                !hotspot ||
+                typeof hotspot !==
+                    "object"
+            ) {
+
+                return [];
+
+            }
+
+
+            const values =
+                [];
+
+
+            /*
+             * Explicit porKeys.
+             */
+
+            if (
+                Array.isArray(
+                    hotspot.porKeys
+                )
+            ) {
+
+                hotspot
+                    .porKeys
+                    .forEach(
+
+                        function (
+                            value
+                        ) {
+
+                            values.push(
+                                value
+                            );
+
+                        }
+
+                    );
+
+            }
+
+
+            /*
+             * Direct POR fields.
+             */
+
+            values.push(
+
+                hotspot.porKey,
+
+                hotspot.normalizedPor,
+
+                hotspot.normalizedPorNo,
+
+                hotspot.refPorNo,
+
+                hotspot.refPORNo,
+
+                hotspot.porNo,
+
+                hotspot.casePorNo
+
+            );
+
+
+            /*
+             * Associated records.
+             */
+
+            const recordCollections = [
+
+                hotspot.records,
+
+                hotspot.items,
+
+                hotspot.cases,
+
+                hotspot.accused,
+
+                hotspot.seizures,
+
+                hotspot.witnesses
+
+            ];
+
+
+            recordCollections.forEach(
+
+                function (
+                    collection
+                ) {
+
+                    if (
+                        !Array.isArray(
+                            collection
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    collection.forEach(
+
+                        function (
+                            record
+                        ) {
+
+                            if (
+                                !record ||
+                                typeof record !==
+                                    "object"
+                            ) {
+
+                                return;
+
+                            }
+
+
+                            values.push(
+
+                                record.porKey,
+
+                                record.normalizedPor,
+
+                                record.normalizedPorNo,
+
+                                record.refPorNo,
+
+                                record.refPORNo,
+
+                                record.porNo
+
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+
+            /*
+             * Normalize and deduplicate.
+             */
+
+            const normalized =
+                [];
+
+
+            const seen =
+                new Set();
+
+
+            values.forEach(
+
+                function (
+                    value
+                ) {
+
+                    const porKey =
+
+                        MapRenderer
+                            .normalizePorKey(
+                                value
+                            );
+
+
+                    if (
+                        !porKey ||
+                        seen.has(
+                            porKey
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    seen.add(
+                        porKey
+                    );
+
+
+                    normalized.push(
+                        porKey
+                    );
+
+                }
+
+            );
+
+
+            return normalized;
+
+        };
+
+
+    /* =====================================================
+       25. GET PRIMARY POR KEY
+       ===================================================== */
+
+    MapRenderer.getPrimaryPorKey =
+        function (
+            hotspot,
+            porKeys = null
+        ) {
+
+            const direct =
+
+                MapRenderer
+                    .normalizePorKey(
+
+                        hotspot
+                            ?.porKey ||
+
+                        hotspot
+                            ?.normalizedPor ||
+
+                        hotspot
+                            ?.normalizedPorNo
+
+                    );
+
+
+            if (
+                direct
+            ) {
+
+                return direct;
+
+            }
+
+
+            const keys =
+
+                Array.isArray(
+                    porKeys
+                )
+
+                    ? porKeys
+
+                    : MapRenderer
+                        .getPorKeys(
+                            hotspot
+                        );
+
+
+            return keys.length > 0
+                ? keys[0]
+                : "";
+
+        };
+
+
+    /* =====================================================
+       26. NORMALIZE POR KEY
+
+       Prefer canonical normalizer when available.
+
+       IMPORTANT:
+       This helper does not establish relationships.
+       It only creates a safe comparison representation.
+
+       ===================================================== */
+
+    MapRenderer.normalizePorKey =
+        function (
+            value
+        ) {
+
+            if (
+                value ===
+                    undefined ||
+                value ===
+                    null
+            ) {
+
+                return "";
+
+            }
+
+
+            /*
+             * Prefer OffenceNormalizer.
+             */
+
+            const Normalizer =
+
+                GG.Offence
+                    .Normalizer;
+
+
+            if (
+                Normalizer
+            ) {
+
+                if (
+                    typeof Normalizer.normalizePorKey ===
+                        "function"
+                ) {
+
+                    try {
+
+                        return String(
+
+                            Normalizer
+                                .normalizePorKey(
+                                    value
+                                ) || ""
+
+                        ).trim();
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        /*
+                         * Continue with local fallback.
+                         */
+
+                    }
+
+                }
+
+
+                if (
+                    typeof Normalizer.normalizePorNo ===
+                        "function"
+                ) {
+
+                    try {
+
+                        return String(
+
+                            Normalizer
+                                .normalizePorNo(
+                                    value
+                                ) || ""
+
+                        ).trim();
+
+                    }
+
+                    catch (
+                        error
+                    ) {
+
+                        /*
+                         * Continue with local fallback.
+                         */
+
+                    }
+
+                }
+
+            }
+
+
+            /*
+             * Prefer Constants helper if available.
+             */
+
+            if (
+                typeof Constants.normalizePorKey ===
+                    "function"
+            ) {
+
+                try {
+
+                    return String(
+
+                        Constants
+                            .normalizePorKey(
+                                value
+                            ) || ""
+
+                    ).trim();
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    /*
+                     * Continue with fallback.
+                     */
+
+                }
+
+            }
+
+
+            /*
+             * Safe local normalization.
+             *
+             * Preserve POR semantic structure while removing
+             * inconsistent spacing and case differences.
+             */
+
+            return String(
+                value
+            )
+                .replace(
+                    /\r?\n/g,
+                    " "
+                )
+                .replace(
+                    /\s+/g,
+                    " "
+                )
+                .trim()
+                .toUpperCase();
+
+        };
+
+
+    /* =====================================================
+       27. GET REF POR NUMBER
+
+       Returns display-friendly POR number.
+
+       This is separate from normalized porKey.
+
+       ===================================================== */
+
+    MapRenderer.getRefPorNo =
+        function (
+            hotspot
+        ) {
+
+            if (
+                !hotspot
+            ) {
+
+                return "";
+
+            }
+
+
+            const value =
+
+                hotspot.refPorNo ||
+
+                hotspot.refPORNo ||
+
+                hotspot.porNo ||
+
+                hotspot.casePorNo ||
+
+                hotspot.por ||
+
+                "";
+
+
+            if (
+                value
+            ) {
+
+                return String(
+                    value
+                ).trim();
+
+            }
+
+
+            /*
+             * Look inside associated records.
+             */
+
+            const collections = [
+
+                hotspot.records,
+
+                hotspot.items,
+
+                hotspot.cases,
+
+                hotspot.accused,
+
+                hotspot.seizures
+
+            ];
+
+
+            for (
+                const collection
+                of collections
+            ) {
+
+                if (
+                    !Array.isArray(
+                        collection
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                for (
+                    const record
+                    of collection
+                ) {
+
+                    const recordValue =
+
+                        record
+                            ?.refPorNo ||
+
+                        record
+                            ?.refPORNo ||
+
+                        record
+                            ?.porNo;
+
+
+                    if (
+                        recordValue
+                    ) {
+
+                        return String(
+                            recordValue
+                        ).trim();
+
+                    }
+
+                }
 
             }
 
@@ -1926,7 +5791,113 @@
 
 
     /* =====================================================
-       25. GET COORDINATES
+       28. GET HOTSPOT ID
+       ===================================================== */
+
+    MapRenderer.getHotspotId =
+        function (
+            hotspot,
+            type,
+            index = 0
+        ) {
+
+            if (
+                hotspot
+            ) {
+
+                const explicitId =
+
+                    hotspot.hotspotId ||
+
+                    hotspot.id ||
+
+                    hotspot.locationId ||
+
+                    hotspot.clusterId ||
+
+                    hotspot.key;
+
+
+                if (
+                    explicitId
+                ) {
+
+                    return String(
+                        explicitId
+                    );
+
+                }
+
+            }
+
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            const latPart =
+
+                coordinates
+                    ? Number(
+                        coordinates.lat
+                    ).toFixed(
+                        6
+                    )
+                    : "NA";
+
+
+            const lngPart =
+
+                coordinates
+                    ? Number(
+                        coordinates.lng
+                    ).toFixed(
+                        6
+                    )
+                    : "NA";
+
+
+            return [
+
+                "OFFENCE",
+
+                MapRenderer
+                    .normalizeHotspotType(
+                        type
+                    ),
+
+                latPart,
+
+                lngPart,
+
+                index
+
+            ].join(
+                "-"
+            );
+
+        };
+
+
+    /* =====================================================
+       29. GET COORDINATES
+
+       Supports common hotspot structures:
+
+       hotspot.lat / hotspot.lng
+       hotspot.latitude / hotspot.longitude
+       hotspot.location.lat / lng
+       hotspot.coordinates.lat / lng
+       hotspot.geo.lat / lng
+       hotspot.position.lat / lng
+
+       Also supports GeoJSON:
+       [longitude, latitude]
+
        ===================================================== */
 
     MapRenderer.getCoordinates =
@@ -1934,92 +5905,10 @@
             hotspot
         ) {
 
-            if (!hotspot) {
-
-                return null;
-
-            }
-
-
-            let lat =
-
-                hotspot.latitude ??
-
-                hotspot.lat ??
-
-                hotspot.location?.latitude ??
-
-                hotspot.location?.lat ??
-
-                hotspot.coordinates?.latitude ??
-
-                hotspot.coordinates?.lat;
-
-
-            let lng =
-
-                hotspot.longitude ??
-
-                hotspot.lng ??
-
-                hotspot.lon ??
-
-                hotspot.location?.longitude ??
-
-                hotspot.location?.lng ??
-
-                hotspot.location?.lon ??
-
-                hotspot.coordinates?.longitude ??
-
-                hotspot.coordinates?.lng ??
-                
-                hotspot.coordinates?.lon;
-
-
-            /*
-             * GeoJSON style:
-             *
-             * coordinates: [lng, lat]
-             */
-
             if (
-                Array.isArray(
-                    hotspot.coordinates
-                ) &&
-                hotspot.coordinates.length >=
-                    2
-            ) {
-
-                lng =
-                    hotspot.coordinates[0];
-
-
-                lat =
-                    hotspot.coordinates[1];
-
-            }
-
-
-            lat =
-                Number(
-                    lat
-                );
-
-
-            lng =
-                Number(
-                    lng
-                );
-
-
-            if (
-                !Number.isFinite(
-                    lat
-                ) ||
-                !Number.isFinite(
-                    lng
-                )
+                !hotspot ||
+                typeof hotspot !==
+                    "object"
             ) {
 
                 return null;
@@ -2027,1013 +5916,264 @@
             }
 
 
-            if (
-                lat < -90 ||
-                lat > 90 ||
-                lng < -180 ||
-                lng > 180
-            ) {
+            const candidates = [
 
-                return null;
+                {
 
-            }
+                    lat:
+                        hotspot.lat,
 
+                    lng:
+                        hotspot.lng
 
-            return {
+                },
 
-                lat:
-                    lat,
+                {
 
-                lng:
-                    lng
+                    lat:
+                        hotspot.latitude,
 
-            };
+                    lng:
+                        hotspot.longitude
 
-        };
+                },
 
+                {
 
-    /* =====================================================
-       26. GET INTENSITY
+                    lat:
+                        hotspot.location
+                            ?.lat,
 
-       Uses hotspot aggregate counts.
+                    lng:
+                        hotspot.location
+                            ?.lng
 
-       Heat intensity normalized to 0..1.
-       ===================================================== */
+                },
 
-    MapRenderer.getIntensity =
-        function (
-            hotspot
-        ) {
+                {
 
-            if (!hotspot) {
+                    lat:
+                        hotspot.location
+                            ?.latitude,
 
-                return 0.25;
+                    lng:
+                        hotspot.location
+                            ?.longitude
 
-            }
+                },
 
+                {
 
-            const raw =
+                    lat:
+                        hotspot.coordinates
+                            ?.lat,
 
-                Number(
+                    lng:
+                        hotspot.coordinates
+                            ?.lng
 
-                    hotspot.weight ??
+                },
 
-                    hotspot.intensity ??
+                {
 
-                    hotspot.score ??
+                    lat:
+                        hotspot.geo
+                            ?.lat,
 
-                    hotspot.offenceCount ??
+                    lng:
+                        hotspot.geo
+                            ?.lng
 
-                    hotspot.caseCount ??
+                },
 
-                    hotspot.count ??
+                {
 
-                    1
+                    lat:
+                        hotspot.position
+                            ?.lat,
 
-                );
+                    lng:
+                        hotspot.position
+                            ?.lng
 
+                }
 
-            if (
-                !Number.isFinite(
-                    raw
-                )
-            ) {
-
-                return 0.25;
-
-            }
-
-
-            /*
-             * Log scaling prevents a hotspot with many
-             * records from overwhelming all others.
-             */
-
-            const normalized =
-
-                Math.log10(
-                    raw + 1
-                ) /
-                2;
-
-
-            return Math.max(
-
-                0.15,
-
-                Math.min(
-                    1,
-                    normalized
-                )
-
-            );
-
-        };
-
-
-    /* =====================================================
-       27. FALLBACK MARKERS
-
-       Used if Leaflet.heat plugin is unavailable.
-       ===================================================== */
-
-    MapRenderer.renderFallbackMarkers =
-        function (
-            hotspots,
-            type,
-            layer
-        ) {
-
-            if (
-                !Array.isArray(
-                    hotspots
-                ) ||
-                !layer
-            ) {
-
-                return;
-
-            }
+            ];
 
 
             for (
-                const hotspot
-                of hotspots
+                const candidate
+                of candidates
             ) {
 
-                const coordinates =
+                const lat =
+                    Number(
+                        candidate.lat
+                    );
 
+
+                const lng =
+                    Number(
+                        candidate.lng
+                    );
+
+
+                if (
                     MapRenderer
-                        .getCoordinates(
-                            hotspot
-                        );
+                        .isValidCoordinate(
+                            lat,
+                            lng
+                        )
+                ) {
+
+                    return {
+
+                        lat:
+                            lat,
+
+                        lng:
+                            lng
+
+                    };
+
+                }
+
+            }
 
 
-                if (!coordinates) {
+            /*
+             * GeoJSON coordinate array:
+             *
+             * [longitude, latitude]
+             */
+
+            const coordinateArrays = [
+
+                hotspot.coordinates,
+
+                hotspot.geometry
+                    ?.coordinates,
+
+                hotspot.location
+                    ?.coordinates
+
+            ];
+
+
+            for (
+                const coordinates
+                of coordinateArrays
+            ) {
+
+                if (
+                    !Array.isArray(
+                        coordinates
+                    ) ||
+                    coordinates.length <
+                        2
+                ) {
 
                     continue;
 
                 }
 
 
-                const marker =
-
-                    L.circleMarker(
-
-                        [
-
-                            coordinates.lat,
-
-                            coordinates.lng
-
-                        ],
-
-                        {
-
-                            radius:
-
-                                MapRenderer
-                                    .CONFIG
-                                    .hotspotMarker
-                                    .radius,
-
-                            weight:
-
-                                MapRenderer
-                                    .CONFIG
-                                    .hotspotMarker
-                                    .weight,
-
-                            opacity:
-
-                                MapRenderer
-                                    .CONFIG
-                                    .hotspotMarker
-                                    .opacity,
-
-                            fillOpacity:
-
-                                MapRenderer
-                                    .CONFIG
-                                    .hotspotMarker
-                                    .fillOpacity,
-
-                            interactive:
-                                true
-
-                        }
-
+                const lng =
+                    Number(
+                        coordinates[0]
                     );
 
 
-                marker.on(
-
-                    "click",
-
-                    function (
-                        event
-                    ) {
-
-                        MapRenderer
-                            .handleHotspotClick(
-
-                                hotspot,
-
-                                type,
-
-                                event
-
-                            );
-
-                    }
-
-                );
-
-
-                marker.bindTooltip(
-
-                    MapRenderer
-                        .getHotspotLabel(
-                            hotspot,
-                            type
-                        ),
-
-                    {
-
-                        direction:
-                            "top"
-
-                    }
-
-                );
-
-
-                marker.addTo(
-                    layer
-                );
-
-            }
-
-        };
-
-
-    /* =====================================================
-       28. GET HOTSPOT LABEL
-       ===================================================== */
-
-    MapRenderer.getHotspotLabel =
-        function (
-            hotspot,
-            type
-        ) {
-
-            const location =
-
-                hotspot?.name ||
-
-                hotspot?.locationName ||
-
-                hotspot?.place ||
-
-                hotspot?.village ||
-
-                hotspot?.address ||
-
-                hotspot?.locationKey ||
-
-                "Unknown Location";
-
-
-            const count =
-
-                hotspot?.caseCount ??
-
-                hotspot?.offenceCount ??
-
-                hotspot?.count ??
-
-                0;
-
-
-            const label =
-
-                type ===
-                    MapRenderer.MODE.SOURCE
-
-                    ? "Source"
-
-                    : type ===
-                        MapRenderer.MODE.TARGET
-
-                        ? "Target"
-
-                        : "Hotspot";
-
-
-            return [
-
-                label,
-
-                location,
-
-                count
-                    ? "(" + count + ")"
-                    : ""
-
-            ]
-                .filter(
-                    Boolean
-                )
-                .join(
-                    " · "
-                );
-
-        };
-
-
-    /* =====================================================
-       29. SET MODE
-       ===================================================== */
-
-    MapRenderer.setMode =
-        function (
-            mode
-        ) {
-
-            MapRenderer.currentMode =
-
-                MapRenderer
-                    .normalizeMode(
-                        mode
+                const lat =
+                    Number(
+                        coordinates[1]
                     );
 
-
-            if (
-                MapRenderer.initialized
-            ) {
-
-                MapRenderer
-                    .render();
-
-            }
-
-
-            return MapRenderer.currentMode;
-
-        };
-
-
-    /* =====================================================
-       30. NORMALIZE MODE
-       ===================================================== */
-
-    MapRenderer.normalizeMode =
-        function (
-            mode
-        ) {
-
-            const value =
-
-                String(
-                    mode ||
-                    ""
-                )
-                    .trim()
-                    .toUpperCase();
-
-
-            if (
-                value ===
-                    MapRenderer.MODE.SOURCE
-            ) {
-
-                return MapRenderer.MODE.SOURCE;
-
-            }
-
-
-            if (
-                value ===
-                    MapRenderer.MODE.TARGET
-            ) {
-
-                return MapRenderer.MODE.TARGET;
-
-            }
-
-
-            return MapRenderer.MODE.ALL;
-
-        };
-
-
-    /* =====================================================
-       31. SHOW SOURCE
-       ===================================================== */
-
-    MapRenderer.showSource =
-        function () {
-
-            return MapRenderer
-                .setMode(
-                    MapRenderer.MODE.SOURCE
-                );
-
-        };
-
-
-    /* =====================================================
-       32. SHOW TARGET
-       ===================================================== */
-
-    MapRenderer.showTarget =
-        function () {
-
-            return MapRenderer
-                .setMode(
-                    MapRenderer.MODE.TARGET
-                );
-
-        };
-
-
-    /* =====================================================
-       33. SHOW ALL
-       ===================================================== */
-
-    MapRenderer.showAll =
-        function () {
-
-            return MapRenderer
-                .setMode(
-                    MapRenderer.MODE.ALL
-                );
-
-        };
-
-
-    /* =====================================================
-       34. SHOW
-       ===================================================== */
-
-    MapRenderer.show =
-        function () {
-
-            if (
-                !MapRenderer.map ||
-                !MapRenderer.layers.root
-            ) {
-
-                return false;
-
-            }
-
-
-            if (
-                !MapRenderer.map.hasLayer(
-                    MapRenderer.layers.root
-                )
-            ) {
-
-                MapRenderer.layers.root.addTo(
-                    MapRenderer.map
-                );
-
-            }
-
-
-            MapRenderer.visible =
-                true;
-
-
-            return true;
-
-        };
-
-
-    /* =====================================================
-       35. HIDE
-       ===================================================== */
-
-    MapRenderer.hide =
-        function () {
-
-            if (
-                !MapRenderer.map ||
-                !MapRenderer.layers.root
-            ) {
-
-                return false;
-
-            }
-
-
-            if (
-                MapRenderer.map.hasLayer(
-                    MapRenderer.layers.root
-                )
-            ) {
-
-                MapRenderer.map.removeLayer(
-                    MapRenderer.layers.root
-                );
-
-            }
-
-
-            MapRenderer.visible =
-                false;
-
-
-            return true;
-
-        };
-
-
-    /* =====================================================
-       36. TOGGLE
-       ===================================================== */
-
-    MapRenderer.toggle =
-        function () {
-
-            if (
-                MapRenderer.visible
-            ) {
-
-                MapRenderer
-                    .hide();
-
-            }
-
-            else {
-
-                MapRenderer
-                    .show();
-
-            }
-
-
-            return MapRenderer.visible;
-
-        };
-
-
-    /* =====================================================
-       37. CLEAR RENDERED LAYERS
-       ===================================================== */
-
-    MapRenderer.clearRenderedLayers =
-        function () {
-
-            if (
-                MapRenderer.layers.sourceHeat &&
-                MapRenderer.layers.source
-            ) {
-
-                MapRenderer.layers.source.removeLayer(
-
-                    MapRenderer
-                        .layers
-                        .sourceHeat
-
-                );
-
-
-                MapRenderer.layers.sourceHeat =
-                    null;
-
-            }
-
-
-            if (
-                MapRenderer.layers.targetHeat &&
-                MapRenderer.layers.target
-            ) {
-
-                MapRenderer.layers.target.removeLayer(
-
-                    MapRenderer
-                        .layers
-                        .targetHeat
-
-                );
-
-
-                MapRenderer.layers.targetHeat =
-                    null;
-
-            }
-
-
-            MapRenderer.layers
-                .sourceInteraction
-                ?.clearLayers();
-
-
-            MapRenderer.layers
-                .targetInteraction
-                ?.clearLayers();
-
-
-            MapRenderer.layers
-                .sourceMarkers
-                ?.clearLayers();
-
-
-            MapRenderer.layers
-                .targetMarkers
-                ?.clearLayers();
-
-        };
-
-
-    /* =====================================================
-       38. CLEAR
-       ===================================================== */
-
-    MapRenderer.clear =
-        function () {
-
-            MapRenderer
-                .clearRenderedLayers();
-
-
-            return true;
-
-        };
-
-
-    /* =====================================================
-       39. REMOVE LAYERS
-       ===================================================== */
-
-    MapRenderer.removeLayers =
-        function () {
-
-            if (
-                MapRenderer.map &&
-                MapRenderer.layers.root &&
-                MapRenderer.map.hasLayer(
-                    MapRenderer.layers.root
-                )
-            ) {
-
-                MapRenderer.map.removeLayer(
-
-                    MapRenderer
-                        .layers
-                        .root
-
-                );
-
-            }
-
-
-            MapRenderer.layers = {
-
-                root:
-                    null,
-
-                source:
-                    null,
-
-                target:
-                    null,
-
-                sourceHeat:
-                    null,
-
-                targetHeat:
-                    null,
-
-                sourceInteraction:
-                    null,
-
-                targetInteraction:
-                    null,
-
-                sourceMarkers:
-                    null,
-
-                targetMarkers:
-                    null
-
-            };
-
-        };
-
-
-    /* =====================================================
-       40. FIT TO HOTSPOTS
-       ===================================================== */
-
-    MapRenderer.fitBounds =
-        function (
-            type = "ALL"
-        ) {
-
-            if (
-                !MapRenderer.map
-            ) {
-
-                return false;
-
-            }
-
-
-            const mode =
-
-                MapRenderer
-                    .normalizeMode(
-                        type
-                    );
-
-
-            let hotspots =
-                [];
-
-
-            if (
-                mode ===
-                    MapRenderer.MODE.SOURCE
-            ) {
-
-                hotspots =
-
-                    MapRenderer
-                        .getSourceHotspots();
-
-            }
-
-            else if (
-                mode ===
-                    MapRenderer.MODE.TARGET
-            ) {
-
-                hotspots =
-
-                    MapRenderer
-                        .getTargetHotspots();
-
-            }
-
-            else {
-
-                hotspots = [
-
-                    ...MapRenderer
-                        .getSourceHotspots(),
-
-                    ...MapRenderer
-                        .getTargetHotspots()
-
-                ];
-
-            }
-
-
-            const points =
-                [];
-
-
-            for (
-                const hotspot
-                of hotspots
-            ) {
-
-                const coordinates =
-
-                    MapRenderer
-                        .getCoordinates(
-                            hotspot
-                        );
-
-
-                if (coordinates) {
-
-                    points.push([
-
-                        coordinates.lat,
-
-                        coordinates.lng
-
-                    ]);
-
-                }
-
-            }
-
-
-            if (
-                points.length ===
-                    0
-            ) {
-
-                return false;
-
-            }
-
-
-            if (
-                points.length ===
-                    1
-            ) {
-
-                MapRenderer.map.setView(
-
-                    points[0],
-
-                    Math.max(
-
-                        MapRenderer.map
-                            .getZoom(),
-
-                        14
-
-                    )
-
-                );
-
-
-                return true;
-
-            }
-
-
-            MapRenderer.map.fitBounds(
-
-                L.latLngBounds(
-                    points
-                ),
-
-                {
-
-                    padding:
-
-                        [
-                            30,
-                            30
-                        ]
-
-                }
-
-            );
-
-
-            return true;
-
-        };
-
-
-    /* =====================================================
-       41. GET STATUS
-       ===================================================== */
-
-    MapRenderer.getStatus =
-        function () {
-
-            return {
-
-                version:
-                    MapRenderer.VERSION,
-
-                initialized:
-                    MapRenderer.initialized,
-
-                visible:
-                    MapRenderer.visible,
-
-                mode:
-                    MapRenderer.currentMode,
-
-                mapAvailable:
-                    !!MapRenderer.map,
-
-                sourceCount:
-
-                    MapRenderer
-                        .getSourceHotspots()
-                        .length,
-
-                targetCount:
-
-                    MapRenderer
-                        .getTargetHotspots()
-                        .length
-
-            };
-
-        };
-
-
-    /* =====================================================
-       42. DISPATCH EVENT
-       ===================================================== */
-
-    MapRenderer.dispatchEvent =
-        function (
-            eventName,
-            detail = {}
-        ) {
-
-            if (!eventName) {
-
-                return;
-
-            }
-
-
-            try {
-
-                window.dispatchEvent(
-
-                    new CustomEvent(
-
-                        eventName,
-
-                        {
-
-                            detail:
-                                detail
-
-                        }
-
-                    )
-
-                );
-
-            }
-
-            catch (
-                error
-            ) {
 
                 if (
-                    Constants.DEBUG
-                        ?.ENABLED
+                    MapRenderer
+                        .isValidCoordinate(
+                            lat,
+                            lng
+                        )
                 ) {
 
-                    console.warn(
+                    return {
 
-                        "[OffenceMapRenderer] Event dispatch failed",
+                        lat:
+                            lat,
 
-                        eventName,
+                        lng:
+                            lng
 
-                        error
-
-                    );
+                    };
 
                 }
 
             }
 
-        };
 
-
-    /* =====================================================
-       43. REFRESH
-       ===================================================== */
-
-    MapRenderer.refresh =
-        function () {
-
-            return MapRenderer
-                .render({
-
-                    show:
-                        MapRenderer.visible
-
-                });
+            return null;
 
         };
 
 
     /* =====================================================
-       44. DESTROY
+       30. VALIDATE COORDINATES
        ===================================================== */
 
-    MapRenderer.destroy =
-        function () {
+    MapRenderer.isValidCoordinate =
+        function (
+            lat,
+            lng
+        ) {
 
-            MapRenderer
-                .unbindEvents();
+            if (
+                !Number.isFinite(
+                    lat
+                ) ||
+                !Number.isFinite(
+                    lng
+                )
+            ) {
+
+                return false;
+
+            }
 
 
-            MapRenderer
-                .removeLayers();
+            if (
+                lat < -90 ||
+                lat > 90
+            ) {
+
+                return false;
+
+            }
 
 
-            MapRenderer.map =
-                null;
+            if (
+                lng < -180 ||
+                lng > 180
+            ) {
+
+                return false;
+
+            }
 
 
-            MapRenderer.initialized =
-                false;
+            /*
+             * Reject common empty coordinate placeholder.
+             */
 
+            if (
+                lat === 0 &&
+                lng === 0
+            ) {
 
-            MapRenderer.visible =
-                false;
+                return false;
+
+            }
 
 
             return true;
@@ -3042,49 +6182,28 @@
 
 
     /* =====================================================
-       45. EXPORT
+       PART 2 END
+
+       PART 3 CONTINUES WITH:
+
+       31. getHotspotIntensity()
+       32. shouldRenderVisibleMarker()
+       33. buildHotspotTooltip()
+       34. normalizeHotspotType()
+       35. normalizeMode()
+       36. setMode()
+       37. show()
+       38. hide()
+       39. toggle()
+       40. clearRenderedLayers()
+       41. removeLayers()
+       42. refresh()
+       43. fitToHotspots()
+       44. dispatchEvent()
+       45. getState()
+       46. destroy()
+       47. expose module
+       48. close IIFE
+
+       DO NOT ADD })(); HERE.
        ===================================================== */
-
-    GG.Offence.MapRenderer =
-        MapRenderer;
-
-
-    /* =====================================================
-       46. READY LOG
-
-       Do NOT auto-render here.
-
-       Main application should initialize after:
-       - Leaflet map exists
-       - offence data loaded
-       - HeatmapEngine built
-       ===================================================== */
-
-    if (
-        Constants.DEBUG
-            ?.ENABLED
-    ) {
-
-        console.log(
-
-            "🔥 OffenceMapRenderer Loaded",
-
-            {
-
-                version:
-                    MapRenderer.VERSION,
-
-                connector:
-                    "POR",
-
-                module:
-                    MapRenderer
-
-            }
-
-        );
-
-    }
-
-
-})();
