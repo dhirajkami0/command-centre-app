@@ -2900,3 +2900,526 @@
             );
 
         };
+
+     /* =====================================================
+       44. GET SOURCE HOTSPOTS
+       ===================================================== */
+
+    HeatmapEngine.getSourceHotspots =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.sources
+            )
+                ? HeatmapEngine.data.sources
+                : [];
+
+        };
+
+
+    /* =====================================================
+       45. GET TARGET HOTSPOTS
+       ===================================================== */
+
+    HeatmapEngine.getTargetHotspots =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.targets
+            )
+                ? HeatmapEngine.data.targets
+                : [];
+
+        };
+
+
+    /* =====================================================
+       46. GET LINKS
+       ===================================================== */
+
+    HeatmapEngine.getLinks =
+        function () {
+
+            return Array.isArray(
+                HeatmapEngine.data.links
+            )
+                ? HeatmapEngine.data.links
+                : [];
+
+        };
+
+
+    /* =====================================================
+       47. GET CURRENT MODE
+       ===================================================== */
+
+    HeatmapEngine.getMode =
+        function () {
+
+            return HeatmapEngine.mode;
+
+        };
+
+
+    /* =====================================================
+       48. SET CURRENT MODE
+       ===================================================== */
+
+    HeatmapEngine.setMode =
+        function (
+            mode
+        ) {
+
+            const normalized =
+
+                String(
+                    mode || ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            if (
+                !Object.values(
+                    HeatmapEngine.MODE
+                )
+                    .includes(
+                        normalized
+                    )
+            ) {
+
+                console.warn(
+
+                    "[OffenceHeatmapEngine] Invalid mode:",
+
+                    mode
+
+                );
+
+
+                return HeatmapEngine.mode;
+
+            }
+
+
+            HeatmapEngine.mode =
+                normalized;
+
+
+            return HeatmapEngine.mode;
+
+        };
+
+
+    /* =====================================================
+       49. GET HEATMAP DATA
+
+       Used by OffenceMapRenderer.
+
+       Returns both raw hotspot arrays and Leaflet.heat
+       compatible point arrays.
+
+       ===================================================== */
+
+    HeatmapEngine.getHeatmapData =
+        function () {
+
+            return {
+
+                mode:
+                    HeatmapEngine.mode,
+
+                sources:
+                    HeatmapEngine
+                        .getSourceHotspots(),
+
+                targets:
+                    HeatmapEngine
+                        .getTargetHotspots(),
+
+                links:
+                    HeatmapEngine
+                        .getLinks(),
+
+                sourceHeat:
+                    HeatmapEngine
+                        .getSourceHotspots()
+                        .map(
+                            function (
+                                hotspot
+                            ) {
+
+                                const lat =
+
+                                    Number(
+
+                                        hotspot.lat ??
+
+                                        hotspot.latitude
+
+                                    );
+
+
+                                const lng =
+
+                                    Number(
+
+                                        hotspot.lng ??
+
+                                        hotspot.lon ??
+
+                                        hotspot.longitude
+
+                                    );
+
+
+                                const intensity =
+
+                                    Number(
+
+                                        hotspot.intensity ??
+
+                                        hotspot.weight ??
+
+                                        hotspot.count ??
+
+                                        1
+
+                                    );
+
+
+                                if (
+                                    !Number.isFinite(
+                                        lat
+                                    ) ||
+                                    !Number.isFinite(
+                                        lng
+                                    )
+                                ) {
+
+                                    return null;
+
+                                }
+
+
+                                return [
+
+                                    lat,
+
+                                    lng,
+
+                                    Number.isFinite(
+                                        intensity
+                                    ) &&
+                                    intensity > 0
+
+                                        ? intensity
+
+                                        : 1
+
+                                ];
+
+                            }
+                        )
+                        .filter(
+                            Boolean
+                        ),
+
+                targetHeat:
+                    HeatmapEngine
+                        .getTargetHotspots()
+                        .map(
+                            function (
+                                hotspot
+                            ) {
+
+                                const lat =
+
+                                    Number(
+
+                                        hotspot.lat ??
+
+                                        hotspot.latitude
+
+                                    );
+
+
+                                const lng =
+
+                                    Number(
+
+                                        hotspot.lng ??
+
+                                        hotspot.lon ??
+
+                                        hotspot.longitude
+
+                                    );
+
+
+                                const intensity =
+
+                                    Number(
+
+                                        hotspot.intensity ??
+
+                                        hotspot.weight ??
+
+                                        hotspot.count ??
+
+                                        1
+
+                                    );
+
+
+                                if (
+                                    !Number.isFinite(
+                                        lat
+                                    ) ||
+                                    !Number.isFinite(
+                                        lng
+                                    )
+                                ) {
+
+                                    return null;
+
+                                }
+
+
+                                return [
+
+                                    lat,
+
+                                    lng,
+
+                                    Number.isFinite(
+                                        intensity
+                                    ) &&
+                                    intensity > 0
+
+                                        ? intensity
+
+                                        : 1
+
+                                ];
+
+                            }
+                        )
+                        .filter(
+                            Boolean
+                        )
+
+            };
+
+        };
+
+
+    /* =====================================================
+       50. GET STATE
+
+       Debug / UI state snapshot.
+       ===================================================== */
+
+    HeatmapEngine.getState =
+        function () {
+
+            return {
+
+                version:
+                    HeatmapEngine.VERSION,
+
+                initialized:
+                    HeatmapEngine.initialized,
+
+                building:
+                    HeatmapEngine.building,
+
+                ready:
+                    HeatmapEngine.ready,
+
+                mode:
+                    HeatmapEngine.mode,
+
+                lastBuildAt:
+                    HeatmapEngine.lastBuildAt,
+
+                resolvedContexts:
+
+                    Array.isArray(
+                        HeatmapEngine.data.resolvedContexts
+                    )
+
+                        ? HeatmapEngine
+                            .data
+                            .resolvedContexts
+                            .length
+
+                        : 0,
+
+                sources:
+
+                    HeatmapEngine
+                        .getSourceHotspots()
+                        .length,
+
+                targets:
+
+                    HeatmapEngine
+                        .getTargetHotspots()
+                        .length,
+
+                links:
+
+                    HeatmapEngine
+                        .getLinks()
+                        .length,
+
+                hotspots:
+
+                    HeatmapEngine
+                        .hotspotIndex
+                        .size,
+
+                porRelations:
+
+                    HeatmapEngine
+                        .porIndex
+                        .size,
+
+                caseRelations:
+
+                    HeatmapEngine
+                        .caseIndex
+                        .size,
+
+                authoritativeConnector:
+                    "porKey"
+
+            };
+
+        };
+
+
+    /* =====================================================
+       51. CLEAR
+
+       Clears derived heatmap/index state only.
+
+       Does NOT clear Firestore-loaded OffenceStore data.
+
+       ===================================================== */
+
+    HeatmapEngine.clear =
+        function () {
+
+            HeatmapEngine.data = {
+
+                resolvedContexts:
+                    [],
+
+                sources:
+                    [],
+
+                targets:
+                    [],
+
+                links:
+                    []
+
+            };
+
+
+            HeatmapEngine
+                .hotspotIndex
+                .clear();
+
+
+            HeatmapEngine
+                .porIndex
+                .clear();
+
+
+            HeatmapEngine
+                .caseIndex
+                .clear();
+
+
+            HeatmapEngine.ready =
+                false;
+
+
+            HeatmapEngine.building =
+                false;
+
+
+            HeatmapEngine.lastBuildAt =
+                null;
+
+
+            return HeatmapEngine;
+
+        };
+
+
+    /* =====================================================
+       52. EXPOSE MODULE
+
+       IMPORTANT:
+       Makes the engine available to:
+
+       GG.Offence.HeatmapEngine
+
+       OffenceMapRenderer
+       OffenceCascadeController
+       OffenceUIController
+
+       ===================================================== */
+
+    GG.Offence.HeatmapEngine =
+        HeatmapEngine;
+
+
+    /* =====================================================
+       53. INITIALIZE MODULE
+       ===================================================== */
+
+    HeatmapEngine
+        .init();
+
+
+    /* =====================================================
+       54. MODULE LOADED
+       ===================================================== */
+
+    if (
+        Constants.DEBUG
+            ?.ENABLED
+    ) {
+
+        console.log(
+
+            "🔥 OffenceHeatmapEngine Loaded",
+
+            {
+
+                version:
+                    HeatmapEngine.VERSION,
+
+                authoritativeConnector:
+                    "porKey",
+
+                relationshipModel:
+
+                    Constants.RELATIONSHIP
+                        ?.MODEL ||
+
+                    "POR_AUTHORITATIVE"
+
+            }
+
+        );
+
+    }
+
+
+})();
