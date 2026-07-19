@@ -5441,58 +5441,81 @@ MapRenderer.getPolygonFeature =
   Create Polygon Layer
 =========================================================*/
 
+/*=========================================================
+  53. CREATE POLYGON INTERACTION LAYER
+
+  Canonical flow:
+
+  HeatmapEngine aggregated polygon entry
+      ↓
+  MapRenderer.getPolygonFeature()
+      ↓
+  GeoJSON Feature OR FeatureCollection
+      ↓
+  L.geoJSON()
+      ↓
+  One Leaflet parent layer containing one or more
+  child polygon feature layers.
+
+  IMPORTANT:
+  - Supports both Feature and FeatureCollection.
+  - FeatureCollection is passed intact to L.geoJSON().
+  - Every child feature keeps the same aggregated
+    offence polygon metadata.
+  - Polygon styling uses SOURCE / TARGET style helpers.
+  - maxWeight is preserved for heat-intensity styling.
+  - Click drill-down remains attached to every child.
+=========================================================*/
+
 MapRenderer.createPolygonLayer =
     function (
-
         polygon,
-
-        type
-
+        type,
+        maxWeight = 1
     ) {
 
+        /*---------------------------------------------
+          1. Validate basic input
+        ---------------------------------------------*/
+
         if (
-
             !polygon ||
-
             typeof window.L ===
                 "undefined"
-
         ) {
-
             return null;
-
         }
 
 
-        const geoJSON =
+        /*---------------------------------------------
+          2. Resolve canonical GIS GeoJSON
 
+          getPolygonFeature() may return:
+
+          Feature
+          OR
+          FeatureCollection
+        ---------------------------------------------*/
+
+        const geoJSON =
             MapRenderer
                 .getPolygonFeature(
-
                     polygon
-
                 );
 
 
         if (
-
             !geoJSON
-
         ) {
 
             if (
-
                 Constants.DEBUG
                     ?.ENABLED
-
             ) {
 
                 console.warn(
-
                     "[OffenceMapRenderer] Polygon GIS resolution failed",
-
                     {
-
                         key:
                             polygon.key,
 
@@ -5506,105 +5529,316 @@ MapRenderer.createPolygonLayer =
                             polygon.compartment,
 
                         spatialType:
-                            polygon.spatialType
+                            polygon.spatialType,
 
+                        resolutionType:
+                            polygon.resolutionType,
+
+                        resolution:
+                            polygon.resolution
                     }
-
                 );
-
             }
 
-
             return null;
-
         }
 
 
-        /*
-         * Validate GeoJSON contract.
-         */
+        /*---------------------------------------------
+          3. Validate GeoJSON contract
 
-        const validGeoJSON =
+          Supported:
 
+          {
+              type: "Feature",
+              geometry: {...}
+          }
+
+          OR
+
+          {
+              type: "FeatureCollection",
+              features: [...]
+          }
+        ---------------------------------------------*/
+
+        const isFeature =
             (
-
                 geoJSON.type ===
                     "Feature" &&
+                geoJSON.geometry &&
+                (
+                    geoJSON.geometry.type ===
+                        "Polygon" ||
+                    geoJSON.geometry.type ===
+                        "MultiPolygon"
+                )
+            );
 
-                geoJSON.geometry
 
-            )
-
-            ||
-
+        const isFeatureCollection =
             (
-
                 geoJSON.type ===
                     "FeatureCollection" &&
-
                 Array.isArray(
                     geoJSON.features
                 ) &&
-
-                geoJSON.features.length > 0
-
+                geoJSON.features
+                    .some(
+                        feature =>
+                            feature &&
+                            feature.type ===
+                                "Feature" &&
+                            feature.geometry &&
+                            (
+                                feature.geometry.type ===
+                                    "Polygon" ||
+                                feature.geometry.type ===
+                                    "MultiPolygon"
+                            )
+                    )
             );
 
 
         if (
-
-            !validGeoJSON
-
+            !isFeature &&
+            !isFeatureCollection
         ) {
 
-            return null;
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
 
+                console.warn(
+                    "[OffenceMapRenderer] Invalid polygon GeoJSON",
+                    {
+                        polygon:
+                            polygon,
+
+                        geoJSONType:
+                            geoJSON.type,
+
+                        geometryType:
+                            geoJSON.geometry
+                                ?.type,
+
+                        featureCount:
+                            Array.isArray(
+                                geoJSON.features
+                            )
+                                ? geoJSON
+                                    .features
+                                    .length
+                                : 0
+                    }
+                );
+            }
+
+            return null;
         }
 
 
+        /*---------------------------------------------
+          4. Normalize offence type
+        ---------------------------------------------*/
+
         const normalizedType =
-
             String(
-
                 type ||
-
                 polygon.type ||
-
                 ""
-
             )
-
                 .trim()
-
                 .toUpperCase();
 
 
-        /*
-         * Use your existing source/target style here
-         * if already defined elsewhere.
-         *
-         * These defaults are intentionally simple.
-         */
-
         const isSource =
-
             normalizedType ===
                 "SOURCE";
 
 
-        const style = {
+        const isTarget =
+            normalizedType ===
+                "TARGET";
 
-            weight:
-                2,
 
-            opacity:
-                0.85,
+        if (
+            !isSource &&
+            !isTarget
+        ) {
 
-            fillOpacity:
-                0.35
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
 
-        };
+                console.warn(
+                    "[OffenceMapRenderer] Unknown polygon type",
+                    {
+                        type:
+                            type,
 
+                        polygonType:
+                            polygon.type,
+
+                        polygon:
+                            polygon
+                    }
+                );
+            }
+
+            return null;
+        }
+
+
+        /*---------------------------------------------
+          5. Normalize max heat weight
+        ---------------------------------------------*/
+
+        const safeMaxWeight =
+            (
+                Number.isFinite(
+                    Number(
+                        maxWeight
+                    )
+                ) &&
+                Number(
+                    maxWeight
+                ) > 0
+            )
+
+                ? Number(
+                    maxWeight
+                )
+
+                : 1;
+
+
+        /*---------------------------------------------
+          6. Build canonical polygon style
+
+          Preserve existing renderer style helpers.
+
+          SOURCE
+              → createSourcePolygonStyle()
+
+          TARGET
+              → createTargetPolygonStyle()
+
+          Fallback style is used only if a style helper
+          is unavailable.
+        ---------------------------------------------*/
+
+        let style;
+
+
+        try {
+
+            if (
+                isSource &&
+                typeof MapRenderer
+                    .createSourcePolygonStyle ===
+                    "function"
+            ) {
+
+                style =
+                    MapRenderer
+                        .createSourcePolygonStyle(
+                            polygon,
+                            safeMaxWeight
+                        );
+            }
+
+
+            else if (
+                isTarget &&
+                typeof MapRenderer
+                    .createTargetPolygonStyle ===
+                    "function"
+            ) {
+
+                style =
+                    MapRenderer
+                        .createTargetPolygonStyle(
+                            polygon,
+                            safeMaxWeight
+                        );
+            }
+
+        }
+        catch (
+            error
+        ) {
+
+            console.error(
+                "[OffenceMapRenderer] Polygon style creation failed",
+                {
+                    polygon:
+                        polygon,
+
+                    type:
+                        normalizedType,
+
+                    maxWeight:
+                        safeMaxWeight,
+
+                    error:
+                        error
+                }
+            );
+        }
+
+
+        /*---------------------------------------------
+          7. Safe fallback style
+
+          This should normally NOT be used when the
+          canonical style helpers are available.
+        ---------------------------------------------*/
+
+        if (
+            !style ||
+            typeof style !==
+                "object"
+        ) {
+
+            style = {
+
+                weight:
+                    2,
+
+                opacity:
+                    0.85,
+
+                fillOpacity:
+                    0.35
+            };
+        }
+
+
+        /*---------------------------------------------
+          8. Create Leaflet GeoJSON layer
+
+          IMPORTANT:
+
+          Pass the complete GeoJSON object.
+
+          DO NOT extract only:
+
+              geoJSON.features[0]
+
+          because one RANGE may contain multiple GIS
+          features.
+
+          Example:
+
+              NMT  → 3 features
+              WRVK → 4 features
+
+          L.geoJSON() creates one child Leaflet layer
+          for every feature in the FeatureCollection.
+        ---------------------------------------------*/
 
         let layer;
 
@@ -5612,36 +5846,43 @@ MapRenderer.createPolygonLayer =
         try {
 
             layer =
-
                 L.geoJSON(
-
                     geoJSON,
-
                     {
 
+                        /*---------------------------------
+                          Style every child GIS feature
+                          consistently as one aggregated
+                          offence polygon.
+                        ---------------------------------*/
+
                         style:
-
-                            function () {
-
-                                return style;
-
-                            },
-
-                        onEachFeature:
-
                             function (
-
-                                feature,
-
-                                featureLayer
-
+                                feature
                             ) {
 
-                                /*
-                                 * Store canonical offence
-                                 * polygon metadata on every
-                                 * child Leaflet feature.
-                                 */
+                                return {
+                                    ...style
+                                };
+                            },
+
+
+                        /*---------------------------------
+                          Attach canonical offence metadata
+                          and interaction to every child
+                          Leaflet feature.
+                        ---------------------------------*/
+
+                        onEachFeature:
+                            function (
+                                feature,
+                                featureLayer
+                            ) {
+
+                                /*-------------------------
+                                  Canonical aggregated
+                                  offence polygon entry
+                                -------------------------*/
 
                                 featureLayer
                                     .offencePolygon =
@@ -5650,136 +5891,215 @@ MapRenderer.createPolygonLayer =
 
                                 featureLayer
                                     .offenceType =
-                                    isSource
-
-                                        ? "SOURCE"
-
-                                        : "TARGET";
+                                    normalizedType;
 
 
-                                /*
-                                 * Preserve hotspot click
-                                 * drill-down.
-                                 */
+                                featureLayer
+                                    .offenceSpatialType =
+                                    polygon.spatialType ||
+                                    polygon.resolutionType ||
+                                    polygon.resolution ||
+                                    "";
+
+
+                                /*-------------------------
+                                  Keep actual GIS feature
+                                  available separately.
+
+                                  Useful when a RANGE is a
+                                  FeatureCollection containing
+                                  multiple GIS features.
+                                -------------------------*/
+
+                                featureLayer
+                                    .offenceGISFeature =
+                                    feature;
+
+
+                                /*-------------------------
+                                  Preserve polygon click
+                                  drill-down.
+                                -------------------------*/
 
                                 featureLayer.on(
-
                                     "click",
-
                                     function (
-
                                         event
-
                                     ) {
 
                                         if (
-
                                             typeof MapRenderer
                                                 .handlePolygonClick ===
                                                 "function"
-
                                         ) {
 
                                             MapRenderer
                                                 .handlePolygonClick(
-
                                                     polygon,
-
                                                     event
-
                                                 );
 
+                                            return;
                                         }
 
-                                        else if (
 
+                                        if (
                                             GG.Offence
                                                 ?.UIController &&
-
                                             typeof GG.Offence
                                                 .UIController
                                                 .handleHotspotClick ===
                                                 "function"
-
                                         ) {
 
                                             GG.Offence
                                                 .UIController
                                                 .handleHotspotClick(
-
                                                     polygon
-
                                                 );
-
                                         }
 
                                     }
-
                                 );
 
                             }
 
                     }
-
                 );
 
         }
-
         catch (
-
             error
-
         ) {
 
             console.error(
-
                 "[OffenceMapRenderer] Polygon layer creation failed",
-
                 {
-
                     polygon:
                         polygon,
 
                     type:
                         normalizedType,
 
+                    maxWeight:
+                        safeMaxWeight,
+
+                    geoJSONType:
+                        geoJSON.type,
+
                     error:
                         error
-
                 }
-
             );
 
-
             return null;
-
         }
 
 
-        /*
-         * Store metadata on parent GeoJSON layer too.
-         */
+        /*---------------------------------------------
+          9. Validate created Leaflet layer
+        ---------------------------------------------*/
+
+        if (
+            !layer
+        ) {
+            return null;
+        }
+
+
+        /*---------------------------------------------
+          10. Store canonical metadata on parent layer
+
+          Child layers already contain the same metadata.
+
+          This allows both:
+
+              parent.offencePolygon
+
+          and:
+
+              child.offencePolygon
+        ---------------------------------------------*/
 
         layer.offencePolygon =
-
             polygon;
 
 
         layer.offenceType =
-
             normalizedType;
 
 
         layer.offenceSpatialType =
-
             polygon.spatialType ||
-
             polygon.resolutionType ||
-
             polygon.resolution ||
-
             "";
 
+
+        layer.offenceGeoJSON =
+            geoJSON;
+
+
+        /*---------------------------------------------
+          11. Store FeatureCollection information
+
+          Useful for debugging RANGE polygons composed
+          of multiple GIS features.
+        ---------------------------------------------*/
+
+        layer.offenceGISFeatureCount =
+            geoJSON.type ===
+                "FeatureCollection"
+
+                ? geoJSON
+                    .features
+                    .length
+
+                : 1;
+
+
+        /*---------------------------------------------
+          12. Debug
+        ---------------------------------------------*/
+
+        if (
+            Constants.DEBUG
+                ?.ENABLED
+        ) {
+
+            console.debug(
+                "[OffenceMapRenderer] Polygon layer created",
+                {
+                    key:
+                        polygon.key,
+
+                    name:
+                        polygon.name,
+
+                    type:
+                        normalizedType,
+
+                    spatialType:
+                        layer
+                            .offenceSpatialType,
+
+                    geoJSONType:
+                        geoJSON.type,
+
+                    featureCount:
+                        layer
+                            .offenceGISFeatureCount,
+
+                    maxWeight:
+                        safeMaxWeight
+                }
+            );
+        }
+
+
+        /*---------------------------------------------
+          13. Return complete Leaflet GeoJSON layer
+        ---------------------------------------------*/
 
         return layer;
 
