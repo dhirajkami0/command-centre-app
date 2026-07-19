@@ -837,6 +837,10 @@ OffenceCascadeUI.createUI =
     // 12. HOME
     // =====================================================
 
+// =====================================================
+// 12. HOME
+// =====================================================
+
 OffenceCascadeUI.showHome =
     function () {
 
@@ -846,6 +850,7 @@ OffenceCascadeUI.showHome =
 
         OffenceCascadeUI.state.mode =
             null;
+
 
         OffenceCascadeUI.state.selectedItem =
             null;
@@ -865,7 +870,7 @@ OffenceCascadeUI.showHome =
 
 
         // =============================================
-        // 3. CONTENT
+        // 3. GET CONTENT
         // =============================================
 
         const content =
@@ -875,8 +880,12 @@ OffenceCascadeUI.showHome =
         if (!content) {
 
             console.error(
-                "[OffenceCascadeUI] Content container not found"
+
+                "[OffenceCascadeUI] " +
+                "Content container not found"
+
             );
+
 
             return false;
 
@@ -892,9 +901,12 @@ OffenceCascadeUI.showHome =
             <div
                 style="
                     display:grid;
-                    grid-template-columns:1fr 1fr;
+                    grid-template-columns:
+                        1fr 1fr;
                     gap:12px;
                     margin-top:14px;
+                    width:100%;
+                    pointer-events:auto;
                 "
             >
 
@@ -908,7 +920,8 @@ OffenceCascadeUI.showHome =
                         padding:16px 10px;
 
                         border:
-                            1px solid #ff9100;
+                            1px solid
+                            #ff9100;
 
                         border-radius:14px;
 
@@ -923,15 +936,19 @@ OffenceCascadeUI.showHome =
                         color:#ffb74d;
 
                         font-size:14px;
+
                         font-weight:800;
 
                         cursor:pointer;
 
                         pointer-events:auto;
 
+                        touch-action:
+                            manipulation;
+
                         position:relative;
 
-                        z-index:10;
+                        z-index:20;
                     "
                 >
 
@@ -943,6 +960,7 @@ OffenceCascadeUI.showHome =
                             font-weight:normal;
                             opacity:0.75;
                             margin-top:6px;
+                            pointer-events:none;
                         "
                     >
                         Accused origin
@@ -961,7 +979,8 @@ OffenceCascadeUI.showHome =
                         padding:16px 10px;
 
                         border:
-                            1px solid #00e5ff;
+                            1px solid
+                            #00e5ff;
 
                         border-radius:14px;
 
@@ -976,15 +995,19 @@ OffenceCascadeUI.showHome =
                         color:#00e5ff;
 
                         font-size:14px;
+
                         font-weight:800;
 
                         cursor:pointer;
 
                         pointer-events:auto;
 
+                        touch-action:
+                            manipulation;
+
                         position:relative;
 
-                        z-index:10;
+                        z-index:20;
                     "
                 >
 
@@ -996,6 +1019,7 @@ OffenceCascadeUI.showHome =
                             font-weight:normal;
                             opacity:0.75;
                             margin-top:6px;
+                            pointer-events:none;
                         "
                     >
                         Offence location
@@ -1024,20 +1048,24 @@ OffenceCascadeUI.showHome =
             );
 
 
+        // =============================================
+        // 6. DEBUG
+        // =============================================
+
         console.log(
 
-            "🔥 Offence Home Buttons",
+            "🔥 OFFENCE HOME READY",
 
             {
 
-                source:
+                sourceButton:
                     !!sourceButton,
 
-                target:
+                targetButton:
                     !!targetButton,
 
-                content:
-                    content
+                contentChildren:
+                    content.children.length
 
             }
 
@@ -1045,7 +1073,7 @@ OffenceCascadeUI.showHome =
 
 
         // =============================================
-        // 6. SOURCE CLICK
+        // 7. SOURCE CLICK
         // =============================================
 
         if (sourceButton) {
@@ -1063,7 +1091,8 @@ OffenceCascadeUI.showHome =
                     );
 
 
-                    OffenceCascadeUI.showSource();
+                    OffenceCascadeUI
+                        .showSource();
 
                 };
 
@@ -1071,7 +1100,7 @@ OffenceCascadeUI.showHome =
 
 
         // =============================================
-        // 7. TARGET CLICK
+        // 8. TARGET CLICK
         // =============================================
 
         if (targetButton) {
@@ -1089,14 +1118,33 @@ OffenceCascadeUI.showHome =
                     );
 
 
-                    OffenceCascadeUI.showTarget();
+                    OffenceCascadeUI
+                        .showTarget();
 
                 };
 
         }
 
 
-        return true;
+        // =============================================
+        // 9. FINAL VALIDATION
+        // =============================================
+
+        return {
+
+            success:
+                !!(
+                    sourceButton &&
+                    targetButton
+                ),
+
+            sourceButton:
+                !!sourceButton,
+
+            targetButton:
+                !!targetButton
+
+        };
 
     };
 
