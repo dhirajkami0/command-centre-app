@@ -6207,3 +6207,1279 @@
 
        DO NOT ADD })(); HERE.
        ===================================================== */
+       /* =====================================================
+       31. GET HOTSPOT INTENSITY
+       ===================================================== */
+
+    MapRenderer.getHotspotIntensity =
+        function (
+            hotspot
+        ) {
+
+            if (!hotspot) {
+
+                return 1;
+
+            }
+
+
+            const candidates = [
+
+                hotspot.intensity,
+
+                hotspot.weight,
+
+                hotspot.count,
+
+                hotspot.caseCount,
+
+                hotspot.totalCases,
+
+                hotspot.recordCount,
+
+                hotspot.frequency,
+
+                hotspot.score
+
+            ];
+
+
+            for (
+                const value
+                of candidates
+            ) {
+
+                const number =
+                    Number(
+                        value
+                    );
+
+
+                if (
+                    Number.isFinite(
+                        number
+                    ) &&
+                    number > 0
+                ) {
+
+                    return number;
+
+                }
+
+            }
+
+
+            /*
+             * If hotspot contains related records,
+             * use the largest available collection.
+             */
+
+            const collections = [
+
+                hotspot.records,
+
+                hotspot.items,
+
+                hotspot.cases,
+
+                hotspot.accused,
+
+                hotspot.seizures,
+
+                hotspot.witnesses
+
+            ];
+
+
+            let maxCount =
+                0;
+
+
+            collections.forEach(
+
+                function (
+                    collection
+                ) {
+
+                    if (
+                        Array.isArray(
+                            collection
+                        )
+                    ) {
+
+                        maxCount =
+
+                            Math.max(
+
+                                maxCount,
+
+                                collection.length
+
+                            );
+
+                    }
+
+                }
+
+            );
+
+
+            return maxCount > 0
+                ? maxCount
+                : 1;
+
+        };
+
+
+    /* =====================================================
+       32. SHOULD RENDER VISIBLE MARKER
+       ===================================================== */
+
+    MapRenderer.shouldRenderVisibleMarker =
+        function (
+            hotspot
+        ) {
+
+            if (!hotspot) {
+
+                return false;
+
+            }
+
+
+            /*
+             * Explicit setting on hotspot.
+             */
+
+            if (
+                hotspot.showMarker ===
+                false
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                hotspot.showMarker ===
+                true
+            ) {
+
+                return true;
+
+            }
+
+
+            /*
+             * Default:
+             *
+             * Render visible marker so hotspots remain
+             * clickable and discoverable.
+             */
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       33. BUILD HOTSPOT TOOLTIP
+       ===================================================== */
+
+    MapRenderer.buildHotspotTooltip =
+        function (
+            hotspot,
+            type
+        ) {
+
+            if (!hotspot) {
+
+                return "";
+
+            }
+
+
+            const normalizedType =
+
+                MapRenderer
+                    .normalizeHotspotType(
+                        type
+                    );
+
+
+            const place =
+
+                hotspot.place ||
+
+                hotspot.placeName ||
+
+                hotspot.locationName ||
+
+                hotspot.address ||
+
+                hotspot.village ||
+
+                hotspot.sourceAddress ||
+
+                hotspot.targetAddress ||
+
+                hotspot.label ||
+
+                "";
+
+
+            const porNo =
+
+                MapRenderer
+                    .getRefPorNo(
+                        hotspot
+                    );
+
+
+            const count =
+
+                MapRenderer
+                    .getHotspotIntensity(
+                        hotspot
+                    );
+
+
+            const parts =
+                [];
+
+
+            parts.push(
+
+                normalizedType ===
+                    MapRenderer.TYPE_SOURCE
+
+                    ? "Source Hotspot"
+
+                    : "Target Hotspot"
+
+            );
+
+
+            if (place) {
+
+                parts.push(
+                    String(
+                        place
+                    )
+                );
+
+            }
+
+
+            if (porNo) {
+
+                parts.push(
+
+                    "POR: " +
+                    String(
+                        porNo
+                    )
+
+                );
+
+            }
+
+
+            if (
+                Number.isFinite(
+                    Number(
+                        count
+                    )
+                )
+            ) {
+
+                parts.push(
+
+                    "Records: " +
+                    String(
+                        count
+                    )
+
+                );
+
+            }
+
+
+            return parts.join(
+                " | "
+            );
+
+        };
+
+
+    /* =====================================================
+       34. NORMALIZE HOTSPOT TYPE
+       ===================================================== */
+
+    MapRenderer.normalizeHotspotType =
+        function (
+            type
+        ) {
+
+            const value =
+
+                String(
+                    type ||
+                    ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            if (
+                value ===
+                MapRenderer.TYPE_SOURCE
+            ) {
+
+                return MapRenderer.TYPE_SOURCE;
+
+            }
+
+
+            if (
+                value ===
+                MapRenderer.TYPE_TARGET
+            ) {
+
+                return MapRenderer.TYPE_TARGET;
+
+            }
+
+
+            return MapRenderer.TYPE_TARGET;
+
+        };
+
+
+    /* =====================================================
+       35. NORMALIZE MODE
+       ===================================================== */
+
+    MapRenderer.normalizeMode =
+        function (
+            mode
+        ) {
+
+            const value =
+
+                String(
+                    mode ||
+                    ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            if (
+                value ===
+                MapRenderer.MODE.SOURCE
+            ) {
+
+                return MapRenderer.MODE.SOURCE;
+
+            }
+
+
+            if (
+                value ===
+                MapRenderer.MODE.TARGET
+            ) {
+
+                return MapRenderer.MODE.TARGET;
+
+            }
+
+
+            return MapRenderer.MODE.ALL;
+
+        };
+
+
+    /* =====================================================
+       36. SET MODE
+       ===================================================== */
+
+    MapRenderer.setMode =
+        function (
+            mode,
+            options = {}
+        ) {
+
+            MapRenderer.currentMode =
+
+                MapRenderer
+                    .normalizeMode(
+                        mode
+                    );
+
+
+            /*
+             * Keep HeatmapEngine mode aligned when supported.
+             */
+
+            if (
+                typeof HeatmapEngine.setMode ===
+                "function"
+            ) {
+
+                try {
+
+                    HeatmapEngine
+                        .setMode(
+                            MapRenderer.currentMode
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.warn(
+
+                        "[OffenceMapRenderer] HeatmapEngine.setMode failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            if (
+                options.render !==
+                false
+            ) {
+
+                MapRenderer
+                    .render({
+
+                        mode:
+                            MapRenderer.currentMode,
+
+                        show:
+                            options.show !==
+                            false
+
+                    });
+
+            }
+
+
+            return MapRenderer.currentMode;
+
+        };
+
+
+    /* =====================================================
+       37. SHOW
+       ===================================================== */
+
+    MapRenderer.show =
+        function () {
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                !MapRenderer.layers.root
+            ) {
+
+                MapRenderer
+                    .createLayers();
+
+            }
+
+
+            if (
+                !MapRenderer.layers.root
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                !MapRenderer.map.hasLayer(
+                    MapRenderer.layers.root
+                )
+            ) {
+
+                MapRenderer.map.addLayer(
+
+                    MapRenderer
+                        .layers
+                        .root
+
+                );
+
+            }
+
+
+            MapRenderer.visible =
+                true;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       38. HIDE
+       ===================================================== */
+
+    MapRenderer.hide =
+        function () {
+
+            if (
+                MapRenderer.map &&
+                MapRenderer.layers.root &&
+                MapRenderer.map.hasLayer(
+                    MapRenderer.layers.root
+                )
+            ) {
+
+                MapRenderer.map.removeLayer(
+
+                    MapRenderer
+                        .layers
+                        .root
+
+                );
+
+            }
+
+
+            MapRenderer.visible =
+                false;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       39. TOGGLE
+       ===================================================== */
+
+    MapRenderer.toggle =
+        function (
+            force = null
+        ) {
+
+            if (
+                force ===
+                true
+            ) {
+
+                MapRenderer.show();
+
+                return true;
+
+            }
+
+
+            if (
+                force ===
+                false
+            ) {
+
+                MapRenderer.hide();
+
+                return false;
+
+            }
+
+
+            if (
+                MapRenderer.visible
+            ) {
+
+                MapRenderer.hide();
+
+                return false;
+
+            }
+
+
+            MapRenderer.show();
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       40. CLEAR RENDERED LAYERS
+       ===================================================== */
+
+    MapRenderer.clearRenderedLayers =
+        function () {
+
+            /*
+             * Remove old heat layers.
+             */
+
+            if (
+                MapRenderer.layers.source &&
+                MapRenderer.layers.sourceHeat
+            ) {
+
+                try {
+
+                    MapRenderer.layers.source
+                        .removeLayer(
+                            MapRenderer.layers.sourceHeat
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    // Ignore stale layer reference.
+
+                }
+
+            }
+
+
+            if (
+                MapRenderer.layers.target &&
+                MapRenderer.layers.targetHeat
+            ) {
+
+                try {
+
+                    MapRenderer.layers.target
+                        .removeLayer(
+                            MapRenderer.layers.targetHeat
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    // Ignore stale layer reference.
+
+                }
+
+            }
+
+
+            MapRenderer.layers.sourceHeat =
+                null;
+
+
+            MapRenderer.layers.targetHeat =
+                null;
+
+
+            /*
+             * Clear interaction markers.
+             */
+
+            if (
+                MapRenderer.layers.sourceInteraction &&
+                typeof MapRenderer
+                    .layers
+                    .sourceInteraction
+                    .clearLayers ===
+                    "function"
+            ) {
+
+                MapRenderer
+                    .layers
+                    .sourceInteraction
+                    .clearLayers();
+
+            }
+
+
+            if (
+                MapRenderer.layers.targetInteraction &&
+                typeof MapRenderer
+                    .layers
+                    .targetInteraction
+                    .clearLayers ===
+                    "function"
+            ) {
+
+                MapRenderer
+                    .layers
+                    .targetInteraction
+                    .clearLayers();
+
+            }
+
+
+            /*
+             * Clear visible markers.
+             */
+
+            if (
+                MapRenderer.layers.sourceMarkers &&
+                typeof MapRenderer
+                    .layers
+                    .sourceMarkers
+                    .clearLayers ===
+                    "function"
+            ) {
+
+                MapRenderer
+                    .layers
+                    .sourceMarkers
+                    .clearLayers();
+
+            }
+
+
+            if (
+                MapRenderer.layers.targetMarkers &&
+                typeof MapRenderer
+                    .layers
+                    .targetMarkers
+                    .clearLayers ===
+                    "function"
+            ) {
+
+                MapRenderer
+                    .layers
+                    .targetMarkers
+                    .clearLayers();
+
+            }
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       41. REMOVE LAYERS
+       ===================================================== */
+
+    MapRenderer.removeLayers =
+        function () {
+
+            if (
+                MapRenderer.map &&
+                MapRenderer.layers.root
+            ) {
+
+                try {
+
+                    if (
+                        MapRenderer.map.hasLayer(
+                            MapRenderer.layers.root
+                        )
+                    ) {
+
+                        MapRenderer.map.removeLayer(
+
+                            MapRenderer
+                                .layers
+                                .root
+
+                        );
+
+                    }
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.warn(
+
+                        "[OffenceMapRenderer] Failed to remove root layer.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            /*
+             * Clear child layers.
+             */
+
+            MapRenderer
+                .clearRenderedLayers();
+
+
+            Object.keys(
+                MapRenderer.layers
+            )
+                .forEach(
+
+                    function (
+                        key
+                    ) {
+
+                        MapRenderer.layers[key] =
+                            null;
+
+                    }
+
+                );
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       42. REFRESH
+       ===================================================== */
+
+    MapRenderer.refresh =
+        async function (
+            options = {}
+        ) {
+
+            /*
+             * Ask HeatmapEngine to rebuild first when supported.
+             */
+
+            if (
+                options.rebuild !==
+                    false &&
+                typeof HeatmapEngine.refresh ===
+                    "function"
+            ) {
+
+                try {
+
+                    await HeatmapEngine
+                        .refresh();
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    console.error(
+
+                        "[OffenceMapRenderer] HeatmapEngine refresh failed.",
+
+                        error
+
+                    );
+
+                }
+
+            }
+
+
+            return MapRenderer
+                .render({
+
+                    mode:
+                        options.mode ||
+                        MapRenderer.currentMode,
+
+                    show:
+                        options.show !==
+                        false
+
+                });
+
+        };
+
+
+    /* =====================================================
+       43. FIT TO HOTSPOTS
+       ===================================================== */
+
+    MapRenderer.fitToHotspots =
+        function (
+            options = {}
+        ) {
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                return false;
+
+            }
+
+
+            const sourceHotspots =
+
+                MapRenderer
+                    .getSourceHotspots();
+
+
+            const targetHotspots =
+
+                MapRenderer
+                    .getTargetHotspots();
+
+
+            let hotspots =
+                [];
+
+
+            const mode =
+
+                MapRenderer
+                    .normalizeMode(
+
+                        options.mode ||
+
+                        MapRenderer.currentMode
+
+                    );
+
+
+            if (
+                mode ===
+                MapRenderer.MODE.SOURCE
+            ) {
+
+                hotspots =
+                    sourceHotspots;
+
+            }
+
+            else if (
+                mode ===
+                MapRenderer.MODE.TARGET
+            ) {
+
+                hotspots =
+                    targetHotspots;
+
+            }
+
+            else {
+
+                hotspots =
+
+                    sourceHotspots
+                        .concat(
+                            targetHotspots
+                        );
+
+            }
+
+
+            const latLngs =
+                [];
+
+
+            hotspots.forEach(
+
+                function (
+                    hotspot
+                ) {
+
+                    const coordinates =
+
+                        MapRenderer
+                            .getCoordinates(
+                                hotspot
+                            );
+
+
+                    if (
+                        coordinates
+                    ) {
+
+                        latLngs.push([
+
+                            coordinates.lat,
+
+                            coordinates.lng
+
+                        ]);
+
+                    }
+
+                }
+
+            );
+
+
+            if (
+                latLngs.length ===
+                0
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                latLngs.length ===
+                1
+            ) {
+
+                MapRenderer.map.setView(
+
+                    latLngs[0],
+
+                    options.zoom ||
+                    14
+
+                );
+
+
+                return true;
+
+            }
+
+
+            const bounds =
+
+                L.latLngBounds(
+                    latLngs
+                );
+
+
+            MapRenderer.map.fitBounds(
+
+                bounds,
+
+                {
+
+                    padding:
+
+                        options.padding ||
+
+                        [
+                            30,
+                            30
+                        ],
+
+                    maxZoom:
+
+                        options.maxZoom ||
+
+                        15
+
+                }
+
+            );
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       44. DISPATCH EVENT
+       ===================================================== */
+
+    MapRenderer.dispatchEvent =
+        function (
+            eventName,
+            detail = {}
+        ) {
+
+            if (
+                !eventName
+            ) {
+
+                return false;
+
+            }
+
+
+            try {
+
+                window.dispatchEvent(
+
+                    new CustomEvent(
+
+                        eventName,
+
+                        {
+
+                            detail:
+                                detail
+
+                        }
+
+                    )
+
+                );
+
+
+                return true;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "[OffenceMapRenderer] Event dispatch failed:",
+
+                    eventName,
+
+                    error
+
+                );
+
+
+                return false;
+
+            }
+
+        };
+
+
+    /* =====================================================
+       45. GET STATE
+       ===================================================== */
+
+    MapRenderer.getState =
+        function () {
+
+            return {
+
+                version:
+                    MapRenderer.VERSION,
+
+                initialized:
+                    MapRenderer.initialized,
+
+                visible:
+                    MapRenderer.visible,
+
+                mode:
+                    MapRenderer.currentMode,
+
+                mapAvailable:
+                    !!MapRenderer.map,
+
+                layersCreated:
+                    !!MapRenderer.layers.root,
+
+                sourceHotspots:
+
+                    MapRenderer
+                        .getSourceHotspots()
+                        .length,
+
+                targetHotspots:
+
+                    MapRenderer
+                        .getTargetHotspots()
+                        .length,
+
+                authoritativeConnector:
+                    "POR"
+
+            };
+
+        };
+
+
+    /* =====================================================
+       46. DESTROY
+       ===================================================== */
+
+    MapRenderer.destroy =
+        function () {
+
+            MapRenderer
+                .unbindEvents();
+
+
+            MapRenderer
+                .removeLayers();
+
+
+            MapRenderer.map =
+                null;
+
+
+            MapRenderer.initialized =
+                false;
+
+
+            MapRenderer.visible =
+                false;
+
+
+            MapRenderer.currentMode =
+                MapRenderer.MODE.ALL;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       47. EXPOSE MODULE
+       ===================================================== */
+
+    GG.Offence.MapRenderer =
+        MapRenderer;
+
+
+    /* =====================================================
+       48. MODULE LOADED
+       ===================================================== */
+
+    console.log(
+
+        "🔥 OffenceMapRenderer Loaded",
+
+        {
+
+            version:
+                MapRenderer.VERSION,
+
+            connector:
+                "POR",
+
+            module:
+                MapRenderer
+
+        }
+
+    );
+
+
+    /* =====================================================
+       CLOSE IIFE
+       ===================================================== */
+
+})();
