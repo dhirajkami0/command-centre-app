@@ -3,24 +3,86 @@
    Offence Intelligence Module
 
    File:
-   js/offence/offenceCascadeRenderer.js
+   js/offence/offenceMapRenderer.js
 
-   Purpose:
-   - Render offence hotspot cascade UI
-   - Show SOURCE and TARGET hotspot details
-   - Show linked offence cases
-   - Allow case selection
-   - Show selected case details
-   - Show accused persons
-   - Show seizures
-   - Show related SOURCE hotspots
-   - Show related TARGET hotspots
-   - Support back navigation
-   - Keep UI separate from CascadeController
+   Version:
+   2.0.0
 
-   Dependencies:
-   1. offenceConstants.js
-   2. offenceCascadeController.js
+   PURPOSE:
+   ---------------------------------------------------------
+   Render offence intelligence hotspots on the Leaflet map.
+
+   Supports:
+
+   SOURCE HEATMAP
+       → accused / source origin locations
+
+   TARGET HEATMAP
+       → offence / seizure / destination / target locations
+
+
+   ARCHITECTURE:
+   ---------------------------------------------------------
+
+   Firestore
+       ↓
+   OffenceDataLoader
+       ↓
+   OffenceNormalizer
+       ↓
+   OffenceStore
+       ↓
+   OffenceGeocoder
+       ↓
+   OffenceSourceEngine
+       ↓
+   OffenceTargetEngine
+       ↓
+   OffenceHeatmapEngine
+       ↓
+   OffenceMapRenderer
+       ↓
+   Leaflet Heat Layer / Hotspot Marker
+       ↓
+   hotspot click
+       ↓
+   offence:hotspot-click
+       ↓
+   OffenceCascadeController
+       ↓
+   POR-authoritative cascade
+       ↓
+   OffenceCascadeRenderer
+
+
+   AUTHORITATIVE RELATIONSHIP:
+   ---------------------------------------------------------
+
+   POR No / Ref POR No
+           ↓
+       normalized porKey
+           ↓
+   Cases / Accused / Witnesses /
+   Seizures / Seized Articles /
+   SOURCE / TARGET
+
+
+   IMPORTANT:
+   ---------------------------------------------------------
+   This module:
+
+   - DOES render Leaflet layers
+   - DOES render hotspot interaction markers
+   - DOES emit hotspot-click events
+
+   This module DOES NOT:
+
+   - access Firestore
+   - geocode
+   - normalize offence records
+   - resolve case relationships
+   - build cascade UI
+   - manipulate CascadeController state
 
    ========================================================= */
 
@@ -30,12 +92,13 @@
 
 
     /* =====================================================
-       1. NAMESPACE
+       1. GLOBAL NAMESPACE
        ===================================================== */
 
     window.GG =
         window.GG ||
         {};
+
 
     GG.Offence =
         GG.Offence ||
@@ -49,14 +112,15 @@
     const Constants =
         GG.Offence.Constants;
 
-    const CascadeController =
-        GG.Offence.CascadeController;
+
+    const HeatmapEngine =
+        GG.Offence.HeatmapEngine;
 
 
     if (!Constants) {
 
         console.error(
-            "[OffenceCascadeRenderer] Constants unavailable."
+            "[OffenceMapRenderer] OffenceConstants unavailable."
         );
 
         return;
@@ -64,10 +128,24 @@
     }
 
 
-    if (!CascadeController) {
+    if (!HeatmapEngine) {
 
         console.error(
-            "[OffenceCascadeRenderer] CascadeController unavailable."
+            "[OffenceMapRenderer] OffenceHeatmapEngine unavailable."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        typeof window.L ===
+        "undefined"
+    ) {
+
+        console.error(
+            "[OffenceMapRenderer] Leaflet unavailable."
         );
 
         return;
@@ -79,62 +157,243 @@
        3. MODULE
        ===================================================== */
 
-    const CascadeRenderer = {};
+    const MapRenderer = {};
 
 
-    CascadeRenderer.VERSION =
-        "1.0.0";
+    MapRenderer.VERSION =
+        "2.0.0";
 
-    CascadeRenderer.initialized =
+
+    MapRenderer.initialized =
         false;
 
-    CascadeRenderer._eventsBound =
+
+    MapRenderer.visible =
+        false;
+
+
+    MapRenderer.currentMode =
+        "ALL";
+
+
+    MapRenderer.map =
+        null;
+
+
+    MapRenderer._eventsBound =
         false;
 
 
     /* =====================================================
-       4. CONFIGURATION
+       4. MODES
        ===================================================== */
 
-    CascadeRenderer.CONFIG = {
+    MapRenderer.MODE =
+        Object.freeze({
 
-        panelId:
-            "offenceCascadePanel",
+            ALL:
+                "ALL",
 
-        contentId:
-            "offenceCascadeContent",
+            SOURCE:
+                "SOURCE",
 
-        className:
-            "offence-cascade-panel"
+            TARGET:
+                "TARGET"
+
+        });
+
+
+    /* =====================================================
+       5. CONFIGURATION
+       ===================================================== */
+
+    MapRenderer.CONFIG = {
+
+        source: {
+
+            radius:
+                28,
+
+            blur:
+                22,
+
+            maxZoom:
+                17,
+
+            minOpacity:
+                0.35
+
+        },
+
+
+        target: {
+
+            radius:
+                30,
+
+            blur:
+                24,
+
+            maxZoom:
+                17,
+
+            minOpacity:
+                0.35
+
+        },
+
+
+        interaction: {
+
+            radius:
+                18,
+
+            fillOpacity:
+                0.01,
+
+            opacity:
+                0.01,
+
+            weight:
+                1
+
+        },
+
+
+        hotspotMarker: {
+
+            radius:
+                7,
+
+            weight:
+                2,
+
+            opacity:
+                0.8,
+
+            fillOpacity:
+                0.45
+
+        }
 
     };
 
 
     /* =====================================================
-       5. INITIALIZE
+       6. LAYER REFERENCES
        ===================================================== */
 
-    CascadeRenderer.init =
-        function () {
+    MapRenderer.layers = {
+
+        root:
+            null,
+
+        source:
+            null,
+
+        target:
+            null,
+
+        sourceHeat:
+            null,
+
+        targetHeat:
+            null,
+
+        sourceInteraction:
+            null,
+
+        targetInteraction:
+            null,
+
+        sourceMarkers:
+            null,
+
+        targetMarkers:
+            null
+
+    };
+
+
+    /* =====================================================
+       7. INITIALIZE
+       ===================================================== */
+
+    MapRenderer.init =
+        function (
+            map = null,
+            options = {}
+        ) {
 
             if (
-                CascadeRenderer.initialized
+                MapRenderer.initialized
             ) {
 
-                return CascadeRenderer;
+                if (
+                    map &&
+                    !MapRenderer.map
+                ) {
+
+                    MapRenderer
+                        .setMap(
+                            map
+                        );
+
+                }
+
+
+                return MapRenderer;
 
             }
 
 
-            CascadeRenderer
-                .createPanel();
+            if (
+                options &&
+                typeof options ===
+                    "object"
+            ) {
+
+                MapRenderer
+                    .applyOptions(
+                        options
+                    );
+
+            }
 
 
-            CascadeRenderer
+            const resolvedMap =
+
+                map ||
+
+                MapRenderer
+                    .resolveMap();
+
+
+            if (!resolvedMap) {
+
+                console.warn(
+                    "[OffenceMapRenderer] Leaflet map not available yet."
+                );
+
+
+                return MapRenderer;
+
+            }
+
+
+            MapRenderer.map =
+                resolvedMap;
+
+
+            MapRenderer
+                .createLayers();
+
+
+            MapRenderer
                 .bindEvents();
 
 
-            CascadeRenderer.initialized =
+            MapRenderer.initialized =
                 true;
 
 
@@ -144,154 +403,336 @@
             ) {
 
                 console.log(
-                    "🔥 OffenceCascadeRenderer Ready"
+
+                    "🔥 OffenceMapRenderer Ready",
+
+                    {
+
+                        version:
+                            MapRenderer.VERSION,
+
+                        mode:
+                            MapRenderer.currentMode
+
+                    }
+
                 );
 
             }
 
 
-            return CascadeRenderer;
+            return MapRenderer;
 
         };
 
 
     /* =====================================================
-       6. CREATE PANEL
+       8. APPLY OPTIONS
        ===================================================== */
 
-    CascadeRenderer.createPanel =
-        function () {
+    MapRenderer.applyOptions =
+        function (
+            options = {}
+        ) {
 
-            let panel =
+            if (
+                options.source
+            ) {
 
-                document.getElementById(
+                Object.assign(
 
-                    CascadeRenderer
+                    MapRenderer
                         .CONFIG
-                        .panelId
+                        .source,
+
+                    options.source
 
                 );
-
-
-            if (panel) {
-
-                return panel;
 
             }
 
 
-            panel =
+            if (
+                options.target
+            ) {
 
-                document.createElement(
+                Object.assign(
 
-                    "div"
+                    MapRenderer
+                        .CONFIG
+                        .target,
+
+                    options.target
 
                 );
 
-
-            panel.id =
-
-                CascadeRenderer
-                    .CONFIG
-                    .panelId;
+            }
 
 
-            panel.className =
+            if (
+                options.interaction
+            ) {
 
-                CascadeRenderer
-                    .CONFIG
-                    .className;
+                Object.assign(
 
+                    MapRenderer
+                        .CONFIG
+                        .interaction,
 
-            panel.innerHTML = `
+                    options.interaction
 
-                <div class="offence-cascade-header">
+                );
 
-                    <div class="offence-cascade-title">
-                        Offence Intelligence
-                    </div>
-
-                    <button
-                        type="button"
-                        class="offence-cascade-close"
-                        data-offence-action="close"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-
-                </div>
-
-                <div
-                    id="${CascadeRenderer.CONFIG.contentId}"
-                    class="offence-cascade-content"
-                >
-                </div>
-
-            `;
+            }
 
 
-            panel.style.display =
-                "none";
+            if (
+                options.hotspotMarker
+            ) {
 
+                Object.assign(
 
-            document.body.appendChild(
+                    MapRenderer
+                        .CONFIG
+                        .hotspotMarker,
 
-                panel
+                    options.hotspotMarker
 
-            );
+                );
 
-
-            return panel;
+            }
 
         };
 
 
     /* =====================================================
-       7. GET PANEL
+       9. RESOLVE MAP
+
+       Supports common GreenGuard map globals.
+
+       Prefer explicit:
+       GG.Offence.MapRenderer.init(map)
        ===================================================== */
 
-    CascadeRenderer.getPanel =
+    MapRenderer.resolveMap =
         function () {
 
-            return document.getElementById(
+            const candidates = [
 
-                CascadeRenderer
-                    .CONFIG
-                    .panelId
+                window.map,
 
-            );
+                window.leafletMap,
+
+                window.mainMap,
+
+                GG.map,
+
+                GG.Map,
+
+                GG.Map?.map,
+
+                GG.MapController?.map
+
+            ];
+
+
+            for (
+                const candidate
+                of candidates
+            ) {
+
+                if (
+                    candidate &&
+                    typeof candidate.addLayer ===
+                        "function" &&
+                    typeof candidate.removeLayer ===
+                        "function"
+                ) {
+
+                    return candidate;
+
+                }
+
+            }
+
+
+            return null;
 
         };
 
 
     /* =====================================================
-       8. GET CONTENT
+       10. SET MAP
        ===================================================== */
 
-    CascadeRenderer.getContent =
-        function () {
+    MapRenderer.setMap =
+        function (
+            map
+        ) {
 
-            return document.getElementById(
+            if (!map) {
 
-                CascadeRenderer
-                    .CONFIG
-                    .contentId
+                return false;
 
-            );
+            }
+
+
+            if (
+                MapRenderer.map ===
+                    map
+            ) {
+
+                return true;
+
+            }
+
+
+            MapRenderer
+                .removeLayers();
+
+
+            MapRenderer.map =
+                map;
+
+
+            MapRenderer
+                .createLayers();
+
+
+            if (
+                MapRenderer.visible
+            ) {
+
+                MapRenderer
+                    .show();
+
+            }
+
+
+            return true;
 
         };
 
 
     /* =====================================================
-       9. BIND EVENTS
+       11. CREATE LAYERS
        ===================================================== */
 
-    CascadeRenderer.bindEvents =
+    MapRenderer.createLayers =
         function () {
 
             if (
-                CascadeRenderer._eventsBound
+                !MapRenderer.map
+            ) {
+
+                return false;
+
+            }
+
+
+            MapRenderer.layers.root =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.source =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.target =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.sourceInteraction =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.targetInteraction =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.sourceMarkers =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.targetMarkers =
+
+                L.layerGroup();
+
+
+            MapRenderer.layers.source.addLayer(
+
+                MapRenderer
+                    .layers
+                    .sourceInteraction
+
+            );
+
+
+            MapRenderer.layers.source.addLayer(
+
+                MapRenderer
+                    .layers
+                    .sourceMarkers
+
+            );
+
+
+            MapRenderer.layers.target.addLayer(
+
+                MapRenderer
+                    .layers
+                    .targetInteraction
+
+            );
+
+
+            MapRenderer.layers.target.addLayer(
+
+                MapRenderer
+                    .layers
+                    .targetMarkers
+
+            );
+
+
+            MapRenderer.layers.root.addLayer(
+
+                MapRenderer
+                    .layers
+                    .source
+
+            );
+
+
+            MapRenderer.layers.root.addLayer(
+
+                MapRenderer
+                    .layers
+                    .target
+
+            );
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       12. BIND EVENTS
+       ===================================================== */
+
+    MapRenderer.bindEvents =
+        function () {
+
+            if (
+                MapRenderer._eventsBound
             ) {
 
                 return;
@@ -299,1403 +740,1390 @@
             }
 
 
-            CascadeRenderer._eventsBound =
+            MapRenderer._eventsBound =
                 true;
 
 
-            /* -------------------------
-               Hotspot opened
-               ------------------------- */
+            /*
+             * Heatmap rebuilt.
+             */
 
             window.addEventListener(
 
-                CascadeController
-                    .EVENTS
-                    .OPENED,
+                Constants.EVENTS
+                    ?.HEATMAP_UPDATED ||
 
-                CascadeRenderer
-                    .handleCascadeOpened
+                "offence:heatmap-updated",
+
+                MapRenderer
+                    .handleHeatmapUpdated
 
             );
 
 
-            /* -------------------------
-               Case selected
-               ------------------------- */
+            /*
+             * Offence data ready.
+             */
 
             window.addEventListener(
 
-                CascadeController
-                    .EVENTS
-                    .CASE_SELECTED,
+                Constants.EVENTS
+                    ?.DATA_READY ||
 
-                CascadeRenderer
-                    .handleCaseSelected
+                "offence:data-ready",
+
+                MapRenderer
+                    .handleDataReady
+
+            );
+
+        };
+
+
+    /* =====================================================
+       13. UNBIND EVENTS
+       ===================================================== */
+
+    MapRenderer.unbindEvents =
+        function () {
+
+            if (
+                !MapRenderer._eventsBound
+            ) {
+
+                return;
+
+            }
+
+
+            window.removeEventListener(
+
+                Constants.EVENTS
+                    ?.HEATMAP_UPDATED ||
+
+                "offence:heatmap-updated",
+
+                MapRenderer
+                    .handleHeatmapUpdated
 
             );
 
 
-            /* -------------------------
-               Accused selected
-               ------------------------- */
+            window.removeEventListener(
 
-            window.addEventListener(
+                Constants.EVENTS
+                    ?.DATA_READY ||
 
-                CascadeController
-                    .EVENTS
-                    .ACCUSED_SELECTED,
+                "offence:data-ready",
 
-                CascadeRenderer
-                    .handleAccusedSelected
+                MapRenderer
+                    .handleDataReady
 
             );
 
 
-            /* -------------------------
-               Seizure selected
-               ------------------------- */
-
-            window.addEventListener(
-
-                CascadeController
-                    .EVENTS
-                    .SEIZURE_SELECTED,
-
-                CascadeRenderer
-                    .handleSeizureSelected
-
-            );
-
-
-            /* -------------------------
-               Closed
-               ------------------------- */
-
-            window.addEventListener(
-
-                CascadeController
-                    .EVENTS
-                    .CLOSED,
-
-                CascadeRenderer
-                    .hide
-
-            );
-
-
-            /* -------------------------
-               Click delegation
-               ------------------------- */
-
-            const panel =
-
-                CascadeRenderer
-                    .getPanel();
-
-
-            if (panel) {
-
-                panel.addEventListener(
-
-                    "click",
-
-                    CascadeRenderer
-                        .handleClick
-
-                );
-
-            }
+            MapRenderer._eventsBound =
+                false;
 
         };
 
 
     /* =====================================================
-       10. HANDLE CASCADE OPENED
+       14. HANDLE HEATMAP UPDATED
        ===================================================== */
 
-    CascadeRenderer.handleCascadeOpened =
-        function (
+    MapRenderer.handleHeatmapUpdated =
+        function () {
 
-            event
-
-        ) {
-
-            const data =
-
-                event?.detail ||
-                {};
-
-
-            CascadeRenderer
-                .renderHotspot(
-
-                    data
-
-                );
-
-
-            CascadeRenderer
-                .show();
+            MapRenderer
+                .render();
 
         };
 
 
     /* =====================================================
-       11. HANDLE CASE SELECTED
+       15. HANDLE DATA READY
        ===================================================== */
 
-    CascadeRenderer.handleCaseSelected =
-        function (
+    MapRenderer.handleDataReady =
+        function () {
 
-            event
-
-        ) {
-
-            CascadeRenderer
-                .renderCase(
-
-                    event?.detail ||
-                    {}
-
-                );
-
-
-            CascadeRenderer
-                .show();
+            MapRenderer
+                .render();
 
         };
 
 
     /* =====================================================
-       12. HANDLE ACCUSED SELECTED
+       16. RENDER
+
+       Main rendering entry point.
        ===================================================== */
 
-    CascadeRenderer.handleAccusedSelected =
+    MapRenderer.render =
         function (
-
-            event
-
+            options = {}
         ) {
 
-            CascadeRenderer
-                .renderAccused(
+            if (
+                !MapRenderer.initialized
+            ) {
 
-                    event?.detail ||
-                    {}
-
-                );
-
-        };
-
-
-    /* =====================================================
-       13. HANDLE SEIZURE SELECTED
-       ===================================================== */
-
-    CascadeRenderer.handleSeizureSelected =
-        function (
-
-            event
-
-        ) {
-
-            CascadeRenderer
-                .renderSeizure(
-
-                    event?.detail ||
-                    {}
-
-                );
-
-        };
-
-
-    /* =====================================================
-       14. HANDLE CLICK
-       ===================================================== */
-
-    CascadeRenderer.handleClick =
-        function (
-
-            event
-
-        ) {
-
-            const target =
-
-                event.target.closest(
-
-                    "[data-offence-action]"
-
-                );
-
-
-            if (!target) {
-
-                return;
+                MapRenderer
+                    .init();
 
             }
 
 
-            const action =
-
-                target.dataset
-                    .offenceAction;
-
-
-            /* -------------------------
-               Close
-               ------------------------- */
-
             if (
-                action === "close"
+                !MapRenderer.map
             ) {
 
-                CascadeController
-                    .close();
+                return {
 
-                return;
+                    success:
+                        false,
+
+                    reason:
+                        "MAP_UNAVAILABLE"
+
+                };
 
             }
 
 
-            /* -------------------------
-               Select Case
-               ------------------------- */
-
             if (
-                action === "select-case"
+                options.mode
             ) {
 
-                const caseId =
+                MapRenderer.currentMode =
 
-                    target.dataset
-                        .caseId;
-
-
-                CascadeController
-                    .selectCase(
-
-                        caseId
-
-                    );
-
-                return;
+                    MapRenderer
+                        .normalizeMode(
+                            options.mode
+                        );
 
             }
 
 
-            /* -------------------------
-               Select Accused
-               ------------------------- */
+            const sourceHotspots =
+
+                MapRenderer
+                    .getSourceHotspots();
+
+
+            const targetHotspots =
+
+                MapRenderer
+                    .getTargetHotspots();
+
+
+            MapRenderer
+                .clearRenderedLayers();
+
 
             if (
-                action === "select-accused"
+                MapRenderer.currentMode ===
+                    MapRenderer.MODE.ALL ||
+
+                MapRenderer.currentMode ===
+                    MapRenderer.MODE.SOURCE
             ) {
 
-                const accusedId =
-
-                    target.dataset
-                        .accusedId;
-
-
-                CascadeController
-                    .selectAccused(
-
-                        accusedId
-
-                    );
-
-                return;
-
-            }
-
-
-            /* -------------------------
-               Select Seizure
-               ------------------------- */
-
-            if (
-                action === "select-seizure"
-            ) {
-
-                const seizureId =
-
-                    target.dataset
-                        .seizureId;
-
-
-                CascadeController
-                    .selectSeizure(
-
-                        seizureId
-
-                    );
-
-                return;
-
-            }
-
-
-            /* -------------------------
-               Back to hotspot
-               ------------------------- */
-
-            if (
-                action === "back-hotspot"
-            ) {
-
-                CascadeController
-                    .backToHotspot();
-
-
-                CascadeRenderer
-                    .renderHotspot(
-
-                        CascadeController
-                            .buildHotspotPayload()
-
-                    );
-
-                return;
-
-            }
-
-
-            /* -------------------------
-               Back to case
-               ------------------------- */
-
-            if (
-                action === "back-case"
-            ) {
-
-                CascadeController
-                    .backToCase();
-
-
-                CascadeRenderer
-                    .renderCase(
-
-                        CascadeController
-                            .buildCasePayload()
-
+                MapRenderer
+                    .renderSource(
+                        sourceHotspots
                     );
 
             }
 
-        };
 
+            if (
+                MapRenderer.currentMode ===
+                    MapRenderer.MODE.ALL ||
 
-    /* =====================================================
-       15. RENDER HOTSPOT
-       ===================================================== */
+                MapRenderer.currentMode ===
+                    MapRenderer.MODE.TARGET
+            ) {
 
-    CascadeRenderer.renderHotspot =
-        function (
-
-            data = {}
-
-        ) {
-
-            const content =
-
-                CascadeRenderer
-                    .getContent();
-
-
-            if (!content) {
-
-                return;
+                MapRenderer
+                    .renderTarget(
+                        targetHotspots
+                    );
 
             }
 
 
-            const type =
+            if (
+                options.show !==
+                    false
+            ) {
 
-                data.entryType ||
+                MapRenderer
+                    .show();
 
-                "UNKNOWN";
-
-
-            const hotspot =
-
-                data.hotspot ||
-
-                {};
+            }
 
 
-            const cases =
+            const result = {
 
+                success:
+                    true,
+
+                mode:
+                    MapRenderer.currentMode,
+
+                sourceCount:
+                    sourceHotspots.length,
+
+                targetCount:
+                    targetHotspots.length
+
+            };
+
+
+            MapRenderer
+                .dispatchEvent(
+
+                    Constants.EVENTS
+                        ?.MAP_RENDERED ||
+
+                    "offence:map-rendered",
+
+                    result
+
+                );
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "🔥 Offence Heatmap Rendered",
+
+                    result
+
+                );
+
+            }
+
+
+            return result;
+
+        };
+
+
+    /* =====================================================
+       17. GET SOURCE HOTSPOTS
+       ===================================================== */
+
+    MapRenderer.getSourceHotspots =
+        function () {
+
+            let hotspots =
+                [];
+
+
+            if (
+                typeof HeatmapEngine.getSourceHotspots ===
+                    "function"
+            ) {
+
+                hotspots =
+
+                    HeatmapEngine
+                        .getSourceHotspots() ||
+
+                    [];
+
+            }
+
+            else if (
+                typeof HeatmapEngine.getHotspots ===
+                    "function"
+            ) {
+
+                hotspots =
+
+                    HeatmapEngine
+                        .getHotspots(
+                            "SOURCE"
+                        ) ||
+
+                    [];
+
+            }
+
+            else if (
                 Array.isArray(
-                    data.cases
+                    HeatmapEngine.sourceHotspots
                 )
+            ) {
 
-                    ? data.cases
+                hotspots =
+                    HeatmapEngine.sourceHotspots;
 
-                    : [];
-
-
-            const typeLabel =
-
-                type === "SOURCE"
-
-                    ? "Offence Source"
-
-                    : type === "TARGET"
-
-                        ? "Offence Target"
-
-                        : "Offence Hotspot";
+            }
 
 
-            let html = `
+            return Array.isArray(
+                hotspots
+            )
+                ? hotspots
+                : [];
 
-                <div class="offence-cascade-section">
-
-                    <div class="offence-cascade-type offence-type-${CascadeRenderer.escape(type)}">
-
-                        ${CascadeRenderer.escape(typeLabel)}
-
-                    </div>
-
-                    <h3 class="offence-cascade-location">
-
-                        ${CascadeRenderer.escape(
-                            CascadeRenderer.getHotspotName(
-                                hotspot
-                            )
-                        )}
-
-                    </h3>
-
-                    <div class="offence-cascade-stats">
-
-                        <div class="offence-stat">
-
-                            <span class="offence-stat-value">
-                                ${Number(
-                                    data.caseCount ||
-                                    cases.length ||
-                                    0
-                                )}
-                            </span>
-
-                            <span class="offence-stat-label">
-                                Cases
-                            </span>
-
-                        </div>
-
-                        <div class="offence-stat">
-
-                            <span class="offence-stat-value">
-                                ${Number(
-                                    data.offenceCount ||
-                                    0
-                                )}
-                            </span>
-
-                            <span class="offence-stat-label">
-                                Offences
-                            </span>
-
-                        </div>
-
-                        <div class="offence-stat">
-
-                            <span class="offence-stat-value">
-                                ${Number(
-                                    data.seizureCount ||
-                                    0
-                                )}
-                            </span>
-
-                            <span class="offence-stat-label">
-                                Seizures
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            `;
+        };
 
 
-            html += `
+    /* =====================================================
+       18. GET TARGET HOTSPOTS
+       ===================================================== */
 
-                <div class="offence-cascade-section">
+    MapRenderer.getTargetHotspots =
+        function () {
 
-                    <div class="offence-section-title">
-                        Linked Cases
-                    </div>
-
-            `;
+            let hotspots =
+                [];
 
 
             if (
-                cases.length === 0
+                typeof HeatmapEngine.getTargetHotspots ===
+                    "function"
             ) {
 
-                html += `
+                hotspots =
 
-                    <div class="offence-empty">
-                        No linked cases found.
-                    </div>
+                    HeatmapEngine
+                        .getTargetHotspots() ||
 
-                `;
-
-            }
-
-            else {
-
-                html += `
-
-                    <div class="offence-case-list">
-
-                `;
-
-
-                cases.forEach(
-
-                    function (
-
-                        caseRecord,
-
-                        index
-
-                    ) {
-
-                        const caseId =
-
-                            CascadeRenderer
-                                .getCaseId(
-
-                                    caseRecord
-
-                                );
-
-
-                        const caseTitle =
-
-                            CascadeRenderer
-                                .getCaseTitle(
-
-                                    caseRecord,
-
-                                    index
-
-                                );
-
-
-                        html += `
-
-                            <button
-                                type="button"
-                                class="offence-case-item"
-                                data-offence-action="select-case"
-                                data-case-id="${CascadeRenderer.escapeAttribute(caseId)}"
-                            >
-
-                                <span class="offence-case-title">
-
-                                    ${CascadeRenderer.escape(caseTitle)}
-
-                                </span>
-
-                                <span class="offence-case-arrow">
-                                    ›
-                                </span>
-
-                            </button>
-
-                        `;
-
-                    }
-
-                );
-
-
-                html += `
-
-                    </div>
-
-                `;
+                    [];
 
             }
 
-
-            html += `
-
-                </div>
-
-            `;
-
-
-            content.innerHTML =
-                html;
-
-        };
-
-
-    /* =====================================================
-       16. RENDER CASE
-       ===================================================== */
-
-    CascadeRenderer.renderCase =
-        function (
-
-            data = {}
-
-        ) {
-
-            const content =
-
-                CascadeRenderer
-                    .getContent();
-
-
-            if (!content) {
-
-                return;
-
-            }
-
-
-            const caseRecord =
-
-                data.case ||
-                {};
-
-
-            const accused =
-
-                Array.isArray(
-                    data.accused
-                )
-
-                    ? data.accused
-
-                    : [];
-
-
-            const seizures =
-
-                Array.isArray(
-                    data.seizures
-                )
-
-                    ? data.seizures
-
-                    : [];
-
-
-            const sources =
-
-                Array.isArray(
-                    data.sourceHotspots
-                )
-
-                    ? data.sourceHotspots
-
-                    : [];
-
-
-            const targets =
-
-                Array.isArray(
-                    data.targetHotspots
-                )
-
-                    ? data.targetHotspots
-
-                    : [];
-
-
-            let html = `
-
-                <button
-                    type="button"
-                    class="offence-back-button"
-                    data-offence-action="back-hotspot"
-                >
-                    ← Back to Hotspot
-                </button>
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-                        Case Details
-                    </div>
-
-                    ${CascadeRenderer.renderObjectFields(
-                        caseRecord
-                    )}
-
-                </div>
-
-            `;
-
-
-            /* -------------------------
-               Accused
-               ------------------------- */
-
-            html += `
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-
-                        Accused (${accused.length})
-
-                    </div>
-
-            `;
-
-
-            if (
-                accused.length === 0
+            else if (
+                typeof HeatmapEngine.getHotspots ===
+                    "function"
             ) {
 
-                html += `
+                hotspots =
 
-                    <div class="offence-empty">
-                        No accused records available.
-                    </div>
+                    HeatmapEngine
+                        .getHotspots(
+                            "TARGET"
+                        ) ||
 
-                `;
-
-            }
-
-            else {
-
-                accused.forEach(
-
-                    function (
-
-                        person,
-
-                        index
-
-                    ) {
-
-                        const accusedId =
-
-                            CascadeRenderer
-                                .getAccusedId(
-
-                                    person
-
-                                );
-
-
-                        const name =
-
-                            person.name ||
-
-                            person.accusedName ||
-
-                            "Accused " +
-                            (
-                                index + 1
-                            );
-
-
-                        html += `
-
-                            <button
-                                type="button"
-                                class="offence-cascade-list-item"
-                                data-offence-action="select-accused"
-                                data-accused-id="${CascadeRenderer.escapeAttribute(accusedId)}"
-                            >
-
-                                ${CascadeRenderer.escape(name)}
-
-                                <span>›</span>
-
-                            </button>
-
-                        `;
-
-                    }
-
-                );
+                    [];
 
             }
 
-
-            html += `
-
-                </div>
-
-            `;
-
-
-            /* -------------------------
-               Seizures
-               ------------------------- */
-
-            html += `
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-
-                        Seizures (${seizures.length})
-
-                    </div>
-
-            `;
-
-
-            if (
-                seizures.length === 0
+            else if (
+                Array.isArray(
+                    HeatmapEngine.targetHotspots
+                )
             ) {
 
-                html += `
-
-                    <div class="offence-empty">
-                        No seizure records available.
-                    </div>
-
-                `;
-
-            }
-
-            else {
-
-                seizures.forEach(
-
-                    function (
-
-                        seizure,
-
-                        index
-
-                    ) {
-
-                        const seizureId =
-
-                            CascadeRenderer
-                                .getSeizureId(
-
-                                    seizure
-
-                                );
-
-
-                        const title =
-
-                            seizure.item ||
-
-                            seizure.seizureItem ||
-
-                            seizure.category ||
-
-                            "Seizure " +
-                            (
-                                index + 1
-                            );
-
-
-                        html += `
-
-                            <button
-                                type="button"
-                                class="offence-cascade-list-item"
-                                data-offence-action="select-seizure"
-                                data-seizure-id="${CascadeRenderer.escapeAttribute(seizureId)}"
-                            >
-
-                                ${CascadeRenderer.escape(title)}
-
-                                <span>›</span>
-
-                            </button>
-
-                        `;
-
-                    }
-
-                );
+                hotspots =
+                    HeatmapEngine.targetHotspots;
 
             }
 
 
-            html += `
-
-                </div>
-
-            `;
-
-
-            /* -------------------------
-               Source Locations
-               ------------------------- */
-
-            html +=
-
-                CascadeRenderer
-                    .renderRelatedHotspots(
-
-                        "Source Locations",
-
-                        sources
-
-                    );
-
-
-            /* -------------------------
-               Target Locations
-               ------------------------- */
-
-            html +=
-
-                CascadeRenderer
-                    .renderRelatedHotspots(
-
-                        "Target Locations",
-
-                        targets
-
-                    );
-
-
-            content.innerHTML =
-                html;
+            return Array.isArray(
+                hotspots
+            )
+                ? hotspots
+                : [];
 
         };
 
 
     /* =====================================================
-       17. RENDER ACCUSED
+       19. RENDER SOURCE
        ===================================================== */
 
-    CascadeRenderer.renderAccused =
+    MapRenderer.renderSource =
         function (
-
-            data = {}
-
-        ) {
-
-            const content =
-
-                CascadeRenderer
-                    .getContent();
-
-
-            if (!content) {
-
-                return;
-
-            }
-
-
-            const accused =
-
-                data.selectedAccused ||
-                {};
-
-
-            content.innerHTML = `
-
-                <button
-                    type="button"
-                    class="offence-back-button"
-                    data-offence-action="back-case"
-                >
-                    ← Back to Case
-                </button>
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-                        Accused Details
-                    </div>
-
-                    ${CascadeRenderer.renderObjectFields(
-                        accused
-                    )}
-
-                </div>
-
-            `;
-
-        };
-
-
-    /* =====================================================
-       18. RENDER SEIZURE
-       ===================================================== */
-
-    CascadeRenderer.renderSeizure =
-        function (
-
-            data = {}
-
-        ) {
-
-            const content =
-
-                CascadeRenderer
-                    .getContent();
-
-
-            if (!content) {
-
-                return;
-
-            }
-
-
-            const seizure =
-
-                data.selectedSeizure ||
-                {};
-
-
-            content.innerHTML = `
-
-                <button
-                    type="button"
-                    class="offence-back-button"
-                    data-offence-action="back-case"
-                >
-                    ← Back to Case
-                </button>
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-                        Seizure Details
-                    </div>
-
-                    ${CascadeRenderer.renderObjectFields(
-                        seizure
-                    )}
-
-                </div>
-
-            `;
-
-        };
-
-
-    /* =====================================================
-       19. RENDER RELATED HOTSPOTS
-       ===================================================== */
-
-    CascadeRenderer.renderRelatedHotspots =
-        function (
-
-            title,
-
             hotspots
-
         ) {
 
             if (
                 !Array.isArray(
                     hotspots
-                ) ||
-                hotspots.length === 0
+                )
             ) {
 
-                return "";
+                return;
 
             }
 
 
-            let html = `
-
-                <div class="offence-cascade-section">
-
-                    <div class="offence-section-title">
-
-                        ${CascadeRenderer.escape(title)}
-
-                        (${hotspots.length})
-
-                    </div>
-
-            `;
+            const heatPoints =
+                [];
 
 
-            hotspots.forEach(
+            for (
+                const hotspot
+                of hotspots
+            ) {
 
-                function (
+                const coordinates =
 
-                    hotspot
+                    MapRenderer
+                        .getCoordinates(
+                            hotspot
+                        );
 
-                ) {
 
-                    html += `
+                if (!coordinates) {
 
-                        <div class="offence-related-hotspot">
-
-                            ${CascadeRenderer.escape(
-                                CascadeRenderer.getHotspotName(
-                                    hotspot
-                                )
-                            )}
-
-                        </div>
-
-                    `;
+                    continue;
 
                 }
 
-            );
+
+                const intensity =
+
+                    MapRenderer
+                        .getIntensity(
+                            hotspot
+                        );
 
 
-            html += `
+                heatPoints.push([
 
-                </div>
+                    coordinates.lat,
 
-            `;
+                    coordinates.lng,
+
+                    intensity
+
+                ]);
 
 
-            return html;
+                MapRenderer
+                    .createInteractionMarker(
 
-        };
+                        hotspot,
 
+                        MapRenderer.TYPE_SOURCE,
 
-    /* =====================================================
-       20. RENDER OBJECT FIELDS
-       ===================================================== */
+                        coordinates,
 
-    CascadeRenderer.renderObjectFields =
-        function (
+                        MapRenderer
+                            .layers
+                            .sourceInteraction
 
-            record
-
-        ) {
-
-            if (
-                !record ||
-                typeof record !==
-                    "object"
-            ) {
-
-                return `
-
-                    <div class="offence-empty">
-                        No details available.
-                    </div>
-
-                `;
+                    );
 
             }
 
 
-            const entries =
+            /*
+             * Heat layer.
+             */
 
-                Object.entries(
+            if (
+                typeof L.heatLayer ===
+                    "function" &&
+                heatPoints.length > 0
+            ) {
 
-                    record
+                MapRenderer.layers.sourceHeat =
 
-                )
+                    L.heatLayer(
 
-                    .filter(
+                        heatPoints,
 
-                        function (
+                        {
 
-                            entry
+                            radius:
 
-                        ) {
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .radius,
 
-                            const value =
+                            blur:
 
-                                entry[1];
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .blur,
 
+                            maxZoom:
 
-                            return (
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .maxZoom,
 
-                                value !== null &&
+                            minOpacity:
 
-                                value !== undefined &&
-
-                                value !== "" &&
-
-                                typeof value !==
-                                    "object"
-
-                            );
+                                MapRenderer
+                                    .CONFIG
+                                    .source
+                                    .minOpacity
 
                         }
 
                     );
 
 
-            if (
-                entries.length === 0
-            ) {
+                MapRenderer.layers.source.addLayer(
 
-                return `
+                    MapRenderer
+                        .layers
+                        .sourceHeat
 
-                    <div class="offence-empty">
-                        No details available.
-                    </div>
-
-                `;
+                );
 
             }
 
 
-            return entries
+            /*
+             * Fallback visible markers if Leaflet.heat
+             * is unavailable.
+             */
 
-                .map(
+            else {
 
-                    function (
+                MapRenderer
+                    .renderFallbackMarkers(
 
-                        entry
+                        hotspots,
 
-                    ) {
+                        "SOURCE",
 
-                        const key =
+                        MapRenderer
+                            .layers
+                            .sourceMarkers
 
-                            entry[0];
+                    );
 
-                        const value =
-
-                            entry[1];
-
-
-                        return `
-
-                            <div class="offence-detail-row">
-
-                                <div class="offence-detail-label">
-
-                                    ${CascadeRenderer.escape(
-                                        CascadeRenderer.formatLabel(
-                                            key
-                                        )
-                                    )}
-
-                                </div>
-
-                                <div class="offence-detail-value">
-
-                                    ${CascadeRenderer.escape(
-                                        String(
-                                            value
-                                        )
-                                    )}
-
-                                </div>
-
-                            </div>
-
-                        `;
-
-                    }
-
-                )
-
-                .join("");
+            }
 
         };
 
 
     /* =====================================================
-       21. GET HOTSPOT NAME
+       20. RENDER TARGET
        ===================================================== */
 
-    CascadeRenderer.getHotspotName =
+    MapRenderer.renderTarget =
         function (
-
-            hotspot = {}
-
+            hotspots
         ) {
 
-            return (
+            if (
+                !Array.isArray(
+                    hotspots
+                )
+            ) {
 
-                hotspot.name ||
+                return;
+
+            }
+
+
+            const heatPoints =
+                [];
+
+
+            for (
+                const hotspot
+                of hotspots
+            ) {
+
+                const coordinates =
+
+                    MapRenderer
+                        .getCoordinates(
+                            hotspot
+                        );
+
+
+                if (!coordinates) {
+
+                    continue;
+
+                }
+
+
+                const intensity =
+
+                    MapRenderer
+                        .getIntensity(
+                            hotspot
+                        );
+
+
+                heatPoints.push([
+
+                    coordinates.lat,
+
+                    coordinates.lng,
+
+                    intensity
+
+                ]);
+
+
+                MapRenderer
+                    .createInteractionMarker(
+
+                        hotspot,
+
+                        MapRenderer.TYPE_TARGET,
+
+                        coordinates,
+
+                        MapRenderer
+                            .layers
+                            .targetInteraction
+
+                    );
+
+            }
+
+
+            if (
+                typeof L.heatLayer ===
+                    "function" &&
+                heatPoints.length > 0
+            ) {
+
+                MapRenderer.layers.targetHeat =
+
+                    L.heatLayer(
+
+                        heatPoints,
+
+                        {
+
+                            radius:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .radius,
+
+                            blur:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .blur,
+
+                            maxZoom:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .maxZoom,
+
+                            minOpacity:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .target
+                                    .minOpacity
+
+                        }
+
+                    );
+
+
+                MapRenderer.layers.target.addLayer(
+
+                    MapRenderer
+                        .layers
+                        .targetHeat
+
+                );
+
+            }
+
+
+            else {
+
+                MapRenderer
+                    .renderFallbackMarkers(
+
+                        hotspots,
+
+                        "TARGET",
+
+                        MapRenderer
+                            .layers
+                            .targetMarkers
+
+                    );
+
+            }
+
+        };
+
+
+    /* =====================================================
+       21. TYPE CONSTANTS
+       ===================================================== */
+
+    MapRenderer.TYPE_SOURCE =
+        "SOURCE";
+
+
+    MapRenderer.TYPE_TARGET =
+        "TARGET";
+
+
+    /* =====================================================
+       22. CREATE INTERACTION MARKER
+
+       Heat layers themselves do not reliably expose
+       individual hotspot click events.
+
+       Transparent circle markers provide click targets.
+       ===================================================== */
+
+    MapRenderer.createInteractionMarker =
+        function (
+            hotspot,
+            type,
+            coordinates,
+            layer
+        ) {
+
+            if (
+                !hotspot ||
+                !coordinates ||
+                !layer
+            ) {
+
+                return null;
+
+            }
+
+
+            const marker =
+
+                L.circleMarker(
+
+                    [
+
+                        coordinates.lat,
+
+                        coordinates.lng
+
+                    ],
+
+                    {
+
+                        radius:
+
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .radius,
+
+                        fillOpacity:
+
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .fillOpacity,
+
+                        opacity:
+
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .opacity,
+
+                        weight:
+
+                            MapRenderer
+                                .CONFIG
+                                .interaction
+                                .weight,
+
+                        interactive:
+                            true,
+
+                        bubblingMouseEvents:
+                            false
+
+                    }
+
+                );
+
+
+            marker.on(
+
+                "click",
+
+                function (
+                    event
+                ) {
+
+                    if (
+                        event?.originalEvent
+                    ) {
+
+                        L.DomEvent.stopPropagation(
+                            event.originalEvent
+                        );
+
+                    }
+
+
+                    MapRenderer
+                        .handleHotspotClick(
+
+                            hotspot,
+
+                            type,
+
+                            event
+
+                        );
+
+                }
+
+            );
+
+
+            marker.on(
+
+                "mouseover",
+
+                function () {
+
+                    MapRenderer
+                        .dispatchEvent(
+
+                            "offence:hotspot-hover",
+
+                            {
+
+                                hotspotId:
+
+                                    MapRenderer
+                                        .getHotspotId(
+                                            hotspot,
+                                            type
+                                        ),
+
+                                type:
+                                    type,
+
+                                hotspot:
+                                    hotspot
+
+                            }
+
+                        );
+
+                }
+
+            );
+
+
+            marker.addTo(
+                layer
+            );
+
+
+            return marker;
+
+        };
+
+
+    /* =====================================================
+       23. HANDLE HOTSPOT CLICK
+
+       IMPORTANT:
+
+       This is the bridge:
+
+       Map
+           ↓
+       MapRenderer
+           ↓
+       offence:hotspot-click
+           ↓
+       CascadeController.openHotspot()
+           ↓
+       POR cascade
+       ===================================================== */
+
+    MapRenderer.handleHotspotClick =
+        function (
+            hotspot,
+            type,
+            event = null
+        ) {
+
+            const hotspotId =
+
+                MapRenderer
+                    .getHotspotId(
+
+                        hotspot,
+
+                        type
+
+                    );
+
+
+            if (!hotspotId) {
+
+                if (
+                    Constants.DEBUG
+                        ?.ENABLED
+                ) {
+
+                    console.warn(
+
+                        "[OffenceMapRenderer] Hotspot has no ID.",
+
+                        hotspot
+
+                    );
+
+                }
+
+
+                return false;
+
+            }
+
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            const latlng =
+
+                event?.latlng ||
+
+                (
+
+                    coordinates
+
+                        ? {
+
+                            lat:
+                                coordinates.lat,
+
+                            lng:
+                                coordinates.lng
+
+                        }
+
+                        : null
+
+                );
+
+
+            const detail = {
+
+                hotspotId:
+                    hotspotId,
+
+                type:
+                    type,
+
+                hotspot:
+                    hotspot,
+
+                porKey:
+
+                    hotspot.porKey ||
+
+                    null,
+
+                porKeys:
+
+                    Array.isArray(
+                        hotspot.porKeys
+                    )
+
+                        ? [...hotspot.porKeys]
+
+                        : [],
+
+                latlng:
+                    latlng
+
+            };
+
+
+            MapRenderer
+                .dispatchEvent(
+
+                    Constants.EVENTS
+                        ?.HOTSPOT_CLICK ||
+
+                    "offence:hotspot-click",
+
+                    detail
+
+                );
+
+
+            if (
+                Constants.DEBUG
+                    ?.ENABLED
+            ) {
+
+                console.log(
+
+                    "🔥 Offence Hotspot Click",
+
+                    detail
+
+                );
+
+            }
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       24. GET HOTSPOT ID
+       ===================================================== */
+
+    MapRenderer.getHotspotId =
+        function (
+            hotspot,
+            type = ""
+        ) {
+
+            if (!hotspot) {
+
+                return "";
+
+            }
+
+
+            const directId =
+
+                hotspot.hotspotId ||
+
+                hotspot.id;
+
+
+            if (directId) {
+
+                return String(
+                    directId
+                );
+
+            }
+
+
+            const coordinates =
+
+                MapRenderer
+                    .getCoordinates(
+                        hotspot
+                    );
+
+
+            const locationKey =
+
+                hotspot.locationKey ||
 
                 hotspot.location ||
 
                 hotspot.place ||
 
-                hotspot.address ||
-
                 hotspot.village ||
 
-                hotspot.hotspotId ||
+                hotspot.address ||
 
-                "Unknown Location"
-
-            );
-
-        };
+                "";
 
 
-    /* =====================================================
-       22. GET CASE ID
-       ===================================================== */
+            const porKey =
 
-    CascadeRenderer.getCaseId =
-        function (
+                hotspot.porKey ||
 
-            record = {}
-
-        ) {
-
-            return (
-
-                record.caseId ||
-
-                record.caseID ||
-
-                record.case_id ||
-
-                record.porNo ||
-
-                record.porNumber ||
-
-                record.id ||
-
-                ""
-
-            );
-
-        };
-
-
-    /* =====================================================
-       23. GET CASE TITLE
-       ===================================================== */
-
-    CascadeRenderer.getCaseTitle =
-        function (
-
-            record = {},
-
-            index = 0
-
-        ) {
-
-            return (
-
-                record.caseNumber ||
-
-                record.caseNo ||
-
-                record.porNo ||
-
-                record.porNumber ||
-
-                record.caseId ||
-
-                record.id ||
-
-                "Case " +
                 (
-                    index + 1
+
+                    Array.isArray(
+                        hotspot.porKeys
+                    )
+
+                        ? hotspot.porKeys
+                            .join("|")
+
+                        : ""
+
+                );
+
+
+            if (
+                coordinates
+            ) {
+
+                return [
+
+                    type ||
+                    hotspot.type ||
+                    "HOTSPOT",
+
+                    coordinates.lat,
+
+                    coordinates.lng,
+
+                    locationKey,
+
+                    porKey
+
+                ].join(
+                    "::"
+                );
+
+            }
+
+
+            if (
+                locationKey ||
+                porKey
+            ) {
+
+                return [
+
+                    type ||
+                    hotspot.type ||
+                    "HOTSPOT",
+
+                    locationKey,
+
+                    porKey
+
+                ].join(
+                    "::"
+                );
+
+            }
+
+
+            return "";
+
+        };
+
+
+    /* =====================================================
+       25. GET COORDINATES
+       ===================================================== */
+
+    MapRenderer.getCoordinates =
+        function (
+            hotspot
+        ) {
+
+            if (!hotspot) {
+
+                return null;
+
+            }
+
+
+            let lat =
+
+                hotspot.latitude ??
+
+                hotspot.lat ??
+
+                hotspot.location?.latitude ??
+
+                hotspot.location?.lat ??
+
+                hotspot.coordinates?.latitude ??
+
+                hotspot.coordinates?.lat;
+
+
+            let lng =
+
+                hotspot.longitude ??
+
+                hotspot.lng ??
+
+                hotspot.lon ??
+
+                hotspot.location?.longitude ??
+
+                hotspot.location?.lng ??
+
+                hotspot.location?.lon ??
+
+                hotspot.coordinates?.longitude ??
+
+                hotspot.coordinates?.lng ??
+                
+                hotspot.coordinates?.lon;
+
+
+            /*
+             * GeoJSON style:
+             *
+             * coordinates: [lng, lat]
+             */
+
+            if (
+                Array.isArray(
+                    hotspot.coordinates
+                ) &&
+                hotspot.coordinates.length >=
+                    2
+            ) {
+
+                lng =
+                    hotspot.coordinates[0];
+
+
+                lat =
+                    hotspot.coordinates[1];
+
+            }
+
+
+            lat =
+                Number(
+                    lat
+                );
+
+
+            lng =
+                Number(
+                    lng
+                );
+
+
+            if (
+                !Number.isFinite(
+                    lat
+                ) ||
+                !Number.isFinite(
+                    lng
+                )
+            ) {
+
+                return null;
+
+            }
+
+
+            if (
+                lat < -90 ||
+                lat > 90 ||
+                lng < -180 ||
+                lng > 180
+            ) {
+
+                return null;
+
+            }
+
+
+            return {
+
+                lat:
+                    lat,
+
+                lng:
+                    lng
+
+            };
+
+        };
+
+
+    /* =====================================================
+       26. GET INTENSITY
+
+       Uses hotspot aggregate counts.
+
+       Heat intensity normalized to 0..1.
+       ===================================================== */
+
+    MapRenderer.getIntensity =
+        function (
+            hotspot
+        ) {
+
+            if (!hotspot) {
+
+                return 0.25;
+
+            }
+
+
+            const raw =
+
+                Number(
+
+                    hotspot.weight ??
+
+                    hotspot.intensity ??
+
+                    hotspot.score ??
+
+                    hotspot.offenceCount ??
+
+                    hotspot.caseCount ??
+
+                    hotspot.count ??
+
+                    1
+
+                );
+
+
+            if (
+                !Number.isFinite(
+                    raw
+                )
+            ) {
+
+                return 0.25;
+
+            }
+
+
+            /*
+             * Log scaling prevents a hotspot with many
+             * records from overwhelming all others.
+             */
+
+            const normalized =
+
+                Math.log10(
+                    raw + 1
+                ) /
+                2;
+
+
+            return Math.max(
+
+                0.15,
+
+                Math.min(
+                    1,
+                    normalized
                 )
 
             );
@@ -1704,328 +2132,932 @@
 
 
     /* =====================================================
-       24. GET ACCUSED ID
+       27. FALLBACK MARKERS
+
+       Used if Leaflet.heat plugin is unavailable.
        ===================================================== */
 
-    CascadeRenderer.getAccusedId =
+    MapRenderer.renderFallbackMarkers =
         function (
-
-            record = {}
-
+            hotspots,
+            type,
+            layer
         ) {
 
-            return (
+            if (
+                !Array.isArray(
+                    hotspots
+                ) ||
+                !layer
+            ) {
 
-                record.accusedId ||
+                return;
 
-                record.accusedID ||
-
-                record.accused_id ||
-
-                record.id ||
-
-                record.name ||
-
-                record.accusedName ||
-
-                ""
-
-            );
-
-        };
+            }
 
 
-    /* =====================================================
-       25. GET SEIZURE ID
-       ===================================================== */
+            for (
+                const hotspot
+                of hotspots
+            ) {
 
-    CascadeRenderer.getSeizureId =
-        function (
+                const coordinates =
 
-            record = {}
-
-        ) {
-
-            return (
-
-                record.seizureId ||
-
-                record.seizureID ||
-
-                record.seizure_id ||
-
-                record.id ||
-
-                [
-
-                    record.caseId ||
-                    "",
-
-                    record.seizureDate ||
-                    "",
-
-                    record.placeOfSeizure ||
-                    ""
-
-                ].join("|")
-
-            );
-
-        };
+                    MapRenderer
+                        .getCoordinates(
+                            hotspot
+                        );
 
 
-    /* =====================================================
-       26. FORMAT LABEL
-       ===================================================== */
+                if (!coordinates) {
 
-    CascadeRenderer.formatLabel =
-        function (
+                    continue;
 
-            value
+                }
 
-        ) {
 
-            return String(
+                const marker =
 
-                value || ""
+                    L.circleMarker(
 
-            )
+                        [
 
-                .replace(
-                    /([a-z])([A-Z])/g,
-                    "$1 $2"
-                )
+                            coordinates.lat,
 
-                .replace(
-                    /_/g,
-                    " "
-                )
+                            coordinates.lng
 
-                .replace(
-                    /\b\w/g,
+                        ],
+
+                        {
+
+                            radius:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .radius,
+
+                            weight:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .weight,
+
+                            opacity:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .opacity,
+
+                            fillOpacity:
+
+                                MapRenderer
+                                    .CONFIG
+                                    .hotspotMarker
+                                    .fillOpacity,
+
+                            interactive:
+                                true
+
+                        }
+
+                    );
+
+
+                marker.on(
+
+                    "click",
+
                     function (
-                        char
+                        event
                     ) {
 
-                        return char
-                            .toUpperCase();
+                        MapRenderer
+                            .handleHotspotClick(
+
+                                hotspot,
+
+                                type,
+
+                                event
+
+                            );
 
                     }
+
                 );
+
+
+                marker.bindTooltip(
+
+                    MapRenderer
+                        .getHotspotLabel(
+                            hotspot,
+                            type
+                        ),
+
+                    {
+
+                        direction:
+                            "top"
+
+                    }
+
+                );
+
+
+                marker.addTo(
+                    layer
+                );
+
+            }
 
         };
 
 
     /* =====================================================
-       27. ESCAPE HTML
+       28. GET HOTSPOT LABEL
        ===================================================== */
 
-    CascadeRenderer.escape =
+    MapRenderer.getHotspotLabel =
         function (
-
-            value
-
+            hotspot,
+            type
         ) {
 
-            return String(
+            const location =
 
-                value ??
-                ""
+                hotspot?.name ||
 
-            )
+                hotspot?.locationName ||
 
-                .replace(
-                    /&/g,
-                    "&amp;"
+                hotspot?.place ||
+
+                hotspot?.village ||
+
+                hotspot?.address ||
+
+                hotspot?.locationKey ||
+
+                "Unknown Location";
+
+
+            const count =
+
+                hotspot?.caseCount ??
+
+                hotspot?.offenceCount ??
+
+                hotspot?.count ??
+
+                0;
+
+
+            const label =
+
+                type ===
+                    MapRenderer.MODE.SOURCE
+
+                    ? "Source"
+
+                    : type ===
+                        MapRenderer.MODE.TARGET
+
+                        ? "Target"
+
+                        : "Hotspot";
+
+
+            return [
+
+                label,
+
+                location,
+
+                count
+                    ? "(" + count + ")"
+                    : ""
+
+            ]
+                .filter(
+                    Boolean
                 )
-
-                .replace(
-                    /</g,
-                    "&lt;"
-                )
-
-                .replace(
-                    />/g,
-                    "&gt;"
-                )
-
-                .replace(
-                    /"/g,
-                    "&quot;"
-                )
-
-                .replace(
-                    /'/g,
-                    "&#039;"
+                .join(
+                    " · "
                 );
 
         };
 
 
     /* =====================================================
-       28. ESCAPE ATTRIBUTE
+       29. SET MODE
        ===================================================== */
 
-    CascadeRenderer.escapeAttribute =
+    MapRenderer.setMode =
         function (
-
-            value
-
+            mode
         ) {
 
-            return CascadeRenderer
-                .escape(
+            MapRenderer.currentMode =
 
-                    value
+                MapRenderer
+                    .normalizeMode(
+                        mode
+                    );
 
-                );
+
+            if (
+                MapRenderer.initialized
+            ) {
+
+                MapRenderer
+                    .render();
+
+            }
+
+
+            return MapRenderer.currentMode;
 
         };
 
 
     /* =====================================================
-       29. SHOW
+       30. NORMALIZE MODE
        ===================================================== */
 
-    CascadeRenderer.show =
+    MapRenderer.normalizeMode =
+        function (
+            mode
+        ) {
+
+            const value =
+
+                String(
+                    mode ||
+                    ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            if (
+                value ===
+                    MapRenderer.MODE.SOURCE
+            ) {
+
+                return MapRenderer.MODE.SOURCE;
+
+            }
+
+
+            if (
+                value ===
+                    MapRenderer.MODE.TARGET
+            ) {
+
+                return MapRenderer.MODE.TARGET;
+
+            }
+
+
+            return MapRenderer.MODE.ALL;
+
+        };
+
+
+    /* =====================================================
+       31. SHOW SOURCE
+       ===================================================== */
+
+    MapRenderer.showSource =
         function () {
 
-            const panel =
+            return MapRenderer
+                .setMode(
+                    MapRenderer.MODE.SOURCE
+                );
 
-                CascadeRenderer
-                    .getPanel();
+        };
 
 
-            if (!panel) {
+    /* =====================================================
+       32. SHOW TARGET
+       ===================================================== */
+
+    MapRenderer.showTarget =
+        function () {
+
+            return MapRenderer
+                .setMode(
+                    MapRenderer.MODE.TARGET
+                );
+
+        };
+
+
+    /* =====================================================
+       33. SHOW ALL
+       ===================================================== */
+
+    MapRenderer.showAll =
+        function () {
+
+            return MapRenderer
+                .setMode(
+                    MapRenderer.MODE.ALL
+                );
+
+        };
+
+
+    /* =====================================================
+       34. SHOW
+       ===================================================== */
+
+    MapRenderer.show =
+        function () {
+
+            if (
+                !MapRenderer.map ||
+                !MapRenderer.layers.root
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                !MapRenderer.map.hasLayer(
+                    MapRenderer.layers.root
+                )
+            ) {
+
+                MapRenderer.layers.root.addTo(
+                    MapRenderer.map
+                );
+
+            }
+
+
+            MapRenderer.visible =
+                true;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       35. HIDE
+       ===================================================== */
+
+    MapRenderer.hide =
+        function () {
+
+            if (
+                !MapRenderer.map ||
+                !MapRenderer.layers.root
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                MapRenderer.map.hasLayer(
+                    MapRenderer.layers.root
+                )
+            ) {
+
+                MapRenderer.map.removeLayer(
+                    MapRenderer.layers.root
+                );
+
+            }
+
+
+            MapRenderer.visible =
+                false;
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       36. TOGGLE
+       ===================================================== */
+
+    MapRenderer.toggle =
+        function () {
+
+            if (
+                MapRenderer.visible
+            ) {
+
+                MapRenderer
+                    .hide();
+
+            }
+
+            else {
+
+                MapRenderer
+                    .show();
+
+            }
+
+
+            return MapRenderer.visible;
+
+        };
+
+
+    /* =====================================================
+       37. CLEAR RENDERED LAYERS
+       ===================================================== */
+
+    MapRenderer.clearRenderedLayers =
+        function () {
+
+            if (
+                MapRenderer.layers.sourceHeat &&
+                MapRenderer.layers.source
+            ) {
+
+                MapRenderer.layers.source.removeLayer(
+
+                    MapRenderer
+                        .layers
+                        .sourceHeat
+
+                );
+
+
+                MapRenderer.layers.sourceHeat =
+                    null;
+
+            }
+
+
+            if (
+                MapRenderer.layers.targetHeat &&
+                MapRenderer.layers.target
+            ) {
+
+                MapRenderer.layers.target.removeLayer(
+
+                    MapRenderer
+                        .layers
+                        .targetHeat
+
+                );
+
+
+                MapRenderer.layers.targetHeat =
+                    null;
+
+            }
+
+
+            MapRenderer.layers
+                .sourceInteraction
+                ?.clearLayers();
+
+
+            MapRenderer.layers
+                .targetInteraction
+                ?.clearLayers();
+
+
+            MapRenderer.layers
+                .sourceMarkers
+                ?.clearLayers();
+
+
+            MapRenderer.layers
+                .targetMarkers
+                ?.clearLayers();
+
+        };
+
+
+    /* =====================================================
+       38. CLEAR
+       ===================================================== */
+
+    MapRenderer.clear =
+        function () {
+
+            MapRenderer
+                .clearRenderedLayers();
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       39. REMOVE LAYERS
+       ===================================================== */
+
+    MapRenderer.removeLayers =
+        function () {
+
+            if (
+                MapRenderer.map &&
+                MapRenderer.layers.root &&
+                MapRenderer.map.hasLayer(
+                    MapRenderer.layers.root
+                )
+            ) {
+
+                MapRenderer.map.removeLayer(
+
+                    MapRenderer
+                        .layers
+                        .root
+
+                );
+
+            }
+
+
+            MapRenderer.layers = {
+
+                root:
+                    null,
+
+                source:
+                    null,
+
+                target:
+                    null,
+
+                sourceHeat:
+                    null,
+
+                targetHeat:
+                    null,
+
+                sourceInteraction:
+                    null,
+
+                targetInteraction:
+                    null,
+
+                sourceMarkers:
+                    null,
+
+                targetMarkers:
+                    null
+
+            };
+
+        };
+
+
+    /* =====================================================
+       40. FIT TO HOTSPOTS
+       ===================================================== */
+
+    MapRenderer.fitBounds =
+        function (
+            type = "ALL"
+        ) {
+
+            if (
+                !MapRenderer.map
+            ) {
+
+                return false;
+
+            }
+
+
+            const mode =
+
+                MapRenderer
+                    .normalizeMode(
+                        type
+                    );
+
+
+            let hotspots =
+                [];
+
+
+            if (
+                mode ===
+                    MapRenderer.MODE.SOURCE
+            ) {
+
+                hotspots =
+
+                    MapRenderer
+                        .getSourceHotspots();
+
+            }
+
+            else if (
+                mode ===
+                    MapRenderer.MODE.TARGET
+            ) {
+
+                hotspots =
+
+                    MapRenderer
+                        .getTargetHotspots();
+
+            }
+
+            else {
+
+                hotspots = [
+
+                    ...MapRenderer
+                        .getSourceHotspots(),
+
+                    ...MapRenderer
+                        .getTargetHotspots()
+
+                ];
+
+            }
+
+
+            const points =
+                [];
+
+
+            for (
+                const hotspot
+                of hotspots
+            ) {
+
+                const coordinates =
+
+                    MapRenderer
+                        .getCoordinates(
+                            hotspot
+                        );
+
+
+                if (coordinates) {
+
+                    points.push([
+
+                        coordinates.lat,
+
+                        coordinates.lng
+
+                    ]);
+
+                }
+
+            }
+
+
+            if (
+                points.length ===
+                    0
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                points.length ===
+                    1
+            ) {
+
+                MapRenderer.map.setView(
+
+                    points[0],
+
+                    Math.max(
+
+                        MapRenderer.map
+                            .getZoom(),
+
+                        14
+
+                    )
+
+                );
+
+
+                return true;
+
+            }
+
+
+            MapRenderer.map.fitBounds(
+
+                L.latLngBounds(
+                    points
+                ),
+
+                {
+
+                    padding:
+
+                        [
+                            30,
+                            30
+                        ]
+
+                }
+
+            );
+
+
+            return true;
+
+        };
+
+
+    /* =====================================================
+       41. GET STATUS
+       ===================================================== */
+
+    MapRenderer.getStatus =
+        function () {
+
+            return {
+
+                version:
+                    MapRenderer.VERSION,
+
+                initialized:
+                    MapRenderer.initialized,
+
+                visible:
+                    MapRenderer.visible,
+
+                mode:
+                    MapRenderer.currentMode,
+
+                mapAvailable:
+                    !!MapRenderer.map,
+
+                sourceCount:
+
+                    MapRenderer
+                        .getSourceHotspots()
+                        .length,
+
+                targetCount:
+
+                    MapRenderer
+                        .getTargetHotspots()
+                        .length
+
+            };
+
+        };
+
+
+    /* =====================================================
+       42. DISPATCH EVENT
+       ===================================================== */
+
+    MapRenderer.dispatchEvent =
+        function (
+            eventName,
+            detail = {}
+        ) {
+
+            if (!eventName) {
 
                 return;
 
             }
 
 
-            panel.style.display =
-                "block";
+            try {
 
+                window.dispatchEvent(
 
-            panel.classList.add(
+                    new CustomEvent(
 
-                "is-open"
+                        eventName,
 
-            );
+                        {
+
+                            detail:
+                                detail
+
+                        }
+
+                    )
+
+                );
+
+            }
+
+            catch (
+                error
+            ) {
+
+                if (
+                    Constants.DEBUG
+                        ?.ENABLED
+                ) {
+
+                    console.warn(
+
+                        "[OffenceMapRenderer] Event dispatch failed",
+
+                        eventName,
+
+                        error
+
+                    );
+
+                }
+
+            }
 
         };
 
 
     /* =====================================================
-       30. HIDE
+       43. REFRESH
        ===================================================== */
 
-    CascadeRenderer.hide =
+    MapRenderer.refresh =
         function () {
 
-            const panel =
+            return MapRenderer
+                .render({
 
-                CascadeRenderer
-                    .getPanel();
+                    show:
+                        MapRenderer.visible
 
-
-            if (!panel) {
-
-                return;
-
-            }
-
-
-            panel.classList.remove(
-
-                "is-open"
-
-            );
-
-
-            panel.style.display =
-                "none";
+                });
 
         };
 
 
     /* =====================================================
-       31. DESTROY
+       44. DESTROY
        ===================================================== */
 
-    CascadeRenderer.destroy =
+    MapRenderer.destroy =
         function () {
 
-            const panel =
-
-                CascadeRenderer
-                    .getPanel();
+            MapRenderer
+                .unbindEvents();
 
 
-            if (panel) {
-
-                panel.remove();
-
-            }
+            MapRenderer
+                .removeLayers();
 
 
-            CascadeRenderer.initialized =
+            MapRenderer.map =
+                null;
+
+
+            MapRenderer.initialized =
                 false;
 
 
-            CascadeRenderer._eventsBound =
+            MapRenderer.visible =
                 false;
+
+
+            return true;
 
         };
 
 
     /* =====================================================
-       32. EXPORT
+       45. EXPORT
        ===================================================== */
 
-    GG.Offence.CascadeRenderer =
-        CascadeRenderer;
+    GG.Offence.MapRenderer =
+        MapRenderer;
 
 
     /* =====================================================
-       33. AUTO INITIALIZE
-       ===================================================== */
+       46. READY LOG
 
-    if (
-        document.readyState ===
-        "loading"
-    ) {
+       Do NOT auto-render here.
 
-        document.addEventListener(
-
-            "DOMContentLoaded",
-
-            function () {
-
-                CascadeRenderer
-                    .init();
-
-            },
-
-            {
-                once:
-                    true
-            }
-
-        );
-
-    }
-
-    else {
-
-        CascadeRenderer
-            .init();
-
-    }
-
-
-    /* =====================================================
-       34. READY LOG
+       Main application should initialize after:
+       - Leaflet map exists
+       - offence data loaded
+       - HeatmapEngine built
        ===================================================== */
 
     if (
@@ -2034,7 +3066,22 @@
     ) {
 
         console.log(
-            "🔥 OffenceCascadeRenderer Loaded"
+
+            "🔥 OffenceMapRenderer Loaded",
+
+            {
+
+                version:
+                    MapRenderer.VERSION,
+
+                connector:
+                    "POR",
+
+                module:
+                    MapRenderer
+
+            }
+
         );
 
     }
