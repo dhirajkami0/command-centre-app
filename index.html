@@ -12942,513 +12942,266 @@ function showPlanetThumb(scene){
 // FINAL VERSION
 // ======================================================
 
-window.map.off("click");
+// =========================================================
+// 🌍 CENTRAL MAP CLICK
+// ANALYTICS-SAFE VERSION
+//
+// PURPOSE:
+//
+// 1. Normal/background map clicks must NOT open analytics.
+// 2. Searching / panning / closing UI must NOT open analytics.
+// 3. GIS selection remains unchanged.
+// 4. Analytics opens ONLY from its dedicated button/action.
+// 5. Polygon-specific click handlers remain independent.
+// 6. Offence TARGET polygon click handlers remain independent.
+//
+// IMPORTANT:
+//
+// DO NOT USE:
+//
+//     window.map.off("click");
+//
+// That would remove every Leaflet map click listener,
+// including listeners registered by other modules.
+// =========================================================
 
-window.map.on(
+(function () {
 
-  "click",
+    "use strict";
 
-  async function(e){
 
-    try{
+    // =====================================================
+    // VALIDATE MAP
+    // =====================================================
 
-      // ==========================================
-      // 🔥 IMPORTANT
-      // IGNORE POLYGON CLICK BUBBLING
-      // ==========================================
+    if (
+        !window.map ||
+        typeof window.map.on !== "function" ||
+        typeof window.map.off !== "function"
+    ) {
 
-      if(
-
-        e.originalEvent &&
-        e.originalEvent._stopped
-
-      ){
-
-        console.log(
-          "⛔ MAP CLICK BLOCKED (polygon handled)"
+        console.warn(
+            "⚠ CENTRAL MAP CLICK: Leaflet map not ready."
         );
 
         return;
-      }
 
-      // ==========================================
-      // 🔒 ACTIVE CONTEXT
-      // ==========================================
+    }
 
-      const level =
 
-        window.activePopupContext
-        ?.level ||
+    // =====================================================
+    // REMOVE ONLY PREVIOUS HANDLER CREATED BY THIS BLOCK
+    //
+    // This prevents duplicate handlers if this code
+    // is initialized more than once.
+    //
+    // It does NOT remove handlers belonging to:
+    //
+    // - GIS polygons
+    // - offence polygons
+    // - markers
+    // - search
+    // - other map modules
+    // =====================================================
 
-        "btr";
+    if (
+        typeof window.__centralAnalyticsMapClickHandler ===
+        "function"
+    ) {
 
-      console.log(
-        "🎯 MAP CLICK LEVEL:",
-        level
-      );
+        window.map.off(
 
-      // ==========================================
-      // 🌍 BTR BACKGROUND CLICK
-      // ==========================================
+            "click",
 
-      if(level === "btr"){
-
-        console.log(
-          "🌍 EMPTY BTR BACKGROUND CLICK"
-        );
-
-        await showBTRAnalyticsPanel(
-
-          "gis_analytics_btr",
-
-          "BTR_Circle"
+            window.__centralAnalyticsMapClickHandler
 
         );
 
-        return;
-      }
+    }
 
-      // ==========================================
-      // 🌍 DIVISION BACKGROUND CLICK
-      // ==========================================
 
-      if(level === "division"){
+    // =====================================================
+    // CREATE SAFE CENTRAL MAP CLICK HANDLER
+    // =====================================================
 
-        const division =
+    window.__centralAnalyticsMapClickHandler =
 
-          String(
+        function (
 
-            window.gisFilter?.division ||
+            e
 
-            ""
+        ) {
 
-          ).trim();
+            try {
 
-        console.log(
-          "🌍 EMPTY DIVISION BG CLICK:",
-          division
-        );
+                // ==========================================
+                // 🔥 LAYER / POLYGON CLICK BUBBLING
+                //
+                // If another layer already handled the
+                // click, central map logic does nothing.
+                // ==========================================
 
-        await showBTRAnalyticsPanel(
+                if (
 
-          "gis_analytics_btr",
+                    e?.originalEvent &&
+                    e.originalEvent._stopped
 
-          division
+                ) {
 
-        );
+                    console.debug(
+                        "⛔ CENTRAL MAP CLICK BLOCKED — layer handled click."
+                    );
 
-        return;
-      }
+                    return;
 
-      // ==========================================
-      // 🟩 RANGE BACKGROUND CLICK
-      // ==========================================
+                }
 
-      if(level === "range"){
 
-        const division =
+                // ==========================================
+                // 🔒 CURRENT GIS CONTEXT
+                //
+                // Read-only.
+                //
+                // We deliberately do NOT change:
+                //
+                // activePopupContext
+                // gisFilter
+                // current GIS selection
+                // ==========================================
 
-          String(
+                const level =
 
-            window.gisFilter?.division ||
+                    window.activePopupContext
+                        ?.level ||
 
-            ""
+                    "btr";
 
-          ).trim();
 
-        const range =
+                console.debug(
 
-          String(
+                    "🌍 MAP BACKGROUND CLICK",
 
-            window.gisFilter?.range ||
+                    {
 
-            ""
+                        level:
+                            level,
 
-          ).trim();
+                        analyticsOpened:
+                            false
 
-        // ======================================
-        // 🔥 DIVISION NORMALIZATION
-        // ======================================
+                    }
 
-        let firestoreDivision =
-          division;
+                );
 
-        if(division === "BTR_W"){
 
-          firestoreDivision =
-            "BuxaTR_WEST";
-        }
+                // ==========================================
+                // 🚫 ANALYTICS SUPPRESSION
+                //
+                // IMPORTANT:
+                //
+                // Previously this handler called:
+                //
+                // showBTRAnalyticsPanel(...)
+                //
+                // for:
+                //
+                // - BTR
+                // - Division
+                // - Range
+                // - Beat
+                // - Compartment
+                //
+                // That caused accidental analytics opening
+                // whenever the user clicked the map.
+                //
+                // We intentionally do NOTHING here.
+                //
+                // Analytics must now be opened ONLY through
+                // the dedicated analytics button/action.
+                // ==========================================
 
-        if(division === "BTR_E"){
 
-          firestoreDivision =
-            "BuxaTR_EAST";
-        }
+                // ==========================================
+                // DO NOT:
+                //
+                // showBTRAnalyticsPanel(...)
+                //
+                // DO NOT:
+                //
+                // clear activePopupContext
+                //
+                // DO NOT:
+                //
+                // clear gisFilter
+                //
+                // DO NOT:
+                //
+                // interfere with OffenceMapRenderer
+                // ==========================================
 
-        // ======================================
-        // 🔥 RANGE NORMALIZATION
-        // ======================================
+                return;
 
-        let safeRange =
-          String(range || "").trim();
+            }
 
-        safeRange =
+            catch (
 
-          safeRange
+                err
 
-          // WestDamanpur
-          .replace(
-            /^West([A-Z])/,
-            "West_$1"
-          )
+            ) {
 
-          // EastRajabhatkhawa
-          .replace(
-            /^East([A-Z])/,
-            "East_$1"
-          )
+                console.error(
 
-          // NorthRydak
-          .replace(
-            /^North([A-Z])/,
-            "North_$1"
-          )
+                    "❌ CENTRAL MAP CLICK",
 
-          // SouthRydak
-          .replace(
-            /^South([A-Z])/,
-            "South_$1"
-          )
+                    err
 
-          // spaces
-          .replace(/\s+/g,"_")
+                );
 
-          // cleanup
-          .replace(/__+/g,"_")
+            }
 
-          .trim();
+        };
 
-        // ======================================
-        // 🔥 FINAL DOC ID
-        // ======================================
 
-        const rangeDocId =
+    // =====================================================
+    // REGISTER SAFE HANDLER
+    // =====================================================
 
-          `${firestoreDivision}_${safeRange}`;
+    window.map.on(
 
-        console.log(
-          "🛰 RANGE BG CLICK:",
-          rangeDocId
-        );
+        "click",
 
-        await showBTRAnalyticsPanel(
+        window.__centralAnalyticsMapClickHandler
 
-          "gis_range_analytics",
-
-          rangeDocId
-
-        );
-
-        return;
-      }
-
-      // ==========================================
-      // 🟨 BEAT BACKGROUND CLICK
-      // ==========================================
-
-      // ==========================================
-// 🟨 BEAT BACKGROUND CLICK
-// ==========================================
-
-if(level === "beat"){
-
-  const division =
-
-    String(
-
-      window.gisFilter?.division ||
-
-      ""
-
-    ).trim();
-
-  const range =
-
-    String(
-
-      window.gisFilter?.range ||
-
-      ""
-
-    ).trim();
-
-  const beat =
-
-    String(
-
-      window.gisFilter?.beat ||
-
-      ""
-
-    ).trim();
-
-  // ======================================
-  // 🔥 DIVISION NORMALIZATION
-  // ======================================
-
-  let firestoreDivision =
-    division;
-
-  if(division === "BTR_W"){
-
-    firestoreDivision =
-      "BuxaTR_WEST";
-  }
-
-  if(division === "BTR_E"){
-
-    firestoreDivision =
-      "BuxaTR_EAST";
-  }
-
-  // ======================================
-  // 🔥 RANGE NORMALIZATION
-  // ======================================
-
-  let safeRange =
-    String(range || "").trim();
-
-  safeRange =
-
-    safeRange
-
-    // WestDamanpur
-    .replace(
-      /^West([A-Z])/,
-      "West_$1"
-    )
-
-    // EastRajabhatkhawa
-    .replace(
-      /^East([A-Z])/,
-      "East_$1"
-    )
-
-    // NorthRydak
-    .replace(
-      /^North([A-Z])/,
-      "North_$1"
-    )
-
-    // SouthRydak
-    .replace(
-      /^South([A-Z])/,
-      "South_$1"
-    )
-
-    .replace(/\s+/g,"_")
-
-    .replace(/__+/g,"_")
-
-    .trim();
-
-  // ======================================
-  // 🔥 BEAT NORMALIZATION
-  // IMPORTANT:
-  // MATCH FIRESTORE IDS EXACTLY
-  // ======================================
-
-  let safeBeat =
-    String(beat || "").trim();
-
-  safeBeat =
-
-    safeBeat
-
-    // PoroEast → Poro-East
-    .replace(
-      /^PoroEast$/i,
-      "Poro-East"
-    )
-
-    // PoroWest → Poro-West
-    .replace(
-      /^PoroWest$/i,
-      "Poro-West"
-    )
-
-    // GaramEast → Garam-East
-    .replace(
-      /^GaramEast$/i,
-      "Garam-East"
-    )
-
-    // GaramWest → Garam-West
-    .replace(
-      /^GaramWest$/i,
-      "Garam-West"
-    )
-
-    // NimatiEast → Nimati-East
-    .replace(
-      /^NimatiEast$/i,
-      "Nimati-East"
-    )
-
-    // NimatiWest → Nimati-West
-    .replace(
-      /^NimatiWest$/i,
-      "Nimati-West"
-    )
-
-    // EastDamanpur → East_Damanpur
-    .replace(
-      /^EastDamanpur$/i,
-      "East_Damanpur"
-    )
-
-    // WestDamanpur → West_Damanpur
-    .replace(
-      /^WestDamanpur$/i,
-      "West_Damanpur"
-    )
-
-    // EastRajabhatkhawa
-    .replace(
-      /^EastRajabhatkhawa$/i,
-      "East_Rajabhatkhawa"
-    )
-
-    // NorthRydak
-    .replace(
-      /^NorthRydak$/i,
-      "North_Rydak"
-    )
-
-    // SouthRydak
-    .replace(
-      /^SouthRydak$/i,
-      "South_Rydak"
-    )
-
-    .trim();
-
-  // ======================================
-  // 🔥 FINAL DOC ID
-  // ======================================
-
-  const beatDocId =
-    safeBeat;
-
-  console.log(
-    "🛰 BEAT BG CLICK:",
-    beatDocId
-  );
-
-  // ======================================
-  // 🔥 LOAD PANEL
-  // ======================================
-
-  await showBTRAnalyticsPanel(
-
-    "gis_beat_analytics",
-
-    beatDocId
-
-  );
-  return;
-}
-
-      // ==========================================
-// 📦 COMPARTMENT BACKGROUND CLICK
-// ==========================================
-
-if(level === "compartment"){
-
-  const compartment =
-
-    String(
-
-      window.gisFilter?.compartment ||
-
-      ""
-
-    ).trim();
-
-  // ======================================
-  // ❌ INVALID
-  // ======================================
-
-  if(
-
-    !compartment ||
-
-    compartment === "ALL"
-
-  ){
-
-    console.warn(
-      "⚠ Invalid compartment"
     );
 
-    return;
-  }
 
-  // ======================================
-  // 🔥 NORMALIZE
-  // IMPORTANT:
-  // Adma BL1
-  // → Adma_BL1
-  //
-  // C Rydak BL1
-  // → C_Rydak_BL1
-  // ======================================
+    // =====================================================
+    // DEBUG
+    // =====================================================
 
-  let compartmentDocId =
+    console.log(
 
-    compartment
+        "✅ Central map click handler ready.",
 
-    // spaces → underscore
-    .replace(/\s+/g,"_")
+        {
 
-    // cleanup
-    .replace(/__+/g,"_")
+            backgroundAnalytics:
+                false,
 
-    .trim();
+            gisSelectionPreserved:
+                true,
 
-  console.log(
-    "📦 COMPARTMENT BG CLICK:",
-    compartmentDocId
-  );
+            polygonHandlersPreserved:
+                true,
 
-  // ======================================
-  // 🔥 LOAD PANEL
-  // ======================================
+            offenceHandlersPreserved:
+                true
 
-  await showBTRAnalyticsPanel(
+        }
 
-    "gis_compartment_analytics",
+    );
 
-    compartmentDocId
-
-  );
-
-  return;
-}
-    }
-
-    catch(err){
-
-      console.error(
-        "❌ CENTRAL MAP CLICK",
-        err
-      );
-
-    }
-
-  }
-
-);// =========================================================
+})();// =========================================================
 // 🌍 MAP CLICK
 // KEEP THIS
 // =========================================================
