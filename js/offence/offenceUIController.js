@@ -1,15 +1,81 @@
 /* ============================================================
-   🚨 GREENGUARD OFFENCE UI CONTROLLER
-   File:
-   js/offence/offenceUIController.js
+   GreenGuard
+   File: js/offence/offenceUIController.js
 
-   Version:
-   3.0.0
+   OFFENCE SPATIAL UI CONTROLLER
+   Version: 3.1.0
 
-   Architecture:
+   NEW AUTHORITATIVE FLOW
    ------------------------------------------------------------
-   OffenceDataLoader
-        ↓
+
+   OFFENCE BUTTON
+        │
+        ▼
+   OffenceUIController
+        │
+        ├──────── SOURCE
+        │            │
+        │            ▼
+        │      prepareSpatialSystem()
+        │            │
+        │            ├── Wait for Offence Store
+        │            ├── Verify SpatialEngine
+        │            ├── Rebuild SpatialEngine if required
+        │            ├── Verify POR spatial index
+        │            ├── Initialize SpatialRenderer
+        │            │
+        │            ▼
+        │      SpatialRenderer
+        │      .renderAllSources()
+        │
+        │
+        ├──────── TARGET
+        │            │
+        │            ▼
+        │      prepareSpatialSystem()
+        │            │
+        │            ▼
+        │      SpatialRenderer
+        │      .renderAllTargets()
+        │
+        │
+        └──────── CLEAR
+                     │
+                     ▼
+               SpatialRenderer
+               .clear()
+
+
+   UI DESIGN
+   ------------------------------------------------------------
+
+   OFFENCE
+      │
+      ▼
+
+   ┌─────────────────────────┐
+   │ 🚨 OFFENCE ANALYSIS   × │
+   ├─────────────────────────┤
+   │ Spatial data ready      │
+   ├─────────────────────────┤
+   │ 🏡  SOURCE              │
+   │ 🎯  TARGET              │
+   │ 🧹  CLEAR               │
+   └─────────────────────────┘
+
+
+   IMPORTANT
+   ------------------------------------------------------------
+
+   This controller does NOT use the old:
+
+   - OffenceHeatmapEngine
+   - OffenceMapRenderer
+   - old SourceEngine UI flow
+   - old TargetEngine UI flow
+
+   Spatial authority is:
+
    OffenceStore
         ↓
    OffenceSpatialEngine
@@ -18,2334 +84,5545 @@
         ↓
    OffenceUIController
 
-   Purpose:
-   ------------------------------------------------------------
-   Provides one professional map control:
-
-       🚨 OFFENCE
-
-   Clicking opens:
-
-       ┌──────────────────────┐
-       │ 🚨 OFFENCE ANALYSIS  │
-       │                      │
-       │ 🏡 SOURCE            │
-       │ 🎯 TARGET            │
-       │ 🧹 CLEAR             │
-       │ ✕ CLOSE              │
-       └──────────────────────┘
-
-   SOURCE
-       ↓
-   renderAllSources()
-       ↓
-   Source village click
-       ↓
-   Related target ranges
-       ↓
-   Target click
-       ↓
-   Related POR cases
-
-   TARGET
-       ↓
-   renderAllTargets()
-       ↓
-   Target range click
-       ↓
-   Related source villages
-       ↓
-   Source click
-       ↓
-   Related POR cases
-
-   IMPORTANT:
-   ------------------------------------------------------------
-   This controller DOES NOT use:
-
-   Offence.Geocoder
-   Offence.SourceEngine
-   Offence.TargetEngine
-   Offence.HeatmapEngine
-   Offence.MapRenderer
-
 ============================================================ */
 
-(function () {
 
-  "use strict";
+(function (
+    window,
+    document
+) {
 
+    "use strict";
 
-  /* ============================================================
-     🌐 GLOBAL NAMESPACE
-  ============================================================ */
 
-  window.GG =
-    window.GG || {};
+    /* ========================================================
+       ROOT NAMESPACE
+    ======================================================== */
 
+    window.GG =
+        window.GG ||
+        {};
 
-  GG.Offence =
-    GG.Offence || {};
 
+    window.GG.Offence =
+        window.GG.Offence ||
+        {};
 
-  /* ============================================================
-     🚨 CONTROLLER
-  ============================================================ */
 
-  const UI =
-    GG.Offence.UIController =
-      GG.Offence.UIController || {};
+    const GG =
+        window.GG;
 
 
-  UI.VERSION =
-    "3.0.0";
 
+    /* ========================================================
+       UI CONTROLLER
+    ======================================================== */
 
-  /* ============================================================
-     🔥 STATE
-  ============================================================ */
+    const UIController = {
 
-  UI.initialized =
-    false;
 
+        /* ====================================================
+           MODULE INFORMATION
+        ==================================================== */
 
-  UI.ready =
-    false;
+        VERSION:
+            "3.1.0",
 
 
-  UI.panelOpen =
-    false;
+        MODULE_NAME:
+            "OffenceUIController",
 
 
-  UI.activeMode =
-    null;
 
-
-  UI.button =
-    null;
-
-
-  UI.panel =
-    null;
-
-
-  UI.statusElement =
-    null;
-
-
-  UI.sourceButton =
-    null;
-
-
-  UI.targetButton =
-    null;
-
-
-  UI.clearButton =
-    null;
-
-
-  UI.closeButton =
-    null;
-
-
-  /* ============================================================
-     🗺 GET MAP
-  ============================================================ */
-
-  UI.getMap =
-    function () {
-
-      return (
-
-        window.map
-
-        ||
-
-        window.leafletMap
-
-        ||
-
-        GG.map
-
-        ||
-
-        GG.Map
-
-        ||
-
-        null
-
-      );
-
-    };
-
-
-  /* ============================================================
-     🧠 GET SPATIAL ENGINE
-  ============================================================ */
-
-  UI.getSpatialEngine =
-    function () {
-
-      return (
-
-        GG
-          ?.Offence
-          ?.SpatialEngine
-
-        ||
-
-        null
-
-      );
-
-    };
-
-
-  /* ============================================================
-     🎨 GET SPATIAL RENDERER
-  ============================================================ */
-
-  UI.getSpatialRenderer =
-    function () {
-
-      return (
-
-        GG
-          ?.Offence
-          ?.SpatialRenderer
-
-        ||
-
-        null
-
-      );
-
-    };
-
-
-  /* ============================================================
-     🧹 REMOVE OLD OFFENCE UI
-
-     Removes old controller-created DOM elements if they still
-     exist from the previous architecture.
-
-     Add additional OLD IDs here only if your old controller
-     used different IDs.
-  ============================================================ */
-
-  UI.removeLegacyUI =
-    function () {
-
-      const legacyIds = [
-
-        "offenceControl",
-
-        "offence-control",
-
-        "offenceButton",
-
-        "offence-button",
-
-        "offenceMenu",
-
-        "offence-menu",
-
-        "offencePanel",
-
-        "offence-panel",
-
-        "offenceAnalysisPanel"
-
-      ];
-
-
-      legacyIds.forEach(
-
-        function (
-          id
-        ) {
-
-          const element =
-
-            document
-              .getElementById(
-                id
-              );
-
-
-          if (
-            element
-          ) {
-
-            try {
-
-              element.remove();
-
-            }
-
-            catch (
-              err
-            ) {
-
-              console.warn(
-
-                "⚠ Unable to remove legacy offence UI:",
-
-                id,
-
-                err
-
-              );
-
-            }
-
-          }
-
-        }
-
-      );
-
-    };
-
-
-  /* ============================================================
-     🎨 INJECT CSS
-  ============================================================ */
-
-  UI.injectStyles =
-    function () {
-
-      if (
-
-        document
-          .getElementById(
-            "gg-offence-ui-v3-style"
-          )
-
-      ) {
-
-        return;
-
-      }
-
-
-      const style =
-
-        document
-          .createElement(
-            "style"
-          );
-
-
-      style.id =
-        "gg-offence-ui-v3-style";
-
-
-      style.textContent = `
-
-        /* =====================================================
-           OFFENCE CONTROL WRAPPER
-        ===================================================== */
-
-        #gg-offence-control {
-
-          position: fixed;
-
-          right: 16px;
-
-          top: 155px;
-
-          z-index: 10050;
-
-          display: flex;
-
-          flex-direction: column;
-
-          align-items: flex-end;
-
-          gap: 8px;
-
-          font-family:
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            Roboto,
-            Arial,
-            sans-serif;
-
-          pointer-events: none;
-
-        }
-
-
-        /* =====================================================
-           MAIN OFFENCE BUTTON
-        ===================================================== */
-
-        #gg-offence-main-button {
-
-          pointer-events: auto;
-
-          min-width: 112px;
-
-          height: 42px;
-
-          padding: 0 14px;
-
-          border: none;
-
-          border-radius: 10px;
-
-          background: #ffffff;
-
-          box-shadow:
-            0 3px 12px
-            rgba(
-              0,
-              0,
-              0,
-              0.22
-            );
-
-          color: #202124;
-
-          font-size: 13px;
-
-          font-weight: 700;
-
-          letter-spacing: 0.3px;
-
-          cursor: pointer;
-
-          display: flex;
-
-          align-items: center;
-
-          justify-content: center;
-
-          gap: 7px;
-
-          user-select: none;
-
-          transition:
-            transform 0.15s ease,
-            box-shadow 0.15s ease,
-            background 0.15s ease;
-
-        }
-
-
-        #gg-offence-main-button:hover {
-
-          transform:
-            translateY(-1px);
-
-          box-shadow:
-            0 5px 16px
-            rgba(
-              0,
-              0,
-              0,
-              0.28
-            );
-
-        }
-
-
-        #gg-offence-main-button.gg-active {
-
-          background: #263238;
-
-          color: #ffffff;
-
-        }
-
-
-        /* =====================================================
-           PANEL
-        ===================================================== */
-
-        #gg-offence-analysis-panel {
-
-          pointer-events: auto;
-
-          width: 220px;
-
-          padding: 0;
-
-          overflow: hidden;
-
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              0.98
-            );
-
-          border-radius: 12px;
-
-          box-shadow:
-            0 6px 24px
-            rgba(
-              0,
-              0,
-              0,
-              0.28
-            );
-
-          opacity: 0;
-
-          visibility: hidden;
-
-          transform:
-            translateY(-6px)
-            scale(0.98);
-
-          transform-origin:
-            top right;
-
-          transition:
-            opacity 0.16s ease,
-            transform 0.16s ease,
-            visibility 0.16s ease;
-
-        }
-
-
-        #gg-offence-analysis-panel.gg-open {
-
-          opacity: 1;
-
-          visibility: visible;
-
-          transform:
-            translateY(0)
-            scale(1);
-
-        }
-
-
-        /* =====================================================
-           PANEL HEADER
-        ===================================================== */
-
-        .gg-offence-panel-header {
-
-          display: flex;
-
-          align-items: center;
-
-          justify-content: space-between;
-
-          padding: 12px 12px 10px 14px;
-
-          border-bottom:
-            1px solid
-            rgba(
-              0,
-              0,
-              0,
-              0.08
-            );
-
-        }
-
-
-        .gg-offence-panel-title {
-
-          font-size: 13px;
-
-          font-weight: 800;
-
-          color: #263238;
-
-          letter-spacing: 0.25px;
-
-        }
-
-
-        .gg-offence-header-close {
-
-          width: 28px;
-
-          height: 28px;
-
-          padding: 0;
-
-          border: none;
-
-          border-radius: 50%;
-
-          background: transparent;
-
-          color: #546e7a;
-
-          font-size: 17px;
-
-          cursor: pointer;
-
-        }
-
-
-        .gg-offence-header-close:hover {
-
-          background:
-            rgba(
-              0,
-              0,
-              0,
-              0.07
-            );
-
-        }
-
-
-        /* =====================================================
-           STATUS
-        ===================================================== */
-
-        #gg-offence-status {
-
-          padding: 8px 14px;
-
-          font-size: 11px;
-
-          line-height: 1.4;
-
-          color: #607d8b;
-
-          background: #f7f9fa;
-
-          border-bottom:
-            1px solid
-            rgba(
-              0,
-              0,
-              0,
-              0.06
-            );
-
-        }
-
-
-        /* =====================================================
-           ACTIONS
-        ===================================================== */
-
-        .gg-offence-actions {
-
-          padding: 9px;
-
-          display: flex;
-
-          flex-direction: column;
-
-          gap: 7px;
-
-        }
-
-
-        .gg-offence-action {
-
-          width: 100%;
-
-          min-height: 40px;
-
-          padding: 9px 12px;
-
-          border: 1px solid
-            rgba(
-              0,
-              0,
-              0,
-              0.08
-            );
-
-          border-radius: 9px;
-
-          background: #ffffff;
-
-          color: #263238;
-
-          font-size: 13px;
-
-          font-weight: 700;
-
-          text-align: left;
-
-          cursor: pointer;
-
-          display: flex;
-
-          align-items: center;
-
-          gap: 9px;
-
-          transition:
-            background 0.15s ease,
-            border-color 0.15s ease,
-            transform 0.15s ease;
-
-        }
-
-
-        .gg-offence-action:hover {
-
-          background: #f5f7f8;
-
-          transform:
-            translateX(-1px);
-
-        }
-
-
-        .gg-offence-action.gg-selected {
-
-          background: #eceff1;
-
-          border-color: #607d8b;
-
-        }
-
-
-        .gg-offence-action-icon {
-
-          width: 22px;
-
-          text-align: center;
-
-          font-size: 16px;
-
-        }
-
-
-        /* =====================================================
-           FOOTER
-        ===================================================== */
-
-        .gg-offence-panel-footer {
-
-          padding: 9px;
-
-          border-top:
-            1px solid
-            rgba(
-              0,
-              0,
-              0,
-              0.07
-            );
-
-        }
-
-
-        #gg-offence-clear-button {
-
-          color: #b71c1c;
-
-        }
-
-
-        /* =====================================================
-           MOBILE
-        ===================================================== */
-
-        @media (
-          max-width: 700px
-        ) {
-
-          #gg-offence-control {
-
-            right: 10px;
-
-            top: 145px;
-
-          }
-
-
-          #gg-offence-analysis-panel {
-
-            width: 205px;
-
-          }
-
-
-          #gg-offence-main-button {
-
-            min-width: 104px;
-
-          }
-
-        }
-
-      `;
-
-
-      document
-        .head
-        .appendChild(
-          style
-        );
-
-    };
-
-
-  /* ============================================================
-     🏗 CREATE UI
-  ============================================================ */
-
-  UI.createUI =
-    function () {
-
-      /* ========================================================
-         PREVENT DUPLICATE UI
-      ======================================================== */
-
-      const existing =
-
-        document
-          .getElementById(
-            "gg-offence-control"
-          );
-
-
-      if (
-        existing
-      ) {
-
-        return existing;
-
-      }
-
-
-      /* ========================================================
-         CONTROL WRAPPER
-      ======================================================== */
-
-      const control =
-
-        document
-          .createElement(
-            "div"
-          );
-
-
-      control.id =
-        "gg-offence-control";
-
-
-      /* ========================================================
-         MAIN BUTTON
-      ======================================================== */
-
-      const mainButton =
-
-        document
-          .createElement(
-            "button"
-          );
-
-
-      mainButton.id =
-        "gg-offence-main-button";
-
-
-      mainButton.type =
-        "button";
-
-
-      mainButton.innerHTML =
-
-        "<span>🚨</span>" +
-
-        "<span>OFFENCE</span>";
-
-
-      mainButton.title =
-        "Open Offence Spatial Analysis";
-
-
-      /* ========================================================
-         PANEL
-      ======================================================== */
-
-      const panel =
-
-        document
-          .createElement(
-            "div"
-          );
-
-
-      panel.id =
-        "gg-offence-analysis-panel";
-
-
-      panel.innerHTML = `
-
-        <div class="gg-offence-panel-header">
-
-          <div class="gg-offence-panel-title">
-
-            🚨 OFFENCE ANALYSIS
-
-          </div>
-
-          <button
-            type="button"
-            id="gg-offence-header-close"
-            class="gg-offence-header-close"
-            title="Close"
-          >
-
-            ✕
-
-          </button>
-
-        </div>
-
-
-        <div id="gg-offence-status">
-
-          Ready for spatial analysis
-
-        </div>
-
-
-        <div class="gg-offence-actions">
-
-          <button
-            type="button"
-            id="gg-offence-source-button"
-            class="gg-offence-action"
-          >
-
-            <span class="gg-offence-action-icon">
-              🏡
-            </span>
-
-            <span>
-              SOURCE
-            </span>
-
-          </button>
-
-
-          <button
-            type="button"
-            id="gg-offence-target-button"
-            class="gg-offence-action"
-          >
-
-            <span class="gg-offence-action-icon">
-              🎯
-            </span>
-
-            <span>
-              TARGET
-            </span>
-
-          </button>
-
-        </div>
-
-
-        <div class="gg-offence-panel-footer">
-
-          <button
-            type="button"
-            id="gg-offence-clear-button"
-            class="gg-offence-action"
-          >
-
-            <span class="gg-offence-action-icon">
-              🧹
-            </span>
-
-            <span>
-              CLEAR
-            </span>
-
-          </button>
-
-        </div>
-
-      `;
-
-
-      /* ========================================================
-         ADD TO CONTROL
-      ======================================================== */
-
-      control
-        .appendChild(
-          mainButton
-        );
-
-
-      control
-        .appendChild(
-          panel
-        );
-
-
-      /* ========================================================
-         ADD TO DOCUMENT
-      ======================================================== */
-
-      document
-        .body
-        .appendChild(
-          control
-        );
-
-
-      /* ========================================================
-         CACHE REFERENCES
-      ======================================================== */
-
-      UI.button =
-        mainButton;
-
-
-      UI.panel =
-        panel;
-
-
-      UI.statusElement =
-
-        document
-          .getElementById(
-            "gg-offence-status"
-          );
-
-
-      UI.sourceButton =
-
-        document
-          .getElementById(
-            "gg-offence-source-button"
-          );
-
-
-      UI.targetButton =
-
-        document
-          .getElementById(
-            "gg-offence-target-button"
-          );
-
-
-      UI.clearButton =
-
-        document
-          .getElementById(
-            "gg-offence-clear-button"
-          );
-
-
-      UI.closeButton =
-
-        document
-          .getElementById(
-            "gg-offence-header-close"
-          );
-
-
-      return control;
-
-    };
-
-
-  /* ============================================================
-     📊 SET STATUS
-  ============================================================ */
-
-  UI.setStatus =
-    function (
-      message
-    ) {
-
-      if (
-        UI.statusElement
-      ) {
-
-        UI.statusElement.textContent =
-          message;
-
-      }
-
-    };
-
-
-  /* ============================================================
-     🎯 SET ACTIVE MODE
-  ============================================================ */
-
-  UI.setActiveMode =
-    function (
-      mode
-    ) {
-
-      UI.activeMode =
-        mode || null;
-
-
-      if (
-        UI.sourceButton
-      ) {
-
-        UI.sourceButton
-          .classList
-          .toggle(
-
-            "gg-selected",
-
-            mode ===
-              "SOURCE"
-
-          );
-
-      }
-
-
-      if (
-        UI.targetButton
-      ) {
-
-        UI.targetButton
-          .classList
-          .toggle(
-
-            "gg-selected",
-
-            mode ===
-              "TARGET"
-
-          );
-
-      }
-
-
-      if (
-        UI.button
-      ) {
-
-        UI.button
-          .classList
-          .toggle(
-
-            "gg-active",
-
-            !!mode
-
-          );
-
-      }
-
-    };
-
-
-  /* ============================================================
-     📂 OPEN PANEL
-  ============================================================ */
-
-  UI.open =
-    function () {
-
-      if (
-        !UI.panel
-      ) {
-
-        return;
-
-      }
-
-
-      UI.panelOpen =
-        true;
-
-
-      UI.panel
-        .classList
-        .add(
-          "gg-open"
-        );
-
-
-      UI.refreshStatus();
-
-    };
-
-
-  /* ============================================================
-     📁 CLOSE PANEL
-
-     IMPORTANT:
-     Closing panel does NOT clear polygons.
-
-     User can close the menu and continue viewing analysis.
-  ============================================================ */
-
-  UI.close =
-    function () {
-
-      if (
-        !UI.panel
-      ) {
-
-        return;
-
-      }
-
-
-      UI.panelOpen =
-        false;
-
-
-      UI.panel
-        .classList
-        .remove(
-          "gg-open"
-        );
-
-    };
-
-
-  /* ============================================================
-     🔄 TOGGLE PANEL
-  ============================================================ */
-
-  UI.toggle =
-    function () {
-
-      if (
-        UI.panelOpen
-      ) {
-
-        UI.close();
-
-      }
-
-      else {
-
-        UI.open();
-
-      }
-
-    };
-
-
-  /* ============================================================
-     📊 REFRESH STATUS
-  ============================================================ */
-
-  UI.refreshStatus =
-    function () {
-
-      const Spatial =
-
-        UI
-          .getSpatialEngine();
-
-
-      if (
-        !Spatial
-      ) {
-
-        UI.setStatus(
-
-          "SpatialEngine unavailable"
-
-        );
-
-        return;
-
-      }
-
-
-      if (
-        Spatial.ready !==
-        true
-      ) {
-
-        UI.setStatus(
-
-          "Preparing offence spatial data..."
-
-        );
-
-        return;
-
-      }
-
-
-      const sources =
-
-        Spatial
-          .getSourceVillages?.()
-
-        ||
-
-        [];
-
-
-      const targets =
-
-        Spatial
-          .getTargetRanges?.()
-
-        ||
-
-        [];
-
-
-      UI.setStatus(
-
-        sources.length +
-
-        " source villages • " +
-
-        targets
-          .filter(
-            target =>
-              target.gisResolved ===
-              true
-          )
-          .length +
-
-        " mapped target ranges"
-
-      );
-
-    };
-
-
-  /* ============================================================
-     ⏳ ENSURE SPATIAL ENGINE READY
-  ============================================================ */
-
-  UI.ensureSpatialReady =
-    async function () {
-
-      const Spatial =
-
-        UI
-          .getSpatialEngine();
-
-
-      if (
-        !Spatial
-      ) {
-
-        console.error(
-
-          "❌ OffenceSpatialEngine unavailable"
-
-        );
-
-
-        UI.setStatus(
-
-          "SpatialEngine unavailable"
-
-        );
-
-
-        return false;
-
-      }
-
-
-      /* ========================================================
-         ALREADY READY
-      ======================================================== */
-
-      if (
-
-        Spatial.ready ===
-          true
-
-        &&
-
-        Spatial
-          .porSpatialIndex
-          ?.size > 0
-
-      ) {
-
-        return true;
-
-      }
-
-
-      /* ========================================================
-         START STORE-AWARE BUILD
-      ======================================================== */
-
-      if (
-
-        typeof
-        Spatial
-          .waitForStoreAndBuild ===
-        "function"
-
-      ) {
-
-        Spatial
-          .waitForStoreAndBuild();
-
-      }
-
-
-      UI.setStatus(
-
-        "Preparing offence spatial data..."
-
-      );
-
-
-      /* ========================================================
-         WAIT FOR READY
-
-         Maximum:
-         120 × 250 ms = 30 seconds
-      ======================================================== */
-
-      for (
-        let attempt = 0;
-        attempt < 120;
-        attempt++
-      ) {
-
-        if (
-
-          Spatial.ready ===
-            true
-
-          &&
-
-          Spatial
-            .porSpatialIndex
-            ?.size > 0
-
-        ) {
-
-          UI.refreshStatus();
-
-
-          return true;
-
-        }
-
-
-        await new Promise(
-
-          resolve =>
-
-            setTimeout(
-              resolve,
-              250
-            )
-
-        );
-
-      }
-
-
-      console.warn(
-
-        "⚠ OffenceSpatialEngine ready timeout"
-
-      );
-
-
-      UI.setStatus(
-
-        "Offence spatial data not ready"
-
-      );
-
-
-      return false;
-
-    };
-
-
-  /* ============================================================
-     🎨 ENSURE RENDERER READY
-  ============================================================ */
-
-  UI.ensureRendererReady =
-    function () {
-
-      const Renderer =
-
-        UI
-          .getSpatialRenderer();
-
-
-      if (
-        !Renderer
-      ) {
-
-        console.error(
-
-          "❌ OffenceSpatialRenderer unavailable"
-
-        );
-
-
-        UI.setStatus(
-
-          "SpatialRenderer unavailable"
-
-        );
-
-
-        return null;
-
-      }
-
-
-      /* ========================================================
-         INITIALIZE RENDERER IF REQUIRED
-      ======================================================== */
-
-      if (
-        Renderer.initialized !==
-        true
-      ) {
-
-        try {
-
-          Renderer.init();
-
-        }
-
-        catch (
-          err
-        ) {
-
-          console.error(
-
-            "❌ OffenceSpatialRenderer init failed:",
-
-            err
-
-          );
-
-
-          UI.setStatus(
-
-            "Renderer initialization failed"
-
-          );
-
-
-          return null;
-
-        }
-
-      }
-
-
-      return Renderer;
-
-    };
-
-
-  /* ============================================================
-     🏡 SHOW SOURCE MODE
-  ============================================================ */
-
-  UI.showSources =
-    async function () {
-
-      try {
-
-        UI.setStatus(
-
-          "Loading source villages..."
-
-        );
-
-
-        const ready =
-
-          await UI
-            .ensureSpatialReady();
-
-
-        if (
-          !ready
-        ) {
-
-          return [];
-
-        }
-
-
-        const Renderer =
-
-          UI
-            .ensureRendererReady();
-
-
-        if (
-          !Renderer
-        ) {
-
-          return [];
-
-        }
-
-
-        /* ======================================================
-           AUTHORITATIVE SOURCE RENDER
-        ====================================================== */
-
-        const sources =
-
-          Renderer
-            .renderAllSources();
-
-
-        UI.setActiveMode(
-
-          "SOURCE"
-
-        );
-
-
-        const count =
-
-          Array.isArray(
-            sources
-          )
-
-            ? sources.length
-
-            : 0;
-
-
-        UI.setStatus(
-
-          count +
-
-          " source villages • click a village to view target ranges"
-
-        );
-
-
-        console.log(
-
-          "🚨 Offence UI SOURCE mode:",
-
-          count,
-
-          "villages"
-
-        );
-
-
-        return sources;
-
-      }
-
-      catch (
-        err
-      ) {
-
-        console.error(
-
-          "❌ Offence SOURCE mode failed:",
-
-          err
-
-        );
-
-
-        UI.setStatus(
-
-          "Source analysis failed"
-
-        );
-
-
-        return [];
-
-      }
-
-    };
-
-
-  /* ============================================================
-     🎯 SHOW TARGET MODE
-  ============================================================ */
-
-  UI.showTargets =
-    async function () {
-
-      try {
-
-        UI.setStatus(
-
-          "Loading target ranges..."
-
-        );
-
-
-        const ready =
-
-          await UI
-            .ensureSpatialReady();
-
-
-        if (
-          !ready
-        ) {
-
-          return [];
-
-        }
-
-
-        const Renderer =
-
-          UI
-            .ensureRendererReady();
-
-
-        if (
-          !Renderer
-        ) {
-
-          return [];
-
-        }
-
-
-        /* ======================================================
-           AUTHORITATIVE TARGET RENDER
-        ====================================================== */
-
-        const targets =
-
-          Renderer
-            .renderAllTargets();
-
-
-        UI.setActiveMode(
-
-          "TARGET"
-
-        );
-
-
-        const count =
-
-          Array.isArray(
-            targets
-          )
-
-            ? targets.length
-
-            : 0;
-
-
-        UI.setStatus(
-
-          count +
-
-          " target ranges • click a range to view source villages"
-
-        );
-
-
-        console.log(
-
-          "🚨 Offence UI TARGET mode:",
-
-          count,
-
-          "ranges"
-
-        );
-
-
-        return targets;
-
-      }
-
-      catch (
-        err
-      ) {
-
-        console.error(
-
-          "❌ Offence TARGET mode failed:",
-
-          err
-
-        );
-
-
-        UI.setStatus(
-
-          "Target analysis failed"
-
-        );
-
-
-        return [];
-
-      }
-
-    };
-
-
-  /* ============================================================
-     🧹 CLEAR ANALYSIS
-  ============================================================ */
-
-  UI.clear =
-    function () {
-
-      try {
-
-        const Renderer =
-
-          UI
-            .getSpatialRenderer();
-
-
-        if (
-
-          Renderer
-
-          &&
-
-          typeof
-          Renderer.clear ===
-          "function"
-
-        ) {
-
-          Renderer.clear();
-
-        }
-
-
-        UI.setActiveMode(
-
-          null
-
-        );
-
-
-        UI.refreshStatus();
-
-
-        console.log(
-
-          "🧹 Offence spatial analysis cleared"
-
-        );
-
-      }
-
-      catch (
-        err
-      ) {
-
-        console.error(
-
-          "❌ Offence clear failed:",
-
-          err
-
-        );
-
-      }
-
-    };
-
-
-  /* ============================================================
-     🔗 BIND EVENTS
-  ============================================================ */
-
-  UI.bindEvents =
-    function () {
-
-      /* ========================================================
-         MAIN BUTTON
-      ======================================================== */
-
-      UI.button
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-
-            UI.toggle();
-
-          }
-
-        );
-
-
-      /* ========================================================
-         SOURCE
-      ======================================================== */
-
-      UI.sourceButton
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-
-            UI.showSources();
-
-          }
-
-        );
-
-
-      /* ========================================================
-         TARGET
-      ======================================================== */
-
-      UI.targetButton
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-
-            UI.showTargets();
-
-          }
-
-        );
-
-
-      /* ========================================================
-         CLEAR
-      ======================================================== */
-
-      UI.clearButton
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-
-            UI.clear();
-
-          }
-
-        );
-
-
-      /* ========================================================
-         CLOSE
-      ======================================================== */
-
-      UI.closeButton
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-
-            UI.close();
-
-          }
-
-        );
-
-
-      /* ========================================================
-         PREVENT PANEL CLICK FROM PROPAGATING TO MAP
-      ======================================================== */
-
-      UI.panel
-        ?.addEventListener(
-
-          "click",
-
-          function (
-            event
-          ) {
-
-            event
-              .stopPropagation();
-
-          }
-
-        );
-
-    };
-
-
-  /* ============================================================
-     🚀 INITIALIZE
-  ============================================================ */
-
-  UI.init =
-    function () {
-
-      if (
-        UI.initialized
-      ) {
-
-        return UI;
-
-      }
-
-
-      /* ========================================================
-         REMOVE OLD UI
-      ======================================================== */
-
-      UI.removeLegacyUI();
-
-
-      /* ========================================================
-         CSS
-      ======================================================== */
-
-      UI.injectStyles();
-
-
-      /* ========================================================
-         CREATE UI
-      ======================================================== */
-
-      UI.createUI();
-
-
-      /* ========================================================
-         BIND EVENTS
-      ======================================================== */
-
-      UI.bindEvents();
-
-
-      /* ========================================================
-         INITIALIZE RENDERER
-
-         This builds GIS indexes but renders nothing.
-      ======================================================== */
-
-      const Renderer =
-
-        UI
-          .getSpatialRenderer();
-
-
-      if (
-
-        Renderer
-
-        &&
-
-        Renderer.initialized !==
-        true
-
-      ) {
-
-        try {
-
-          Renderer.init();
-
-        }
-
-        catch (
-          err
-        ) {
-
-          console.warn(
-
-            "⚠ OffenceSpatialRenderer startup init delayed:",
-
-            err
-
-          );
-
-        }
-
-      }
-
-
-      /* ========================================================
-         ENSURE STORE-AWARE SPATIAL BUILD
-
-         Does NOT render polygons.
-
-         SpatialEngine handles its own wait lifecycle.
-      ======================================================== */
-
-      const Spatial =
-
-        UI
-          .getSpatialEngine();
-
-
-      if (
-
-        Spatial
-
-        &&
-
-        typeof
-        Spatial
-          .waitForStoreAndBuild ===
-        "function"
-
-      ) {
-
-        Spatial
-          .waitForStoreAndBuild();
-
-      }
-
-
-      /* ========================================================
-         READY
-      ======================================================== */
-
-      UI.initialized =
-        true;
-
-
-      UI.ready =
-        true;
-
-
-      UI.refreshStatus();
-
-
-      console.log(
-
-        "🚨 OffenceUIController Ready",
-
-        {
-
-          version:
-            UI.VERSION,
-
-          initialized:
-            UI.initialized,
-
-          ready:
-            UI.ready
-
-        }
-
-      );
-
-
-      return UI;
-
-    };
-
-
-  /* ============================================================
-     📊 STATS
-  ============================================================ */
-
-  UI.getStats =
-    function () {
-
-      const Spatial =
-
-        UI
-          .getSpatialEngine();
-
-
-      const Renderer =
-
-        UI
-          .getSpatialRenderer();
-
-
-      return {
-
-        version:
-          UI.VERSION,
+        /* ====================================================
+           LIFECYCLE STATE
+        ==================================================== */
 
         initialized:
-          UI.initialized,
+            false,
+
 
         ready:
-          UI.ready,
+            false,
+
+
+        preparing:
+            false,
+
+
+
+        /* ====================================================
+           UI STATE
+        ==================================================== */
 
         panelOpen:
-          UI.panelOpen,
+            false,
+
 
         activeMode:
-          UI.activeMode,
+            null,
 
-        spatialReady:
-          Spatial?.ready === true,
 
-        porCount:
-          Spatial
-            ?.porSpatialIndex
-            ?.size
 
-          ||
+        /* ====================================================
+           PREPARATION STATE
+        ==================================================== */
 
-          0,
+        __preparePromise:
+            null,
 
-        sourceVillages:
-          Spatial
-            ?.getSourceVillages
-            ?.()
-            ?.length
 
-          ||
+        lastPreparedAt:
+            null,
 
-          0,
 
-        targetRanges:
-          Spatial
-            ?.getTargetRanges
-            ?.()
-            ?.length
+        lastError:
+            null,
 
-          ||
 
-          0,
 
-        rendererReady:
-          Renderer?.ready === true
+        /* ====================================================
+           CONFIGURATION
 
-      };
+           BUTTON_TOP controls the vertical position of the
+           OFFENCE button.
+
+           We intentionally place it lower on the right side
+           so that it does not overlap:
+
+           - Chat / AI button
+           - Monthly Status panel
+           - Leaflet controls
+
+           If required later, only BUTTON_TOP needs adjustment.
+        ==================================================== */
+
+        CONFIG: {
+
+
+            /* ================================================
+               DOM IDS
+            ================================================ */
+
+            BUTTON_ID:
+                "gg-offence-main-button",
+
+
+            PANEL_ID:
+                "gg-offence-analysis-panel",
+
+
+            STYLE_ID:
+                "gg-offence-ui-controller-style",
+
+
+            STATUS_ID:
+                "gg-offence-analysis-status",
+
+
+            SOURCE_BUTTON_ID:
+                "gg-offence-source-button",
+
+
+            TARGET_BUTTON_ID:
+                "gg-offence-target-button",
+
+
+            CLEAR_BUTTON_ID:
+                "gg-offence-clear-button",
+
+
+            CLOSE_BUTTON_ID:
+                "gg-offence-close-button",
+
+
+
+            /* ================================================
+               DESKTOP POSITION
+
+               OFFENCE button appears below the upper-right
+               floating controls.
+
+               Adjust BUTTON_TOP only if your actual Chat button
+               occupies a different vertical position.
+            ================================================ */
+
+            BUTTON_TOP:
+                470,
+
+
+            BUTTON_RIGHT:
+                18,
+
+
+
+            /* ================================================
+               PANEL
+            ================================================ */
+
+            PANEL_GAP:
+                10,
+
+
+            PANEL_WIDTH:
+                236,
+
+
+
+            /* ================================================
+               STACKING
+            ================================================ */
+
+            Z_INDEX:
+                10020,
+
+
+
+            /* ================================================
+               STORE WAIT CONFIGURATION
+
+               240 × 250 ms
+               =
+               maximum 60 seconds.
+
+               Normally the Store becomes ready much earlier.
+            ================================================ */
+
+            STORE_WAIT_INTERVAL:
+                250,
+
+
+            STORE_WAIT_ATTEMPTS:
+                240
+
+
+        },
+
+
+
+        /* ====================================================
+           DOM ELEMENT REFERENCES
+        ==================================================== */
+
+        elements: {
+
+
+            button:
+                null,
+
+
+            panel:
+                null,
+
+
+            status:
+                null,
+
+
+            sourceButton:
+                null,
+
+
+            targetButton:
+                null,
+
+
+            clearButton:
+                null,
+
+
+            closeButton:
+                null
+
+
+        },
+
+
+
+        /* ====================================================
+           GET OFFENCE STORE
+
+           Authoritative case/POR data source.
+        ==================================================== */
+
+        getStore:
+            function () {
+
+
+                return window.GG
+                    ?.Offence
+                    ?.Store ||
+                    null;
+
+
+            },
+
+
+
+        /* ====================================================
+           GET SPATIAL ENGINE
+
+           Authoritative Source ↔ Target relationship engine.
+        ==================================================== */
+
+        getSpatialEngine:
+            function () {
+
+
+                return window.GG
+                    ?.Offence
+                    ?.SpatialEngine ||
+                    null;
+
+
+            },
+
+
+
+        /* ====================================================
+           GET SPATIAL RENDERER
+
+           Authoritative Leaflet polygon renderer.
+        ==================================================== */
+
+        getSpatialRenderer:
+            function () {
+
+
+                return window.GG
+                    ?.Offence
+                    ?.SpatialRenderer ||
+                    null;
+
+
+            },
+
+
+
+        /* ====================================================
+           INITIALIZE UI CONTROLLER
+
+           IMPORTANT:
+
+           This initializes only the UI.
+
+           It does NOT force the SpatialEngine to build here.
+
+           Spatial preparation happens when:
+
+           1. User opens OFFENCE panel
+              OR
+
+           2. User clicks SOURCE
+              OR
+
+           3. User clicks TARGET
+
+           This reproduces the timing of the manual sequence
+           that was already proven to work.
+        ==================================================== */
+
+        init:
+            function () {
+
+
+                /* ============================================
+                   ALREADY INITIALIZED
+                ============================================ */
+
+                if (
+                    UIController.initialized ===
+                    true
+                ) {
+
+
+                    UIController
+                        .refreshElementReferences();
+
+
+                    return true;
+
+
+                }
+
+
+
+                /* ============================================
+                   MARK INITIALIZED
+                ============================================ */
+
+                UIController.initialized =
+                    true;
+
+
+
+                try {
+
+
+                    /* ========================================
+                       INJECT CONTROLLER CSS
+                    ======================================== */
+
+                    UIController
+                        .injectStyles();
+
+
+
+                    /* ========================================
+                       REMOVE OLD / DUPLICATE OFFENCE UI
+
+                       This removes UI elements only.
+
+                       It does NOT remove:
+
+                       - Store
+                       - SpatialEngine
+                       - SpatialRenderer
+                       - spatial indexes
+                    ======================================== */
+
+                    UIController
+                        .removeLegacyUI();
+
+
+
+                    /* ========================================
+                       CREATE NEW MAIN OFFENCE BUTTON
+                    ======================================== */
+
+                    UIController
+                        .createMainButton();
+
+
+
+                    /* ========================================
+                       CREATE NEW ANALYSIS PANEL
+                    ======================================== */
+
+                    UIController
+                        .createPanel();
+
+
+
+                    /* ========================================
+                       GET DOM REFERENCES
+                    ======================================== */
+
+                    UIController
+                        .refreshElementReferences();
+
+
+
+                    /* ========================================
+                       BIND BUTTON EVENTS
+                    ======================================== */
+
+                    UIController
+                        .bindEvents();
+
+
+
+                    /* ========================================
+                       INITIAL STATUS
+                    ======================================== */
+
+                    UIController
+                        .updateStatus(
+
+                            "Offence spatial analysis ready.",
+
+                            "ready"
+
+                        );
+
+
+
+                    /* ========================================
+                       READY
+                    ======================================== */
+
+                    UIController.ready =
+                        true;
+
+
+
+                    console.log(
+
+                        "🚨 OffenceUIController Ready",
+
+                        UIController
+                            .getStats?.()
+
+                    );
+
+
+
+                    return true;
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    UIController.ready =
+                        false;
+
+
+                    UIController.lastError =
+                        error;
+
+
+
+                    console.error(
+
+                        "❌ OffenceUIController initialization failed:",
+
+                        error
+
+                    );
+
+
+
+                    return false;
+
+
+                }
+
+
+            },
+
+
+               /* ====================================================
+           REMOVE LEGACY / DUPLICATE OFFENCE UI
+
+           PURPOSE
+           ----------------------------------------------------
+
+           Remove only old UI elements that may conflict with
+           the new Offence Spatial Analysis UI.
+
+           IMPORTANT:
+
+           This does NOT touch:
+
+           - GG.Offence.Store
+           - GG.Offence.SpatialEngine
+           - GG.Offence.SpatialRenderer
+           - Leaflet layers
+           - GIS data
+           - Village polygons
+           - Range polygons
+
+           It removes DOM elements only.
+        ==================================================== */
+
+        removeLegacyUI:
+            function () {
+
+
+                const selectors = [
+
+                    "#offenceButton",
+
+                    "#offence-btn",
+
+                    "#offenceBtn",
+
+                    "#offence-analysis-button",
+
+                    "#offenceAnalysisButton",
+
+
+                    /*
+                     * Remove previous instances of our own
+                     * generated UI before recreating them.
+                     */
+
+                    "#" +
+                        UIController
+                            .CONFIG
+                            .BUTTON_ID,
+
+
+                    "#" +
+                        UIController
+                            .CONFIG
+                            .PANEL_ID
+
+                ];
+
+
+
+                selectors.forEach(
+
+                    function (
+                        selector
+                    ) {
+
+
+                        try {
+
+
+                            const element =
+                                document
+                                    .querySelector(
+                                        selector
+                                    );
+
+
+
+                            if (
+                                element
+                            ) {
+
+
+                                element
+                                    .remove();
+
+
+                            }
+
+
+                        }
+
+
+                        catch (
+                            error
+                        ) {
+
+
+                            /*
+                             * Ignore missing or invalid
+                             * legacy selectors.
+                             */
+
+
+                        }
+
+
+                    }
+
+                );
+
+
+            },
+
+
+
+        /* ====================================================
+           INJECT UI STYLES
+
+           POSITION DESIGN
+           ----------------------------------------------------
+
+           Desktop:
+
+                    RIGHT SIDE
+
+                 [ Chat / AI ]
+                      ↓
+
+                 [ OFFENCE ]
+                      ↓
+
+              ┌───────────────┐
+              │ OFFENCE PANEL │
+              └───────────────┘
+
+
+           The button uses:
+
+           CONFIG.BUTTON_TOP
+           CONFIG.BUTTON_RIGHT
+
+           The panel is positioned immediately below it.
+
+           This prevents the Offence button from sitting over
+           the Monthly Status panel as happened previously.
+        ==================================================== */
+
+        injectStyles:
+            function () {
+
+
+                /* ============================================
+                   REMOVE OLD STYLE BLOCK
+                ============================================ */
+
+                const existingStyle =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .STYLE_ID
+
+                        );
+
+
+
+                if (
+                    existingStyle
+                ) {
+
+
+                    existingStyle
+                        .remove();
+
+
+                }
+
+
+
+                /* ============================================
+                   CREATE STYLE ELEMENT
+                ============================================ */
+
+                const style =
+                    document
+                        .createElement(
+                            "style"
+                        );
+
+
+
+                style.id =
+                    UIController
+                        .CONFIG
+                        .STYLE_ID;
+
+
+
+                /* ============================================
+                   POSITION VALUES
+                ============================================ */
+
+                const buttonTop =
+                    UIController
+                        .CONFIG
+                        .BUTTON_TOP;
+
+
+
+                const buttonRight =
+                    UIController
+                        .CONFIG
+                        .BUTTON_RIGHT;
+
+
+
+                /*
+                 * Main button height:
+                 *
+                 * 48 px
+                 *
+                 * Panel gap:
+                 *
+                 * CONFIG.PANEL_GAP
+                 */
+
+                const panelTop =
+                    buttonTop +
+                    48 +
+                    UIController
+                        .CONFIG
+                        .PANEL_GAP;
+
+
+
+                const panelWidth =
+                    UIController
+                        .CONFIG
+                        .PANEL_WIDTH;
+
+
+
+                const zIndex =
+                    UIController
+                        .CONFIG
+                        .Z_INDEX;
+
+
+
+                /* ============================================
+                   CSS
+                ============================================ */
+
+                style.textContent =
+                    `
+
+
+                    /* ========================================
+                       OFFENCE MAIN BUTTON
+                    ======================================== */
+
+                    #${UIController.CONFIG.BUTTON_ID} {
+
+                        position:
+                            fixed;
+
+
+                        top:
+                            ${buttonTop}px;
+
+
+                        right:
+                            ${buttonRight}px;
+
+
+                        z-index:
+                            ${zIndex};
+
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        justify-content:
+                            center;
+
+
+                        gap:
+                            8px;
+
+
+                        min-width:
+                            126px;
+
+
+                        height:
+                            48px;
+
+
+                        padding:
+                            0 17px;
+
+
+                        margin:
+                            0;
+
+
+                        border:
+                            1px solid
+                            rgba(
+                                255,
+                                255,
+                                255,
+                                0.55
+                            );
+
+
+                        border-radius:
+                            17px;
+
+
+                        outline:
+                            none;
+
+
+                        background:
+                            rgba(
+                                255,
+                                255,
+                                255,
+                                0.96
+                            );
+
+
+                        color:
+                            #18202a;
+
+
+                        font-family:
+                            Arial,
+                            Helvetica,
+                            sans-serif;
+
+
+                        font-size:
+                            14px;
+
+
+                        font-weight:
+                            800;
+
+
+                        letter-spacing:
+                            0.3px;
+
+
+                        line-height:
+                            1;
+
+
+                        cursor:
+                            pointer;
+
+
+                        box-sizing:
+                            border-box;
+
+
+                        box-shadow:
+                            0 8px 28px
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.26
+                            );
+
+
+                        backdrop-filter:
+                            blur(
+                                12px
+                            );
+
+
+                        -webkit-backdrop-filter:
+                            blur(
+                                12px
+                            );
+
+
+                        transition:
+                            transform
+                            0.18s
+                            ease,
+
+                            box-shadow
+                            0.18s
+                            ease,
+
+                            background
+                            0.18s
+                            ease;
+
+                    }
+
+
+
+                    #${UIController.CONFIG.BUTTON_ID}:hover {
+
+                        transform:
+                            translateY(
+                                -2px
+                            );
+
+
+                        box-shadow:
+                            0 11px 32px
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.32
+                            );
+
+                    }
+
+
+
+                    #${UIController.CONFIG.BUTTON_ID}:active {
+
+                        transform:
+                            translateY(
+                                0
+                            );
+
+                    }
+
+
+
+                    #${UIController.CONFIG.BUTTON_ID}.gg-offence-open {
+
+                        background:
+                            rgba(
+                                245,
+                                247,
+                                249,
+                                0.99
+                            );
+
+
+                        box-shadow:
+                            0 10px 32px
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.30
+                            );
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       OFFENCE ANALYSIS PANEL
+                    ======================================== */
+
+                    #${UIController.CONFIG.PANEL_ID} {
+
+                        position:
+                            fixed;
+
+
+                        top:
+                            ${panelTop}px;
+
+
+                        right:
+                            ${buttonRight}px;
+
+
+                        z-index:
+                            ${zIndex};
+
+
+                        width:
+                            ${panelWidth}px;
+
+
+                        display:
+                            none;
+
+
+                        overflow:
+                            hidden;
+
+
+                        box-sizing:
+                            border-box;
+
+
+                        border:
+                            1px solid
+                            rgba(
+                                255,
+                                255,
+                                255,
+                                0.52
+                            );
+
+
+                        border-radius:
+                            18px;
+
+
+                        background:
+                            rgba(
+                                248,
+                                249,
+                                250,
+                                0.97
+                            );
+
+
+                        box-shadow:
+                            0 12px 36px
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.30
+                            );
+
+
+                        backdrop-filter:
+                            blur(
+                                16px
+                            );
+
+
+                        -webkit-backdrop-filter:
+                            blur(
+                                16px
+                            );
+
+
+                        font-family:
+                            Arial,
+                            Helvetica,
+                            sans-serif;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       PANEL OPEN STATE
+                    ======================================== */
+
+                    #${UIController.CONFIG.PANEL_ID}.gg-offence-panel-open {
+
+                        display:
+                            block;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       PANEL HEADER
+                    ======================================== */
+
+                    .gg-offence-panel-header {
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        justify-content:
+                            space-between;
+
+
+                        width:
+                            100%;
+
+
+                        min-height:
+                            52px;
+
+
+                        padding:
+                            0 10px
+                            0 15px;
+
+
+                        box-sizing:
+                            border-box;
+
+
+                        border-bottom:
+                            1px solid
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.08
+                            );
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       PANEL TITLE
+                    ======================================== */
+
+                    .gg-offence-panel-title {
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        gap:
+                            6px;
+
+
+                        color:
+                            #27313b;
+
+
+                        font-size:
+                            14px;
+
+
+                        font-weight:
+                            900;
+
+
+                        letter-spacing:
+                            0.25px;
+
+
+                        white-space:
+                            nowrap;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       CLOSE BUTTON
+                    ======================================== */
+
+                    #${UIController.CONFIG.CLOSE_BUTTON_ID} {
+
+                        width:
+                            34px;
+
+
+                        height:
+                            34px;
+
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        justify-content:
+                            center;
+
+
+                        padding:
+                            0;
+
+
+                        margin:
+                            0;
+
+
+                        border:
+                            0;
+
+
+                        border-radius:
+                            50%;
+
+
+                        outline:
+                            none;
+
+
+                        background:
+                            transparent;
+
+
+                        color:
+                            #66717d;
+
+
+                        font-size:
+                            21px;
+
+
+                        font-weight:
+                            400;
+
+
+                        line-height:
+                            1;
+
+
+                        cursor:
+                            pointer;
+
+
+                        transition:
+                            background
+                            0.15s
+                            ease,
+
+                            color
+                            0.15s
+                            ease;
+
+                    }
+
+
+
+                    #${UIController.CONFIG.CLOSE_BUTTON_ID}:hover {
+
+                        background:
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.07
+                            );
+
+
+                        color:
+                            #202832;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       STATUS AREA
+                    ======================================== */
+
+                    #${UIController.CONFIG.STATUS_ID} {
+
+                        width:
+                            100%;
+
+
+                        min-height:
+                            38px;
+
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        padding:
+                            8px 15px;
+
+
+                        box-sizing:
+                            border-box;
+
+
+                        border-bottom:
+                            1px solid
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.07
+                            );
+
+
+                        color:
+                            #687582;
+
+
+                        font-size:
+                            11px;
+
+
+                        font-weight:
+                            500;
+
+
+                        line-height:
+                            1.4;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       STATUS — READY
+                    ======================================== */
+
+                    #${UIController.CONFIG.STATUS_ID}[data-state="ready"] {
+
+                        color:
+                            #687582;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       STATUS — LOADING
+                    ======================================== */
+
+                    #${UIController.CONFIG.STATUS_ID}[data-state="loading"] {
+
+                        color:
+                            #946200;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       STATUS — SUCCESS
+                    ======================================== */
+
+                    #${UIController.CONFIG.STATUS_ID}[data-state="success"] {
+
+                        color:
+                            #14733c;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       STATUS — ERROR
+                    ======================================== */
+
+                    #${UIController.CONFIG.STATUS_ID}[data-state="error"] {
+
+                        color:
+                            #b42318;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       ACTION BUTTON CONTAINER
+                    ======================================== */
+
+                    .gg-offence-panel-actions {
+
+                        display:
+                            flex;
+
+
+                        flex-direction:
+                            column;
+
+
+                        gap:
+                            9px;
+
+
+                        width:
+                            100%;
+
+
+                        padding:
+                            10px;
+
+
+                        box-sizing:
+                            border-box;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       SOURCE / TARGET / CLEAR BUTTONS
+                    ======================================== */
+
+                    .gg-offence-action-button {
+
+                        width:
+                            100%;
+
+
+                        min-height:
+                            45px;
+
+
+                        display:
+                            flex;
+
+
+                        align-items:
+                            center;
+
+
+                        justify-content:
+                            flex-start;
+
+
+                        gap:
+                            11px;
+
+
+                        padding:
+                            0 14px;
+
+
+                        margin:
+                            0;
+
+
+                        box-sizing:
+                            border-box;
+
+
+                        border:
+                            1px solid
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.09
+                            );
+
+
+                        border-radius:
+                            12px;
+
+
+                        outline:
+                            none;
+
+
+                        background:
+                            rgba(
+                                255,
+                                255,
+                                255,
+                                0.92
+                            );
+
+
+                        color:
+                            #27313b;
+
+
+                        font-family:
+                            Arial,
+                            Helvetica,
+                            sans-serif;
+
+
+                        font-size:
+                            14px;
+
+
+                        font-weight:
+                            800;
+
+
+                        text-align:
+                            left;
+
+
+                        cursor:
+                            pointer;
+
+
+                        transition:
+                            transform
+                            0.15s
+                            ease,
+
+                            background
+                            0.15s
+                            ease,
+
+                            box-shadow
+                            0.15s
+                            ease;
+
+                    }
+
+
+
+                    .gg-offence-action-button:hover {
+
+                        transform:
+                            translateY(
+                                -1px
+                            );
+
+
+                        background:
+                            #ffffff;
+
+
+                        box-shadow:
+                            0 4px 12px
+                            rgba(
+                                0,
+                                0,
+                                0,
+                                0.09
+                            );
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       ACTIVE MODE
+
+                       SOURCE selected
+                       OR
+                       TARGET selected
+                    ======================================== */
+
+                    .gg-offence-action-button.gg-active {
+
+                        background:
+                            rgba(
+                                226,
+                                241,
+                                253,
+                                0.98
+                            );
+
+
+                        outline:
+                            2px solid
+                            rgba(
+                                29,
+                                112,
+                                184,
+                                0.34
+                            );
+
+
+                        box-shadow:
+                            0 3px 12px
+                            rgba(
+                                29,
+                                112,
+                                184,
+                                0.14
+                            );
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       CLEAR BUTTON
+                    ======================================== */
+
+                    #${UIController.CONFIG.CLEAR_BUTTON_ID} {
+
+                        color:
+                            #b42318;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       ACTION ICON
+                    ======================================== */
+
+                    .gg-offence-action-icon {
+
+                        width:
+                            22px;
+
+
+                        flex:
+                            0 0
+                            22px;
+
+
+                        text-align:
+                            center;
+
+
+                        font-size:
+                            17px;
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       SHORT DESKTOP SCREENS
+
+                       If screen height is small, fixed TOP
+                       positioning may push the panel too low.
+
+                       In that situation move both controls to
+                       bottom-based positioning.
+                    ======================================== */
+
+                    @media (
+                        max-height:
+                        760px
+                    ) {
+
+
+                        #${UIController.CONFIG.BUTTON_ID} {
+
+                            top:
+                                auto;
+
+
+                            bottom:
+                                88px;
+
+                        }
+
+
+
+                        #${UIController.CONFIG.PANEL_ID} {
+
+                            top:
+                                auto;
+
+
+                            bottom:
+                                146px;
+
+                        }
+
+
+                    }
+
+
+
+
+
+                    /* ========================================
+                       MOBILE / NARROW SCREEN
+                    ======================================== */
+
+                    @media (
+                        max-width:
+                        700px
+                    ) {
+
+
+                        #${UIController.CONFIG.BUTTON_ID} {
+
+                            top:
+                                auto;
+
+
+                            right:
+                                12px;
+
+
+                            bottom:
+                                88px;
+
+
+                            min-width:
+                                112px;
+
+
+                            height:
+                                44px;
+
+
+                            padding:
+                                0 14px;
+
+
+                            border-radius:
+                                15px;
+
+                        }
+
+
+
+                        #${UIController.CONFIG.PANEL_ID} {
+
+                            top:
+                                auto;
+
+
+                            right:
+                                12px;
+
+
+                            bottom:
+                                142px;
+
+
+                            width:
+                                min(
+                                    ${panelWidth}px,
+                                    calc(
+                                        100vw - 24px
+                                    )
+                                );
+
+                        }
+
+
+                    }
+
+
+                    `;
+
+
+
+                /* ============================================
+                   ADD CSS TO DOCUMENT
+                ============================================ */
+
+                document
+                    .head
+                    .appendChild(
+                        style
+                    );
+
+
+            },
+
+               /* ====================================================
+           CREATE MAIN OFFENCE BUTTON
+        ==================================================== */
+
+        createMainButton:
+            function () {
+
+
+                /* ============================================
+                   REMOVE EXISTING INSTANCE
+                ============================================ */
+
+                const existing =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .BUTTON_ID
+
+                        );
+
+
+                if (
+                    existing
+                ) {
+
+                    existing
+                        .remove();
+
+                }
+
+
+
+                /* ============================================
+                   CREATE BUTTON
+                ============================================ */
+
+                const button =
+                    document
+                        .createElement(
+                            "button"
+                        );
+
+
+                button.id =
+                    UIController
+                        .CONFIG
+                        .BUTTON_ID;
+
+
+                button.type =
+                    "button";
+
+
+                button.title =
+                    "Open Offence Spatial Analysis";
+
+
+                button.setAttribute(
+                    "aria-label",
+                    "Open Offence Spatial Analysis"
+                );
+
+
+                button.setAttribute(
+                    "aria-expanded",
+                    "false"
+                );
+
+
+                button.innerHTML =
+                    `
+                        <span
+                            aria-hidden="true"
+                        >
+                            🚨
+                        </span>
+
+                        <span>
+                            OFFENCE
+                        </span>
+                    `;
+
+
+
+                /* ============================================
+                   ADD TO PAGE
+
+                   We append directly to document.body so the
+                   button is independent of existing map panels.
+
+                   Position is controlled entirely by Part 2 CSS.
+                ============================================ */
+
+                document
+                    .body
+                    .appendChild(
+                        button
+                    );
+
+
+                return button;
+
+
+            },
+
+
+
+        /* ====================================================
+           CREATE OFFENCE ANALYSIS PANEL
+        ==================================================== */
+
+        createPanel:
+            function () {
+
+
+                /* ============================================
+                   REMOVE EXISTING INSTANCE
+                ============================================ */
+
+                const existing =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .PANEL_ID
+
+                        );
+
+
+                if (
+                    existing
+                ) {
+
+                    existing
+                        .remove();
+
+                }
+
+
+
+                /* ============================================
+                   CREATE PANEL
+                ============================================ */
+
+                const panel =
+                    document
+                        .createElement(
+                            "div"
+                        );
+
+
+                panel.id =
+                    UIController
+                        .CONFIG
+                        .PANEL_ID;
+
+
+                panel.setAttribute(
+                    "role",
+                    "dialog"
+                );
+
+
+                panel.setAttribute(
+                    "aria-label",
+                    "Offence Spatial Analysis"
+                );
+
+
+                panel.setAttribute(
+                    "aria-hidden",
+                    "true"
+                );
+
+
+
+                /* ============================================
+                   PANEL CONTENT
+
+                   FLOW:
+
+                   SOURCE
+                       ↓
+                   SpatialRenderer.renderAllSources()
+
+                   TARGET
+                       ↓
+                   SpatialRenderer.renderAllTargets()
+
+                   CLEAR
+                       ↓
+                   SpatialRenderer.clear()
+                ============================================ */
+
+                panel.innerHTML =
+                    `
+
+                        <div
+                            class="
+                                gg-offence-panel-header
+                            "
+                        >
+
+                            <div
+                                class="
+                                    gg-offence-panel-title
+                                "
+                            >
+
+                                <span
+                                    aria-hidden="true"
+                                >
+                                    🚨
+                                </span>
+
+                                <span>
+                                    OFFENCE ANALYSIS
+                                </span>
+
+                            </div>
+
+
+                            <button
+                                id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
+                                type="button"
+                                title="Close Offence Analysis"
+                                aria-label="Close Offence Analysis"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+
+                        <div
+                            id="${UIController.CONFIG.STATUS_ID}"
+                            data-state="ready"
+                        >
+                            Open Source or Target spatial analysis.
+                        </div>
+
+
+
+                        <div
+                            class="
+                                gg-offence-panel-actions
+                            "
+                        >
+
+
+                            <button
+                                id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
+                                class="
+                                    gg-offence-action-button
+                                "
+                                type="button"
+                            >
+
+                                <span
+                                    class="
+                                        gg-offence-action-icon
+                                    "
+                                    aria-hidden="true"
+                                >
+                                    🏡
+                                </span>
+
+                                <span>
+                                    SOURCE
+                                </span>
+
+                            </button>
+
+
+
+                            <button
+                                id="${UIController.CONFIG.TARGET_BUTTON_ID}"
+                                class="
+                                    gg-offence-action-button
+                                "
+                                type="button"
+                            >
+
+                                <span
+                                    class="
+                                        gg-offence-action-icon
+                                    "
+                                    aria-hidden="true"
+                                >
+                                    🎯
+                                </span>
+
+                                <span>
+                                    TARGET
+                                </span>
+
+                            </button>
+
+
+
+                            <button
+                                id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
+                                class="
+                                    gg-offence-action-button
+                                "
+                                type="button"
+                            >
+
+                                <span
+                                    class="
+                                        gg-offence-action-icon
+                                    "
+                                    aria-hidden="true"
+                                >
+                                    🧹
+                                </span>
+
+                                <span>
+                                    CLEAR
+                                </span>
+
+                            </button>
+
+
+                        </div>
+
+                    `;
+
+
+
+                /* ============================================
+                   ADD PANEL TO PAGE
+                ============================================ */
+
+                document
+                    .body
+                    .appendChild(
+                        panel
+                    );
+
+
+                return panel;
+
+
+            },
+
+
+
+        /* ====================================================
+           CAPTURE DOM REFERENCES
+
+           Keeps all UI references in one place.
+
+           Expected Part 1 structure:
+
+           UIController.elements = {
+               ...
+           };
+        ==================================================== */
+
+        captureElements:
+            function () {
+
+
+                UIController.elements =
+                    UIController.elements ||
+                    {};
+
+
+                UIController.elements.mainButton =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .BUTTON_ID
+
+                        );
+
+
+                UIController.elements.panel =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .PANEL_ID
+
+                        );
+
+
+                UIController.elements.closeButton =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .CLOSE_BUTTON_ID
+
+                        );
+
+
+                UIController.elements.sourceButton =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .SOURCE_BUTTON_ID
+
+                        );
+
+
+                UIController.elements.targetButton =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .TARGET_BUTTON_ID
+
+                        );
+
+
+                UIController.elements.clearButton =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .CLEAR_BUTTON_ID
+
+                        );
+
+
+                UIController.elements.status =
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .STATUS_ID
+
+                        );
+
+
+
+                return UIController.elements;
+
+
+            },
+
+
+
+        /* ====================================================
+           SET STATUS MESSAGE
+        ==================================================== */
+
+        setStatus:
+            function (
+                message,
+                state = "ready"
+            ) {
+
+
+                const status =
+                    UIController
+                        .elements
+                        ?.status;
+
+
+                if (
+                    !status
+                ) {
+
+                    return;
+
+                }
+
+
+                status.textContent =
+                    String(
+                        message ||
+                        ""
+                    );
+
+
+                status.setAttribute(
+                    "data-state",
+                    state
+                );
+
+
+            },
+
+
+
+        /* ====================================================
+           UPDATE ACTIVE MODE BUTTON
+
+           mode:
+
+           "source"
+           "target"
+           null
+        ==================================================== */
+
+        updateActiveModeUI:
+            function (
+                mode
+            ) {
+
+
+                const sourceButton =
+                    UIController
+                        .elements
+                        ?.sourceButton;
+
+
+                const targetButton =
+                    UIController
+                        .elements
+                        ?.targetButton;
+
+
+
+                if (
+                    sourceButton
+                ) {
+
+                    sourceButton
+                        .classList
+                        .toggle(
+
+                            "gg-active",
+
+                            mode ===
+                                "source"
+
+                        );
+
+                }
+
+
+
+                if (
+                    targetButton
+                ) {
+
+                    targetButton
+                        .classList
+                        .toggle(
+
+                            "gg-active",
+
+                            mode ===
+                                "target"
+
+                        );
+
+                }
+
+
+            },
+
+
+
+        /* ====================================================
+           OPEN PANEL
+        ==================================================== */
+
+        openPanel:
+            function () {
+
+
+                const panel =
+                    UIController
+                        .elements
+                        ?.panel;
+
+
+                const button =
+                    UIController
+                        .elements
+                        ?.mainButton;
+
+
+                if (
+                    !panel
+                ) {
+
+                    return false;
+
+                }
+
+
+
+                panel
+                    .classList
+                    .add(
+                        "gg-offence-panel-open"
+                    );
+
+
+                panel.setAttribute(
+                    "aria-hidden",
+                    "false"
+                );
+
+
+
+                if (
+                    button
+                ) {
+
+                    button
+                        .classList
+                        .add(
+                            "gg-offence-open"
+                        );
+
+
+                    button.setAttribute(
+                        "aria-expanded",
+                        "true"
+                    );
+
+                }
+
+
+
+                UIController.panelOpen =
+                    true;
+
+
+                return true;
+
+
+            },
+
+
+
+        /* ====================================================
+           CLOSE PANEL
+
+           IMPORTANT:
+
+           Closing the panel does NOT clear the rendered
+           offence layer.
+
+           This allows the user to inspect the map while the
+           control panel is hidden.
+
+           CLEAR is the explicit action that removes offence
+           rendering.
+        ==================================================== */
+
+        closePanel:
+            function () {
+
+
+                const panel =
+                    UIController
+                        .elements
+                        ?.panel;
+
+
+                const button =
+                    UIController
+                        .elements
+                        ?.mainButton;
+
+
+
+                if (
+                    panel
+                ) {
+
+                    panel
+                        .classList
+                        .remove(
+                            "gg-offence-panel-open"
+                        );
+
+
+                    panel.setAttribute(
+                        "aria-hidden",
+                        "true"
+                    );
+
+                }
+
+
+
+                if (
+                    button
+                ) {
+
+                    button
+                        .classList
+                        .remove(
+                            "gg-offence-open"
+                        );
+
+
+                    button.setAttribute(
+                        "aria-expanded",
+                        "false"
+                    );
+
+                }
+
+
+
+                UIController.panelOpen =
+                    false;
+
+
+                return true;
+
+
+            },
+
+
+
+        /* ====================================================
+           TOGGLE PANEL
+
+           IMPORTANT
+           ----------------------------------------------------
+
+           This only opens/closes the UI.
+
+           The actual SpatialEngine initialization sequence
+           will be handled by the action flow in the next part.
+
+           This keeps panel interaction fast and avoids
+           rebuilding the engine every time the panel opens.
+        ==================================================== */
+
+        togglePanel:
+            function () {
+
+
+                if (
+                    UIController.panelOpen
+                ) {
+
+                    return UIController
+                        .closePanel();
+
+                }
+
+
+                return UIController
+                    .openPanel();
+
+
+            },
+
+
+
+        /* ====================================================
+           BIND UI EVENTS
+        ==================================================== */
+
+        bindEvents:
+            function () {
+
+
+                const elements =
+                    UIController
+                        .elements;
+
+
+                if (
+                    !elements
+                ) {
+
+                    console.warn(
+                        "⚠ OffenceUIController cannot bind events: elements unavailable"
+                    );
+
+                    return false;
+
+                }
+
+
+
+                /* ============================================
+                   MAIN OFFENCE BUTTON
+                ============================================ */
+
+                if (
+                    elements.mainButton
+                ) {
+
+                    elements
+                        .mainButton
+                        .onclick =
+                            function (
+                                event
+                            ) {
+
+
+                                event
+                                    ?.preventDefault?.();
+
+
+                                event
+                                    ?.stopPropagation?.();
+
+
+                                UIController
+                                    .togglePanel();
+
+
+                            };
+
+                }
+
+
+
+                /* ============================================
+                   CLOSE BUTTON
+                ============================================ */
+
+                if (
+                    elements.closeButton
+                ) {
+
+                    elements
+                        .closeButton
+                        .onclick =
+                            function (
+                                event
+                            ) {
+
+
+                                event
+                                    ?.preventDefault?.();
+
+
+                                event
+                                    ?.stopPropagation?.();
+
+
+                                UIController
+                                    .closePanel();
+
+
+                            };
+
+                }
+
+
+
+                /* ============================================
+                   SOURCE BUTTON
+
+                   The complete tested initialization sequence
+                   will be inside:
+
+                   UIController.activateSource()
+
+                   which is added in Part 4.
+                ============================================ */
+
+                if (
+                    elements.sourceButton
+                ) {
+
+                    elements
+                        .sourceButton
+                        .onclick =
+                            async function (
+                                event
+                            ) {
+
+
+                                event
+                                    ?.preventDefault?.();
+
+
+                                event
+                                    ?.stopPropagation?.();
+
+
+                                if (
+                                    typeof
+                                    UIController
+                                        .activateSource ===
+                                    "function"
+                                ) {
+
+                                    await UIController
+                                        .activateSource();
+
+                                }
+
+                                else {
+
+                                    console.error(
+                                        "❌ OffenceUIController.activateSource() unavailable"
+                                    );
+
+                                }
+
+
+                            };
+
+                }
+
+
+
+                /* ============================================
+                   TARGET BUTTON
+                ============================================ */
+
+                if (
+                    elements.targetButton
+                ) {
+
+                    elements
+                        .targetButton
+                        .onclick =
+                            async function (
+                                event
+                            ) {
+
+
+                                event
+                                    ?.preventDefault?.();
+
+
+                                event
+                                    ?.stopPropagation?.();
+
+
+                                if (
+                                    typeof
+                                    UIController
+                                        .activateTarget ===
+                                    "function"
+                                ) {
+
+                                    await UIController
+                                        .activateTarget();
+
+                                }
+
+                                else {
+
+                                    console.error(
+                                        "❌ OffenceUIController.activateTarget() unavailable"
+                                    );
+
+                                }
+
+
+                            };
+
+                }
+
+
+
+                /* ============================================
+                   CLEAR BUTTON
+                ============================================ */
+
+                if (
+                    elements.clearButton
+                ) {
+
+                    elements
+                        .clearButton
+                        .onclick =
+                            function (
+                                event
+                            ) {
+
+
+                                event
+                                    ?.preventDefault?.();
+
+
+                                event
+                                    ?.stopPropagation?.();
+
+
+                                if (
+                                    typeof
+                                    UIController
+                                        .clearAnalysis ===
+                                    "function"
+                                ) {
+
+                                    UIController
+                                        .clearAnalysis();
+
+                                }
+
+                                else {
+
+                                    console.error(
+                                        "❌ OffenceUIController.clearAnalysis() unavailable"
+                                    );
+
+                                }
+
+
+                            };
+
+                }
+
+
+
+                return true;
+
+
+            },
+
+               /* ====================================================
+           GET AUTHORITATIVE STORE CASCADES
+
+           CURRENT OFFENCE STORE API
+           ----------------------------------------------------
+
+           Your current Store does NOT expose:
+
+               Store.cascades
+
+           Your tested Store exposes:
+
+               Store.getAllCascades()
+
+           and:
+
+               Store.getCaseCascades()
+
+           SpatialEngine may also expose:
+
+               SpatialEngine.getStoreCascades()
+
+           We support all valid current paths safely.
+
+           PRIORITY
+           ----------------------------------------------------
+
+           1. SpatialEngine.getStoreCascades()
+           2. Store.getAllCascades()
+           3. Store.getCaseCascades()
+
+        ==================================================== */
+
+        getStoreCascades:
+            function () {
+
+
+                const Store =
+                    UIController
+                        .getStore();
+
+
+                const SpatialEngine =
+                    UIController
+                        .getSpatialEngine();
+
+
+
+                /* ============================================
+                   PREFERRED:
+                   USE SPATIAL ENGINE'S OWN STORE CONNECTOR
+
+                   This was already tested successfully:
+
+                   GG.Offence
+                     .SpatialEngine
+                     .getStoreCascades()
+
+                   Result:
+                   573 POR cascades
+                ============================================ */
+
+                try {
+
+
+                    if (
+                        SpatialEngine &&
+                        typeof
+                        SpatialEngine
+                            .getStoreCascades ===
+                        "function"
+                    ) {
+
+
+                        const cascades =
+                            SpatialEngine
+                                .getStoreCascades();
+
+
+                        if (
+                            Array.isArray(
+                                cascades
+                            )
+                        ) {
+
+
+                            return cascades;
+
+
+                        }
+
+
+                    }
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    console.warn(
+
+                        "⚠ SpatialEngine.getStoreCascades() failed:",
+
+                        error
+
+                    );
+
+
+                }
+
+
+
+                /* ============================================
+                   STORE DIRECT FALLBACK
+                ============================================ */
+
+                if (
+                    !Store
+                ) {
+
+
+                    return [];
+
+
+                }
+
+
+
+                /* ============================================
+                   STORE.getAllCascades()
+                ============================================ */
+
+                try {
+
+
+                    if (
+                        typeof
+                        Store
+                            .getAllCascades ===
+                        "function"
+                    ) {
+
+
+                        const cascades =
+                            Store
+                                .getAllCascades();
+
+
+                        if (
+                            Array.isArray(
+                                cascades
+                            )
+                        ) {
+
+
+                            return cascades;
+
+
+                        }
+
+
+                    }
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    console.warn(
+
+                        "⚠ Store.getAllCascades() failed:",
+
+                        error
+
+                    );
+
+
+                }
+
+
+
+                /* ============================================
+                   STORE.getCaseCascades()
+                ============================================ */
+
+                try {
+
+
+                    if (
+                        typeof
+                        Store
+                            .getCaseCascades ===
+                        "function"
+                    ) {
+
+
+                        const cascades =
+                            Store
+                                .getCaseCascades();
+
+
+                        if (
+                            Array.isArray(
+                                cascades
+                            )
+                        ) {
+
+
+                            return cascades;
+
+
+                        }
+
+
+                    }
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    console.warn(
+
+                        "⚠ Store.getCaseCascades() failed:",
+
+                        error
+
+                    );
+
+
+                }
+
+
+
+                return [];
+
+
+            },
+
+
+
+        /* ====================================================
+           WAIT FOR OFFENCE STORE
+
+           WHY THIS EXISTS
+           ----------------------------------------------------
+
+           On app startup:
+
+           offenceUIController.js
+           may load before Offence Store has finished building.
+
+           Earlier console state showed:
+
+               Store initialized: false
+               Store ready: false
+               Cascades: 0
+
+           Later:
+
+               Store initialized: true
+               Store ready: true
+               Cascades: 573
+
+           Therefore SOURCE/TARGET must wait for authoritative
+           Store readiness before rebuilding SpatialEngine.
+
+           Maximum wait:
+
+               240 attempts
+               ×
+               250 ms
+
+               =
+               60 seconds
+
+        ==================================================== */
+
+        waitForStore:
+            async function () {
+
+
+                const maxAttempts =
+                    UIController
+                        .CONFIG
+                        .STORE_WAIT_ATTEMPTS;
+
+
+                const interval =
+                    UIController
+                        .CONFIG
+                        .STORE_WAIT_INTERVAL;
+
+
+
+                for (
+                    let attempt = 1;
+                    attempt <= maxAttempts;
+                    attempt++
+                ) {
+
+
+                    const Store =
+                        UIController
+                            .getStore();
+
+
+
+                    /* ========================================
+                       STORE MODULE EXISTS
+                    ======================================== */
+
+                    if (
+                        Store
+                    ) {
+
+
+                        /* ====================================
+                           STORE REPORTS READY
+                        ==================================== */
+
+                        if (
+                            Store.ready ===
+                            true
+                        ) {
+
+
+                            const cascades =
+                                UIController
+                                    .getStoreCascades();
+
+
+
+                            /* =================================
+                               AUTHORITATIVE DATA AVAILABLE
+                            ================================= */
+
+                            if (
+                                Array.isArray(
+                                    cascades
+                                ) &&
+                                cascades.length > 0
+                            ) {
+
+
+                                console.log(
+
+                                    "🔥 Offence Store ready →",
+
+                                    cascades.length,
+
+                                    "POR cascades"
+
+                                );
+
+
+                                return {
+
+                                    ready:
+                                        true,
+
+
+                                    Store:
+                                        Store,
+
+
+                                    cascades:
+                                        cascades,
+
+
+                                    count:
+                                        cascades.length
+
+
+                                };
+
+
+                            }
+
+
+                        }
+
+
+                    }
+
+
+
+                    /* ========================================
+                       FIRST ATTEMPT LOG ONLY
+
+                       Avoid console spam every 250 ms.
+                    ======================================== */
+
+                    if (
+                        attempt ===
+                        1
+                    ) {
+
+
+                        console.log(
+
+                            "⏳ Waiting for authoritative Offence Store..."
+
+                        );
+
+
+                        UIController
+                            .setStatus(
+
+                                "Preparing offence case data...",
+
+                                "loading"
+
+                            );
+
+
+                    }
+
+
+
+                    /* ========================================
+                       WAIT BEFORE NEXT CHECK
+                    ======================================== */
+
+                    await new Promise(
+
+                        function (
+                            resolve
+                        ) {
+
+
+                            window
+                                .setTimeout(
+
+                                    resolve,
+
+                                    interval
+
+                                );
+
+
+                        }
+
+                    );
+
+
+                }
+
+
+
+                /* ============================================
+                   TIMEOUT
+                ============================================ */
+
+                throw new Error(
+
+                    "Offence Store did not become ready within 60 seconds."
+
+                );
+
+
+            },
+
+
+
+        /* ====================================================
+           WAIT FOR SPATIAL ENGINE READY
+
+           rebuild() in the current implementation may be
+           synchronous.
+
+           But we also support a future asynchronous rebuild.
+
+           This small wait additionally protects against an
+           internal delayed index population.
+        ==================================================== */
+
+        waitForSpatialEngineReady:
+            async function (
+                maxAttempts = 40,
+                interval = 100
+            ) {
+
+
+                for (
+                    let attempt = 1;
+                    attempt <= maxAttempts;
+                    attempt++
+                ) {
+
+
+                    const SpatialEngine =
+                        UIController
+                            .getSpatialEngine();
+
+
+
+                    const porCount =
+                        SpatialEngine
+                            ?.porSpatialIndex
+                            ?.size ||
+                        0;
+
+
+
+                    if (
+                        SpatialEngine
+                            ?.ready ===
+                            true &&
+
+                        porCount > 0
+                    ) {
+
+
+                        return true;
+
+
+                    }
+
+
+
+                    await new Promise(
+
+                        function (
+                            resolve
+                        ) {
+
+
+                            window
+                                .setTimeout(
+
+                                    resolve,
+
+                                    interval
+
+                                );
+
+
+                        }
+
+                    );
+
+
+                }
+
+
+
+                return false;
+
+
+            },
+
+
+
+        /* ====================================================
+           PREPARE SPATIAL SYSTEM
+
+           THIS IS THE CORE FIX
+           ----------------------------------------------------
+
+           This reproduces the sequence that already worked
+           manually in your console.
+
+           TESTED MANUAL FLOW:
+
+               Store ready
+                    ↓
+               573 cascades
+                    ↓
+               SpatialEngine.rebuild()
+                    ↓
+               Engine ready: true
+                    ↓
+               POR Index: 573
+                    ↓
+               Sources: 46
+                    ↓
+               Targets: 13
+                    ↓
+               SpatialRenderer.init()
+                    ↓
+               renderAllSources()
+                   OR
+               renderAllTargets()
+
+
+           IMPORTANT
+           ----------------------------------------------------
+
+           This function is shared by:
+
+               SOURCE
+               TARGET
+
+           It also prevents two simultaneous initialization
+           operations if the user clicks quickly.
+
+        ==================================================== */
+
+        prepareSpatialSystem:
+            async function () {
+
+
+                /* ============================================
+                   REUSE ACTIVE PREPARATION PROMISE
+
+                   Prevent:
+
+                   SOURCE click
+                   +
+                   TARGET click
+
+                   from triggering duplicate rebuilds.
+                ============================================ */
+
+                if (
+                    UIController
+                        .__preparePromise
+                ) {
+
+
+                    return UIController
+                        .__preparePromise;
+
+
+                }
+
+
+
+                /* ============================================
+                   CREATE SINGLE PREPARATION PROMISE
+                ============================================ */
+
+                UIController
+                    .__preparePromise =
+
+                    (
+                        async function () {
+
+
+                            UIController.preparing =
+                                true;
+
+
+                            UIController.lastError =
+                                null;
+
+
+
+                            UIController
+                                .setStatus(
+
+                                    "Preparing spatial analysis...",
+
+                                    "loading"
+
+                                );
+
+
+
+                            try {
+
+
+                                /* =================================
+                                   STEP 1
+                                   WAIT FOR STORE
+                                ================================= */
+
+                                const storeState =
+                                    await UIController
+                                        .waitForStore();
+
+
+
+                                if (
+                                    !storeState ||
+                                    storeState.ready !==
+                                    true
+                                ) {
+
+
+                                    throw new Error(
+
+                                        "Authoritative Offence Store is not ready."
+
+                                    );
+
+
+                                }
+
+
+
+                                console.log(
+
+                                    "🔥 Offence Store authoritative:",
+
+                                    storeState.count,
+
+                                    "POR cascades"
+
+                                );
+
+
+
+                                /* =================================
+                                   STEP 2
+                                   GET SPATIAL ENGINE
+                                ================================= */
+
+                                const SpatialEngine =
+                                    UIController
+                                        .getSpatialEngine();
+
+
+
+                                if (
+                                    !SpatialEngine
+                                ) {
+
+
+                                    throw new Error(
+
+                                        "GG.Offence.SpatialEngine is not loaded."
+
+                                    );
+
+
+                                }
+
+
+
+                                /* =================================
+                                   STEP 3
+                                   INSPECT CURRENT ENGINE STATE
+                                ================================= */
+
+                                let porCount =
+                                    SpatialEngine
+                                        ?.porSpatialIndex
+                                        ?.size ||
+                                    0;
+
+
+
+                                let engineReady =
+                                    SpatialEngine
+                                        .ready ===
+                                        true &&
+
+                                    porCount > 0;
+
+
+
+                                console.log(
+
+                                    "🚨 SpatialEngine before preparation:",
+
+                                    {
+
+                                        ready:
+                                            SpatialEngine
+                                                .ready,
+
+                                        porCount:
+                                            porCount
+
+                                    }
+
+                                );
+
+
+
+                                /* =================================
+                                   STEP 4
+                                   REBUILD ONLY IF REQUIRED
+
+                                   This reproduces the manual fix:
+
+                                   GG.Offence
+                                     .SpatialEngine
+                                     .rebuild();
+
+                                   We do NOT rebuild every click if
+                                   the engine is already valid.
+                                ================================= */
+
+                                if (
+                                    !engineReady
+                                ) {
+
+
+                                    if (
+                                        typeof
+                                        SpatialEngine
+                                            .rebuild !==
+                                        "function"
+                                    ) {
+
+
+                                        throw new Error(
+
+                                            "SpatialEngine.rebuild() is unavailable."
+
+                                        );
+
+
+                                    }
+
+
+
+                                    console.log(
+
+                                        "🚨 SpatialEngine empty/not ready → rebuilding..."
+
+                                    );
+
+
+
+                                    const rebuildResult =
+                                        SpatialEngine
+                                            .rebuild();
+
+
+
+                                    /* =============================
+                                       SUPPORT ASYNC REBUILD
+                                    ============================= */
+
+                                    if (
+                                        rebuildResult &&
+                                        typeof
+                                        rebuildResult
+                                            .then ===
+                                        "function"
+                                    ) {
+
+
+                                        await rebuildResult;
+
+
+                                    }
+
+
+
+                                    /* =============================
+                                       WAIT FOR INDEX POPULATION
+                                    ============================= */
+
+                                    await UIController
+                                        .waitForSpatialEngineReady();
+
+
+                                }
+
+
+
+                                /* =================================
+                                   STEP 5
+                                   FINAL ENGINE VALIDATION
+                                ================================= */
+
+                                porCount =
+                                    SpatialEngine
+                                        ?.porSpatialIndex
+                                        ?.size ||
+                                    0;
+
+
+
+                                const sources =
+                                    SpatialEngine
+                                        ?.getSourceVillages
+                                        ?.() ||
+                                    [];
+
+
+
+                                const targets =
+                                    SpatialEngine
+                                        ?.getTargetRanges
+                                        ?.() ||
+                                    [];
+
+
+
+                                engineReady =
+                                    SpatialEngine
+                                        .ready ===
+                                        true &&
+
+                                    porCount > 0;
+
+
+
+                                if (
+                                    !engineReady
+                                ) {
+
+
+                                    throw new Error(
+
+                                        "SpatialEngine is still empty after rebuild."
+
+                                    );
+
+
+                                }
+
+
+
+                                console.log(
+
+                                    "✅ SpatialEngine ready",
+
+                                    {
+
+                                        POR:
+                                            porCount,
+
+                                        sources:
+                                            sources.length,
+
+                                        targets:
+                                            targets.length
+
+                                    }
+
+                                );
+
+
+
+                                /* =================================
+                                   STEP 6
+                                   GET SPATIAL RENDERER
+                                ================================= */
+
+                                const SpatialRenderer =
+                                    UIController
+                                        .getSpatialRenderer();
+
+
+
+                                if (
+                                    !SpatialRenderer
+                                ) {
+
+
+                                    throw new Error(
+
+                                        "GG.Offence.SpatialRenderer is not loaded."
+
+                                    );
+
+
+                                }
+
+
+
+                                /* =================================
+                                   STEP 7
+                                   INITIALIZE RENDERER
+
+                                   The renderer builds:
+
+                                   - 291 village feature groups
+                                   - 25 range feature groups
+
+                                   based on your previous successful
+                                   renderer test.
+                                ================================= */
+
+                                if (
+                                    typeof
+                                    SpatialRenderer
+                                        .init ===
+                                    "function"
+                                ) {
+
+
+                                    const initResult =
+                                        SpatialRenderer
+                                            .init();
+
+
+
+                                    if (
+                                        initResult &&
+                                        typeof
+                                        initResult
+                                            .then ===
+                                        "function"
+                                    ) {
+
+
+                                        await initResult;
+
+
+                                    }
+
+
+                                }
+
+
+
+                                /* =================================
+                                   STEP 8
+                                   VALIDATE RENDERER
+
+                                   Some renderer implementations use:
+
+                                   ready
+
+                                   Some only use:
+
+                                   initialized
+
+                                   We therefore do not reject solely
+                                   because ready is undefined.
+                                ================================= */
+
+                                if (
+                                    SpatialRenderer
+                                        .initialized ===
+                                        false
+                                ) {
+
+
+                                    throw new Error(
+
+                                        "SpatialRenderer initialization failed."
+
+                                    );
+
+
+                                }
+
+
+
+                                UIController
+                                    .lastPreparedAt =
+                                    new Date();
+
+
+
+                                UIController
+                                    .setStatus(
+
+                                        "Spatial data ready.",
+
+                                        "success"
+
+                                    );
+
+
+
+                                console.log(
+
+                                    "✅ Offence spatial system prepared",
+
+                                    {
+
+                                        spatialEngine:
+                                            SpatialEngine
+                                                .getStats
+                                                ?.(),
+
+                                        renderer:
+                                            SpatialRenderer
+                                                .getStats
+                                                ?.()
+
+                                    }
+
+                                );
+
+
+
+                                return {
+
+                                    ready:
+                                        true,
+
+
+                                    Store:
+                                        storeState.Store,
+
+
+                                    cascades:
+                                        storeState.cascades,
+
+
+                                    SpatialEngine:
+                                        SpatialEngine,
+
+
+                                    SpatialRenderer:
+                                        SpatialRenderer,
+
+
+                                    porCount:
+                                        porCount,
+
+
+                                    sourceCount:
+                                        sources.length,
+
+
+                                    targetCount:
+                                        targets.length
+
+
+                                };
+
+
+                            }
+
+
+                            catch (
+                                error
+                            ) {
+
+
+                                UIController
+                                    .lastError =
+                                    error;
+
+
+
+                                UIController
+                                    .setStatus(
+
+                                        error
+                                            ?.message ||
+
+                                        "Spatial initialization failed.",
+
+                                        "error"
+
+                                    );
+
+
+
+                                console.error(
+
+                                    "❌ Offence spatial preparation failed:",
+
+                                    error
+
+                                );
+
+
+
+                                throw error;
+
+
+                            }
+
+
+                            finally {
+
+
+                                UIController.preparing =
+                                    false;
+
+
+                            }
+
+
+                        }
+
+                    )();
+
+
+
+                /* ============================================
+                   WAIT FOR SHARED PROMISE
+                ============================================ */
+
+                try {
+
+
+                    return await UIController
+                        .__preparePromise;
+
+
+                }
+
+
+                finally {
+
+
+                    /*
+                     * Clear the promise after completion.
+                     *
+                     * The actual SpatialEngine remains built.
+                     *
+                     * Future clicks use the fast path:
+                     *
+                     * ready === true
+                     * POR index > 0
+                     *
+                     * therefore no unnecessary rebuild.
+                     */
+
+                    UIController
+                        .__preparePromise =
+                        null;
+
+
+                }
+
+
+            },
+
+
+
+        /* ====================================================
+           ACTIVATE SOURCE MODE
+
+           USER FLOW
+           ----------------------------------------------------
+
+           OFFENCE
+               ↓
+           SOURCE
+               ↓
+           prepareSpatialSystem()
+               ↓
+           clear previous offence rendering
+               ↓
+           renderAllSources()
+               ↓
+           46 resolved source village polygons
+               ↓
+           intensity based on offence count
+
+           Further polygon click drill-down is handled by:
+
+           offenceSpatialRenderer.js
+
+        ==================================================== */
+
+        activateSource:
+            async function () {
+
+
+                /* ============================================
+                   PREVENT REPEATED CLICK DURING PREPARATION
+                ============================================ */
+
+                if (
+                    UIController.preparing ===
+                    true
+                ) {
+
+
+                    return false;
+
+
+                }
+
+
+
+                UIController
+                    .setStatus(
+
+                        "Loading source village heatmap...",
+
+                        "loading"
+
+                    );
+
+
+
+                try {
+
+
+                    /* ========================================
+                       PREPARE AUTHORITATIVE SPATIAL SYSTEM
+                    ======================================== */
+
+                    const prepared =
+                        await UIController
+                            .prepareSpatialSystem();
+
+
+
+                    const SpatialRenderer =
+                        prepared
+                            ?.SpatialRenderer ||
+
+                        UIController
+                            .getSpatialRenderer();
+
+
+
+                    if (
+                        !SpatialRenderer
+                    ) {
+
+
+                        throw new Error(
+
+                            "SpatialRenderer unavailable."
+
+                        );
+
+
+                    }
+
+
+
+                    /* ========================================
+                       CLEAR PREVIOUS OFFENCE MODE
+
+                       Example:
+
+                       TARGET
+                           ↓
+                       user clicks SOURCE
+                           ↓
+                       remove TARGET layers first
+                    ======================================== */
+
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .clear ===
+                        "function"
+                    ) {
+
+
+                        SpatialRenderer
+                            .clear();
+
+
+                    }
+
+
+
+                    /* ========================================
+                       RENDER ALL SOURCES
+                    ======================================== */
+
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .renderAllSources !==
+                        "function"
+                    ) {
+
+
+                        throw new Error(
+
+                            "SpatialRenderer.renderAllSources() is unavailable."
+
+                        );
+
+
+                    }
+
+
+
+                    const renderResult =
+                        SpatialRenderer
+                            .renderAllSources();
+
+
+
+                    const sources =
+                        renderResult &&
+                        typeof
+                        renderResult
+                            .then ===
+                        "function"
+
+                            ? await renderResult
+
+                            : renderResult;
+
+
+
+                    /* ========================================
+                       UPDATE MODE
+                    ======================================== */
+
+                    UIController.activeMode =
+                        "source";
+
+
+
+                    UIController
+                        .updateActiveModeUI(
+
+                            "source"
+
+                        );
+
+
+
+                    /* ========================================
+                       DETERMINE RENDERED COUNT
+                    ======================================== */
+
+                    const count =
+                        Array.isArray(
+                            sources
+                        )
+
+                            ? sources.length
+
+                            : (
+
+                                prepared
+                                    ?.sourceCount ||
+
+                                UIController
+                                    .getSpatialEngine()
+                                    ?.getSourceVillages
+                                    ?.()
+                                    ?.length ||
+
+                                0
+
+                            );
+
+
+
+                    UIController
+                        .setStatus(
+
+                            count +
+                            " source village polygons rendered.",
+
+                            "success"
+
+                        );
+
+
+
+                    console.log(
+
+                        "🏡 OFFENCE SOURCE mode active:",
+
+                        count,
+
+                        "villages"
+
+                    );
+
+
+
+                    return sources;
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    UIController
+                        .lastError =
+                        error;
+
+
+
+                    UIController
+                        .setStatus(
+
+                            error
+                                ?.message ||
+
+                            "Source heatmap failed.",
+
+                            "error"
+
+                        );
+
+
+
+                    console.error(
+
+                        "❌ OFFENCE SOURCE mode failed:",
+
+                        error
+
+                    );
+
+
+
+                    return false;
+
+
+                }
+
+
+            },
+
+
+
+        /* ====================================================
+           ACTIVATE TARGET MODE
+
+           USER FLOW
+           ----------------------------------------------------
+
+           OFFENCE
+               ↓
+           TARGET
+               ↓
+           prepareSpatialSystem()
+               ↓
+           clear previous offence rendering
+               ↓
+           renderAllTargets()
+               ↓
+           GIS-resolved target range polygons
+
+           Your current tested result:
+
+           Total target labels:
+               13
+
+           GIS-resolved/renderable ranges:
+               7
+
+        ==================================================== */
+
+        activateTarget:
+            async function () {
+
+
+                /* ============================================
+                   PREVENT REPEATED CLICK DURING PREPARATION
+                ============================================ */
+
+                if (
+                    UIController.preparing ===
+                    true
+                ) {
+
+
+                    return false;
+
+
+                }
+
+
+
+                UIController
+                    .setStatus(
+
+                        "Loading target range heatmap...",
+
+                        "loading"
+
+                    );
+
+
+
+                try {
+
+
+                    /* ========================================
+                       PREPARE AUTHORITATIVE SPATIAL SYSTEM
+                    ======================================== */
+
+                    const prepared =
+                        await UIController
+                            .prepareSpatialSystem();
+
+
+
+                    const SpatialRenderer =
+                        prepared
+                            ?.SpatialRenderer ||
+
+                        UIController
+                            .getSpatialRenderer();
+
+
+
+                    if (
+                        !SpatialRenderer
+                    ) {
+
+
+                        throw new Error(
+
+                            "SpatialRenderer unavailable."
+
+                        );
+
+
+                    }
+
+
+
+                    /* ========================================
+                       CLEAR PREVIOUS SOURCE/TARGET RENDERING
+                    ======================================== */
+
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .clear ===
+                        "function"
+                    ) {
+
+
+                        SpatialRenderer
+                            .clear();
+
+
+                    }
+
+
+
+                    /* ========================================
+                       RENDER ALL TARGETS
+                    ======================================== */
+
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .renderAllTargets !==
+                        "function"
+                    ) {
+
+
+                        throw new Error(
+
+                            "SpatialRenderer.renderAllTargets() is unavailable."
+
+                        );
+
+
+                    }
+
+
+
+                    const renderResult =
+                        SpatialRenderer
+                            .renderAllTargets();
+
+
+
+                    const targets =
+                        renderResult &&
+                        typeof
+                        renderResult
+                            .then ===
+                        "function"
+
+                            ? await renderResult
+
+                            : renderResult;
+
+
+
+                    /* ========================================
+                       UPDATE MODE
+                    ======================================== */
+
+                    UIController.activeMode =
+                        "target";
+
+
+
+                    UIController
+                        .updateActiveModeUI(
+
+                            "target"
+
+                        );
+
+
+
+                    /* ========================================
+                       RENDERED TARGET COUNT
+
+                       renderAllTargets() previously returned
+                       the 7 GIS-resolved target ranges.
+                    ======================================== */
+
+                    const count =
+                        Array.isArray(
+                            targets
+                        )
+
+                            ? targets.length
+
+                            : 0;
+
+
+
+                    UIController
+                        .setStatus(
+
+                            count +
+                            " target range polygons rendered.",
+
+                            "success"
+
+                        );
+
+
+
+                    console.log(
+
+                        "🎯 OFFENCE TARGET mode active:",
+
+                        count,
+
+                        "ranges"
+
+                    );
+
+
+
+                    return targets;
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    UIController
+                        .lastError =
+                        error;
+
+
+
+                    UIController
+                        .setStatus(
+
+                            error
+                                ?.message ||
+
+                            "Target heatmap failed.",
+
+                            "error"
+
+                        );
+
+
+
+                    console.error(
+
+                        "❌ OFFENCE TARGET mode failed:",
+
+                        error
+
+                    );
+
+
+
+                    return false;
+
+
+                }
+
+
+            },
+
+
+
+        /* ====================================================
+           CLEAR OFFENCE SPATIAL ANALYSIS
+
+           ONLY offenceSpatialRenderer layers are cleared.
+
+           It does NOT:
+
+           - clear base map
+           - clear staff
+           - clear sightings
+           - clear patrol tracks
+           - clear GIS base data
+           - reset SpatialEngine
+           - rebuild Store
+
+        ==================================================== */
+
+        clearAnalysis:
+            function () {
+
+
+                try {
+
+
+                    const SpatialRenderer =
+                        UIController
+                            .getSpatialRenderer();
+
+
+
+                    if (
+                        SpatialRenderer &&
+                        typeof
+                        SpatialRenderer
+                            .clear ===
+                        "function"
+                    ) {
+
+
+                        SpatialRenderer
+                            .clear();
+
+
+                    }
+
+
+
+                    /* ========================================
+                       RESET ACTIVE MODE
+                    ======================================== */
+
+                    UIController.activeMode =
+                        null;
+
+
+
+                    UIController
+                        .updateActiveModeUI(
+                            null
+                        );
+
+
+
+                    /* ========================================
+                       UPDATE STATUS
+                    ======================================== */
+
+                    UIController
+                        .setStatus(
+
+                            "Offence spatial layers cleared.",
+
+                            "ready"
+
+                        );
+
+
+
+                    console.log(
+
+                        "🧹 Offence spatial analysis cleared"
+
+                    );
+
+
+
+                    return true;
+
+
+                }
+
+
+                catch (
+                    error
+                ) {
+
+
+                    UIController
+                        .lastError =
+                        error;
+
+
+
+                    UIController
+                        .setStatus(
+
+                            "Unable to clear offence spatial layers.",
+
+                            "error"
+
+                        );
+
+
+
+                    console.error(
+
+                        "❌ Offence spatial clear failed:",
+
+                        error
+
+                    );
+
+
+
+                    return false;
+
+
+                }
+
+
+            },
+
+
+               /* ====================================================
+           COMPATIBILITY ALIAS:
+           REFRESH ELEMENT REFERENCES
+
+           Earlier Part 1 may call:
+
+               refreshElementReferences()
+
+           Part 3 introduced:
+
+               captureElements()
+
+           Keep both names valid.
+        ==================================================== */
+
+        refreshElementReferences:
+            function () {
+
+
+                return UIController
+                    .captureElements();
+
+
+            },
+
+
+
+        /* ====================================================
+           COMPATIBILITY ALIAS:
+           UPDATE STATUS
+
+           Earlier Part 1 may call:
+
+               updateStatus(
+                   message,
+                   state
+               )
+
+           Part 3 introduced:
+
+               setStatus(
+                   message,
+                   state
+               )
+
+           Keep both names valid.
+        ==================================================== */
+
+        updateStatus:
+            function (
+                message,
+                state = "ready"
+            ) {
+
+
+                return UIController
+                    .setStatus(
+
+                        message,
+
+                        state
+
+                    );
+
+
+            },
+
+
+
+        /* ====================================================
+           GET UI CONTROLLER STATS
+        ==================================================== */
+
+        getStats:
+            function () {
+
+
+                const Store =
+                    UIController
+                        .getStore();
+
+
+                const SpatialEngine =
+                    UIController
+                        .getSpatialEngine();
+
+
+                const SpatialRenderer =
+                    UIController
+                        .getSpatialRenderer();
+
+
+                const cascades =
+                    UIController
+                        .getStoreCascades();
+
+
+
+                const sourceCount =
+
+                    SpatialEngine
+                        ?.getSourceVillages
+                        ?.()
+                        ?.length ||
+
+                    0;
+
+
+
+                const targetCount =
+
+                    SpatialEngine
+                        ?.getTargetRanges
+                        ?.()
+                        ?.length ||
+
+                    0;
+
+
+
+                const porCount =
+
+                    SpatialEngine
+                        ?.porSpatialIndex
+                        ?.size ||
+
+                    0;
+
+
+
+                return {
+
+
+                    version:
+
+                        UIController
+                            .VERSION,
+
+
+                    initialized:
+
+                        UIController
+                            .initialized,
+
+
+                    ready:
+
+                        UIController
+                            .ready,
+
+
+                    panelOpen:
+
+                        UIController
+                            .panelOpen,
+
+
+                    activeMode:
+
+                        UIController
+                            .activeMode,
+
+
+                    preparing:
+
+                        UIController
+                            .preparing,
+
+
+                    storeReady:
+
+                        Store
+                            ?.ready ===
+                            true,
+
+
+                    storeCascadeCount:
+
+                        Array.isArray(
+                            cascades
+                        )
+
+                            ? cascades.length
+
+                            : 0,
+
+
+                    spatialEngineReady:
+
+                        SpatialEngine
+                            ?.ready ===
+                            true,
+
+
+                    porSpatialIndex:
+
+                        porCount,
+
+
+                    sourceVillages:
+
+                        sourceCount,
+
+
+                    targetRanges:
+
+                        targetCount,
+
+
+                    rendererInitialized:
+
+                        SpatialRenderer
+                            ?.initialized ===
+                            true,
+
+
+                    rendererReady:
+
+                        SpatialRenderer
+                            ?.ready ===
+                            true,
+
+
+                    mainButtonExists:
+
+                        !!document
+                            .getElementById(
+
+                                UIController
+                                    .CONFIG
+                                    .BUTTON_ID
+
+                            ),
+
+
+                    panelExists:
+
+                        !!document
+                            .getElementById(
+
+                                UIController
+                                    .CONFIG
+                                    .PANEL_ID
+
+                            ),
+
+
+                    lastPreparedAt:
+
+                        UIController
+                            .lastPreparedAt,
+
+
+                    lastError:
+
+                        UIController
+                            .lastError
+
+                            ? (
+
+                                UIController
+                                    .lastError
+                                    .message ||
+
+                                String(
+                                    UIController
+                                        .lastError
+                                )
+
+                            )
+
+                            : null
+
+
+                };
+
+
+            },
+
+
+
+        /* ====================================================
+           DEBUG
+
+           Run:
+
+               GG.Offence
+                 .UIController
+                 .debug();
+
+           This gives one combined snapshot of:
+
+           - UI
+           - Store
+           - SpatialEngine
+           - SpatialRenderer
+        ==================================================== */
+
+        debug:
+            function () {
+
+
+                const Store =
+                    UIController
+                        .getStore();
+
+
+                const SpatialEngine =
+                    UIController
+                        .getSpatialEngine();
+
+
+                const SpatialRenderer =
+                    UIController
+                        .getSpatialRenderer();
+
+
+                const cascades =
+                    UIController
+                        .getStoreCascades();
+
+
+
+                console.group(
+
+                    "🚨 OFFENCE UI CONTROLLER DEBUG"
+
+                );
+
+
+
+                console.log(
+
+                    "UIController:",
+
+                    UIController
+
+                );
+
+
+
+                console.log(
+
+                    "UI Stats:",
+
+                    UIController
+                        .getStats()
+
+                );
+
+
+
+                console.log(
+
+                    "Store:",
+
+                    Store
+
+                );
+
+
+
+                console.log(
+
+                    "Store Ready:",
+
+                    Store
+                        ?.ready
+
+                );
+
+
+
+                console.log(
+
+                    "Store Cascades:",
+
+                    Array.isArray(
+                        cascades
+                    )
+
+                        ? cascades.length
+
+                        : 0
+
+                );
+
+
+
+                console.log(
+
+                    "SpatialEngine:",
+
+                    SpatialEngine
+
+                );
+
+
+
+                console.log(
+
+                    "SpatialEngine Stats:",
+
+                    SpatialEngine
+                        ?.getStats
+                        ?.()
+
+                );
+
+
+
+                console.log(
+
+                    "Spatial POR Index:",
+
+                    SpatialEngine
+                        ?.porSpatialIndex
+                        ?.size
+
+                );
+
+
+
+                console.log(
+
+                    "Source Villages:",
+
+                    SpatialEngine
+                        ?.getSourceVillages
+                        ?.()
+                        ?.length
+
+                );
+
+
+
+                console.log(
+
+                    "Target Ranges:",
+
+                    SpatialEngine
+                        ?.getTargetRanges
+                        ?.()
+                        ?.length
+
+                );
+
+
+
+                console.log(
+
+                    "SpatialRenderer:",
+
+                    SpatialRenderer
+
+                );
+
+
+
+                console.log(
+
+                    "SpatialRenderer Stats:",
+
+                    SpatialRenderer
+                        ?.getStats
+                        ?.()
+
+                );
+
+
+
+                console.log(
+
+                    "Main Button:",
+
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .BUTTON_ID
+
+                        )
+
+                );
+
+
+
+                console.log(
+
+                    "Analysis Panel:",
+
+                    document
+                        .getElementById(
+
+                            UIController
+                                .CONFIG
+                                .PANEL_ID
+
+                        )
+
+                );
+
+
+
+                console.groupEnd();
+
+
+
+                return UIController
+                    .getStats();
+
+
+            }
+
+
 
     };
 
 
-  /* ============================================================
-     🔥 COMPATIBILITY ALIAS
+    /* ========================================================
+       EXPORT MODULE
 
-     Your SpatialRenderer.showCases() currently checks:
+       PRIMARY:
 
-         GG.Offence.UI.showSpatialCases()
+           GG.Offence.UIController
 
-     Keep existing GG.Offence.UI untouched if another module
-     already owns it.
+       ALSO AVAILABLE THROUGH:
 
-     We only expose the controller separately.
-  ============================================================ */
+           window.GG.Offence.UIController
 
-  GG.Offence.UIController =
-    UI;
+    ======================================================== */
+
+    GG.Offence.UIController =
+        UIController;
 
 
-  /* ============================================================
-     🚀 AUTO INIT
 
-     DOM only.
+    /* ========================================================
+       OPTIONAL GREENGUARDAI EXPORT
 
-     Does not render SOURCE or TARGET polygons.
-  ============================================================ */
+       Your project currently exposes many analytics modules
+       through GreenGuardAI.
 
-  function autoInit() {
+       We expose this controller there as well if the namespace
+       already exists.
 
-    try {
+       This does NOT create or replace GreenGuardAI.
+    ======================================================== */
 
-      UI.init();
-
-    }
-
-    catch (
-      err
+    if (
+        window.GreenGuardAI
     ) {
 
-      console.error(
 
-        "❌ OffenceUIController initialization failed:",
+        window
+            .GreenGuardAI
+            .OffenceUIController =
+            UIController;
 
-        err
-
-      );
 
     }
 
-  }
 
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
+    /* ========================================================
+       AUTO INITIALIZATION
 
-    document
-      .addEventListener(
+       IMPORTANT
+       --------------------------------------------------------
 
-        "DOMContentLoaded",
+       We initialize only the UI here.
 
-        autoInit,
+       We DO NOT force SpatialEngine.rebuild() at script load.
 
-        {
-          once:
-            true
+       Why?
+
+       The Offence Store may still be empty during startup.
+
+       The tested safe flow is now:
+
+           App loads
+               ↓
+           UIController.init()
+               ↓
+           Button + Panel created
+               ↓
+           User clicks SOURCE / TARGET
+               ↓
+           prepareSpatialSystem()
+               ↓
+           waitForStore()
+               ↓
+           Store ready + cascades available
+               ↓
+           SpatialEngine rebuilt if required
+               ↓
+           SpatialRenderer initialized
+               ↓
+           polygons rendered
+
+       This reproduces the manual working sequence.
+    ======================================================== */
+
+    function autoInitialize() {
+
+
+        /* ====================================================
+           PREVENT DUPLICATE INITIALIZATION
+        ==================================================== */
+
+        if (
+            UIController
+                .initialized ===
+                true
+        ) {
+
+
+            return;
+
+
         }
 
-      );
 
-  }
 
-  else {
+        try {
 
-    setTimeout(
 
-      autoInit,
+            const result =
+                UIController
+                    .init();
 
-      0
 
-    );
 
-  }
+            /* =================================================
+               SUPPORT ASYNC INIT IF IMPLEMENTATION CHANGES
+            ================================================= */
+
+            if (
+                result &&
+                typeof
+                result.then ===
+                "function"
+            ) {
+
+
+                result
+
+                    .then(
+
+                        function () {
+
+
+                            console.log(
+
+                                "🚨 OffenceUIController Ready",
+
+                                UIController
+                                    .getStats()
+
+                            );
+
+
+                        }
+
+                    )
+
+                    .catch(
+
+                        function (
+                            error
+                        ) {
+
+
+                            console.error(
+
+                                "❌ OffenceUIController initialization failed:",
+
+                                error
+
+                            );
+
+
+                        }
+
+                    );
+
+
+                return;
+
+
+            }
+
+
+
+            console.log(
+
+                "🚨 OffenceUIController Ready",
+
+                UIController
+                    .getStats()
+
+            );
+
+
+        }
+
+
+        catch (
+            error
+        ) {
+
+
+            console.error(
+
+                "❌ OffenceUIController initialization failed:",
+
+                error
+
+            );
+
+
+        }
+
+
+    }
+
+
+
+    /* ========================================================
+       DOM STARTUP STRATEGY
+
+       If DOM is still loading:
+
+           wait for DOMContentLoaded
+
+       Otherwise:
+
+           initialize immediately
+    ======================================================== */
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+
+        document
+            .addEventListener(
+
+                "DOMContentLoaded",
+
+                function () {
+
+
+                    autoInitialize();
+
+
+                },
+
+                {
+                    once:
+                        true
+                }
+
+            );
+
+
+    }
+
+
+    else {
+
+
+        autoInitialize();
+
+
+    }
+
 
 
 })();
+
+
+/* ============================================================
+   END OF FILE
+
+   js/offence/offenceUIController.js
+
+   VERSION: 3.0.0
+============================================================ */
