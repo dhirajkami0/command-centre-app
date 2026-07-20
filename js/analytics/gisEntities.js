@@ -450,57 +450,143 @@ window.GreenGuardAI =
              * New grouped indexes are additive.
              */
 
-            index = {
+index = {
 
-                /*
-                 * Existing single-result indexes.
-                 */
+    /*
+     * Existing single-result indexes.
+     *
+     * IMPORTANT:
+     * These remain unchanged for backward
+     * compatibility.
+     */
 
-                divisions:
+    divisions:
 
-                    {},
+        {},
 
-                ranges:
+    ranges:
 
-                    {},
+        {},
 
-                beats:
+    beats:
 
-                    {},
+        {},
 
-                compartments:
+    compartments:
 
-                    {},
-
-                villages:
-
-                    {},
+        {},
 
 
-                /*
-                 * New grouped indexes.
-                 *
-                 * These DO NOT change the existing
-                 * single-result API.
-                 */
+    /*
+     * OLD POINT-BASED VILLAGES
+     *
+     * Source:
+     * window.__villageCache
+     *
+     * Existing generic search() continues
+     * using this index.
+     */
 
-                divisionGroups:
+    villages:
 
-                    {},
+        {},
 
-                rangeGroups:
 
-                    {},
+    /*
+     * Existing grouped GIS indexes.
+     */
 
-                beatGroups:
+    divisionGroups:
 
-                    {},
+        {},
 
-                compartmentGroups:
+    rangeGroups:
 
-                    {}
+        {},
 
-            };
+    beatGroups:
+
+        {},
+
+    compartmentGroups:
+
+        {},
+
+
+    /*
+     * NEW POLYGON-BASED CANONICAL VILLAGES
+     *
+     * Source:
+     * window.__villageBoundaryCache
+     *
+     * Key:
+     * normalized canonical village name
+     *
+     * Example:
+     *
+     * SALKUMAR
+     *      -> canonical Salkumar object
+     */
+
+    canonicalVillages:
+
+        {},
+
+
+    /*
+     * VILLAGES GROUPED BY SOURCE CODE
+     *
+     * IMPORTANT:
+     * One Village_Code may belong to more than
+     * one canonical village name.
+     *
+     * Example:
+     *
+     * 307144N151
+     *      -> [
+     *           Raja Bhat Khawa,
+     *           Raja Bhat Khawa Madhya
+     *         ]
+     */
+
+    villagesByCode:
+
+        {},
+
+
+    /*
+     * VILLAGES GROUPED BY BLOCK
+     *
+     * Example:
+     *
+     * KALCHINI
+     *      -> [
+     *           village,
+     *           village,
+     *           ...
+     *         ]
+     */
+
+    villagesByBlock:
+
+        {},
+
+
+    /*
+     * CANONICAL VILLAGE GROUPS
+     *
+     * Key:
+     * normalized village name
+     *
+     * Supports cases where the same normalized
+     * village name may occur more than once.
+     */
+
+    villageGroups:
+
+        {}
+
+};
 
 
             /*=================================================
@@ -922,7 +1008,259 @@ window.GreenGuardAI =
 
             );
 
+            /*=================================================
+              BUILD CANONICAL POLYGON VILLAGE INDEXES
+              -------------------------------------------------
 
+              Source:
+                  window.__villageBoundaryCache
+
+              IMPORTANT:
+
+              This is completely separate from:
+
+                  window.__villageCache
+                      ↓
+                  index.villages
+
+              The old point-based village index remains
+              unchanged for backward compatibility.
+            =================================================*/
+
+
+            (
+
+                window.__villageBoundaryCache ||
+
+                []
+
+            ).forEach(
+
+                function (
+
+                    village
+
+                ) {
+
+                    /*-----------------------------------------
+                      SAFETY
+                    -----------------------------------------*/
+
+                    if (
+
+                        !village
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*-----------------------------------------
+                      VILLAGE NAME
+                    -----------------------------------------*/
+
+                    const name =
+
+                        village.name ||
+
+                        village.village;
+
+
+                    if (
+
+                        !name
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*-----------------------------------------
+                      NORMALIZED VILLAGE NAME KEY
+                    -----------------------------------------*/
+
+                    const villageKey =
+
+                        GG.normalizeName(
+
+                            name
+
+                        );
+
+
+                    if (
+
+                        !villageKey
+
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*-----------------------------------------
+                      CANONICAL VILLAGE SINGLE INDEX
+
+                      Provides fast lookup by village name.
+
+                      Example:
+
+                      SALKUMAR
+                          -> canonical Salkumar object
+
+                      Existing value is preserved if the same
+                      normalized name appears again.
+                    -----------------------------------------*/
+
+                    if (
+
+                        !index.canonicalVillages[
+
+                            villageKey
+
+                        ]
+
+                    ) {
+
+                        index.canonicalVillages[
+
+                            villageKey
+
+                        ] = village;
+
+                    }
+
+
+                    /*-----------------------------------------
+                      CANONICAL VILLAGE GROUP
+
+                      Supports multiple canonical records with
+                      the same normalized village name.
+                    -----------------------------------------*/
+
+                    GISEntities
+                        .addToGroup(
+
+                            index.villageGroups,
+
+                            villageKey,
+
+                            village
+
+                        );
+
+
+                    /*-----------------------------------------
+                      VILLAGE CODE INDEX
+
+                      IMPORTANT:
+
+                      Village code is NOT assumed to be unique.
+
+                      Example:
+
+                      307144N151
+                          -> Raja Bhat Khawa
+                          -> Raja Bhat Khawa Madhya
+                    -----------------------------------------*/
+
+                    if (
+
+                        village.villageCode
+
+                    ) {
+
+                        const codeKey =
+
+                            String(
+
+                                village.villageCode
+
+                            )
+                                .trim()
+                                .toUpperCase();
+
+
+                        if (
+
+                            codeKey
+
+                        ) {
+
+                            GISEntities
+                                .addToGroup(
+
+                                    index.villagesByCode,
+
+                                    codeKey,
+
+                                    village
+
+                                );
+
+                        }
+
+                    }
+
+
+                    /*-----------------------------------------
+                      BLOCK INDEX
+
+                      Example:
+
+                      KALCHINI
+                          -> [all canonical Kalchini villages]
+                    -----------------------------------------*/
+
+                    if (
+
+                        village.block
+
+                    ) {
+
+                        const blockKey =
+
+                            GG.normalizeName(
+
+                                village.block
+
+                            );
+
+
+                        if (
+
+                            blockKey
+
+                        ) {
+
+                            GISEntities
+                                .addToGroup(
+
+                                    index.villagesByBlock,
+
+                                    blockKey,
+
+                                    village
+
+                                );
+
+                        }
+
+                    }
+
+                }
+
+            );
+
+
+            return index;
+
+        };
             return index;
 
         };
@@ -1070,7 +1408,317 @@ window.GreenGuardAI =
 
         };
 
+    /*=====================================================
+      SEARCH CANONICAL VILLAGE
+      -----------------------------------------------------
 
+      Returns ONE canonical polygon-based village.
+
+      Example:
+
+      searchCanonicalVillage(
+          "Salkumar"
+      )
+    =====================================================*/
+
+
+    GISEntities.searchCanonicalVillage =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return null;
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    value
+
+                );
+
+
+            return (
+
+                index.canonicalVillages[
+
+                    key
+
+                ] ||
+
+                null
+
+            );
+
+        };
+
+
+    /*=====================================================
+      SEARCH CANONICAL VILLAGE GROUP
+      -----------------------------------------------------
+
+      Returns ALL canonical villages matching the same
+      normalized village name.
+    =====================================================*/
+
+
+    GISEntities.searchCanonicalVillageGroup =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return [];
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    value
+
+                );
+
+
+            const villages =
+
+                index.villageGroups[
+
+                    key
+
+                ];
+
+
+            return Array.isArray(
+
+                villages
+
+            )
+
+                ? villages.slice()
+
+                : [];
+
+        };
+
+
+    /*=====================================================
+      SEARCH VILLAGES BY CODE
+      -----------------------------------------------------
+
+      Returns ARRAY.
+
+      IMPORTANT:
+
+      Village_Code is not guaranteed to uniquely identify
+      one canonical village.
+
+      Example:
+
+      searchVillagesByCode(
+          "307144N151"
+      )
+
+      returns:
+
+      [
+          Raja Bhat Khawa,
+          Raja Bhat Khawa Madhya
+      ]
+    =====================================================*/
+
+
+    GISEntities.searchVillagesByCode =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                value == null
+
+            ) {
+
+                return [];
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                String(
+
+                    value
+
+                )
+                    .trim()
+                    .toUpperCase();
+
+
+            if (
+
+                !key
+
+            ) {
+
+                return [];
+
+            }
+
+
+            const villages =
+
+                index.villagesByCode[
+
+                    key
+
+                ];
+
+
+            return Array.isArray(
+
+                villages
+
+            )
+
+                ? villages.slice()
+
+                : [];
+
+        };
+
+
+    /*=====================================================
+      SEARCH VILLAGES BY BLOCK
+      -----------------------------------------------------
+
+      Returns all canonical villages belonging to a block.
+
+      Example:
+
+      searchVillagesByBlock(
+          "Kalchini"
+      )
+    =====================================================*/
+
+
+    GISEntities.searchVillagesByBlock =
+        function (
+
+            value
+
+        ) {
+
+            if (
+
+                !value
+
+            ) {
+
+                return [];
+
+            }
+
+
+            if (
+
+                !index
+
+            ) {
+
+                GISEntities
+                    .build();
+
+            }
+
+
+            const key =
+
+                GG.normalizeName(
+
+                    value
+
+                );
+
+
+            const villages =
+
+                index.villagesByBlock[
+
+                    key
+
+                ];
+
+
+            return Array.isArray(
+
+                villages
+
+            )
+
+                ? villages.slice()
+
+                : [];
+
+        };
     /*=====================================================
       OFFENCE RANGE ALIAS RESOLUTION
     =====================================================*/
@@ -1793,13 +2441,52 @@ window.GreenGuardAI =
                     ).length,
 
 
-                villages:
+                                villages:
 
                     Object.keys(
 
                         index.villages
 
+                    ).length,
+
+
+                canonicalVillages:
+
+                    Object.keys(
+
+                        index.canonicalVillages
+
+                    ).length,
+
+
+                canonicalVillageRecords:
+
+                    (
+
+                        window.__villageBoundaryCache ||
+
+                        []
+
+                    ).length,
+
+
+                villageCodes:
+
+                    Object.keys(
+
+                        index.villagesByCode
+
+                    ).length,
+
+
+                villageBlocks:
+
+                    Object.keys(
+
+                        index.villagesByBlock
+
                     ).length
+
 
             };
 
