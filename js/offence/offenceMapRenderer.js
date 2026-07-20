@@ -4216,119 +4216,167 @@ MapRenderer.getPolygonHeatWeight =
        SOURCE and TARGET retain separate visual identity.
        ===================================================== */
 
-    MapRenderer.createPolygonStyle =
-        function (
+MapRenderer.createPolygonStyle =
+    function (
 
-            entry,
+        entry,
 
-            type,
+        type,
 
-            maxWeight = 1
+        maxWeight = 1
 
-        ) {
+    ) {
 
-            const isTarget =
+        const isTarget =
 
-                String(
-                    type ||
-                    ""
-                )
-                    .toUpperCase() ===
-                "TARGET";
+            String(
+                type ||
+                ""
+            )
+                .toUpperCase() ===
+            "TARGET";
 
 
-            const baseConfig =
+        const baseConfig =
+
+            isTarget
+
+                ? MapRenderer
+                    .config
+                    .targetPolygon
+
+                : MapRenderer
+                    .config
+                    .sourcePolygon;
+
+
+        const heatConfig =
+
+            MapRenderer
+                .config
+                .polygonHeat;
+
+
+        /*
+         * Normalize polygon offence count
+         * against the highest-count polygon.
+         *
+         * 0 = lowest intensity
+         * 1 = highest intensity
+         */
+
+        const intensity =
+
+            MapRenderer
+                .normalizePolygonIntensity(
+
+                    entry,
+
+                    maxWeight
+
+                );
+
+
+        /*
+         * Dynamic fill opacity.
+         */
+
+        const fillOpacity =
+
+            MapRenderer
+                .interpolateNumber(
+
+                    heatConfig
+                        .minFillOpacity,
+
+                    heatConfig
+                        .maxFillOpacity,
+
+                    intensity
+
+                );
+
+
+        /*
+         * Dynamic border thickness.
+         */
+
+        const weight =
+
+            MapRenderer
+                .interpolateNumber(
+
+                    heatConfig
+                        .minWeight,
+
+                    heatConfig
+                        .maxWeight,
+
+                    intensity
+
+                );
+
+
+        /*
+         * TARGET:
+         * Dynamic high-contrast heat color
+         * based on offence-count intensity.
+         *
+         * SOURCE:
+         * Keep existing configured color.
+         */
+
+        const fillColor =
+
+            isTarget
+
+                ? MapRenderer
+                    .getTargetPolygonHeatColor(
+
+                        intensity
+
+                    )
+
+                : baseConfig
+                    .fillColor;
+
+
+        return {
+
+            color:
+
+                baseConfig
+                    .color,
+
+            fillColor:
+
+                fillColor,
+
+            opacity:
+
+                isTarget
+                    ? 1.00
+                    : baseConfig
+                        .opacity,
+
+            fillOpacity:
 
                 isTarget
 
-                    ? MapRenderer
-                        .config
-                        .targetPolygon
+                    ? Math.max(
+                        0.80,
+                        fillOpacity
+                    )
 
-                    : MapRenderer
-                        .config
-                        .sourcePolygon;
+                    : fillOpacity,
 
+            weight:
 
-            const heatConfig =
-
-                MapRenderer
-                    .config
-                    .polygonHeat;
-
-
-            const intensity =
-
-                MapRenderer
-                    .normalizePolygonIntensity(
-
-                        entry,
-
-                        maxWeight
-
-                    );
-
-
-            const fillOpacity =
-
-                MapRenderer
-                    .interpolateNumber(
-
-                        heatConfig
-                            .minFillOpacity,
-
-                        heatConfig
-                            .maxFillOpacity,
-
-                        intensity
-
-                    );
-
-
-            const weight =
-
-                MapRenderer
-                    .interpolateNumber(
-
-                        heatConfig
-                            .minWeight,
-
-                        heatConfig
-                            .maxWeight,
-
-                        intensity
-
-                    );
-
-
-            return {
-
-                color:
-
-                    baseConfig
-                        .color,
-
-                fillColor:
-
-                    baseConfig
-                        .fillColor,
-
-                opacity:
-
-                    baseConfig
-                        .opacity,
-
-                fillOpacity:
-
-                    fillOpacity,
-
-                weight:
-
-                    weight
-
-            };
+                weight
 
         };
+
+    };
 
 
     /* =====================================================
