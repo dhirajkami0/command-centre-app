@@ -1,102 +1,30 @@
 /* ============================================================
-   GreenGuard
-   File: js/offence/offenceUIController.js
+   GREENGUARD
+   OFFENCE UI CONTROLLER
 
-   OFFENCE SPATIAL UI CONTROLLER
-   Version: 3.1.0
+   File:
+   js/offence/offenceUIController.js
 
-   NEW AUTHORITATIVE FLOW
-   ------------------------------------------------------------
-
-   OFFENCE BUTTON
-        │
-        ▼
-   OffenceUIController
-        │
-        ├──────── SOURCE
-        │            │
-        │            ▼
-        │      prepareSpatialSystem()
-        │            │
-        │            ├── Wait for Offence Store
-        │            ├── Verify SpatialEngine
-        │            ├── Rebuild SpatialEngine if required
-        │            ├── Verify POR spatial index
-        │            ├── Initialize SpatialRenderer
-        │            │
-        │            ▼
-        │      SpatialRenderer
-        │      .renderAllSources()
-        │
-        │
-        ├──────── TARGET
-        │            │
-        │            ▼
-        │      prepareSpatialSystem()
-        │            │
-        │            ▼
-        │      SpatialRenderer
-        │      .renderAllTargets()
-        │
-        │
-        └──────── CLEAR
-                     │
-                     ▼
-               SpatialRenderer
-               .clear()
-
-
-   UI DESIGN
-   ------------------------------------------------------------
-
-   OFFENCE
-      │
-      ▼
-
-   ┌─────────────────────────┐
-   │ 🚨 OFFENCE ANALYSIS   × │
-   ├─────────────────────────┤
-   │ Spatial data ready      │
-   ├─────────────────────────┤
-   │ 🏡  SOURCE              │
-   │ 🎯  TARGET              │
-   │ 🧹  CLEAR               │
-   └─────────────────────────┘
-
-
-   IMPORTANT
-   ------------------------------------------------------------
-
-   This controller does NOT use the old:
-
-   - OffenceHeatmapEngine
-   - OffenceMapRenderer
-   - old SourceEngine UI flow
-   - old TargetEngine UI flow
-
-   Spatial authority is:
-
-   OffenceStore
-        ↓
-   OffenceSpatialEngine
-        ↓
-   OffenceSpatialRenderer
-        ↓
-   OffenceUIController
-
+   Version:
+   3.0.1
 ============================================================ */
 
-
-(function (
-    window,
-    document
-) {
+(function () {
 
     "use strict";
 
 
     /* ========================================================
        ROOT NAMESPACE
+
+       IMPORTANT:
+       Do not depend on an IIFE parameter here.
+
+       The application already uses:
+
+           window.GG
+
+       We retrieve/create it directly from window.
     ======================================================== */
 
     window.GG =
@@ -104,14 +32,61 @@
         {};
 
 
-    window.GG.Offence =
-        window.GG.Offence ||
-        {};
-
-
     const GG =
         window.GG;
 
+
+    /* ========================================================
+       OFFENCE NAMESPACE
+    ======================================================== */
+
+    GG.Offence =
+        GG.Offence ||
+        {};
+
+
+    /* ========================================================
+       MODULE GUARD
+
+       Remove an old UI instance if this script is reloaded.
+
+       We do NOT delete:
+       - Store
+       - SpatialEngine
+       - SpatialRenderer
+    ======================================================== */
+
+    if (
+        GG.Offence
+            .UIController
+            ?.destroy &&
+        typeof
+        GG.Offence
+            .UIController
+            .destroy ===
+        "function"
+    ) {
+
+        try {
+
+            GG.Offence
+                .UIController
+                .destroy();
+
+        }
+
+        catch (
+            error
+        ) {
+
+            console.warn(
+                "⚠ Previous OffenceUIController cleanup failed:",
+                error
+            );
+
+        }
+
+    }
 
 
     /* ========================================================
@@ -120,23 +95,13 @@
 
     const UIController = {
 
-
-        /* ====================================================
-           MODULE INFORMATION
-        ==================================================== */
-
         VERSION:
-            "3.1.0",
+            "3.0.1",
 
 
         MODULE_NAME:
             "OffenceUIController",
 
-
-
-        /* ====================================================
-           LIFECYCLE STATE
-        ==================================================== */
 
         initialized:
             false,
@@ -146,15 +111,6 @@
             false,
 
 
-        preparing:
-            false,
-
-
-
-        /* ====================================================
-           UI STATE
-        ==================================================== */
-
         panelOpen:
             false,
 
@@ -163,13 +119,8 @@
             null,
 
 
-
-        /* ====================================================
-           PREPARATION STATE
-        ==================================================== */
-
-        __preparePromise:
-            null,
+        preparing:
+            false,
 
 
         lastPreparedAt:
@@ -180,220 +131,90 @@
             null,
 
 
+        __preparePromise:
+            null,
 
-        /* ====================================================
-           CONFIGURATION
 
-           BUTTON_TOP controls the vertical position of the
-           OFFENCE button.
+        elements:
+            {},
 
-           We intentionally place it lower on the right side
-           so that it does not overlap:
-
-           - Chat / AI button
-           - Monthly Status panel
-           - Leaflet controls
-
-           If required later, only BUTTON_TOP needs adjustment.
-        ==================================================== */
 
         CONFIG: {
-
-
-            /* ================================================
-               DOM IDS
-            ================================================ */
 
             BUTTON_ID:
                 "gg-offence-main-button",
 
-
             PANEL_ID:
                 "gg-offence-analysis-panel",
-
-
-            STYLE_ID:
-                "gg-offence-ui-controller-style",
-
-
-            STATUS_ID:
-                "gg-offence-analysis-status",
-
-
-            SOURCE_BUTTON_ID:
-                "gg-offence-source-button",
-
-
-            TARGET_BUTTON_ID:
-                "gg-offence-target-button",
-
-
-            CLEAR_BUTTON_ID:
-                "gg-offence-clear-button",
-
 
             CLOSE_BUTTON_ID:
                 "gg-offence-close-button",
 
+            SOURCE_BUTTON_ID:
+                "gg-offence-source-button",
 
+            TARGET_BUTTON_ID:
+                "gg-offence-target-button",
 
-            /* ================================================
-               DESKTOP POSITION
+            CLEAR_BUTTON_ID:
+                "gg-offence-clear-button",
 
-               OFFENCE button appears below the upper-right
-               floating controls.
+            STATUS_ID:
+                "gg-offence-status",
 
-               Adjust BUTTON_TOP only if your actual Chat button
-               occupies a different vertical position.
-            ================================================ */
-
-            BUTTON_TOP:
-                470,
-
-
-            BUTTON_RIGHT:
-                18,
-
-
-
-            /* ================================================
-               PANEL
-            ================================================ */
-
-            PANEL_GAP:
-                10,
-
-
-            PANEL_WIDTH:
-                236,
-
-
-
-            /* ================================================
-               STACKING
-            ================================================ */
-
-            Z_INDEX:
-                10020,
-
-
-
-            /* ================================================
-               STORE WAIT CONFIGURATION
-
-               240 × 250 ms
-               =
-               maximum 60 seconds.
-
-               Normally the Store becomes ready much earlier.
-            ================================================ */
-
-            STORE_WAIT_INTERVAL:
-                250,
-
+            STYLE_ID:
+                "gg-offence-ui-styles",
 
             STORE_WAIT_ATTEMPTS:
-                240
+                240,
 
-
-        },
-
-
-
-        /* ====================================================
-           DOM ELEMENT REFERENCES
-        ==================================================== */
-
-        elements: {
-
-
-            button:
-                null,
-
-
-            panel:
-                null,
-
-
-            status:
-                null,
-
-
-            sourceButton:
-                null,
-
-
-            targetButton:
-                null,
-
-
-            clearButton:
-                null,
-
-
-            closeButton:
-                null
-
+            STORE_WAIT_INTERVAL:
+                250
 
         },
-
 
 
         /* ====================================================
            GET OFFENCE STORE
-
-           Authoritative case/POR data source.
         ==================================================== */
 
         getStore:
             function () {
-
 
                 return window.GG
                     ?.Offence
                     ?.Store ||
                     null;
 
-
             },
-
 
 
         /* ====================================================
            GET SPATIAL ENGINE
-
-           Authoritative Source ↔ Target relationship engine.
         ==================================================== */
 
         getSpatialEngine:
             function () {
-
 
                 return window.GG
                     ?.Offence
                     ?.SpatialEngine ||
                     null;
 
-
             },
-
 
 
         /* ====================================================
            GET SPATIAL RENDERER
-
-           Authoritative Leaflet polygon renderer.
         ==================================================== */
 
         getSpatialRenderer:
             function () {
 
-
                 return window.GG
                     ?.Offence
                     ?.SpatialRenderer ||
                     null;
-
 
             },
 
