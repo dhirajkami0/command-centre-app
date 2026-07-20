@@ -4235,29 +4235,61 @@ MapRenderer.getTargetPolygonHeatColor =
             );
 
 
+        /*
+         * HIGH-CONTRAST TARGET RANGE SCALE
+         *
+         * 0.00 - 0.10  Bright Yellow
+         * 0.10 - 0.20  Golden Yellow
+         * 0.20 - 0.35  Orange
+         * 0.35 - 0.50  Deep Orange
+         * 0.50 - 0.65  Orange Red
+         * 0.65 - 0.75  Bright Red
+         * 0.75 - 0.90  Dark Red
+         * 0.90 - 1.00  Deep Maroon
+         */
+
+
         if (
-            value >= 0.80
+            value >= 0.90
         ) {
 
-            return "#7A0000"; // Deep Dark Red
+            return "#67000D";
 
         }
 
 
         if (
-            value >= 0.60
+            value >= 0.75
         ) {
 
-            return "#E60000"; // Strong Red
+            return "#A50F15";
 
         }
 
 
         if (
-            value >= 0.40
+            value >= 0.65
         ) {
 
-            return "#FF3D00"; // Orange Red
+            return "#E31A1C";
+
+        }
+
+
+        if (
+            value >= 0.50
+        ) {
+
+            return "#FF3D00";
+
+        }
+
+
+        if (
+            value >= 0.35
+        ) {
+
+            return "#FF6D00";
 
         }
 
@@ -4266,12 +4298,21 @@ MapRenderer.getTargetPolygonHeatColor =
             value >= 0.20
         ) {
 
-            return "#FF9800"; // Vivid Orange
+            return "#FF9800";
 
         }
 
 
-        return "#FFD600"; // Strong Yellow
+        if (
+            value >= 0.10
+        ) {
+
+            return "#FFC400";
+
+        }
+
+
+        return "#FFEA00";
 
     };
     /* =====================================================
