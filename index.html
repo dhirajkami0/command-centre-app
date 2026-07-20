@@ -35614,18 +35614,49 @@ let villageHiddenGISLayers =
    Staff untouched.
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE / BTR CANVAS INTERACTION CONTROLLER
+
+   VILLAGE ON
+   ------------------------------------------------------------
+   - BTR remains visually visible
+   - BTR Canvas becomes NON-interactive
+   - Village Canvas becomes interactive
+   - Village Canvas moves above BTR Canvas
+   - Village tooltip receives mouse events
+   - Staff markers remain untouched
+
+   VILLAGE OFF
+   ------------------------------------------------------------
+   - Village layer hidden by Leaflet Layer Control
+   - BTR Canvas interaction restored
+   - Staff markers remain untouched
+============================================================ */
+
 function setVillageInteractionMode(
   enabled
 ) {
 
   try {
 
+    /* ========================================================
+       1. NORMALIZE MODE
+    ======================================================== */
+
     const villageMode =
       enabled === true;
 
 
     /* ========================================================
-       🏡 VILLAGE CANVAS
+       2. STORE DEBUG STATE
+    ======================================================== */
+
+    window.__villageInteractionActive =
+      villageMode;
+
+
+    /* ========================================================
+       3. GET DEDICATED VILLAGE CANVAS
     ======================================================== */
 
     const villageCanvas =
@@ -35633,118 +35664,181 @@ function setVillageInteractionMode(
         ?._container;
 
 
+    /* ========================================================
+       4. GET ALL LEAFLET VECTOR CANVASES
+    ======================================================== */
+
+    const allCanvases =
+      document.querySelectorAll(
+        ".leaflet-overlay-pane canvas"
+      );
+
+
+    /* ========================================================
+       5. VILLAGE MODE ON
+    ======================================================== */
+
     if(
-      villageCanvas
+      villageMode
     ){
 
-      villageCanvas.style
-        .pointerEvents =
+      allCanvases.forEach(
 
-          villageMode
-            ? "auto"
-            : "none";
+        function(
+          canvas
+        ){
+
+          /* ==================================================
+             🏡 THIS IS VILLAGE CANVAS
+          ================================================== */
+
+          if(
+            canvas ===
+            villageCanvas
+          ){
+
+            /* Enable village mouse interaction */
+
+            canvas.style
+              .setProperty(
+                "pointer-events",
+                "auto",
+                "important"
+              );
+
+
+            /* Keep village Canvas above BTR Canvas */
+
+            canvas.style
+              .setProperty(
+                "z-index",
+                "200"
+              );
+
+
+            return;
+
+          }
+
+
+          /* ==================================================
+             🌲 OTHER VECTOR CANVAS = BTR GIS
+
+             Keep visible, but mouse passes through it.
+          ================================================== */
+
+          canvas.style
+            .setProperty(
+              "pointer-events",
+              "none",
+              "important"
+            );
+
+
+          canvas.style
+            .setProperty(
+              "z-index",
+              "100"
+            );
+
+        }
+
+      );
+
+
+      /* ======================================================
+         DEBUG
+      ====================================================== */
+
+      console.log(
+
+        "🏡 VILLAGE MODE ON",
+
+        {
+          villageCanvas:
+            !!villageCanvas,
+
+          canvasCount:
+            allCanvases.length,
+
+          villageInteraction:
+            true,
+
+          btrInteraction:
+            false,
+
+          staff:
+            "UNCHANGED"
+        }
+
+      );
+
+
+      return;
 
     }
 
 
     /* ========================================================
-       🌲 MAIN BTR CANVAS
-
-       Your map uses preferCanvas, therefore getRenderer()
-       gives us the Canvas renderer used by BTR polygons.
+       6. VILLAGE MODE OFF
     ======================================================== */
 
-    let btrCanvas =
-      null;
+    allCanvases.forEach(
 
-
-    const possibleBTRLayers = [
-
-      window.compartmentLayer,
-
-      window.beatLayer,
-
-      window.rangeLayer,
-
-      window.divisionLayer,
-
-      window.rootLayer
-
-    ];
-
-
-    for(
-      const gisLayer
-      of possibleBTRLayers
-    ){
-
-      if(
-        !gisLayer
+      function(
+        canvas
       ){
 
-        continue;
+        /* ====================================================
+           🏡 VILLAGE CANVAS
+        ==================================================== */
+
+        if(
+          canvas ===
+          villageCanvas
+        ){
+
+          canvas.style
+            .setProperty(
+              "pointer-events",
+              "none",
+              "important"
+            );
+
+
+          canvas.style
+            .setProperty(
+              "z-index",
+              "100"
+            );
+
+
+          return;
+
+        }
+
+
+        /* ====================================================
+           🌲 RESTORE BTR CANVAS
+        ==================================================== */
+
+        canvas.style
+          .setProperty(
+            "pointer-events",
+            "auto",
+            "important"
+          );
+
+
+        canvas.style
+          .setProperty(
+            "z-index",
+            "100"
+          );
 
       }
 
-
-      let firstLayer =
-        null;
-
-
-      if(
-        typeof gisLayer.getLayers ===
-        "function"
-      ){
-
-        firstLayer =
-          gisLayer.getLayers()[0];
-
-      }
-
-
-      if(
-        !firstLayer
-      ){
-
-        continue;
-
-      }
-
-
-      const renderer =
-        firstLayer._renderer;
-
-
-      if(
-        renderer?._container
-      ){
-
-        btrCanvas =
-          renderer._container;
-
-        break;
-
-      }
-
-    }
-
-
-    /* ========================================================
-       🌲 CONTROL BTR CANVAS INTERACTION
-    ======================================================== */
-
-    if(
-      btrCanvas
-    ){
-
-      btrCanvas.style
-        .pointerEvents =
-
-          villageMode
-            ? "none"
-            : "auto";
-
-    }
+    );
 
 
     /* ========================================================
@@ -35753,21 +35847,20 @@ function setVillageInteractionMode(
 
     console.log(
 
-      villageMode
-        ? "🏡 Village interactive | 🌲 BTR visible but non-interactive"
-        : "🌲 BTR interactive | 🏡 Village mode off",
+      "🌲 VILLAGE MODE OFF",
 
       {
+        canvasCount:
+          allCanvases.length,
 
-        villageCanvas:
-          !!villageCanvas,
+        villageInteraction:
+          false,
 
-        btrCanvas:
-          !!btrCanvas,
+        btrInteraction:
+          true,
 
         staff:
           "UNCHANGED"
-
       }
 
     );
@@ -35780,7 +35873,7 @@ function setVillageInteractionMode(
 
     console.error(
 
-      "❌ Village interaction mode failed:",
+      "❌ setVillageInteractionMode failed:",
 
       err
 
