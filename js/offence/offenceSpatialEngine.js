@@ -3649,14 +3649,9 @@ SpatialEngine.waitForStoreAndBuild =
                GET POR CASCADES
             ================================================== */
 
-            const cascades =
-
-              typeof Store.getPorCascades ===
-              "function"
-
-                ? Store.getPorCascades()
-
-                : [];
+const cascades =
+  SpatialEngine
+    .getStoreCascades();
 
 
             /* ==================================================
