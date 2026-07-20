@@ -35019,10 +35019,50 @@ window.gridRootLayer =
    313 VILLAGE POLYGONS
    LAZY LOADED FROM GEOJSON
 ============================================================ */
+/* ============================================================
+   🏡 VILLAGE BOUNDARY PANE
+   Keeps village polygons above normal BTR GIS polygons
+============================================================ */
+
+if(
+  !map.getPane(
+    "villageBoundaryPane"
+  )
+){
+
+  map.createPane(
+    "villageBoundaryPane"
+  );
+
+}
+
+
+/* ============================================================
+   🏡 VILLAGE PANE PRIORITY
+============================================================ */
+
+map.getPane(
+  "villageBoundaryPane"
+).style.zIndex =
+  450;
+
+
+/* ============================================================
+   🖱 ALLOW VILLAGE POLYGON HOVER
+============================================================ */
+
+map.getPane(
+  "villageBoundaryPane"
+).style.pointerEvents =
+  "auto";
+    
+  /* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+   313 VILLAGE POLYGONS
+============================================================ */
 
 /* ============================================================
    🏡 VILLAGE BOUNDARY LAYER
-   313 VILLAGE POLYGONS
 ============================================================ */
 
 var villageBoundaryLayer =
@@ -35031,7 +35071,18 @@ var villageBoundaryLayer =
     {
 
       /* ========================================================
-         🎨 DEFAULT VILLAGE POLYGON STYLE
+         🔥 DEDICATED VILLAGE PANE
+      ======================================================== */
+
+      pane:
+        "villageBoundaryPane",
+
+      interactive:
+        true,
+
+
+      /* ========================================================
+         🎨 DEFAULT STYLE
       ======================================================== */
 
       style: function(
@@ -35061,7 +35112,7 @@ var villageBoundaryLayer =
 
 
       /* ========================================================
-         🏡 EACH VILLAGE FEATURE
+         🏡 EACH VILLAGE
       ======================================================== */
 
       onEachFeature: function(
@@ -35073,11 +35124,6 @@ var villageBoundaryLayer =
           feature.properties ||
           {};
 
-
-        /* ======================================================
-           🏡 READ VILLAGE ATTRIBUTES
-           Supports multiple possible property names
-        ====================================================== */
 
         const villageName =
           p.Village_Name ||
@@ -35111,7 +35157,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🏷 HOVER TOOLTIP
+           🏷 TOOLTIP HTML
         ====================================================== */
 
         const tooltipHTML = `
@@ -35136,7 +35182,6 @@ var villageBoundaryLayer =
 
             </div>
 
-
             <div>
 
               <b>Village Code:</b>
@@ -35144,14 +35189,12 @@ var villageBoundaryLayer =
 
             </div>
 
-
             <div>
 
               <b>Block:</b>
               ${blockName}
 
             </div>
-
 
             <div>
 
@@ -35166,7 +35209,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🖱 BIND HOVER TOOLTIP
+           🏷 BIND TOOLTIP
         ====================================================== */
 
         layer.bindTooltip(
@@ -35193,22 +35236,22 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🖱 HOVER EFFECT
+           🖱 MOUSE OVER
         ====================================================== */
 
-        layer.on({
+        layer.on(
 
-          /* ------------------------------
-             Mouse enters village polygon
-          ------------------------------ */
+          "mouseover",
 
-          mouseover: function(
+          function(
             e
           ) {
 
             const target =
               e.target;
 
+
+            /* Highlight village */
 
             target.setStyle({
 
@@ -35230,24 +35273,57 @@ var villageBoundaryLayer =
             });
 
 
-            /* Bring selected village forward */
+            /* Explicitly open tooltip */
+
+            target.openTooltip(
+              e.latlng
+            );
+
+          }
+
+        );
+
+
+        /* ======================================================
+           🖱 MOUSE MOVE
+           Keeps sticky tooltip following cursor
+        ====================================================== */
+
+        layer.on(
+
+          "mousemove",
+
+          function(
+            e
+          ) {
+
+            const tooltip =
+              layer.getTooltip();
 
             if(
-              target.bringToFront
-            ) {
+              tooltip
+            ){
 
-              target.bringToFront();
+              tooltip.setLatLng(
+                e.latlng
+              );
 
             }
 
-          },
+          }
+
+        );
 
 
-          /* ------------------------------
-             Mouse leaves village polygon
-          ------------------------------ */
+        /* ======================================================
+           🖱 MOUSE OUT
+        ====================================================== */
 
-          mouseout: function(
+        layer.on(
+
+          "mouseout",
+
+          function(
             e
           ) {
 
@@ -35256,16 +35332,20 @@ var villageBoundaryLayer =
                 e.target
               );
 
+
+            e.target
+              .closeTooltip();
+
           }
 
-        });
+        );
 
 
         /* ======================================================
            🖱 CLICK POPUP
         ====================================================== */
 
-        const popupHTML = `
+        layer.bindPopup(`
 
           <div
             style="
@@ -35287,52 +35367,30 @@ var villageBoundaryLayer =
 
             </div>
 
+            <hr>
 
-            <hr
-              style="
-                margin:5px 0 8px 0;
-              "
-            >
+            <b>Village Code:</b>
+            ${villageCode}
 
+            <br>
 
-            <div>
+            <b>Block:</b>
+            ${blockName}
 
-              <b>Village Code:</b>
-              ${villageCode}
+            <br>
 
-            </div>
-
-
-            <div>
-
-              <b>Block:</b>
-              ${blockName}
-
-            </div>
-
-
-            <div>
-
-              <b>District:</b>
-              ${districtName}
-
-            </div>
+            <b>District:</b>
+            ${districtName}
 
           </div>
 
-        `;
-
-
-        layer.bindPopup(
-          popupHTML
-        );
+        `);
 
       }
 
     }
 
   );
-
 
 /* ============================================================
    🏡 VILLAGE BOUNDARY LAZY LOAD STATE
