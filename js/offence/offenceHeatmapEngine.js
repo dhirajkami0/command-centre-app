@@ -6801,10 +6801,21 @@
        ===================================================== */
 
 
-    HeatmapEngine.getAggregatedTargetPolygons =
-        function () {
+HeatmapEngine.getAggregatedTargetPolygons =
+    function () {
 
-            return HeatmapEngine
+        /*
+         * STEP 1
+         *
+         * Aggregate the real TARGET polygons.
+         *
+         * These contain the authoritative
+         * TARGET offence counts.
+         */
+
+        const targets =
+
+            HeatmapEngine
                 .aggregatePolygonEntries(
 
                     HeatmapEngine
@@ -6812,7 +6823,267 @@
 
                 );
 
-        };
+
+        /*
+         * STEP 2
+         *
+         * Get SOURCE polygons.
+         *
+         * SOURCE already contains all operational
+         * Range polygons currently displayed on map.
+         *
+         * We use SOURCE ONLY as a GIS geometry source.
+         * We DO NOT copy SOURCE offence counts.
+         */
+
+        const sources =
+
+            HeatmapEngine
+                .aggregatePolygonEntries(
+
+                    HeatmapEngine
+                        .getSourcePolygons()
+
+                );
+
+
+        /*
+         * STEP 3
+         *
+         * Build an index of existing TARGET ranges.
+         */
+
+        const targetRangeIndex =
+
+            new Map();
+
+
+        targets.forEach(
+
+            function (
+                entry
+            ) {
+
+                const rangeName =
+
+                    HeatmapEngine
+                        .normalizeGISName(
+
+                            entry.range ||
+                            entry.name ||
+                            ""
+
+                        );
+
+
+                if (
+                    rangeName
+                ) {
+
+                    targetRangeIndex
+                        .set(
+
+                            rangeName,
+
+                            entry
+
+                        );
+
+                }
+
+            }
+
+        );
+
+
+        /*
+         * STEP 4
+         *
+         * Every operational Range represented
+         * in SOURCE must also exist in TARGET.
+         *
+         * If a Range has no TARGET offence,
+         * create a zero-count TARGET polygon.
+         */
+
+        sources.forEach(
+
+            function (
+                sourceEntry
+            ) {
+
+                const rangeName =
+
+                    HeatmapEngine
+                        .normalizeGISName(
+
+                            sourceEntry.range ||
+                            sourceEntry.name ||
+                            ""
+
+                        );
+
+
+                if (
+                    !rangeName
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Real TARGET entry already exists.
+                 *
+                 * Keep its actual offence count.
+                 */
+
+                if (
+                    targetRangeIndex
+                        .has(
+                            rangeName
+                        )
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * No TARGET hotspot exists
+                 * for this Range.
+                 *
+                 * Add the Range with zero TARGET count.
+                 *
+                 * IMPORTANT:
+                 * Reuse only GIS geometry.
+                 * Never copy SOURCE offence counts.
+                 */
+
+                const zeroTarget = {
+
+                    key:
+
+                        "RANGE::" +
+                        rangeName,
+
+
+                    spatialType:
+
+                        "RANGE",
+
+
+                    type:
+
+                        "TARGET",
+
+
+                    name:
+
+                        sourceEntry.name ||
+                        sourceEntry.range ||
+                        rangeName,
+
+
+                    range:
+
+                        sourceEntry.range ||
+                        sourceEntry.name ||
+                        rangeName,
+
+
+                    compartment:
+
+                        "",
+
+
+                    /*
+                     * Reuse Range GIS geometry.
+                     */
+
+                    features:
+
+                        Array.isArray(
+                            sourceEntry.features
+                        )
+
+                            ? sourceEntry
+                                .features
+                                .slice()
+
+                            : [],
+
+
+                    /*
+                     * TARGET statistics.
+                     *
+                     * Zero means:
+                     * valid TARGET Range,
+                     * but currently no TARGET offences.
+                     */
+
+                    heatWeight:
+
+                        0,
+
+
+                    offenceCount:
+
+                        0,
+
+
+                    hotspotCount:
+
+                        0,
+
+
+                    hotspots:
+
+                        [],
+
+
+                    porKeys:
+
+                        [],
+
+
+                    caseIds:
+
+                        []
+
+                };
+
+
+                targets.push(
+                    zeroTarget
+                );
+
+
+                targetRangeIndex
+                    .set(
+
+                        rangeName,
+
+                        zeroTarget
+
+                    );
+
+            }
+
+        );
+
+
+        /*
+         * STEP 5
+         *
+         * Return complete TARGET Range collection.
+         */
+
+        return targets;
+
+    };
 
 
     /* =====================================================
