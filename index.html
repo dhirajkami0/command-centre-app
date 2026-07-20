@@ -35578,136 +35578,79 @@ function setVillageInteractionMode(
        Therefore we recursively process every child layer.
     ======================================================== */
 
-    function setLayerInteraction(
-      layer,
+function setLayerInteraction(
+  layer,
+  interactive
+) {
+
+  if(
+    !layer
+  ){
+    return;
+  }
+
+
+  /* ======================================================
+     ACTUAL SVG POLYGON PATH
+  ====================================================== */
+
+  if(
+    layer._path
+  ){
+
+    layer._path.style.pointerEvents =
       interactive
-    ) {
+        ? "auto"
+        : "none";
 
-      /* ------------------------------------------------------
-         Safety
-      ------------------------------------------------------ */
+  }
 
-      if(
-        !layer
+
+  /* ======================================================
+     CLOSE TOOLTIP WHEN DISABLING
+  ====================================================== */
+
+  if(
+    !interactive
+  ){
+
+    try {
+
+      layer.closeTooltip?.();
+
+    }
+    catch(err){}
+
+  }
+
+
+  /* ======================================================
+     PROCESS CHILD GEOJSON POLYGONS
+  ====================================================== */
+
+  if(
+    typeof layer.eachLayer ===
+    "function"
+  ){
+
+    layer.eachLayer(
+
+      function(
+        child
       ){
 
-        return;
-
-      }
-
-
-      /* ======================================================
-         A. ACTUAL SVG PATH
-
-         This is the most important part.
-
-         pointerEvents = none
-         means mouse passes through BTR polygon.
-
-         pointerEvents = auto
-         restores BTR polygon interaction.
-      ====================================================== */
-
-      if(
-        layer._path
-      ){
-
-        layer._path.style.pointerEvents =
-
+        setLayerInteraction(
+          child,
           interactive
-            ? "auto"
-            : "none";
-
-      }
-
-
-      /* ======================================================
-         B. LEAFLET INTERACTIVE STATE
-      ====================================================== */
-
-      if(
-        layer.options
-      ){
-
-        layer.options.interactive =
-          interactive;
-
-      }
-
-
-      /* ======================================================
-         C. CLOSE TOOLTIP WHEN DISABLING LAYER
-      ====================================================== */
-
-      if(
-        !interactive
-      ){
-
-        try {
-
-          layer.closeTooltip?.();
-
-        }
-
-        catch(err) {}
-
-      }
-
-
-      /* ======================================================
-         D. CLOSE POPUP IF NEEDED
-      ====================================================== */
-
-      if(
-        !interactive
-      ){
-
-        try {
-
-          layer.closePopup?.();
-
-        }
-
-        catch(err) {}
-
-      }
-
-
-      /* ======================================================
-         E. RECURSE INTO CHILD LAYERS
-
-         Handles:
-         L.GeoJSON
-         L.LayerGroup
-         FeatureGroup
-      ====================================================== */
-
-      if(
-        typeof layer.eachLayer ===
-        "function"
-      ){
-
-        layer.eachLayer(
-
-          function(
-            child
-          ){
-
-            setLayerInteraction(
-
-              child,
-
-              interactive
-
-            );
-
-          }
-
         );
 
       }
 
-    }
+    );
+
+  }
+
+}
 
 
     /* ========================================================
