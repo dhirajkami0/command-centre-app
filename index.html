@@ -35044,6 +35044,10 @@ window.gridRootLayer =
      setVillageInteractionMode()
 ============================================================ */
 
+
+
+
+
 /* ============================================================
    🏡 DEDICATED VILLAGE CANVAS RENDERER
 
@@ -35074,6 +35078,27 @@ const villageCanvasRenderer =
    - GeoJSON is added later by loadVillageBoundaryLayer()
 ============================================================ */
 
+/* ============================================================
+   🏡 CANONICAL VILLAGE BOUNDARY CACHE
+   ------------------------------------------------------------
+   NEW polygon-based village canonical metadata.
+
+   IMPORTANT:
+   - Does NOT replace window.__villageCache
+   - window.__villageCache remains old point-based village data
+   - Polygon geometry remains in villageBoundaryLayer
+   - Canonical metadata is stored here for AI / Offence / GIS
+============================================================ */
+
+window.__villageBoundaryCache =
+  window.__villageBoundaryCache ||
+  [];
+
+
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+============================================================ */
+
 var villageBoundaryLayer =
   L.geoJSON(
     null,
@@ -35095,40 +35120,39 @@ var villageBoundaryLayer =
         true,
 
 
-/* ========================================================
-   🎨 DEFAULT VILLAGE POLYGON STYLE
-======================================================== */
+      /* ========================================================
+         🎨 DEFAULT VILLAGE POLYGON STYLE
+      ======================================================== */
 
-/* ========================================================
-   🎨 DEFAULT VILLAGE POLYGON STYLE
-======================================================== */
+      style: function(
+        feature
+      ) {
 
-style: function(
-  feature
-) {
+        return {
 
-  return {
+          /* Muted dusty-rose boundary */
 
-    /* Muted dusty-rose boundary */
-    color:
-      "#C47A8A",
+          color:
+            "#C47A8A",
 
-    weight:
-      1.4,
+          weight:
+            1.4,
 
-    opacity:
-      0.8,
+          opacity:
+            0.8,
 
-    /* Soft rose fill */
-    fillColor:
-      "#B76E79",
 
-    fillOpacity:
-      0.04
+          /* Soft rose fill */
 
-  };
+          fillColor:
+            "#B76E79",
 
-},
+          fillOpacity:
+            0.04
+
+        };
+
+      },
 
 
       /* ========================================================
@@ -35150,20 +35174,60 @@ style: function(
 
 
         /* ======================================================
+           🔧 SAFE VALUE HELPER
+        ====================================================== */
+
+        function cleanVillageValue(
+          value
+        ) {
+
+          if(
+            value === undefined ||
+            value === null
+          ){
+
+            return null;
+
+          }
+
+
+          const cleaned =
+            String(
+              value
+            ).trim();
+
+
+          return cleaned ||
+            null;
+
+        }
+
+
+        /* ======================================================
            🏡 VILLAGE NAME
         ====================================================== */
 
         const villageName =
 
-          p.Village_Name ||
+          cleanVillageValue(
+            p.Village_Name
+          ) ||
 
-          p.Vill_name ||
+          cleanVillageValue(
+            p.Vill_name
+          ) ||
 
-          p.Vill_Name ||
+          cleanVillageValue(
+            p.Vill_Name
+          ) ||
 
-          p.village_name ||
+          cleanVillageValue(
+            p.village_name
+          ) ||
 
-          p.name ||
+          cleanVillageValue(
+            p.name
+          ) ||
 
           "Unknown Village";
 
@@ -35174,15 +35238,23 @@ style: function(
 
         const villageCode =
 
-          p.Village_Code ||
+          cleanVillageValue(
+            p.Village_Code
+          ) ||
 
-          p.Vill_LGD ||
+          cleanVillageValue(
+            p.Vill_LGD
+          ) ||
 
-          p.Vill_Code ||
+          cleanVillageValue(
+            p.Vill_Code
+          ) ||
 
-          p.village_code ||
+          cleanVillageValue(
+            p.village_code
+          ) ||
 
-          "-";
+          null;
 
 
         /* ======================================================
@@ -35191,15 +35263,23 @@ style: function(
 
         const blockName =
 
-          p.Block_Name ||
+          cleanVillageValue(
+            p.Block_Name
+          ) ||
 
-          p.Sub_dist ||
+          cleanVillageValue(
+            p.Sub_dist
+          ) ||
 
-          p.Block ||
+          cleanVillageValue(
+            p.Block
+          ) ||
 
-          p.block ||
+          cleanVillageValue(
+            p.block
+          ) ||
 
-          "-";
+          null;
 
 
         /* ======================================================
@@ -35208,11 +35288,375 @@ style: function(
 
         const districtName =
 
-          p.District ||
+          cleanVillageValue(
+            p.District
+          ) ||
 
-          p.district ||
+          cleanVillageValue(
+            p.district
+          ) ||
 
           "Alipurduar";
+
+
+        /* ======================================================
+           🔤 CLEAN / NORMALIZED VILLAGE NAME
+        ====================================================== */
+
+        const cleanName =
+
+          villageName &&
+          villageName !==
+            "Unknown Village"
+
+            ? villageName
+                .toUpperCase()
+                .trim()
+
+            : null;
+
+
+        /* ======================================================
+           🏡 BUILD CANONICAL VILLAGE OBJECT
+
+           IMPORTANT:
+           Geometry is intentionally NOT stored here.
+           Geometry remains in villageBoundaryLayer.
+        ====================================================== */
+
+        const canonicalVillage =
+        {
+
+          /* ====================================================
+             🔑 IDENTITY
+          ==================================================== */
+
+          id:
+            villageCode,
+
+          villageCode:
+            villageCode,
+
+          name:
+            villageName,
+
+          cleanName:
+            cleanName,
+
+
+          /* ====================================================
+             🏘 VILLAGE CLASSIFICATION
+          ==================================================== */
+
+          category:
+            cleanVillageValue(
+              p.Vill_Cat
+            ),
+
+          villageType:
+            null,
+
+
+          /* ====================================================
+             🗺 ADMINISTRATIVE HIERARCHY
+          ==================================================== */
+
+          gramPanchayat:
+            null,
+
+          block:
+            blockName,
+
+          subdivision:
+            null,
+
+          district:
+            districtName,
+
+          state:
+            "West Bengal",
+
+          country:
+            "India",
+
+
+          /* ====================================================
+             👮 POLICE JURISDICTION
+          ==================================================== */
+
+          policeStation:
+            null,
+
+          policeStationCode:
+            null,
+
+
+          /* ====================================================
+             📮 POSTAL INFORMATION
+          ==================================================== */
+
+          pinCode:
+            null,
+
+          postOffice:
+            null,
+
+
+          /* ====================================================
+             🏛 GOVERNMENT / LGD CODES
+          ==================================================== */
+
+          stateLGD:
+            cleanVillageValue(
+              p.State_LGD
+            ),
+
+          districtLGD:
+            cleanVillageValue(
+              p.Dist_LGD
+            ),
+
+          subdistrictLGD:
+            cleanVillageValue(
+              p.Subdis_LGD
+            ),
+
+          gramPanchayatLGD:
+            null,
+
+
+          /* ====================================================
+             🌲 FOREST JURISDICTION
+             Can be enriched later using BTR / Jaldapara GIS
+          ==================================================== */
+
+          forestCircle:
+            null,
+
+          forestDivision:
+            null,
+
+          forestRange:
+            null,
+
+          forestBeat:
+            null,
+
+          forestCompartment:
+            null,
+
+          protectedArea:
+            null,
+
+
+          /* ====================================================
+             📍 LOCATION
+             Can later store polygon centroid
+          ==================================================== */
+
+          latitude:
+            null,
+
+          longitude:
+            null,
+
+
+          /* ====================================================
+             📊 DEMOGRAPHIC INFORMATION
+          ==================================================== */
+
+          population:
+            null,
+
+          malePopulation:
+            null,
+
+          femalePopulation:
+            null,
+
+          households:
+            null,
+
+          censusYear:
+            null,
+
+
+          /* ====================================================
+             🔤 ALIASES
+             Can later contain alternate village spellings
+          ==================================================== */
+
+          aliases:
+            [],
+
+
+          /* ====================================================
+             🔎 SEARCH TOKENS
+          ==================================================== */
+
+          searchTokens:
+            [
+
+              villageName,
+
+              cleanName,
+
+              villageCode,
+
+              blockName,
+
+              districtName,
+
+              "West Bengal",
+
+              "India"
+
+            ]
+            .filter(
+              Boolean
+            ),
+
+
+          /* ====================================================
+             📦 DATA SOURCE
+          ==================================================== */
+
+          source:
+          {
+
+            dataset:
+              "Alipurduar_4_Blocks_Villages_Without_Forest",
+
+            geometrySource:
+              "geojson/Alipurduar_4_Blocks_Villages_Without_Forest.geojson",
+
+            geometryStoredInCanonicalCache:
+              false
+
+          },
+
+
+          /* ====================================================
+             🔄 DATA AVAILABILITY STATUS
+          ==================================================== */
+
+          dataStatus:
+          {
+
+            hasPoliceStation:
+              false,
+
+            hasPinCode:
+              false,
+
+            hasPostOffice:
+              false,
+
+            hasGramPanchayat:
+              false,
+
+            hasCoordinates:
+              false,
+
+            hasForestJurisdiction:
+              false,
+
+            hasDemographics:
+              false
+
+          },
+
+
+          /* ====================================================
+             🧩 SCHEMA VERSION
+          ==================================================== */
+
+          schemaVersion:
+            1
+
+        };
+
+
+        /* ======================================================
+           💾 STORE CANONICAL VILLAGE IN MEMORY
+
+           Prevent duplicate entries if addData() is ever called
+           more than once for the same village.
+        ====================================================== */
+
+        const existingVillageIndex =
+
+          window
+            .__villageBoundaryCache
+            .findIndex(
+
+              function(
+                village
+              ){
+
+                if(
+                  villageCode
+                ){
+
+                  return (
+                    village.villageCode ===
+                    villageCode
+                  );
+
+                }
+
+
+                return (
+
+                  village.cleanName ===
+                    cleanName &&
+
+                  village.block ===
+                    blockName
+
+                );
+
+              }
+
+            );
+
+
+        if(
+          existingVillageIndex ===
+          -1
+        ){
+
+          window
+            .__villageBoundaryCache
+            .push(
+              canonicalVillage
+            );
+
+        }
+
+        else {
+
+          window
+            .__villageBoundaryCache[
+              existingVillageIndex
+            ] =
+              canonicalVillage;
+
+        }
+
+
+        /* ======================================================
+           🔗 ATTACH CANONICAL OBJECT TO LEAFLET LAYER
+
+           Allows direct access later:
+
+           layer.canonicalVillage
+
+           This does NOT duplicate polygon geometry.
+        ====================================================== */
+
+        layer.canonicalVillage =
+          canonicalVillage;
 
 
         /* ======================================================
@@ -35245,7 +35689,7 @@ style: function(
             <div>
 
               <b>Village Code:</b>
-              ${villageCode}
+              ${villageCode || "-"}
 
             </div>
 
@@ -35253,7 +35697,7 @@ style: function(
             <div>
 
               <b>Block:</b>
-              ${blockName}
+              ${blockName || "-"}
 
             </div>
 
@@ -35313,38 +35757,30 @@ style: function(
               e.target;
 
 
-            /* --------------------------------
-               Highlight village
-            -------------------------------- */
+            /* ==================================================
+               🖱 HOVERED VILLAGE STYLE
+            ================================================== */
 
-/* ========================================================
-   🖱 HOVERED VILLAGE STYLE
-======================================================== */
+            target.setStyle(
+              {
 
-/* ========================================================
-   🖱 HOVERED VILLAGE STYLE
-======================================================== */
+                color:
+                  "#D99AA7",
 
-target.setStyle(
-  {
+                weight:
+                  2.5,
 
-    color:
-      "#D99AA7",
+                opacity:
+                  1,
 
-    weight:
-      2.5,
+                fillColor:
+                  "#C98591",
 
-    opacity:
-      1,
+                fillOpacity:
+                  0.12
 
-    fillColor:
-      "#C98591",
-
-    fillOpacity:
-      0.12
-
-  }
-);
+              }
+            );
 
 
             /* --------------------------------
@@ -35495,7 +35931,7 @@ target.setStyle(
             <div>
 
               <b>Village Code:</b>
-              ${villageCode}
+              ${villageCode || "-"}
 
             </div>
 
@@ -35503,7 +35939,7 @@ target.setStyle(
             <div>
 
               <b>Block:</b>
-              ${blockName}
+              ${blockName || "-"}
 
             </div>
 
