@@ -35044,10 +35044,56 @@ window.gridRootLayer =
      setVillageInteractionMode()
 ============================================================ */
 
+/* ============================================================
+   🏡 DEDICATED VILLAGE CANVAS RENDERER
+
+   IMPORTANT:
+   - BTR GIS uses its existing Canvas renderer
+   - Village boundaries use this separate Canvas renderer
+   - Both BTR and Village remain visually visible
+   - Interaction can be controlled separately
+   - Staff markers are NOT affected
+============================================================ */
+
+const villageCanvasRenderer =
+  L.canvas(
+    {
+      padding:
+        0.5
+    }
+  );
+
+
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+
+   IMPORTANT:
+   - KEEP THIS
+   - There must be ONLY ONE villageBoundaryLayer
+   - Starts empty
+   - GeoJSON is added later by loadVillageBoundaryLayer()
+============================================================ */
+
 var villageBoundaryLayer =
   L.geoJSON(
     null,
     {
+
+      /* ========================================================
+         🖼 USE DEDICATED VILLAGE CANVAS
+      ======================================================== */
+
+      renderer:
+        villageCanvasRenderer,
+
+
+      /* ========================================================
+         🖱 ENABLE VILLAGE INTERACTION
+      ======================================================== */
+
+      interactive:
+        true,
+
 
       /* ========================================================
          🎨 DEFAULT VILLAGE POLYGON STYLE
@@ -35059,31 +35105,17 @@ var villageBoundaryLayer =
 
         return {
 
-          /* Village boundary */
-
           color:
             "#32CD32",
-
-
-          /* Boundary thickness */
 
           weight:
             1.5,
 
-
-          /* Boundary visibility */
-
           opacity:
             0.9,
 
-
-          /* Village polygon fill */
-
           fillColor:
             "#90EE90",
-
-
-          /* Keep fill light so map remains visible */
 
           fillOpacity:
             0.08
@@ -35103,7 +35135,7 @@ var villageBoundaryLayer =
       ) {
 
         /* ======================================================
-           📦 GET FEATURE PROPERTIES
+           📦 GET VILLAGE PROPERTIES
         ====================================================== */
 
         const p =
@@ -35178,7 +35210,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🏷 VILLAGE TOOLTIP HTML
+           🏷 TOOLTIP HTML
         ====================================================== */
 
         const tooltipHTML = `
@@ -35233,7 +35265,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🏷 BIND VILLAGE TOOLTIP
+           🏷 BIND HOVER TOOLTIP
         ====================================================== */
 
         layer.bindTooltip(
@@ -35242,25 +35274,14 @@ var villageBoundaryLayer =
 
           {
 
-            /* Tooltip follows mouse */
-
             sticky:
               true,
-
-
-            /* Tooltip position */
 
             direction:
               "top",
 
-
-            /* Tooltip visibility */
-
             opacity:
               0.95,
-
-
-            /* Custom CSS class */
 
             className:
               "village-boundary-tooltip"
@@ -35272,7 +35293,6 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE OVER
-           Highlight village + open tooltip
         ====================================================== */
 
         layer.on(
@@ -35288,31 +35308,33 @@ var villageBoundaryLayer =
 
 
             /* --------------------------------
-               Highlight selected village
+               Highlight village
             -------------------------------- */
 
-            target.setStyle({
+            target.setStyle(
+              {
 
-              color:
-                "#00FF00",
+                color:
+                  "#00FF00",
 
-              weight:
-                3,
+                weight:
+                  3,
 
-              opacity:
-                1,
+                opacity:
+                  1,
 
-              fillColor:
-                "#90EE90",
+                fillColor:
+                  "#90EE90",
 
-              fillOpacity:
-                0.20
+                fillOpacity:
+                  0.20
 
-            });
+              }
+            );
 
 
             /* --------------------------------
-               Explicitly open village tooltip
+               Open village tooltip
             -------------------------------- */
 
             try {
@@ -35323,7 +35345,9 @@ var villageBoundaryLayer =
 
             }
 
-            catch(err) {}
+            catch(
+              err
+            ) {}
 
           }
 
@@ -35332,7 +35356,7 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE MOVE
-           Move sticky tooltip with cursor
+           Move tooltip with mouse
         ====================================================== */
 
         layer.on(
@@ -35361,7 +35385,9 @@ var villageBoundaryLayer =
 
             }
 
-            catch(err) {}
+            catch(
+              err
+            ) {}
 
           }
 
@@ -35370,7 +35396,6 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE OUT
-           Restore original village style
         ====================================================== */
 
         layer.on(
@@ -35394,11 +35419,13 @@ var villageBoundaryLayer =
 
             }
 
-            catch(err) {}
+            catch(
+              err
+            ) {}
 
 
             /* --------------------------------
-               Close tooltip
+               Close village tooltip
             -------------------------------- */
 
             try {
@@ -35408,7 +35435,9 @@ var villageBoundaryLayer =
 
             }
 
-            catch(err) {}
+            catch(
+              err
+            ) {}
 
           }
 
@@ -35416,7 +35445,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🖱 CLICK POPUP HTML
+           🖱 CLICK POPUP
         ====================================================== */
 
         const popupHTML = `
@@ -35478,7 +35507,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🖱 BIND CLICK POPUP
+           🖱 BIND POPUP
         ====================================================== */
 
         layer.bindPopup(
@@ -35553,6 +35582,38 @@ let villageHiddenGISLayers =
    🏡 SET VILLAGE INTERACTION MODE
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE / BTR CANVAS INTERACTION CONTROLLER
+
+   BOTH layers always remain visually visible.
+
+   Village ON:
+   - Village Canvas interactive
+   - BTR Canvas mouse interaction disabled
+
+   Village OFF:
+   - Village hidden automatically by Layer Control
+   - BTR Canvas mouse interaction restored
+
+   Staff untouched.
+============================================================ */
+
+/* ============================================================
+   🏡 VILLAGE / BTR CANVAS INTERACTION CONTROLLER
+
+   BOTH layers always remain visually visible.
+
+   Village ON:
+   - Village Canvas interactive
+   - BTR Canvas mouse interaction disabled
+
+   Village OFF:
+   - Village hidden automatically by Layer Control
+   - BTR Canvas mouse interaction restored
+
+   Staff untouched.
+============================================================ */
+
 function setVillageInteractionMode(
   enabled
 ) {
@@ -35564,224 +35625,126 @@ function setVillageInteractionMode(
 
 
     /* ========================================================
-       🏡 VILLAGE MODE ON
+       🏡 VILLAGE CANVAS
     ======================================================== */
 
+    const villageCanvas =
+      villageCanvasRenderer
+        ?._container;
+
+
     if(
-      villageMode
+      villageCanvas
     ){
 
-      /* ------------------------------------------------------
-         Reset previous state
-      ------------------------------------------------------ */
+      villageCanvas.style
+        .pointerEvents =
 
-      villageHiddenGISLayers =
-        [];
-
-
-      /* ======================================================
-         🌲 POSSIBLE BTR GIS LAYERS
-
-         IMPORTANT:
-         Staff is NOT included.
-         Village layer is NOT included.
-      ====================================================== */
-
-      const gisLayers = [
-
-        window.rootLayer,
-
-        window.divisionLayer,
-
-        window.rangeLayer,
-
-        window.beatLayer,
-
-        window.compartmentLayer
-
-      ];
-
-
-      /* ======================================================
-         🌲 FIND CURRENTLY VISIBLE BTR GIS LAYERS
-      ====================================================== */
-
-      gisLayers.forEach(
-
-        function(
-          layer
-        ){
-
-          if(
-            !layer
-          ){
-
-            return;
-
-          }
-
-
-          /* --------------------------------
-             Only remove layers actually
-             present on map
-          -------------------------------- */
-
-          if(
-            map.hasLayer(
-              layer
-            )
-          ){
-
-            /* Remember it */
-
-            villageHiddenGISLayers.push(
-              layer
-            );
-
-
-            /* Remove from map */
-
-            map.removeLayer(
-              layer
-            );
-
-          }
-
-        }
-
-      );
-
-
-      /* ======================================================
-         🏡 MAKE SURE VILLAGE LAYER IS PRESENT
-      ====================================================== */
-
-      if(
-        villageBoundaryLayer &&
-        !map.hasLayer(
-          villageBoundaryLayer
-        )
-      ){
-
-        villageBoundaryLayer.addTo(
-          map
-        );
-
-      }
-
-
-      /* ======================================================
-         🏷 CLOSE OLD BTR TOOLTIP
-      ====================================================== */
-
-      try {
-
-        window
-          .closeEnterpriseTooltipFully
-          ?.();
-
-      }
-
-      catch(err) {}
-
-
-      /* ======================================================
-         👮 STAFF
-
-         NO CODE HERE INTENTIONALLY.
-
-         We do NOT:
-         - remove staffLayer
-         - reorder staffLayer
-         - modify staff markers
-         - modify staff interaction
-
-         Standard Leaflet markers remain above Canvas polygons.
-      ====================================================== */
-
-
-      /* ======================================================
-         DEBUG
-      ====================================================== */
-
-      console.log(
-
-        "🏡 VILLAGE MODE ON",
-
-        {
-          btrLayersTemporarilyRemoved:
-            villageHiddenGISLayers.length,
-
-          villageVisible:
-            map.hasLayer(
-              villageBoundaryLayer
-            ),
-
-          staff:
-            "UNCHANGED"
-        }
-
-      );
-
-
-      return;
+          villageMode
+            ? "auto"
+            : "none";
 
     }
 
 
     /* ========================================================
-       🌲 VILLAGE MODE OFF
-       RESTORE PREVIOUS BTR GIS STATE
+       🌲 MAIN BTR CANVAS
+
+       Your map uses preferCanvas, therefore getRenderer()
+       gives us the Canvas renderer used by BTR polygons.
     ======================================================== */
 
+    let btrCanvas =
+      null;
 
-    villageHiddenGISLayers.forEach(
 
-      function(
-        layer
+    const possibleBTRLayers = [
+
+      window.compartmentLayer,
+
+      window.beatLayer,
+
+      window.rangeLayer,
+
+      window.divisionLayer,
+
+      window.rootLayer
+
+    ];
+
+
+    for(
+      const gisLayer
+      of possibleBTRLayers
+    ){
+
+      if(
+        !gisLayer
       ){
 
-        if(
-          !layer
-        ){
-
-          return;
-
-        }
-
-
-        /* --------------------------------
-           Restore only if not already
-           present on map
-        -------------------------------- */
-
-        if(
-          !map.hasLayer(
-            layer
-          )
-        ){
-
-          layer.addTo(
-            map
-          );
-
-        }
+        continue;
 
       }
 
-    );
+
+      let firstLayer =
+        null;
+
+
+      if(
+        typeof gisLayer.getLayers ===
+        "function"
+      ){
+
+        firstLayer =
+          gisLayer.getLayers()[0];
+
+      }
+
+
+      if(
+        !firstLayer
+      ){
+
+        continue;
+
+      }
+
+
+      const renderer =
+        firstLayer._renderer;
+
+
+      if(
+        renderer?._container
+      ){
+
+        btrCanvas =
+          renderer._container;
+
+        break;
+
+      }
+
+    }
 
 
     /* ========================================================
-       CLEAR TEMPORARY STATE
+       🌲 CONTROL BTR CANVAS INTERACTION
     ======================================================== */
 
-    const restoredCount =
-      villageHiddenGISLayers.length;
+    if(
+      btrCanvas
+    ){
 
+      btrCanvas.style
+        .pointerEvents =
 
-    villageHiddenGISLayers =
-      [];
+          villageMode
+            ? "none"
+            : "auto";
+
+    }
 
 
     /* ========================================================
@@ -35790,14 +35753,21 @@ function setVillageInteractionMode(
 
     console.log(
 
-      "🌲 VILLAGE MODE OFF",
+      villageMode
+        ? "🏡 Village interactive | 🌲 BTR visible but non-interactive"
+        : "🌲 BTR interactive | 🏡 Village mode off",
 
       {
-        btrLayersRestored:
-          restoredCount,
+
+        villageCanvas:
+          !!villageCanvas,
+
+        btrCanvas:
+          !!btrCanvas,
 
         staff:
           "UNCHANGED"
+
       }
 
     );
@@ -35810,7 +35780,7 @@ function setVillageInteractionMode(
 
     console.error(
 
-      "❌ setVillageInteractionMode failed:",
+      "❌ Village interaction mode failed:",
 
       err
 
@@ -36010,102 +35980,206 @@ window.gridVisible = false;
 /* ============================================================
    🗺 OVERLAY ADD
 ============================================================ */
-map.on('overlayadd', async function (e) {
-
-  try {
-
-    // ==========================================
-    // 🔥 SAFETY
-    // ==========================================
-    if (
-      !e ||
-      !e.name
-    ){
-      return;
-    }
-
-    const layerName =
-      String(e.name);
-
-    // ==========================================
-    // 🔥 DEBUG
-    // ==========================================
-    if(GRID_DEBUG){
-
-      console.log(
-        "🧭 Layer Enabled:",
-        layerName
-      );
-    }
-
-    /* ============================================================
-       👮 STAFF
-    ============================================================ */
-    if(
-      layerName === "👮 Staff"
-    ){
-
-      loadStaff?.();
-
-      return;
-    }
 /* ============================================================
-   🏡 VILLAGE BOUNDARIES ON
-============================================================ */
+   🗺 OVERLAY ADD
+   ------------------------------------------------------------
+   Handles Leaflet overlay layers when user enables them.
 
-if(
-  layerName ===
-  "🏡 Village Boundaries"
-){
-
-  /* Lazy load GeoJSON on first selection */
-
-  await loadVillageBoundaryLayer();
-
-
-  /* Village becomes interaction owner */
-
-  setVillageInteractionMode(
-    true
-  );
-
-
-  return;
-
-}
-    /* ============================================================
-       🌱 PLANTATION
-    ============================================================ */
-    if(
-      layerName === "🌱 Plantation"
-    ){
-
-      loadPlantationLayer?.();
-
-      return;
-    }
-
-  }
-
-  catch(err){
-
-    console.error(
-      "🔥 overlayadd crash:",
-      err
-    );
-  }
-});
-
-
-/* ============================================================
-   🧹 OVERLAY REMOVE
-============================================================ */
-/* ============================================================
-   🧹 OVERLAY REMOVE
+   VILLAGE BOUNDARIES:
+   - Lazy loads GeoJSON on first use
+   - Village polygons remain visible
+   - BTR polygons remain visible
+   - Village Canvas becomes interactive
+   - BTR Canvas becomes non-interactive
+   - Staff remains untouched
 ============================================================ */
 
 map.on(
-  'overlayremove',
+  "overlayadd",
+
+  async function(
+    e
+  ) {
+
+    try {
+
+      /* ========================================================
+         🔥 SAFETY
+      ======================================================== */
+
+      if(
+        !e ||
+        !e.name
+      ){
+
+        return;
+
+      }
+
+
+      const layerName =
+        String(
+          e.name
+        );
+
+
+      /* ========================================================
+         🔥 DEBUG
+      ======================================================== */
+
+      if(
+        GRID_DEBUG
+      ){
+
+        console.log(
+
+          "🧭 Layer Enabled:",
+
+          layerName
+
+        );
+
+      }
+
+
+      /* ========================================================
+         👮 STAFF
+         --------------------------------------------------------
+         Existing staff behavior remains unchanged.
+      ======================================================== */
+
+      if(
+        layerName ===
+        "👮 Staff"
+      ){
+
+        loadStaff?.();
+
+
+        return;
+
+      }
+
+
+      /* ========================================================
+         🏡 VILLAGE BOUNDARIES ON
+         --------------------------------------------------------
+
+         FIRST TIME:
+         1. Leaflet adds empty villageBoundaryLayer.
+         2. overlayadd fires.
+         3. GeoJSON lazy loads.
+         4. 313 polygons are added.
+         5. Village Canvas becomes interaction owner.
+
+         NEXT TIME:
+         1. Existing polygons are reused.
+         2. No GeoJSON download.
+         3. Village Canvas becomes interaction owner.
+
+         IMPORTANT:
+         - BTR stays visible.
+         - BTR Canvas becomes non-interactive.
+         - Village Canvas becomes interactive.
+         - Staff remains untouched.
+      ======================================================== */
+
+      if(
+        layerName ===
+        "🏡 Village Boundaries"
+      ){
+
+        /* ------------------------------------------------------
+           Lazy load village polygons
+        ------------------------------------------------------ */
+
+        await loadVillageBoundaryLayer();
+
+
+        /* ------------------------------------------------------
+           Switch interaction ownership
+
+           Village Canvas → interactive
+           BTR Canvas     → non-interactive
+           Staff          → unchanged
+        ------------------------------------------------------ */
+
+        setVillageInteractionMode(
+          true
+        );
+
+
+        console.log(
+
+          "🏡 Village Boundaries Enabled"
+
+        );
+
+
+        return;
+
+      }
+
+
+      /* ========================================================
+         🌱 PLANTATION
+         --------------------------------------------------------
+         Existing plantation lazy-loading behavior.
+      ======================================================== */
+
+      if(
+        layerName ===
+        "🌱 Plantation"
+      ){
+
+        loadPlantationLayer?.();
+
+
+        return;
+
+      }
+
+    }
+
+
+    /* ==========================================================
+       🔥 ERROR SAFETY
+    ========================================================== */
+
+    catch(
+      err
+    ){
+
+      console.error(
+
+        "🔥 overlayadd crash:",
+
+        err
+
+      );
+
+    }
+
+  }
+
+);
+
+
+/* ============================================================
+   🧹 OVERLAY REMOVE
+   ------------------------------------------------------------
+   Handles Leaflet overlays when user disables them.
+
+   VILLAGE BOUNDARIES:
+   - Leaflet automatically hides villageBoundaryLayer.
+   - BTR Canvas interaction is restored.
+   - Village data remains cached.
+   - Staff remains untouched.
+============================================================ */
+
+map.on(
+  "overlayremove",
+
   function(
     e
   ) {
@@ -36126,7 +36200,7 @@ map.on(
       }
 
 
-      const name =
+      const layerName =
         String(
           e.name
         );
@@ -36144,7 +36218,7 @@ map.on(
 
           "🧹 Layer Disabled:",
 
-          name
+          layerName
 
         );
 
@@ -36153,23 +36227,38 @@ map.on(
 
       /* ========================================================
          🏡 VILLAGE BOUNDARIES OFF
+         --------------------------------------------------------
 
-         - Village layer itself is automatically removed
-           by Leaflet Layer Control.
+         Leaflet Layer Control automatically removes
+         villageBoundaryLayer from the map.
 
-         - Restore only the BTR GIS layers that were
-           temporarily removed when Village Mode was enabled.
+         We only need to restore interaction ownership:
 
-         - Staff layer remains completely untouched.
+         Village Canvas → non-interactive
+         BTR Canvas     → interactive
+         Staff          → unchanged
+
+         IMPORTANT:
+         - We DO NOT remove BTR.
+         - We DO NOT add BTR.
+         - We DO NOT touch staffLayer.
+         - Village GeoJSON stays cached in memory.
       ======================================================== */
 
       if(
-        name ===
+        layerName ===
         "🏡 Village Boundaries"
       ){
 
         setVillageInteractionMode(
           false
+        );
+
+
+        console.log(
+
+          "🌲 Village Boundaries Disabled — BTR Interaction Restored"
+
         );
 
 
@@ -36179,11 +36268,13 @@ map.on(
 
 
       /* ========================================================
-         🌱 PLANTATION
+         🌱 PLANTATION OFF
+         --------------------------------------------------------
+         Existing plantation cleanup behavior.
       ======================================================== */
 
       if(
-        name ===
+        layerName ===
         "🌱 Plantation"
       ){
 
