@@ -35099,6 +35099,24 @@ window.__villageBoundaryCache =
    🏡 VILLAGE BOUNDARY LAYER
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+   ------------------------------------------------------------
+   POLYGON FEATURES:
+   - 298 polygon features
+
+   CANONICAL VILLAGES:
+   - Same Village_Code + Same Village_Name
+     = ONE canonical village
+
+   - Same Village_Code + Different Village_Name
+     = DIFFERENT canonical villages
+
+   EXPECTED:
+   - 298 polygon features
+   - 291 canonical villages
+============================================================ */
+
 var villageBoundaryLayer =
   L.geoJSON(
     null,
@@ -35317,11 +35335,67 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
+           🔑 CANONICAL VILLAGE IDENTITY
+           ------------------------------------------------------
+
+           PRIMARY RULE:
+
+           Village_Code + Clean Village Name
+
+           This means:
+
+           307107 + PARMALANGI
+           5 polygon features
+           → ONE canonical village
+
+
+           307144N151 + RAJA BHAT KHAWA
+           → ONE canonical village
+
+
+           307144N151 + RAJA BHAT KHAWA MADHYA
+           → DIFFERENT canonical village
+
+
+           FALLBACK:
+
+           If Village_Code is unavailable:
+           Clean Name + Block Name
+        ====================================================== */
+
+        const canonicalId =
+
+          villageCode &&
+          cleanName
+
+            ? villageCode +
+              "::" +
+              cleanName
+
+            : cleanName &&
+              blockName
+
+              ? cleanName +
+                "::" +
+                String(
+                  blockName
+                )
+                .toUpperCase()
+                .trim()
+
+              : villageCode ||
+                cleanName ||
+                null;
+
+
+        /* ======================================================
            🏡 BUILD CANONICAL VILLAGE OBJECT
 
            IMPORTANT:
            Geometry is intentionally NOT stored here.
-           Geometry remains in villageBoundaryLayer.
+
+           Geometry remains in:
+           villageBoundaryLayer
         ====================================================== */
 
         const canonicalVillage =
@@ -35332,7 +35406,10 @@ var villageBoundaryLayer =
           ==================================================== */
 
           id:
-            villageCode,
+            canonicalId,
+
+          canonicalId:
+            canonicalId,
 
           villageCode:
             villageCode,
@@ -35579,9 +35656,38 @@ var villageBoundaryLayer =
 
         /* ======================================================
            💾 STORE CANONICAL VILLAGE IN MEMORY
+           ------------------------------------------------------
 
-           Prevent duplicate entries if addData() is ever called
-           more than once for the same village.
+           IMPORTANT:
+
+           Deduplication is based on canonicalId.
+
+           Therefore:
+
+           SAME CODE + SAME NAME
+           → Merge into one canonical village
+
+
+           SAME CODE + DIFFERENT NAME
+           → Keep as separate canonical villages
+
+
+           Example:
+
+           Parmalangi:
+           307107::PARMALANGI
+           5 polygons
+           → 1 canonical object
+
+
+           Raja Bhat Khawa:
+           307144N151::RAJA BHAT KHAWA
+           → 1 canonical object
+
+
+           Raja Bhat Khawa Madhya:
+           307144N151::RAJA BHAT KHAWA MADHYA
+           → separate canonical object
         ====================================================== */
 
         const existingVillageIndex =
@@ -35594,17 +35700,34 @@ var villageBoundaryLayer =
                 village
               ){
 
+                /* ==================================================
+                   PRIMARY MATCH
+                   Exact canonical identity
+                ================================================== */
+
                 if(
-                  villageCode
+                  canonicalId &&
+                  village.canonicalId
                 ){
 
                   return (
-                    village.villageCode ===
-                    villageCode
+
+                    village.canonicalId ===
+                    canonicalId
+
                   );
 
                 }
 
+
+                /* ==================================================
+                   FALLBACK MATCH
+
+                   Only used if canonicalId is unavailable.
+
+                   Same normalized name + same block
+                   = same canonical village.
+                ================================================== */
 
                 return (
 
@@ -35621,6 +35744,10 @@ var villageBoundaryLayer =
             );
 
 
+        /* ========================================================
+           NEW CANONICAL VILLAGE
+        ======================================================== */
+
         if(
           existingVillageIndex ===
           -1
@@ -35634,6 +35761,16 @@ var villageBoundaryLayer =
 
         }
 
+
+        /* ========================================================
+           EXISTING CANONICAL VILLAGE
+
+           Another polygon feature belongs to the same
+           canonical village.
+
+           Do not create a duplicate canonical record.
+        ======================================================== */
+
         else {
 
           window
@@ -35646,13 +35783,20 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🔗 ATTACH CANONICAL OBJECT TO LEAFLET LAYER
+           🔗 ATTACH CANONICAL OBJECT TO LEAFLET POLYGON
 
-           Allows direct access later:
+           Every polygon receives its canonical village object.
 
-           layer.canonicalVillage
+           Multiple polygon features can therefore have the
+           same canonicalId.
 
-           This does NOT duplicate polygon geometry.
+           Example:
+
+           Parmalangi Polygon 1 ─┐
+           Parmalangi Polygon 2  │
+           Parmalangi Polygon 3  ├─→ 307107::PARMALANGI
+           Parmalangi Polygon 4  │
+           Parmalangi Polygon 5 ─┘
         ====================================================== */
 
         layer.canonicalVillage =
@@ -35969,7 +36113,6 @@ var villageBoundaryLayer =
     }
 
   );
-
 
     /* ============================================================
    🏡 VILLAGE / BTR INTERACTION OWNERSHIP CONTROLLER
