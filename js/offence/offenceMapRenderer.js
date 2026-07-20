@@ -4265,16 +4265,80 @@ MapRenderer.createPolygonStyle =
          * 1 = highest intensity
          */
 
-        const intensity =
+const intensity =
 
+    MapRenderer
+        .normalizePolygonIntensity(
+
+            entry,
+
+            maxWeight
+
+        );
+
+
+/* =============================================
+   TEMPORARY POLYGON HEAT DEBUG
+   ============================================= */
+
+console.log(
+
+    "🔥 POLYGON HEAT DEBUG",
+
+    {
+
+        name:
+            entry.range ||
+            entry.compartment ||
+            entry.name,
+
+        type:
+            type,
+
+        isTarget:
+            isTarget,
+
+        offenceCount:
+            entry.offenceCount,
+
+        hotspotCount:
+            entry.hotspotCount,
+
+        heatWeight:
+            entry.heatWeight,
+
+        calculatedCount:
             MapRenderer
-                .normalizePolygonIntensity(
+                .getPolygonCount(
+                    entry
+                ),
 
-                    entry,
+        calculatedWeight:
+            MapRenderer
+                .getPolygonHeatWeight(
+                    entry
+                ),
 
-                    maxWeight
+        maxWeight:
+            maxWeight,
 
-                );
+        intensity:
+            intensity,
+
+        fillColor:
+            isTarget
+
+                ? MapRenderer
+                    .getTargetPolygonHeatColor(
+                        intensity
+                    )
+
+                : baseConfig
+                    .fillColor
+
+    }
+
+);
 
 
         /*
