@@ -491,85 +491,245 @@
      🏗 CREATE LEAFLET LAYERS
   ============================================================ */
 
-  Renderer.createLayers =
-    function () {
+/* ============================================================
+   🏗 CREATE LEAFLET LAYERS
 
-      const map =
-        Renderer.getMap();
+   PURPOSE
+   ------------------------------------------------------------
+   Creates and attaches the three Offence Spatial Renderer
+   layer groups:
+
+   sourceLayer
+      → Source village polygons
+
+   targetLayer
+      → Target range polygons
+
+   selectionLayer
+      → Selected/highlighted source or target polygon
+
+   IMPORTANT
+   ------------------------------------------------------------
+   Layer groups are created only once.
+
+   If they already exist, they are reused.
+
+   All three layer groups are guaranteed to be attached
+   to the current Leaflet map.
+============================================================ */
+
+Renderer.createLayers =
+  function () {
+
+    /* ========================================================
+       GET LEAFLET MAP
+    ======================================================== */
+
+    const map =
+      Renderer.getMap();
 
 
-      if (
-        !map ||
-        typeof L ===
-          "undefined"
-      ) {
+    /* ========================================================
+       VALIDATE DEPENDENCIES
+    ======================================================== */
 
-        return false;
+    if (
+      !map ||
+      typeof L ===
+        "undefined"
+    ) {
 
-      }
-
-
-      Renderer.ensurePane(
-
-        Renderer
-          .config
-          .sourcePane,
-
-        Renderer
-          .config
-          .sourcePaneZIndex
-
+      console.warn(
+        "⚠ OffenceSpatialRenderer.createLayers: Leaflet map unavailable"
       );
 
+      return false;
 
-      Renderer.ensurePane(
-
-        Renderer
-          .config
-          .targetPane,
-
-        Renderer
-          .config
-          .targetPaneZIndex
-
-      );
+    }
 
 
-      Renderer.ensurePane(
+    /* ========================================================
+       CREATE / ENSURE SOURCE PANE
 
-        Renderer
-          .config
-          .selectionPane,
+       Used for:
+       Source village polygons
+    ======================================================== */
 
-        Renderer
-          .config
-          .selectionPaneZIndex
+    Renderer.ensurePane(
 
-      );
+      Renderer
+        .config
+        .sourcePane,
+
+      Renderer
+        .config
+        .sourcePaneZIndex
+
+    );
 
 
-      Renderer.sourceLayer =
+    /* ========================================================
+       CREATE / ENSURE TARGET PANE
+
+       Used for:
+       Target range polygons
+    ======================================================== */
+
+    Renderer.ensurePane(
+
+      Renderer
+        .config
+        .targetPane,
+
+      Renderer
+        .config
+        .targetPaneZIndex
+
+    );
+
+
+    /* ========================================================
+       CREATE / ENSURE SELECTION PANE
+
+       Used for:
+       Selected source village
+       Selected target range
+    ======================================================== */
+
+    Renderer.ensurePane(
+
+      Renderer
+        .config
+        .selectionPane,
+
+      Renderer
+        .config
+        .selectionPaneZIndex
+
+    );
+
+
+    /* ========================================================
+       CREATE SOURCE LAYER GROUP
+
+       Reuse existing layer if already created.
+    ======================================================== */
+
+    Renderer.sourceLayer =
+
+      Renderer.sourceLayer
+
+      ||
+
+      L.layerGroup();
+
+
+    /* ========================================================
+       CREATE TARGET LAYER GROUP
+
+       Reuse existing layer if already created.
+    ======================================================== */
+
+    Renderer.targetLayer =
+
+      Renderer.targetLayer
+
+      ||
+
+      L.layerGroup();
+
+
+    /* ========================================================
+       CREATE SELECTION LAYER GROUP
+
+       Reuse existing layer if already created.
+    ======================================================== */
+
+    Renderer.selectionLayer =
+
+      Renderer.selectionLayer
+
+      ||
+
+      L.layerGroup();
+
+
+    /* ========================================================
+       ATTACH SOURCE LAYER TO MAP
+
+       Do not add twice.
+    ======================================================== */
+
+    if (
+      !map.hasLayer(
         Renderer.sourceLayer
-        ||
-        L.layerGroup();
+      )
+    ) {
+
+      Renderer
+        .sourceLayer
+        .addTo(
+          map
+        );
+
+    }
 
 
-      Renderer.targetLayer =
+    /* ========================================================
+       ATTACH TARGET LAYER TO MAP
+
+       Required for:
+
+       SOURCE
+          ↓
+       Click village
+          ↓
+       Related target ranges become visible
+    ======================================================== */
+
+    if (
+      !map.hasLayer(
         Renderer.targetLayer
-        ||
-        L.layerGroup();
+      )
+    ) {
+
+      Renderer
+        .targetLayer
+        .addTo(
+          map
+        );
+
+    }
 
 
-      Renderer.selectionLayer =
+    /* ========================================================
+       ATTACH SELECTION LAYER TO MAP
+
+       Required for selected polygon highlighting.
+    ======================================================== */
+
+    if (
+      !map.hasLayer(
         Renderer.selectionLayer
-        ||
-        L.layerGroup();
+      )
+    ) {
+
+      Renderer
+        .selectionLayer
+        .addTo(
+          map
+        );
+
+    }
 
 
-      return true;
+    /* ========================================================
+       SUCCESS
+    ======================================================== */
 
-    };
+    return true;
 
+  };
 
   /* ============================================================
      🏡 BUILD VILLAGE FEATURE INDEX
