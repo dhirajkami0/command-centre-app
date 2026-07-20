@@ -139,39 +139,74 @@
             {},
 
 
-        CONFIG: {
+CONFIG: {
 
-            BUTTON_ID:
-                "gg-offence-main-button",
+    /* ========================================================
+       DOM IDS
+    ======================================================== */
 
-            PANEL_ID:
-                "gg-offence-analysis-panel",
+    BUTTON_ID:
+        "gg-offence-main-button",
 
-            CLOSE_BUTTON_ID:
-                "gg-offence-close-button",
+    PANEL_ID:
+        "gg-offence-analysis-panel",
 
-            SOURCE_BUTTON_ID:
-                "gg-offence-source-button",
+    CLOSE_BUTTON_ID:
+        "gg-offence-close-button",
 
-            TARGET_BUTTON_ID:
-                "gg-offence-target-button",
+    SOURCE_BUTTON_ID:
+        "gg-offence-source-button",
 
-            CLEAR_BUTTON_ID:
-                "gg-offence-clear-button",
+    TARGET_BUTTON_ID:
+        "gg-offence-target-button",
 
-            STATUS_ID:
-                "gg-offence-status",
+    CLEAR_BUTTON_ID:
+        "gg-offence-clear-button",
 
-            STYLE_ID:
-                "gg-offence-ui-styles",
+    STATUS_ID:
+        "gg-offence-status",
 
-            STORE_WAIT_ATTEMPTS:
-                240,
+    STYLE_ID:
+        "gg-offence-ui-styles",
 
-            STORE_WAIT_INTERVAL:
-                250
 
-        },
+    /* ========================================================
+       POSITION
+
+       OFFENCE button:
+       Right side of map, below Chat/AI control.
+
+       Adjust BUTTON_TOP only if your Chat button position
+       changes later.
+    ======================================================== */
+
+    BUTTON_TOP:
+        145,
+
+    BUTTON_RIGHT:
+        20,
+
+    PANEL_GAP:
+        10,
+
+    PANEL_WIDTH:
+        260,
+
+    Z_INDEX:
+        10000,
+
+
+    /* ========================================================
+       STORE WAIT CONFIG
+    ======================================================== */
+
+    STORE_WAIT_ATTEMPTS:
+        240,
+
+    STORE_WAIT_INTERVAL:
+        250
+
+},
 
 
         /* ====================================================
