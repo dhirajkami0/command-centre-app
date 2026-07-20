@@ -35014,7 +35014,235 @@ function loadPatrolTracks(
 window.gridRootLayer =
   window.gridRootLayer ||
   L.layerGroup();
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+   313 VILLAGE POLYGONS
+   LAZY LOADED FROM GEOJSON
+============================================================ */
 
+var villageBoundaryLayer =
+  L.geoJSON(
+    null,
+    {
+
+      style: function(feature) {
+
+        return {
+
+          color: "#32CD32",
+
+          weight: 1.5,
+
+          opacity: 0.9,
+
+          fillColor: "#90EE90",
+
+          fillOpacity: 0.08
+
+        };
+
+      },
+
+
+      onEachFeature: function(
+        feature,
+        layer
+      ) {
+
+        const p =
+          feature.properties ||
+          {};
+
+
+        /* ============================
+           VILLAGE NAME TOOLTIP
+        ============================ */
+
+        if(
+          p.Village_Name
+        ){
+
+          layer.bindTooltip(
+
+            p.Village_Name,
+
+            {
+
+              sticky: true,
+
+              direction: "top"
+
+            }
+
+          );
+
+        }
+
+
+        /* ============================
+           VILLAGE POPUP
+        ============================ */
+
+        layer.bindPopup(`
+
+          <div
+            style="
+              font-family:Segoe UI;
+              min-width:180px;
+            "
+          >
+
+            <b>
+              🏡 ${p.Village_Name || "Unknown Village"}
+            </b>
+
+            <hr>
+
+            <b>Village Code:</b>
+            ${p.Village_Code || "-"}
+
+            <br>
+
+            <b>Block:</b>
+            ${p.Block_Name || "-"}
+
+            <br>
+
+            <b>District:</b>
+            ${p.District || "Alipurduar"}
+
+          </div>
+
+        `);
+
+      }
+
+    }
+
+  );
+
+
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAZY LOAD STATE
+============================================================ */
+
+let villageBoundaryLoaded =
+  false;
+
+let villageBoundaryLoading =
+  false;
+
+
+/* ============================================================
+   🏡 LOAD VILLAGE BOUNDARIES
+   FIRST CLICK = FETCH
+   NEXT CLICKS = USE EXISTING DATA
+============================================================ */
+
+async function loadVillageBoundaryLayer() {
+
+  /* Already loaded */
+
+  if(
+    villageBoundaryLoaded
+  ){
+
+    return;
+
+  }
+
+
+  /* Already loading */
+
+  if(
+    villageBoundaryLoading
+  ){
+
+    return;
+
+  }
+
+
+  villageBoundaryLoading =
+    true;
+
+
+  console.log(
+    "🏡 Loading Village Boundary GeoJSON..."
+  );
+
+
+  try {
+
+    const response =
+      await fetch(
+
+        "geojson/Alipurduar_4_Blocks_All_Villages.geojson"
+
+      );
+
+
+    if(
+      !response.ok
+    ){
+
+      throw new Error(
+
+        "Village GeoJSON HTTP " +
+        response.status
+
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    /* ================================
+       ADD POLYGONS TO EXISTING LAYER
+    ================================ */
+
+    villageBoundaryLayer.addData(
+      data
+    );
+
+
+    villageBoundaryLoaded =
+      true;
+
+
+    console.log(
+
+      "✅ Village Boundaries Loaded:",
+
+      data.features?.length
+
+    );
+
+  }
+
+  catch(err) {
+
+    console.error(
+
+      "❌ Village Boundary Load Failed:",
+
+      err
+
+    );
+
+  }
+
+  finally {
+
+    villageBoundaryLoading =
+      false;
+
+  }
+
+}
 
 /* ============================================================
    🎛 LAYER CONTROL (CLEAN VERSION)
@@ -35047,8 +35275,11 @@ window.gridRootLayer =
     // 📡 PREDICTION
     "📡 Prediction": predictionLayer,
 
-    // 🏡 VILLAGES
-    "🏡 Villages": villageLayer,
+// 📍 EXISTING VILLAGE GPS POINTS
+"📍 Village Locations": villageLayer,
+
+// 🏡 NEW 313 VILLAGE POLYGONS
+"🏡 Village Boundaries": villageBoundaryLayer,
 
     // 🌱 PLANTATION
     "🌱 Plantation": plantationLayer,
@@ -35120,7 +35351,20 @@ map.on('overlayadd', async function (e) {
 
       return;
     }
+/* ============================================================
+   🏡 VILLAGE BOUNDARIES — LAZY LOAD
+============================================================ */
 
+if(
+  layerName ===
+  "🏡 Village Boundaries"
+){
+
+  await loadVillageBoundaryLayer();
+
+  return;
+
+}
     /* ============================================================
        🌱 PLANTATION
     ============================================================ */
