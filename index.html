@@ -35095,34 +35095,39 @@ var villageBoundaryLayer =
         true,
 
 
-      /* ========================================================
-         🎨 DEFAULT VILLAGE POLYGON STYLE
-      ======================================================== */
+/* ========================================================
+   🎨 DEFAULT VILLAGE POLYGON STYLE
+======================================================== */
 
-      style: function(
-        feature
-      ) {
+style: function(
+  feature
+) {
 
-        return {
+  return {
 
-          color:
-            "#32CD32",
+    /* Village boundary */
+    color:
+      "#FF4FD8",
 
-          weight:
-            1.5,
+    /* Boundary thickness */
+    weight:
+      1.8,
 
-          opacity:
-            0.9,
+    /* Boundary visibility */
+    opacity:
+      0.95,
 
-          fillColor:
-            "#90EE90",
+    /* Village polygon fill */
+    fillColor:
+      "#D946EF",
 
-          fillOpacity:
-            0.08
+    /* Keep satellite map clearly visible */
+    fillOpacity:
+      0.06
 
-        };
+  };
 
-      },
+},
 
 
       /* ========================================================
@@ -35311,26 +35316,30 @@ var villageBoundaryLayer =
                Highlight village
             -------------------------------- */
 
-            target.setStyle(
-              {
+/* ========================================================
+   🖱 HOVERED VILLAGE STYLE
+======================================================== */
 
-                color:
-                  "#00FF00",
+target.setStyle(
+  {
 
-                weight:
-                  3,
+    color:
+      "#FF8AE8",
 
-                opacity:
-                  1,
+    weight:
+      3.5,
 
-                fillColor:
-                  "#90EE90",
+    opacity:
+      1,
 
-                fillOpacity:
-                  0.20
+    fillColor:
+      "#E879F9",
 
-              }
-            );
+    fillOpacity:
+      0.18
+
+  }
+);
 
 
             /* --------------------------------
