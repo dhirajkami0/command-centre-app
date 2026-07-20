@@ -35020,29 +35020,49 @@ window.gridRootLayer =
    LAZY LOADED FROM GEOJSON
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+   313 VILLAGE POLYGONS
+============================================================ */
+
 var villageBoundaryLayer =
   L.geoJSON(
     null,
     {
 
-      style: function(feature) {
+      /* ========================================================
+         🎨 DEFAULT VILLAGE POLYGON STYLE
+      ======================================================== */
+
+      style: function(
+        feature
+      ) {
 
         return {
 
-          color: "#32CD32",
+          color:
+            "#32CD32",
 
-          weight: 1.5,
+          weight:
+            1.5,
 
-          opacity: 0.9,
+          opacity:
+            0.9,
 
-          fillColor: "#90EE90",
+          fillColor:
+            "#90EE90",
 
-          fillOpacity: 0.08
+          fillOpacity:
+            0.08
 
         };
 
       },
 
+
+      /* ========================================================
+         🏡 EACH VILLAGE FEATURE
+      ======================================================== */
 
       onEachFeature: function(
         feature,
@@ -35054,66 +35074,258 @@ var villageBoundaryLayer =
           {};
 
 
-        /* ============================
-           VILLAGE NAME TOOLTIP
-        ============================ */
+        /* ======================================================
+           🏡 READ VILLAGE ATTRIBUTES
+           Supports multiple possible property names
+        ====================================================== */
 
-        if(
-          p.Village_Name
-        ){
-
-          layer.bindTooltip(
-
-            p.Village_Name,
-
-            {
-
-              sticky: true,
-
-              direction: "top"
-
-            }
-
-          );
-
-        }
+        const villageName =
+          p.Village_Name ||
+          p.Vill_name ||
+          p.Vill_Name ||
+          p.village_name ||
+          p.name ||
+          "Unknown Village";
 
 
-        /* ============================
-           VILLAGE POPUP
-        ============================ */
+        const villageCode =
+          p.Village_Code ||
+          p.Vill_LGD ||
+          p.Vill_Code ||
+          p.village_code ||
+          "-";
 
-        layer.bindPopup(`
+
+        const blockName =
+          p.Block_Name ||
+          p.Sub_dist ||
+          p.Block ||
+          p.block ||
+          "-";
+
+
+        const districtName =
+          p.District ||
+          p.district ||
+          "Alipurduar";
+
+
+        /* ======================================================
+           🏷 HOVER TOOLTIP
+        ====================================================== */
+
+        const tooltipHTML = `
 
           <div
             style="
               font-family:Segoe UI;
               min-width:180px;
+              line-height:1.5;
             "
           >
 
-            <b>
-              🏡 ${p.Village_Name || "Unknown Village"}
-            </b>
+            <div
+              style="
+                font-size:14px;
+                font-weight:700;
+                margin-bottom:5px;
+              "
+            >
 
-            <hr>
+              🏡 ${villageName}
 
-            <b>Village Code:</b>
-            ${p.Village_Code || "-"}
+            </div>
 
-            <br>
 
-            <b>Block:</b>
-            ${p.Block_Name || "-"}
+            <div>
 
-            <br>
+              <b>Village Code:</b>
+              ${villageCode}
 
-            <b>District:</b>
-            ${p.District || "Alipurduar"}
+            </div>
+
+
+            <div>
+
+              <b>Block:</b>
+              ${blockName}
+
+            </div>
+
+
+            <div>
+
+              <b>District:</b>
+              ${districtName}
+
+            </div>
 
           </div>
 
-        `);
+        `;
+
+
+        /* ======================================================
+           🖱 BIND HOVER TOOLTIP
+        ====================================================== */
+
+        layer.bindTooltip(
+
+          tooltipHTML,
+
+          {
+
+            sticky:
+              true,
+
+            direction:
+              "top",
+
+            opacity:
+              0.95,
+
+            className:
+              "village-boundary-tooltip"
+
+          }
+
+        );
+
+
+        /* ======================================================
+           🖱 HOVER EFFECT
+        ====================================================== */
+
+        layer.on({
+
+          /* ------------------------------
+             Mouse enters village polygon
+          ------------------------------ */
+
+          mouseover: function(
+            e
+          ) {
+
+            const target =
+              e.target;
+
+
+            target.setStyle({
+
+              color:
+                "#00FF00",
+
+              weight:
+                3,
+
+              opacity:
+                1,
+
+              fillColor:
+                "#90EE90",
+
+              fillOpacity:
+                0.20
+
+            });
+
+
+            /* Bring selected village forward */
+
+            if(
+              target.bringToFront
+            ) {
+
+              target.bringToFront();
+
+            }
+
+          },
+
+
+          /* ------------------------------
+             Mouse leaves village polygon
+          ------------------------------ */
+
+          mouseout: function(
+            e
+          ) {
+
+            villageBoundaryLayer
+              .resetStyle(
+                e.target
+              );
+
+          }
+
+        });
+
+
+        /* ======================================================
+           🖱 CLICK POPUP
+        ====================================================== */
+
+        const popupHTML = `
+
+          <div
+            style="
+              font-family:Segoe UI;
+              min-width:190px;
+              line-height:1.6;
+            "
+          >
+
+            <div
+              style="
+                font-size:15px;
+                font-weight:700;
+                margin-bottom:5px;
+              "
+            >
+
+              🏡 ${villageName}
+
+            </div>
+
+
+            <hr
+              style="
+                margin:5px 0 8px 0;
+              "
+            >
+
+
+            <div>
+
+              <b>Village Code:</b>
+              ${villageCode}
+
+            </div>
+
+
+            <div>
+
+              <b>Block:</b>
+              ${blockName}
+
+            </div>
+
+
+            <div>
+
+              <b>District:</b>
+              ${districtName}
+
+            </div>
+
+          </div>
+
+        `;
+
+
+        layer.bindPopup(
+          popupHTML
+        );
 
       }
 
