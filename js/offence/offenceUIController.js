@@ -222,7 +222,42 @@ CONFIG: {
                     null;
 
             },
+        /* ====================================================
+           GET OFFENCE DATA LOADER
 
+           AUTHORITATIVE DATA ENTRY POINT:
+
+           DataLoader.load()
+               ↓
+           Firestore
+               ↓
+           Offence Store
+        ==================================================== */
+
+        getDataLoader:
+            function () {
+
+                return window.GG
+                    ?.Offence
+                    ?.DataLoader ||
+                    null;
+
+            },
+
+
+        /* ====================================================
+           GET SPATIAL ENGINE
+        ==================================================== */
+
+        getSpatialEngine:
+            function () {
+
+                return window.GG
+                    ?.Offence
+                    ?.SpatialEngine ||
+                    null;
+
+            },
 
         /* ====================================================
            GET SPATIAL ENGINE
@@ -3026,223 +3061,234 @@ CONFIG: {
 
 
         /* ====================================================
-           WAIT FOR OFFENCE STORE
+           ENSURE OFFENCE STORE READY
 
-           WHY THIS EXISTS
+           NEW AUTHORITATIVE FLOW
            ----------------------------------------------------
 
-           On app startup:
+           Store already ready
+                   ↓
+              use immediately
 
-           offenceUIController.js
-           may load before Offence Store has finished building.
+           Store not ready
+                   ↓
+           DataLoader.load()
+                   ↓
+              Firestore
+                   ↓
+             Store.build()
+                   ↓
+           Store.ready = true
 
-           Earlier console state showed:
-
-               Store initialized: false
-               Store ready: false
-               Cascades: 0
-
-           Later:
-
-               Store initialized: true
-               Store ready: true
-               Cascades: 573
-
-           Therefore SOURCE/TARGET must wait for authoritative
-           Store readiness before rebuilding SpatialEngine.
-
-           Maximum wait:
-
-               240 attempts
-               ×
-               250 ms
-
-               =
-               60 seconds
-
+           This replaces the old 60-second passive polling loop.
         ==================================================== */
 
-        waitForStore:
+        ensureStoreReady:
             async function () {
 
 
-                const maxAttempts =
+                /* ============================================
+                   GET STORE
+                ============================================ */
+
+                const Store =
                     UIController
-                        .CONFIG
-                        .STORE_WAIT_ATTEMPTS;
+                        .getStore();
 
 
-                const interval =
-                    UIController
-                        .CONFIG
-                        .STORE_WAIT_INTERVAL;
-
-
-
-                for (
-                    let attempt = 1;
-                    attempt <= maxAttempts;
-                    attempt++
+                if (
+                    !Store
                 ) {
 
-
-                    const Store =
-                        UIController
-                            .getStore();
-
-
-
-                    /* ========================================
-                       STORE MODULE EXISTS
-                    ======================================== */
-
-                    if (
-                        Store
-                    ) {
-
-
-                        /* ====================================
-                           STORE REPORTS READY
-                        ==================================== */
-
-                        if (
-                            Store.ready ===
-                            true
-                        ) {
-
-
-                            const cascades =
-                                UIController
-                                    .getStoreCascades();
-
-
-
-                            /* =================================
-                               AUTHORITATIVE DATA AVAILABLE
-                            ================================= */
-
-                            if (
-                                Array.isArray(
-                                    cascades
-                                ) &&
-                                cascades.length > 0
-                            ) {
-
-
-                                console.log(
-
-                                    "🔥 Offence Store ready →",
-
-                                    cascades.length,
-
-                                    "POR cascades"
-
-                                );
-
-
-                                return {
-
-                                    ready:
-                                        true,
-
-
-                                    Store:
-                                        Store,
-
-
-                                    cascades:
-                                        cascades,
-
-
-                                    count:
-                                        cascades.length
-
-
-                                };
-
-
-                            }
-
-
-                        }
-
-
-                    }
-
-
-
-                    /* ========================================
-                       FIRST ATTEMPT LOG ONLY
-
-                       Avoid console spam every 250 ms.
-                    ======================================== */
-
-                    if (
-                        attempt ===
-                        1
-                    ) {
-
-
-                        console.log(
-
-                            "⏳ Waiting for authoritative Offence Store..."
-
-                        );
-
-
-                        UIController
-                            .setStatus(
-
-                                "Preparing offence case data...",
-
-                                "loading"
-
-                            );
-
-
-                    }
-
-
-
-                    /* ========================================
-                       WAIT BEFORE NEXT CHECK
-                    ======================================== */
-
-                    await new Promise(
-
-                        function (
-                            resolve
-                        ) {
-
-
-                            window
-                                .setTimeout(
-
-                                    resolve,
-
-                                    interval
-
-                                );
-
-
-                        }
-
+                    throw new Error(
+                        "GG.Offence.Store is not loaded."
                     );
-
 
                 }
 
 
 
                 /* ============================================
-                   TIMEOUT
+                   FAST PATH
+
+                   Store may already have been loaded earlier.
                 ============================================ */
 
-                throw new Error(
+                let cascades =
+                    UIController
+                        .getStoreCascades();
 
-                    "Offence Store did not become ready within 60 seconds."
+
+                if (
+                    Store.ready === true &&
+                    Array.isArray(
+                        cascades
+                    ) &&
+                    cascades.length > 0
+                ) {
+
+                    console.log(
+                        "🔥 Offence Store already ready →",
+                        cascades.length,
+                        "POR cascades"
+                    );
+
+
+                    return {
+
+                        ready:
+                            true,
+
+                        Store:
+                            Store,
+
+                        cascades:
+                            cascades,
+
+                        count:
+                            cascades.length
+
+                    };
+
+                }
+
+
+
+                /* ============================================
+                   STORE EMPTY
+
+                   LOAD AUTHORITATIVE FIRESTORE DATA
+                ============================================ */
+
+                const DataLoader =
+                    UIController
+                        .getDataLoader();
+
+
+                if (
+                    !DataLoader ||
+                    typeof
+                    DataLoader.load !==
+                    "function"
+                ) {
+
+                    throw new Error(
+                        "GG.Offence.DataLoader.load() is unavailable."
+                    );
+
+                }
+
+
+
+                console.log(
+                    "🔥 Offence Store empty → loading offence data..."
+                );
+
+
+                UIController
+                    .setStatus(
+
+                        "Loading offence case data...",
+
+                        "loading"
+
+                    );
+
+
+
+                /* ============================================
+                   LOAD DATA
+
+                   This is the exact operation proven manually:
+
+                   await GG.Offence.DataLoader.load();
+                ============================================ */
+
+                const loadResult =
+                    await DataLoader
+                        .load();
+
+
+
+                console.log(
+
+                    "🔥 Offence DataLoader completed:",
+
+                    loadResult
 
                 );
+
+
+
+                /* ============================================
+                   RE-READ STORE AFTER LOAD
+
+                   Do not rely on stale pre-load cascade array.
+                ============================================ */
+
+                cascades =
+                    UIController
+                        .getStoreCascades();
+
+
+
+                /* ============================================
+                   VALIDATE AUTHORITATIVE STORE
+                ============================================ */
+
+                if (
+                    Store.ready !== true
+                ) {
+
+                    throw new Error(
+                        "Offence Store is not ready after DataLoader.load()."
+                    );
+
+                }
+
+
+                if (
+                    !Array.isArray(
+                        cascades
+                    ) ||
+                    cascades.length === 0
+                ) {
+
+                    throw new Error(
+                        "Offence Store contains no POR cascades after loading."
+                    );
+
+                }
+
+
+
+                console.log(
+
+                    "✅ Offence Store loaded →",
+
+                    cascades.length,
+
+                    "POR cascades"
+
+                );
+
+
+
+                return {
+
+                    ready:
+                        true,
+
+                    Store:
+                        Store,
+
+                    cascades:
+                        cascades,
+
+                    count:
+                        cascades.length
+
+                };
 
 
             },
@@ -3447,14 +3493,20 @@ CONFIG: {
                             try {
 
 
-                                /* =================================
-                                   STEP 1
-                                   WAIT FOR STORE
-                                ================================= */
+/* =================================
+   STEP 1
+   ENSURE AUTHORITATIVE STORE READY
 
-                                const storeState =
-                                    await UIController
-                                        .waitForStore();
+   If Store is empty:
+       DataLoader.load()
+
+   If Store is already populated:
+       continue immediately
+================================= */
+
+const storeState =
+    await UIController
+        .ensureStoreReady();
 
 
 
