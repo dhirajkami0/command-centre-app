@@ -35019,42 +35019,7 @@ window.gridRootLayer =
    313 VILLAGE POLYGONS
    LAZY LOADED FROM GEOJSON
 ============================================================ */
-/* ============================================================
-   🏡 VILLAGE BOUNDARY PANE
-   Keeps village polygons above normal BTR GIS polygons
-============================================================ */
 
-if(
-  !map.getPane(
-    "villageBoundaryPane"
-  )
-){
-
-  map.createPane(
-    "villageBoundaryPane"
-  );
-
-}
-
-
-/* ============================================================
-   🏡 VILLAGE PANE PRIORITY
-============================================================ */
-
-map.getPane(
-  "villageBoundaryPane"
-).style.zIndex =
-  450;
-
-
-/* ============================================================
-   🖱 ALLOW VILLAGE POLYGON HOVER
-============================================================ */
-
-map.getPane(
-  "villageBoundaryPane"
-).style.pointerEvents =
-  "auto";
     
   /* ============================================================
    🏡 VILLAGE BOUNDARY LAYER
@@ -35065,24 +35030,27 @@ map.getPane(
    🏡 VILLAGE BOUNDARY LAYER
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE BOUNDARY LAYER
+   ------------------------------------------------------------
+   PURPOSE:
+   - Stores 313 village polygon boundaries
+   - Starts EMPTY
+   - GeoJSON is lazy loaded only when user selects
+     "🏡 Village Boundaries"
+   - Village tooltip works on hover
+   - Village popup works on click
+   - BTR interaction is controlled separately by
+     setVillageInteractionMode()
+============================================================ */
+
 var villageBoundaryLayer =
   L.geoJSON(
     null,
     {
 
       /* ========================================================
-         🔥 DEDICATED VILLAGE PANE
-      ======================================================== */
-
-      pane:
-        "villageBoundaryPane",
-
-      interactive:
-        true,
-
-
-      /* ========================================================
-         🎨 DEFAULT STYLE
+         🎨 DEFAULT VILLAGE POLYGON STYLE
       ======================================================== */
 
       style: function(
@@ -35091,17 +35059,31 @@ var villageBoundaryLayer =
 
         return {
 
+          /* Village boundary */
+
           color:
             "#32CD32",
+
+
+          /* Boundary thickness */
 
           weight:
             1.5,
 
+
+          /* Boundary visibility */
+
           opacity:
             0.9,
 
+
+          /* Village polygon fill */
+
           fillColor:
             "#90EE90",
+
+
+          /* Keep fill light so map remains visible */
 
           fillOpacity:
             0.08
@@ -35112,7 +35094,7 @@ var villageBoundaryLayer =
 
 
       /* ========================================================
-         🏡 EACH VILLAGE
+         🏡 EACH VILLAGE FEATURE
       ======================================================== */
 
       onEachFeature: function(
@@ -35120,44 +35102,83 @@ var villageBoundaryLayer =
         layer
       ) {
 
+        /* ======================================================
+           📦 GET FEATURE PROPERTIES
+        ====================================================== */
+
         const p =
           feature.properties ||
           {};
 
 
+        /* ======================================================
+           🏡 VILLAGE NAME
+        ====================================================== */
+
         const villageName =
+
           p.Village_Name ||
+
           p.Vill_name ||
+
           p.Vill_Name ||
+
           p.village_name ||
+
           p.name ||
+
           "Unknown Village";
 
 
+        /* ======================================================
+           🔢 VILLAGE CODE
+        ====================================================== */
+
         const villageCode =
+
           p.Village_Code ||
+
           p.Vill_LGD ||
+
           p.Vill_Code ||
+
           p.village_code ||
+
           "-";
 
+
+        /* ======================================================
+           🗺 BLOCK NAME
+        ====================================================== */
 
         const blockName =
+
           p.Block_Name ||
+
           p.Sub_dist ||
+
           p.Block ||
+
           p.block ||
+
           "-";
 
 
+        /* ======================================================
+           📍 DISTRICT NAME
+        ====================================================== */
+
         const districtName =
+
           p.District ||
+
           p.district ||
+
           "Alipurduar";
 
 
         /* ======================================================
-           🏷 TOOLTIP HTML
+           🏷 VILLAGE TOOLTIP HTML
         ====================================================== */
 
         const tooltipHTML = `
@@ -35182,6 +35203,7 @@ var villageBoundaryLayer =
 
             </div>
 
+
             <div>
 
               <b>Village Code:</b>
@@ -35189,12 +35211,14 @@ var villageBoundaryLayer =
 
             </div>
 
+
             <div>
 
               <b>Block:</b>
               ${blockName}
 
             </div>
+
 
             <div>
 
@@ -35209,7 +35233,7 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🏷 BIND TOOLTIP
+           🏷 BIND VILLAGE TOOLTIP
         ====================================================== */
 
         layer.bindTooltip(
@@ -35218,14 +35242,25 @@ var villageBoundaryLayer =
 
           {
 
+            /* Tooltip follows mouse */
+
             sticky:
               true,
+
+
+            /* Tooltip position */
 
             direction:
               "top",
 
+
+            /* Tooltip visibility */
+
             opacity:
               0.95,
+
+
+            /* Custom CSS class */
 
             className:
               "village-boundary-tooltip"
@@ -35237,6 +35272,7 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE OVER
+           Highlight village + open tooltip
         ====================================================== */
 
         layer.on(
@@ -35251,7 +35287,9 @@ var villageBoundaryLayer =
               e.target;
 
 
-            /* Highlight village */
+            /* --------------------------------
+               Highlight selected village
+            -------------------------------- */
 
             target.setStyle({
 
@@ -35273,11 +35311,19 @@ var villageBoundaryLayer =
             });
 
 
-            /* Explicitly open tooltip */
+            /* --------------------------------
+               Explicitly open village tooltip
+            -------------------------------- */
 
-            target.openTooltip(
-              e.latlng
-            );
+            try {
+
+              target.openTooltip(
+                e.latlng
+              );
+
+            }
+
+            catch(err) {}
 
           }
 
@@ -35286,7 +35332,7 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE MOVE
-           Keeps sticky tooltip following cursor
+           Move sticky tooltip with cursor
         ====================================================== */
 
         layer.on(
@@ -35297,18 +35343,25 @@ var villageBoundaryLayer =
             e
           ) {
 
-            const tooltip =
-              layer.getTooltip();
+            try {
 
-            if(
-              tooltip
-            ){
+              const tooltip =
+                layer.getTooltip();
 
-              tooltip.setLatLng(
-                e.latlng
-              );
+
+              if(
+                tooltip
+              ){
+
+                tooltip.setLatLng(
+                  e.latlng
+                );
+
+              }
 
             }
+
+            catch(err) {}
 
           }
 
@@ -35317,6 +35370,7 @@ var villageBoundaryLayer =
 
         /* ======================================================
            🖱 MOUSE OUT
+           Restore original village style
         ====================================================== */
 
         layer.on(
@@ -35327,14 +35381,34 @@ var villageBoundaryLayer =
             e
           ) {
 
-            villageBoundaryLayer
-              .resetStyle(
-                e.target
-              );
+            /* --------------------------------
+               Restore default style
+            -------------------------------- */
+
+            try {
+
+              villageBoundaryLayer
+                .resetStyle(
+                  e.target
+                );
+
+            }
+
+            catch(err) {}
 
 
-            e.target
-              .closeTooltip();
+            /* --------------------------------
+               Close tooltip
+            -------------------------------- */
+
+            try {
+
+              e.target
+                .closeTooltip();
+
+            }
+
+            catch(err) {}
 
           }
 
@@ -35342,10 +35416,10 @@ var villageBoundaryLayer =
 
 
         /* ======================================================
-           🖱 CLICK POPUP
+           🖱 CLICK POPUP HTML
         ====================================================== */
 
-        layer.bindPopup(`
+        const popupHTML = `
 
           <div
             style="
@@ -35367,30 +35441,497 @@ var villageBoundaryLayer =
 
             </div>
 
-            <hr>
 
-            <b>Village Code:</b>
-            ${villageCode}
+            <hr
+              style="
+                margin:5px 0 8px 0;
+              "
+            >
 
-            <br>
 
-            <b>Block:</b>
-            ${blockName}
+            <div>
 
-            <br>
+              <b>Village Code:</b>
+              ${villageCode}
 
-            <b>District:</b>
-            ${districtName}
+            </div>
+
+
+            <div>
+
+              <b>Block:</b>
+              ${blockName}
+
+            </div>
+
+
+            <div>
+
+              <b>District:</b>
+              ${districtName}
+
+            </div>
 
           </div>
 
-        `);
+        `;
+
+
+        /* ======================================================
+           🖱 BIND CLICK POPUP
+        ====================================================== */
+
+        layer.bindPopup(
+          popupHTML
+        );
 
       }
 
     }
 
   );
+
+
+    /* ============================================================
+   🏡 VILLAGE / BTR INTERACTION OWNERSHIP CONTROLLER
+
+   VILLAGE MODE = TRUE
+   ------------------------------------------------------------
+   ✅ Village polygons remain visible
+   ✅ Village polygons receive pointer events
+   ✅ Village tooltip works
+   ✅ Village popup works
+   ✅ Village polygons brought above BTR polygon paths
+
+   🌲 BTR GIS polygons remain visible
+   ❌ BTR GIS polygons cannot receive pointer events
+   ❌ BTR GIS tooltips closed
+
+   👮 Staff layer is NEVER modified
+   👮 Staff markers remain visible and interactive
+
+
+   VILLAGE MODE = FALSE
+   ------------------------------------------------------------
+   🏡 Village layer is hidden by Leaflet Layer Control
+
+   🌲 BTR GIS pointer interaction restored
+   🌲 BTR tooltip works again
+
+   👮 Staff remains unchanged
+============================================================ */
+
+function setVillageInteractionMode(
+  enabled
+) {
+
+  try {
+
+    /* ========================================================
+       1. NORMALIZE MODE
+    ======================================================== */
+
+    const villageMode =
+      enabled === true;
+
+
+    /* ========================================================
+       2. STORE GLOBAL STATE
+       Useful for debugging / future interaction logic
+    ======================================================== */
+
+    window.__villageInteractionActive =
+      villageMode;
+
+
+    /* ========================================================
+       3. BTR GIS LAYERS
+
+       IMPORTANT:
+       Do NOT add staffLayer here.
+       Do NOT add villageBoundaryLayer here.
+    ======================================================== */
+
+    const gisLayers = [
+
+      window.rootLayer,
+
+      window.divisionLayer,
+
+      window.rangeLayer,
+
+      window.beatLayer,
+
+      window.compartmentLayer
+
+    ];
+
+
+    /* ========================================================
+       4. RECURSIVE INTERACTION CONTROLLER
+
+       L.GeoJSON itself is a layer group.
+
+       The actual pointer event belongs to the individual
+       SVG polygon path inside that GeoJSON layer.
+
+       Therefore we recursively process every child layer.
+    ======================================================== */
+
+    function setLayerInteraction(
+      layer,
+      interactive
+    ) {
+
+      /* ------------------------------------------------------
+         Safety
+      ------------------------------------------------------ */
+
+      if(
+        !layer
+      ){
+
+        return;
+
+      }
+
+
+      /* ======================================================
+         A. ACTUAL SVG PATH
+
+         This is the most important part.
+
+         pointerEvents = none
+         means mouse passes through BTR polygon.
+
+         pointerEvents = auto
+         restores BTR polygon interaction.
+      ====================================================== */
+
+      if(
+        layer._path
+      ){
+
+        layer._path.style.pointerEvents =
+
+          interactive
+            ? "auto"
+            : "none";
+
+      }
+
+
+      /* ======================================================
+         B. LEAFLET INTERACTIVE STATE
+      ====================================================== */
+
+      if(
+        layer.options
+      ){
+
+        layer.options.interactive =
+          interactive;
+
+      }
+
+
+      /* ======================================================
+         C. CLOSE TOOLTIP WHEN DISABLING LAYER
+      ====================================================== */
+
+      if(
+        !interactive
+      ){
+
+        try {
+
+          layer.closeTooltip?.();
+
+        }
+
+        catch(err) {}
+
+      }
+
+
+      /* ======================================================
+         D. CLOSE POPUP IF NEEDED
+      ====================================================== */
+
+      if(
+        !interactive
+      ){
+
+        try {
+
+          layer.closePopup?.();
+
+        }
+
+        catch(err) {}
+
+      }
+
+
+      /* ======================================================
+         E. RECURSE INTO CHILD LAYERS
+
+         Handles:
+         L.GeoJSON
+         L.LayerGroup
+         FeatureGroup
+      ====================================================== */
+
+      if(
+        typeof layer.eachLayer ===
+        "function"
+      ){
+
+        layer.eachLayer(
+
+          function(
+            child
+          ){
+
+            setLayerInteraction(
+
+              child,
+
+              interactive
+
+            );
+
+          }
+
+        );
+
+      }
+
+    }
+
+
+    /* ========================================================
+       5. CONTROL BTR GIS INTERACTION
+
+       Village ON:
+       BTR interactive = FALSE
+
+       Village OFF:
+       BTR interactive = TRUE
+    ======================================================== */
+
+    gisLayers.forEach(
+
+      function(
+        gisLayer
+      ){
+
+        setLayerInteraction(
+
+          gisLayer,
+
+          !villageMode
+
+        );
+
+      }
+
+    );
+
+
+    /* ========================================================
+       6. CONTROL VILLAGE INTERACTION
+
+       Village ON:
+       Village interactive = TRUE
+
+       Village OFF:
+       Village interactive = FALSE
+
+       Note:
+       Leaflet Layer Control itself handles showing/hiding
+       villageBoundaryLayer.
+    ======================================================== */
+
+    if(
+      typeof villageBoundaryLayer !==
+        "undefined" &&
+      villageBoundaryLayer
+    ){
+
+      setLayerInteraction(
+
+        villageBoundaryLayer,
+
+        villageMode
+
+      );
+
+    }
+
+
+    /* ========================================================
+       7. VILLAGE MODE ON
+       BRING VILLAGE POLYGONS ABOVE BTR POLYGONS
+
+       IMPORTANT:
+       We only bring polygon paths forward.
+
+       staffLayer is NOT touched.
+
+       Normal Leaflet L.marker staff markers use markerPane,
+       which normally remains above polygon overlayPane.
+    ======================================================== */
+
+    if(
+      villageMode &&
+      typeof villageBoundaryLayer !==
+        "undefined" &&
+      villageBoundaryLayer
+    ){
+
+      villageBoundaryLayer.eachLayer(
+
+        function(
+          layer
+        ){
+
+          try {
+
+            if(
+              typeof layer.bringToFront ===
+              "function"
+            ){
+
+              layer.bringToFront();
+
+            }
+
+          }
+
+          catch(err) {}
+
+        }
+
+      );
+
+    }
+
+
+    /* ========================================================
+       8. CLOSE EXISTING BTR ENTERPRISE TOOLTIP
+
+       Your BTR GIS has its own enterprise tooltip system.
+
+       When switching to Village Mode, close any BTR tooltip
+       that may already be open.
+    ======================================================== */
+
+    if(
+      villageMode
+    ){
+
+      try {
+
+        if(
+          typeof window
+            .closeEnterpriseTooltipFully ===
+          "function"
+        ){
+
+          window
+            .closeEnterpriseTooltipFully();
+
+        }
+
+      }
+
+      catch(err) {}
+
+
+      /* Clear active BTR tooltip reference */
+
+      try {
+
+        window
+          .__activeEnterpriseTooltipLayer =
+          null;
+
+      }
+
+      catch(err) {}
+
+    }
+
+
+    /* ========================================================
+       9. DEBUG
+    ======================================================== */
+
+    if(
+      villageMode
+    ){
+
+      console.log(
+
+        "🏡 VILLAGE MODE ON",
+        {
+          villageInteraction:
+            true,
+
+          btrInteraction:
+            false,
+
+          staffInteraction:
+            "UNCHANGED"
+        }
+
+      );
+
+    }
+
+    else {
+
+      console.log(
+
+        "🌲 VILLAGE MODE OFF",
+        {
+          villageInteraction:
+            false,
+
+          btrInteraction:
+            true,
+
+          staffInteraction:
+            "UNCHANGED"
+        }
+
+      );
+
+    }
+
+  }
+
+
+  /* ==========================================================
+     ERROR SAFETY
+  ========================================================== */
+
+  catch(
+    err
+  ){
+
+    console.error(
+
+      "❌ setVillageInteractionMode failed:",
+
+      err
+
+    );
+
+  }
+
+}
 
 /* ============================================================
    🏡 VILLAGE BOUNDARY LAZY LOAD STATE
@@ -35622,7 +36163,7 @@ map.on('overlayadd', async function (e) {
       return;
     }
 /* ============================================================
-   🏡 VILLAGE BOUNDARIES — LAZY LOAD
+   🏡 VILLAGE BOUNDARIES ON
 ============================================================ */
 
 if(
@@ -35630,7 +36171,17 @@ if(
   "🏡 Village Boundaries"
 ){
 
+  /* Lazy load GeoJSON on first selection */
+
   await loadVillageBoundaryLayer();
+
+
+  /* Village becomes interaction owner */
+
+  setVillageInteractionMode(
+    true
+  );
+
 
   return;
 
