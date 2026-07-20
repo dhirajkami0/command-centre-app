@@ -5402,6 +5402,7 @@ async function startApp(){   // 🔥 ASYNC
       } catch(e){}
 
     },1200);
+scheduleVillageDataLoad();
 
     // ======================================================
     // 🚀 FIREBASE WAIT LOOP
@@ -5471,7 +5472,6 @@ async function startApp(){   // 🔥 ASYNC
       },800);
 
     },1000);
-
     // ======================================================
     // ✅ APP READY
     // ======================================================
@@ -35090,15 +35090,1015 @@ const villageCanvasRenderer =
    - Canonical metadata is stored here for AI / Offence / GIS
 ============================================================ */
 
+/* ============================================================
+   🏡 VILLAGE DATA STATE
+============================================================ */
+
+/*
+ * Canonical village metadata.
+ *
+ * Expected:
+ * 291 canonical villages
+ */
 window.__villageBoundaryCache =
   window.__villageBoundaryCache ||
   [];
+
+
+/*
+ * Raw village GeoJSON.
+ *
+ * Expected:
+ * 298 polygon features.
+ *
+ * Loaded at app startup but NOT rendered automatically.
+ */
+window.__villageBoundaryGeoJSON =
+  window.__villageBoundaryGeoJSON ||
+  null;
+
+
+/*
+ * Data loading state.
+ */
+let villageDataLoaded =
+  false;
+
+let villageDataLoading =
+  false;
+
+
+/*
+ * Map rendering state.
+ *
+ * This is separate from data loading.
+ */
+let villageBoundaryLoaded =
+  false;
+
+let villageBoundaryLoading =
+  false;
 
 
 /* ============================================================
    🏡 VILLAGE BOUNDARY LAYER
 ============================================================ */
 
+/* ============================================================
+   🏡 DEFERRED VILLAGE DATA PRELOAD
+   ------------------------------------------------------------
+   PURPOSE:
+   - Do NOT block initial app startup
+   - Do NOT block map rendering
+   - Do NOT delay staff markers
+   - Do NOT render village polygons
+   - Build village AI / GIS cache in background
+============================================================ */
+
+function scheduleVillageDataLoad() {
+
+  const startVillageLoad =
+    function() {
+
+      loadVillageData()
+        .then(
+          function(
+            data
+          ) {
+
+            if(
+              !data
+            ){
+              return;
+            }
+
+            console.log(
+              "🏡 Background Village Data Ready:",
+              window.__villageBoundaryCache?.length
+            );
+
+          }
+        )
+        .catch(
+          function(
+            error
+          ) {
+
+            console.error(
+              "❌ Background Village Data Load Failed:",
+              error
+            );
+
+          }
+        );
+
+    };
+
+
+  /* ==========================================================
+     🚀 PREFERRED: LOAD WHEN BROWSER IS IDLE
+  ========================================================== */
+
+  if(
+    "requestIdleCallback" in window
+  ){
+
+    requestIdleCallback(
+
+      startVillageLoad,
+
+      {
+        timeout:
+          8000
+      }
+
+    );
+
+    return;
+  }
+
+
+  /* ==========================================================
+     📱 FALLBACK FOR UNSUPPORTED BROWSERS
+  ========================================================== */
+
+  setTimeout(
+    startVillageLoad,
+    3000
+  );
+
+}
+
+  
+/* ============================================================
+   🏡 LOAD VILLAGE DATA
+   ------------------------------------------------------------
+
+   PURPOSE:
+
+   1. Fetch village GeoJSON during app startup.
+
+   2. Store raw GeoJSON in:
+
+      window.__villageBoundaryGeoJSON
+
+   3. Build canonical village metadata in:
+
+      window.__villageBoundaryCache
+
+   4. Build:
+
+      298 polygon features
+            ↓
+      291 canonical villages
+
+   5. Rebuild GISEntities so village data is immediately
+      available to:
+
+      - GreenGuard AI
+      - Offence flow
+      - Village search
+      - Village code lookup
+      - Block lookup
+
+   IMPORTANT:
+
+   This function DOES NOT render village polygons.
+
+   Rendering remains lazy and happens only when the user
+   enables:
+
+      🏡 Village Boundaries
+
+============================================================ */
+
+async function loadVillageData() {
+
+  /* ==========================================================
+     🔥 ALREADY LOADED
+  ========================================================== */
+
+  if(
+    villageDataLoaded &&
+    window.__villageBoundaryGeoJSON
+  ){
+
+    return (
+      window.__villageBoundaryGeoJSON
+    );
+
+  }
+
+
+  /* ==========================================================
+     ⏳ ALREADY LOADING
+
+     Prevent duplicate simultaneous fetches.
+  ========================================================== */
+
+  if(
+    villageDataLoading
+  ){
+
+    return null;
+
+  }
+
+
+  villageDataLoading =
+    true;
+
+
+  try {
+
+    /* ========================================================
+       🌐 FETCH CLEANED VILLAGE GEOJSON
+    ======================================================== */
+
+    const response =
+      await fetch(
+        "geojson/Alipurduar_4_Blocks_Villages_Without_Forest.geojson"
+      );
+
+
+    /* ========================================================
+       🔥 HTTP SAFETY
+    ======================================================== */
+
+    if(
+      !response.ok
+    ){
+
+      throw new Error(
+
+        "Village GeoJSON HTTP " +
+        response.status
+
+      );
+
+    }
+
+
+    /* ========================================================
+       📦 PARSE GEOJSON
+    ======================================================== */
+
+    const data =
+      await response.json();
+
+
+    /* ========================================================
+       🔍 VALIDATE GEOJSON
+    ======================================================== */
+
+    if(
+      !data ||
+      data.type !==
+        "FeatureCollection" ||
+      !Array.isArray(
+        data.features
+      )
+    ){
+
+      throw new Error(
+        "Invalid village GeoJSON FeatureCollection"
+      );
+
+    }
+
+
+    /* ========================================================
+       💾 STORE RAW GEOJSON
+
+       IMPORTANT:
+
+       This does NOT render anything on Leaflet.
+
+       The 298 polygon features are kept in memory so they
+       can later be rendered instantly when the user enables
+       the Village Boundaries layer.
+    ======================================================== */
+
+    window.__villageBoundaryGeoJSON =
+      data;
+
+
+    /* ========================================================
+       🧹 RESET CANONICAL VILLAGE CACHE
+
+       We are rebuilding the canonical cache from the
+       authoritative GeoJSON dataset.
+
+       This prevents duplicate records if this function is
+       intentionally called again after a reset.
+    ======================================================== */
+
+    window.__villageBoundaryCache =
+      [];
+
+
+    /* ========================================================
+       🏡 PROCESS ALL VILLAGE FEATURES
+    ======================================================== */
+
+    data.features.forEach(
+
+      function(
+        feature
+      ){
+
+        /* ====================================================
+           🔥 FEATURE SAFETY
+        ==================================================== */
+
+        if(
+          !feature
+        ){
+
+          return;
+
+        }
+
+
+        const p =
+          feature.properties ||
+          {};
+
+
+        /* ====================================================
+           🔧 SAFE VALUE HELPER
+        ==================================================== */
+
+        function cleanVillageValue(
+          value
+        ){
+
+          if(
+            value === undefined ||
+            value === null
+          ){
+
+            return null;
+
+          }
+
+
+          const cleaned =
+            String(
+              value
+            ).trim();
+
+
+          return cleaned ||
+            null;
+
+        }
+
+
+        /* ====================================================
+           🏡 VILLAGE NAME
+        ==================================================== */
+
+        const villageName =
+
+          cleanVillageValue(
+            p.Village_Name
+          ) ||
+
+          cleanVillageValue(
+            p.Vill_name
+          ) ||
+
+          cleanVillageValue(
+            p.Vill_Name
+          ) ||
+
+          cleanVillageValue(
+            p.village_name
+          ) ||
+
+          cleanVillageValue(
+            p.name
+          ) ||
+
+          "Unknown Village";
+
+
+        /* ====================================================
+           🔢 VILLAGE CODE
+        ==================================================== */
+
+        const villageCode =
+
+          cleanVillageValue(
+            p.Village_Code
+          ) ||
+
+          cleanVillageValue(
+            p.Vill_LGD
+          ) ||
+
+          cleanVillageValue(
+            p.Vill_Code
+          ) ||
+
+          cleanVillageValue(
+            p.village_code
+          ) ||
+
+          null;
+
+
+        /* ====================================================
+           🗺 BLOCK NAME
+        ==================================================== */
+
+        const blockName =
+
+          cleanVillageValue(
+            p.Block_Name
+          ) ||
+
+          cleanVillageValue(
+            p.Sub_dist
+          ) ||
+
+          cleanVillageValue(
+            p.Block
+          ) ||
+
+          cleanVillageValue(
+            p.block
+          ) ||
+
+          null;
+
+
+        /* ====================================================
+           📍 DISTRICT
+        ==================================================== */
+
+        const districtName =
+
+          cleanVillageValue(
+            p.District
+          ) ||
+
+          cleanVillageValue(
+            p.district
+          ) ||
+
+          "Alipurduar";
+
+
+        /* ====================================================
+           🔤 NORMALIZED VILLAGE NAME
+        ==================================================== */
+
+        const cleanName =
+
+          villageName &&
+          villageName !==
+            "Unknown Village"
+
+            ? villageName
+                .toUpperCase()
+                .trim()
+
+            : null;
+
+
+        /* ====================================================
+           🔑 CANONICAL IDENTITY
+           ----------------------------------------------------
+
+           SAME CODE + SAME NAME
+           = SAME canonical village
+
+           SAME CODE + DIFFERENT NAME
+           = DIFFERENT canonical village
+
+
+           Example:
+
+           Parmalangi:
+
+           307107::PARMALANGI
+
+           Five polygons
+           → One canonical village
+
+
+           Shared code:
+
+           307144N151::RAJA BHAT KHAWA
+
+           307144N151::RAJA BHAT KHAWA MADHYA
+
+           → Two canonical villages
+        ==================================================== */
+
+        const canonicalId =
+
+          villageCode &&
+          cleanName
+
+            ? villageCode +
+              "::" +
+              cleanName
+
+            : cleanName &&
+              blockName
+
+              ? cleanName +
+                "::" +
+                String(
+                  blockName
+                )
+                .toUpperCase()
+                .trim()
+
+              : villageCode ||
+                cleanName ||
+                null;
+
+
+        /* ====================================================
+           🔥 IDENTITY SAFETY
+
+           A canonical village must have some usable identity.
+        ==================================================== */
+
+        if(
+          !canonicalId
+        ){
+
+          return;
+
+        }
+
+
+        /* ====================================================
+           🏡 BUILD CANONICAL VILLAGE OBJECT
+
+           IMPORTANT:
+
+           Polygon geometry is NOT stored here.
+
+           Geometry remains in:
+
+           window.__villageBoundaryGeoJSON
+        ==================================================== */
+
+        const canonicalVillage =
+        {
+
+          /* ==================================================
+             🔑 IDENTITY
+          ================================================== */
+
+          id:
+            canonicalId,
+
+          canonicalId:
+            canonicalId,
+
+          villageCode:
+            villageCode,
+
+          name:
+            villageName,
+
+          cleanName:
+            cleanName,
+
+
+          /* ==================================================
+             🏘 CLASSIFICATION
+          ================================================== */
+
+          category:
+            cleanVillageValue(
+              p.Vill_Cat
+            ),
+
+          villageType:
+            null,
+
+
+          /* ==================================================
+             🗺 ADMINISTRATIVE HIERARCHY
+          ================================================== */
+
+          gramPanchayat:
+            null,
+
+          block:
+            blockName,
+
+          subdivision:
+            null,
+
+          district:
+            districtName,
+
+          state:
+            "West Bengal",
+
+          country:
+            "India",
+
+
+          /* ==================================================
+             👮 POLICE JURISDICTION
+          ================================================== */
+
+          policeStation:
+            null,
+
+          policeStationCode:
+            null,
+
+
+          /* ==================================================
+             📮 POSTAL INFORMATION
+          ================================================== */
+
+          pinCode:
+            null,
+
+          postOffice:
+            null,
+
+
+          /* ==================================================
+             🏛 GOVERNMENT / LGD CODES
+          ================================================== */
+
+          stateLGD:
+            cleanVillageValue(
+              p.State_LGD
+            ),
+
+          districtLGD:
+            cleanVillageValue(
+              p.Dist_LGD
+            ),
+
+          subdistrictLGD:
+            cleanVillageValue(
+              p.Subdis_LGD
+            ),
+
+          gramPanchayatLGD:
+            null,
+
+
+          /* ==================================================
+             🌲 FOREST JURISDICTION
+
+             Can later be enriched spatially using:
+
+             - BTR
+             - Jaldapara
+             - Range
+             - Beat
+             - Compartment
+          ================================================== */
+
+          forestCircle:
+            null,
+
+          forestDivision:
+            null,
+
+          forestRange:
+            null,
+
+          forestBeat:
+            null,
+
+          forestCompartment:
+            null,
+
+          protectedArea:
+            null,
+
+
+          /* ==================================================
+             📍 LOCATION
+
+             Can later contain calculated representative
+             centroid coordinates.
+          ================================================== */
+
+          latitude:
+            null,
+
+          longitude:
+            null,
+
+
+          /* ==================================================
+             📊 DEMOGRAPHICS
+          ================================================== */
+
+          population:
+            null,
+
+          malePopulation:
+            null,
+
+          femalePopulation:
+            null,
+
+          households:
+            null,
+
+          censusYear:
+            null,
+
+
+          /* ==================================================
+             🔤 ALIASES
+          ================================================== */
+
+          aliases:
+            [],
+
+
+          /* ==================================================
+             🔎 SEARCH TOKENS
+          ================================================== */
+
+          searchTokens:
+            [
+
+              villageName,
+
+              cleanName,
+
+              villageCode,
+
+              blockName,
+
+              districtName,
+
+              "West Bengal",
+
+              "India"
+
+            ]
+            .filter(
+              Boolean
+            ),
+
+
+          /* ==================================================
+             📦 SOURCE INFORMATION
+          ================================================== */
+
+          source:
+          {
+
+            dataset:
+              "Alipurduar_4_Blocks_Villages_Without_Forest",
+
+            geometrySource:
+              "geojson/Alipurduar_4_Blocks_Villages_Without_Forest.geojson",
+
+            geometryStoredInCanonicalCache:
+              false
+
+          },
+
+
+          /* ==================================================
+             🔄 DATA AVAILABILITY
+          ================================================== */
+
+          dataStatus:
+          {
+
+            hasPoliceStation:
+              false,
+
+            hasPinCode:
+              false,
+
+            hasPostOffice:
+              false,
+
+            hasGramPanchayat:
+              false,
+
+            hasCoordinates:
+              false,
+
+            hasForestJurisdiction:
+              false,
+
+            hasDemographics:
+              false
+
+          },
+
+
+          /* ==================================================
+             🧩 SCHEMA VERSION
+          ================================================== */
+
+          schemaVersion:
+            1
+
+        };
+
+
+        /* ====================================================
+           🔎 CHECK EXISTING CANONICAL VILLAGE
+
+           Deduplication uses canonicalId.
+
+           Therefore:
+
+           307107::PARMALANGI
+           repeated 5 times
+           → one canonical object
+
+           But:
+
+           307144N151::RAJA BHAT KHAWA
+
+           and
+
+           307144N151::RAJA BHAT KHAWA MADHYA
+
+           → separate canonical objects
+        ==================================================== */
+
+        const existingVillageIndex =
+
+          window
+            .__villageBoundaryCache
+            .findIndex(
+
+              function(
+                village
+              ){
+
+                return (
+
+                  village &&
+                  village.canonicalId ===
+                    canonicalId
+
+                );
+
+              }
+
+            );
+
+
+        /* ====================================================
+           ➕ NEW CANONICAL VILLAGE
+        ==================================================== */
+
+        if(
+          existingVillageIndex ===
+          -1
+        ){
+
+          window
+            .__villageBoundaryCache
+            .push(
+              canonicalVillage
+            );
+
+        }
+
+
+        /* ====================================================
+           🔄 EXISTING CANONICAL VILLAGE
+
+           Same code + same name.
+
+           Keep one canonical object.
+        ==================================================== */
+
+        else {
+
+          window
+            .__villageBoundaryCache[
+              existingVillageIndex
+            ] =
+              canonicalVillage;
+
+        }
+
+      }
+
+    );
+
+
+    /* ========================================================
+       ✅ MARK DATA AS LOADED
+    ======================================================== */
+
+    villageDataLoaded =
+      true;
+
+
+    /* ========================================================
+       🧠 REBUILD GIS ENTITY INDEX
+
+       At this point:
+
+       window.__villageBoundaryCache
+
+       already contains the canonical villages.
+
+       Therefore AI and offence modules can access village
+       entities even if the polygons have never been rendered.
+    ======================================================== */
+
+    if(
+      window.GreenGuardAI
+        ?.GISEntities
+        ?.rebuild
+    ){
+
+      window.GreenGuardAI
+        .GISEntities
+        .rebuild();
+
+    }
+
+
+    /* ========================================================
+       🧪 DEBUG
+    ======================================================== */
+
+    console.log(
+      "✅ Village Data Loaded"
+    );
+
+
+    console.log(
+      "🏡 Village Polygon Features:",
+      data.features.length
+    );
+
+
+    console.log(
+      "🧠 Canonical Villages:",
+      window.__villageBoundaryCache.length
+    );
+
+
+    /* ========================================================
+       📤 RETURN RAW GEOJSON
+    ======================================================== */
+
+    return data;
+
+  }
+
+
+  /* ==========================================================
+     ❌ ERROR
+  ========================================================== */
+
+  catch(
+    error
+  ){
+
+    console.error(
+      "❌ Village Data Load Failed:",
+      error
+    );
+
+
+    villageDataLoaded =
+      false;
+
+
+    return null;
+
+  }
+
+
+  /* ==========================================================
+     🔄 ALWAYS RESET LOADING FLAG
+  ========================================================== */
+
+  finally {
+
+    villageDataLoading =
+      false;
+
+  }
+
+}
 /* ============================================================
    🏡 VILLAGE BOUNDARY LAYER
    ------------------------------------------------------------
