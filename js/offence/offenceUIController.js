@@ -245,19 +245,6 @@ CONFIG: {
             },
 
 
-        /* ====================================================
-           GET SPATIAL ENGINE
-        ==================================================== */
-
-        getSpatialEngine:
-            function () {
-
-                return window.GG
-                    ?.Offence
-                    ?.SpatialEngine ||
-                    null;
-
-            },
 
         /* ====================================================
            GET SPATIAL ENGINE
