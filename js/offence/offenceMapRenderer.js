@@ -492,33 +492,33 @@
         polygonHeat: {
 
     minFillOpacity:
-        0.35,
+        0.65,
 
     maxFillOpacity:
-        0.85,
+        0.95,
 
     minWeight:
-        1,
+        2,
 
     maxWeight:
-        4,
+        5,
 
     targetGradient: {
 
         0.20:
-            "#ffff00",
+            "#FFD600",  // Strong Yellow
 
         0.40:
-            "#ffb300",
+            "#FF9800",  // Vivid Orange
 
         0.60:
-            "#ff6600",
+            "#FF3D00",  // Orange Red
 
         0.80:
-            "#ff0000",
+            "#E60000",  // Strong Red
 
         1.00:
-            "#800000"
+            "#7A0000"   // Deep Dark Red
 
     }
 
