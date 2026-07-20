@@ -3525,6 +3525,308 @@
 
     },
 
+     /* ============================================================
+   🚨 WAIT FOR OFFENCE STORE AND BUILD SPATIAL ENGINE
+
+   PURPOSE
+   ------------------------------------------------------------
+   SpatialEngine depends on Offence.Store POR cascades.
+
+   During application startup the SpatialEngine script may load
+   before Offence.Store has completed building.
+
+   This function waits asynchronously until the Store contains
+   POR cascades, then performs exactly one authoritative rebuild.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   - Does NOT block UI
+   - Does NOT use a synchronous loop
+   - Does NOT rebuild repeatedly once ready
+   - Safe if Store is already ready
+============================================================ */
+
+SpatialEngine.waitForStoreAndBuild =
+  function () {
+
+    /* ========================================================
+       ALREADY READY
+    ======================================================== */
+
+    if (
+      SpatialEngine.ready === true &&
+      SpatialEngine.porSpatialIndex?.size > 0
+    ) {
+
+      console.log(
+        "🚨 OffenceSpatialEngine already ready:",
+        SpatialEngine.porSpatialIndex.size,
+        "PORs"
+      );
+
+      return;
+
+    }
+
+
+    /* ========================================================
+       PREVENT DUPLICATE WAIT LOOPS
+    ======================================================== */
+
+    if (
+      SpatialEngine.__storeWaitActive === true
+    ) {
+
+      return;
+
+    }
+
+
+    SpatialEngine.__storeWaitActive =
+      true;
+
+
+    let attempts =
+      0;
+
+
+    const MAX_ATTEMPTS =
+      120;
+
+
+    const INTERVAL_MS =
+      500;
+
+
+    console.log(
+      "⏳ OffenceSpatialEngine waiting for Offence Store..."
+    );
+
+
+    const timer =
+      setInterval(
+
+        function () {
+
+          attempts++;
+
+
+          try {
+
+            const Store =
+              window.GG
+                ?.Offence
+                ?.Store;
+
+
+            /* ==================================================
+               STORE MODULE NOT AVAILABLE YET
+            ================================================== */
+
+            if (
+              !Store
+            ) {
+
+              return;
+
+            }
+
+
+            /* ==================================================
+               STORE NOT READY YET
+            ================================================== */
+
+            if (
+              Store.ready !== true
+            ) {
+
+              return;
+
+            }
+
+
+            /* ==================================================
+               GET POR CASCADES
+            ================================================== */
+
+            const cascades =
+
+              typeof Store.getPorCascades ===
+              "function"
+
+                ? Store.getPorCascades()
+
+                : [];
+
+
+            /* ==================================================
+               STORE READY BUT DATA NOT POPULATED YET
+            ================================================== */
+
+            if (
+              !Array.isArray(
+                cascades
+              ) ||
+              cascades.length === 0
+            ) {
+
+              return;
+
+            }
+
+
+            /* ==================================================
+               STORE IS AUTHORITATIVELY READY
+            ================================================== */
+
+            clearInterval(
+              timer
+            );
+
+
+            SpatialEngine.__storeWaitActive =
+              false;
+
+
+            console.log(
+
+              "🔥 Offence Store ready →",
+
+              cascades.length,
+
+              "POR cascades"
+
+            );
+
+
+            /* ==================================================
+               BUILD SPATIAL ENGINE
+            ================================================== */
+
+            const result =
+              SpatialEngine.rebuild();
+
+
+            /* ==================================================
+               SUPPORT ASYNC REBUILD IF IMPLEMENTATION CHANGES
+            ================================================== */
+
+            if (
+              result &&
+              typeof result.then ===
+              "function"
+            ) {
+
+              result
+
+                .then(
+
+                  function () {
+
+                    console.log(
+
+                      "✅ OffenceSpatialEngine automatic build complete",
+
+                      SpatialEngine.getStats?.()
+
+                    );
+
+                  }
+
+                )
+
+                .catch(
+
+                  function (
+                    err
+                  ) {
+
+                    console.error(
+
+                      "❌ OffenceSpatialEngine automatic build failed:",
+
+                      err
+
+                    );
+
+                  }
+
+                );
+
+            }
+
+            else {
+
+              console.log(
+
+                "✅ OffenceSpatialEngine automatic build complete",
+
+                SpatialEngine.getStats?.()
+
+              );
+
+            }
+
+          }
+
+
+          catch (
+            err
+          ) {
+
+            console.error(
+
+              "❌ OffenceSpatialEngine startup wait error:",
+
+              err
+
+            );
+
+          }
+
+
+          /* ====================================================
+             TIMEOUT SAFETY
+
+             120 × 500 ms = 60 seconds.
+
+             We stop polling instead of leaving a permanent
+             background interval running.
+          ==================================================== */
+
+          if (
+            attempts >=
+            MAX_ATTEMPTS
+          ) {
+
+            clearInterval(
+              timer
+            );
+
+
+            SpatialEngine.__storeWaitActive =
+              false;
+
+
+            console.warn(
+
+              "⚠ OffenceSpatialEngine Store wait timeout after",
+
+              attempts,
+
+              "attempts"
+
+            );
+
+          }
+
+        },
+
+        INTERVAL_MS
+
+      );
+
+  };
 
     /* ========================================================
        🏡 GET ALL SOURCE VILLAGES
@@ -4184,6 +4486,14 @@
     "🚨 OffenceSpatialEngine loaded",
     OffenceSpatialEngine.VERSION
   );
+
+
+  /* ============================================================
+     🚀 START STORE-AWARE SPATIAL INITIALIZATION
+  ============================================================ */
+
+  OffenceSpatialEngine
+    .waitForStoreAndBuild();
 
 
 })();
