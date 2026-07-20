@@ -4296,6 +4296,44 @@ MapRenderer.createPolygonStyle =
 
     ) {
 
+        /*
+         * TEMPORARY RUNTIME DIAGNOSTIC
+         *
+         * IMPORTANT:
+         * This does NOT call the functions.
+         * It only checks whether they exist.
+         */
+
+        console.log(
+
+            "🔥 CREATE POLYGON STYLE LIVE",
+
+            {
+
+                type:
+                    type,
+
+                hasHeatColor:
+                    typeof MapRenderer
+                        .getTargetPolygonHeatColor,
+
+                hasPolygonCount:
+                    typeof MapRenderer
+                        .getPolygonCount,
+
+                hasHeatWeight:
+                    typeof MapRenderer
+                        .getPolygonHeatWeight,
+
+                hasNormalize:
+                    typeof MapRenderer
+                        .normalizePolygonIntensity
+
+            }
+
+        );
+
+
         const isTarget =
 
             String(
@@ -4326,93 +4364,72 @@ MapRenderer.createPolygonStyle =
                 .polygonHeat;
 
 
+        const intensity =
+
+            MapRenderer
+                .normalizePolygonIntensity(
+
+                    entry,
+
+                    maxWeight
+
+                );
+
+
         /*
-         * Normalize polygon offence count
-         * against the highest-count polygon.
+         * SAFE DEBUG
          *
-         * 0 = lowest intensity
-         * 1 = highest intensity
+         * Do NOT call getTargetPolygonHeatColor here yet.
          */
 
-const intensity =
+        console.log(
 
-    MapRenderer
-        .normalizePolygonIntensity(
+            "🔥 POLYGON HEAT DEBUG",
 
-            entry,
+            {
 
-            maxWeight
+                name:
+                    entry.range ||
+                    entry.compartment ||
+                    entry.name,
+
+                type:
+                    type,
+
+                isTarget:
+                    isTarget,
+
+                offenceCount:
+                    entry.offenceCount,
+
+                hotspotCount:
+                    entry.hotspotCount,
+
+                heatWeight:
+                    entry.heatWeight,
+
+                calculatedCount:
+                    MapRenderer
+                        .getPolygonCount(
+                            entry
+                        ),
+
+                calculatedWeight:
+                    MapRenderer
+                        .getPolygonHeatWeight(
+                            entry
+                        ),
+
+                maxWeight:
+                    maxWeight,
+
+                intensity:
+                    intensity
+
+            }
 
         );
 
-
-/* =============================================
-   TEMPORARY POLYGON HEAT DEBUG
-   ============================================= */
-
-console.log(
-
-    "🔥 POLYGON HEAT DEBUG",
-
-    {
-
-        name:
-            entry.range ||
-            entry.compartment ||
-            entry.name,
-
-        type:
-            type,
-
-        isTarget:
-            isTarget,
-
-        offenceCount:
-            entry.offenceCount,
-
-        hotspotCount:
-            entry.hotspotCount,
-
-        heatWeight:
-            entry.heatWeight,
-
-        calculatedCount:
-            MapRenderer
-                .getPolygonCount(
-                    entry
-                ),
-
-        calculatedWeight:
-            MapRenderer
-                .getPolygonHeatWeight(
-                    entry
-                ),
-
-        maxWeight:
-            maxWeight,
-
-        intensity:
-            intensity,
-
-        fillColor:
-            isTarget
-
-                ? MapRenderer
-                    .getTargetPolygonHeatColor(
-                        intensity
-                    )
-
-                : baseConfig
-                    .fillColor
-
-    }
-
-);
-
-
-        /*
-         * Dynamic fill opacity.
-         */
 
         const fillOpacity =
 
@@ -4430,10 +4447,6 @@ console.log(
                 );
 
 
-        /*
-         * Dynamic border thickness.
-         */
-
         const weight =
 
             MapRenderer
@@ -4450,24 +4463,13 @@ console.log(
                 );
 
 
-        /*
-         * TARGET:
-         * Dynamic high-contrast heat color
-         * based on offence-count intensity.
-         *
-         * SOURCE:
-         * Keep existing configured color.
-         */
-
         const fillColor =
 
             isTarget
 
                 ? MapRenderer
                     .getTargetPolygonHeatColor(
-
                         intensity
-
                     )
 
                 : baseConfig
@@ -4477,34 +4479,27 @@ console.log(
         return {
 
             color:
-
                 baseConfig
                     .color,
 
             fillColor:
-
                 fillColor,
 
             opacity:
-
                 isTarget
                     ? 1.00
                     : baseConfig
                         .opacity,
 
             fillOpacity:
-
                 isTarget
-
                     ? Math.max(
                         0.80,
                         fillOpacity
                     )
-
                     : fillOpacity,
 
             weight:
-
                 weight
 
         };
