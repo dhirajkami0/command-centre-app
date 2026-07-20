@@ -7,11 +7,9 @@
       NAMESPACE
     =========================================================*/
 
-    const GG =
-
-        window.GreenGuardAI =
-
-        window.GreenGuardAI || {};
+const GG =
+    window.GG =
+    window.GG || {};
 
 
     GG.Offence =
