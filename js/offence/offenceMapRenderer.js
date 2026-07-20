@@ -4204,7 +4204,76 @@ MapRenderer.getPolygonHeatWeight =
 
         };
 
+/* =====================================================
+   GET TARGET POLYGON HEAT COLOR
 
+   Converts normalized intensity (0 → 1)
+   into a sharp contrasting TARGET polygon color.
+   ===================================================== */
+
+MapRenderer.getTargetPolygonHeatColor =
+    function (
+        intensity
+    ) {
+
+        const value =
+
+            Math.max(
+
+                0,
+
+                Math.min(
+
+                    1,
+
+                    Number(
+                        intensity
+                    ) || 0
+
+                )
+
+            );
+
+
+        if (
+            value >= 0.80
+        ) {
+
+            return "#7A0000"; // Deep Dark Red
+
+        }
+
+
+        if (
+            value >= 0.60
+        ) {
+
+            return "#E60000"; // Strong Red
+
+        }
+
+
+        if (
+            value >= 0.40
+        ) {
+
+            return "#FF3D00"; // Orange Red
+
+        }
+
+
+        if (
+            value >= 0.20
+        ) {
+
+            return "#FF9800"; // Vivid Orange
+
+        }
+
+
+        return "#FFD600"; // Strong Yellow
+
+    };
     /* =====================================================
        37. CREATE POLYGON STYLE
 
