@@ -8039,49 +8039,7 @@ function (
 
    
 
-   ✓ Preserve selected parent
 
-   ✓ Preserve complete child list
-
-   ✓ Replace current selected child
-
-   ✓ Highlight selected child card
-
-   ✓ Reset previous case selection
-
-   ✓ Reset previous case details
-
-   ✓ Reset previous field details
-
-   ✓ Load / display cases belonging to selected child
-
-   ✓ Keep all further navigation inside the panel
-
-
-   IMPORTANT
-   -----------------------------------------------------------
-
-   This function does NOT:
-
-       - clear the selected parent
-       - require another map click
-       - render parent polygons again
-       - rebuild SpatialEngine
-       - rebuild Store
-       - change analysis mode
-       - make child polygons interactive
-
-
-   CHILD MAP POLYGON
-   -----------------------------------------------------------
-
-   SpatialRenderer may visually highlight the selected child.
-
-   However child polygons must remain:
-
-       interactive: false
-
-=========================================================== */
 
 
 
