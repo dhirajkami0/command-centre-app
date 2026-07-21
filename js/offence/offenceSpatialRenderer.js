@@ -6065,305 +6065,456 @@ Renderer.selectSource =
 ============================================================ */
 
 Renderer.selectTarget =
-  function (
-    target
-  ) {
-
-    const Spatial =
-      Renderer
-        .getSpatialEngine();
-
-
-    if (
-      !Spatial ||
-      !target ||
-      Renderer.mode !==
-        "TARGET"
+    function (
+        target
     ) {
 
-      return [];
-
-    }
-
-
-    /* ========================================================
-       RESOLVE TARGET NAME / KEY
-    ======================================================== */
-
-    const targetName =
-      target.name;
+        const Spatial =
+            Renderer
+                .getSpatialEngine();
 
 
-    const targetKey =
-      Renderer
-        .normalizeText(
+        /* ========================================================
+           VALIDATE STATE
+        ======================================================== */
 
-          target.cleanName
+        if (
+            !Spatial ||
+            !target ||
+            Renderer.mode !==
+                "TARGET"
+        ) {
 
-          ||
+            return [];
 
-          targetName
-
-        );
-
-
-    if (
-      !targetName ||
-      !targetKey
-    ) {
-
-      return [];
-
-    }
+        }
 
 
-    /* ========================================================
-       CLEAR ONLY PREVIOUS TARGET DRILL-DOWN
+        /* ========================================================
+           RESOLVE TARGET NAME / KEY
+        ======================================================== */
 
-       parentTargetLayer remains untouched.
-    ======================================================== */
-
-    Renderer
-      .clearTargetDrillDown();
+        const targetName =
+            target.name;
 
 
-    /* ========================================================
-       SET NEW TARGET SELECTION
-    ======================================================== */
+        const targetKey =
+            Renderer
+                .normalizeText(
 
-    Renderer.selectedTargetKey =
-      targetKey;
+                    target.cleanName ||
 
+                    targetName
 
-    Renderer.selectedSourceId =
-      null;
-
-
-    Renderer.currentCases =
-      [];
-
-
-    /* ========================================================
-       RENDER VISUAL TARGET SELECTION
-    ======================================================== */
-
-    Renderer.renderTarget(
-
-      target,
-
-      target.offenceCount ||
-      1,
-
-      {
-        role:
-          "SELECTED"
-      }
-
-    );
-
-
-    /* ========================================================
-       GET ALL SOURCE RELATIONSHIPS FOR TARGET
-    ======================================================== */
-
-    const relations =
-
-      Spatial
-        .getSourcesForTarget?.(
-          targetName
-        )
-
-      ||
-
-      [];
-
-
-    /* ========================================================
-       CONVERT RELATIONSHIPS INTO SOURCE OBJECTS
-    ======================================================== */
-
-    const sources =
-
-      relations
-
-        .map(
-
-          relation => {
-
-            const sourceId =
-
-              relation.sourceId
-
-              ||
-
-              relation.canonicalId
-
-              ||
-
-              relation.id;
-
-
-            if (
-              !sourceId
-            ) {
-
-              return null;
-
-            }
-
-
-            const source =
-              Spatial
-                .getSourceVillage?.(
-                  sourceId
                 );
 
 
-            if (
-              !source
+        if (
+            !targetName ||
+            !targetKey
+        ) {
+
+            return [];
+
+        }
+
+
+        /* ========================================================
+           CLEAR ONLY PREVIOUS TARGET DRILL-DOWN
+
+           IMPORTANT:
+
+           Parent TARGET layer remains available.
+
+           This clears only:
+
+           - previous selected-parent highlight
+           - previous related SOURCE children
+           - previous child/case drill-down state
+        ======================================================== */
+
+        Renderer
+            .clearTargetDrillDown();
+
+
+        /* ========================================================
+           SET NEW TARGET PARENT SELECTION
+
+           A NEW parent invalidates everything below the
+           previously selected parent.
+        ======================================================== */
+
+        Renderer.selectedTargetKey =
+            targetKey;
+
+
+        Renderer.selectedSourceId =
+            null;
+
+
+        Renderer.currentSources =
+            [];
+
+
+        Renderer.currentCases =
+            [];
+
+
+        /* ========================================================
+           RENDER VISUAL TARGET PARENT SELECTION
+
+           SELECTED is visual only.
+        ======================================================== */
+
+        Renderer.renderTarget(
+
+            target,
+
+            target.offenceCount ||
+                1,
+
+            {
+                role:
+                    "SELECTED",
+
+                interactive:
+                    false
+            }
+
+        );
+
+
+        /* ========================================================
+           GET TARGET → SOURCE RELATIONSHIPS
+        ======================================================== */
+
+        const relations =
+
+            Spatial
+                .getSourcesForTarget?.(
+                    targetName
+                ) ||
+
+            [];
+
+
+        /* ========================================================
+           BUILD CHILD SOURCE OBJECTS
+
+           TARGET → SOURCE
+
+           Parent:
+               selected target range
+
+           Children:
+               related source villages
+        ======================================================== */
+
+        const sources =
+
+            relations
+
+                .map(
+
+                    function (
+                        relation
+                    ) {
+
+                        const sourceId =
+
+                            relation.sourceId ||
+
+                            relation.canonicalId ||
+
+                            relation.id;
+
+
+                        if (
+                            !sourceId
+                        ) {
+
+                            return null;
+
+                        }
+
+
+                        const source =
+
+                            Spatial
+                                .getSourceVillage?.(
+                                    sourceId
+                                );
+
+
+                        if (
+                            !source
+                        ) {
+
+                            return null;
+
+                        }
+
+
+                        return {
+
+                            ...source,
+
+
+                            offenceCount:
+
+                                relation.offenceCount ??
+
+                                source.offenceCount ??
+
+                                0,
+
+
+                            /*
+                             * Preserve the complete relationship.
+                             *
+                             * This remains available when the
+                             * CHILD card is selected from panel.
+                             */
+
+                            relation:
+                                relation
+
+                        };
+
+                    }
+
+                )
+
+                .filter(
+                    Boolean
+                )
+
+                /* =================================================
+                   KEEP ONLY GIS-RESOLVED SOURCE CHILDREN
+
+                   GIS is used here only to render/highlight the
+                   related children.
+
+                   The child polygons themselves are NOT clickable.
+                ================================================= */
+
+                .filter(
+
+                    function (
+                        source
+                    ) {
+
+                        const sourceId =
+
+                            source.canonicalId ||
+
+                            source.id;
+
+
+                        if (
+                            !sourceId
+                        ) {
+
+                            return false;
+
+                        }
+
+
+                        return Renderer
+                            .villageFeatureIndex
+                            .has(
+                                sourceId
+                            );
+
+                    }
+
+                );
+
+
+        /* ========================================================
+           CALCULATE CHILD SOURCE HEAT SCALE
+        ======================================================== */
+
+        const maxCount =
+
+            Math.max(
+
+                1,
+
+                ...sources.map(
+
+                    function (
+                        source
+                    ) {
+
+                        return (
+
+                            source.offenceCount ||
+
+                            0
+
+                        );
+
+                    }
+
+                )
+
+            );
+
+
+        /* ========================================================
+           STORE CURRENT CHILD SOURCES
+        ======================================================== */
+
+        Renderer.currentSources =
+            sources;
+
+
+        /* ========================================================
+           RENDER ALL SOURCE CHILD POLYGONS
+
+           CRITICAL CURRENT DESIGN:
+
+           CHILD polygons are visual only.
+
+           They MUST always be:
+
+               interactive: false
+
+           Child selection happens from the CHILD section
+           of the panel — never from the map.
+        ======================================================== */
+
+        sources.forEach(
+
+            function (
+                source
             ) {
 
-              return null;
+                Renderer.renderSource(
+
+                    source,
+
+                    maxCount,
+
+                    {
+                        role:
+                            "RELATED",
+
+                        interactive:
+                            false
+                    }
+
+                );
 
             }
 
-
-            return {
-
-              ...source,
+        );
 
 
-              offenceCount:
+        /* ========================================================
+           POPULATE NEW PARENT / CHILD PANEL
 
-                relation.offenceCount
+           TARGET → SOURCE
 
-                ??
+           PARENT:
+               selected target range
 
-                source.offenceCount
+           CHILD:
+               all related source villages
 
-                ??
+           IMPORTANT:
 
-                0,
+           This is the missing symmetrical operation corresponding
+           to Renderer.selectSource().
+        ======================================================== */
+
+        if (
+
+            GG
+                ?.Offence
+                ?.UIController
+                ?.openParentPanel &&
+
+            typeof
+            GG
+                .Offence
+                .UIController
+                .openParentPanel ===
+                "function"
+
+        ) {
+
+            GG
+                .Offence
+                .UIController
+                .openParentPanel(
+
+                    target,
+
+                    Renderer.currentSources
+
+                );
+
+        }
+
+        else {
+
+            console.error(
+
+                "❌ OffenceUIController.openParentPanel() unavailable"
+
+            );
+
+        }
 
 
-              relation:
-                relation
+        /* ========================================================
+           STATUS / DEBUG
+        ======================================================== */
 
-            };
+        console.log(
 
-          }
+            "🎯 Target parent selected:",
 
-        )
+            targetName,
 
-        .filter(
-          Boolean
-        )
+            "→",
 
-        .filter(
+            sources.length,
 
-          source => {
+            "source children",
 
-            const sourceId =
+            sources.map(
 
-              source.canonicalId
+                function (
+                    source
+                ) {
 
-              ||
+                    return {
 
-              source.id;
+                        name:
+                            source.name,
 
+                        offenceCount:
+                            source.offenceCount
 
-            return Renderer
-              .villageFeatureIndex
-              .has(
-                sourceId
-              );
+                    };
 
-          }
+                }
+
+            )
 
         );
 
 
-    /* ========================================================
-       CALCULATE RELATED SOURCE HEAT SCALE
-    ======================================================== */
+        /* ========================================================
+           RETURN CHILDREN
+        ======================================================== */
 
-    const maxCount =
-      Math.max(
+        return sources;
 
-        1,
-
-        ...sources.map(
-
-          source =>
-
-            source.offenceCount
-
-            ||
-
-            0
-
-        )
-
-      );
-
-
-    /* ========================================================
-       STORE CURRENT RELATED SOURCES
-    ======================================================== */
-
-    Renderer.currentSources =
-      sources;
-
-
-    /* ========================================================
-       RENDER ALL RELATED SOURCES
-    ======================================================== */
-
-    sources.forEach(
-
-      source => {
-
-        Renderer.renderSource(
-
-          source,
-
-          maxCount,
-
-          {
-            role:
-              "RELATED"
-          }
-
-        );
-
-      }
-
-    );
-
-
-    console.log(
-
-      "🎯 Target selected:",
-
-      targetName,
-
-      "→",
-
-      sources.length,
-
-      "related source villages",
-
-      sources.map(
-        source =>
-          source.name
-      )
-
-    );
-
-
-    return sources;
-
-  };
+    };
 
  /* ============================================================
    SOURCE MODE
