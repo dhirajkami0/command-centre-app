@@ -6217,33 +6217,103 @@ const storeState =
 
 ============================================================ */
 
+/* ===========================================================
+   SHOW SPATIAL CASES
+
+   Responsibilities
+
+   ✓ Store current cases
+   ✓ Store current context
+   ✓ Expand CASE RESULTS
+   ✓ Update toggle arrow
+   ✓ Show results container
+   ✓ Clear previous case selection
+   ✓ Render case cards
+   ✓ Scroll results to top
+=========================================================== */
+
 showSpatialCases:
 function (
     cases = [],
     context = {}
 ) {
 
+    /* ============================================
+       STORE STATE
+    ============================================ */
+
     UIController.currentSpatialCases =
-        Array.isArray(cases)
+        Array.isArray(
+            cases
+        )
             ? cases
             : [];
 
     UIController.currentSpatialContext =
         context || {};
 
+    /* ============================================
+       EXPAND CASE PANEL
+    ============================================ */
+
     UIController.casePanelExpanded =
         true;
 
+    const elements =
+        UIController.elements;
+
+    if (
+        elements.caseResults
+    ) {
+
+        elements.caseResults.style.display =
+            "block";
+
+    }
+
+    if (
+        elements.caseResultsToggle
+    ) {
+
+        elements.caseResultsToggle.textContent =
+            "▼ CASE RESULTS";
+
+    }
+
+    /* ============================================
+       RESET PREVIOUS CASE
+    ============================================ */
+
+    if (
+
+        typeof
+        UIController
+            .clearCaseSelection ===
+        "function"
+
+    ) {
+
+        UIController
+            .clearCaseSelection();
+
+    }
+
+    /* ============================================
+       GET RESULTS CONTAINER
+    ============================================ */
+
     const container =
 
-        UIController.elements
+        elements
             ?.caseResultList ||
 
         document.getElementById(
             "gg-case-result-list"
         );
 
-    if (!container) {
+    if (
+        !container
+    ) {
 
         console.warn(
             "⚠ Case Results container not found."
@@ -6255,11 +6325,22 @@ function (
 
     container.innerHTML = "";
 
+    container.scrollTop = 0;
+
+    /* ============================================
+       NO CASES
+    ============================================ */
+
     if (
-        UIController.currentSpatialCases.length === 0
+
+        UIController
+            .currentSpatialCases
+            .length === 0
+
     ) {
 
         container.innerHTML =
+
             `
             <div class="gg-offence-empty">
 
@@ -6272,8 +6353,13 @@ function (
 
     }
 
+    /* ============================================
+       CONTEXT HEADER
+    ============================================ */
+
     const ctx =
-        UIController.currentSpatialContext;
+        UIController
+            .currentSpatialContext;
 
     const header =
         document.createElement(
@@ -6284,6 +6370,7 @@ function (
         "gg-offence-case-context";
 
     header.innerHTML =
+
         `
         <div class="gg-offence-case-context-title">
 
@@ -6308,6 +6395,10 @@ function (
         header
     );
 
+    /* ============================================
+       CASE CARDS
+    ============================================ */
+
     UIController.currentSpatialCases.forEach(
 
         function (
@@ -6323,11 +6414,15 @@ function (
                 "gg-offence-case-card";
 
             card.dataset.por =
+
                 item.por ||
+
                 item.POR ||
+
                 "";
 
             card.innerHTML =
+
                 `
                 <div class="gg-offence-case-title">
 
@@ -6362,9 +6457,9 @@ function (
                 </div>
                 `;
 
-            /* ============================================
+            /* ====================================
                CASE CLICK
-            ============================================ */
+            ==================================== */
 
             card.onclick =
                 function () {
@@ -6385,56 +6480,6 @@ function (
 
         }
 
-    );
-
-},
-
-/* ===========================================================
-   SELECT CASE
-
-   Responsibilities
-
-   ✓ Validate
-   ✓ Store current case
-   ✓ Highlight selected card
-   ✓ Show case details
-=========================================================== */
-
-selectCase:
-function (
-    caseData,
-    card
-) {
-
-    if (
-        !caseData
-    ) {
-
-        return;
-
-    }
-
-    /* ============================================
-       STORE CURRENT CASE
-    ============================================ */
-
-    UIController.currentCase =
-        caseData;
-
-    /* ============================================
-       HIGHLIGHT SELECTED CARD
-    ============================================ */
-
-    UIController.highlightSelectedCase(
-        card
-    );
-
-    /* ============================================
-       SHOW DETAILS
-    ============================================ */
-
-    UIController.showCaseDetails(
-        caseData
     );
 
 },
