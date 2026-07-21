@@ -14478,13 +14478,15 @@ function (
     /* =======================================================
        HAS MEANINGFUL VALUE
 
-       IMPORTANT:
+       Missing values are completely omitted.
 
-       If no meaningful value exists:
-
-           NO BOX
-           NO LABEL
-           NO EMPTY PLACEHOLDER
+       NO:
+           empty box
+           empty heading
+           N/A
+           -
+           undefined
+           null
     ======================================================= */
 
     function hasValue(
@@ -14683,7 +14685,8 @@ function (
     /* =======================================================
        FORMAT SIMPLE VALUE
 
-       Never dump raw JSON into Case Details.
+       IMPORTANT:
+       Never dump raw JSON into CASE DETAILS.
     ======================================================= */
 
     function formatValue(
@@ -15031,20 +15034,18 @@ function (
 
 
     /* =======================================================
-       CREATE PROFESSIONAL CASE ITEM BOX
+       CREATE ONE CASE FIELD BOX
 
-       NEW DESIGN:
-
-       EACH CASE FIELD GETS ITS OWN BOX.
+       EVERY CASE FIELD IS ITS OWN BOX.
 
        Example:
 
        ┌─────────────────────────────┐
        │ OFFENCE DATE                │
-       │ 17 Jul 2024                 │
+       │ 25 Dec 2007                 │
        └─────────────────────────────┘
 
-       Missing value = complete box omitted.
+       Missing value = box omitted completely.
     ======================================================= */
 
     function createCaseItem(
@@ -15074,23 +15075,19 @@ function (
                 true
         ) {
 
-
             formatted =
                 formatDate(
                     value
                 );
 
-
         }
 
         else {
-
 
             formatted =
                 formatValue(
                     value
                 );
-
 
         }
 
@@ -15134,7 +15131,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE POR NUMBER
+       POR NUMBER
     ======================================================= */
 
     const porNo =
@@ -15160,7 +15157,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE OFFENCE DATE
+       OFFENCE DATE
     ======================================================= */
 
     const offenceDate =
@@ -15182,7 +15179,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE NATURE OF OFFENCE
+       NATURE OF OFFENCE
     ======================================================= */
 
     const natureOfOffence =
@@ -15204,7 +15201,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE ACT
+       ACT
     ======================================================= */
 
     const act =
@@ -15224,7 +15221,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE SECTION
+       SECTION
     ======================================================= */
 
     const sectionValue =
@@ -15246,7 +15243,7 @@ function (
 
 
     /* =======================================================
-       BUILD ACT / SECTION
+       ACT / SECTION
     ======================================================= */
 
     let actSection =
@@ -15335,7 +15332,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE CASE STATUS
+       CASE STATUS
     ======================================================= */
 
     const caseStatus =
@@ -15355,7 +15352,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE COURT
+       COURT
     ======================================================= */
 
     const court =
@@ -15377,7 +15374,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE CR NUMBER
+       CR NUMBER
     ======================================================= */
 
     const crNo =
@@ -15403,7 +15400,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE NEXT HEARING
+       NEXT HEARING
     ======================================================= */
 
     const nextHearing =
@@ -15425,7 +15422,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE PURPOSE OF HEARING
+       PURPOSE OF HEARING
     ======================================================= */
 
     const hearingPurpose =
@@ -15445,7 +15442,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE ENQUIRY OFFICER
+       ENQUIRY OFFICER
     ======================================================= */
 
     const enquiryOfficer =
@@ -15583,9 +15580,9 @@ function (
 
 
     /* =======================================================
-       BUILD CASE ITEM BOXES
+       BUILD ORDINARY CASE INFORMATION BOXES
 
-       EVERY FIELD IS A COMPLETELY SEPARATE CARD.
+       EACH FIELD = SEPARATE BOX
     ======================================================= */
 
     let summaryHTML =
@@ -15704,9 +15701,16 @@ function (
 
 
     /* =======================================================
-       BUILD EXPANDABLE DETAIL ITEMS
+       BUILD CLICKABLE DETAIL BOXES
 
-       Only available categories are shown.
+       REQUIRED ORDER:
+
+           ACCUSED
+           WITNESSES
+           SEIZURE DETAILS
+           SEIZED ARTICLES
+
+       Only show category when meaningful data exists.
     ======================================================= */
 
     const expandable =
@@ -15820,7 +15824,7 @@ function (
 
 
     /* -------------------------------------------------------
-       CASE INFORMATION CARDS
+       CASE INFORMATION BOXES
     ------------------------------------------------------- */
 
     if (
@@ -15843,7 +15847,9 @@ function (
 
 
     /* -------------------------------------------------------
-       DETAIL DRILL-DOWN CARDS
+       CLICKABLE DETAIL BOXES
+
+       These visually follow the ordinary case boxes.
     ------------------------------------------------------- */
 
     if (
@@ -15972,10 +15978,14 @@ function (
 
        New case selected:
 
-           previous ACCUSED / WITNESSES / etc.
-           must disappear.
+           previous ACCUSED
+           previous WITNESSES
+           previous SEIZURE
+           previous SEIZED ARTICLES
 
-       Parent / child / case list remain untouched.
+       must disappear.
+
+       Parent / children / case list remain preserved.
     ======================================================= */
 
     if (
@@ -16009,7 +16019,23 @@ function (
 
 
     /* =======================================================
-       BIND DETAIL DRILL-DOWN CARDS
+       BIND CLICKABLE DETAIL BOXES
+
+       ACCUSED
+           ↓
+       FIELD DETAILS
+
+       WITNESSES
+           ↓
+       FIELD DETAILS
+
+       SEIZURE DETAILS
+           ↓
+       FIELD DETAILS
+
+       SEIZED ARTICLES
+           ↓
+       FIELD DETAILS
     ======================================================= */
 
     container
@@ -16148,22 +16174,13 @@ function (
     /* =======================================================
        STABLE INTERNAL PANEL SCROLL
 
-       IMPORTANT:
+       ONLY .gg-offence-panel-body scrolls.
 
-       ONLY:
-
-           .gg-offence-panel-body
-
-       moves.
-
-       NEVER:
-
-           window
-           document
-           map
-           whole panel
-
-       NEVER use scrollIntoView().
+       Do NOT:
+           scroll window
+           scroll document
+           move map
+           use scrollIntoView()
     ======================================================= */
 
     const panelBody =
@@ -16257,7 +16274,7 @@ function (
 
     console.log(
 
-        "📋 Professional CASE DETAILS cards rendered",
+        "📋 CASE DETAILS rendered",
 
         {
 
@@ -16291,8 +16308,28 @@ function (
 
                 ),
 
-            separateCaseItemBoxes:
+            separateCaseBoxes:
                 true,
+
+            accusedAvailable:
+                hasValue(
+                    accused
+                ),
+
+            witnessesAvailable:
+                hasValue(
+                    witnesses
+                ),
+
+            seizureAvailable:
+                hasValue(
+                    seizure
+                ),
+
+            seizedArticlesAvailable:
+                hasValue(
+                    seizedArticles
+                ),
 
             panelScrollStable:
                 Boolean(
