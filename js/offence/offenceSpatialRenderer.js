@@ -1878,7 +1878,131 @@ Renderer.getIntensity =
 
   };
 
+/* ============================================================
+   🔥 GET DISCRETE HEAT COLOR
 
+   PURPOSE
+   ------------------------------------------------------------
+   Converts offence intensity into a strong, clearly separated
+   choropleth color.
+
+   LOW COUNT
+       ↓
+   yellow / orange
+
+   MEDIUM COUNT
+       ↓
+   orange / red
+
+   HIGH COUNT
+       ↓
+   dark red / maroon
+
+   IMPORTANT
+   ------------------------------------------------------------
+   This is intentionally DISCRETE rather than a smooth gradient.
+
+   Reason:
+
+   Adjacent polygons must remain immediately distinguishable
+   on satellite / hybrid map backgrounds.
+============================================================ */
+
+Renderer.getHeatColor =
+  function (
+    count,
+    maxCount
+  ) {
+
+    const value =
+      Number(
+        count
+      )
+      ||
+      0;
+
+
+    if (
+      value <= 0
+    ) {
+
+      return "#E5E7EB";
+
+    }
+
+
+    const intensity =
+      Renderer.getIntensity(
+        value,
+        maxCount
+      );
+
+
+    /*
+     * Seven strong choropleth classes.
+     *
+     * Lowest offence count
+     *      ↓
+     * Highest offence count
+     */
+
+    if (
+      intensity <= 0.20
+    ) {
+
+      return "#FFE600";
+
+    }
+
+
+    if (
+      intensity <= 0.35
+    ) {
+
+      return "#FFC400";
+
+    }
+
+
+    if (
+      intensity <= 0.50
+    ) {
+
+      return "#FF9800";
+
+    }
+
+
+    if (
+      intensity <= 0.65
+    ) {
+
+      return "#FF5A00";
+
+    }
+
+
+    if (
+      intensity <= 0.78
+    ) {
+
+      return "#F01818";
+
+    }
+
+
+    if (
+      intensity <= 0.90
+    ) {
+
+      return "#B30000";
+
+    }
+
+
+    return "#650000";
+
+  };
 /* ============================================================
    🎨 SOURCE HEAT STYLE
 
@@ -1889,6 +2013,23 @@ Renderer.getIntensity =
    - Selected Source highlight
 ============================================================ */
 
+/* ============================================================
+   🎨 SOURCE HEAT STYLE
+
+   USED FOR
+   ------------------------------------------------------------
+   - Parent Source Village polygons
+   - Related Source polygons
+   - Selected Source polygon
+
+   HEAT RULE
+   ------------------------------------------------------------
+   fillColor = offence count heat class
+
+   Therefore every Source polygon receives its own heat color
+   according to its offenceCount relative to maxCount.
+============================================================ */
+
 Renderer.getSourceStyle =
   function (
     count,
@@ -1896,102 +2037,113 @@ Renderer.getSourceStyle =
     selected
   ) {
 
-    const intensity =
-      Renderer.getIntensity(
+    const value =
+      Number(
+        count
+      )
+      ||
+      0;
 
-        count,
 
+    const heatColor =
+      Renderer.getHeatColor(
+        value,
         maxCount
-
       );
 
 
-    const opacityMin =
-      Renderer
-        .config
-        .sourceFillOpacityMin;
+    /*
+     * Selected polygon remains unmistakable.
+     *
+     * We retain its heat color but use a very strong
+     * dark outline and higher fill opacity.
+     */
+
+    if (
+      selected
+    ) {
+
+      return {
+
+        color:
+          "#111827",
+
+        weight:
+          4,
+
+        opacity:
+          1,
+
+        fillColor:
+          heatColor,
+
+        fillOpacity:
+          0.90
+
+      };
+
+    }
 
 
-    const opacityMax =
-      Renderer
-        .config
-        .sourceFillOpacityMax;
+    /*
+     * No offence:
+     *
+     * Keep polygon visible but neutral.
+     */
+
+    if (
+      value <= 0
+    ) {
+
+      return {
+
+        color:
+          "#6B7280",
+
+        weight:
+          1.5,
+
+        opacity:
+          0.90,
+
+        fillColor:
+          "#E5E7EB",
+
+        fillOpacity:
+          0.28
+
+      };
+
+    }
 
 
-    const fillOpacity =
-
-      opacityMin
-
-      +
-
-      (
-        (
-          opacityMax -
-          opacityMin
-        )
-
-        *
-
-        intensity
-      );
-
+    /*
+     * Normal Source heat polygon.
+     *
+     * IMPORTANT:
+     *
+     * Do NOT reduce heat visibility through a large
+     * opacity range.
+     *
+     * The COLOR now carries the heat information.
+     */
 
     return {
 
       color:
-
-        selected
-
-        ?
-
-        "#7F1D1D"
-
-        :
-
-        "#9F1239",
-
+        "#3F0A0A",
 
       weight:
-
-        selected
-
-        ?
-
-        3
-
-        :
-
-        1.4,
-
+        1.8,
 
       opacity:
-        0.95,
-
+        1,
 
       fillColor:
-
-        selected
-
-        ?
-
-        "#B91C1C"
-
-        :
-
-        "#BE123C",
-
+        heatColor,
 
       fillOpacity:
-
-        selected
-
-        ?
-
-        0.72
-
-        :
-
-        fillOpacity
+        0.78
 
     };
 
@@ -2008,6 +2160,21 @@ Renderer.getSourceStyle =
    - Selected Target highlight
 ============================================================ */
 
+/* ============================================================
+   🎯 TARGET HEAT STYLE
+
+   USED FOR
+   ------------------------------------------------------------
+   - Parent Target Range polygons
+   - Related Target polygons
+   - Selected Target polygon
+
+   HEAT RULE
+   ------------------------------------------------------------
+   Every Range receives a distinct heat class according to
+   its offenceCount relative to the highest Range count.
+============================================================ */
+
 Renderer.getTargetStyle =
   function (
     count,
@@ -2015,102 +2182,101 @@ Renderer.getTargetStyle =
     selected
   ) {
 
-    const intensity =
-      Renderer.getIntensity(
+    const value =
+      Number(
+        count
+      )
+      ||
+      0;
 
-        count,
 
+    const heatColor =
+      Renderer.getHeatColor(
+        value,
         maxCount
-
       );
 
 
-    const opacityMin =
-      Renderer
-        .config
-        .targetFillOpacityMin;
+    /*
+     * Selected Target.
+     */
+
+    if (
+      selected
+    ) {
+
+      return {
+
+        color:
+          "#111827",
+
+        weight:
+          4,
+
+        opacity:
+          1,
+
+        fillColor:
+          heatColor,
+
+        fillOpacity:
+          0.90
+
+      };
+
+    }
 
 
-    const opacityMax =
-      Renderer
-        .config
-        .targetFillOpacityMax;
+    /*
+     * Zero offence Range.
+     */
+
+    if (
+      value <= 0
+    ) {
+
+      return {
+
+        color:
+          "#6B7280",
+
+        weight:
+          1.5,
+
+        opacity:
+          0.90,
+
+        fillColor:
+          "#E5E7EB",
+
+        fillOpacity:
+          0.28
+
+      };
+
+    }
 
 
-    const fillOpacity =
-
-      opacityMin
-
-      +
-
-      (
-        (
-          opacityMax -
-          opacityMin
-        )
-
-        *
-
-        intensity
-      );
-
+    /*
+     * Normal Target Range heat polygon.
+     */
 
     return {
 
       color:
-
-        selected
-
-        ?
-
-        "#1E3A8A"
-
-        :
-
-        "#1D4ED8",
-
+        "#3F0A0A",
 
       weight:
-
-        selected
-
-        ?
-
-        3
-
-        :
-
-        1.6,
-
+        2,
 
       opacity:
-        0.95,
-
+        1,
 
       fillColor:
-
-        selected
-
-        ?
-
-        "#2563EB"
-
-        :
-
-        "#3B82F6",
-
+        heatColor,
 
       fillOpacity:
-
-        selected
-
-        ?
-
-        0.68
-
-        :
-
-        fillOpacity
+        0.78
 
     };
 
