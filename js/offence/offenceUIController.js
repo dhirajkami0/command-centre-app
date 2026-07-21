@@ -3868,16 +3868,12 @@ selectRelatedTarget:
 
         ) {
 
-            GG
-                .Offence
-                .SpatialRenderer
-                .selectTargetForSource(
-
-                    target.key ||
-                    target.id ||
-                    target.name
-
-                );
+GG
+    .Offence
+    .SpatialRenderer
+    .selectTargetForSource(
+        target
+    );
 
         }
 
