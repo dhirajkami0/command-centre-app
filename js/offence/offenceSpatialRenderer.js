@@ -3804,8 +3804,49 @@ Renderer.renderTarget =
    Parent Source polygons are rendered once for SOURCE mode.
 ============================================================ */
 
+/* ============================================================
+   🏡 RENDER ALL PARENT SOURCE VILLAGES
+
+   USED BY
+   ------------------------------------------------------------
+   OFFENCE → SOURCE
+
+   IMPORTANT MODE-SWITCH BEHAVIOUR
+   ------------------------------------------------------------
+
+   When entering SOURCE mode:
+
+   TARGET MODE
+        ↓
+   HARD CLEAR ALL OFFENCE LEAFLET POLYGONS
+        ↓
+   CLEAR ALL RENDERED LAYER INDEXES
+        ↓
+   RESET SELECTION / DRILL-DOWN STATE
+        ↓
+   MODE = SOURCE
+        ↓
+   CREATE FRESH PARENT SOURCE POLYGONS
+
+   This ensures Leaflet Canvas interactive targets are freshly
+   registered after TARGET → SOURCE mode switching.
+
+   Within SOURCE mode:
+
+   Source A → Source B
+
+   does NOT call this function.
+
+   selectSource() clears only drill-down layers, so all parent
+   Source polygons remain interactive.
+============================================================ */
+
 Renderer.renderAllSources =
   function () {
+
+    /* ========================================================
+       GET DEPENDENCIES
+    ======================================================== */
 
     const Spatial =
       Renderer
@@ -3845,19 +3886,105 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       CLEAR PREVIOUS MODE COMPLETELY
+       HARD CLEAR ALL EXISTING LEAFLET POLYGONS
 
-       This handles:
+       IMPORTANT:
 
-       TARGET → SOURCE
-       SOURCE → SOURCE fresh activation
+       Do not depend only on Renderer.clear() during a mode
+       switch.
+
+       We explicitly destroy every existing offence GeoJSON
+       polygon so Leaflet Canvas creates fresh interactive
+       targets for the new active mode.
     ======================================================== */
 
-    Renderer.clear();
+    Renderer
+      .parentSourceLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .parentTargetLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .relatedSourceLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .relatedTargetLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .selectionLayer
+      ?.clearLayers?.();
+
+
+    /* ========================================================
+       CLEAR ALL RENDERED LAYER INDEXES
+
+       The old GeoJSON objects no longer exist on the map,
+       therefore their references must also be removed.
+    ======================================================== */
+
+    Renderer
+      .renderedParentSourceLayers
+      .clear();
+
+
+    Renderer
+      .renderedParentTargetLayers
+      .clear();
+
+
+    Renderer
+      .renderedRelatedSourceLayers
+      .clear();
+
+
+    Renderer
+      .renderedRelatedTargetLayers
+      .clear();
+
+
+    /* ========================================================
+       RESET SELECTION STATE
+    ======================================================== */
+
+    Renderer.selectedSourceId =
+      null;
+
+
+    Renderer.selectedTargetKey =
+      null;
+
+
+    /* ========================================================
+       RESET CURRENT DATA
+    ======================================================== */
+
+    Renderer.currentSources =
+      [];
+
+
+    Renderer.currentTargets =
+      [];
+
+
+    Renderer.currentCases =
+      [];
 
 
     /* ========================================================
        ACTIVATE SOURCE MODE
+
+       Do this BEFORE rendering polygons.
+
+       Every newly-created parent Source click handler will now
+       operate against the correct active mode.
     ======================================================== */
 
     Renderer.mode =
@@ -3867,7 +3994,7 @@ Renderer.renderAllSources =
     /* ========================================================
        REBUILD VILLAGE FEATURE INDEX
 
-       Ensures current village boundary data is available.
+       Ensures the latest village boundary data is used.
     ======================================================== */
 
     Renderer
@@ -3891,8 +4018,8 @@ Renderer.renderAllSources =
     /* ========================================================
        KEEP ONLY GIS-RESOLVED SOURCE VILLAGES
 
-       A Source can only be rendered when its canonical ID
-       exists in villageFeatureIndex.
+       A Source is renderable only when its canonical ID exists
+       in the village GIS feature index.
     ======================================================== */
 
     const sources =
@@ -3931,7 +4058,7 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       CALCULATE HEAT SCALE
+       CALCULATE SOURCE HEAT SCALE
     ======================================================== */
 
     const maxCount =
@@ -3971,7 +4098,16 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       RENDER ALL SOURCES AS PERMANENT PARENTS
+       RENDER FRESH PARENT SOURCE POLYGONS
+
+       Every polygon is newly created.
+
+       Therefore Leaflet Canvas should freshly register:
+
+       - mouseover
+       - mouseout
+       - tooltip
+       - click
     ======================================================== */
 
     sources.forEach(
@@ -3985,8 +4121,10 @@ Renderer.renderAllSources =
           maxCount,
 
           {
+
             role:
               "PARENT"
+
           }
 
         );
@@ -3996,16 +4134,28 @@ Renderer.renderAllSources =
     );
 
 
+    /* ========================================================
+       DIAGNOSTIC
+    ======================================================== */
+
     console.log(
 
-      "🚨 Offence SOURCE parent heatmap rendered:",
+      "🚨 Fresh SOURCE parent polygons rendered:",
 
-      sources.length,
+      Renderer
+        .renderedParentSourceLayers
+        .size,
 
-      "villages"
+      "| Expected:",
+
+      sources.length
 
     );
 
+
+    /* ========================================================
+       RETURN RENDERED SOURCE DATA
+    ======================================================== */
 
     return sources;
 
