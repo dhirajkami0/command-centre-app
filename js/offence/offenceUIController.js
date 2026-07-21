@@ -956,95 +956,76 @@ CONFIG: {
 
 
 
-                    /* ========================================
-                       OFFENCE ANALYSIS PANEL
-                    ======================================== */
+/* ========================================
+   OFFENCE ANALYSIS PANEL
+======================================== */
 
-                    #${UIController.CONFIG.PANEL_ID} {
+#${UIController.CONFIG.PANEL_ID}{
 
-                        position:
-                            fixed;
+    position:fixed;
 
+    top:16px;
 
-                        top:
-                            ${panelTop}px;
+    right:16px;
 
+    width:min(
+        420px,
+        calc(100vw - 32px)
+    );
 
-                        right:
-                            ${buttonRight}px;
+    height:calc(
+        100vh - 32px
+    );
 
+    display:none;
 
-                        z-index:
-                            ${zIndex};
+    flex-direction:column;
 
+    overflow:hidden;
 
-                        width:
-                            ${panelWidth}px;
+    box-sizing:border-box;
 
+    border-radius:18px;
 
-                        display:
-                            none;
+    border:1px solid
+        rgba(
+            255,
+            255,
+            255,
+            .45
+        );
 
+    background:
+        rgba(
+            248,
+            249,
+            250,
+            .98
+        );
 
-                        overflow:
-                            hidden;
+    box-shadow:
+        0 18px 48px
+        rgba(
+            0,
+            0,
+            0,
+            .30
+        );
 
+    backdrop-filter:
+        blur(16px);
 
-                        box-sizing:
-                            border-box;
+    -webkit-backdrop-filter:
+        blur(16px);
 
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
-                        border:
-                            1px solid
-                            rgba(
-                                255,
-                                255,
-                                255,
-                                0.52
-                            );
+    z-index:${zIndex};
 
-
-                        border-radius:
-                            18px;
-
-
-                        background:
-                            rgba(
-                                248,
-                                249,
-                                250,
-                                0.97
-                            );
-
-
-                        box-shadow:
-                            0 12px 36px
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.30
-                            );
-
-
-                        backdrop-filter:
-                            blur(
-                                16px
-                            );
-
-
-                        -webkit-backdrop-filter:
-                            blur(
-                                16px
-                            );
-
-
-                        font-family:
-                            Arial,
-                            Helvetica,
-                            sans-serif;
-
-                    }
+}
 
 
 
@@ -1054,12 +1035,11 @@ CONFIG: {
                        PANEL OPEN STATE
                     ======================================== */
 
-                    #${UIController.CONFIG.PANEL_ID}.gg-offence-panel-open {
+#${UIController.CONFIG.PANEL_ID}.gg-offence-panel-open{
 
-                        display:
-                            block;
+    display:flex;
 
-                    }
+}
 
 
 
@@ -1069,47 +1049,37 @@ CONFIG: {
                        PANEL HEADER
                     ======================================== */
 
-                    .gg-offence-panel-header {
+.gg-offence-panel-header{
 
-                        display:
-                            flex;
+    position:sticky;
 
+    top:0;
 
-                        align-items:
-                            center;
+    z-index:5;
 
+    display:flex;
 
-                        justify-content:
-                            space-between;
+    align-items:center;
 
+    justify-content:space-between;
 
-                        width:
-                            100%;
+    min-height:56px;
 
+    padding:0 16px;
 
-                        min-height:
-                            52px;
+    background:#ffffff;
 
+    border-bottom:1px solid
+        rgba(
+            0,
+            0,
+            0,
+            .08
+        );
 
-                        padding:
-                            0 10px
-                            0 15px;
+    flex-shrink:0;
 
-
-                        box-sizing:
-                            border-box;
-
-
-                        border-bottom:
-                            1px solid
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.08
-                            );
-
-                    }
+}
 
 
 
@@ -1265,61 +1235,133 @@ CONFIG: {
                        STATUS AREA
                     ======================================== */
 
-                    #${UIController.CONFIG.STATUS_ID} {
+#${UIController.CONFIG.STATUS_ID}{
 
-                        width:
-                            100%;
+    position:sticky;
 
+    top:56px;
 
-                        min-height:
-                            38px;
+    z-index:4;
 
+    display:flex;
 
-                        display:
-                            flex;
+    align-items:center;
 
+    min-height:40px;
 
-                        align-items:
-                            center;
+    padding:8px 16px;
 
+    box-sizing:border-box;
 
-                        padding:
-                            8px 15px;
+    background:#f7f8fa;
 
+    border-bottom:1px solid
+        rgba(
+            0,
+            0,
+            0,
+            .08
+        );
 
-                        box-sizing:
-                            border-box;
+    color:#66717d;
 
+    font-size:12px;
 
-                        border-bottom:
-                            1px solid
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.07
-                            );
+    line-height:1.4;
 
+    flex-shrink:0;
 
-                        color:
-                            #687582;
-
-
-                        font-size:
-                            11px;
+}
 
 
-                        font-weight:
-                            500;
+/* ========================================
+   PANEL BODY
+======================================== */
 
+.gg-offence-panel-body{
 
-                        line-height:
-                            1.4;
+    flex:1;
 
-                    }
+    overflow-y:auto;
 
+    overflow-x:hidden;
 
+    display:flex;
 
+    flex-direction:column;
+
+    gap:18px;
+
+    padding:16px;
+
+    box-sizing:border-box;
+
+    scrollbar-width:thin;
+
+}
+
+/* ========================================
+   SECTION
+======================================== */
+
+.gg-offence-section{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+}
+
+/* ========================================
+   SECTION TITLE
+======================================== */
+
+.gg-offence-section-title{
+
+    font-size:13px;
+
+    font-weight:800;
+
+    color:#2b3642;
+
+    letter-spacing:.3px;
+
+}
+
+.gg-workflow-mode{
+
+    padding:10px;
+
+    border-radius:10px;
+
+    background:#eef5fb;
+
+    font-weight:700;
+
+    font-size:12px;
+
+}
+.gg-workflow-step{
+
+    padding:12px;
+
+    border-radius:10px;
+
+    border:1px solid
+        rgba(
+            0,
+            0,
+            0,
+            .08
+        );
+
+    background:#ffffff;
+
+    font-size:12px;
+
+}
 
 
                     /* ========================================
@@ -1966,50 +2008,46 @@ CONFIG: {
                     }
 
 
+@media(max-height:760px){
 
+    #${UIController.CONFIG.PANEL_ID}{
+
+        top:8px;
+
+        height:calc(
+            100vh - 16px
+        );
+
+    }
+
+}
 
 
                     /* ========================================
                        MOBILE / NARROW SCREEN
                     ======================================== */
 
-                    @media (
-                        max-width:
-                        700px
-                    ) {
+@media(max-width:768px){
 
+    #${UIController.CONFIG.PANEL_ID}{
 
-                        #${UIController.CONFIG.BUTTON_ID} {
+        top:8px;
 
-                            top:
-                                auto;
+        right:8px;
 
+        left:8px;
 
-                            right:
-                                12px;
+        width:auto;
 
+        height:calc(
+            100vh - 16px
+        );
 
-                            bottom:
-                                88px;
+        border-radius:14px;
 
+    }
 
-                            min-width:
-                                112px;
-
-
-                            height:
-                                44px;
-
-
-                            padding:
-                                0 14px;
-
-
-                            border-radius:
-                                15px;
-
-                        }
-
+}
 
 
                         #${UIController.CONFIG.PANEL_ID} {
@@ -2170,471 +2208,271 @@ CONFIG: {
            CREATE OFFENCE ANALYSIS PANEL
         ==================================================== */
 
+/* ===========================================================
+   CREATE PANEL
+=========================================================== */
+
 createPanel:
-    function () {
+function () {
 
+    if (
 
-        /* ============================================
-           REMOVE EXISTING INSTANCE
-        ============================================ */
+        document.getElementById(
 
-        const existing =
-            document
-                .getElementById(
+            UIController.CONFIG.PANEL_ID
 
-                    UIController
-                        .CONFIG
-                        .PANEL_ID
+        )
 
-                );
+    ) {
 
+        return;
 
-        if (
-            existing
-        ) {
+    }
 
-            existing
-                .remove();
-
-        }
-
-
-
-        /* ============================================
-           CREATE PANEL
-        ============================================ */
-
-        const panel =
-            document
-                .createElement(
-                    "div"
-                );
-
-
-        panel.id =
-            UIController
-                .CONFIG
-                .PANEL_ID;
-
-
-        panel.setAttribute(
-            "role",
-            "dialog"
+    const panel =
+        document.createElement(
+            "div"
         );
 
+    panel.id =
+        UIController.CONFIG.PANEL_ID;
 
-        panel.setAttribute(
-            "aria-label",
-            "Offence Spatial Analysis"
-        );
+    panel.innerHTML =
 
+`
+<!-- =======================================================
+     PANEL HEADER
+======================================================= -->
 
-        panel.setAttribute(
-            "aria-hidden",
-            "true"
-        );
+<div class="gg-offence-panel-header">
 
+    <div class="gg-offence-panel-title">
 
+        🌍 OFFENCE SPATIAL ANALYSIS
 
-        /* ============================================
-           PANEL CONTENT
+    </div>
 
-           FLOW
+    <button
+        id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
+        title="Close">
 
-           SOURCE
-               ↓
-           Render Sources
-               ↓
-           Click Source
-               ↓
-           Highlight Parent
-               ↓
-           Render Related Targets
-               ↓
-           Open SOURCE MODE
-               ↓
-           Click Related Target
-               ↓
-           Highlight Child Polygon
-               ↓
-           Show Matching Cases
+        ✕
 
-           TARGET
-               ↓
-           Render Targets
-               ↓
-           Click Target
-               ↓
-           Render Related Sources
-               ↓
-           Click Source
-               ↓
-           Show Matching Cases
-        ============================================ */
+    </button>
 
-        panel.innerHTML =
-            `
-                <!-- =======================================
-                     HEADER
-                ======================================== -->
+</div>
+
+<!-- =======================================================
+     STATUS
+======================================================= -->
+
+<div
+    id="${UIController.CONFIG.STATUS_ID}"
+    data-state="ready">
+
+    Ready.
+
+</div>
+
+<!-- =======================================================
+     SCROLLABLE BODY
+======================================================= -->
+
+<div
+    class="gg-offence-panel-body">
+
+    <!-- ==============================================
+         ANALYSIS MODE
+    =============================================== -->
+
+    <div
+        class="gg-offence-section">
+
+        <div
+            class="gg-offence-section-title">
+
+            ANALYSIS MODE
+
+        </div>
+
+        <div
+            class="gg-offence-panel-actions">
+
+            <button
+
+                id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
+
+                class="gg-offence-action-button">
+
+                <span
+                    class="gg-offence-action-icon">
+
+                    🟢
+
+                </span>
+
+                Source → Target
+
+            </button>
+
+            <button
+
+                id="${UIController.CONFIG.TARGET_BUTTON_ID}"
+
+                class="gg-offence-action-button">
+
+                <span
+                    class="gg-offence-action-icon">
+
+                    🔵
+
+                </span>
+
+                Target → Source
+
+            </button>
+
+            <button
+
+                id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
+
+                class="gg-offence-action-button">
+
+                <span
+                    class="gg-offence-action-icon">
+
+                    🔴
+
+                </span>
+
+                Clear Analysis
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- ==============================================
+         WORKFLOW
+    =============================================== -->
+
+    <div
+        class="gg-offence-section">
+
+        <div
+            id="gg-workflow-toggle"
+            class="gg-offence-section-title">
+
+            ▼ ANALYSIS WORKFLOW
+
+        </div>
+
+        <div
+            id="gg-workflow-panel">
+
+            <div
+                id="gg-workflow-mode"
+                class="gg-workflow-mode">
+
+                Select an analysis mode.
+
+            </div>
+
+            <div
+                id="gg-workflow-step1"
+                class="gg-workflow-step">
+
+                Step 1
+
+            </div>
+
+            <div
+                id="gg-workflow-step2"
+                class="gg-workflow-step">
+
+                Step 2
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ==============================================
+         CASE RESULTS
+    =============================================== -->
+
+    <div
+        class="gg-offence-section">
+
+        <div
+
+            id="gg-case-results-toggle"
+
+            class="gg-offence-section-title">
+
+            ▶ MATCHING OFFENCE CASES
+
+        </div>
+
+        <div
+            id="gg-offence-case-results"
+            style="display:none;">
+
+            <div
+                id="gg-case-result-list">
 
                 <div
-                    class="
-                        gg-offence-panel-header
-                    "
-                >
+                    class="gg-offence-empty">
 
-                    <div
-                        class="
-                            gg-offence-panel-title
-                        "
-                    >
-
-                        <span
-                            aria-hidden="true"
-                        >
-                            🚨
-                        </span>
-
-                        <span>
-
-                            OFFENCE ANALYSIS
-
-                        </span>
-
-                    </div>
-
-
-                    <button
-                        id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
-                        type="button"
-                        title="Close Offence Analysis"
-                        aria-label="Close Offence Analysis"
-                    >
-                        ×
-                    </button>
+                    Select a Source / Target pair
+                    to view matching offence cases.
 
                 </div>
 
+            </div>
 
+        </div>
 
-                <!-- =======================================
-                     STATUS
-                ======================================== -->
+    </div>
 
-                <div
-                    id="${UIController.CONFIG.STATUS_ID}"
-                    data-state="ready"
-                >
+    <!-- ==============================================
+         CASE DETAILS
+    =============================================== -->
 
-                    Open Source or Target spatial analysis.
+    <div
+        class="gg-offence-section">
 
-                </div>
+        <div
+            class="gg-offence-section-title">
 
+            CASE DETAILS
 
+        </div>
 
-                <!-- =======================================
-                     ACTION BUTTONS
-                ======================================== -->
+        <div
+            id="gg-offence-case-details">
 
-                <div
-                    class="
-                        gg-offence-panel-actions
-                    "
-                >
+            <div
+                class="gg-offence-empty">
 
-                    <button
-                        id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
-                        class="
-                            gg-offence-action-button
-                        "
-                        type="button"
-                    >
+                Select a case to view details.
 
-                        <span
-                            class="
-                                gg-offence-action-icon
-                            "
-                            aria-hidden="true"
-                        >
-                            🏡
-                        </span>
+            </div>
 
-                        <span>
+        </div>
 
-                            SOURCE
+    </div>
 
-                        </span>
+</div>
+`;
 
-                    </button>
+    document.body.appendChild(
+        panel
+    );
 
-
-
-                    <button
-                        id="${UIController.CONFIG.TARGET_BUTTON_ID}"
-                        class="
-                            gg-offence-action-button
-                        "
-                        type="button"
-                    >
-
-                        <span
-                            class="
-                                gg-offence-action-icon
-                            "
-                            aria-hidden="true"
-                        >
-                            🎯
-                        </span>
-
-                        <span>
-
-                            TARGET
-
-                        </span>
-
-                    </button>
-
-
-
-                    <button
-                        id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
-                        class="
-                            gg-offence-action-button
-                        "
-                        type="button"
-                    >
-
-                        <span
-                            class="
-                                gg-offence-action-icon
-                            "
-                            aria-hidden="true"
-                        >
-                            🧹
-                        </span>
-
-                        <span>
-
-                            CLEAR
-
-                        </span>
-
-                    </button>
-
-                </div>
-
-
-                                <!-- =======================================
-                     SOURCE MODE
-                ======================================== -->
-
-                <div
-                    id="gg-source-mode"
-                    style="
-                        display:none;
-                    "
-                >
-
-                    <!-- ==============================
-                         SOURCE HEADER
-                    =============================== -->
-
-                    <div
-                        class="
-                            gg-source-mode-header
-                        "
-                    >
-
-                        SOURCE MODE
-
-                    </div>
-
-
-
-                    <!-- ==============================
-                         SELECTED SOURCE
-                    =============================== -->
-
-                    <div
-                        id="gg-selected-source"
-                        class="
-                            gg-selected-source
-                        "
-                    >
-
-                        No Source Selected
-
-                    </div>
-
-
-
-                    <!-- ==============================
-                         RELATED TARGETS
-                    =============================== -->
-
-                    <div
-                        class="
-                            gg-source-section
-                        "
-                    >
-
-                        <button
-                            id="gg-related-target-toggle"
-                            class="
-                                gg-source-toggle
-                            "
-                            type="button"
-                        >
-
-                            ▼ Related Targets
-
-                        </button>
-
-                        <div
-                            id="gg-related-target-list"
-                        >
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- ==============================
-                         CASE RESULT TOGGLE
-                    =============================== -->
-
-                    <div
-                        class="
-                            gg-source-section
-                        "
-                    >
-
-                        <button
-                            id="gg-case-results-toggle"
-                            class="
-                                gg-source-toggle
-                            "
-                            type="button"
-                        >
-
-                            ▶ CASE RESULTS
-
-                        </button>
-
-                    </div>
-
-
-
-                    <!-- ==============================
-                         BACK BUTTON
-                    =============================== -->
-
-                    <button
-                        id="gg-source-back-button"
-                        class="
-                            gg-source-back-button
-                        "
-                        type="button"
-                    >
-
-                        ← Back to Parent Sources
-
-                    </button>
-
-                </div>
-
-                <!-- =======================================
-                     CASE RESULTS
-                ======================================== -->
-
-                <div
-                    class="
-                        gg-offence-case-results-header
-                    "
-                >
-
-                    CASE RESULTS
-
-                </div>
-
-                <div
-                    id="gg-offence-case-results"
-                >
-
-                    <div
-                        id="gg-case-result-list"
-                    >
-
-                        <div
-                            class="
-                                gg-offence-empty
-                            "
-                        >
-
-                            Select a
-                            <b>Source → Target</b>
-                            or
-                            <b>Target → Source</b>
-                            pair to view matching offence cases.
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- =======================================
-                     CASE DETAILS
-                ======================================== -->
-
-                <div
-                    class="
-                        gg-offence-case-results-header
-                    "
-                >
-
-                    CASE DETAILS
-
-                </div>
-
-                <div
-                    id="gg-offence-case-details"
-                >
-
-                    <div
-                        class="
-                            gg-offence-empty
-                        "
-                    >
-
-                        Select a case above to view complete
-                        offence details.
-
-                    </div>
-
-                </div>
-
-            `;
-
-               /* ============================================
-           ADD PANEL TO PAGE
-        ============================================ */
-
-        document
-            .body
-            .appendChild(
-                panel
-            );
-
-
-        return panel;
-
-
-    },
+},
 /* ===========================================================
    TOGGLE RELATED TARGETS
 =========================================================== */
@@ -2727,92 +2565,103 @@ toggleRelatedTargets:
        /* ===========================================================
    TOGGLE CASE RESULTS
 =========================================================== */
+/* ===========================================================
+   UPDATE CASE RESULTS PANEL
+
+   Responsibilities
+
+   ✓ Store expanded state
+   ✓ Show / Hide CASE RESULTS
+   ✓ Update toggle arrow
+=========================================================== */
+
+updateCaseResultsPanel:
+function (
+    expanded
+) {
+
+    const elements =
+        UIController.elements;
+
+    if (
+
+        !elements ||
+
+        !elements.caseResults
+
+    ) {
+
+        return false;
+
+    }
+
+    /* ============================================
+       STORE STATE
+    ============================================ */
+
+    UIController.casePanelExpanded =
+        Boolean(
+            expanded
+        );
+
+    /* ============================================
+       SHOW / HIDE PANEL
+    ============================================ */
+
+    elements
+        .caseResults
+        .style
+        .display =
+
+        UIController.casePanelExpanded
+
+            ? "block"
+
+            : "none";
+
+    /* ============================================
+       UPDATE TOGGLE TEXT
+    ============================================ */
+
+    if (
+        elements.caseResultsToggle
+    ) {
+
+        elements
+            .caseResultsToggle
+            .textContent =
+
+            UIController.casePanelExpanded
+
+                ? "▼ CASE RESULTS"
+
+                : "▶ CASE RESULTS";
+
+    }
+
+    return true;
+
+},
+/* ===========================================================
+   TOGGLE CASE RESULTS
+
+   Responsibilities
+
+   ✓ Manual expand/collapse only
+   ✓ Update panel visibility
+   ✓ Update toggle arrow
+=========================================================== */
 
 toggleCases:
-    function () {
+function () {
 
+    UIController.updateCaseResultsPanel(
 
-        const elements =
-            UIController.elements;
+        !UIController.casePanelExpanded
 
+    );
 
-        if (
-            !elements ||
-            !elements.caseResults
-        ) {
-
-            return;
-
-        }
-
-
-        /* ============================================
-           TOGGLE STATE
-        ============================================ */
-
-        UIController.casePanelExpanded =
-            !UIController.casePanelExpanded;
-
-
-
-        /* ============================================
-           EXPANDED
-        ============================================ */
-
-        if (
-            UIController.casePanelExpanded
-        ) {
-
-            elements
-                .caseResults
-                .style
-                .display =
-                    "";
-
-
-            if (
-                elements.caseResultsToggle
-            ) {
-
-                elements
-                    .caseResultsToggle
-                    .textContent =
-                        "▼ CASE RESULTS";
-
-            }
-
-        }
-
-
-
-        /* ============================================
-           COLLAPSED
-        ============================================ */
-
-        else {
-
-            elements
-                .caseResults
-                .style
-                .display =
-                    "none";
-
-
-            if (
-                elements.caseResultsToggle
-            ) {
-
-                elements
-                    .caseResultsToggle
-                    .textContent =
-                        "▶ CASE RESULTS";
-
-            }
-
-        }
-
-
-    },
+},
 
        /* ===========================================================
    BACK TO PARENT SOURCES
@@ -2931,52 +2780,37 @@ function () {
     );
 
     /* ============================================
-       HIDE CASE RESULTS
-    ============================================ */
+   HIDE CASE RESULTS
+============================================ */
 
-    if (
-        elements.caseResults
-    ) {
+UIController.updateCaseResultsPanel(
+    false
+);
 
-        elements
-            .caseResults
-            .style
-            .display =
-                "none";
+/* ============================================
+   RESET CASE RESULTS CONTENT
+============================================ */
 
-    }
+if (
+    elements.caseResultList
+) {
 
-    if (
-        elements.caseResultsToggle
-    ) {
+    elements
+        .caseResultList
+        .innerHTML =
 
-        elements
-            .caseResultsToggle
-            .textContent =
-                "▶ CASE RESULTS";
+        `
+        <div class="gg-offence-empty">
 
-    }
+            Select a Parent Source
+            and then choose one of its
+            Related Targets to view
+            matching offence cases.
 
-    if (
-        elements.caseResultList
-    ) {
+        </div>
+        `;
 
-        elements
-            .caseResultList
-            .innerHTML =
-
-            `
-            <div class="gg-offence-empty">
-
-                Select a Parent Source
-                and then choose one of its
-                Related Targets to view
-                matching offence cases.
-
-            </div>
-            `;
-
-    }
+}
 
     /* ============================================
        CLEAR CASE SELECTION
@@ -6256,29 +6090,9 @@ function (
        EXPAND CASE PANEL
     ============================================ */
 
-    UIController.casePanelExpanded =
-        true;
-
-    const elements =
-        UIController.elements;
-
-    if (
-        elements.caseResults
-    ) {
-
-        elements.caseResults.style.display =
-            "block";
-
-    }
-
-    if (
-        elements.caseResultsToggle
-    ) {
-
-        elements.caseResultsToggle.textContent =
-            "▼ CASE RESULTS";
-
-    }
+UIController.updateCaseResultsPanel(
+    true
+);
 
     /* ============================================
        RESET PREVIOUS CASE
@@ -6485,7 +6299,74 @@ function (
 },
 
 
+/* ===========================================================
+   SELECT CASE
 
+   Responsibilities
+
+   ✓ Validate
+   ✓ Store current case
+   ✓ Highlight selected card
+   ✓ Show case details
+=========================================================== */
+
+selectCase:
+function (
+    caseData,
+    card
+) {
+
+    if (
+        !caseData
+    ) {
+
+        return;
+
+    }
+
+    /* ============================================
+       STORE CURRENT CASE
+    ============================================ */
+
+    UIController.currentCase =
+        caseData;
+
+    /* ============================================
+       HIGHLIGHT CARD
+    ============================================ */
+
+    UIController.highlightSelectedCase(
+        card
+    );
+
+    /* ============================================
+       SHOW DETAILS
+    ============================================ */
+
+    UIController.showCaseDetails(
+        caseData
+    );
+
+    /* ============================================
+       SCROLL DETAILS INTO VIEW (OPTIONAL)
+    ============================================ */
+
+    UIController.elements
+        ?.caseDetails
+        ?.scrollIntoView?.(
+
+            {
+                block:
+                    "nearest",
+
+                behavior:
+                    "smooth"
+
+            }
+
+        );
+
+},
 /* ===========================================================
    HIGHLIGHT SELECTED CASE
 
@@ -6791,11 +6672,30 @@ function (
    CLEAR CASE SELECTION
 =========================================================== */
 
+/* ===========================================================
+   CLEAR CASE SELECTION
+
+   Responsibilities
+
+   ✓ Reset current case
+   ✓ Remove selected highlight
+   ✓ Reset CASE DETAILS
+   ✓ Scroll details to top
+=========================================================== */
+
 clearCaseSelection:
 function () {
 
+    /* ============================================
+       RESET CURRENT CASE
+    ============================================ */
+
     UIController.currentCase =
         null;
+
+    /* ============================================
+       REMOVE CARD HIGHLIGHT
+    ============================================ */
 
     document
 
@@ -6817,6 +6717,10 @@ function () {
 
         );
 
+    /* ============================================
+       GET DETAILS CONTAINER
+    ============================================ */
+
     const container =
 
         UIController.elements
@@ -6826,9 +6730,13 @@ function () {
         !container
     ) {
 
-        return;
+        return false;
 
     }
+
+    /* ============================================
+       RESET DETAILS PANEL
+    ============================================ */
 
     container.innerHTML =
 
@@ -6840,6 +6748,14 @@ function () {
 
         </div>
         `;
+
+    /* ============================================
+       SCROLL TO TOP
+    ============================================ */
+
+    container.scrollTop = 0;
+
+    return true;
 
 },
         /* ====================================================
@@ -6871,6 +6787,21 @@ function () {
    ✓ Update status
 =========================================================== */
 
+/* ===========================================================
+   CLEAR ANALYSIS
+
+   Responsibilities
+
+   ✓ Clear spatial renderer
+   ✓ Reset controller state
+   ✓ Reset active mode
+   ✓ Collapse CASE RESULTS
+   ✓ Clear CASE RESULTS
+   ✓ Clear selected case
+   ✓ Reset CASE DETAILS
+   ✓ Update status
+=========================================================== */
+
 clearAnalysis:
 function () {
 
@@ -6885,15 +6816,16 @@ function () {
         ======================================== */
 
         if (
+
             SpatialRenderer &&
+
             typeof
-            SpatialRenderer
-                .clear ===
+            SpatialRenderer.clear ===
             "function"
+
         ) {
 
-            SpatialRenderer
-                .clear();
+            SpatialRenderer.clear();
 
         }
 
@@ -6916,33 +6848,27 @@ function () {
         UIController.currentSpatialContext =
             {};
 
+        UIController.currentCase =
+            null;
+
         /* ========================================
-           RESET BUTTON STATE
+           RESET ACTIVE MODE BUTTONS
         ======================================== */
 
-        UIController
-            .updateActiveModeUI(
-                null
-            );
+        UIController.updateActiveModeUI(
+            null
+        );
 
         /* ========================================
-           CLEAR CASE SELECTION
+           COLLAPSE CASE RESULTS PANEL
         ======================================== */
 
-        if (
-            typeof
-            UIController
-                .clearCaseSelection ===
-            "function"
-        ) {
-
-            UIController
-                .clearCaseSelection();
-
-        }
+        UIController.updateCaseResultsPanel(
+            false
+        );
 
         /* ========================================
-           CLEAR CASE RESULTS
+           RESET CASE RESULTS
         ======================================== */
 
         if (
@@ -6950,8 +6876,7 @@ function () {
                 ?.caseResultList
         ) {
 
-            UIController
-                .elements
+            UIController.elements
                 .caseResultList
                 .innerHTML =
 
@@ -6970,20 +6895,39 @@ function () {
         }
 
         /* ========================================
+           CLEAR CASE SELECTION
+        ======================================== */
+
+        if (
+
+            typeof
+            UIController
+                .clearCaseSelection ===
+            "function"
+
+        ) {
+
+            UIController
+                .clearCaseSelection();
+
+        }
+
+        /* ========================================
            UPDATE STATUS
         ======================================== */
 
-        UIController
-            .setStatus(
+        UIController.setStatus(
 
-                "Offence spatial layers cleared.",
+            "Offence spatial layers cleared.",
 
-                "ready"
+            "ready"
 
-            );
+        );
 
         console.log(
+
             "🧹 Offence spatial analysis cleared"
+
         );
 
         return true;
