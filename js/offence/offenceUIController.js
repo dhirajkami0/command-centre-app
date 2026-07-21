@@ -3110,170 +3110,339 @@ function () {
            };
         ==================================================== */
 
+/* ===========================================================
+   CAPTURE DOM REFERENCES
+
+   CURRENT OFFENCE UI ARCHITECTURE
+   -----------------------------------------------------------
+
+   PANEL
+      ↓
+   ANALYSIS MODE
+      ↓
+   PARENT
+      ↓
+   CHILD
+      ↓
+   CASES
+      ↓
+   CASE DETAILS
+      ↓
+   FIELD DETAILS
+      ↓
+   CLEAR ANALYSIS
+
+
+   IMPORTANT
+   -----------------------------------------------------------
+
+   GIS / map interaction ends at PARENT selection.
+
+   After the parent is selected:
+
+       CHILD
+       CASES
+       CASE DETAILS
+       FIELD DETAILS
+
+   are handled through the panel UI.
+
+   Child polygons may still be rendered/highlighted by the
+   SpatialRenderer, but they should remain:
+
+       interactive: false
+
+
+   REMOVED LEGACY REFERENCES
+   -----------------------------------------------------------
+
+   The following old DOM references are intentionally removed:
+
+       sourceMode
+       selectedSource
+       relatedTargetToggle
+       relatedTargetList
+       caseResultsToggle
+       sourceBackButton
+
+   They belonged to the previous Source-specific / toggle-based
+   UI architecture and no longer exist in createPanel().
+=========================================================== */
+
 captureElements:
-    function () {
+function () {
 
 
-        UIController.elements =
-            UIController.elements ||
-            {};
+    /* =======================================================
+       RESET ELEMENT REFERENCE OBJECT
+
+       Rebuild references from the current DOM every time this
+       function runs.
+
+       This is safer than retaining stale references if the
+       panel is destroyed and recreated.
+    ======================================================= */
+
+    UIController.elements =
+        {};
 
 
-        /* ============================================
-           MAIN UI
-        ============================================ */
-
-        UIController.elements.mainButton =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .BUTTON_ID
-
-                );
-
-
-        UIController.elements.panel =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .PANEL_ID
-
-                );
-
-
-        UIController.elements.closeButton =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .CLOSE_BUTTON_ID
-
-                );
-
-
-        UIController.elements.sourceButton =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .SOURCE_BUTTON_ID
-
-                );
-
-
-        UIController.elements.targetButton =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .TARGET_BUTTON_ID
-
-                );
-
-
-        UIController.elements.clearButton =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .CLEAR_BUTTON_ID
-
-                );
-
-
-        UIController.elements.status =
-            document
-                .getElementById(
-
-                    UIController
-                        .CONFIG
-                        .STATUS_ID
-
-                );
+    const elements =
+        UIController.elements;
 
 
 
-        /* ============================================
-           SOURCE MODE
-        ============================================ */
+    /* =======================================================
+       MAIN UI
+    ======================================================= */
 
-        UIController.elements.sourceMode =
-            document
-                .getElementById(
-                    "gg-source-mode"
-                );
+    elements.mainButton =
+        document.getElementById(
 
+            UIController
+                .CONFIG
+                .BUTTON_ID
 
-        UIController.elements.selectedSource =
-            document
-                .getElementById(
-                    "gg-selected-source"
-                );
+        );
 
 
-        UIController.elements.relatedTargetToggle =
-            document
-                .getElementById(
-                    "gg-related-target-toggle"
-                );
+    elements.panel =
+        document.getElementById(
+
+            UIController
+                .CONFIG
+                .PANEL_ID
+
+        );
 
 
-        UIController.elements.relatedTargetList =
-            document
-                .getElementById(
-                    "gg-related-target-list"
-                );
+    elements.closeButton =
+        document.getElementById(
+
+            UIController
+                .CONFIG
+                .CLOSE_BUTTON_ID
+
+        );
 
 
-        UIController.elements.caseResultsToggle =
-            document
-                .getElementById(
-                    "gg-case-results-toggle"
-                );
+    elements.status =
+        document.getElementById(
 
+            UIController
+                .CONFIG
+                .STATUS_ID
 
-        UIController.elements.sourceBackButton =
-            document
-                .getElementById(
-                    "gg-source-back-button"
-                );
+        );
 
 
 
-        /* ============================================
-           CASE RESULTS
-        ============================================ */
+    /* =======================================================
+       ANALYSIS MODE
 
-        UIController.elements.caseResults =
-            document
-                .getElementById(
-                    "gg-offence-case-results"
-                );
+       SOURCE → TARGET
+       TARGET → SOURCE
+    ======================================================= */
 
-
-        UIController.elements.caseResultList =
-            document
-                .getElementById(
-                    "gg-case-result-list"
-                );
-
-UIController.elements.caseDetails =
-    document.getElementById(
-        "gg-offence-case-details"
-    );
-
-        return UIController.elements;
+    elements.modeSection =
+        document.getElementById(
+            "gg-offence-mode-section"
+        );
 
 
-    },
+    elements.sourceButton =
+        document.getElementById(
+
+            UIController
+                .CONFIG
+                .SOURCE_BUTTON_ID
+
+        );
+
+
+    elements.targetButton =
+        document.getElementById(
+
+            UIController
+                .CONFIG
+                .TARGET_BUTTON_ID
+
+        );
+
+
+
+    /* =======================================================
+       PARENT
+
+       SOURCE → TARGET
+           Parent = Source Village
+
+       TARGET → SOURCE
+           Parent = Target Range
+
+       Parent selection is performed through GIS / map click.
+    ======================================================= */
+
+    elements.parentSection =
+        document.getElementById(
+            "gg-offence-parent-section"
+        );
+
+
+    elements.parentContent =
+        document.getElementById(
+            "gg-offence-parent-content"
+        );
+
+
+
+    /* =======================================================
+       CHILD
+
+       SOURCE → TARGET
+           Child = Target Range
+
+       TARGET → SOURCE
+           Child = Source Village
+
+       Child selection happens from this panel.
+
+       Child polygons on the map are display/highlight only
+       and should remain non-interactive.
+    ======================================================= */
+
+    elements.childSection =
+        document.getElementById(
+            "gg-offence-child-section"
+        );
+
+
+    elements.childList =
+        document.getElementById(
+            "gg-offence-child-list"
+        );
+
+
+
+    /* =======================================================
+       CASES
+
+       Populated after a CHILD is selected.
+    ======================================================= */
+
+    elements.caseSection =
+        document.getElementById(
+            "gg-offence-case-section"
+        );
+
+
+    elements.caseCount =
+        document.getElementById(
+            "gg-offence-case-count"
+        );
+
+
+    elements.caseResults =
+        document.getElementById(
+            "gg-offence-case-results"
+        );
+
+
+    elements.caseResultList =
+        document.getElementById(
+            "gg-case-result-list"
+        );
+
+
+    elements.backToChildren =
+        document.getElementById(
+            "gg-offence-back-to-children"
+        );
+
+
+
+    /* =======================================================
+       CASE DETAILS
+
+       Populated after a particular offence case is selected.
+    ======================================================= */
+
+    elements.caseDetailsSection =
+        document.getElementById(
+            "gg-offence-case-details-section"
+        );
+
+
+    elements.caseDetails =
+        document.getElementById(
+            "gg-offence-case-details"
+        );
+
+
+    elements.backToCases =
+        document.getElementById(
+            "gg-offence-back-to-cases"
+        );
+
+
+
+    /* =======================================================
+       FIELD DETAILS
+
+       Populated when a particular expandable field from
+       CASE DETAILS is selected.
+
+       No GIS interaction occurs at this level.
+    ======================================================= */
+
+    elements.fieldDetailsSection =
+        document.getElementById(
+            "gg-offence-field-details-section"
+        );
+
+
+    elements.fieldDetails =
+        document.getElementById(
+            "gg-offence-field-details"
+        );
+
+
+    elements.backToCaseDetails =
+        document.getElementById(
+            "gg-offence-back-to-case-details"
+        );
+
+
+
+    /* =======================================================
+       CLEAR ANALYSIS
+    ======================================================= */
+
+    elements.clearSection =
+        document.getElementById(
+            "gg-offence-clear-section"
+        );
+
+
+    elements.clearButton =
+        document.getElementById(
+
+            UIController
+                .CONFIG
+                .CLEAR_BUTTON_ID
+
+        );
+
+
+
+    /* =======================================================
+       RETURN CURRENT DOM REFERENCES
+    ======================================================= */
+
+    return elements;
+
+
+},
 
 
 
@@ -3589,384 +3758,2325 @@ UIController.elements.caseDetails =
            BIND UI EVENTS
         ==================================================== */
 
-bindEvents:
-    function () {
+/* ===========================================================
+   BIND UI EVENTS
+
+   CURRENT OFFENCE UI ARCHITECTURE
+   -----------------------------------------------------------
+
+   MAIN BUTTON
+       ↓
+   Open / Close Panel
 
 
-        const elements =
-            UIController
-                .elements;
+   ANALYSIS MODE
+       ↓
+   SOURCE → TARGET
+       ↓
+   activateSource()
 
+   TARGET → SOURCE
+       ↓
+   activateTarget()
+
+
+   PARENT
+       ↓
+   Selected directly from GIS / map polygon.
+
+   No static DOM event is bound here.
+
+
+   CHILD
+       ↓
+   Child cards are generated dynamically after a parent
+   is selected.
+
+   Their click handlers are attached when the child cards
+   themselves are created.
+
+   IMPORTANT:
+
+   Child MAP polygons remain:
+
+       interactive: false
+
+
+   CASES
+       ↓
+   Back to Children
+
+
+   CASE DETAILS
+       ↓
+   Back to Cases
+
+
+   FIELD DETAILS
+       ↓
+   Back to Case Details
+
+
+   CLEAR
+       ↓
+   clearAnalysis()
+
+
+   REMOVED LEGACY EVENTS
+   -----------------------------------------------------------
+
+   The following old event bindings are intentionally removed:
+
+       relatedTargetToggle
+       caseResultsToggle
+       sourceBackButton
+
+   and therefore this function no longer calls:
+
+       toggleRelatedTargets()
+       toggleCases()
+       backToSources()
+/* ===========================================================
+   BACK TO CHILDREN
+
+   CURRENT PANEL ARCHITECTURE
+   -----------------------------------------------------------
+
+   Navigation:
+
+       CASES
+         ↓
+       CHILD
+
+
+   IMPORTANT
+   -----------------------------------------------------------
+
+   This is PANEL NAVIGATION ONLY.
+
+   It does NOT:
+
+       - clear the selected parent
+       - re-render parent GIS polygons
+       - call SpatialRenderer.clear()
+       - call renderAllSources()
+       - call renderAllTargets()
+       - change activeMode
+       - require another map click
+       - rebuild SpatialEngine
+       - rebuild Store
+
+
+   PARENT LIFETIME
+   -----------------------------------------------------------
+
+   The currently selected parent remains authoritative until:
+
+       1. another parent polygon is selected
+
+          OR
+
+       2. CLEAR ANALYSIS is pressed
+
+
+   CHILD NAVIGATION
+   -----------------------------------------------------------
+
+   When returning from CASES → CHILD:
+
+       ✓ parent remains selected
+       ✓ child list remains populated
+       ✓ child cards remain available
+
+   The previously selected child is released because the user
+   is returning to the child-selection level.
+
+   Therefore:
+
+       currentChild = null
+
+
+   CASE BRANCH
+   -----------------------------------------------------------
+
+   Since no child is currently selected after returning:
+
+       currentSpatialCases = []
+       currentSpatialContext = {}
+       currentCase = null
+       currentField = null
+
+   Case / details / field panels are reset.
+
+=========================================================== */
+
+backToChildren:
+function () {
+
+
+    try {
+
+
+        /* ===================================================
+           VALIDATE CURRENT PARENT
+
+           Normally this function is reachable only after a
+           parent has already been selected.
+
+           Do not destroy anything if somehow called without
+           a parent.
+        =================================================== */
 
         if (
-            !elements
+            !UIController.currentParent
         ) {
 
-            console.warn(
-                "⚠ OffenceUIController cannot bind events: elements unavailable"
+
+            UIController.setStatus(
+
+                "No parent is currently selected.",
+
+                "ready"
+
             );
+
 
             return false;
 
+
         }
 
 
 
-        /* ============================================
-           MAIN OFFENCE BUTTON
-        ============================================ */
+        /* ===================================================
+           RESET CURRENT CHILD SELECTION
+
+           IMPORTANT:
+
+           We are NOT clearing currentChildren.
+
+           currentChildren contains the children belonging to
+           the selected parent and must remain available.
+
+           Only the currently selected child is released.
+        =================================================== */
+
+        UIController.currentChild =
+            null;
+
+
+
+        /* ===================================================
+           RESET CASE BRANCH
+
+           Cases belong to a particular selected child.
+
+           Once we return to CHILD level there is no active
+           child, therefore the case branch must be cleared.
+        =================================================== */
+
+        UIController.currentSpatialCases =
+            [];
+
+
+        UIController.currentSpatialContext =
+            {};
+
+
+        UIController.currentCase =
+            null;
+
+
+        UIController.currentField =
+            null;
+
+
+
+        /* ===================================================
+           REMOVE ACTIVE CHILD CARD HIGHLIGHT
+
+           Child cards themselves remain in the DOM.
+
+           Only the selected state is removed so the user may
+           choose another child.
+        =================================================== */
 
         if (
-            elements.mainButton
+            UIController.elements
+                ?.childList
         ) {
 
-            elements
-                .mainButton
-                .onclick =
+
+            UIController.elements
+                .childList
+                .querySelectorAll(
+                    ".gg-offence-child-card"
+                )
+                .forEach(
+
                     function (
-                        event
+                        card
                     ) {
 
 
-                        event
-                            ?.preventDefault?.();
+                        card.classList.remove(
+                            "gg-selected-child"
+                        );
 
 
-                        event
-                            ?.stopPropagation?.();
+                    }
 
+                );
 
-                        UIController
-                            .togglePanel();
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           CLOSE BUTTON
-        ============================================ */
+        /* ===================================================
+           SHOW CHILD SECTION
+
+           The existing child list is preserved.
+
+           DO NOT rebuild it here.
+
+           It was already populated when the parent was
+           selected.
+        =================================================== */
 
         if (
-            elements.closeButton
+            UIController.elements
+                ?.childSection
         ) {
 
-            elements
-                .closeButton
-                .onclick =
-                    function (
-                        event
-                    ) {
 
+            UIController.elements
+                .childSection
+                .style
+                .display =
+                    "";
 
-                        event
-                            ?.preventDefault?.();
-
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        UIController
-                            .closePanel();
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           SOURCE BUTTON
-        ============================================ */
+        /* ===================================================
+           RESET CASE RESULTS
+
+           Cases must be reloaded when another child is
+           selected.
+        =================================================== */
 
         if (
-            elements.sourceButton
+            UIController.elements
+                ?.caseResultList
         ) {
 
-            elements
-                .sourceButton
-                .onclick =
-                    async function (
-                        event
-                    ) {
 
+            UIController.elements
+                .caseResultList
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
 
-                        event
-                            ?.preventDefault?.();
+                        Select a child to view
+                        matching offence cases.
 
+                    </div>
+                    `;
 
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .activateSource ===
-                            "function"
-                        ) {
-
-                            await UIController
-                                .activateSource();
-
-                        }
-
-                        else {
-
-                            console.error(
-                                "❌ OffenceUIController.activateSource() unavailable"
-                            );
-
-                        }
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           TARGET BUTTON
-        ============================================ */
+        /* ===================================================
+           RESET CASE COUNT
+        =================================================== */
 
         if (
-            elements.targetButton
+            UIController.elements
+                ?.caseCount
         ) {
 
-            elements
-                .targetButton
-                .onclick =
-                    async function (
-                        event
-                    ) {
 
+            UIController.elements
+                .caseCount
+                .textContent =
+                    "";
 
-                        event
-                            ?.preventDefault?.();
-
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .activateTarget ===
-                            "function"
-                        ) {
-
-                            await UIController
-                                .activateTarget();
-
-                        }
-
-                        else {
-
-                            console.error(
-                                "❌ OffenceUIController.activateTarget() unavailable"
-                            );
-
-                        }
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           CLEAR BUTTON
-        ============================================ */
+        /* ===================================================
+           HIDE CASE SECTION
+
+           We have returned to CHILD selection level.
+        =================================================== */
 
         if (
-            elements.clearButton
+            UIController.elements
+                ?.caseSection
         ) {
 
-            elements
-                .clearButton
-                .onclick =
-                    function (
-                        event
-                    ) {
 
+            UIController.elements
+                .caseSection
+                .style
+                .display =
+                    "none";
 
-                        event
-                            ?.preventDefault?.();
-
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .clearAnalysis ===
-                            "function"
-                        ) {
-
-                            UIController
-                                .clearAnalysis();
-
-                        }
-
-                        else {
-
-                            console.error(
-                                "❌ OffenceUIController.clearAnalysis() unavailable"
-                            );
-
-                        }
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           RELATED TARGETS TOGGLE
-        ============================================ */
+        /* ===================================================
+           RESET CASE DETAILS
+
+           Any previously selected case belonged to the
+           previously selected child.
+        =================================================== */
 
         if (
-            elements.relatedTargetToggle
+            UIController.elements
+                ?.caseDetails
         ) {
 
-            elements
-                .relatedTargetToggle
-                .onclick =
-                    function (
-                        event
-                    ) {
+
+            UIController.elements
+                .caseDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a case to view details.
+
+                    </div>
+                    `;
 
 
-                        event
-                            ?.preventDefault?.();
+            UIController.elements
+                .caseDetails
+                .scrollTop =
+                    0;
 
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .toggleRelatedTargets ===
-                            "function"
-                        ) {
-
-                            UIController
-                                .toggleRelatedTargets();
-
-                        }
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           CASE RESULTS TOGGLE
-        ============================================ */
+        /* ===================================================
+           HIDE CASE DETAILS SECTION
+        =================================================== */
 
         if (
-            elements.caseResultsToggle
+            UIController.elements
+                ?.caseDetailsSection
         ) {
 
-            elements
-                .caseResultsToggle
-                .onclick =
-                    function (
-                        event
-                    ) {
 
+            UIController.elements
+                .caseDetailsSection
+                .style
+                .display =
+                    "none";
 
-                        event
-                            ?.preventDefault?.();
-
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .toggleCases ===
-                            "function"
-                        ) {
-
-                            UIController
-                                .toggleCases();
-
-                        }
-
-
-                    };
 
         }
 
 
 
-        /* ============================================
-           BACK TO SOURCES
-        ============================================ */
+        /* ===================================================
+           RESET FIELD DETAILS
+
+           Field details belong to the previously selected
+           case and therefore cannot survive child navigation.
+        =================================================== */
 
         if (
-            elements.sourceBackButton
+            UIController.elements
+                ?.fieldDetails
         ) {
 
-            elements
-                .sourceBackButton
-                .onclick =
-                    function (
-                        event
-                    ) {
+
+            UIController.elements
+                .fieldDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a field from case details
+                        to view complete information.
+
+                    </div>
+                    `;
 
 
-                        event
-                            ?.preventDefault?.();
+            UIController.elements
+                .fieldDetails
+                .scrollTop =
+                    0;
 
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController
-                                .backToSources ===
-                            "function"
-                        ) {
-
-                            UIController
-                                .backToSources();
-
-                        }
-
-
-                    };
 
         }
+
+
+
+        /* ===================================================
+           HIDE FIELD DETAILS SECTION
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.fieldDetailsSection
+        ) {
+
+
+            UIController.elements
+                .fieldDetailsSection
+                .style
+                .display =
+                    "none";
+
+
+        }
+
+
+
+        /* ===================================================
+           PRESERVE PARENT SECTION
+
+           Explicitly keep it available.
+
+           Nothing inside parentContent is changed.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.parentSection
+        ) {
+
+
+            UIController.elements
+                .parentSection
+                .style
+                .display =
+                    "";
+
+
+        }
+
+
+
+        /* ===================================================
+           STATUS
+
+           Mode-aware wording keeps this generic for both:
+
+               SOURCE → TARGET
+               TARGET → SOURCE
+        =================================================== */
+
+        const childCount =
+
+            Array.isArray(
+                UIController.currentChildren
+            )
+
+                ? UIController
+                    .currentChildren
+                    .length
+
+                : 0;
+
+
+
+        UIController.setStatus(
+
+            childCount > 0
+
+                ? (
+                    childCount +
+                    " child" +
+                    (
+                        childCount === 1
+                            ? ""
+                            : "ren"
+                    ) +
+                    " available. Select a child."
+                )
+
+                : "Select a child.",
+
+            "ready"
+
+        );
+
+
+
+        /* ===================================================
+           SCROLL CHILD SECTION INTO VIEW
+
+           Panel navigation only.
+
+           Does not move/zoom the Leaflet map.
+        =================================================== */
+
+        UIController.elements
+            ?.childSection
+            ?.scrollIntoView?.(
+
+                {
+
+                    block:
+                        "start",
+
+                    behavior:
+                        "smooth"
+
+                }
+
+            );
+
+
+
+        console.log(
+
+            "⬅ Offence panel → CHILD level",
+
+            {
+
+                mode:
+                    UIController.activeMode,
+
+                parent:
+                    UIController.currentParent,
+
+                children:
+                    childCount
+
+            }
+
+        );
 
 
 
         return true;
 
 
-    },
+    }
 
+
+    catch (
+        error
+    ) {
+
+
+        UIController.lastError =
+            error;
+
+
+        UIController.setStatus(
+
+            "Unable to return to child selection.",
+
+            "error"
+
+        );
+
+
+        console.error(
+
+            "❌ Offence backToChildren() failed:",
+
+            error
+
+        );
+
+
+        return false;
+
+
+    }
+
+
+},
+
+       /* ===========================================================
+   SELECT CHILD
+
+   CURRENT OFFENCE PANEL ARCHITECTURE
+   -----------------------------------------------------------
+
+   PARENT
+      ↓
+   CHILD              ← THIS FUNCTION
+      ↓
+   CASES
+      ↓
+   CASE DETAILS
+      ↓
+   FIELD DETAILS
+
+
+   RESPONSIBILITIES
+   -----------------------------------------------------------
+
+   ✓ Preserve selected parent
+
+   ✓ Preserve complete child list
+
+   ✓ Replace current selected child
+
+   ✓ Highlight selected child card
+
+   ✓ Reset previous case selection
+
+   ✓ Reset previous case details
+
+   ✓ Reset previous field details
+
+   ✓ Load / display cases belonging to selected child
+
+   ✓ Keep all further navigation inside the panel
+
+
+   IMPORTANT
+   -----------------------------------------------------------
+
+   This function does NOT:
+
+       - clear the selected parent
+       - require another map click
+       - render parent polygons again
+       - rebuild SpatialEngine
+       - rebuild Store
+       - change analysis mode
+       - make child polygons interactive
+
+
+   CHILD MAP POLYGON
+   -----------------------------------------------------------
+
+   SpatialRenderer may visually highlight the selected child.
+
+   However child polygons must remain:
+
+       interactive: false
+
+=========================================================== */
+
+selectChild:
+function (
+    child,
+    card = null
+) {
+
+
+    /* =======================================================
+       VALIDATE CHILD
+    ======================================================= */
+
+    if (
+        !child
+    ) {
+
+
+        UIController.setStatus(
+
+            "Unable to select child.",
+
+            "error"
+
+        );
+
+
+        return false;
+
+
+    }
+
+
+
+    /* =======================================================
+       VALIDATE PARENT
+
+       A child cannot exist in the current workflow without
+       an authoritative selected parent.
+    ======================================================= */
+
+    if (
+        !UIController.currentParent
+    ) {
+
+
+        UIController.setStatus(
+
+            "Select a parent from the map first.",
+
+            "ready"
+
+        );
+
+
+        return false;
+
+
+    }
+
+
+
+    try {
+
+
+        /* ===================================================
+           STORE SELECTED CHILD
+
+           IMPORTANT:
+
+           DO NOT modify:
+
+               currentParent
+               currentChildren
+
+           They remain authoritative until another parent is
+           selected or CLEAR ANALYSIS is pressed.
+        =================================================== */
+
+        UIController.currentChild =
+            child;
+
+
+
+        /* ===================================================
+           RESET EVERYTHING BELOW CHILD
+
+           Changing child invalidates:
+
+               previous cases
+               previous selected case
+               previous case details
+               previous selected field
+               previous field details
+
+           Parent + child collection remain untouched.
+        =================================================== */
+
+        UIController.currentSpatialCases =
+            [];
+
+
+        UIController.currentSpatialContext =
+            {};
+
+
+        UIController.currentCase =
+            null;
+
+
+        UIController.currentField =
+            null;
+
+
+
+        /* ===================================================
+           REMOVE PREVIOUS CHILD HIGHLIGHT
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.childList
+        ) {
+
+
+            UIController.elements
+                .childList
+                .querySelectorAll(
+                    ".gg-offence-child-card"
+                )
+                .forEach(
+
+                    function (
+                        childCard
+                    ) {
+
+
+                        childCard.classList.remove(
+                            "gg-selected-child"
+                        );
+
+
+                    }
+
+                );
+
+
+        }
+
+
+
+        /* ===================================================
+           HIGHLIGHT CURRENT CHILD CARD
+
+           Prefer the card supplied directly by the click
+           handler.
+
+           This avoids searching the DOM unnecessarily.
+        =================================================== */
+
+        if (
+            card
+        ) {
+
+
+            card.classList.add(
+                "gg-selected-child"
+            );
+
+
+        }
+
+
+
+        /* ===================================================
+           RESET CASE RESULTS UI
+
+           We are about to replace the previous child's cases.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseResultList
+        ) {
+
+
+            UIController.elements
+                .caseResultList
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Loading matching offence cases...
+
+                    </div>
+                    `;
+
+
+        }
+
+
+
+        /* ===================================================
+           RESET CASE COUNT
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseCount
+        ) {
+
+
+            UIController.elements
+                .caseCount
+                .textContent =
+                    "";
+
+
+        }
+
+
+
+        /* ===================================================
+           RESET CASE DETAILS
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseDetails
+        ) {
+
+
+            UIController.elements
+                .caseDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a case to view details.
+
+                    </div>
+                    `;
+
+
+            UIController.elements
+                .caseDetails
+                .scrollTop =
+                    0;
+
+
+        }
+
+
+
+        /* ===================================================
+           HIDE CASE DETAILS
+
+           It becomes visible again when a particular case is
+           selected.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseDetailsSection
+        ) {
+
+
+            UIController.elements
+                .caseDetailsSection
+                .style
+                .display =
+                    "none";
+
+
+        }
+
+
+
+        /* ===================================================
+           RESET FIELD DETAILS
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.fieldDetails
+        ) {
+
+
+            UIController.elements
+                .fieldDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a field from case details
+                        to view complete information.
+
+                    </div>
+                    `;
+
+
+            UIController.elements
+                .fieldDetails
+                .scrollTop =
+                    0;
+
+
+        }
+
+
+
+        /* ===================================================
+           HIDE FIELD DETAILS
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.fieldDetailsSection
+        ) {
+
+
+            UIController.elements
+                .fieldDetailsSection
+                .style
+                .display =
+                    "none";
+
+
+        }
+
+
+
+        /* ===================================================
+           SHOW CASE SECTION
+
+           The CASES section becomes the active downstream
+           section after a child has been selected.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseSection
+        ) {
+
+
+            UIController.elements
+                .caseSection
+                .style
+                .display =
+                    "";
+
+
+        }
+
+
+
+        /* ===================================================
+           CHILD DISPLAY NAME
+        =================================================== */
+
+        const childName =
+
+            child?.name ||
+
+            child?.label ||
+
+            child?.title ||
+
+            child?.range ||
+
+            child?.village ||
+
+            child?.id ||
+
+            "Selected child";
+
+
+
+        /* ===================================================
+           UPDATE STATUS
+        =================================================== */
+
+        UIController.setStatus(
+
+            childName +
+            " selected. Loading offence cases...",
+
+            "loading"
+
+        );
+
+
+
+        /* ===================================================
+           GET CASES
+
+           NEW DESIGN PRINCIPLE
+           ---------------------------------------------------
+
+           The selected child should already contain, or be
+           associated with, the offence cases calculated from
+           the selected parent/child relationship.
+
+           We first support direct case arrays.
+
+           This keeps CHILD → CASE navigation independent of
+           GIS interaction.
+        =================================================== */
+
+        let cases =
+            [];
+
+
+
+        /* ===================================================
+           DIRECT CHILD CASE ARRAY
+        =================================================== */
+
+        if (
+            Array.isArray(
+                child.cases
+            )
+        ) {
+
+
+            cases =
+                child.cases;
+
+
+        }
+
+
+
+        /* ===================================================
+           ALTERNATIVE:
+           OFFENCE CASES PROPERTY
+        =================================================== */
+
+        else if (
+            Array.isArray(
+                child.offenceCases
+            )
+        ) {
+
+
+            cases =
+                child.offenceCases;
+
+
+        }
+
+
+
+        /* ===================================================
+           ALTERNATIVE:
+           MATCHING CASES PROPERTY
+        =================================================== */
+
+        else if (
+            Array.isArray(
+                child.matchingCases
+            )
+        ) {
+
+
+            cases =
+                child.matchingCases;
+
+
+        }
+
+
+
+        /* ===================================================
+           ALTERNATIVE:
+           CASCADES PROPERTY
+
+           Some existing offence structures may carry the
+           matched POR cascades directly.
+        =================================================== */
+
+        else if (
+            Array.isArray(
+                child.cascades
+            )
+        ) {
+
+
+            cases =
+                child.cascades;
+
+
+        }
+
+
+
+        /* ===================================================
+           OPTIONAL CHILD CASE RESOLVER
+
+           If cases are not directly attached to the child,
+           allow the SpatialEngine to resolve the relationship.
+
+           IMPORTANT:
+
+           This is DATA LOOKUP only.
+
+           It is NOT another GIS/map selection operation.
+        =================================================== */
+
+        if (
+            cases.length === 0
+        ) {
+
+
+            const SpatialEngine =
+                UIController
+                    .getSpatialEngine();
+
+
+            if (
+                SpatialEngine &&
+                typeof
+                SpatialEngine.getCasesForPair ===
+                "function"
+            ) {
+
+
+                const result =
+                    SpatialEngine
+                        .getCasesForPair(
+
+                            UIController
+                                .currentParent,
+
+                            child,
+
+                            UIController
+                                .activeMode
+
+                        );
+
+
+                if (
+                    Array.isArray(
+                        result
+                    )
+                ) {
+
+
+                    cases =
+                        result;
+
+
+                }
+
+
+            }
+
+
+        }
+
+
+
+        /* ===================================================
+           STORE CURRENT CASE COLLECTION
+        =================================================== */
+
+        UIController.currentSpatialCases =
+            Array.isArray(
+                cases
+            )
+
+                ? cases
+
+                : [];
+
+
+
+        /* ===================================================
+           STORE CURRENT PANEL CONTEXT
+
+           This represents the currently selected relationship:
+
+               mode
+               parent
+               child
+
+           No map interaction is required from this point.
+        =================================================== */
+
+        UIController.currentSpatialContext =
+            {
+
+                mode:
+                    UIController.activeMode,
+
+                parent:
+                    UIController.currentParent,
+
+                child:
+                    UIController.currentChild
+
+            };
+
+
+
+        /* ===================================================
+           OPTIONAL MAP VISUAL HIGHLIGHT
+
+           IMPORTANT:
+
+           This is VISUAL ONLY.
+
+           The child polygon must remain non-interactive.
+
+           We deliberately do NOT call:
+
+               SpatialRenderer.clear()
+
+           because that could destroy the authoritative parent
+           map state.
+
+           Renderer implementations may optionally expose:
+
+               highlightChild()
+
+           If it does not exist, panel operation continues
+           normally.
+        =================================================== */
+
+        const SpatialRenderer =
+            UIController
+                .getSpatialRenderer();
+
+
+        if (
+            SpatialRenderer &&
+            typeof
+            SpatialRenderer.highlightChild ===
+            "function"
+        ) {
+
+
+            try {
+
+
+                SpatialRenderer
+                    .highlightChild(
+
+                        child,
+
+                        {
+
+                            interactive:
+                                false,
+
+                            mode:
+                                UIController.activeMode,
+
+                            parent:
+                                UIController.currentParent
+
+                        }
+
+                    );
+
+
+            }
+
+
+            catch (
+                highlightError
+            ) {
+
+
+                console.warn(
+
+                    "⚠ Child polygon highlight failed:",
+
+                    highlightError
+
+                );
+
+
+            }
+
+
+        }
+
+
+
+        /* ===================================================
+           NO CASES
+        =================================================== */
+
+        if (
+            UIController.currentSpatialCases
+                .length ===
+            0
+        ) {
+
+
+            if (
+                UIController.elements
+                    ?.caseResultList
+            ) {
+
+
+                UIController.elements
+                    .caseResultList
+                    .innerHTML =
+                        `
+                        <div class="gg-offence-empty">
+
+                            No matching offence cases found
+                            for this child.
+
+                        </div>
+                        `;
+
+
+            }
+
+
+
+            if (
+                UIController.elements
+                    ?.caseCount
+            ) {
+
+
+                UIController.elements
+                    .caseCount
+                    .textContent =
+                        "0 cases";
+
+
+            }
+
+
+
+            UIController.setStatus(
+
+                "No offence cases found for " +
+                childName +
+                ".",
+
+                "ready"
+
+            );
+
+
+
+            UIController.elements
+                ?.caseSection
+                ?.scrollIntoView?.(
+
+                    {
+
+                        block:
+                            "start",
+
+                        behavior:
+                            "smooth"
+
+                    }
+
+                );
+
+
+
+            return [];
+
+
+        }
+
+
+
+        /* ===================================================
+           RENDER CASES
+
+           showSpatialCases() is responsible for displaying
+           the current case collection.
+
+           IMPORTANT:
+
+           Under the new architecture this should eventually
+           be the controller's panel renderer and must not
+           delegate back into an old Cascade UI.
+        =================================================== */
+
+        if (
+            typeof
+            UIController.showSpatialCases ===
+            "function"
+        ) {
+
+
+            UIController
+                .showSpatialCases(
+
+                    UIController
+                        .currentSpatialCases,
+
+                    UIController
+                        .currentSpatialContext
+
+                );
+
+
+        }
+
+        else {
+
+
+            console.error(
+
+                "❌ OffenceUIController.showSpatialCases() unavailable"
+
+            );
+
+
+            return false;
+
+
+        }
+
+
+
+        /* ===================================================
+           UPDATE CASE COUNT
+        =================================================== */
+
+        const caseCount =
+            UIController
+                .currentSpatialCases
+                .length;
+
+
+        if (
+            UIController.elements
+                ?.caseCount
+        ) {
+
+
+            UIController.elements
+                .caseCount
+                .textContent =
+
+                caseCount +
+
+                " case" +
+
+                (
+                    caseCount === 1
+                        ? ""
+                        : "s"
+                );
+
+
+        }
+
+
+
+        /* ===================================================
+           STATUS
+        =================================================== */
+
+        UIController.setStatus(
+
+            caseCount +
+            " offence case" +
+            (
+                caseCount === 1
+                    ? ""
+                    : "s"
+            ) +
+            " found for " +
+            childName +
+            ".",
+
+            "success"
+
+        );
+
+
+
+        /* ===================================================
+           SCROLL CASE SECTION INTO VIEW
+
+           Panel only.
+
+           Leaflet map is not moved.
+        =================================================== */
+
+        UIController.elements
+            ?.caseSection
+            ?.scrollIntoView?.(
+
+                {
+
+                    block:
+                        "start",
+
+                    behavior:
+                        "smooth"
+
+                }
+
+            );
+
+
+
+        console.log(
+
+            "➡ Offence CHILD selected",
+
+            {
+
+                mode:
+                    UIController.activeMode,
+
+                parent:
+                    UIController.currentParent,
+
+                child:
+                    UIController.currentChild,
+
+                cases:
+                    caseCount
+
+            }
+
+        );
+
+
+
+        return UIController
+            .currentSpatialCases;
+
+
+    }
+
+
+    catch (
+        error
+    ) {
+
+
+        UIController.lastError =
+            error;
+
+
+        UIController.setStatus(
+
+            error?.message ||
+            "Unable to select child.",
+
+            "error"
+
+        );
+
+
+        console.error(
+
+            "❌ Offence selectChild() failed:",
+
+            error
+
+        );
+
+
+        return false;
+
+
+    }
+
+
+},
+=========================================================== */
+
+bindEvents:
+function () {
+
+
+    const elements =
+        UIController.elements;
+
+
+    if (
+        !elements
+    ) {
+
+        console.warn(
+            "⚠ OffenceUIController cannot bind events: elements unavailable"
+        );
+
+        return false;
+
+    }
+
+
+
+    /* =======================================================
+       MAIN OFFENCE BUTTON
+
+       Opens / closes the complete Offence Analysis panel.
+    ======================================================= */
+
+    if (
+        elements.mainButton
+    ) {
+
+        elements.mainButton.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                UIController
+                    .togglePanel();
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       CLOSE BUTTON
+
+       IMPORTANT:
+
+       Closing the panel does NOT clear the current analysis.
+
+       Map rendering and current analysis state remain intact.
+
+       CLEAR ANALYSIS is responsible for explicitly resetting
+       the analysis.
+    ======================================================= */
+
+    if (
+        elements.closeButton
+    ) {
+
+        elements.closeButton.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                UIController
+                    .closePanel();
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       SOURCE → TARGET MODE
+
+       Runtime flow:
+
+           User clicks SOURCE → TARGET
+                    ↓
+           activateSource()
+                    ↓
+           prepareSpatialSystem()
+                    ↓
+           renderAllSources()
+                    ↓
+           Source parent polygons become interactive
+                    ↓
+           User selects SOURCE parent on map
+                    ↓
+           Parent panel populated
+                    ↓
+           Related TARGET children populated
+                    ↓
+           Child polygons may be highlighted/rendered
+           but remain non-interactive
+    ======================================================= */
+
+    if (
+        elements.sourceButton
+    ) {
+
+        elements.sourceButton.onclick =
+            async function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    UIController.preparing ===
+                    true
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    typeof
+                    UIController.activateSource ===
+                    "function"
+                ) {
+
+                    await UIController
+                        .activateSource();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.activateSource() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       TARGET → SOURCE MODE
+
+       Runtime flow:
+
+           User clicks TARGET → SOURCE
+                    ↓
+           activateTarget()
+                    ↓
+           prepareSpatialSystem()
+                    ↓
+           renderAllTargets()
+                    ↓
+           Target parent polygons become interactive
+                    ↓
+           User selects TARGET parent on map
+                    ↓
+           Parent panel populated
+                    ↓
+           Related SOURCE children populated
+                    ↓
+           Child polygons may be highlighted/rendered
+           but remain non-interactive
+    ======================================================= */
+
+    if (
+        elements.targetButton
+    ) {
+
+        elements.targetButton.onclick =
+            async function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    UIController.preparing ===
+                    true
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    typeof
+                    UIController.activateTarget ===
+                    "function"
+                ) {
+
+                    await UIController
+                        .activateTarget();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.activateTarget() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       BACK TO CHILDREN
+
+       Current position:
+
+           CASES
+
+       Action:
+
+           CASES
+              ↓
+           CHILD
+
+       IMPORTANT:
+
+       This does NOT return to the GIS parent-selection stage.
+
+       The currently selected parent remains selected.
+
+       The current child list remains available.
+
+       No map click is required.
+    ======================================================= */
+
+    if (
+        elements.backToChildren
+    ) {
+
+        elements.backToChildren.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    typeof
+                    UIController.backToChildren ===
+                    "function"
+                ) {
+
+                    UIController
+                        .backToChildren();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.backToChildren() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       BACK TO CASES
+
+       Current position:
+
+           CASE DETAILS
+
+       Action:
+
+           CASE DETAILS
+                ↓
+              CASES
+
+       The selected parent and child remain unchanged.
+
+       No GIS interaction occurs.
+    ======================================================= */
+
+    if (
+        elements.backToCases
+    ) {
+
+        elements.backToCases.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    typeof
+                    UIController.backToCases ===
+                    "function"
+                ) {
+
+                    UIController
+                        .backToCases();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.backToCases() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       BACK TO CASE DETAILS
+
+       Current position:
+
+           FIELD DETAILS
+
+       Action:
+
+           FIELD DETAILS
+                 ↓
+           CASE DETAILS
+
+       Current case remains selected.
+
+       No GIS interaction occurs.
+    ======================================================= */
+
+    if (
+        elements.backToCaseDetails
+    ) {
+
+        elements.backToCaseDetails.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    typeof
+                    UIController.backToCaseDetails ===
+                    "function"
+                ) {
+
+                    UIController
+                        .backToCaseDetails();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.backToCaseDetails() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       CLEAR ANALYSIS
+
+       Complete analysis reset.
+
+       Expected responsibility of clearAnalysis():
+
+           ✓ Clear offence spatial rendering
+
+           ✓ Reset activeMode
+
+           ✓ Reset current parent
+
+           ✓ Reset current children
+
+           ✓ Reset selected child
+
+           ✓ Reset current cases
+
+           ✓ Reset selected case
+
+           ✓ Reset selected field
+
+           ✓ Reset Parent panel
+
+           ✓ Reset Child panel
+
+           ✓ Reset Cases panel
+
+           ✓ Reset Case Details panel
+
+           ✓ Reset Field Details panel
+
+           ✓ Reset active mode buttons
+
+       This does NOT destroy:
+
+           Store
+           SpatialEngine
+           Spatial indexes
+           GIS base data
+    ======================================================= */
+
+    if (
+        elements.clearButton
+    ) {
+
+        elements.clearButton.onclick =
+            function (
+                event
+            ) {
+
+
+                event
+                    ?.preventDefault?.();
+
+
+                event
+                    ?.stopPropagation?.();
+
+
+                if (
+                    typeof
+                    UIController.clearAnalysis ===
+                    "function"
+                ) {
+
+                    UIController
+                        .clearAnalysis();
+
+                }
+
+                else {
+
+                    console.error(
+                        "❌ OffenceUIController.clearAnalysis() unavailable"
+                    );
+
+                }
+
+
+            };
+
+    }
+
+
+
+    /* =======================================================
+       IMPORTANT:
+       NO PARENT CLICK BINDING HERE
+
+       Parent selection is performed by SpatialRenderer through
+       the interactive parent GIS polygons.
+
+       SOURCE → TARGET:
+           SOURCE village polygon = interactive
+
+       TARGET → SOURCE:
+           TARGET range polygon = interactive
+
+       SpatialRenderer should call the appropriate controller
+       parent-selection method after the polygon is selected.
+    ======================================================= */
+
+
+
+    /* =======================================================
+       IMPORTANT:
+       NO CHILD CLICK BINDING HERE
+
+       Child cards do not exist when bindEvents() initially
+       runs.
+
+       They are dynamically generated after a parent has been
+       selected.
+
+       Therefore each generated child card should receive its
+       click handler during child-list rendering.
+
+       Example architecture:
+
+           renderChildren(children)
+                   ↓
+           create child card
+                   ↓
+           card.onclick
+                   ↓
+           selectChild(child)
+
+
+       Child map polygons remain:
+
+           interactive: false
+    ======================================================= */
+
+
+
+    /* =======================================================
+       IMPORTANT:
+       NO CASE CARD CLICK BINDING HERE
+
+       Case cards are also dynamically generated.
+
+       Their click handler belongs where the cards are created:
+
+           renderCases(cases)
+                 ↓
+           create case card
+                 ↓
+           card.onclick
+                 ↓
+           selectCase(caseData, card)
+    ======================================================= */
+
+
+
+    /* =======================================================
+       IMPORTANT:
+       NO CASE FIELD CLICK BINDING HERE
+
+       Expandable case fields are dynamically generated when
+       CASE DETAILS is rendered.
+
+       Their click handlers should be attached when the field
+       rows are created:
+
+           showCaseDetails(caseData)
+                    ↓
+           create field row
+                    ↓
+           field.onclick
+                    ↓
+           showFieldDetails(...)
+    ======================================================= */
+
+
+
+    return true;
+
+
+},
 /* ===========================================================
    SELECT RELATED TARGET
 
@@ -3979,153 +6089,945 @@ bindEvents:
    ✓ Delegate processing to SpatialRenderer
 =========================================================== */
 
-selectRelatedTarget:
-    function (
-        target
+/* ===========================================================
+   SELECT CHILD
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Called when the user clicks a CHILD card.
+
+   Runtime flow:
+
+       PARENT
+          ↓
+       CHILD
+          ↓
+       CASES
+
+   IMPORTANT ARCHITECTURE
+   -----------------------------------------------------------
+
+   GIS interaction ends at PARENT selection.
+
+   Therefore this function:
+
+   ✓ Preserves selected parent
+   ✓ Preserves complete child list
+   ✓ Stores selected child
+   ✓ Highlights selected child
+   ✓ Clears previous case selection
+   ✓ Clears previous case details
+   ✓ Clears previous field selection
+   ✓ Clears previous field details
+   ✓ Resolves cases from child data / relationship
+   ✓ Opens CASES
+   ✓ Keeps CHILD visible
+   ✓ Does NOT require a map click
+   ✓ Does NOT select a child polygon
+   ✓ Does NOT make child polygon interactive
+   ✓ Does NOT rebuild SpatialEngine
+   ✓ Does NOT re-render parent GIS polygons
+
+=========================================================== */
+
+selectChild:
+function (
+    child,
+    card = null
+) {
+
+
+    /* ============================================
+       VALIDATE CHILD
+    ============================================ */
+
+    if (
+        !child
+    ) {
+
+        console.warn(
+            "⚠ selectChild(): child unavailable"
+        );
+
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       PRESERVE PARENT
+
+       IMPORTANT:
+
+       Do NOT modify:
+
+           currentParent
+           currentSource
+           currentChildren
+           currentTargets
+           activeMode
+
+       Parent remains selected until another
+       parent polygon is clicked on the map.
+    ============================================ */
+
+
+    /* ============================================
+       STORE SELECTED CHILD
+    ============================================ */
+
+    UIController.currentChild =
+        child;
+
+
+    /*
+     * Compatibility with the previous
+     * SOURCE → TARGET implementation.
+     *
+     * In SOURCE mode the child may still
+     * conceptually be the target.
+     *
+     * This is state compatibility only.
+     *
+     * NO GIS operation is performed here.
+     */
+
+    if (
+        UIController.activeMode ===
+        "source"
+    ) {
+
+        UIController.currentTarget =
+            child;
+
+    }
+
+
+    /* ============================================
+       CLEAR PREVIOUS CHILD-SPECIFIC CASE STATE
+
+       A different child may previously have
+       been selected.
+
+       Never allow cases from child A to remain
+       visible while child B is active.
+    ============================================ */
+
+    UIController.currentSpatialCases =
+        [];
+
+
+    UIController.currentSpatialContext =
+        {};
+
+
+    /* ============================================
+       CLEAR PREVIOUS CASE
+    ============================================ */
+
+    UIController.currentCase =
+        null;
+
+
+    /* ============================================
+       CLEAR PREVIOUS FIELD
+    ============================================ */
+
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
+
+    /* ============================================
+       HIGHLIGHT SELECTED CHILD
+
+       First remove any previous child highlight.
+    ============================================ */
+
+    const childList =
+        UIController.elements
+            ?.childList;
+
+
+    if (
+        childList
+    ) {
+
+        childList
+            .querySelectorAll(
+                ".gg-offence-child-card"
+            )
+            .forEach(
+
+                function (
+                    childCard
+                ) {
+
+                    childCard
+                        .classList
+                        .remove(
+                            "gg-selected-child"
+                        );
+
+
+                    childCard
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+
+        /*
+         * Migration compatibility.
+         *
+         * Remove the old related-target
+         * highlight if any old class remains.
+         */
+
+        childList
+            .querySelectorAll(
+                ".gg-related-target-item"
+            )
+            .forEach(
+
+                function (
+                    childCard
+                ) {
+
+                    childCard
+                        .classList
+                        .remove(
+                            "gg-related-target-active"
+                        );
+
+
+                    childCard
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       APPLY SELECTED CHILD HIGHLIGHT
+
+       Preferred:
+
+           card passed directly from click handler
+
+       Fallback:
+
+           locate using data-child-key
+    ============================================ */
+
+    let selectedCard =
+        card;
+
+
+    if (
+        !selectedCard &&
+        childList
     ) {
 
 
-        if (
-            !target
-        ) {
+        const childKey =
 
-            return;
+            child?.key ||
 
-        }
+            child?.id ||
 
+            child?.name ||
 
-        const elements =
-            UIController.elements;
+            child?.label ||
 
+            child?.title ||
 
-        /* ============================================
-           STORE CURRENT TARGET
-        ============================================ */
+            "";
 
-        UIController.currentTarget =
-            target;
-
-
-        /* ============================================
-           HIGHLIGHT SELECTED BUTTON
-        ============================================ */
 
         if (
-            elements?.relatedTargetList
+            childKey
         ) {
 
-            Array
-                .from(
+            /*
+             * Avoid placing an unescaped arbitrary
+             * value directly into a selector.
+             */
 
-                    elements
-                        .relatedTargetList
-                        .children
+            const childCards =
+                Array.from(
+                    childList.children
+                );
 
-                )
-                .forEach(
+
+            selectedCard =
+                childCards.find(
 
                     function (
-                        button
+                        candidate
                     ) {
 
-                        button.classList.remove(
-                            "gg-related-target-active"
+                        return (
+
+                            candidate
+                                ?.dataset
+                                ?.childKey ===
+                            String(
+                                childKey
+                            )
+
                         );
 
                     }
 
-                );
+                ) ||
+                null;
+
+        }
+
+    }
 
 
-            const targetKey =
+    if (
+        selectedCard
+    ) {
 
-                target.key ||
-                target.id ||
-                target.name;
+        selectedCard
+            .classList
+            .add(
+                "gg-selected-child"
+            );
 
 
-            const selectedButton =
-                elements
-                    .relatedTargetList
-                    .querySelector(
+        selectedCard
+            .setAttribute(
+                "aria-selected",
+                "true"
+            );
 
-                        `[data-target="${targetKey}"]`
+    }
+
+
+    /* ============================================
+       RESET CASE RESULTS UI
+
+       We are about to load the cases belonging
+       to the newly selected child.
+    ============================================ */
+
+    const caseResultList =
+        UIController.elements
+            ?.caseResultList;
+
+
+    if (
+        caseResultList
+    ) {
+
+        caseResultList.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Loading matching offence cases...
+
+            </div>
+            `;
+
+
+        caseResultList.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       RESET CASE DETAILS
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetails
+    ) {
+
+        caseDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a case to view complete
+                offence details.
+
+            </div>
+            `;
+
+
+        caseDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+
+        fieldDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE CASE DETAILS
+
+       A case has not yet been selected for this
+       child.
+    ============================================ */
+
+    const caseDetailsSection =
+        UIController.elements
+            ?.caseDetailsSection;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       SHOW CASES SECTION
+    ============================================ */
+
+    const casesSection =
+        UIController.elements
+            ?.casesSection;
+
+
+    if (
+        casesSection
+    ) {
+
+        casesSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       SHOW CASE RESULTS CONTAINER
+    ============================================ */
+
+    const caseResults =
+        UIController.elements
+            ?.caseResults;
+
+
+    if (
+        caseResults
+    ) {
+
+        caseResults
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       UPDATE CURRENT VIEW
+    ============================================ */
+
+    UIController.currentView =
+        "cases";
+
+
+    /* ============================================
+       BUILD CHILD CONTEXT
+
+       This context travels with the case list.
+
+       It contains UI/data relationship state,
+       not a new GIS selection.
+    ============================================ */
+
+    const parent =
+
+        UIController.currentParent ||
+
+        (
+            UIController.activeMode ===
+            "source"
+
+                ? UIController.currentSource
+
+                : UIController.currentTarget
+
+        ) ||
+
+        null;
+
+
+    const context = {
+
+        mode:
+            UIController.activeMode,
+
+        parent:
+            parent,
+
+        child:
+            child,
+
+        parentKey:
+
+            parent?.key ||
+
+            parent?.id ||
+
+            parent?.name ||
+
+            parent?.label ||
+
+            null,
+
+        childKey:
+
+            child?.key ||
+
+            child?.id ||
+
+            child?.name ||
+
+            child?.label ||
+
+            null
+
+    };
+
+
+    UIController.currentSpatialContext =
+        context;
+
+
+    /* ============================================
+       UPDATE STATUS
+    ============================================ */
+
+    const childName =
+
+        child?.name ||
+
+        child?.label ||
+
+        child?.title ||
+
+        child?.id ||
+
+        "selected child";
+
+
+    UIController
+        .setStatus(
+
+            "Loading offence cases for " +
+            childName +
+            "...",
+
+            "loading"
+
+        );
+
+
+    /* ============================================
+       RESOLVE CHILD CASES
+
+       IMPORTANT:
+
+       CHILD → CASES is no longer a GIS action.
+
+       We first use cases already carried by the
+       child object.
+
+       Supported structures:
+
+           child.cases
+           child.caseList
+           child.offenceCases
+           child.matchedCases
+           child.cascades
+
+       This allows the renderer/controller that
+       created the CHILD list to attach the
+       authoritative case collection directly.
+    ============================================ */
+
+    let cases =
+        [];
+
+
+    if (
+        Array.isArray(
+            child.cases
+        )
+    ) {
+
+        cases =
+            child.cases;
+
+    }
+
+    else if (
+        Array.isArray(
+            child.caseList
+        )
+    ) {
+
+        cases =
+            child.caseList;
+
+    }
+
+    else if (
+        Array.isArray(
+            child.offenceCases
+        )
+    ) {
+
+        cases =
+            child.offenceCases;
+
+    }
+
+    else if (
+        Array.isArray(
+            child.matchedCases
+        )
+    ) {
+
+        cases =
+            child.matchedCases;
+
+    }
+
+    else if (
+        Array.isArray(
+            child.cascades
+        )
+    ) {
+
+        cases =
+            child.cascades;
+
+    }
+
+
+    /* ============================================
+       OPTIONAL RELATIONSHIP LOOKUP
+
+       If child cards do not directly carry cases,
+       allow a dedicated NON-GIS resolver.
+
+       Preferred future API:
+
+           UIController.resolveCasesForChild()
+
+       This keeps relationship lookup separate
+       from map rendering.
+    ============================================ */
+
+    if (
+        !cases.length &&
+        typeof
+        UIController.resolveCasesForChild ===
+        "function"
+    ) {
+
+        try {
+
+            const resolved =
+                UIController
+                    .resolveCasesForChild(
+
+                        child,
+
+                        parent,
+
+                        context
 
                     );
 
+
+            /*
+             * Support synchronous resolver.
+             *
+             * If your resolver later becomes async,
+             * selectChild() should then be converted
+             * to async.
+             */
 
             if (
-                selectedButton
+                Array.isArray(
+                    resolved
+                )
             ) {
 
-                selectedButton
-                    .classList
-                    .add(
-                        "gg-related-target-active"
-                    );
+                cases =
+                    resolved;
 
             }
 
         }
 
-
-        /* ============================================
-           UPDATE STATUS
-        ============================================ */
-
-        if (
-
-            typeof
-            UIController
-                .setStatus ===
-            "function"
-
+        catch (
+            error
         ) {
-
-            UIController
-                .setStatus(
-
-                    "Loading matching offence cases..."
-
-                );
-
-        }
-
-
-        /* ============================================
-           DELEGATE TO RENDERER
-        ============================================ */
-
-        if (
-
-            GG
-                ?.Offence
-                ?.SpatialRenderer
-                ?.selectTargetForSource
-
-        ) {
-
-GG
-    .Offence
-    .SpatialRenderer
-    .selectTargetForSource(
-        target
-    );
-
-        }
-
-        else {
 
             console.error(
 
-                "❌ SpatialRenderer.selectTargetForSource() unavailable"
+                "❌ Unable to resolve cases for child:",
+
+                error
 
             );
 
         }
 
+    }
 
-    },
+
+    /* ============================================
+       CASES FOUND
+
+       Delegate rendering to the controller's
+       case rendering function.
+    ============================================ */
+
+    if (
+        cases.length > 0
+    ) {
+
+        if (
+            typeof
+            UIController.showSpatialCases ===
+            "function"
+        ) {
+
+            UIController
+                .showSpatialCases(
+
+                    cases,
+
+                    context
+
+                );
+
+        }
+
+        else {
+
+            UIController.currentSpatialCases =
+                cases;
+
+
+            UIController
+                .setStatus(
+
+                    cases.length +
+                    " offence case" +
+                    (
+                        cases.length === 1
+                            ? ""
+                            : "s"
+                    ) +
+                    " found.",
+
+                    "success"
+
+                );
+
+        }
+
+    }
+
+
+    /* ============================================
+       NO CASES FOUND
+    ============================================ */
+
+    else {
+
+        UIController.currentSpatialCases =
+            [];
+
+
+        if (
+            caseResultList
+        ) {
+
+            caseResultList.innerHTML =
+                `
+                <div class="gg-offence-empty">
+
+                    No matching offence cases
+                    found for this child.
+
+                </div>
+                `;
+
+        }
+
+
+        UIController
+            .setStatus(
+
+                "No offence cases found for " +
+                childName +
+                ".",
+
+                "ready"
+
+            );
+
+    }
+
+
+    /* ============================================
+       SCROLL TO CASES
+
+       PANEL navigation only.
+
+       No map pan.
+       No map zoom.
+       No polygon click.
+    ============================================ */
+
+    if (
+        casesSection
+    ) {
+
+        casesSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       DEBUG
+    ============================================ */
+
+    console.log(
+
+        "➡ Offence navigation: CHILD → CASES",
+
+        {
+
+            mode:
+                UIController.activeMode,
+
+            parent:
+                parent,
+
+            child:
+                child,
+
+            caseCount:
+                cases.length,
+
+            currentView:
+                UIController.currentView
+
+        }
+
+    );
+
+
+    return cases;
+
+
+},
        /* ===========================================================
    OPEN SOURCE MODE PANEL
 
@@ -4142,340 +7044,1104 @@ GG
    ✓ Reset case section
 =========================================================== */
 
-openSourceModePanel:
-    function (
-        source,
-        targets = []
+/* ===========================================================
+   OPEN PARENT PANEL
+
+   NEW OFFENCE PANEL DESIGN
+   -----------------------------------------------------------
+
+   Called after a PARENT polygon is selected on the map.
+
+   Supported modes:
+
+       SOURCE → TARGET
+
+           Parent:
+               Source Village
+
+           Children:
+               Target Ranges
+
+
+       TARGET → SOURCE
+
+           Parent:
+               Target Range
+
+           Children:
+               Source Villages
+
+
+   GIS BOUNDARY
+   -----------------------------------------------------------
+
+   GIS / map interaction is used only to select the PARENT.
+
+   After this function receives:
+
+       parent
+       children
+
+   all further navigation is panel/data driven:
+
+       CHILD
+          ↓
+       CASES
+          ↓
+       CASE DETAILS
+          ↓
+       FIELD DETAILS
+
+
+   Responsibilities
+
+   ✓ Store selected parent
+   ✓ Store complete child collection
+   ✓ Preserve current analysis mode
+   ✓ Populate PARENT section
+   ✓ Populate CHILD section
+   ✓ Make CHILD cards clickable
+   ✓ Reset previous child selection
+   ✓ Reset previous cases
+   ✓ Reset previous case selection
+   ✓ Reset previous field selection
+   ✓ Hide CASES
+   ✓ Hide CASE DETAILS
+   ✓ Hide FIELD DETAILS
+   ✓ No child GIS interaction
+   ✓ No child polygon click required
+   ✓ No SpatialRenderer call from child cards
+
+=========================================================== */
+
+openParentPanel:
+function (
+    parent,
+    children = []
+) {
+
+
+    const elements =
+        UIController.elements;
+
+
+    /* ============================================
+       VALIDATE UI
+    ============================================ */
+
+    if (
+        !elements
     ) {
 
-
-        const elements =
-            UIController.elements;
-
-
-        if (
-            !elements
-        ) {
-
-            return;
-
-        }
+        console.warn(
+            "⚠ openParentPanel(): UI elements unavailable"
+        );
 
 
-        /* ============================================
-           SAVE STATE
-        ============================================ */
+        return false;
+
+    }
+
+
+    /* ============================================
+       NORMALIZE CHILD COLLECTION
+    ============================================ */
+
+    const childList =
+
+        Array.isArray(
+            children
+        )
+
+            ? children
+
+            : [];
+
+
+    /* ============================================
+       STORE AUTHORITATIVE PARENT STATE
+
+       IMPORTANT:
+
+       Parent remains selected until another
+       parent polygon is selected from the map.
+    ============================================ */
+
+    UIController.currentParent =
+        parent ||
+        null;
+
+
+    UIController.currentChildren =
+        childList;
+
+
+    /* ============================================
+       MODE COMPATIBILITY STATE
+
+       Keep the older source/target state available
+       because SpatialRenderer or other existing
+       code may still inspect these properties.
+
+       This does NOT change the new panel design.
+    ============================================ */
+
+    if (
+        UIController.activeMode ===
+        "source"
+    ) {
+
+        /*
+         * SOURCE → TARGET
+         *
+         * Parent = Source
+         * Children = Targets
+         */
 
         UIController.currentSource =
-            source || null;
+            parent ||
+            null;
 
 
         UIController.currentTargets =
-            Array.isArray(
-                targets
-            )
-                ? targets
-                : [];
+            childList;
+
+    }
 
 
+    else if (
+        UIController.activeMode ===
+        "target"
+    ) {
+
+        /*
+         * TARGET → SOURCE
+         *
+         * Parent = Target
+         * Children = Sources
+         */
+
+        UIController.currentTarget =
+            parent ||
+            null;
 
 
+        /*
+         * New generic child collection remains:
+         *
+         * currentChildren
+         *
+         * Do NOT put source children into
+         * currentTargets.
+         */
+
+    }
 
 
-        /* ============================================
-           SHOW SOURCE MODE
-        ============================================ */
+    /* ============================================
+       RESET LOWER-LEVEL STATE
 
-        if (
-            elements.sourceMode
-        ) {
+       A new parent invalidates everything below:
 
-            elements
-                .sourceMode
-                .style
-                .display =
-                    "";
+           selected child
+           cases
+           selected case
+           selected field
+    ============================================ */
 
-        }
+    UIController.currentChild =
+        null;
 
 
-
-        /* ============================================
-           UPDATE SELECTED SOURCE
-        ============================================ */
-
-        if (
-            elements.selectedSource
-        ) {
-
-            elements
-                .selectedSource
-                .textContent =
-                    source
-                        ?.name ||
-                    source
-                        ?.label ||
-                    source
-                        ?.title ||
-                    source
-                        ?.id ||
-                    "Unknown Source";
-
-        }
+    UIController.currentSpatialCases =
+        [];
 
 
-
-        /* ============================================
-           RESET TARGET LIST
-        ============================================ */
-
-        if (
-            elements.relatedTargetList
-        ) {
-
-            elements
-                .relatedTargetList
-                .innerHTML =
-                    "";
-
-        }
+    UIController.currentSpatialContext =
+        {};
 
 
+    UIController.currentCase =
+        null;
 
-        /* ============================================
-           POPULATE TARGETS
-        ============================================ */
 
-        if (
+    UIController.currentField =
+        null;
 
-            elements.relatedTargetList &&
 
-            UIController.currentTargets.length
+    UIController.currentFieldKey =
+        null;
 
-        ) {
 
-            UIController.currentTargets
-                .forEach(
+    UIController.currentFieldValue =
+        null;
 
+
+    /* ============================================
+       CURRENT PANEL LEVEL
+    ============================================ */
+
+    UIController.currentView =
+        "children";
+
+
+    /* ============================================
+       DETERMINE PARENT DISPLAY NAME
+    ============================================ */
+
+    const parentName =
+
+        parent?.name ||
+
+        parent?.label ||
+
+        parent?.title ||
+
+        parent?.id ||
+
+        parent?.key ||
+
+        "Unknown Parent";
+
+
+    /* ============================================
+       DETERMINE PARENT TYPE
+
+       SOURCE MODE:
+           Source Village
+
+       TARGET MODE:
+           Target Range
+    ============================================ */
+
+    const parentType =
+
+        UIController.activeMode ===
+        "source"
+
+            ? "Source Village"
+
+            : (
+
+                UIController.activeMode ===
+                "target"
+
+                    ? "Target Range"
+
+                    : "Parent"
+
+            );
+
+
+    /* ============================================
+       DETERMINE CHILD TYPE
+
+       SOURCE MODE:
+           Target Range
+
+       TARGET MODE:
+           Source Village
+    ============================================ */
+
+    const childType =
+
+        UIController.activeMode ===
+        "source"
+
+            ? "Target Range"
+
+            : (
+
+                UIController.activeMode ===
+                "target"
+
+                    ? "Source Village"
+
+                    : "Child"
+
+            );
+
+
+    /* ============================================
+       POPULATE PARENT SECTION
+
+       Preferred new element:
+
+           elements.parentContent
+    ============================================ */
+
+    if (
+        elements.parentContent
+    ) {
+
+        elements.parentContent.innerHTML =
+            `
+            <div
+                class="gg-offence-parent-card"
+                aria-current="true">
+
+                <div
+                    class="gg-offence-parent-name">
+
+                    📍 ${UIController.escapeHTML
+                        ? UIController.escapeHTML(
+                            String(
+                                parentName
+                            )
+                        )
+                        : String(
+                            parentName
+                        )}
+
+                </div>
+
+                <div
+                    class="gg-offence-parent-type">
+
+                    ${UIController.escapeHTML
+                        ? UIController.escapeHTML(
+                            parentType
+                        )
+                        : parentType}
+
+                </div>
+
+            </div>
+            `;
+
+    }
+
+
+    /* ============================================
+       SHOW PARENT SECTION
+    ============================================ */
+
+    if (
+        elements.parentSection
+    ) {
+
+        elements.parentSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       RESET CHILD LIST
+    ============================================ */
+
+    if (
+        elements.childList
+    ) {
+
+        elements.childList.innerHTML =
+            "";
+
+    }
+
+
+    /* ============================================
+       POPULATE CHILD CARDS
+
+       IMPORTANT:
+
+       These are normal UI cards.
+
+       They DO NOT:
+
+           click map polygons
+           call SpatialRenderer
+           call SpatialEngine
+           trigger GIS selection
+
+       Clicking a child calls:
+
+           UIController.selectChild()
+    ============================================ */
+
+    if (
+        elements.childList &&
+        childList.length > 0
+    ) {
+
+        childList.forEach(
+
+            function (
+                child,
+                index
+            ) {
+
+
+                /* ====================================
+                   CREATE CHILD CARD
+                ==================================== */
+
+                const button =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                button.type =
+                    "button";
+
+
+                button.className =
+                    "gg-offence-child-card";
+
+
+                button.setAttribute(
+                    "aria-selected",
+                    "false"
+                );
+
+
+                /* ====================================
+                   CHILD KEY
+                ==================================== */
+
+                const childKey =
+
+                    child?.key ||
+
+                    child?.id ||
+
+                    child?.name ||
+
+                    child?.label ||
+
+                    child?.title ||
+
+                    String(
+                        index
+                    );
+
+
+                button.dataset.childKey =
+                    String(
+                        childKey
+                    );
+
+
+                /* ====================================
+                   CHILD DISPLAY NAME
+                ==================================== */
+
+                const childName =
+
+                    child?.name ||
+
+                    child?.label ||
+
+                    child?.title ||
+
+                    child?.id ||
+
+                    child?.key ||
+
+                    "Unnamed Child";
+
+
+                /* ====================================
+                   CASE COUNT
+
+                   Support common structures.
+
+                   This is display information only.
+                ==================================== */
+
+                let caseCount =
+                    null;
+
+
+                if (
+                    Array.isArray(
+                        child?.cases
+                    )
+                ) {
+
+                    caseCount =
+                        child.cases.length;
+
+                }
+
+                else if (
+                    Array.isArray(
+                        child?.caseList
+                    )
+                ) {
+
+                    caseCount =
+                        child.caseList.length;
+
+                }
+
+                else if (
+                    Array.isArray(
+                        child?.offenceCases
+                    )
+                ) {
+
+                    caseCount =
+                        child.offenceCases.length;
+
+                }
+
+                else if (
+                    Array.isArray(
+                        child?.matchedCases
+                    )
+                ) {
+
+                    caseCount =
+                        child.matchedCases.length;
+
+                }
+
+                else if (
+                    Array.isArray(
+                        child?.cascades
+                    )
+                ) {
+
+                    caseCount =
+                        child.cascades.length;
+
+                }
+
+                else if (
+                    Number.isFinite(
+                        Number(
+                            child?.caseCount
+                        )
+                    )
+                ) {
+
+                    caseCount =
+                        Number(
+                            child.caseCount
+                        );
+
+                }
+
+                else if (
+                    Number.isFinite(
+                        Number(
+                            child?.count
+                        )
+                    )
+                ) {
+
+                    caseCount =
+                        Number(
+                            child.count
+                        );
+
+                }
+
+
+                /* ====================================
+                   CHILD CARD CONTENT
+                ==================================== */
+
+                const nameElement =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                nameElement.className =
+                    "gg-offence-child-name";
+
+
+                nameElement.textContent =
+                    String(
+                        childName
+                    );
+
+
+                const metaElement =
+                    document.createElement(
+                        "span"
+                    );
+
+
+                metaElement.className =
+                    "gg-offence-child-meta";
+
+
+                if (
+                    caseCount !==
+                    null
+                ) {
+
+                    metaElement.textContent =
+
+                        caseCount +
+                        " case" +
+                        (
+                            caseCount === 1
+                                ? ""
+                                : "s"
+                        );
+
+                }
+
+                else {
+
+                    metaElement.textContent =
+                        childType;
+
+                }
+
+
+                button.appendChild(
+                    nameElement
+                );
+
+
+                button.appendChild(
+                    metaElement
+                );
+
+
+                /* ====================================
+                   CHILD CLICK
+
+                   PANEL/DATA OPERATION ONLY.
+
+                   NO GIS.
+                ==================================== */
+
+                button.onclick =
                     function (
-                        target
+                        event
                     ) {
 
 
-                        const button =
-                            document
-                                .createElement(
-                                    "button"
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .selectChild ===
+                            "function"
+                        ) {
+
+                            UIController
+                                .selectChild(
+
+                                    child,
+
+                                    button
+
                                 );
 
+                        }
 
-                        button.type =
-                            "button";
+                        else {
 
+                            console.error(
 
-button.type =
-    "button";
+                                "❌ OffenceUIController.selectChild() unavailable"
 
-
-button.className =
-    "gg-related-target-item";
-
-
-button.dataset.target =
-
-    target?.key ||
-
-    target?.id ||
-
-    target?.name ||
-
-    target?.label ||
-
-    "";
-
-
-button.textContent =
-
-    target?.name ||
-
-    target?.label ||
-
-    target?.title ||
-
-    target?.id ||
-
-    "Unnamed Target";
-
-
-                        button.onclick =
-                            function () {
-
-
-                                if (
-
-                                    typeof
-                                    UIController
-                                        .selectRelatedTarget ===
-                                    "function"
-
-                                ) {
-
-                                    UIController
-                                        .selectRelatedTarget(
-                                            target
-                                        );
-
-                                }
-
-
-                            };
-
-
-                        elements
-                            .relatedTargetList
-                            .appendChild(
-                                button
                             );
 
-
-                    }
-
-                );
-
-        }
+                        }
 
 
-        else if (
-
-            elements.relatedTargetList
-
-        ) {
-
-            elements
-                .relatedTargetList
-                .innerHTML =
-                    `
-                    <div class="gg-offence-empty">
-
-                        No related targets found.
-
-                    </div>
-                    `;
-
-        }
+                    };
 
 
+                /* ====================================
+                   ADD CHILD CARD
+                ==================================== */
 
-        /* ============================================
-           SHOW TARGET LIST
-        ============================================ */
+                elements
+                    .childList
+                    .appendChild(
+                        button
+                    );
+
+
+            }
+
+        );
+
+    }
+
+
+    /* ============================================
+       NO CHILDREN
+    ============================================ */
+
+    else if (
+        elements.childList
+    ) {
+
+        elements.childList.innerHTML =
+            `
+            <div
+                class="gg-offence-empty">
+
+                No related ${
+                    UIController.activeMode ===
+                    "source"
+                        ? "target ranges"
+                        : UIController.activeMode ===
+                          "target"
+                            ? "source villages"
+                            : "children"
+                } found for this parent.
+
+            </div>
+            `;
+
+    }
+
+
+    /* ============================================
+       SHOW CHILD SECTION
+    ============================================ */
+
+    if (
+        elements.childSection
+    ) {
+
+        elements.childSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       SHOW CHILD LIST
+    ============================================ */
+
+    if (
+        elements.childList
+    ) {
+
+        elements.childList
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       RESET CASE RESULTS
+    ============================================ */
+
+    if (
+        elements.caseResultList
+    ) {
+
+        elements.caseResultList.innerHTML =
+            `
+            <div
+                class="gg-offence-empty">
+
+                Select a child above to view
+                matching offence cases.
+
+            </div>
+            `;
+
+
+        elements.caseResultList.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE CASES SECTION
+
+       CASES become visible only after the user
+       selects a CHILD.
+    ============================================ */
+
+    if (
+        elements.casesSection
+    ) {
+
+        elements.casesSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       COMPATIBILITY:
+       HIDE CASE RESULTS CONTAINER
+    ============================================ */
+
+    if (
+        elements.caseResults
+    ) {
+
+        elements.caseResults
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       RESET CASE DETAILS
+    ============================================ */
+
+    if (
+        elements.caseDetails
+    ) {
+
+        elements.caseDetails.innerHTML =
+            `
+            <div
+                class="gg-offence-empty">
+
+                Select a case to view complete
+                offence details.
+
+            </div>
+            `;
+
+
+        elements.caseDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE CASE DETAILS SECTION
+    ============================================ */
+
+    if (
+        elements.caseDetailsSection
+    ) {
+
+        elements.caseDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS
+    ============================================ */
+
+    if (
+        elements.fieldDetails
+    ) {
+
+        elements.fieldDetails.innerHTML =
+            `
+            <div
+                class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+
+        elements.fieldDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+    ============================================ */
+
+    if (
+        elements.fieldDetailsSection
+    ) {
+
+        elements.fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       STATUS
+    ============================================ */
+
+    const childCount =
+        childList.length;
+
+
+    if (
+        typeof
+        UIController.setStatus ===
+        "function"
+    ) {
 
         if (
-            elements.relatedTargetList
-        ) {
-
-            elements
-                .relatedTargetList
-                .style
-                .display =
-                    "";
-
-        }
-
-
-
-        /* ============================================
-           UPDATE TOGGLE LABELS
-        ============================================ */
-
-        if (
-            elements.relatedTargetToggle
-        ) {
-
-            elements
-                .relatedTargetToggle
-                .textContent =
-                    "▼ Related Targets";
-
-        }
-
-
-        if (
-            elements.caseResultsToggle
-        ) {
-
-            elements
-                .caseResultsToggle
-                .textContent =
-                    "▶ CASE RESULTS";
-
-        }
-
-
-
-        /* ============================================
-           HIDE CASE RESULTS
-        ============================================ */
-
-        if (
-            elements.caseResults
-        ) {
-
-            elements
-                .caseResults
-                .style
-                .display =
-                    "none";
-
-        }
-
-
-
-        /* ============================================
-           CLEAR PREVIOUS CASES
-        ============================================ */
-
-        if (
-            elements.caseResultList
-        ) {
-
-            elements
-                .caseResultList
-                .innerHTML =
-                    `
-                    <div class="gg-offence-empty">
-
-                        Select a related target.
-
-                    </div>
-                    `;
-
-        }
-
-
-
-        /* ============================================
-           STATUS
-        ============================================ */
-
-        if (
-            typeof
-            UIController
-                .setStatus ===
-            "function"
+            childCount > 0
         ) {
 
             UIController
                 .setStatus(
 
-                    "Source selected. Choose a related target."
+                    parentName +
+                    " selected. " +
+                    childCount +
+                    " " +
+                    (
+                        UIController.activeMode ===
+                        "source"
+
+                            ? "target range" +
+                              (
+                                  childCount === 1
+                                      ? ""
+                                      : "s"
+                              )
+
+                            : UIController.activeMode ===
+                              "target"
+
+                                ? "source village" +
+                                  (
+                                      childCount === 1
+                                          ? ""
+                                          : "s"
+                                  )
+
+                                : "child" +
+                                  (
+                                      childCount === 1
+                                          ? ""
+                                          : "ren"
+                                  )
+
+                    ) +
+                    " available.",
+
+                    "success"
 
                 );
 
         }
 
+        else {
 
-    },
+            UIController
+                .setStatus(
+
+                    "No related children found for " +
+                    parentName +
+                    ".",
+
+                    "ready"
+
+                );
+
+        }
+
+    }
+
+
+    /* ============================================
+       SCROLL CHILD SECTION INTO VIEW
+
+       UI only.
+
+       This does NOT move the map.
+    ============================================ */
+
+    if (
+        elements.childSection
+    ) {
+
+        elements.childSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       DEBUG
+    ============================================ */
+
+    console.log(
+
+        "📍 Offence parent selected",
+
+        {
+
+            mode:
+                UIController.activeMode,
+
+            parent:
+                parent,
+
+            parentType:
+                parentType,
+
+            childType:
+                childType,
+
+            childCount:
+                childCount,
+
+            currentView:
+                UIController.currentView
+
+        }
+
+    );
+
+
+    return {
+
+        parent:
+            parent,
+
+        children:
+            childList,
+
+        count:
+            childCount
+
+    };
+
+
+},
                /* ====================================================
            GET AUTHORITATIVE STORE CASCADES
 
@@ -6314,62 +9980,3738 @@ const storeState =
    ✓ Highlight selected card
    ✓ Show case details
 =========================================================== */
+/* ===========================================================
+   HIGHLIGHT SELECTED CASE
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Responsibilities
+
+   ✓ Remove highlight from previous case
+   ✓ Highlight only the currently selected case card
+   ✓ Keep parent unchanged
+   ✓ Keep child unchanged
+   ✓ Keep case list unchanged
+   ✓ No GIS operation
+   ✓ No SpatialRenderer operation
+   ✓ No map interaction
+
+=========================================================== */
+
+highlightSelectedCase:
+function (
+    card
+) {
+
+    /* ============================================
+       GET CASE RESULTS CONTAINER
+
+       Prefer the CASE list itself so we do not
+       accidentally affect unrelated UI elements.
+    ============================================ */
+
+    const caseResultList =
+        UIController.elements
+            ?.caseResultList;
+
+
+    /* ============================================
+       REMOVE PREVIOUS CASE HIGHLIGHT
+    ============================================ */
+
+    if (
+        caseResultList
+    ) {
+
+        caseResultList
+            .querySelectorAll(
+                ".gg-offence-case-card"
+            )
+            .forEach(
+
+                function (
+                    caseCard
+                ) {
+
+                    caseCard
+                        .classList
+                        .remove(
+                            "gg-selected-case"
+                        );
+
+
+                    caseCard
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+    else {
+
+        /*
+         * Safe fallback if element references have
+         * not yet been captured.
+         */
+
+        document
+            .querySelectorAll(
+                ".gg-offence-case-card"
+            )
+            .forEach(
+
+                function (
+                    caseCard
+                ) {
+
+                    caseCard
+                        .classList
+                        .remove(
+                            "gg-selected-case"
+                        );
+
+
+                    caseCard
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       NO CARD PROVIDED
+
+       This is valid when we only want to remove
+       the previous visual selection.
+    ============================================ */
+
+    if (
+        !card
+    ) {
+
+        return true;
+
+    }
+
+
+    /* ============================================
+       VALIDATE CARD
+    ============================================ */
+
+    if (
+        !card.classList
+    ) {
+
+        console.warn(
+            "⚠ highlightSelectedCase(): invalid case card",
+            card
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       HIGHLIGHT CURRENT CASE
+    ============================================ */
+
+    card
+        .classList
+        .add(
+            "gg-selected-case"
+        );
+
+
+    card
+        .setAttribute(
+            "aria-selected",
+            "true"
+        );
+
+
+    return true;
+
+},
+
+   /* ===========================================================
+   SHOW CASE DETAILS
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       PARENT
+          ↓
+       CHILD
+          ↓
+       CASES
+          ↓
+       CASE DETAILS
+          ↓
+       FIELD DETAILS
+
+   Responsibilities
+
+   ✓ Render selected offence case
+   ✓ Preserve parent
+   ✓ Preserve selected child
+   ✓ Preserve case list
+   ✓ Render available case fields
+   ✓ Make populated fields clickable
+   ✓ Delegate field expansion to selectField()
+   ✓ Reset previous FIELD DETAILS
+   ✓ No GIS operation
+   ✓ No map interaction
+   ✓ No SpatialRenderer operation
+
+=========================================================== */
+
+showCaseDetails:
+function (
+    caseData
+) {
+
+    /* ============================================
+       VALIDATE CASE
+    ============================================ */
+
+    if (
+        !caseData ||
+        typeof caseData !==
+            "object"
+    ) {
+
+        console.warn(
+            "⚠ showCaseDetails(): invalid case data",
+            caseData
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       GET CASE DETAILS CONTAINER
+    ============================================ */
+
+    const container =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        !container
+    ) {
+
+        console.warn(
+            "⚠ CASE DETAILS container unavailable"
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       RESET CONTAINER
+    ============================================ */
+
+    container.innerHTML =
+        "";
+
+
+    /* ============================================
+       RESET FIELD SELECTION
+
+       Selecting another case means any previously
+       expanded field belongs to the old case.
+    ============================================ */
+
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
+
+    /* ============================================
+       RESET FIELD DETAILS
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+
+       FIELD DETAILS becomes visible only after
+       the user selects a case field.
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       FIELD LABEL NORMALIZER
+
+       Converts:
+
+           porNo
+               →
+           Por No
+
+           offence_date
+               →
+           Offence Date
+
+           Name of Accused
+               →
+           Name of Accused
+
+       This is presentation only.
+
+       Original field keys are preserved.
+    ============================================ */
+
+    function formatFieldLabel(
+        key
+    ) {
+
+        if (
+            !key
+        ) {
+
+            return "Field";
+
+        }
+
+
+        return String(
+            key
+        )
+
+            .replace(
+                /_/g,
+                " "
+            )
+
+            .replace(
+                /([a-z])([A-Z])/g,
+                "$1 $2"
+            )
+
+            .replace(
+                /\s+/g,
+                " "
+            )
+
+            .trim()
+
+            .replace(
+                /\b\w/g,
+
+                function (
+                    character
+                ) {
+
+                    return character
+                        .toUpperCase();
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       VALUE CHECK
+
+       Do not display meaningless empty fields.
+    ============================================ */
+
+    function hasValue(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return false;
+
+        }
+
+
+        if (
+            typeof value ===
+                "string"
+        ) {
+
+            return value
+                .trim()
+                .length > 0;
+
+        }
+
+
+        if (
+            Array.isArray(
+                value
+            )
+        ) {
+
+            return value.length > 0;
+
+        }
+
+
+        return true;
+
+    }
+
+
+    /* ============================================
+       SHORT VALUE FORMATTER
+
+       CASE DETAILS should remain compact.
+
+       Full content is shown through FIELD DETAILS.
+    ============================================ */
+
+    function formatPreviewValue(
+        value
+    ) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return "—";
+
+        }
+
+
+        /* ----------------------------------------
+           ARRAY
+        ---------------------------------------- */
+
+        if (
+            Array.isArray(
+                value
+            )
+        ) {
+
+            const text =
+                value
+                    .map(
+
+                        function (
+                            item
+                        ) {
+
+                            if (
+                                item &&
+                                typeof item ===
+                                    "object"
+                            ) {
+
+                                try {
+
+                                    return JSON.stringify(
+                                        item
+                                    );
+
+                                }
+
+                                catch (
+                                    error
+                                ) {
+
+                                    return String(
+                                        item
+                                    );
+
+                                }
+
+                            }
+
+
+                            return String(
+                                item
+                            );
+
+                        }
+
+                    )
+                    .join(
+                        ", "
+                    );
+
+
+            return text.length > 90
+
+                ? text.slice(
+                    0,
+                    87
+                ) + "..."
+
+                : text;
+
+        }
+
+
+        /* ----------------------------------------
+           OBJECT
+        ---------------------------------------- */
+
+        if (
+            typeof value ===
+                "object"
+        ) {
+
+            let text;
+
+
+            try {
+
+                text =
+                    JSON.stringify(
+                        value
+                    );
+
+            }
+
+            catch (
+                error
+            ) {
+
+                text =
+                    String(
+                        value
+                    );
+
+            }
+
+
+            return text.length > 90
+
+                ? text.slice(
+                    0,
+                    87
+                ) + "..."
+
+                : text;
+
+        }
+
+
+        /* ----------------------------------------
+           PRIMITIVE
+        ---------------------------------------- */
+
+        const text =
+            String(
+                value
+            );
+
+
+        return text.length > 90
+
+            ? text.slice(
+                0,
+                87
+            ) + "..."
+
+            : text;
+
+    }
+
+
+    /* ============================================
+       INTERNAL / TECHNICAL FIELDS
+
+       These should normally not appear as normal
+       offence CASE DETAILS.
+
+       IMPORTANT:
+
+       This is presentation filtering only.
+
+       Nothing is removed from caseData.
+    ============================================ */
+
+    const hiddenFields =
+        new Set(
+
+            [
+                "__proto__",
+                "constructor",
+                "prototype",
+
+                "_id",
+                "__id",
+
+                "searchTokens",
+                "search_tokens",
+
+                "normalized",
+                "_normalized",
+
+                "rawDocument",
+                "raw_document"
+            ]
+
+        );
+
+
+    /* ============================================
+       FIELD PRIORITY
+
+       Known important offence fields appear first.
+
+       Any remaining fields are appended afterward,
+       so information is NOT lost merely because
+       its exact schema name differs.
+
+       Matching is case-insensitive.
+    ============================================ */
+
+    const preferredFields =
+        [
+
+            "porNo",
+            "porNumber",
+            "POR_NO",
+            "por",
+
+            "caseNo",
+            "caseNumber",
+
+            "date",
+            "offenceDate",
+            "offenseDate",
+
+            "species",
+            "speciesName",
+
+            "offence",
+            "offense",
+            "offenceType",
+            "offenseType",
+
+            "placeOfOccurrence",
+            "place",
+            "location",
+
+            "village",
+            "sourceVillage",
+
+            "range",
+            "targetRange",
+
+            "accused",
+            "accusedName",
+            "nameOfAccused",
+
+            "seizure",
+            "seizureDetails",
+
+            "status",
+            "caseStatus",
+
+            "remarks"
+
+        ];
+
+
+    /* ============================================
+       BUILD ACTUAL FIELD ORDER
+
+       We resolve preferred field names against
+       the real case object without changing the
+       original field key.
+    ============================================ */
+
+    const actualKeys =
+        Object.keys(
+            caseData
+        );
+
+
+    const usedKeys =
+        new Set();
+
+
+    const orderedKeys =
+        [];
+
+
+    preferredFields
+        .forEach(
+
+            function (
+                preferredKey
+            ) {
+
+                const actualKey =
+                    actualKeys
+                        .find(
+
+                            function (
+                                key
+                            ) {
+
+                                return (
+                                    key.toLowerCase() ===
+                                    preferredKey.toLowerCase()
+                                );
+
+                            }
+
+                        );
+
+
+                if (
+                    !actualKey ||
+                    usedKeys.has(
+                        actualKey
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    !hasValue(
+                        caseData[
+                            actualKey
+                        ]
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                orderedKeys.push(
+                    actualKey
+                );
+
+
+                usedKeys.add(
+                    actualKey
+                );
+
+            }
+
+        );
+
+
+    /* ============================================
+       APPEND ALL OTHER POPULATED FIELDS
+
+       This makes the renderer schema-tolerant.
+    ============================================ */
+
+    actualKeys
+        .forEach(
+
+            function (
+                key
+            ) {
+
+                if (
+                    usedKeys.has(
+                        key
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    hiddenFields.has(
+                        key
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    !hasValue(
+                        caseData[
+                            key
+                        ]
+                    )
+                ) {
+
+                    return;
+
+                }
+
+
+                orderedKeys.push(
+                    key
+                );
+
+
+                usedKeys.add(
+                    key
+                );
+
+            }
+
+        );
+
+
+    /* ============================================
+       NO DISPLAYABLE FIELDS
+    ============================================ */
+
+    if (
+        orderedKeys.length ===
+        0
+    ) {
+
+        container.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                No case details are available.
+
+            </div>
+            `;
+
+
+        return true;
+
+    }
+
+
+    /* ============================================
+       CREATE DETAILS WRAPPER
+    ============================================ */
+
+    const details =
+        document
+            .createElement(
+                "div"
+            );
+
+
+    details.className =
+        "gg-case-details";
+
+
+    /* ============================================
+       CREATE FIELD ROWS
+
+       Every populated field is clickable.
+
+       Clicking does NOT interact with GIS.
+
+       It simply opens FIELD DETAILS.
+    ============================================ */
+
+    orderedKeys
+        .forEach(
+
+            function (
+                key
+            ) {
+
+                const value =
+                    caseData[
+                        key
+                    ];
+
+
+                /* --------------------------------
+                   FIELD ROW
+                -------------------------------- */
+
+                const row =
+                    document
+                        .createElement(
+                            "div"
+                        );
+
+
+                row.className =
+                    "gg-case-details-row";
+
+
+                row.setAttribute(
+                    "role",
+                    "button"
+                );
+
+
+                row.setAttribute(
+                    "tabindex",
+                    "0"
+                );
+
+
+                row.dataset.field =
+                    key;
+
+
+                row.title =
+                    "View complete field details";
+
+
+                /* --------------------------------
+                   LABEL
+                -------------------------------- */
+
+                const label =
+                    document
+                        .createElement(
+                            "div"
+                        );
+
+
+                label.className =
+                    "gg-case-details-label";
+
+
+                label.textContent =
+                    formatFieldLabel(
+                        key
+                    );
+
+
+                /* --------------------------------
+                   VALUE PREVIEW
+                -------------------------------- */
+
+                const valueElement =
+                    document
+                        .createElement(
+                            "div"
+                        );
+
+
+                valueElement.className =
+                    "gg-case-details-value";
+
+
+                valueElement.textContent =
+                    formatPreviewValue(
+                        value
+                    );
+
+
+                /* --------------------------------
+                   ADD ROW CONTENT
+                -------------------------------- */
+
+                row.appendChild(
+                    label
+                );
+
+
+                row.appendChild(
+                    valueElement
+                );
+
+
+                /* --------------------------------
+                   SELECT FIELD
+                -------------------------------- */
+
+                function openField() {
+
+                    if (
+                        typeof
+                        UIController.selectField ===
+                            "function"
+                    ) {
+
+                        UIController
+                            .selectField(
+
+                                key,
+
+                                value,
+
+                                caseData,
+
+                                row
+
+                            );
+
+                    }
+
+                    else {
+
+                        console.warn(
+                            "⚠ OffenceUIController.selectField() unavailable"
+                        );
+
+                    }
+
+                }
+
+
+                /* --------------------------------
+                   MOUSE
+                -------------------------------- */
+
+                row.onclick =
+                    function (
+                        event
+                    ) {
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        openField();
+
+                    };
+
+
+                /* --------------------------------
+                   KEYBOARD ACCESSIBILITY
+                -------------------------------- */
+
+                row.onkeydown =
+                    function (
+                        event
+                    ) {
+
+                        if (
+                            event.key !==
+                                "Enter" &&
+                            event.key !==
+                                " "
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        event
+                            .preventDefault();
+
+
+                        event
+                            .stopPropagation();
+
+
+                        openField();
+
+                    };
+
+
+                details.appendChild(
+                    row
+                );
+
+            }
+
+        );
+
+
+    /* ============================================
+       ADD DETAILS TO PANEL
+    ============================================ */
+
+    container.appendChild(
+        details
+    );
+
+
+    /* ============================================
+       RESET SCROLL POSITION
+    ============================================ */
+
+    container.scrollTop =
+        0;
+
+
+    /* ============================================
+       CURRENT VIEW
+    ============================================ */
+
+    UIController.currentView =
+        "case-details";
+
+
+    return true;
+
+},
+
+   /* ===========================================================
+   SELECT FIELD
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       PARENT
+          ↓
+       CHILD
+          ↓
+       CASES
+          ↓
+       CASE DETAILS
+          ↓
+       FIELD DETAILS
+
+   Responsibilities
+
+   ✓ Store selected field
+   ✓ Preserve selected parent
+   ✓ Preserve selected child
+   ✓ Preserve current case list
+   ✓ Preserve selected case
+   ✓ Preserve CASE DETAILS
+   ✓ Highlight selected field row
+   ✓ Populate FIELD DETAILS
+   ✓ Show FIELD DETAILS section
+   ✓ Update navigation state
+   ✓ No GIS operation
+   ✓ No map interaction
+   ✓ No SpatialRenderer operation
+
+=========================================================== */
+
+selectField:
+function (
+    key,
+    value,
+    caseData = null,
+    row = null
+) {
+
+    /* ============================================
+       VALIDATE FIELD KEY
+    ============================================ */
+
+    if (
+        key === null ||
+        key === undefined ||
+        String(key).trim() ===
+            ""
+    ) {
+
+        console.warn(
+            "⚠ selectField(): invalid field key",
+            key
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       USE CURRENT CASE IF CASE WAS NOT PASSED
+    ============================================ */
+
+    const selectedCase =
+        caseData ||
+        UIController.currentCase ||
+        null;
+
+
+    if (
+        !selectedCase
+    ) {
+
+        console.warn(
+            "⚠ selectField(): no current case available"
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       STORE FIELD STATE
+
+       IMPORTANT:
+
+       Nothing above FIELD DETAILS is reset.
+
+       We deliberately preserve:
+
+           current parent
+           current child
+           current children
+           currentSpatialCases
+           currentSpatialContext
+           currentCase
+    ============================================ */
+
+    UIController.currentField =
+        {
+            key:
+                key,
+
+            value:
+                value,
+
+            caseData:
+                selectedCase
+        };
+
+
+    UIController.currentFieldKey =
+        key;
+
+
+    UIController.currentFieldValue =
+        value;
+
+
+    /* ============================================
+       REMOVE PREVIOUS FIELD HIGHLIGHT
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetails
+    ) {
+
+        caseDetails
+            .querySelectorAll(
+                ".gg-case-details-row"
+            )
+            .forEach(
+
+                function (
+                    fieldRow
+                ) {
+
+                    fieldRow
+                        .classList
+                        .remove(
+                            "gg-selected-field"
+                        );
+
+
+                    fieldRow
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       HIGHLIGHT CURRENT FIELD
+    ============================================ */
+
+    if (
+        row &&
+        row.classList
+    ) {
+
+        row
+            .classList
+            .add(
+                "gg-selected-field"
+            );
+
+
+        row
+            .setAttribute(
+                "aria-selected",
+                "true"
+            );
+
+    }
+
+
+    /* ============================================
+       GET FIELD DETAILS CONTAINER
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        !fieldDetails
+    ) {
+
+        console.warn(
+            "⚠ FIELD DETAILS container unavailable"
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       FORMAT FIELD LABEL
+    ============================================ */
+
+    function formatFieldLabel(
+        fieldKey
+    ) {
+
+        return String(
+            fieldKey ||
+            "Field"
+        )
+
+            .replace(
+                /_/g,
+                " "
+            )
+
+            .replace(
+                /([a-z])([A-Z])/g,
+                "$1 $2"
+            )
+
+            .replace(
+                /\s+/g,
+                " "
+            )
+
+            .trim()
+
+            .replace(
+                /\b\w/g,
+
+                function (
+                    character
+                ) {
+
+                    return character
+                        .toUpperCase();
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       CREATE SAFE VALUE RENDERER
+
+       We use textContent rather than injecting
+       offence data through innerHTML.
+
+       This safely handles arbitrary text from
+       the offence dataset.
+    ============================================ */
+
+    function createValueElement(
+        fieldValue
+    ) {
+
+        const valueContainer =
+            document
+                .createElement(
+                    "div"
+                );
+
+
+        valueContainer.className =
+            "gg-field-details-value";
+
+
+        /* ----------------------------------------
+           NULL / UNDEFINED
+        ---------------------------------------- */
+
+        if (
+            fieldValue === null ||
+            fieldValue === undefined
+        ) {
+
+            valueContainer.textContent =
+                "No value available.";
+
+            return valueContainer;
+
+        }
+
+
+        /* ----------------------------------------
+           ARRAY
+        ---------------------------------------- */
+
+        if (
+            Array.isArray(
+                fieldValue
+            )
+        ) {
+
+            if (
+                fieldValue.length ===
+                0
+            ) {
+
+                valueContainer.textContent =
+                    "No value available.";
+
+                return valueContainer;
+
+            }
+
+
+            const list =
+                document
+                    .createElement(
+                        "div"
+                    );
+
+
+            list.className =
+                "gg-field-details-list";
+
+
+            fieldValue
+                .forEach(
+
+                    function (
+                        item,
+                        index
+                    ) {
+
+                        const itemElement =
+                            document
+                                .createElement(
+                                    "div"
+                                );
+
+
+                        itemElement.className =
+                            "gg-field-details-list-item";
+
+
+                        if (
+                            item &&
+                            typeof item ===
+                                "object"
+                        ) {
+
+                            let itemText;
+
+
+                            try {
+
+                                itemText =
+                                    JSON.stringify(
+                                        item,
+                                        null,
+                                        2
+                                    );
+
+                            }
+
+                            catch (
+                                error
+                            ) {
+
+                                itemText =
+                                    String(
+                                        item
+                                    );
+
+                            }
+
+
+                            itemElement.textContent =
+                                itemText;
+
+                        }
+
+                        else {
+
+                            itemElement.textContent =
+                                String(
+                                    item
+                                );
+
+                        }
+
+
+                        itemElement.dataset.index =
+                            String(
+                                index
+                            );
+
+
+                        list.appendChild(
+                            itemElement
+                        );
+
+                    }
+
+                );
+
+
+            valueContainer.appendChild(
+                list
+            );
+
+
+            return valueContainer;
+
+        }
+
+
+        /* ----------------------------------------
+           OBJECT
+        ---------------------------------------- */
+
+        if (
+            typeof fieldValue ===
+                "object"
+        ) {
+
+            const pre =
+                document
+                    .createElement(
+                        "pre"
+                    );
+
+
+            pre.className =
+                "gg-field-details-object";
+
+
+            try {
+
+                pre.textContent =
+                    JSON.stringify(
+                        fieldValue,
+                        null,
+                        2
+                    );
+
+            }
+
+            catch (
+                error
+            ) {
+
+                pre.textContent =
+                    String(
+                        fieldValue
+                    );
+
+            }
+
+
+            valueContainer.appendChild(
+                pre
+            );
+
+
+            return valueContainer;
+
+        }
+
+
+        /* ----------------------------------------
+           STRING / NUMBER / BOOLEAN
+        ---------------------------------------- */
+
+        const text =
+            String(
+                fieldValue
+            );
+
+
+        valueContainer.textContent =
+            text.trim() !==
+                ""
+
+                ? text
+
+                : "No value available.";
+
+
+        return valueContainer;
+
+    }
+
+
+    /* ============================================
+       CLEAR PREVIOUS FIELD DETAILS
+    ============================================ */
+
+    fieldDetails.innerHTML =
+        "";
+
+
+    /* ============================================
+       CREATE FIELD DETAILS WRAPPER
+    ============================================ */
+
+    const wrapper =
+        document
+            .createElement(
+                "div"
+            );
+
+
+    wrapper.className =
+        "gg-field-details";
+
+
+    /* ============================================
+       FIELD HEADER
+    ============================================ */
+
+    const header =
+        document
+            .createElement(
+                "div"
+            );
+
+
+    header.className =
+        "gg-field-details-header";
+
+
+    /* ============================================
+       FIELD LABEL
+    ============================================ */
+
+    const label =
+        document
+            .createElement(
+                "div"
+            );
+
+
+    label.className =
+        "gg-field-details-label";
+
+
+    label.textContent =
+        formatFieldLabel(
+            key
+        );
+
+
+    /* ============================================
+       OPTIONAL TECHNICAL KEY
+
+       Useful because the displayed label may be:
+
+           Offence Date
+
+       while actual source field remains:
+
+           offenceDate
+
+       This does not modify the source data.
+    ============================================ */
+
+    const keyElement =
+        document
+            .createElement(
+                "div"
+            );
+
+
+    keyElement.className =
+        "gg-field-details-key";
+
+
+    keyElement.textContent =
+        String(
+            key
+        );
+
+
+    header.appendChild(
+        label
+    );
+
+
+    header.appendChild(
+        keyElement
+    );
+
+
+    /* ============================================
+       COMPLETE FIELD VALUE
+    ============================================ */
+
+    const completeValue =
+        createValueElement(
+            value
+        );
+
+
+    /* ============================================
+       BUILD FIELD DETAILS
+    ============================================ */
+
+    wrapper.appendChild(
+        header
+    );
+
+
+    wrapper.appendChild(
+        completeValue
+    );
+
+
+    fieldDetails.appendChild(
+        wrapper
+    );
+
+
+    /* ============================================
+       SHOW FIELD DETAILS SECTION
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       CURRENT NAVIGATION VIEW
+    ============================================ */
+
+    UIController.currentView =
+        "field-details";
+
+
+    /* ============================================
+       RESET FIELD DETAILS SCROLL
+    ============================================ */
+
+    fieldDetails.scrollTop =
+        0;
+
+
+    /* ============================================
+       UPDATE STATUS
+    ============================================ */
+
+    if (
+        typeof
+        UIController.setStatus ===
+            "function"
+    ) {
+
+        UIController
+            .setStatus(
+
+                "Viewing " +
+                formatFieldLabel(
+                    key
+                ) +
+                ".",
+
+                "success"
+
+            );
+
+    }
+
+
+    /* ============================================
+       SCROLL FIELD DETAILS INTO VIEW
+
+       PANEL ONLY.
+
+       This does NOT pan/zoom the Leaflet map.
+    ============================================ */
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+    else {
+
+        fieldDetails
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    console.log(
+
+        "📋 Offence field selected:",
+
+        {
+            key:
+                key,
+
+            value:
+                value,
+
+            currentView:
+                UIController.currentView
+        }
+
+    );
+
+
+    return true;
+
+},
+
+   /* ===========================================================
+   BACK TO CASE DETAILS
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       FIELD DETAILS
+              ↓
+       CASE DETAILS
+
+   Responsibilities
+
+   ✓ Preserve selected parent
+   ✓ Preserve selected child
+   ✓ Preserve child list
+   ✓ Preserve current case list
+   ✓ Preserve selected case
+   ✓ Preserve CASE DETAILS content
+   ✓ Clear only selected field state
+   ✓ Remove selected field highlight
+   ✓ Hide FIELD DETAILS section
+   ✓ Return current view to CASE DETAILS
+   ✓ No GIS operation
+   ✓ No map interaction
+   ✓ No SpatialRenderer operation
+
+=========================================================== */
+
+backToCaseDetails:
+function () {
+
+    /* ============================================
+       REQUIRE CURRENT CASE
+
+       CASE DETAILS belongs to currentCase.
+
+       If no case exists, there is nothing valid
+       to return to.
+    ============================================ */
+
+    if (
+        !UIController.currentCase
+    ) {
+
+        console.warn(
+            "⚠ backToCaseDetails(): no current case selected"
+        );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       CLEAR ONLY FIELD SELECTION STATE
+
+       IMPORTANT:
+
+       Do NOT clear:
+
+           currentCase
+           currentSpatialCases
+           currentSpatialContext
+           currentChild
+           currentChildren
+           currentParent
+           currentSource
+           currentTarget
+    ============================================ */
+
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
+
+    /* ============================================
+       REMOVE SELECTED FIELD HIGHLIGHT
+
+       CASE DETAILS itself remains intact.
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetails
+    ) {
+
+        caseDetails
+            .querySelectorAll(
+                ".gg-case-details-row"
+            )
+            .forEach(
+
+                function (
+                    row
+                ) {
+
+                    row
+                        .classList
+                        .remove(
+                            "gg-selected-field"
+                        );
+
+
+                    row
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS CONTENT
+
+       We clear only the expanded field content.
+
+       The section is hidden immediately afterward.
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+
+        fieldDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       ENSURE CASE DETAILS REMAINS VISIBLE
+    ============================================ */
+
+    const caseDetailsSection =
+        UIController.elements
+            ?.caseDetailsSection;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       UPDATE NAVIGATION STATE
+    ============================================ */
+
+    UIController.currentView =
+        "case-details";
+
+
+    /* ============================================
+       UPDATE STATUS
+
+       Try to identify current POR/case number
+       without changing the case object.
+    ============================================ */
+
+    if (
+        typeof
+        UIController.setStatus ===
+            "function"
+    ) {
+
+        const caseData =
+            UIController.currentCase;
+
+
+        const porNumber =
+
+            caseData?.porNo ||
+
+            caseData?.POR_NO ||
+
+            caseData?.porNumber ||
+
+            caseData?.por ||
+
+            caseData?.caseNo ||
+
+            caseData?.caseNumber ||
+
+            null;
+
+
+        UIController
+            .setStatus(
+
+                porNumber
+
+                    ? (
+                        "Viewing offence case " +
+                        porNumber +
+                        "."
+                    )
+
+                    : "Viewing offence case details.",
+
+                "success"
+
+            );
+
+    }
+
+
+    /* ============================================
+       SCROLL BACK TO CASE DETAILS
+
+       PANEL NAVIGATION ONLY.
+
+       This does NOT pan or zoom the map.
+    ============================================ */
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+    else if (
+        caseDetails
+    ) {
+
+        caseDetails
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    console.log(
+
+        "↩ Offence navigation: FIELD DETAILS → CASE DETAILS",
+
+        {
+            currentView:
+                UIController.currentView,
+
+            currentCase:
+                UIController.currentCase
+        }
+
+    );
+
+
+    return true;
+
+},
+
+   /* ===========================================================
+   BACK TO CASES
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       CASE DETAILS
+            ↓
+       CASES
+
+   Responsibilities
+
+   ✓ Preserve selected parent
+   ✓ Preserve child list
+   ✓ Preserve selected child
+   ✓ Preserve current case list
+   ✓ Clear selected case
+   ✓ Clear selected case-card highlight
+   ✓ Clear selected field state
+   ✓ Reset CASE DETAILS
+   ✓ Reset FIELD DETAILS
+   ✓ Hide CASE DETAILS section
+   ✓ Hide FIELD DETAILS section
+   ✓ Keep CASES section visible
+   ✓ No GIS operation
+   ✓ No map interaction
+   ✓ No SpatialRenderer operation
+
+=========================================================== */
+
+backToCases:
+function () {
+
+    /* ============================================
+       PRESERVE CURRENT CASE LIST
+
+       IMPORTANT:
+
+       Do NOT modify:
+
+           currentSpatialCases
+           currentSpatialContext
+           currentParent
+           currentChild
+           currentChildren
+           currentSource
+           currentTarget
+
+       We are only moving upward one UI level:
+
+           CASE DETAILS
+                  ↓
+               CASES
+    ============================================ */
+
+
+    /* ============================================
+       CLEAR SELECTED CASE
+    ============================================ */
+
+    UIController.currentCase =
+        null;
+
+
+    /* ============================================
+       CLEAR FIELD-LEVEL STATE
+
+       Any field selection belongs to the case
+       being exited.
+    ============================================ */
+
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
+
+    /* ============================================
+       REMOVE SELECTED CASE CARD HIGHLIGHT
+
+       IMPORTANT:
+
+       Do NOT delete or rebuild case cards.
+
+       The current case list remains exactly
+       where it is.
+    ============================================ */
+
+    const caseResultList =
+        UIController.elements
+            ?.caseResultList;
+
+
+    if (
+        caseResultList
+    ) {
+
+        caseResultList
+            .querySelectorAll(
+                ".gg-offence-case-card"
+            )
+            .forEach(
+
+                function (
+                    card
+                ) {
+
+                    card
+                        .classList
+                        .remove(
+                            "gg-selected-case"
+                        );
+
+
+                    card
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       RESET CASE DETAILS CONTENT
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetails
+    ) {
+
+        caseDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a case above to view
+                complete offence details.
+
+            </div>
+            `;
+
+
+        caseDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS CONTENT
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+
+        fieldDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       HIDE CASE DETAILS SECTION
+
+       We are returning to the CASES level.
+    ============================================ */
+
+    const caseDetailsSection =
+        UIController.elements
+            ?.caseDetailsSection;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       ENSURE CASES SECTION IS VISIBLE
+
+       The existing case cards are preserved.
+    ============================================ */
+
+    const casesSection =
+        UIController.elements
+            ?.casesSection;
+
+
+    if (
+        casesSection
+    ) {
+
+        casesSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       ENSURE CASE RESULTS CONTAINER IS VISIBLE
+
+       Compatibility with current element naming.
+    ============================================ */
+
+    const caseResults =
+        UIController.elements
+            ?.caseResults;
+
+
+    if (
+        caseResults
+    ) {
+
+        caseResults
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       UPDATE CURRENT PANEL VIEW
+    ============================================ */
+
+    UIController.currentView =
+        "cases";
+
+
+    /* ============================================
+       DETERMINE EXISTING CASE COUNT
+
+       We use the already cached case collection.
+
+       NO case lookup is performed here.
+    ============================================ */
+
+    const cases =
+
+        Array.isArray(
+            UIController.currentSpatialCases
+        )
+
+            ? UIController.currentSpatialCases
+
+            : [];
+
+
+    const caseCount =
+        cases.length;
+
+
+    /* ============================================
+       UPDATE STATUS
+    ============================================ */
+
+    if (
+        typeof
+        UIController.setStatus ===
+            "function"
+    ) {
+
+        if (
+            caseCount > 0
+        ) {
+
+            UIController
+                .setStatus(
+
+                    caseCount +
+                    " offence case" +
+                    (
+                        caseCount === 1
+                            ? ""
+                            : "s"
+                    ) +
+                    " available. Select a case.",
+
+                    "success"
+
+                );
+
+        }
+
+        else {
+
+            UIController
+                .setStatus(
+
+                    "No offence cases available for the selected child.",
+
+                    "ready"
+
+                );
+
+        }
+
+    }
+
+
+    /* ============================================
+       SCROLL BACK TO CASES
+
+       PANEL SCROLL ONLY.
+
+       This does NOT:
+
+           pan map
+           zoom map
+           highlight parent
+           highlight child
+           query SpatialEngine
+           call SpatialRenderer
+    ============================================ */
+
+    if (
+        casesSection
+    ) {
+
+        casesSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+    else if (
+        caseResults
+    ) {
+
+        caseResults
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       DEBUG
+    ============================================ */
+
+    console.log(
+
+        "↩ Offence navigation: CASE DETAILS → CASES",
+
+        {
+
+            currentView:
+                UIController.currentView,
+
+            parent:
+                UIController.currentParent ||
+                UIController.currentSource ||
+                UIController.currentTarget ||
+                null,
+
+            child:
+                UIController.currentChild ||
+                null,
+
+            caseCount:
+                caseCount,
+
+            currentCase:
+                UIController.currentCase
+
+        }
+
+    );
+
+
+    return true;
+
+},
+
+   /* ===========================================================
+   BACK TO CHILDREN
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       CASES
+          ↓
+       CHILD
+
+   Responsibilities
+
+   ✓ Preserve active analysis mode
+   ✓ Preserve selected parent
+   ✓ Preserve complete child list
+   ✓ Clear selected child
+   ✓ Clear child-specific cases
+   ✓ Clear selected case
+   ✓ Clear selected field
+   ✓ Reset CASES
+   ✓ Reset CASE DETAILS
+   ✓ Reset FIELD DETAILS
+   ✓ Hide CASES
+   ✓ Hide CASE DETAILS
+   ✓ Hide FIELD DETAILS
+   ✓ Show CHILD section
+   ✓ No GIS operation
+   ✓ No map click required
+   ✓ No SpatialRenderer operation
+   ✓ No parent-map restoration
+
+=========================================================== */
+
+backToChildren:
+function () {
+
+
+    /* ============================================
+       IMPORTANT NAVIGATION RULE
+
+       DO NOT MODIFY:
+
+           activeMode
+           currentParent
+           currentChildren
+
+       The selected parent remains active.
+
+       Example:
+
+           Parent:
+               Falakata Village
+
+           Children:
+               Madarihat Range
+               Jaldapara Range
+               Chilapata Range
+
+       Returning from CASES must bring the user
+       back to those SAME children.
+
+       No GIS lookup or map rendering is required.
+    ============================================ */
+
+
+    /* ============================================
+       CLEAR SELECTED CHILD
+
+       We are leaving the currently selected
+       child and returning to the parent's
+       complete child collection.
+    ============================================ */
+
+    UIController.currentChild =
+        null;
+
+
+    /*
+     * Compatibility state.
+     *
+     * Some earlier SOURCE → TARGET implementation
+     * may still use currentTarget as the selected
+     * child.
+     *
+     * Do NOT clear currentSource/currentParent.
+     */
+
+    UIController.currentTarget =
+        null;
+
+
+    /* ============================================
+       CLEAR CHILD-SPECIFIC CASE STATE
+
+       These cases belong to the child that
+       we are leaving.
+    ============================================ */
+
+    UIController.currentSpatialCases =
+        [];
+
+
+    UIController.currentSpatialContext =
+        {};
+
+
+    /* ============================================
+       CLEAR SELECTED CASE
+    ============================================ */
+
+    UIController.currentCase =
+        null;
+
+
+    /* ============================================
+       CLEAR FIELD STATE
+    ============================================ */
+
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
+
+    /* ============================================
+       REMOVE CHILD SELECTION HIGHLIGHT
+
+       IMPORTANT:
+
+       Child cards themselves are preserved.
+
+       We only remove the currently selected
+       visual state.
+    ============================================ */
+
+    const childList =
+        UIController.elements
+            ?.childList;
+
+
+    if (
+        childList
+    ) {
+
+        childList
+            .querySelectorAll(
+                ".gg-offence-child-card"
+            )
+            .forEach(
+
+                function (
+                    card
+                ) {
+
+                    card
+                        .classList
+                        .remove(
+                            "gg-selected-child"
+                        );
+
+
+                    card
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       COMPATIBILITY:
+       OLD RELATED TARGET ITEM CLASS
+
+       During migration some child cards may
+       still use:
+
+           .gg-related-target-item
+
+       Support them without restoring the old
+       navigation architecture.
+    ============================================ */
+
+    if (
+        childList
+    ) {
+
+        childList
+            .querySelectorAll(
+                ".gg-related-target-item"
+            )
+            .forEach(
+
+                function (
+                    card
+                ) {
+
+                    card
+                        .classList
+                        .remove(
+                            "gg-related-target-active"
+                        );
+
+
+                    card
+                        .setAttribute(
+                            "aria-selected",
+                            "false"
+                        );
+
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       RESET CASE RESULTS
+
+       Do NOT retain cases belonging to the
+       previously selected child.
+    ============================================ */
+
+    const caseResultList =
+        UIController.elements
+            ?.caseResultList;
+
+
+    if (
+        caseResultList
+    ) {
+
+        caseResultList.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a child above to view
+                matching offence cases.
+
+            </div>
+            `;
+
+
+        caseResultList.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       RESET CASE DETAILS
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetails
+    ) {
+
+        caseDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a case to view complete
+                offence details.
+
+            </div>
+            `;
+
+
+        caseDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+
+        fieldDetails.scrollTop =
+            0;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       HIDE CASE DETAILS SECTION
+    ============================================ */
+
+    const caseDetailsSection =
+        UIController.elements
+            ?.caseDetailsSection;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       HIDE CASES SECTION
+    ============================================ */
+
+    const casesSection =
+        UIController.elements
+            ?.casesSection;
+
+
+    if (
+        casesSection
+    ) {
+
+        casesSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       COMPATIBILITY:
+       HIDE CASE RESULTS CONTAINER
+    ============================================ */
+
+    const caseResults =
+        UIController.elements
+            ?.caseResults;
+
+
+    if (
+        caseResults
+    ) {
+
+        caseResults
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       SHOW CHILD SECTION
+
+       This section already contains the children
+       belonging to the selected parent.
+
+       DO NOT rebuild from GIS here.
+    ============================================ */
+
+    const childSection =
+        UIController.elements
+            ?.childSection;
+
+
+    if (
+        childSection
+    ) {
+
+        childSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       ENSURE CHILD LIST IS VISIBLE
+    ============================================ */
+
+    if (
+        childList
+    ) {
+
+        childList
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       UPDATE CURRENT VIEW
+    ============================================ */
+
+    UIController.currentView =
+        "children";
+
+
+    /* ============================================
+       DETERMINE PRESERVED CHILD COUNT
+
+       Preferred new state:
+
+           currentChildren
+
+       Compatibility fallback:
+
+           currentTargets
+    ============================================ */
+
+    const children =
+
+        Array.isArray(
+            UIController.currentChildren
+        )
+
+            ? UIController.currentChildren
+
+            : (
+
+                Array.isArray(
+                    UIController.currentTargets
+                )
+
+                    ? UIController.currentTargets
+
+                    : []
+
+            );
+
+
+    const childCount =
+        children.length;
+
+
+    /* ============================================
+       UPDATE STATUS
+    ============================================ */
+
+    if (
+        typeof
+        UIController.setStatus ===
+            "function"
+    ) {
+
+        if (
+            childCount > 0
+        ) {
+
+            UIController
+                .setStatus(
+
+                    childCount +
+                    " child" +
+                    (
+                        childCount === 1
+                            ? ""
+                            : "ren"
+                    ) +
+                    " available. Select a child.",
+
+                    "success"
+
+                );
+
+        }
+
+        else {
+
+            UIController
+                .setStatus(
+
+                    "No children available for the selected parent.",
+
+                    "ready"
+
+                );
+
+        }
+
+    }
+
+
+    /* ============================================
+       SCROLL CHILD SECTION INTO VIEW
+
+       UI navigation only.
+
+       NO MAP MOVEMENT.
+    ============================================ */
+
+    if (
+        childSection
+    ) {
+
+        childSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+    else if (
+        childList
+    ) {
+
+        childList
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    /* ============================================
+       DEBUG
+
+       Parent must still exist here.
+    ============================================ */
+
+    console.log(
+
+        "↩ Offence navigation: CASES → CHILDREN",
+
+        {
+
+            currentView:
+                UIController.currentView,
+
+            activeMode:
+                UIController.activeMode,
+
+            parent:
+                UIController.currentParent ||
+                UIController.currentSource ||
+                null,
+
+            childCount:
+                childCount,
+
+            selectedChild:
+                UIController.currentChild,
+
+            caseCount:
+                UIController
+                    .currentSpatialCases
+                    ?.length ||
+                0,
+
+            currentCase:
+                UIController.currentCase
+
+        }
+
+    );
+
+
+    return true;
+
+
+},
+/* ===========================================================
+   SELECT CASE
+
+   NEW PANEL DESIGN
+   -----------------------------------------------------------
+
+   Navigation:
+
+       PARENT
+          ↓
+       CHILD
+          ↓
+       CASES
+          ↓
+       CASE DETAILS
+
+   Responsibilities
+
+   ✓ Preserve selected parent
+   ✓ Preserve selected child
+   ✓ Preserve child list
+   ✓ Preserve current case list
+   ✓ Store selected case
+   ✓ Highlight selected case card
+   ✓ Populate CASE DETAILS
+   ✓ Reset FIELD DETAILS from previous case
+   ✓ Show CASE DETAILS section
+   ✓ Keep CASES available for Back navigation
+   ✓ No GIS operation
+   ✓ No map click
+   ✓ No parent/child map reset
+
+=========================================================== */
 
 selectCase:
 function (
     caseData,
-    card
+    card = null
 ) {
 
+    /* ============================================
+       VALIDATE CASE
+    ============================================ */
+
     if (
-        !caseData
+        !caseData ||
+        typeof caseData !==
+            "object"
     ) {
 
-        return;
+        console.warn(
+            "⚠ selectCase(): invalid case data",
+            caseData
+        );
+
+        return false;
 
     }
 
+
     /* ============================================
        STORE CURRENT CASE
+
+       IMPORTANT:
+
+       Do NOT modify:
+
+       currentParent
+       currentSource
+       currentTarget
+       currentChild
+       currentChildren
+       currentSpatialCases
+       currentSpatialContext
+
+       The complete parent → child → case chain
+       remains intact.
     ============================================ */
 
     UIController.currentCase =
         caseData;
 
-    /* ============================================
-       HIGHLIGHT CARD
-    ============================================ */
-
-    UIController.highlightSelectedCase(
-        card
-    );
 
     /* ============================================
-       SHOW DETAILS
+       CLEAR PREVIOUS FIELD SELECTION
+
+       A field selected from the previous case
+       must never remain active after another
+       case is selected.
     ============================================ */
 
-    UIController.showCaseDetails(
-        caseData
-    );
+    UIController.currentField =
+        null;
+
+
+    UIController.currentFieldKey =
+        null;
+
+
+    UIController.currentFieldValue =
+        null;
+
 
     /* ============================================
-       SCROLL DETAILS INTO VIEW (OPTIONAL)
+       HIGHLIGHT SELECTED CASE CARD
     ============================================ */
 
-    UIController.elements
-        ?.caseDetails
-        ?.scrollIntoView?.(
+    if (
+        typeof
+        UIController.highlightSelectedCase ===
+            "function"
+    ) {
 
-            {
-                block:
-                    "nearest",
+        UIController
+            .highlightSelectedCase(
+                card
+            );
 
-                behavior:
-                    "smooth"
+    }
 
-            }
+    else {
 
+        /*
+         * Safe fallback.
+         *
+         * This keeps case selection working even
+         * if highlightSelectedCase() has not yet
+         * been added/replaced.
+         */
+
+        document
+            .querySelectorAll(
+                ".gg-offence-case-card"
+            )
+            .forEach(
+
+                function (
+                    caseCard
+                ) {
+
+                    caseCard
+                        .classList
+                        .remove(
+                            "gg-selected-case"
+                        );
+
+                }
+
+            );
+
+
+        if (
+            card &&
+            card.classList
+        ) {
+
+            card
+                .classList
+                .add(
+                    "gg-selected-case"
+                );
+
+        }
+
+    }
+
+
+    /* ============================================
+       RESET FIELD DETAILS
+
+       CASE DETAILS belongs to the newly selected
+       case.
+
+       Therefore any expanded field belonging to
+       the previous case must be cleared.
+    ============================================ */
+
+    const fieldDetails =
+        UIController.elements
+            ?.fieldDetails;
+
+
+    if (
+        fieldDetails
+    ) {
+
+        fieldDetails.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                Select a field from CASE DETAILS
+                to view its complete content.
+
+            </div>
+            `;
+
+    }
+
+
+    /* ============================================
+       HIDE FIELD DETAILS SECTION
+
+       It will be shown again only when the user
+       selects a field from CASE DETAILS.
+    ============================================ */
+
+    const fieldDetailsSection =
+        UIController.elements
+            ?.fieldDetailsSection;
+
+
+    if (
+        fieldDetailsSection
+    ) {
+
+        fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    /* ============================================
+       POPULATE CASE DETAILS
+
+       No business logic should be performed here.
+
+       showCaseDetails() owns rendering of the
+       selected case.
+    ============================================ */
+
+    if (
+        typeof
+        UIController.showCaseDetails ===
+            "function"
+    ) {
+
+        UIController
+            .showCaseDetails(
+                caseData
+            );
+
+    }
+
+    else {
+
+        console.error(
+            "❌ OffenceUIController.showCaseDetails() unavailable"
         );
+
+        return false;
+
+    }
+
+
+    /* ============================================
+       SHOW CASE DETAILS SECTION
+
+       Depending on your createPanel() structure,
+       caseDetailsSection is the complete section,
+       while caseDetails is the content container.
+    ============================================ */
+
+    const caseDetailsSection =
+        UIController.elements
+            ?.caseDetailsSection;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .style
+            .display =
+                "";
+
+    }
+
+
+    /* ============================================
+       UPDATE CURRENT VIEW
+
+       This is UI navigation state only.
+
+       It does NOT alter GIS/map state.
+    ============================================ */
+
+    UIController.currentView =
+        "case-details";
+
+
+    /* ============================================
+       UPDATE STATUS
+    ============================================ */
+
+    if (
+        typeof
+        UIController.setStatus ===
+            "function"
+    ) {
+
+        const porNumber =
+
+            caseData.porNo ||
+
+            caseData.POR_NO ||
+
+            caseData.porNumber ||
+
+            caseData.por ||
+
+            caseData.caseNo ||
+
+            caseData.caseNumber ||
+
+            null;
+
+
+        UIController
+            .setStatus(
+
+                porNumber
+
+                    ? (
+                        "Viewing offence case " +
+                        porNumber +
+                        "."
+                    )
+
+                    : "Viewing offence case details.",
+
+                "success"
+
+            );
+
+    }
+
+
+    /* ============================================
+       SCROLL CASE DETAILS INTO VIEW
+
+       This affects only the panel UI.
+
+       It does NOT move or alter the Leaflet map.
+    ============================================ */
+
+    const caseDetails =
+        UIController.elements
+            ?.caseDetails;
+
+
+    if (
+        caseDetailsSection
+    ) {
+
+        caseDetailsSection
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+    else if (
+        caseDetails
+    ) {
+
+        caseDetails
+            .scrollIntoView?.(
+
+                {
+                    block:
+                        "nearest",
+
+                    behavior:
+                        "smooth"
+                }
+
+            );
+
+    }
+
+
+    console.log(
+
+        "📄 Offence case selected:",
+
+        {
+            caseData:
+                caseData,
+
+            currentView:
+                UIController.currentView
+        }
+
+    );
+
+
+    return true;
 
 },
 /* ===========================================================
@@ -7210,144 +14552,1077 @@ return UIController
    SHOW SPATIAL CASES
 ==================================================== */
 
-showSpatialCases: function (cases, context = {}) {
+/* ===========================================================
+   SHOW SPATIAL CASES
 
-    const list = Array.isArray(cases)
-        ? cases
-        : [];
+   CURRENT OFFENCE UI ARCHITECTURE
+   -----------------------------------------------------------
 
-    console.group(
-        "🚨 UI.showSpatialCases"
-    );
+   PARENT
+      ↓
+   CHILD
+      ↓
+   CASES                  ← THIS FUNCTION
+      ↓
+   CASE DETAILS
+      ↓
+   FIELD DETAILS
 
-    console.log(
-        "Cases:",
-        list.length
-    );
 
-    console.log(
-        "Context:",
-        context
-    );
+   PURPOSE
+   -----------------------------------------------------------
 
-    if (!list.length) {
+   Render the offence cases belonging to the currently
+   selected:
+
+       PARENT + CHILD
+
+   relationship.
+
+
+   IMPORTANT
+   -----------------------------------------------------------
+
+   This function is PANEL UI ONLY.
+
+   It does NOT:
+
+       - perform GIS lookup
+       - require map interaction
+       - change currentParent
+       - change currentChildren
+       - change currentChild
+       - clear map layers
+       - rebuild SpatialEngine
+       - rebuild Store
+       - render parent polygons
+       - render child polygons
+       - delegate to CascadeUI
+
+
+   STATE OWNERSHIP
+   -----------------------------------------------------------
+
+   Preserved:
+
+       activeMode
+       currentParent
+       currentChildren
+       currentChild
+
+
+   Replaced:
+
+       currentSpatialCases
+       currentSpatialContext
+
+
+   Reset:
+
+       currentCase
+       currentField
+
+
+   CASE CARD CLICK
+   -----------------------------------------------------------
+
+   Every generated case card calls:
+
+       UIController.selectCase(
+           caseData,
+           card
+       );
+
+=========================================================== */
+
+showSpatialCases:
+function (
+    cases,
+    context = {}
+) {
+
+
+    try {
+
+
+        /* ===================================================
+           NORMALIZE CASE ARRAY
+        =================================================== */
+
+        const list =
+            Array.isArray(
+                cases
+            )
+
+                ? cases
+
+                : [];
+
+
+
+        /* ===================================================
+           GET CASE RESULT CONTAINER
+        =================================================== */
+
+        const container =
+            UIController.elements
+                ?.caseResultList;
+
+
+        if (
+            !container
+        ) {
+
+
+            console.error(
+                "❌ CASE result container unavailable."
+            );
+
+
+            return false;
+
+
+        }
+
+
+
+        /* ===================================================
+           STORE CURRENT CASE COLLECTION
+
+           This replaces the previous child's case collection.
+
+           Parent and child state are intentionally untouched.
+        =================================================== */
+
+        UIController.currentSpatialCases =
+            list;
+
+
+
+        /* ===================================================
+           STORE CURRENT CONTEXT
+
+           Typical context:
+
+               {
+                   mode,
+                   parent,
+                   child
+               }
+
+           Preserve explicitly supplied context while ensuring
+           the current authoritative selection is available.
+        =================================================== */
+
+        UIController.currentSpatialContext =
+            {
+
+                ...context,
+
+
+                mode:
+
+                    context?.mode ||
+
+                    UIController.activeMode ||
+                    null,
+
+
+                parent:
+
+                    context?.parent ||
+
+                    UIController.currentParent ||
+                    null,
+
+
+                child:
+
+                    context?.child ||
+
+                    UIController.currentChild ||
+                    null
+
+            };
+
+
+
+        /* ===================================================
+           RESET EVERYTHING BELOW CASE COLLECTION
+
+           We are rendering a new set of cases.
+
+           Therefore an old selected case / field cannot remain
+           authoritative.
+        =================================================== */
+
+        UIController.currentCase =
+            null;
+
+
+        UIController.currentField =
+            null;
+
+
+
+        /* ===================================================
+           CLEAR OLD CASE CARDS
+        =================================================== */
+
+        container.innerHTML =
+            "";
+
+
+
+        /* ===================================================
+           RESET CASE DETAILS
+
+           A new case must be selected before details appear.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseDetails
+        ) {
+
+
+            UIController.elements
+                .caseDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a case to view details.
+
+                    </div>
+                    `;
+
+
+            UIController.elements
+                .caseDetails
+                .scrollTop =
+                    0;
+
+
+        }
+
+
+
+        /* ===================================================
+           HIDE CASE DETAILS SECTION
+
+           It becomes visible when selectCase() is called.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseDetailsSection
+        ) {
+
+
+            UIController.elements
+                .caseDetailsSection
+                .style
+                .display =
+                    "none";
+
+
+        }
+
+
+
+        /* ===================================================
+           RESET FIELD DETAILS
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.fieldDetails
+        ) {
+
+
+            UIController.elements
+                .fieldDetails
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a field from case details
+                        to view complete information.
+
+                    </div>
+                    `;
+
+
+            UIController.elements
+                .fieldDetails
+                .scrollTop =
+                    0;
+
+
+        }
+
+
+
+        /* ===================================================
+           HIDE FIELD DETAILS SECTION
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.fieldDetailsSection
+        ) {
+
+
+            UIController.elements
+                .fieldDetailsSection
+                .style
+                .display =
+                    "none";
+
+
+        }
+
+
+
+        /* ===================================================
+           SHOW CASE SECTION
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseSection
+        ) {
+
+
+            UIController.elements
+                .caseSection
+                .style
+                .display =
+                    "";
+
+
+        }
+
+
+
+        /* ===================================================
+           CASE COUNT
+        =================================================== */
+
+        const count =
+            list.length;
+
+
+        if (
+            UIController.elements
+                ?.caseCount
+        ) {
+
+
+            UIController.elements
+                .caseCount
+                .textContent =
+
+                count +
+
+                " case" +
+
+                (
+                    count === 1
+                        ? ""
+                        : "s"
+                );
+
+
+        }
+
+
+
+        /* ===================================================
+           NO CASES
+        =================================================== */
+
+        if (
+            count === 0
+        ) {
+
+
+            container.innerHTML =
+                `
+                <div class="gg-offence-empty">
+
+                    No matching offence cases found
+                    for the selected child.
+
+                </div>
+                `;
+
+
+
+            UIController.setStatus(
+
+                "No matching offence cases found.",
+
+                "ready"
+
+            );
+
+
+
+            UIController.elements
+                ?.caseSection
+                ?.scrollIntoView?.(
+
+                    {
+
+                        block:
+                            "start",
+
+                        behavior:
+                            "smooth"
+
+                    }
+
+                );
+
+
+
+            return [];
+
+
+        }
+
+
+
+        /* ===================================================
+           CREATE CASE CARDS
+        =================================================== */
+
+        list.forEach(
+
+            function (
+                caseData,
+                index
+            ) {
+
+
+                /* ===========================================
+                   CREATE CASE CARD
+                =========================================== */
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "gg-offence-case-card";
+
+
+                card.setAttribute(
+                    "role",
+                    "button"
+                );
+
+
+                card.setAttribute(
+                    "tabindex",
+                    "0"
+                );
+
+
+
+                /* ===========================================
+                   CASE INDEX
+
+                   Useful for debugging and stable UI lookup.
+                =========================================== */
+
+                card.dataset.caseIndex =
+                    String(
+                        index
+                    );
+
+
+
+                /* ===========================================
+                   RESOLVE POR NUMBER
+
+                   Support common offence field variations.
+
+                   This is DISPLAY normalization only.
+
+                   It does not mutate caseData.
+                =========================================== */
+
+                const porNumber =
+
+                    caseData?.porNo ||
+
+                    caseData?.porNumber ||
+
+                    caseData?.POR_NO ||
+
+                    caseData?.PORNo ||
+
+                    caseData?.por_no ||
+
+                    caseData?.por ||
+
+                    caseData?.caseNo ||
+
+                    caseData?.caseNumber ||
+
+                    caseData?.id ||
+
+                    (
+                        "Case " +
+                        (
+                            index + 1
+                        )
+                    );
+
+
+
+                /* ===========================================
+                   RESOLVE DATE
+                =========================================== */
+
+                const offenceDate =
+
+                    caseData?.date ||
+
+                    caseData?.offenceDate ||
+
+                    caseData?.offenseDate ||
+
+                    caseData?.PORDate ||
+
+                    caseData?.porDate ||
+
+                    caseData?.caseDate ||
+
+                    caseData?.Date ||
+
+                    "";
+
+
+
+                /* ===========================================
+                   RESOLVE SPECIES
+
+                   Only used for compact case-card preview.
+
+                   Complete information belongs in
+                   CASE DETAILS.
+                =========================================== */
+
+                const species =
+
+                    caseData?.species ||
+
+                    caseData?.Species ||
+
+                    caseData?.wildlife ||
+
+                    caseData?.wildlifeSpecies ||
+
+                    caseData?.animal ||
+
+                    "";
+
+
+
+                /* ===========================================
+                   RESOLVE OFFENCE TYPE
+
+                   Used only if species is unavailable.
+                =========================================== */
+
+                const offence =
+
+                    caseData?.offence ||
+
+                    caseData?.offense ||
+
+                    caseData?.offenceType ||
+
+                    caseData?.offenseType ||
+
+                    caseData?.type ||
+
+                    "";
+
+
+
+                /* ===========================================
+                   CASE TITLE
+                =========================================== */
+
+                const title =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                title.className =
+                    "gg-offence-case-title";
+
+
+                title.textContent =
+                    String(
+                        porNumber
+                    );
+
+
+
+                /* ===========================================
+                   CASE META
+                =========================================== */
+
+                const meta =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                meta.className =
+                    "gg-offence-case-meta";
+
+
+
+                const metaParts =
+                    [];
+
+
+                if (
+                    offenceDate
+                ) {
+
+
+                    metaParts.push(
+
+                        String(
+                            offenceDate
+                        )
+
+                    );
+
+
+                }
+
+
+                if (
+                    species
+                ) {
+
+
+                    metaParts.push(
+
+                        String(
+                            species
+                        )
+
+                    );
+
+
+                }
+
+                else if (
+                    offence
+                ) {
+
+
+                    metaParts.push(
+
+                        String(
+                            offence
+                        )
+
+                    );
+
+
+                }
+
+
+
+                meta.textContent =
+                    metaParts.length
+
+                        ? metaParts.join(
+                            " • "
+                        )
+
+                        : "Offence case";
+
+
+
+                /* ===========================================
+                   VIEW DETAILS INDICATOR
+                =========================================== */
+
+                const view =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                view.className =
+                    "gg-offence-case-view";
+
+
+                view.textContent =
+                    "View case details →";
+
+
+
+                /* ===========================================
+                   BUILD CARD
+                =========================================== */
+
+                card.appendChild(
+                    title
+                );
+
+
+                card.appendChild(
+                    meta
+                );
+
+
+                card.appendChild(
+                    view
+                );
+
+
+
+                /* ===========================================
+                   SELECT CASE
+
+                   Clicking one case:
+
+                       preserves Parent
+                       preserves Children
+                       preserves selected Child
+                       preserves complete Cases list
+
+                   and replaces only:
+
+                       currentCase
+                       Case Details
+
+                   while resetting:
+
+                       currentField
+                       Field Details
+                =========================================== */
+
+                card.onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController.selectCase ===
+                            "function"
+                        ) {
+
+
+                            UIController.selectCase(
+
+                                caseData,
+
+                                card
+
+                            );
+
+
+                        }
+
+                        else {
+
+
+                            console.error(
+
+                                "❌ OffenceUIController.selectCase() unavailable"
+
+                            );
+
+
+                        }
+
+
+                    };
+
+
+
+                /* ===========================================
+                   KEYBOARD ACCESSIBILITY
+
+                   ENTER
+                   SPACE
+                =========================================== */
+
+                card.onkeydown =
+                    function (
+                        event
+                    ) {
+
+
+                        if (
+                            event.key !==
+                                "Enter" &&
+
+                            event.key !==
+                                " "
+                        ) {
+
+
+                            return;
+
+
+                        }
+
+
+                        event.preventDefault();
+
+
+                        event.stopPropagation();
+
+
+                        if (
+                            typeof
+                            UIController.selectCase ===
+                            "function"
+                        ) {
+
+
+                            UIController.selectCase(
+
+                                caseData,
+
+                                card
+
+                            );
+
+
+                        }
+
+
+                    };
+
+
+
+                /* ===========================================
+                   ADD CARD
+                =========================================== */
+
+                container.appendChild(
+                    card
+                );
+
+
+            }
+
+        );
+
+
+
+        /* ===================================================
+           RESET CASE RESULTS SCROLL
+
+           When changing from Child A → Child B, start the new
+           case collection from the top.
+        =================================================== */
+
+        if (
+            UIController.elements
+                ?.caseResults
+        ) {
+
+
+            UIController.elements
+                .caseResults
+                .scrollTop =
+                    0;
+
+
+        }
+
+
+
+        /* ===================================================
+           CURRENT CHILD NAME
+
+           Used only for status text.
+        =================================================== */
+
+        const child =
+            UIController.currentChild;
+
+
+        const childName =
+
+            child?.name ||
+
+            child?.label ||
+
+            child?.title ||
+
+            child?.range ||
+
+            child?.village ||
+
+            child?.id ||
+
+            "";
+
+
+
+        /* ===================================================
+           STATUS
+        =================================================== */
 
         UIController.setStatus(
-            "No offence cases found.",
-            "ready"
+
+            count +
+
+            " offence case" +
+
+            (
+                count === 1
+                    ? ""
+                    : "s"
+            ) +
+
+            (
+                childName
+
+                    ? (
+                        " found for " +
+                        childName +
+                        "."
+                    )
+
+                    : " found."
+            ),
+
+            "success"
+
         );
 
-        console.groupEnd();
+
+
+        /* ===================================================
+           SCROLL CASE SECTION INTO VIEW
+
+           PANEL ONLY.
+
+           This does NOT pan / zoom the map.
+        =================================================== */
+
+        UIController.elements
+            ?.caseSection
+            ?.scrollIntoView?.(
+
+                {
+
+                    block:
+                        "start",
+
+                    behavior:
+                        "smooth"
+
+                }
+
+            );
+
+
+
+        /* ===================================================
+           DEBUG
+        =================================================== */
+
+        console.log(
+
+            "📂 Offence CASES rendered",
+
+            {
+
+                mode:
+                    UIController.activeMode,
+
+                parent:
+                    UIController.currentParent,
+
+                child:
+                    UIController.currentChild,
+
+                cases:
+                    count
+
+            }
+
+        );
+
+
+
+        return list;
+
+
+    }
+
+
+    catch (
+        error
+    ) {
+
+
+        UIController.lastError =
+            error;
+
+
+
+        UIController.setStatus(
+
+            error?.message ||
+            "Unable to display offence cases.",
+
+            "error"
+
+        );
+
+
+
+        console.error(
+
+            "❌ Offence showSpatialCases() failed:",
+
+            error
+
+        );
+
+
 
         return false;
-    }
 
-    UIController.setStatus(
-        `${list.length} offence case${
-            list.length === 1 ? "" : "s"
-        } found.`,
-        "success"
-    );
-
-    /*
-    ---------------------------------------------------
-    Cache current spatial selection
-    ---------------------------------------------------
-    */
-
-    UIController.currentSpatialCases = list;
-
-    UIController.currentSpatialContext = context;
-
-    /*
-    ---------------------------------------------------
-    Preferred architecture
-
-    UIController
-          ↓
-    Offence.UI
-          ↓
-    Case Panel
-    ---------------------------------------------------
-    */
-
-    if (
-
-        GG.Offence &&
-        GG.Offence.UI &&
-        typeof GG.Offence.UI.showSpatialCases ===
-            "function" &&
-
-        GG.Offence.UI !== UIController
-
-    ) {
-
-        console.log(
-            "Delegating to GG.Offence.UI.showSpatialCases()"
-        );
-
-        console.groupEnd();
-
-        return GG.Offence.UI.showSpatialCases(
-            list,
-            context
-        );
 
     }
 
-    /*
-    ---------------------------------------------------
-    Temporary compatibility
 
-    Existing Cascade UI
-    ---------------------------------------------------
-    */
-
-    if (
-
-        GG.Offence &&
-        GG.Offence.CascadeUI &&
-        typeof GG.Offence.CascadeUI.showCases ===
-            "function"
-
-    ) {
-
-        console.log(
-            "Delegating to CascadeUI.showCases()"
-        );
-
-        console.groupEnd();
-
-        return GG.Offence.CascadeUI.showCases(
-            list,
-            context
-        );
-
-    }
-
-    /*
-    ---------------------------------------------------
-    Final fallback
-    ---------------------------------------------------
-    */
-
-    console.warn(
-        "No Spatial Case UI registered."
-    );
-
-    console.table(
-        list
-    );
-
-    console.groupEnd();
-
-    return list;
-
-}
-
-};
-
-
+},
     /* ========================================================
        EXPORT MODULE
 
