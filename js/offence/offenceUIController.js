@@ -2842,6 +2842,20 @@ toggleCases:
    ✓ Reset CASE DETAILS
 =========================================================== */
 
+/* ===========================================================
+   BACK TO PARENT SOURCES
+
+   Responsibilities
+
+   ✓ Restore parent source map
+   ✓ Reset UI state
+   ✓ Clear drill-down state
+   ✓ Reinitialize SOURCE MODE
+   ✓ Hide case results
+   ✓ Clear selected case
+   ✓ Reset CASE DETAILS
+=========================================================== */
+
 backToSources:
 function () {
 
@@ -2886,8 +2900,11 @@ function () {
     UIController.currentTargets =
         [];
 
-    UIController.currentCase =
-        null;
+    UIController.currentSpatialCases =
+        [];
+
+    UIController.currentSpatialContext =
+        {};
 
     UIController.sourcePanelExpanded =
         true;
@@ -2963,6 +2980,12 @@ function () {
 
     /* ============================================
        CLEAR CASE SELECTION
+
+       Resets:
+
+       ✓ currentCase
+       ✓ selected highlight
+       ✓ CASE DETAILS panel
     ============================================ */
 
     if (
