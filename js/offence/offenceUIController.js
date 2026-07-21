@@ -1640,7 +1640,71 @@ CONFIG: {
                     }
 
 
+/* ========================================
+   CASE DETAILS
+======================================== */
 
+#gg-offence-case-details{
+
+    min-height:160px;
+
+    max-height:260px;
+
+    overflow-y:auto;
+
+    padding:12px;
+
+    box-sizing:border-box;
+
+    border-top:1px solid rgba(0,0,0,.08);
+
+    background:#ffffff;
+
+}
+
+.gg-case-details{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:8px;
+
+    font-size:12px;
+
+    line-height:1.6;
+
+}
+
+.gg-case-details-row{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    gap:12px;
+
+}
+
+.gg-case-details-label{
+
+    font-weight:700;
+
+    color:#46515c;
+
+    min-width:90px;
+
+}
+
+.gg-case-details-value{
+
+    flex:1;
+
+    color:#1f2933;
+
+    word-break:break-word;
+
+}
 /* ========================================
    CASE RESULTS HEADER
 ======================================== */
@@ -1838,7 +1902,26 @@ CONFIG: {
     color:#1565c0;
 
 }
+/* ========================================
+   SELECTED CASE
+======================================== */
 
+.gg-selected-case{
+
+    border:2px solid #1565c0;
+
+    background:#eef6ff;
+
+    box-shadow:
+        0 0 0 2px
+        rgba(
+            21,
+            101,
+            192,
+            .12
+        );
+
+}
                     /* ========================================
                        SHORT DESKTOP SCREENS
 
@@ -2462,7 +2545,7 @@ createPanel:
 
                 </div>
 
-                                <!-- =======================================
+                <!-- =======================================
                      CASE RESULTS
                 ======================================== -->
 
@@ -2475,8 +2558,6 @@ createPanel:
                     CASE RESULTS
 
                 </div>
-
-
 
                 <div
                     id="gg-offence-case-results"
@@ -2499,6 +2580,39 @@ createPanel:
                             pair to view matching offence cases.
 
                         </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =======================================
+                     CASE DETAILS
+                ======================================== -->
+
+                <div
+                    class="
+                        gg-offence-case-results-header
+                    "
+                >
+
+                    CASE DETAILS
+
+                </div>
+
+                <div
+                    id="gg-offence-case-details"
+                >
+
+                    <div
+                        class="
+                            gg-offence-empty
+                        "
+                    >
+
+                        Select a case above to view complete
+                        offence details.
 
                     </div>
 
@@ -2715,155 +2829,177 @@ toggleCases:
    ✓ Hide case results
 =========================================================== */
 
+/* ===========================================================
+   BACK TO PARENT SOURCES
+
+   Responsibilities
+
+   ✓ Restore parent source map
+   ✓ Reset UI state
+   ✓ Reinitialize SOURCE MODE
+   ✓ Hide case results
+   ✓ Clear selected case
+   ✓ Reset CASE DETAILS
+=========================================================== */
+
 backToSources:
-    function () {
+function () {
 
+    const elements =
+        UIController.elements;
 
-        const elements =
-            UIController.elements;
+    if (
+        !elements
+    ) {
 
+        return;
 
-        if (
-            !elements
-        ) {
+    }
 
-            return;
+    /* ============================================
+       RESTORE PARENT SOURCE MAP
+    ============================================ */
 
-        }
+    if (
 
+        GG
+            ?.Offence
+            ?.SpatialRenderer
+            ?.clearSourceDrillDown
 
-        /* ============================================
-           RESTORE PARENT SOURCE MAP
-        ============================================ */
+    ) {
 
-        if (
+        GG
+            .Offence
+            .SpatialRenderer
+            .clearSourceDrillDown();
 
-            GG
-                ?.Offence
-                ?.SpatialRenderer
-                ?.clearSourceDrillDown
+    }
 
-        ) {
+    /* ============================================
+       RESET INTERNAL STATE
+    ============================================ */
 
-            GG
-                .Offence
-                .SpatialRenderer
-                .clearSourceDrillDown();
+    UIController.currentSource =
+        null;
 
-        }
+    UIController.currentTargets =
+        [];
 
+    UIController.currentCase =
+        null;
 
-        /* ============================================
-           RESET INTERNAL STATE
-        ============================================ */
+    UIController.sourcePanelExpanded =
+        true;
 
-        UIController.currentSource =
-            null;
+    UIController.casePanelExpanded =
+        false;
 
+    /* ============================================
+       REBUILD SOURCE MODE PANEL
 
-        UIController.currentTargets =
-            [];
+       Reuse the same initialization used when
+       SOURCE MODE is first opened.
+    ============================================ */
 
+    UIController.openSourceModePanel(
 
-        UIController.sourcePanelExpanded =
-            true;
+        {
+            name:
+                "Select a Parent Source"
+        },
 
+        []
 
-        UIController.casePanelExpanded =
-            false;
+    );
 
+    /* ============================================
+       HIDE CASE RESULTS
+    ============================================ */
 
-        /* ============================================
-           REBUILD SOURCE MODE PANEL
+    if (
+        elements.caseResults
+    ) {
 
-           Reuse the same initialization used when
-           SOURCE MODE is first opened.
-        ============================================ */
+        elements
+            .caseResults
+            .style
+            .display =
+                "none";
 
-        UIController.openSourceModePanel(
+    }
 
-            {
-                name:
-                    "Select a Parent Source"
-            },
+    if (
+        elements.caseResultsToggle
+    ) {
 
-            []
+        elements
+            .caseResultsToggle
+            .textContent =
+                "▶ CASE RESULTS";
 
-        );
+    }
 
+    if (
+        elements.caseResultList
+    ) {
 
-        /* ============================================
-           HIDE CASE RESULTS
-        ============================================ */
+        elements
+            .caseResultList
+            .innerHTML =
 
-        if (
-            elements.caseResults
-        ) {
+            `
+            <div class="gg-offence-empty">
 
-            elements
-                .caseResults
-                .style
-                .display =
-                    "none";
+                Select a Parent Source
+                and then choose one of its
+                Related Targets to view
+                matching offence cases.
 
-        }
+            </div>
+            `;
 
+    }
 
-        if (
-            elements.caseResultsToggle
-        ) {
+    /* ============================================
+       CLEAR CASE SELECTION
+    ============================================ */
 
-            elements
-                .caseResultsToggle
-                .textContent =
-                    "▶ CASE RESULTS";
+    if (
 
-        }
+        typeof
+        UIController
+            .clearCaseSelection ===
+        "function"
 
+    ) {
 
-        if (
-            elements.caseResultList
-        ) {
+        UIController
+            .clearCaseSelection();
 
-            elements
-                .caseResultList
-                .innerHTML =
-                    `
-                    <div class="gg-offence-empty">
+    }
 
-                        Select a Parent Source
-                        and then choose one of its
-                        Related Targets to view
-                        matching offence cases.
+    /* ============================================
+       STATUS
+    ============================================ */
 
-                    </div>
-                    `;
+    if (
+        typeof
+        UIController
+            .setStatus ===
+        "function"
+    ) {
 
-        }
+        UIController
+            .setStatus(
 
+                "Showing all parent sources."
 
-        /* ============================================
-           STATUS
-        ============================================ */
+            );
 
-        if (
-            typeof
-            UIController
-                .setStatus ===
-            "function"
-        ) {
+    }
 
-            UIController
-                .setStatus(
-
-                    "Showing all parent sources."
-
-                );
-
-        }
-
-
-    },
+},
         /* ====================================================
            CAPTURE DOM REFERENCES
 
@@ -3031,7 +3167,10 @@ captureElements:
                     "gg-case-result-list"
                 );
 
-
+UIController.elements.caseDetails =
+    document.getElementById(
+        "gg-offence-case-details"
+    );
 
         return UIController.elements;
 
@@ -6073,15 +6212,18 @@ function (
         true;
 
     const container =
+
+        UIController.elements
+            ?.caseResultList ||
+
         document.getElementById(
             "gg-case-result-list"
-        ) ||
-        UIController.elements.caseResults;
+        );
 
     if (!container) {
 
         console.warn(
-            "Case Results container not found."
+            "⚠ Case Results container not found."
         );
 
         return;
@@ -6089,7 +6231,7 @@ function (
     }
 
     container.innerHTML = "";
-UIController.casePanelExpanded = true;
+
     if (
         UIController.currentSpatialCases.length === 0
     ) {
@@ -6123,7 +6265,9 @@ UIController.casePanelExpanded = true;
         <div class="gg-offence-case-context-title">
 
             ${ctx.sourceName || "Source"}
+
             →
+
             ${ctx.targetName || "Target"}
 
         </div>
@@ -6131,6 +6275,7 @@ UIController.casePanelExpanded = true;
         <div class="gg-offence-case-count">
 
             ${UIController.currentSpatialCases.length}
+
             matching case(s)
 
         </div>
@@ -6142,7 +6287,9 @@ UIController.casePanelExpanded = true;
 
     UIController.currentSpatialCases.forEach(
 
-        function (item) {
+        function (
+            item
+        ) {
 
             const card =
                 document.createElement(
@@ -6192,6 +6339,23 @@ UIController.casePanelExpanded = true;
                 </div>
                 `;
 
+            /* ============================================
+               CASE CLICK
+            ============================================ */
+
+            card.onclick =
+                function () {
+
+                    UIController.selectCase(
+
+                        item,
+
+                        card
+
+                    );
+
+                };
+
             container.appendChild(
                 card
             );
@@ -6199,6 +6363,415 @@ UIController.casePanelExpanded = true;
         }
 
     );
+
+},
+
+/* ===========================================================
+   SELECT CASE
+
+   Responsibilities
+
+   ✓ Validate
+   ✓ Store current case
+   ✓ Highlight selected card
+   ✓ Show case details
+=========================================================== */
+
+selectCase:
+function (
+    caseData,
+    card
+) {
+
+    if (
+        !caseData
+    ) {
+
+        return;
+
+    }
+
+    /* ============================================
+       STORE CURRENT CASE
+    ============================================ */
+
+    UIController.currentCase =
+        caseData;
+
+    /* ============================================
+       HIGHLIGHT SELECTED CARD
+    ============================================ */
+
+    UIController.highlightSelectedCase(
+        card
+    );
+
+    /* ============================================
+       SHOW DETAILS
+    ============================================ */
+
+    UIController.showCaseDetails(
+        caseData
+    );
+
+},
+
+
+
+/* ===========================================================
+   HIGHLIGHT SELECTED CASE
+
+   Responsibilities
+
+   ✓ Remove previous highlight
+   ✓ Highlight selected case only
+=========================================================== */
+
+highlightSelectedCase:
+function (
+    selectedCard
+) {
+
+    document
+
+        .querySelectorAll(
+            ".gg-offence-case-card"
+        )
+
+        .forEach(
+
+            function (
+                card
+            ) {
+
+                card.classList.remove(
+                    "gg-selected-case"
+                );
+
+            }
+
+        );
+
+    if (
+        selectedCard
+    ) {
+
+        selectedCard.classList.add(
+            "gg-selected-case"
+        );
+
+    }
+
+},
+
+       /* ===========================================================
+   SHOW CASE DETAILS
+
+   Responsibilities
+
+   ✓ Render selected offence case
+   ✓ Populate CASE DETAILS panel
+   ✓ No business logic
+   ✓ No selection logic
+=========================================================== */
+
+showCaseDetails:
+function (
+    caseData
+) {
+
+    if (
+        !caseData
+    ) {
+
+        return;
+
+    }
+
+    const container =
+
+        UIController.elements
+            ?.caseDetails ||
+
+        document.getElementById(
+            "gg-offence-case-details"
+        );
+
+    if (
+        !container
+    ) {
+
+        console.warn(
+            "Case Details container not found."
+        );
+
+        return;
+
+    }
+
+    container.style.display = "";
+
+    container.innerHTML =
+
+        `
+        <div class="gg-case-details">
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    POR
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.por ||
+                      caseData.POR ||
+                      "-"}
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Date
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.date || "-"}
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Species
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.species || "-"}
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Sections
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${
+                        caseData.sections ||
+                        caseData.section ||
+                        "-"
+                    }
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Accused
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${
+                        caseData.accused ||
+                        caseData.accusedName ||
+                        "-"
+                    }
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Place
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${
+                        caseData.place ||
+                        caseData.location ||
+                        "-"
+                    }
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Range
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.range || "-"}
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Beat
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.beat || "-"}
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Latitude
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${
+                        caseData.latitude ||
+                        caseData.lat ||
+                        "-"
+                    }
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Longitude
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${
+                        caseData.longitude ||
+                        caseData.lng ||
+                        "-"
+                    }
+
+                </div>
+
+            </div>
+
+            <div class="gg-case-details-row">
+
+                <div class="gg-case-details-label">
+
+                    Status
+
+                </div>
+
+                <div class="gg-case-details-value">
+
+                    ${caseData.status || "-"}
+
+                </div>
+
+            </div>
+
+        </div>
+        `;
+
+},
+
+       /* ===========================================================
+   CLEAR CASE SELECTION
+=========================================================== */
+
+clearCaseSelection:
+function () {
+
+    UIController.currentCase =
+        null;
+
+    document
+
+        .querySelectorAll(
+            ".gg-offence-case-card"
+        )
+
+        .forEach(
+
+            function (
+                card
+            ) {
+
+                card.classList.remove(
+                    "gg-selected-case"
+                );
+
+            }
+
+        );
+
+    const container =
+
+        UIController.elements
+            ?.caseDetails;
+
+    if (
+        !container
+    ) {
+
+        return;
+
+    }
+
+    container.innerHTML =
+
+        `
+        <div class="gg-offence-empty">
+
+            Select a case above to view complete
+            offence details.
+
+        </div>
+        `;
 
 },
         /* ====================================================
@@ -6218,120 +6791,165 @@ UIController.casePanelExpanded = true;
 
         ==================================================== */
 
-        clearAnalysis:
-            function () {
+/* ===========================================================
+   CLEAR ANALYSIS
 
+   Responsibilities
 
-                try {
+   ✓ Clear spatial renderer
+   ✓ Reset active mode
+   ✓ Clear selected case
+   ✓ Reset CASE DETAILS
+   ✓ Update status
+=========================================================== */
 
+clearAnalysis:
+function () {
 
-                    const SpatialRenderer =
-                        UIController
-                            .getSpatialRenderer();
+    try {
 
+        const SpatialRenderer =
+            UIController
+                .getSpatialRenderer();
 
+        /* ========================================
+           CLEAR MAP
+        ======================================== */
 
-                    if (
-                        SpatialRenderer &&
-                        typeof
-                        SpatialRenderer
-                            .clear ===
-                        "function"
-                    ) {
+        if (
+            SpatialRenderer &&
+            typeof
+            SpatialRenderer
+                .clear ===
+            "function"
+        ) {
 
+            SpatialRenderer
+                .clear();
 
-                        SpatialRenderer
-                            .clear();
+        }
 
+        /* ========================================
+           RESET INTERNAL STATE
+        ======================================== */
 
-                    }
+        UIController.activeMode =
+            null;
 
+        UIController.currentSource =
+            null;
 
+        UIController.currentTargets =
+            [];
 
-                    /* ========================================
-                       RESET ACTIVE MODE
-                    ======================================== */
+        UIController.currentSpatialCases =
+            [];
 
-                    UIController.activeMode =
-                        null;
+        UIController.currentSpatialContext =
+            {};
 
+        /* ========================================
+           RESET BUTTON STATE
+        ======================================== */
 
+        UIController
+            .updateActiveModeUI(
+                null
+            );
 
-                    UIController
-                        .updateActiveModeUI(
-                            null
-                        );
+        /* ========================================
+           CLEAR CASE SELECTION
+        ======================================== */
 
+        if (
+            typeof
+            UIController
+                .clearCaseSelection ===
+            "function"
+        ) {
 
+            UIController
+                .clearCaseSelection();
 
-                    /* ========================================
-                       UPDATE STATUS
-                    ======================================== */
+        }
 
-                    UIController
-                        .setStatus(
+        /* ========================================
+           CLEAR CASE RESULTS
+        ======================================== */
 
-                            "Offence spatial layers cleared.",
+        if (
+            UIController.elements
+                ?.caseResultList
+        ) {
 
-                            "ready"
+            UIController
+                .elements
+                .caseResultList
+                .innerHTML =
 
-                        );
+                `
+                <div class="gg-offence-empty">
 
+                    Select a
+                    <b>Source → Target</b>
+                    or
+                    <b>Target → Source</b>
+                    pair to view matching offence cases.
 
+                </div>
+                `;
 
-                    console.log(
+        }
 
-                        "🧹 Offence spatial analysis cleared"
+        /* ========================================
+           UPDATE STATUS
+        ======================================== */
 
-                    );
+        UIController
+            .setStatus(
 
+                "Offence spatial layers cleared.",
 
+                "ready"
 
-                    return true;
+            );
 
+        console.log(
+            "🧹 Offence spatial analysis cleared"
+        );
 
-                }
+        return true;
 
+    }
 
-                catch (
-                    error
-                ) {
+    catch (
+        error
+    ) {
 
+        UIController.lastError =
+            error;
 
-                    UIController
-                        .lastError =
-                        error;
+        UIController.setStatus(
 
+            "Unable to clear offence spatial layers.",
 
+            "error"
 
-                    UIController
-                        .setStatus(
+        );
 
-                            "Unable to clear offence spatial layers.",
+        console.error(
 
-                            "error"
+            "❌ Offence spatial clear failed:",
 
-                        );
+            error
 
+        );
 
+        return false;
 
-                    console.error(
+    }
 
-                        "❌ Offence spatial clear failed:",
-
-                        error
-
-                    );
-
-
-
-                    return false;
-
-
-                }
-
-
-            },
+},
 
 
                /* ====================================================
