@@ -10870,6 +10870,790 @@ function (
 
 },
 
+
+       showFieldDetails:
+function (
+    title,
+    value,
+    context = {}
+) {
+
+
+    /* =======================================================
+       REFRESH DOM
+    ======================================================= */
+
+    if (
+        typeof
+        UIController.captureElements ===
+        "function"
+    ) {
+
+        UIController.captureElements();
+
+    }
+
+
+    const elements =
+        UIController.elements ||
+        {};
+
+
+    const container =
+        elements.fieldDetails;
+
+
+    const section =
+        elements.fieldDetailsSection;
+
+
+    if (
+        !container
+    ) {
+
+        console.error(
+            "❌ Field Details container unavailable"
+        );
+
+        return false;
+
+    }
+
+
+
+    /* =======================================================
+       VALUE CHECK
+
+       No value = no field.
+    ======================================================= */
+
+    function hasValue(
+        item
+    ) {
+
+
+        if (
+            item === null ||
+            item === undefined
+        ) {
+
+            return false;
+
+        }
+
+
+        if (
+            typeof item ===
+            "string"
+        ) {
+
+            const text =
+                item.trim();
+
+
+            return (
+
+                text !== "" &&
+
+                text !== "-" &&
+
+                text.toLowerCase() !==
+                    "null" &&
+
+                text.toLowerCase() !==
+                    "undefined" &&
+
+                text.toLowerCase() !==
+                    "n/a"
+
+            );
+
+        }
+
+
+        if (
+            Array.isArray(
+                item
+            )
+        ) {
+
+            return item.some(
+                hasValue
+            );
+
+        }
+
+
+        if (
+            typeof item ===
+            "object"
+        ) {
+
+            return Object
+                .values(
+                    item
+                )
+                .some(
+                    hasValue
+                );
+
+        }
+
+
+        return true;
+
+
+    }
+
+
+
+    /* =======================================================
+       ESCAPE HTML
+    ======================================================= */
+
+    function escapeHTML(
+        item
+    ) {
+
+
+        return String(
+            item ?? ""
+        )
+
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+
+            .replace(
+                /</g,
+                "&lt;"
+            )
+
+            .replace(
+                />/g,
+                "&gt;"
+            )
+
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+
+
+    }
+
+
+
+    /* =======================================================
+       HUMANIZE FIELD NAME
+
+       Example:
+
+           fatherName
+                ↓
+           Father Name
+
+           police_station
+                ↓
+           Police Station
+    ======================================================= */
+
+    function humanize(
+        key
+    ) {
+
+
+        return String(
+            key || ""
+        )
+
+            .replace(
+                /_/g,
+                " "
+            )
+
+            .replace(
+                /([a-z])([A-Z])/g,
+                "$1 $2"
+            )
+
+            .replace(
+                /\s+/g,
+                " "
+            )
+
+            .trim()
+
+            .replace(
+
+                /\b\w/g,
+
+                function (
+                    character
+                ) {
+
+                    return character
+                        .toUpperCase();
+
+                }
+
+            );
+
+
+    }
+
+
+
+    /* =======================================================
+       INTERNAL FIELDS
+
+       Never show database/application metadata in professional
+       FIELD DETAILS.
+    ======================================================= */
+
+    const hiddenKeys =
+        new Set([
+
+            "id",
+
+            "caseId",
+
+            "porKey",
+
+            "documentId",
+
+            "importSource",
+
+            "importVersion",
+
+            "importedAt",
+
+            "createdAt",
+
+            "updatedAt",
+
+            "timestamp",
+
+            "gisResolved",
+
+            "rangeGISResolved",
+
+            "canonicalId",
+
+            "cleanName",
+
+            "searchTokens",
+
+            "relation",
+
+            "key"
+
+        ]);
+
+
+
+    /* =======================================================
+       CREATE VALUE ROW
+    ======================================================= */
+
+    function row(
+        label,
+        item
+    ) {
+
+
+        if (
+            !hasValue(
+                item
+            )
+        ) {
+
+            return "";
+
+        }
+
+
+        if (
+            typeof item ===
+            "object"
+        ) {
+
+            return "";
+
+        }
+
+
+        return `
+            <div class="gg-offence-field-row">
+
+                <div class="gg-offence-field-label">
+                    ${escapeHTML(label)}
+                </div>
+
+                <div class="gg-offence-field-value">
+                    ${escapeHTML(item)}
+                </div>
+
+            </div>
+        `;
+
+
+    }
+
+
+
+    /* =======================================================
+       RENDER ONE OBJECT
+
+       Only fields with actual values are rendered.
+    ======================================================= */
+
+    function renderObject(
+        object
+    ) {
+
+
+        if (
+            !object ||
+            typeof object !==
+                "object"
+        ) {
+
+            return "";
+
+        }
+
+
+        let output =
+            "";
+
+
+        Object
+            .entries(
+                object
+            )
+            .forEach(
+
+                function (
+                    [
+                        key,
+                        item
+                    ]
+                ) {
+
+
+                    if (
+                        hiddenKeys.has(
+                            key
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        !hasValue(
+                            item
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+
+                    /* ------------------------------------------
+                       SIMPLE VALUE
+                    ------------------------------------------ */
+
+                    if (
+                        typeof item !==
+                            "object"
+                    ) {
+
+                        output +=
+                            row(
+
+                                humanize(
+                                    key
+                                ),
+
+                                item
+
+                            );
+
+
+                        return;
+
+                    }
+
+
+
+                    /* ------------------------------------------
+                       SIMPLE ARRAY OF TEXT/NUMBERS
+                    ------------------------------------------ */
+
+                    if (
+                        Array.isArray(
+                            item
+                        ) &&
+                        item.every(
+
+                            function (
+                                entry
+                            ) {
+
+                                return (
+
+                                    entry === null ||
+
+                                    typeof entry !==
+                                        "object"
+
+                                );
+
+                            }
+
+                        )
+                    ) {
+
+                        const text =
+                            item
+                                .filter(
+                                    hasValue
+                                )
+                                .join(
+                                    ", "
+                                );
+
+
+                        output +=
+                            row(
+
+                                humanize(
+                                    key
+                                ),
+
+                                text
+
+                            );
+
+                    }
+
+
+                }
+
+            );
+
+
+        return output;
+
+
+    }
+
+
+
+    /* =======================================================
+       BUILD FIELD DETAILS
+    ======================================================= */
+
+    let body =
+        "";
+
+
+
+    /* =======================================================
+       ARRAY
+
+       Example:
+
+           accused = [
+               {...},
+               {...}
+           ]
+
+       or
+
+           witnesses = [
+               {...},
+               {...}
+           ]
+    ======================================================= */
+
+    if (
+        Array.isArray(
+            value
+        )
+    ) {
+
+
+        const meaningful =
+            value.filter(
+                hasValue
+            );
+
+
+        meaningful.forEach(
+
+            function (
+                item,
+                index
+            ) {
+
+
+                /* ----------------------------------------------
+                   OBJECT ENTRY
+                ---------------------------------------------- */
+
+                if (
+                    item &&
+                    typeof item ===
+                        "object"
+                ) {
+
+                    const rendered =
+                        renderObject(
+                            item
+                        );
+
+
+                    if (
+                        rendered
+                    ) {
+
+                        body +=
+                            `
+                            <div class="gg-offence-field-group">
+
+                                ${
+                                    meaningful.length > 1
+
+                                        ? `
+                                          <div class="gg-offence-field-group-title">
+                                              ${escapeHTML(title)} ${index + 1}
+                                          </div>
+                                          `
+
+                                        : ""
+                                }
+
+                                ${rendered}
+
+                            </div>
+                            `;
+
+                    }
+
+                }
+
+
+                /* ----------------------------------------------
+                   TEXT ENTRY
+                ---------------------------------------------- */
+
+                else if (
+                    hasValue(
+                        item
+                    )
+                ) {
+
+                    body +=
+                        `
+                        <div class="gg-offence-field-text">
+                            ${escapeHTML(item)}
+                        </div>
+                        `;
+
+                }
+
+
+            }
+
+        );
+
+
+    }
+
+
+
+    /* =======================================================
+       OBJECT
+    ======================================================= */
+
+    else if (
+
+        value &&
+
+        typeof value ===
+            "object"
+
+    ) {
+
+
+        body =
+            renderObject(
+                value
+            );
+
+    }
+
+
+
+    /* =======================================================
+       SIMPLE TEXT / NUMBER
+    ======================================================= */
+
+    else if (
+        hasValue(
+            value
+        )
+    ) {
+
+
+        body =
+            `
+            <div class="gg-offence-field-text">
+                ${escapeHTML(value)}
+            </div>
+            `;
+
+    }
+
+
+
+    /* =======================================================
+       EMPTY FALLBACK
+    ======================================================= */
+
+    if (
+        !body.trim()
+    ) {
+
+        body =
+            `
+            <div class="gg-offence-empty">
+                No details available.
+            </div>
+            `;
+
+    }
+
+
+
+    /* =======================================================
+       RENDER
+
+       The section itself already has FIELD DETAILS heading
+       and Back to Case Details button in your panel design.
+
+       Therefore we only render the selected subsection title
+       and meaningful values here.
+    ======================================================= */
+
+    container.innerHTML =
+        `
+        <div class="gg-offence-field-selected-title">
+
+            ${escapeHTML(
+                title ||
+                "DETAILS"
+            )}
+
+        </div>
+
+        ${body}
+        `;
+
+
+
+    /* =======================================================
+       STORE CURRENT FIELD
+    ======================================================= */
+
+    UIController.currentField = {
+
+        title:
+            title,
+
+        value:
+            value,
+
+        key:
+            context.key ||
+            null
+
+    };
+
+
+
+    /* =======================================================
+       SHOW FIELD DETAILS
+    ======================================================= */
+
+    if (
+        section
+    ) {
+
+        section
+            .style
+            .display =
+                "";
+
+    }
+
+
+
+    /* =======================================================
+       SCROLL FIELD DETAILS INTO VIEW
+    ======================================================= */
+
+    section
+        ?.scrollIntoView?.({
+
+            block:
+                "nearest",
+
+            behavior:
+                "smooth"
+
+        });
+
+
+
+    console.log(
+
+        "📄 Professional FIELD DETAILS rendered",
+
+        {
+
+            title:
+
+                title ||
+                "DETAILS",
+
+            key:
+
+                context.key ||
+                null
+
+        }
+
+    );
+
+
+    return true;
+
+
+},
    /* ===========================================================
    SHOW CASE DETAILS
 
@@ -10909,41 +11693,50 @@ function (
     caseData
 ) {
 
-    /* ============================================
-       VALIDATE CASE
-    ============================================ */
+
+    /* =======================================================
+       VALIDATE
+    ======================================================= */
 
     if (
-        !caseData ||
-        typeof caseData !==
-            "object"
+        !caseData
     ) {
-
-        console.warn(
-            "⚠ showCaseDetails(): invalid case data",
-            caseData
-        );
 
         return false;
 
     }
 
 
-    /* ============================================
-       GET CASE DETAILS CONTAINER
-    ============================================ */
+    if (
+        typeof
+        UIController.captureElements ===
+        "function"
+    ) {
+
+        UIController.captureElements();
+
+    }
+
+
+    const elements =
+        UIController.elements ||
+        {};
+
 
     const container =
-        UIController.elements
-            ?.caseDetails;
+        elements.caseDetails;
+
+
+    const section =
+        elements.caseDetailsSection;
 
 
     if (
         !container
     ) {
 
-        console.warn(
-            "⚠ CASE DETAILS container unavailable"
+        console.error(
+            "❌ Case Details container unavailable"
         );
 
         return false;
@@ -10951,165 +11744,103 @@ function (
     }
 
 
-    /* ============================================
-       RESET CONTAINER
-    ============================================ */
 
-    container.innerHTML =
-        "";
+    /* =======================================================
+       STORE CURRENT CASE
 
+       Parent / Child / Cases remain preserved.
+    ======================================================= */
 
-    /* ============================================
-       RESET FIELD SELECTION
+    UIController.currentCase =
+        caseData;
 
-       Selecting another case means any previously
-       expanded field belongs to the old case.
-    ============================================ */
 
     UIController.currentField =
         null;
 
 
-    UIController.currentFieldKey =
-        null;
 
+    /* =======================================================
+       RESOLVE PRIMARY CASE OBJECT
 
-    UIController.currentFieldValue =
-        null;
+       Spatial result normally contains:
 
+           caseData
+               ├── porNo
+               ├── porKey
+               ├── caseId
+               ├── case
+               ├── cases
+               ├── accused
+               ├── sourceVillages
+               └── targetRange
 
-    /* ============================================
-       RESET FIELD DETAILS
-    ============================================ */
+       The actual case fields normally live inside:
 
-    const fieldDetails =
-        UIController.elements
-            ?.fieldDetails;
+           caseData.case
 
+       or sometimes:
 
-    if (
-        fieldDetails
-    ) {
+           caseData.cases[0]
+    ======================================================= */
 
-        fieldDetails.innerHTML =
-            `
-            <div class="gg-offence-empty">
+    const record =
 
-                Select a field from CASE DETAILS
-                to view its complete content.
-
-            </div>
-            `;
-
-    }
-
-
-    /* ============================================
-       HIDE FIELD DETAILS SECTION
-
-       FIELD DETAILS becomes visible only after
-       the user selects a case field.
-    ============================================ */
-
-    const fieldDetailsSection =
-        UIController.elements
-            ?.fieldDetailsSection;
-
-
-    if (
-        fieldDetailsSection
-    ) {
-
-        fieldDetailsSection
-            .style
-            .display =
-                "none";
-
-    }
-
-
-    /* ============================================
-       FIELD LABEL NORMALIZER
-
-       Converts:
-
-           porNo
-               →
-           Por No
-
-           offence_date
-               →
-           Offence Date
-
-           Name of Accused
-               →
-           Name of Accused
-
-       This is presentation only.
-
-       Original field keys are preserved.
-    ============================================ */
-
-    function formatFieldLabel(
-        key
-    ) {
-
-        if (
-            !key
-        ) {
-
-            return "Field";
-
-        }
-
-
-        return String(
-            key
+        (
+            caseData.case &&
+            typeof caseData.case ===
+                "object" &&
+            !Array.isArray(
+                caseData.case
+            )
         )
 
-            .replace(
-                /_/g,
-                " "
-            )
+            ? caseData.case
 
-            .replace(
-                /([a-z])([A-Z])/g,
-                "$1 $2"
-            )
+            :
 
-            .replace(
-                /\s+/g,
-                " "
-            )
+        (
+            Array.isArray(
+                caseData.cases
+            ) &&
+            caseData.cases.length &&
+            typeof caseData.cases[0] ===
+                "object"
+        )
 
-            .trim()
+            ? caseData.cases[0]
 
-            .replace(
-                /\b\w/g,
+            :
 
-                function (
-                    character
-                ) {
-
-                    return character
-                        .toUpperCase();
-
-                }
-
-            );
-
-    }
+            caseData;
 
 
-    /* ============================================
-       VALUE CHECK
 
-       Do not display meaningless empty fields.
-    ============================================ */
+    /* =======================================================
+       VALUE HELPERS
+
+       RULE:
+
+           no meaningful value
+               ↓
+           DO NOT DISPLAY FIELD NAME
+
+       This removes:
+
+           null
+           undefined
+           ""
+           whitespace
+           empty arrays
+           empty objects
+           textual "null"
+           textual "undefined"
+    ======================================================= */
 
     function hasValue(
         value
     ) {
+
 
         if (
             value === null ||
@@ -11123,634 +11854,1077 @@ function (
 
         if (
             typeof value ===
-                "string"
-        ) {
-
-            return value
-                .trim()
-                .length > 0;
-
-        }
-
-
-        if (
-            Array.isArray(
-                value
-            )
-        ) {
-
-            return value.length > 0;
-
-        }
-
-
-        return true;
-
-    }
-
-
-    /* ============================================
-       SHORT VALUE FORMATTER
-
-       CASE DETAILS should remain compact.
-
-       Full content is shown through FIELD DETAILS.
-    ============================================ */
-
-    function formatPreviewValue(
-        value
-    ) {
-
-        if (
-            value === null ||
-            value === undefined
-        ) {
-
-            return "—";
-
-        }
-
-
-        /* ----------------------------------------
-           ARRAY
-        ---------------------------------------- */
-
-        if (
-            Array.isArray(
-                value
-            )
+            "string"
         ) {
 
             const text =
                 value
-                    .map(
-
-                        function (
-                            item
-                        ) {
-
-                            if (
-                                item &&
-                                typeof item ===
-                                    "object"
-                            ) {
-
-                                try {
-
-                                    return JSON.stringify(
-                                        item
-                                    );
-
-                                }
-
-                                catch (
-                                    error
-                                ) {
-
-                                    return String(
-                                        item
-                                    );
-
-                                }
-
-                            }
+                    .trim();
 
 
-                            return String(
-                                item
-                            );
+            if (
+                !text ||
+                text.toLowerCase() ===
+                    "null" ||
+                text.toLowerCase() ===
+                    "undefined" ||
+                text.toLowerCase() ===
+                    "n/a" ||
+                text ===
+                    "-"
+            ) {
 
-                        }
+                return false;
 
-                    )
-                    .join(
-                        ", "
-                    );
+            }
 
 
-            return text.length > 90
-
-                ? text.slice(
-                    0,
-                    87
-                ) + "..."
-
-                : text;
+            return true;
 
         }
 
 
-        /* ----------------------------------------
-           OBJECT
-        ---------------------------------------- */
+        if (
+            Array.isArray(
+                value
+            )
+        ) {
+
+            return value.some(
+                hasValue
+            );
+
+        }
+
 
         if (
             typeof value ===
-                "object"
+            "object"
         ) {
 
-            let text;
-
-
-            try {
-
-                text =
-                    JSON.stringify(
-                        value
-                    );
-
-            }
-
-            catch (
-                error
-            ) {
-
-                text =
-                    String(
-                        value
-                    );
-
-            }
-
-
-            return text.length > 90
-
-                ? text.slice(
-                    0,
-                    87
-                ) + "..."
-
-                : text;
+            return Object
+                .values(
+                    value
+                )
+                .some(
+                    hasValue
+                );
 
         }
-
-
-        /* ----------------------------------------
-           PRIMITIVE
-        ---------------------------------------- */
-
-        const text =
-            String(
-                value
-            );
-
-
-        return text.length > 90
-
-            ? text.slice(
-                0,
-                87
-            ) + "..."
-
-            : text;
-
-    }
-
-
-    /* ============================================
-       INTERNAL / TECHNICAL FIELDS
-
-       These should normally not appear as normal
-       offence CASE DETAILS.
-
-       IMPORTANT:
-
-       This is presentation filtering only.
-
-       Nothing is removed from caseData.
-    ============================================ */
-
-    const hiddenFields =
-        new Set(
-
-            [
-                "__proto__",
-                "constructor",
-                "prototype",
-
-                "_id",
-                "__id",
-
-                "searchTokens",
-                "search_tokens",
-
-                "normalized",
-                "_normalized",
-
-                "rawDocument",
-                "raw_document"
-            ]
-
-        );
-
-
-    /* ============================================
-       FIELD PRIORITY
-
-       Known important offence fields appear first.
-
-       Any remaining fields are appended afterward,
-       so information is NOT lost merely because
-       its exact schema name differs.
-
-       Matching is case-insensitive.
-    ============================================ */
-
-    const preferredFields =
-        [
-
-            "porNo",
-            "porNumber",
-            "POR_NO",
-            "por",
-
-            "caseNo",
-            "caseNumber",
-
-            "date",
-            "offenceDate",
-            "offenseDate",
-
-            "species",
-            "speciesName",
-
-            "offence",
-            "offense",
-            "offenceType",
-            "offenseType",
-
-            "placeOfOccurrence",
-            "place",
-            "location",
-
-            "village",
-            "sourceVillage",
-
-            "range",
-            "targetRange",
-
-            "accused",
-            "accusedName",
-            "nameOfAccused",
-
-            "seizure",
-            "seizureDetails",
-
-            "status",
-            "caseStatus",
-
-            "remarks"
-
-        ];
-
-
-    /* ============================================
-       BUILD ACTUAL FIELD ORDER
-
-       We resolve preferred field names against
-       the real case object without changing the
-       original field key.
-    ============================================ */
-
-    const actualKeys =
-        Object.keys(
-            caseData
-        );
-
-
-    const usedKeys =
-        new Set();
-
-
-    const orderedKeys =
-        [];
-
-
-    preferredFields
-        .forEach(
-
-            function (
-                preferredKey
-            ) {
-
-                const actualKey =
-                    actualKeys
-                        .find(
-
-                            function (
-                                key
-                            ) {
-
-                                return (
-                                    key.toLowerCase() ===
-                                    preferredKey.toLowerCase()
-                                );
-
-                            }
-
-                        );
-
-
-                if (
-                    !actualKey ||
-                    usedKeys.has(
-                        actualKey
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                if (
-                    !hasValue(
-                        caseData[
-                            actualKey
-                        ]
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                orderedKeys.push(
-                    actualKey
-                );
-
-
-                usedKeys.add(
-                    actualKey
-                );
-
-            }
-
-        );
-
-
-    /* ============================================
-       APPEND ALL OTHER POPULATED FIELDS
-
-       This makes the renderer schema-tolerant.
-    ============================================ */
-
-    actualKeys
-        .forEach(
-
-            function (
-                key
-            ) {
-
-                if (
-                    usedKeys.has(
-                        key
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                if (
-                    hiddenFields.has(
-                        key
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                if (
-                    !hasValue(
-                        caseData[
-                            key
-                        ]
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                orderedKeys.push(
-                    key
-                );
-
-
-                usedKeys.add(
-                    key
-                );
-
-            }
-
-        );
-
-
-    /* ============================================
-       NO DISPLAYABLE FIELDS
-    ============================================ */
-
-    if (
-        orderedKeys.length ===
-        0
-    ) {
-
-        container.innerHTML =
-            `
-            <div class="gg-offence-empty">
-
-                No case details are available.
-
-            </div>
-            `;
 
 
         return true;
 
+
     }
 
 
-    /* ============================================
-       CREATE DETAILS WRAPPER
-    ============================================ */
 
-    const details =
-        document
-            .createElement(
-                "div"
+    function firstValue(
+        ...values
+    ) {
+
+
+        for (
+            const value
+            of values
+        ) {
+
+            if (
+                hasValue(
+                    value
+                )
+            ) {
+
+                return value;
+
+            }
+
+        }
+
+
+        return "";
+
+    }
+
+
+
+    /* =======================================================
+       ESCAPE HTML
+    ======================================================= */
+
+    function escapeHTML(
+        value
+    ) {
+
+
+        return String(
+            value ?? ""
+        )
+
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+
+            .replace(
+                /</g,
+                "&lt;"
+            )
+
+            .replace(
+                />/g,
+                "&gt;"
+            )
+
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+
+            .replace(
+                /'/g,
+                "&#039;"
             );
 
 
-    details.className =
-        "gg-case-details";
+    }
 
 
-    /* ============================================
-       CREATE FIELD ROWS
 
-       Every populated field is clickable.
+    /* =======================================================
+       FORMAT VALUE
 
-       Clicking does NOT interact with GIS.
+       Do NOT dump raw JSON into CASE DETAILS.
+    ======================================================= */
 
-       It simply opens FIELD DETAILS.
-    ============================================ */
-
-    orderedKeys
-        .forEach(
-
-            function (
-                key
-            ) {
-
-                const value =
-                    caseData[
-                        key
-                    ];
+    function formatValue(
+        value
+    ) {
 
 
-                /* --------------------------------
-                   FIELD ROW
-                -------------------------------- */
+        if (
+            !hasValue(
+                value
+            )
+        ) {
 
-                const row =
-                    document
-                        .createElement(
-                            "div"
-                        );
+            return "";
 
-
-                row.className =
-                    "gg-case-details-row";
+        }
 
 
-                row.setAttribute(
-                    "role",
-                    "button"
+        if (
+            Array.isArray(
+                value
+            )
+        ) {
+
+            return value
+
+                .filter(
+                    hasValue
+                )
+
+                .map(
+
+                    function (
+                        item
+                    ) {
+
+                        if (
+                            typeof item ===
+                            "object" &&
+                            item !== null
+                        ) {
+
+                            return firstValue(
+
+                                item.name,
+
+                                item.label,
+
+                                item.title,
+
+                                item.value,
+
+                                item.description
+
+                            );
+
+                        }
+
+
+                        return item;
+
+                    }
+
+                )
+
+                .filter(
+                    hasValue
+                )
+
+                .join(
+                    ", "
                 );
 
-
-                row.setAttribute(
-                    "tabindex",
-                    "0"
-                );
+        }
 
 
-                row.dataset.field =
-                    key;
+        if (
+            typeof value ===
+            "object"
+        ) {
+
+            return firstValue(
+
+                value.name,
+
+                value.label,
+
+                value.title,
+
+                value.value,
+
+                value.description
+
+            );
+
+        }
 
 
-                row.title =
-                    "View complete field details";
+        return String(
+            value
+        );
 
 
-                /* --------------------------------
-                   LABEL
-                -------------------------------- */
-
-                const label =
-                    document
-                        .createElement(
-                            "div"
-                        );
+    }
 
 
-                label.className =
-                    "gg-case-details-label";
+
+    /* =======================================================
+       DATE FORMATTER
+
+       Leaves unknown/custom date strings untouched.
+    ======================================================= */
+
+    function formatDate(
+        value
+    ) {
 
 
-                label.textContent =
-                    formatFieldLabel(
-                        key
-                    );
+        if (
+            !hasValue(
+                value
+            )
+        ) {
+
+            return "";
+
+        }
 
 
-                /* --------------------------------
-                   VALUE PREVIEW
-                -------------------------------- */
-
-                const valueElement =
-                    document
-                        .createElement(
-                            "div"
-                        );
+        try {
 
 
-                valueElement.className =
-                    "gg-case-details-value";
+            const date =
+                value instanceof Date
 
+                    ? value
 
-                valueElement.textContent =
-                    formatPreviewValue(
+                    : new Date(
                         value
                     );
 
 
-                /* --------------------------------
-                   ADD ROW CONTENT
-                -------------------------------- */
+            if (
+                !Number.isNaN(
+                    date.getTime()
+                )
+            ) {
 
-                row.appendChild(
-                    label
-                );
+                return date
+                    .toLocaleDateString(
 
+                        "en-IN",
 
-                row.appendChild(
-                    valueElement
-                );
+                        {
 
+                            day:
+                                "2-digit",
 
-                /* --------------------------------
-                   SELECT FIELD
-                -------------------------------- */
+                            month:
+                                "short",
 
-                function openField() {
+                            year:
+                                "numeric"
 
-                    if (
-                        typeof
-                        UIController.selectField ===
-                            "function"
-                    ) {
+                        }
 
-                        UIController
-                            .selectField(
+                    );
 
-                                key,
-
-                                value,
-
-                                caseData,
-
-                                row
-
-                            );
-
-                    }
-
-                    else {
-
-                        console.warn(
-                            "⚠ OffenceUIController.selectField() unavailable"
-                        );
-
-                    }
-
-                }
+            }
 
 
-                /* --------------------------------
-                   MOUSE
-                -------------------------------- */
+        }
 
-                row.onclick =
+        catch (
+            error
+        ) {
+
+            // Preserve original value.
+
+        }
+
+
+        return String(
+            value
+        );
+
+
+    }
+
+
+
+    /* =======================================================
+       CREATE STANDARD DETAIL ROW
+
+       Empty values are NOT rendered.
+    ======================================================= */
+
+    function createRow(
+        label,
+        value
+    ) {
+
+
+        if (
+            !hasValue(
+                value
+            )
+        ) {
+
+            return "";
+
+        }
+
+
+        const formatted =
+            formatValue(
+                value
+            );
+
+
+        if (
+            !hasValue(
+                formatted
+            )
+        ) {
+
+            return "";
+
+        }
+
+
+        return `
+            <div class="gg-offence-detail-row">
+
+                <div class="gg-offence-detail-label">
+                    ${escapeHTML(label)}
+                </div>
+
+                <div class="gg-offence-detail-value">
+                    ${escapeHTML(formatted)}
+                </div>
+
+            </div>
+        `;
+
+
+    }
+
+
+
+    /* =======================================================
+       RESOLVE SUMMARY FIELDS
+    ======================================================= */
+
+    const porNo =
+
+        firstValue(
+
+            caseData.porNo,
+
+            record.porNo,
+
+            record.porNumber,
+
+            record.PORNo,
+
+            record["POR No."],
+
+            caseData.porKey
+
+        );
+
+
+    const offenceDate =
+
+        firstValue(
+
+            record.offenceDate,
+
+            record.dateOfOffence,
+
+            record.offence_date,
+
+            record.date
+
+        );
+
+
+    const natureOfOffence =
+
+        firstValue(
+
+            record.natureOfOffence,
+
+            record.offenceNature,
+
+            record.nature,
+
+            record.offence
+
+        );
+
+
+    const act =
+
+        firstValue(
+
+            record.act,
+
+            record.Act,
+
+            record.actName
+
+        );
+
+
+    const sectionValue =
+
+        firstValue(
+
+            record.section,
+
+            record.Section,
+
+            record.sections,
+
+            record.sectionOfAct
+
+        );
+
+
+    let actSection =
+        "";
+
+
+    if (
+        hasValue(
+            act
+        ) &&
+        hasValue(
+            sectionValue
+        )
+    ) {
+
+        actSection =
+            `${formatValue(act)} · Section ${formatValue(sectionValue)}`;
+
+    }
+
+    else {
+
+        actSection =
+            firstValue(
+
+                act,
+
+                sectionValue
+
+            );
+
+    }
+
+
+    const caseStatus =
+
+        firstValue(
+
+            record.caseStatus,
+
+            record.status,
+
+            record.case_status
+
+        );
+
+
+    const court =
+
+        firstValue(
+
+            record.court,
+
+            record.courtName,
+
+            record.nameOfCourt
+
+        );
+
+
+    const crNo =
+
+        firstValue(
+
+            record.crNo,
+
+            record.CRNo,
+
+            record.crNumber,
+
+            record.caseReferenceNo
+
+        );
+
+
+    const nextHearing =
+
+        firstValue(
+
+            record.nextHearingDate,
+
+            record.nextHearing,
+
+            record.hearingDate
+
+        );
+
+
+    const hearingPurpose =
+
+        firstValue(
+
+            record.purposeOfHearing,
+
+            record.hearingPurpose,
+
+            record.purpose
+
+        );
+
+
+    const enquiryOfficer =
+
+        firstValue(
+
+            record.enquiryOfficer,
+
+            record.enquiryOfficerName,
+
+            record.inquiryOfficer,
+
+            record.investigatingOfficer,
+
+            record.ioName
+
+        );
+
+
+
+    /* =======================================================
+       RESOLVE ACCUSED
+
+       Keep original data for FIELD DETAILS.
+    ======================================================= */
+
+    const accused =
+
+        firstValue(
+
+            caseData.accused,
+
+            record.accused,
+
+            record.accusedDetails,
+
+            record.accusedPersons
+
+        );
+
+
+
+    /* =======================================================
+       RESOLVE WITNESSES
+    ======================================================= */
+
+    const witnesses =
+
+        firstValue(
+
+            caseData.witnesses,
+
+            record.witnesses,
+
+            record.witness,
+
+            record.witnessDetails,
+
+            record.witnessList,
+
+            record.witnessesForNextHearing,
+
+            record.witnessesForEvidenceInNextHearingDate
+
+        );
+
+
+
+    /* =======================================================
+       RESOLVE SEIZURE DETAILS
+    ======================================================= */
+
+    const seizure =
+
+        firstValue(
+
+            caseData.seizure,
+
+            record.seizure,
+
+            record.seizureDetails,
+
+            record.seizureMemo,
+
+            record.seizureInformation
+
+        );
+
+
+
+    /* =======================================================
+       RESOLVE SEIZED ARTICLES
+    ======================================================= */
+
+    const seizedArticles =
+
+        firstValue(
+
+            caseData.seizedArticles,
+
+            record.seizedArticles,
+
+            record.articlesSeized,
+
+            record.seizedArticle,
+
+            record.seizedItems,
+
+            record.articleSeized
+
+        );
+
+
+
+    /* =======================================================
+       BUILD SUMMARY
+
+       Only available values are shown.
+    ======================================================= */
+
+    let html =
+        "";
+
+
+    html +=
+        createRow(
+            "POR No.",
+            porNo
+        );
+
+
+    if (
+        hasValue(
+            offenceDate
+        )
+    ) {
+
+        html +=
+            createRow(
+
+                "Offence Date",
+
+                formatDate(
+                    offenceDate
+                )
+
+            );
+
+    }
+
+
+    html +=
+        createRow(
+
+            "Nature of Offence",
+
+            natureOfOffence
+
+        );
+
+
+    html +=
+        createRow(
+
+            "Act / Section",
+
+            actSection
+
+        );
+
+
+    html +=
+        createRow(
+
+            "Case Status",
+
+            caseStatus
+
+        );
+
+
+    html +=
+        createRow(
+
+            "Court",
+
+            court
+
+        );
+
+
+    html +=
+        createRow(
+
+            "CR No.",
+
+            crNo
+
+        );
+
+
+    if (
+        hasValue(
+            nextHearing
+        )
+    ) {
+
+        html +=
+            createRow(
+
+                "Next Hearing",
+
+                formatDate(
+                    nextHearing
+                )
+
+            );
+
+    }
+
+
+    html +=
+        createRow(
+
+            "Purpose of Hearing",
+
+            hearingPurpose
+
+        );
+
+
+    html +=
+        createRow(
+
+            "Enquiry Officer",
+
+            enquiryOfficer
+
+        );
+
+
+
+    /* =======================================================
+       EXPANDABLE DETAIL SECTIONS
+
+       CRITICAL RULE:
+
+       Section itself is not created when data is unavailable.
+
+       Therefore there will NEVER be:
+
+           ACCUSED ›
+           WITNESSES ›
+           SEIZURE DETAILS ›
+           SEIZED ARTICLES ›
+
+       unless corresponding data actually exists.
+    ======================================================= */
+
+    const expandable =
+        [];
+
+
+    if (
+        hasValue(
+            accused
+        )
+    ) {
+
+        expandable.push({
+
+            key:
+                "accused",
+
+            label:
+                "ACCUSED",
+
+            value:
+                accused
+
+        });
+
+    }
+
+
+    if (
+        hasValue(
+            witnesses
+        )
+    ) {
+
+        expandable.push({
+
+            key:
+                "witnesses",
+
+            label:
+                "WITNESSES",
+
+            value:
+                witnesses
+
+        });
+
+    }
+
+
+    if (
+        hasValue(
+            seizure
+        )
+    ) {
+
+        expandable.push({
+
+            key:
+                "seizure",
+
+            label:
+                "SEIZURE DETAILS",
+
+            value:
+                seizure
+
+        });
+
+    }
+
+
+    if (
+        hasValue(
+            seizedArticles
+        )
+    ) {
+
+        expandable.push({
+
+            key:
+                "seizedArticles",
+
+            label:
+                "SEIZED ARTICLES",
+
+            value:
+                seizedArticles
+
+        });
+
+    }
+
+
+
+    /* =======================================================
+       ADD EXPANDABLE SECTION CONTAINER
+    ======================================================= */
+
+    if (
+        expandable.length
+    ) {
+
+        html +=
+            `
+            <div class="gg-offence-detail-actions">
+            `;
+
+
+        expandable.forEach(
+
+            function (
+                item
+            ) {
+
+
+                html +=
+                    `
+                    <button
+                        type="button"
+                        class="gg-offence-detail-action"
+                        data-offence-field="${escapeHTML(item.key)}">
+
+                        <span class="gg-offence-detail-action-label">
+                            ${escapeHTML(item.label)}
+                        </span>
+
+                        <span class="gg-offence-detail-action-arrow">
+                            ›
+                        </span>
+
+                    </button>
+                    `;
+
+
+            }
+
+        );
+
+
+        html +=
+            `
+            </div>
+            `;
+
+    }
+
+
+
+    /* =======================================================
+       EMPTY FALLBACK
+    ======================================================= */
+
+    if (
+        !html.trim()
+    ) {
+
+        html =
+            `
+            <div class="gg-offence-empty">
+                No case details available.
+            </div>
+            `;
+
+    }
+
+
+
+    /* =======================================================
+       RENDER
+    ======================================================= */
+
+    container.innerHTML =
+        html;
+
+
+
+    /* =======================================================
+       SHOW CASE DETAILS SECTION
+    ======================================================= */
+
+    if (
+        section
+    ) {
+
+        section
+            .style
+            .display =
+                "";
+
+    }
+
+
+
+    /* =======================================================
+       HIDE FIELD DETAILS UNTIL A DETAIL SECTION IS CLICKED
+    ======================================================= */
+
+    if (
+        elements.fieldDetailsSection
+    ) {
+
+        elements
+            .fieldDetailsSection
+            .style
+            .display =
+                "none";
+
+    }
+
+
+    if (
+        elements.fieldDetails
+    ) {
+
+        elements
+            .fieldDetails
+            .innerHTML =
+                "";
+
+    }
+
+
+
+    /* =======================================================
+       BIND EXPANDABLE DETAIL BUTTONS
+    ======================================================= */
+
+    container
+        .querySelectorAll(
+            "[data-offence-field]"
+        )
+        .forEach(
+
+            function (
+                button
+            ) {
+
+
+                button.onclick =
                     function (
                         event
                     ) {
+
 
                         event
                             ?.preventDefault?.();
@@ -11760,25 +12934,30 @@ function (
                             ?.stopPropagation?.();
 
 
-                        openField();
+                        const key =
+                            button.dataset
+                                .offenceField;
 
-                    };
 
+                        const item =
+                            expandable.find(
 
-                /* --------------------------------
-                   KEYBOARD ACCESSIBILITY
-                -------------------------------- */
+                                function (
+                                    entry
+                                ) {
 
-                row.onkeydown =
-                    function (
-                        event
-                    ) {
+                                    return (
+                                        entry.key ===
+                                        key
+                                    );
+
+                                }
+
+                            );
+
 
                         if (
-                            event.key !==
-                                "Enter" &&
-                            event.key !==
-                                " "
+                            !item
                         ) {
 
                             return;
@@ -11786,54 +12965,99 @@ function (
                         }
 
 
-                        event
-                            .preventDefault();
+                        UIController.currentField =
+                            item;
 
 
-                        event
-                            .stopPropagation();
+                        if (
+                            typeof
+                            UIController.showFieldDetails ===
+                            "function"
+                        ) {
 
+                            UIController.showFieldDetails(
 
-                        openField();
+                                item.label,
+
+                                item.value,
+
+                                {
+
+                                    key:
+                                        item.key,
+
+                                    caseData:
+                                        caseData,
+
+                                    record:
+                                        record
+
+                                }
+
+                            );
+
+                        }
+
 
                     };
 
-
-                details.appendChild(
-                    row
-                );
 
             }
 
         );
 
 
-    /* ============================================
-       ADD DETAILS TO PANEL
-    ============================================ */
 
-    container.appendChild(
-        details
+    /* =======================================================
+       SCROLL INTO VIEW
+    ======================================================= */
+
+    section
+        ?.scrollIntoView?.({
+
+            block:
+                "nearest",
+
+            behavior:
+                "smooth"
+
+        });
+
+
+
+    /* =======================================================
+       DEBUG
+    ======================================================= */
+
+    console.log(
+
+        "📋 Professional CASE DETAILS rendered",
+
+        {
+
+            porNo,
+
+            expandableSections:
+
+                expandable.map(
+
+                    function (
+                        item
+                    ) {
+
+                        return item.label;
+
+                    }
+
+                )
+
+        }
+
     );
 
 
-    /* ============================================
-       RESET SCROLL POSITION
-    ============================================ */
-
-    container.scrollTop =
-        0;
-
-
-    /* ============================================
-       CURRENT VIEW
-    ============================================ */
-
-    UIController.currentView =
-        "case-details";
-
-
     return true;
+
 
 },
 
