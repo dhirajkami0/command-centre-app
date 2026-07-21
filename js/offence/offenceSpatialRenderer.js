@@ -2489,6 +2489,329 @@ Renderer.clearSourceDrillDown =
 
   };
 
+   Renderer.applyModePaneInteraction =
+  function (
+    mode
+  ) {
+
+    /* ========================================================
+       GET MAP
+    ======================================================== */
+
+    const map =
+      Renderer.getMap();
+
+
+    if (
+      !map
+    ) {
+
+      return false;
+
+    }
+
+
+    /* ========================================================
+       GET ALL OFFENCE PANES
+    ======================================================== */
+
+    const parentSourcePane =
+      map.getPane(
+        Renderer
+          .config
+          .parentSourcePane
+      );
+
+
+    const parentTargetPane =
+      map.getPane(
+        Renderer
+          .config
+          .parentTargetPane
+      );
+
+
+    const relatedSourcePane =
+      map.getPane(
+        Renderer
+          .config
+          .relatedSourcePane
+      );
+
+
+    const relatedTargetPane =
+      map.getPane(
+        Renderer
+          .config
+          .relatedTargetPane
+      );
+
+
+    const selectionPane =
+      map.getPane(
+        Renderer
+          .config
+          .selectionPane
+      );
+
+
+    /* ========================================================
+       NORMALIZE MODE
+    ======================================================== */
+
+    const activeMode =
+      String(
+        mode ||
+        Renderer.mode ||
+        ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    /* ========================================================
+       SOURCE MODE
+
+       Interactive hierarchy:
+
+       Parent Sources
+            ↓
+       Related Targets
+
+       Inactive TARGET parent Canvas MUST NOT intercept
+       pointer events.
+
+       Related Sources belong to TARGET mode and therefore
+       must also be inactive.
+    ======================================================== */
+
+    if (
+      activeMode ===
+      "SOURCE"
+    ) {
+
+      if (
+        parentSourcePane
+      ) {
+
+        parentSourcePane
+          .style
+          .pointerEvents =
+            "auto";
+
+      }
+
+
+      if (
+        parentTargetPane
+      ) {
+
+        parentTargetPane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      if (
+        relatedSourcePane
+      ) {
+
+        relatedSourcePane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      if (
+        relatedTargetPane
+      ) {
+
+        relatedTargetPane
+          .style
+          .pointerEvents =
+            "auto";
+
+      }
+
+
+      if (
+        selectionPane
+      ) {
+
+        selectionPane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      return true;
+
+    }
+
+
+    /* ========================================================
+       TARGET MODE
+
+       Interactive hierarchy:
+
+       Parent Targets
+            ↓
+       Related Sources
+
+       Inactive SOURCE parent Canvas MUST NOT intercept
+       pointer events.
+
+       Related Targets belong to SOURCE mode and therefore
+       must also be inactive.
+    ======================================================== */
+
+    if (
+      activeMode ===
+      "TARGET"
+    ) {
+
+      if (
+        parentSourcePane
+      ) {
+
+        parentSourcePane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      if (
+        parentTargetPane
+      ) {
+
+        parentTargetPane
+          .style
+          .pointerEvents =
+            "auto";
+
+      }
+
+
+      if (
+        relatedSourcePane
+      ) {
+
+        relatedSourcePane
+          .style
+          .pointerEvents =
+            "auto";
+
+      }
+
+
+      if (
+        relatedTargetPane
+      ) {
+
+        relatedTargetPane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      if (
+        selectionPane
+      ) {
+
+        selectionPane
+          .style
+          .pointerEvents =
+            "none";
+
+      }
+
+
+      return true;
+
+    }
+
+
+    /* ========================================================
+       NO ACTIVE MODE
+
+       Disable every offence interaction.
+
+       Useful during clear / reset / shutdown.
+    ======================================================== */
+
+    if (
+      parentSourcePane
+    ) {
+
+      parentSourcePane
+        .style
+        .pointerEvents =
+          "none";
+
+    }
+
+
+    if (
+      parentTargetPane
+    ) {
+
+      parentTargetPane
+        .style
+        .pointerEvents =
+          "none";
+
+    }
+
+
+    if (
+      relatedSourcePane
+    ) {
+
+      relatedSourcePane
+        .style
+        .pointerEvents =
+          "none";
+
+    }
+
+
+    if (
+      relatedTargetPane
+    ) {
+
+      relatedTargetPane
+        .style
+        .pointerEvents =
+          "none";
+
+    }
+
+
+    if (
+      selectionPane
+    ) {
+
+      selectionPane
+        .style
+        .pointerEvents =
+          "none";
+
+    }
+
+
+    return true;
+
+  };
 
 /* ============================================================
    🧹 CLEAR TARGET-MODE DRILL-DOWN
@@ -4204,7 +4527,9 @@ Renderer.renderAllSources =
     Renderer.mode =
       "SOURCE";
 
-
+Renderer.applyModePaneInteraction(
+  "SOURCE"
+);
     /* ========================================================
        RESET SOURCE MODE STATE
 
@@ -4645,7 +4970,9 @@ Renderer.renderAllTargets =
     Renderer.mode =
       "TARGET";
 
-
+Renderer.applyModePaneInteraction(
+  "TARGET"
+);
     /* ========================================================
        REBUILD RANGE FEATURE INDEX
     ======================================================== */
