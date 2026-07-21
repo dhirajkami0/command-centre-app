@@ -6192,160 +6192,235 @@ Renderer.selectTarget =
 ============================================================ */
 
 Renderer.selectTargetForSource =
-  function (
-    target
-  ) {
-
-    const Spatial =
-      Renderer
-        .getSpatialEngine();
-
-
-    /* ========================================================
-       VALIDATE STATE
-    ======================================================== */
-
-    if (
-      !Spatial ||
-      !target ||
-      Renderer.mode !==
-        "SOURCE" ||
-      !Renderer.selectedSourceId
+    function (
+        target
     ) {
 
-      return [];
-
-    }
-
-
-    /* ========================================================
-       RESOLVE TARGET NAME
-    ======================================================== */
-
-    const targetName =
-
-      target.name
-
-      ||
-
-      target.cleanName
-
-      ||
-
-      "";
+        const Spatial =
+            Renderer.getSpatialEngine();
 
 
-    if (
-      !targetName
-    ) {
+        /* ========================================================
+           VALIDATE STATE
+        ======================================================== */
 
-      return [];
+        if (
 
-    }
+            !Spatial ||
+
+            !target ||
+
+            Renderer.mode !==
+                "SOURCE" ||
+
+            !Renderer.selectedSourceId
+
+        ) {
+
+            return [];
+
+        }
 
 
-    /* ========================================================
-       STORE SELECTED TARGET KEY
-    ======================================================== */
+        /* ========================================================
+           RESOLVE TARGET OBJECT
 
-    Renderer.selectedTargetKey =
-      Renderer
-        .normalizeText(
-          targetName
+           Supports:
+
+           • Target object (map click)
+           • Target key (UI click)
+        ======================================================== */
+
+        let targetObject =
+            target;
+
+
+        if (
+
+            typeof target ===
+            "string"
+
+        ) {
+
+            const targetKey =
+
+                Renderer
+                    .normalizeText(
+                        target
+                    );
+
+
+            targetObject =
+
+                Renderer
+                    .currentTargets
+                    .find(
+
+                        item => {
+
+                            const itemKey =
+
+                                Renderer
+                                    .normalizeText(
+
+                                        item.key ||
+
+                                        item.id ||
+
+                                        item.cleanName ||
+
+                                        item.name
+
+                                    );
+
+
+                            return (
+                                itemKey ===
+                                targetKey
+                            );
+
+                        }
+
+                    );
+
+        }
+
+
+        if (
+            !targetObject
+        ) {
+
+            return [];
+
+        }
+
+
+        /* ========================================================
+           RESOLVE TARGET NAME
+        ======================================================== */
+
+        const targetName =
+
+            targetObject.name ||
+
+            targetObject.cleanName ||
+
+            "";
+
+
+        if (
+            !targetName
+        ) {
+
+            return [];
+
+        }
+
+
+        /* ========================================================
+           STORE TARGET STATE
+        ======================================================== */
+
+        Renderer.selectedTargetKey =
+
+            Renderer
+                .normalizeText(
+
+                    targetObject.key ||
+
+                    targetObject.id ||
+
+                    targetName
+
+                );
+
+
+        /* ========================================================
+           GET SOURCE ↔ TARGET CASES
+        ======================================================== */
+
+        const cases =
+
+            Spatial
+                .getCasesForSourceTarget?.(
+
+                    Renderer.selectedSourceId,
+
+                    targetName
+
+                )
+
+            ||
+
+            [];
+
+
+        /* ========================================================
+           STORE CURRENT CASES
+        ======================================================== */
+
+        Renderer.currentCases =
+            cases;
+
+
+        Renderer.currentCaseContext = {
+
+            direction:
+                "SOURCE_TO_TARGET",
+
+            mode:
+                "SOURCE",
+
+            sourceId:
+                Renderer.selectedSourceId,
+
+            targetName,
+
+            targetKey:
+                Renderer.selectedTargetKey
+
+        };
+
+
+        /* ========================================================
+           DEBUG
+        ======================================================== */
+
+        console.log(
+
+            "🎯 Related Target selected:",
+
+            targetName,
+
+            "← Source:",
+
+            Renderer.selectedSourceId,
+
+            "→",
+
+            cases.length,
+
+            "cases"
+
         );
 
 
-    /* ========================================================
-       GET SOURCE ↔ TARGET CASES
-    ======================================================== */
+        /* ========================================================
+           DISPLAY CASES
+        ======================================================== */
 
-    const cases =
+        Renderer.showCases(
 
-      Spatial
-        .getCasesForSourceTarget?.(
+            cases,
 
-          Renderer
-            .selectedSourceId,
+            Renderer.currentCaseContext
 
-          targetName
-
-        )
-
-      ||
-
-      [];
+        );
 
 
-    /* ========================================================
-       STORE CURRENT CASES
-    ======================================================== */
+        return cases;
 
-    Renderer.currentCases =
-      cases;
-
-
-    /* ========================================================
-       DEBUG
-    ======================================================== */
-
-    console.log(
-
-      "🎯 Related Target selected:",
-
-      targetName,
-
-      "← Source:",
-
-      Renderer.selectedSourceId,
-
-      "→",
-
-      cases.length,
-
-      "cases"
-
-    );
-
-
-    /* ========================================================
-       SEND CASES TO UI
-    ======================================================== */
-
-    Renderer.showCases(
-
-      cases,
-
-      {
-
-        direction:
-          "SOURCE_TO_TARGET",
-
-
-        mode:
-          "SOURCE",
-
-
-        sourceId:
-          Renderer
-            .selectedSourceId,
-
-
-        targetName:
-          targetName,
-
-
-        targetKey:
-          Renderer
-            .selectedTargetKey
-
-      }
-
-    );
-
-
-    return cases;
-
-  };
+    };
 
 
 /* ============================================================
@@ -6379,220 +6454,269 @@ Renderer.selectTargetForSource =
 ============================================================ */
 
 Renderer.selectSourceForTarget =
-  function (
-    source
-  ) {
-
-    const Spatial =
-      Renderer
-        .getSpatialEngine();
-
-
-    /* ========================================================
-       VALIDATE STATE
-    ======================================================== */
-
-    if (
-      !Spatial ||
-      !source ||
-      Renderer.mode !==
-        "TARGET" ||
-      !Renderer.selectedTargetKey
+    function (
+        source
     ) {
 
-      return [];
-
-    }
-
-
-    /* ========================================================
-       RESOLVE SOURCE ID
-    ======================================================== */
-
-    const sourceId =
-
-      source.canonicalId
-
-      ||
-
-      source.id;
+        const Spatial =
+            Renderer.getSpatialEngine();
 
 
-    if (
-      !sourceId
-    ) {
+        /* ========================================================
+           VALIDATE STATE
+        ======================================================== */
 
-      return [];
+        if (
 
-    }
+            !Spatial ||
 
+            !source ||
 
-    /* ========================================================
-       STORE SELECTED SOURCE
-    ======================================================== */
+            Renderer.mode !==
+                "TARGET" ||
 
-    Renderer.selectedSourceId =
-      sourceId;
+            !Renderer.selectedTargetKey
 
+        ) {
 
-    /* ========================================================
-       FIND ORIGINAL TARGET OBJECT
-
-       selectedTargetKey stores normalized target identity.
-
-       getCasesForSourceTarget() expects the actual target name.
-    ======================================================== */
-
-    const targets =
-
-      Spatial
-        .getTargetRanges?.()
-
-      ||
-
-      [];
-
-
-    const target =
-
-      targets.find(
-
-        item => {
-
-          const itemKey =
-            Renderer
-              .normalizeText(
-
-                item.cleanName
-
-                ||
-
-                item.name
-
-              );
-
-
-          return (
-            itemKey ===
-            Renderer.selectedTargetKey
-          );
+            return [];
 
         }
 
-      );
+
+        /* ========================================================
+           RESOLVE SOURCE OBJECT
+
+           Supports:
+
+           • Source object (map click)
+           • Source ID (UI click)
+        ======================================================== */
+
+        let sourceObject =
+            source;
 
 
-    if (
-      !target
-    ) {
+        if (
 
-      console.warn(
+            typeof source ===
+            "string"
 
-        "⚠ Selected Target could not be resolved:",
+        ) {
 
-        Renderer.selectedTargetKey
+            sourceObject =
 
-      );
+                Renderer
+                    .currentSources
+                    .find(
 
+                        item =>
 
-      return [];
+                            (
 
-    }
+                                item.canonicalId ||
 
+                                item.id
 
-    /* ========================================================
-       GET SOURCE ↔ TARGET CASES
-    ======================================================== */
+                            ) === source
 
-    const cases =
+                    );
 
-      Spatial
-        .getCasesForSourceTarget?.(
-
-          sourceId,
-
-          target.name
-
-        )
-
-      ||
-
-      [];
+        }
 
 
-    /* ========================================================
-       STORE CURRENT CASES
-    ======================================================== */
+        if (
+            !sourceObject
+        ) {
 
-    Renderer.currentCases =
-      cases;
+            return [];
 
-
-    /* ========================================================
-       DEBUG
-    ======================================================== */
-
-    console.log(
-
-      "🏡 Related Source selected:",
-
-      source.name,
-
-      "→ Target:",
-
-      target.name,
-
-      "→",
-
-      cases.length,
-
-      "cases"
-
-    );
+        }
 
 
-    /* ========================================================
-       SEND CASES TO UI
-    ======================================================== */
+        /* ========================================================
+           RESOLVE SOURCE ID
+        ======================================================== */
 
-    Renderer.showCases(
+        const sourceId =
 
-      cases,
+            sourceObject.canonicalId ||
 
-      {
-
-        direction:
-          "TARGET_TO_SOURCE",
+            sourceObject.id;
 
 
-        mode:
-          "TARGET",
+        if (
+            !sourceId
+        ) {
+
+            return [];
+
+        }
 
 
-        sourceId:
-          sourceId,
+        /* ========================================================
+           STORE SELECTED SOURCE
+        ======================================================== */
+
+        Renderer.selectedSourceId =
+            sourceId;
 
 
-        sourceName:
-          source.name,
+        /* ========================================================
+           RESOLVE TARGET OBJECT
+        ======================================================== */
+
+        const targets =
+
+            Spatial
+                .getTargetRanges?.()
+
+            ||
+
+            [];
 
 
-        targetName:
-          target.name,
+        const target =
+
+            targets.find(
+
+                item => {
+
+                    const itemKey =
+
+                        Renderer
+                            .normalizeText(
+
+                                item.key ||
+
+                                item.id ||
+
+                                item.cleanName ||
+
+                                item.name
+
+                            );
 
 
-        targetKey:
-          Renderer
-            .selectedTargetKey
+                    return (
 
-      }
+                        itemKey ===
 
-    );
+                        Renderer.selectedTargetKey
+
+                    );
+
+                }
+
+            );
 
 
-    return cases;
+        if (
+            !target
+        ) {
 
-  };
+            console.warn(
+
+                "⚠ Selected Target could not be resolved:",
+
+                Renderer.selectedTargetKey
+
+            );
+
+            return [];
+
+        }
+
+
+        /* ========================================================
+           GET SOURCE ↔ TARGET CASES
+        ======================================================== */
+
+        const cases =
+
+            Spatial
+                .getCasesForSourceTarget?.(
+
+                    sourceId,
+
+                    target.name
+
+                )
+
+            ||
+
+            [];
+
+
+        /* ========================================================
+           STORE CURRENT STATE
+        ======================================================== */
+
+        Renderer.currentCases =
+            cases;
+
+
+        Renderer.currentCaseContext = {
+
+            direction:
+                "TARGET_TO_SOURCE",
+
+            mode:
+                "TARGET",
+
+            sourceId,
+
+            sourceName:
+                sourceObject.name,
+
+            targetName:
+                target.name,
+
+            targetKey:
+                Renderer.selectedTargetKey
+
+        };
+
+
+        /* ========================================================
+           DEBUG
+        ======================================================== */
+
+        console.log(
+
+            "🏡 Related Source selected:",
+
+            sourceObject.name,
+
+            "→ Target:",
+
+            target.name,
+
+            "→",
+
+            cases.length,
+
+            "cases"
+
+        );
+
+
+        /* ========================================================
+           DISPLAY CASES
+        ======================================================== */
+
+        Renderer.showCases(
+
+            cases,
+
+            Renderer.currentCaseContext
+
+        );
+
+
+        return cases;
+
+    };
 
 
 /* ============================================================
@@ -6631,209 +6755,239 @@ Renderer.selectSourceForTarget =
 ============================================================ */
 
 Renderer.showCases =
-  function (
-    cases,
-    context = {}
-  ) {
-
-    const safeCases =
-      Array.isArray(
-        cases
-      )
-
-      ?
-
-      cases
-
-      :
-
-      [];
-
-
-    /* ========================================================
-       DEBUG OUTPUT
-    ======================================================== */
-
-    console.log(
-
-      "🚨 Offence Spatial Cases",
-
-      {
-
-        context:
-          context,
-
-
-        count:
-          safeCases.length,
-
-
-        cases:
-          safeCases
-
-      }
-
-    );
-
-
-    /* ========================================================
-       PRIMARY UI HOOK
-
-       GG.Offence.UI.showSpatialCases()
-    ======================================================== */
-
-    if (
-      typeof Offence
-        ?.UI
-        ?.showSpatialCases ===
-      "function"
+    function (
+        cases,
+        context = {}
     ) {
 
-      try {
+        const safeCases =
 
-        Offence
-          .UI
-          .showSpatialCases(
+            Array.isArray(
+                cases
+            )
 
-            safeCases,
+                ? cases
 
-            context
+                : [];
 
-          );
+
+        /* ========================================================
+           STORE CURRENT STATE
+        ======================================================== */
+
+        Renderer.currentCases =
+            safeCases;
+
+
+        Renderer.currentCaseContext =
+            context || {};
+
+
+        /* ========================================================
+           SYNCHRONIZE UI STATE
+        ======================================================== */
+
+        if (
+
+            GG
+                ?.Offence
+                ?.UIController
+
+        ) {
+
+            GG
+                .Offence
+                .UIController
+                .casePanelExpanded =
+                true;
+
+        }
+
+
+        /* ========================================================
+           DEBUG
+        ======================================================== */
+
+        console.log(
+
+            "🚨 Offence Spatial Cases",
+
+            {
+
+                context,
+
+                count:
+                    safeCases.length,
+
+                cases:
+                    safeCases
+
+            }
+
+        );
+
+
+        /* ========================================================
+           PRIMARY UI
+
+           Legacy UI support
+        ======================================================== */
+
+        if (
+
+            typeof
+            Offence
+                ?.UI
+                ?.showSpatialCases ===
+            "function"
+
+        ) {
+
+            try {
+
+                Offence
+                    .UI
+                    .showSpatialCases(
+
+                        safeCases,
+
+                        context
+
+                    );
+
+                return safeCases;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "❌ Offence.UI.showSpatialCases failed",
+
+                    error
+
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           UI CONTROLLER
+
+           Current SOURCE MODE implementation
+        ======================================================== */
+
+        if (
+
+            typeof
+            Offence
+                ?.UIController
+                ?.showSpatialCases ===
+            "function"
+
+        ) {
+
+            try {
+
+                Offence
+                    .UIController
+                    .showSpatialCases(
+
+                        safeCases,
+
+                        context
+
+                    );
+
+                return safeCases;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "❌ Offence.UIController.showSpatialCases failed",
+
+                    error
+
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           OPTIONAL GLOBAL HOOK
+        ======================================================== */
+
+        if (
+
+            typeof
+            window
+                .showOffenceSpatialCases ===
+            "function"
+
+        ) {
+
+            try {
+
+                window
+                    .showOffenceSpatialCases(
+
+                        safeCases,
+
+                        context
+
+                    );
+
+                return safeCases;
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.error(
+
+                    "❌ showOffenceSpatialCases failed",
+
+                    error
+
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           NO CONNECTED UI
+        ======================================================== */
+
+        console.log(
+
+            "ℹ Spatial case UI not connected yet.",
+
+            "Cases available in:",
+
+            "GG.Offence.SpatialRenderer.currentCases"
+
+        );
 
 
         return safeCases;
 
-      }
-      catch (
-        error
-      ) {
-
-        console.error(
-
-          "❌ Offence.UI.showSpatialCases failed",
-
-          error
-
-        );
-
-      }
-
-    }
-
-
-    /* ========================================================
-       SECONDARY UI CONTROLLER HOOK
-
-       GG.Offence.UIController.showSpatialCases()
-    ======================================================== */
-
-    if (
-      typeof Offence
-        ?.UIController
-        ?.showSpatialCases ===
-      "function"
-    ) {
-
-      try {
-
-        Offence
-          .UIController
-          .showSpatialCases(
-
-            safeCases,
-
-            context
-
-          );
-
-
-        return safeCases;
-
-      }
-      catch (
-        error
-      ) {
-
-        console.error(
-
-          "❌ Offence.UIController.showSpatialCases failed",
-
-          error
-
-        );
-
-      }
-
-    }
-
-
-    /* ========================================================
-       OPTIONAL GLOBAL HOOK
-    ======================================================== */
-
-    if (
-      typeof window
-        .showOffenceSpatialCases ===
-      "function"
-    ) {
-
-      try {
-
-        window
-          .showOffenceSpatialCases(
-
-            safeCases,
-
-            context
-
-          );
-
-
-        return safeCases;
-
-      }
-      catch (
-        error
-      ) {
-
-        console.error(
-
-          "❌ showOffenceSpatialCases failed",
-
-          error
-
-        );
-
-      }
-
-    }
-
-
-    /* ========================================================
-       NO CASE UI CONNECTED YET
-
-       Spatial relationship flow still works.
-
-       Cases remain available through:
-
-       Renderer.currentCases
-    ======================================================== */
-
-    console.log(
-
-      "ℹ Spatial case UI not connected yet.",
-
-      "Cases available in:",
-
-      "GG.Offence.SpatialRenderer.currentCases"
-
-    );
-
-
-    return safeCases;
-
-  };
+    };
 
 /* ============================================================
    ⚖️ SHOW SPATIAL CASES
