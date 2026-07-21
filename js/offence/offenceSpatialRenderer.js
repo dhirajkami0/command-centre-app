@@ -5441,14 +5441,60 @@ Renderer.handleTargetClick =
    ALL relationships returned by SpatialEngine are rendered.
 ============================================================ */
 
+/* ============================================================
+   SELECT SOURCE PARENT
+
+   MODE:
+       SOURCE → TARGET
+
+   FLOW:
+       User clicks SOURCE polygon on map
+               ↓
+       Source becomes PARENT
+               ↓
+       Resolve related TARGETS
+               ↓
+       Targets become CHILDREN
+               ↓
+       Child polygons may be highlighted on map
+               ↓
+       Child polygons are NON-INTERACTIVE
+               ↓
+       UIController.openParentPanel()
+               ↓
+       Further navigation happens inside panel only:
+
+           CHILD
+             ↓
+           CASES
+             ↓
+           CASE DETAILS
+             ↓
+           FIELD DETAILS
+
+   IMPORTANT
+   ------------------------------------------------------------
+
+   GIS interaction ends after PARENT selection.
+
+   CHILD selection is handled by the UI panel.
+
+============================================================ */
+
 Renderer.selectSource =
     function (
         source
     ) {
 
-        const Spatial =
-            Renderer.getSpatialEngine();
 
+        const Spatial =
+            Renderer
+                .getSpatialEngine();
+
+
+        /* ====================================================
+           VALIDATE
+        ==================================================== */
 
         if (
             !Spatial ||
@@ -5462,9 +5508,9 @@ Renderer.selectSource =
         }
 
 
-        /* ========================================================
+        /* ====================================================
            RESOLVE SOURCE ID
-        ======================================================== */
+        ==================================================== */
 
         const sourceId =
 
@@ -5482,19 +5528,27 @@ Renderer.selectSource =
         }
 
 
-        /* ========================================================
+        /* ====================================================
            CLEAR PREVIOUS SOURCE DRILL-DOWN
 
-           Parent Source layer remains intact.
-        ======================================================== */
+           IMPORTANT:
+
+           Parent SOURCE layer remains available.
+
+           This clears only the previous selected-parent
+           drill-down state / child rendering.
+        ==================================================== */
 
         Renderer
             .clearSourceDrillDown();
 
 
-        /* ========================================================
-           RESET CURRENT STATE
-        ======================================================== */
+        /* ====================================================
+           RESET CURRENT RENDERER STATE
+
+           New parent means everything below the previous
+           parent is invalid.
+        ==================================================== */
 
         Renderer.selectedSourceId =
             sourceId;
@@ -5504,13 +5558,19 @@ Renderer.selectSource =
             null;
 
 
+        Renderer.currentTargets =
+            [];
+
+
         Renderer.currentCases =
             [];
 
 
-        /* ========================================================
-           HIGHLIGHT SELECTED SOURCE
-        ======================================================== */
+        /* ====================================================
+           HIGHLIGHT SELECTED SOURCE PARENT
+
+           This is the GIS-selected PARENT.
+        ==================================================== */
 
         Renderer.renderSource(
 
@@ -5527,9 +5587,9 @@ Renderer.selectSource =
         );
 
 
-        /* ========================================================
+        /* ====================================================
            GET SOURCE → TARGET RELATIONSHIPS
-        ======================================================== */
+        ==================================================== */
 
         const relations =
 
@@ -5541,9 +5601,9 @@ Renderer.selectSource =
             [];
 
 
-        /* ========================================================
+        /* ====================================================
            GET MASTER TARGET LIST
-        ======================================================== */
+        ==================================================== */
 
         const allTargets =
 
@@ -5553,9 +5613,18 @@ Renderer.selectSource =
             [];
 
 
-        /* ========================================================
-           BUILD RELATED TARGET OBJECTS
-        ======================================================== */
+        /* ====================================================
+           BUILD CHILD TARGET OBJECTS
+
+           Each resulting target becomes a CHILD in the
+           new UI architecture.
+
+           Relationship offenceCount is preserved because
+           CHILD cards can display:
+
+               Madarihat Range       12 cases
+               Jaldapara Range        7 cases
+        ==================================================== */
 
         const targets =
 
@@ -5563,7 +5632,10 @@ Renderer.selectSource =
 
                 .map(
 
-                    relation => {
+                    function (
+                        relation
+                    ) {
+
 
                         const relationKey =
 
@@ -5588,11 +5660,18 @@ Renderer.selectSource =
                         }
 
 
+                        /* ====================================
+                           FIND CANONICAL TARGET
+                        ==================================== */
+
                         const target =
 
                             allTargets.find(
 
-                                item => {
+                                function (
+                                    item
+                                ) {
+
 
                                     const itemKey =
 
@@ -5613,6 +5692,7 @@ Renderer.selectSource =
 
                                     );
 
+
                                 }
 
                             );
@@ -5627,9 +5707,14 @@ Renderer.selectSource =
                         }
 
 
+                        /* ====================================
+                           BUILD CHILD OBJECT
+                        ==================================== */
+
                         return {
 
                             ...target,
+
 
                             key:
 
@@ -5643,6 +5728,7 @@ Renderer.selectSource =
 
                                 target.name,
 
+
                             offenceCount:
 
                                 relation.offenceCount ??
@@ -5651,25 +5737,56 @@ Renderer.selectSource =
 
                                 0,
 
-                            relation
+
+                            /*
+                             * Keep complete relationship.
+                             *
+                             * This may be required later when
+                             * CHILD selection resolves cases.
+                             */
+
+                            relation:
+                                relation
 
                         };
+
 
                     }
 
                 )
 
-                .filter(Boolean)
+
+                /* ============================================
+                   REMOVE UNRESOLVED TARGET OBJECTS
+                ============================================ */
+
+                .filter(
+                    Boolean
+                )
+
+
+                /* ============================================
+                   KEEP GIS-RESOLVED CHILDREN
+
+                   Child GIS geometry is still useful for:
+
+                       polygon highlight
+                       visual relationship
+
+                   But child polygon interaction is disabled
+                   below.
+                ============================================ */
 
                 .filter(
 
-                    target => {
+                    function (
+                        target
+                    ) {
+
 
                         if (
-
                             target.gisResolved !==
                             true
-
                         ) {
 
                             return false;
@@ -5695,14 +5812,15 @@ Renderer.selectSource =
                                 targetKey
                             );
 
+
                     }
 
                 );
 
 
-        /* ========================================================
-           RELATED TARGET HEAT SCALE
-        ======================================================== */
+        /* ====================================================
+           RELATED CHILD HEAT SCALE
+        ==================================================== */
 
         const maxCount =
 
@@ -5712,32 +5830,68 @@ Renderer.selectSource =
 
                 ...targets.map(
 
-                    target =>
+                    function (
+                        target
+                    ) {
 
-                        target.offenceCount ||
+                        return (
 
-                        0
+                            target.offenceCount ||
+
+                            0
+
+                        );
+
+                    }
 
                 )
 
             );
 
 
-        /* ========================================================
-           STORE CURRENT TARGETS
-        ======================================================== */
+        /* ====================================================
+           STORE CURRENT CHILD TARGETS
+
+           Renderer compatibility:
+
+               currentTargets
+
+           New UIController terminology:
+
+               children
+        ==================================================== */
 
         Renderer.currentTargets =
             targets;
 
 
-        /* ========================================================
-           RENDER RELATED TARGETS
-        ======================================================== */
+        /* ====================================================
+           RENDER CHILD TARGET POLYGONS
+
+           IMPORTANT — CURRENT DESIGN:
+
+           Child polygons may remain visually highlighted.
+
+           They MUST NOT become the next GIS interaction.
+
+           CHILD selection happens from the panel.
+
+           Therefore:
+
+               interactive: false
+
+           is passed explicitly.
+
+           renderTarget() should respect this flag when
+           creating/updating its Leaflet layer.
+        ==================================================== */
 
         targets.forEach(
 
-            target => {
+            function (
+                target
+            ) {
+
 
                 Renderer.renderTarget(
 
@@ -5747,35 +5901,59 @@ Renderer.selectSource =
 
                     {
                         role:
-                            "RELATED"
+                            "RELATED",
+
+                        interactive:
+                            false
                     }
 
                 );
+
 
             }
 
         );
 
 
-        /* ========================================================
-           UPDATE SOURCE MODE PANEL
+        /* ====================================================
+           UPDATE NEW PARENT / CHILD PANEL
 
-           Synchronize Renderer → UIController.
-        ======================================================== */
+           SOURCE → TARGET
+
+               parent:
+                   source village
+
+               children:
+                   related target ranges
+
+           This replaces the OLD:
+
+               openSourceModePanel()
+
+           architecture.
+        ==================================================== */
 
         if (
 
             GG
                 ?.Offence
                 ?.UIController
-                ?.openSourceModePanel
+                ?.openParentPanel &&
+
+            typeof
+            GG
+                .Offence
+                .UIController
+                .openParentPanel ===
+                "function"
 
         ) {
+
 
             GG
                 .Offence
                 .UIController
-                .openSourceModePanel(
+                .openParentPanel(
 
                     source,
 
@@ -5783,16 +5961,29 @@ Renderer.selectSource =
 
                 );
 
+
+        }
+
+        else {
+
+
+            console.error(
+
+                "❌ OffenceUIController.openParentPanel() unavailable"
+
+            );
+
+
         }
 
 
-        /* ========================================================
-           STATUS
-        ======================================================== */
+        /* ====================================================
+           STATUS / DEBUG
+        ==================================================== */
 
         console.log(
 
-            "🏡 Source selected:",
+            "🏡 Source parent selected:",
 
             source.name,
 
@@ -5800,23 +5991,39 @@ Renderer.selectSource =
 
             targets.length,
 
-            "related target ranges",
+            "target children",
 
             targets.map(
 
-                target =>
+                function (
+                    target
+                ) {
 
-                    target.name
+                    return {
+
+                        name:
+                            target.name,
+
+                        offenceCount:
+                            target.offenceCount
+
+                    };
+
+                }
 
             )
 
         );
 
 
+        /* ====================================================
+           RETURN CHILDREN
+        ==================================================== */
+
         return targets;
 
-    };
 
+    };
 
 /* ============================================================
    TARGET MODE
