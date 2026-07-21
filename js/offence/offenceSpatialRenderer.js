@@ -5442,370 +5442,380 @@ Renderer.handleTargetClick =
 ============================================================ */
 
 Renderer.selectSource =
-  function (
-    source
-  ) {
-
-    const Spatial =
-      Renderer
-        .getSpatialEngine();
-
-
-    if (
-      !Spatial ||
-      !source ||
-      Renderer.mode !==
-        "SOURCE"
+    function (
+        source
     ) {
 
-      return [];
-
-    }
-
-
-    /* ========================================================
-       RESOLVE SOURCE ID
-    ======================================================== */
-
-    const sourceId =
-
-      source.canonicalId
-
-      ||
-
-      source.id;
+        const Spatial =
+            Renderer.getSpatialEngine();
 
 
-    if (
-      !sourceId
-    ) {
+        if (
+            !Spatial ||
+            !source ||
+            Renderer.mode !==
+                "SOURCE"
+        ) {
 
-      return [];
+            return [];
 
-    }
-
-
-    /* ========================================================
-       CLEAR ONLY PREVIOUS SOURCE DRILL-DOWN
-
-       IMPORTANT:
-
-       parentSourceLayer is NOT cleared.
-
-       Therefore all Source polygons remain:
-       - visible
-       - hoverable
-       - tooltip-enabled
-       - clickable
-    ======================================================== */
-
-    Renderer
-      .clearSourceDrillDown();
+        }
 
 
-    /* ========================================================
-       SET NEW SELECTED SOURCE
-    ======================================================== */
+        /* ========================================================
+           RESOLVE SOURCE ID
+        ======================================================== */
 
-    Renderer.selectedSourceId =
-      sourceId;
+        const sourceId =
 
+            source.canonicalId ||
 
-    Renderer.selectedTargetKey =
-      null;
-
-
-    Renderer.currentCases =
-      [];
+            source.id;
 
 
-    /* ========================================================
-       RENDER VISUAL SOURCE SELECTION
+        if (
+            !sourceId
+        ) {
 
-       SELECTED role is non-interactive.
-    ======================================================== */
+            return [];
 
-    Renderer.renderSource(
-
-      source,
-
-      source.offenceCount ||
-      1,
-
-      {
-        role:
-          "SELECTED"
-      }
-
-    );
+        }
 
 
-    /* ========================================================
-       GET ALL TARGET RELATIONSHIPS FOR SOURCE
-    ======================================================== */
+        /* ========================================================
+           CLEAR PREVIOUS SOURCE DRILL-DOWN
 
-    const relations =
+           Parent Source layer remains intact.
+        ======================================================== */
 
-      Spatial
-        .getTargetsForSource?.(
-          sourceId
-        )
-
-      ||
-
-      [];
+        Renderer
+            .clearSourceDrillDown();
 
 
-    /* ========================================================
-       GET MASTER TARGET LIST
-    ======================================================== */
+        /* ========================================================
+           RESET CURRENT STATE
+        ======================================================== */
 
-    const allTargets =
-
-      Spatial
-        .getTargetRanges?.()
-
-      ||
-
-      [];
+        Renderer.selectedSourceId =
+            sourceId;
 
 
-    /* ========================================================
-       CONVERT RELATIONSHIPS INTO TARGET OBJECTS
-
-       Each relationship can represent a different Target.
-
-       No one-to-one assumption is made.
-    ======================================================== */
-
-    const targets =
-
-      relations
-
-        .map(
-
-          relation => {
-
-            const relationKey =
-              Renderer
-                .normalizeText(
-
-                  relation.targetKey
-
-                  ||
-
-                  relation.targetName
-
-                  ||
-
-                  relation.name
-
-                );
+        Renderer.selectedTargetKey =
+            null;
 
 
-            if (
-              !relationKey
-            ) {
+        Renderer.currentCases =
+            [];
 
-              return null;
 
+        /* ========================================================
+           HIGHLIGHT SELECTED SOURCE
+        ======================================================== */
+
+        Renderer.renderSource(
+
+            source,
+
+            source.offenceCount ||
+                1,
+
+            {
+                role:
+                    "SELECTED"
             }
-
-
-            const target =
-
-              allTargets.find(
-
-                item => {
-
-                  const itemKey =
-                    Renderer
-                      .normalizeText(
-
-                        item.cleanName
-
-                        ||
-
-                        item.name
-
-                      );
-
-
-                  return (
-                    itemKey ===
-                    relationKey
-                  );
-
-                }
-
-              );
-
-
-            if (
-              !target
-            ) {
-
-              return null;
-
-            }
-
-
-            return {
-
-              ...target,
-
-
-              offenceCount:
-
-                relation.offenceCount
-
-                ??
-
-                target.offenceCount
-
-                ??
-
-                0,
-
-
-              relation:
-                relation
-
-            };
-
-          }
-
-        )
-
-        .filter(
-          Boolean
-        )
-
-        .filter(
-
-          target => {
-
-            if (
-              target.gisResolved !==
-              true
-            ) {
-
-              return false;
-
-            }
-
-
-            const targetKey =
-              Renderer
-                .normalizeText(
-
-                  target.cleanName
-
-                  ||
-
-                  target.name
-
-                );
-
-
-            return Renderer
-              .rangeFeatureIndex
-              .has(
-                targetKey
-              );
-
-          }
 
         );
 
 
-    /* ========================================================
-       CALCULATE RELATED TARGET HEAT SCALE
-    ======================================================== */
+        /* ========================================================
+           GET SOURCE → TARGET RELATIONSHIPS
+        ======================================================== */
 
-    const maxCount =
-      Math.max(
+        const relations =
 
-        1,
+            Spatial
+                .getTargetsForSource?.(
+                    sourceId
+                ) ||
 
-        ...targets.map(
-
-          target =>
-
-            target.offenceCount
-
-            ||
-
-            0
-
-        )
-
-      );
+            [];
 
 
-    /* ========================================================
-       STORE CURRENT RELATED TARGETS
-    ======================================================== */
+        /* ========================================================
+           GET MASTER TARGET LIST
+        ======================================================== */
 
-    Renderer.currentTargets =
-      targets;
+        const allTargets =
+
+            Spatial
+                .getTargetRanges?.() ||
+
+            [];
 
 
-    /* ========================================================
-       RENDER ALL RELATED TARGETS
+        /* ========================================================
+           BUILD RELATED TARGET OBJECTS
+        ======================================================== */
 
-       Every relationship target is rendered into:
+        const targets =
 
-       relatedTargetLayer
+            relations
 
-       Parent Sources remain untouched.
-    ======================================================== */
+                .map(
 
-    targets.forEach(
+                    relation => {
 
-      target => {
+                        const relationKey =
 
-        Renderer.renderTarget(
+                            Renderer
+                                .normalizeText(
 
-          target,
+                                    relation.targetKey ||
 
-          maxCount,
+                                    relation.targetName ||
 
-          {
-            role:
-              "RELATED"
-          }
+                                    relation.name
+
+                                );
+
+
+                        if (
+                            !relationKey
+                        ) {
+
+                            return null;
+
+                        }
+
+
+                        const target =
+
+                            allTargets.find(
+
+                                item => {
+
+                                    const itemKey =
+
+                                        Renderer
+                                            .normalizeText(
+
+                                                item.cleanName ||
+
+                                                item.name
+
+                                            );
+
+
+                                    return (
+
+                                        itemKey ===
+                                        relationKey
+
+                                    );
+
+                                }
+
+                            );
+
+
+                        if (
+                            !target
+                        ) {
+
+                            return null;
+
+                        }
+
+
+                        return {
+
+                            ...target,
+
+                            key:
+
+                                relation.targetKey ||
+
+                                target.key ||
+
+                                target.id ||
+
+                                target.cleanName ||
+
+                                target.name,
+
+                            offenceCount:
+
+                                relation.offenceCount ??
+
+                                target.offenceCount ??
+
+                                0,
+
+                            relation
+
+                        };
+
+                    }
+
+                )
+
+                .filter(Boolean)
+
+                .filter(
+
+                    target => {
+
+                        if (
+
+                            target.gisResolved !==
+                            true
+
+                        ) {
+
+                            return false;
+
+                        }
+
+
+                        const targetKey =
+
+                            Renderer
+                                .normalizeText(
+
+                                    target.cleanName ||
+
+                                    target.name
+
+                                );
+
+
+                        return Renderer
+                            .rangeFeatureIndex
+                            .has(
+                                targetKey
+                            );
+
+                    }
+
+                );
+
+
+        /* ========================================================
+           RELATED TARGET HEAT SCALE
+        ======================================================== */
+
+        const maxCount =
+
+            Math.max(
+
+                1,
+
+                ...targets.map(
+
+                    target =>
+
+                        target.offenceCount ||
+
+                        0
+
+                )
+
+            );
+
+
+        /* ========================================================
+           STORE CURRENT TARGETS
+        ======================================================== */
+
+        Renderer.currentTargets =
+            targets;
+
+
+        /* ========================================================
+           RENDER RELATED TARGETS
+        ======================================================== */
+
+        targets.forEach(
+
+            target => {
+
+                Renderer.renderTarget(
+
+                    target,
+
+                    maxCount,
+
+                    {
+                        role:
+                            "RELATED"
+                    }
+
+                );
+
+            }
 
         );
 
-      }
 
-    );
+        /* ========================================================
+           UPDATE SOURCE MODE PANEL
+
+           Synchronize Renderer → UIController.
+        ======================================================== */
+
+        if (
+
+            GG
+                ?.Offence
+                ?.UIController
+                ?.openSourceModePanel
+
+        ) {
+
+            GG
+                .Offence
+                .UIController
+                .openSourceModePanel(
+
+                    source,
+
+                    Renderer.currentTargets
+
+                );
+
+        }
 
 
-    console.log(
+        /* ========================================================
+           STATUS
+        ======================================================== */
 
-      "🏡 Source selected:",
+        console.log(
 
-      source.name,
+            "🏡 Source selected:",
 
-      "→",
+            source.name,
 
-      targets.length,
+            "→",
 
-      "related target ranges",
+            targets.length,
 
-      targets.map(
-        target =>
-          target.name
-      )
+            "related target ranges",
 
-    );
+            targets.map(
+
+                target =>
+
+                    target.name
+
+            )
+
+        );
 
 
-    return targets;
+        return targets;
 
-  };
+    };
 
 
 /* ============================================================
