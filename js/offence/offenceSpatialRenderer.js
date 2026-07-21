@@ -3781,6 +3781,194 @@ Renderer.renderTarget =
 
   };
 
+
+   /* ============================================================
+   🔥 HARD RESET LEAFLET LAYER GROUPS
+
+   USE ONLY WHEN SWITCHING / REACTIVATING PARENT MODE
+
+   SOURCE ↔ TARGET
+
+   PURPOSE
+   ------------------------------------------------------------
+   Completely destroys the old Leaflet LayerGroups and creates
+   fresh groups.
+
+   This is stronger than:
+
+   layerGroup.clearLayers()
+
+   because the LayerGroup objects themselves are also removed
+   from the map and discarded.
+============================================================ */
+
+Renderer.hardResetLayerGroups =
+  function () {
+
+    const map =
+      Renderer.getMap();
+
+
+    if (
+      !map
+    ) {
+
+      return false;
+
+    }
+
+
+    /* ========================================================
+       REMOVE OLD GROUPS FROM MAP
+    ======================================================== */
+
+    [
+      Renderer.parentSourceLayer,
+      Renderer.parentTargetLayer,
+      Renderer.relatedSourceLayer,
+      Renderer.relatedTargetLayer,
+      Renderer.selectionLayer
+    ]
+    .forEach(
+
+      layerGroup => {
+
+        if (
+          layerGroup &&
+          map.hasLayer(
+            layerGroup
+          )
+        ) {
+
+          map.removeLayer(
+            layerGroup
+          );
+
+        }
+
+      }
+
+    );
+
+
+    /* ========================================================
+       CLEAR OLD GROUP CONTENT
+    ======================================================== */
+
+    Renderer
+      .parentSourceLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .parentTargetLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .relatedSourceLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .relatedTargetLayer
+      ?.clearLayers?.();
+
+
+    Renderer
+      .selectionLayer
+      ?.clearLayers?.();
+
+
+    /* ========================================================
+       DISCARD OLD LAYER GROUP REFERENCES
+    ======================================================== */
+
+    Renderer.parentSourceLayer =
+      null;
+
+
+    Renderer.parentTargetLayer =
+      null;
+
+
+    Renderer.relatedSourceLayer =
+      null;
+
+
+    Renderer.relatedTargetLayer =
+      null;
+
+
+    Renderer.selectionLayer =
+      null;
+
+
+    /* ========================================================
+       CLEAR RENDERED GEOJSON REFERENCES
+    ======================================================== */
+
+    Renderer
+      .renderedParentSourceLayers
+      .clear();
+
+
+    Renderer
+      .renderedParentTargetLayers
+      .clear();
+
+
+    Renderer
+      .renderedRelatedSourceLayers
+      .clear();
+
+
+    Renderer
+      .renderedRelatedTargetLayers
+      .clear();
+
+
+    /* ========================================================
+       RESET SELECTION / DATA STATE
+    ======================================================== */
+
+    Renderer.selectedSourceId =
+      null;
+
+
+    Renderer.selectedTargetKey =
+      null;
+
+
+    Renderer.currentSources =
+      [];
+
+
+    Renderer.currentTargets =
+      [];
+
+
+    Renderer.currentCases =
+      [];
+
+
+    /* ========================================================
+       CREATE COMPLETELY FRESH LAYER GROUPS
+    ======================================================== */
+
+    const created =
+      Renderer.createLayers();
+
+
+    console.log(
+      "🔥 Offence Leaflet layer groups hard reset",
+      Renderer.getLayerState?.()
+    );
+
+
+    return created;
+
+  };
  /* ============================================================
    🏡 RENDER ALL PARENT SOURCE VILLAGES
 
@@ -3841,11 +4029,63 @@ Renderer.renderTarget =
    Source polygons remain interactive.
 ============================================================ */
 
+/* ============================================================
+   🏡 RENDER ALL PARENT SOURCE VILLAGES
+
+   USED BY
+   ------------------------------------------------------------
+   OFFENCE → SOURCE
+
+   FLOW
+   ------------------------------------------------------------
+
+   SOURCE button
+        ↓
+   hardResetLayerGroups()
+        ↓
+   Remove old Leaflet LayerGroups
+        ↓
+   Discard old LayerGroup references
+        ↓
+   Clear rendered layer indexes
+        ↓
+   Create fresh five-layer architecture
+        ↓
+   mode = SOURCE
+        ↓
+   Rebuild Village Feature Index
+        ↓
+   Get all Source Villages
+        ↓
+   Render fresh Parent Source polygons
+
+   IMPORTANT
+   ------------------------------------------------------------
+
+   This function is used when activating SOURCE mode.
+
+   It performs a FULL Leaflet layer lifecycle reset.
+
+   It is NOT used when switching:
+
+   Source A
+      ↓
+   Source B
+
+   That flow is handled by:
+
+   selectSource()
+
+   which must clear only Source drill-down layers while
+   preserving all Parent Source polygons.
+
+============================================================ */
+
 Renderer.renderAllSources =
   function () {
 
     /* ========================================================
-       GET DEPENDENCIES
+       GET SPATIAL ENGINE
     ======================================================== */
 
     const Spatial =
@@ -3853,9 +4093,18 @@ Renderer.renderAllSources =
         .getSpatialEngine();
 
 
-    const map =
-      Renderer.getMap();
+    /* ========================================================
+       GET MAP
+    ======================================================== */
 
+    const map =
+      Renderer
+        .getMap();
+
+
+    /* ========================================================
+       VALIDATE DEPENDENCIES
+    ======================================================== */
 
     if (
       !Spatial ||
@@ -3873,12 +4122,21 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       ENSURE FIVE-LAYER ARCHITECTURE EXISTS
+       VALIDATE SPATIAL ENGINE READINESS
+
+       SOURCE polygons should only be rendered when the
+       SpatialEngine has completed its build.
     ======================================================== */
 
     if (
-      !Renderer.createLayers()
+      Spatial.ready !==
+      true
     ) {
+
+      console.warn(
+        "⚠ OffenceSpatialRenderer: SpatialEngine not ready for SOURCE mode"
+      );
+
 
       return [];
 
@@ -3886,72 +4144,74 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       HARD CLEAR ALL EXISTING LEAFLET POLYGONS
+       HARD RESET LEAFLET LAYER GROUPS
 
        IMPORTANT:
 
-       Do not depend only on Renderer.clear() during a mode
-       switch.
+       This replaces the previous pattern:
 
-       We explicitly destroy every existing offence GeoJSON
-       polygon so Leaflet Canvas creates fresh interactive
-       targets for the new active mode.
+       createLayers()
+           ↓
+       clearLayers()
+
+       with:
+
+       remove old LayerGroups
+           ↓
+       discard old references
+           ↓
+       clear rendered indexes
+           ↓
+       create completely fresh LayerGroups
+
+       This is required to recover Leaflet Canvas interaction
+       correctly after:
+
+       SOURCE
+          ↓
+       TARGET
+          ↓
+       SOURCE
+
     ======================================================== */
 
-    Renderer
-      .parentSourceLayer
-      ?.clearLayers?.();
+    if (
+      !Renderer
+        .hardResetLayerGroups()
+    ) {
+
+      console.warn(
+        "⚠ OffenceSpatialRenderer: SOURCE hard layer reset failed"
+      );
 
 
-    Renderer
-      .parentTargetLayer
-      ?.clearLayers?.();
+      return [];
 
-
-    Renderer
-      .relatedSourceLayer
-      ?.clearLayers?.();
-
-
-    Renderer
-      .relatedTargetLayer
-      ?.clearLayers?.();
-
-
-    Renderer
-      .selectionLayer
-      ?.clearLayers?.();
+    }
 
 
     /* ========================================================
-       CLEAR ALL RENDERED LAYER INDEXES
+       ACTIVATE SOURCE MODE
 
-       The old GeoJSON objects no longer exist on the map,
-       therefore their references must also be removed.
+       IMPORTANT:
+
+       Set mode BEFORE creating Source polygons.
+
+       All newly-created click handlers will therefore operate
+       against SOURCE mode.
     ======================================================== */
 
-    Renderer
-      .renderedParentSourceLayers
-      .clear();
-
-
-    Renderer
-      .renderedParentTargetLayers
-      .clear();
-
-
-    Renderer
-      .renderedRelatedSourceLayers
-      .clear();
-
-
-    Renderer
-      .renderedRelatedTargetLayers
-      .clear();
+    Renderer.mode =
+      "SOURCE";
 
 
     /* ========================================================
-       RESET SELECTION STATE
+       RESET SOURCE MODE STATE
+
+       hardResetLayerGroups() should already reset these.
+
+       They are explicitly reset here as a defensive guarantee
+       for SOURCE mode activation.
     ======================================================== */
 
     Renderer.selectedSourceId =
@@ -3961,10 +4221,6 @@ Renderer.renderAllSources =
     Renderer.selectedTargetKey =
       null;
 
-
-    /* ========================================================
-       RESET CURRENT DATA
-    ======================================================== */
 
     Renderer.currentSources =
       [];
@@ -3979,30 +4235,42 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       ACTIVATE SOURCE MODE
-
-       Do this BEFORE rendering polygons.
-
-       Every newly-created parent Source click handler will now
-       operate against the correct active mode.
-    ======================================================== */
-
-    Renderer.mode =
-      "SOURCE";
-
-
-    /* ========================================================
        REBUILD VILLAGE FEATURE INDEX
 
-       Ensures the latest village boundary data is used.
+       This ensures the renderer uses the currently available
+       village boundary GeoJSON.
+
+       Canonical Source ID format:
+
+       VILLAGE_CODE::CLEAN_VILLAGE_NAME
+
+       Example:
+
+       307248::BANCHUKAMARI
+
     ======================================================== */
 
-    Renderer
-      .buildVillageFeatureIndex();
+    const villageFeatureCount =
+      Renderer
+        .buildVillageFeatureIndex();
+
+
+    if (
+      !villageFeatureCount
+    ) {
+
+      console.warn(
+        "⚠ OffenceSpatialRenderer: No village GIS features available"
+      );
+
+
+      return [];
+
+    }
 
 
     /* ========================================================
-       GET ALL SPATIAL SOURCE VILLAGES
+       GET ALL SOURCE VILLAGES FROM SPATIAL ENGINE
     ======================================================== */
 
     const allSources =
@@ -4016,10 +4284,36 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
+       VALIDATE SOURCE DATA
+    ======================================================== */
+
+    if (
+      !Array.isArray(
+        allSources
+      ) ||
+      !allSources.length
+    ) {
+
+      console.warn(
+        "⚠ OffenceSpatialRenderer: No Source villages available"
+      );
+
+
+      return [];
+
+    }
+
+
+    /* ========================================================
        KEEP ONLY GIS-RESOLVED SOURCE VILLAGES
 
-       A Source is renderable only when its canonical ID exists
-       in the village GIS feature index.
+       SpatialEngine may contain Source villages that cannot
+       currently be matched to a village boundary polygon.
+
+       Only render Sources whose canonical ID exists in:
+
+       Renderer.villageFeatureIndex
+
     ======================================================== */
 
     const sources =
@@ -4027,6 +4321,15 @@ Renderer.renderAllSources =
       allSources.filter(
 
         source => {
+
+          if (
+            !source
+          ) {
+
+            return false;
+
+          }
+
 
           const sourceId =
 
@@ -4058,7 +4361,29 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
+       VALIDATE RENDERABLE SOURCES
+    ======================================================== */
+
+    if (
+      !sources.length
+    ) {
+
+      console.warn(
+        "⚠ OffenceSpatialRenderer: No GIS-resolved Source villages"
+      );
+
+
+      return [];
+
+    }
+
+
+    /* ========================================================
        CALCULATE SOURCE HEAT SCALE
+
+       Highest offence count becomes maximum visual intensity.
+
+       Minimum maxCount = 1 prevents division-by-zero.
     ======================================================== */
 
     const maxCount =
@@ -4070,7 +4395,9 @@ Renderer.renderAllSources =
 
           source =>
 
-            source.offenceCount
+            Number(
+              source.offenceCount
+            )
 
             ||
 
@@ -4082,7 +4409,23 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
-       STORE CURRENT PARENT SOURCES
+       STORE CURRENT PARENT SOURCE DATA
+
+       In SOURCE mode:
+
+       currentSources
+           =
+       complete Parent Source collection
+
+       This collection must survive:
+
+       Source A
+           ↓
+       Source B
+           ↓
+       Source C
+
+       Only related Targets should change during drill-down.
     ======================================================== */
 
     Renderer.currentSources =
@@ -4100,14 +4443,20 @@ Renderer.renderAllSources =
     /* ========================================================
        RENDER FRESH PARENT SOURCE POLYGONS
 
-       Every polygon is newly created.
+       role = PARENT
 
-       Therefore Leaflet Canvas should freshly register:
+       Each Source polygon must be created fresh after a mode
+       switch so Leaflet registers fresh interaction handlers:
 
        - mouseover
        - mouseout
        - tooltip
        - click
+
+       Parent Sources are stored in:
+
+       renderedParentSourceLayers
+
     ======================================================== */
 
     sources.forEach(
@@ -4135,26 +4484,90 @@ Renderer.renderAllSources =
 
 
     /* ========================================================
+       VALIDATE RENDER RESULT
+    ======================================================== */
+
+    const renderedCount =
+      Renderer
+        .renderedParentSourceLayers
+        .size;
+
+
+    /* ========================================================
        DIAGNOSTIC
     ======================================================== */
 
     console.log(
 
-      "🚨 Fresh SOURCE parent polygons rendered:",
+      "🚨 SOURCE MODE READY",
 
-      Renderer
-        .renderedParentSourceLayers
-        .size,
+      {
 
-      "| Expected:",
+        mode:
+          Renderer.mode,
 
-      sources.length
+        sourceData:
+          allSources.length,
+
+        gisResolvedSources:
+          sources.length,
+
+        renderedParentSources:
+          renderedCount,
+
+        villageFeatureGroups:
+          Renderer
+            .villageFeatureIndex
+            .size,
+
+        parentSourceLayerOnMap:
+          map.hasLayer(
+            Renderer.parentSourceLayer
+          ),
+
+        relatedTargets:
+          Renderer
+            .renderedRelatedTargetLayers
+            .size,
+
+        selectedSourceId:
+          Renderer.selectedSourceId
+
+      }
 
     );
 
 
     /* ========================================================
-       RETURN RENDERED SOURCE DATA
+       WARN IF RENDER COUNT DOES NOT MATCH
+    ======================================================== */
+
+    if (
+      renderedCount !==
+      sources.length
+    ) {
+
+      console.warn(
+
+        "⚠ SOURCE render count mismatch",
+
+        {
+
+          expected:
+            sources.length,
+
+          rendered:
+            renderedCount
+
+        }
+
+      );
+
+    }
+
+
+    /* ========================================================
+       RETURN PARENT SOURCE DATA
     ======================================================== */
 
     return sources;
