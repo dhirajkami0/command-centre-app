@@ -1631,7 +1631,203 @@ CONFIG: {
 
 
 
+/* ========================================
+   CASE RESULTS HEADER
+======================================== */
 
+.gg-offence-case-results-header{
+
+    padding:10px 14px;
+
+    border-top:1px solid rgba(0,0,0,.08);
+
+    border-bottom:1px solid rgba(0,0,0,.08);
+
+    background:#f7f8fa;
+
+    font-size:12px;
+
+    font-weight:800;
+
+    letter-spacing:.4px;
+
+    color:#46515c;
+
+}
+
+
+
+/* ========================================
+   CASE RESULTS CONTAINER
+======================================== */
+
+#gg-offence-case-results{
+
+    min-height:120px;
+
+    max-height:260px;
+
+    overflow-y:auto;
+
+    padding:10px;
+
+    box-sizing:border-box;
+
+}
+
+
+
+/* ========================================
+   EMPTY MESSAGE
+======================================== */
+
+.gg-offence-empty{
+
+    padding:18px 10px;
+
+    text-align:center;
+
+    color:#7b8794;
+
+    font-size:12px;
+
+    line-height:1.6;
+
+}
+
+
+
+/* ========================================
+   CONTEXT HEADER
+======================================== */
+
+.gg-offence-case-context{
+
+    margin-bottom:10px;
+
+    padding:10px;
+
+    border-radius:10px;
+
+    background:#eef5fb;
+
+    border:1px solid rgba(29,112,184,.18);
+
+}
+
+
+
+.gg-offence-case-context-title{
+
+    font-size:12px;
+
+    font-weight:700;
+
+    color:#234;
+
+    margin-bottom:6px;
+
+}
+
+
+
+.gg-offence-case-count{
+
+    margin-top:6px;
+
+    font-size:11px;
+
+    color:#5a6672;
+
+    font-weight:700;
+
+}
+
+
+
+/* ========================================
+   CASE CARD
+======================================== */
+
+.gg-offence-case-card{
+
+    padding:12px;
+
+    margin-bottom:10px;
+
+    border-radius:12px;
+
+    background:#fff;
+
+    border:1px solid rgba(0,0,0,.08);
+
+    cursor:pointer;
+
+    transition:.15s;
+
+}
+
+
+
+.gg-offence-case-card:hover{
+
+    transform:translateY(-1px);
+
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+
+}
+
+
+
+/* ========================================
+   POR NUMBER
+======================================== */
+
+.gg-offence-case-title{
+
+    font-size:13px;
+
+    font-weight:800;
+
+    color:#1f2933;
+
+}
+
+
+
+/* ========================================
+   DATE / SPECIES
+======================================== */
+
+.gg-offence-case-meta{
+
+    margin-top:6px;
+
+    font-size:11px;
+
+    color:#6d7782;
+
+    line-height:1.5;
+
+}
+
+
+
+/* ========================================
+   VIEW LINK
+======================================== */
+
+.gg-offence-case-view{
+
+    margin-top:8px;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    color:#1565c0;
+
+}
 
                     /* ========================================
                        SHORT DESKTOP SCREENS
@@ -1881,242 +2077,312 @@ CONFIG: {
            CREATE OFFENCE ANALYSIS PANEL
         ==================================================== */
 
-        createPanel:
-            function () {
+createPanel:
+    function () {
 
 
-                /* ============================================
-                   REMOVE EXISTING INSTANCE
-                ============================================ */
+        /* ============================================
+           REMOVE EXISTING INSTANCE
+        ============================================ */
 
-                const existing =
-                    document
-                        .getElementById(
+        const existing =
+            document
+                .getElementById(
 
-                            UIController
-                                .CONFIG
-                                .PANEL_ID
-
-                        );
-
-
-                if (
-                    existing
-                ) {
-
-                    existing
-                        .remove();
-
-                }
-
-
-
-                /* ============================================
-                   CREATE PANEL
-                ============================================ */
-
-                const panel =
-                    document
-                        .createElement(
-                            "div"
-                        );
-
-
-                panel.id =
                     UIController
                         .CONFIG
-                        .PANEL_ID;
+                        .PANEL_ID
 
-
-                panel.setAttribute(
-                    "role",
-                    "dialog"
                 );
 
 
-                panel.setAttribute(
-                    "aria-label",
-                    "Offence Spatial Analysis"
+        if (
+            existing
+        ) {
+
+            existing
+                .remove();
+
+        }
+
+
+
+        /* ============================================
+           CREATE PANEL
+        ============================================ */
+
+        const panel =
+            document
+                .createElement(
+                    "div"
                 );
 
 
-                panel.setAttribute(
-                    "aria-hidden",
-                    "true"
-                );
+        panel.id =
+            UIController
+                .CONFIG
+                .PANEL_ID;
+
+
+        panel.setAttribute(
+            "role",
+            "dialog"
+        );
+
+
+        panel.setAttribute(
+            "aria-label",
+            "Offence Spatial Analysis"
+        );
+
+
+        panel.setAttribute(
+            "aria-hidden",
+            "true"
+        );
 
 
 
-                /* ============================================
-                   PANEL CONTENT
+        /* ============================================
+           PANEL CONTENT
 
-                   FLOW:
+           FLOW
 
-                   SOURCE
-                       ↓
-                   SpatialRenderer.renderAllSources()
+           SOURCE
+               ↓
+           Render Sources
+               ↓
+           Click Source
+               ↓
+           Render Related Targets
+               ↓
+           Click Target
+               ↓
+           Show Matching Cases
 
-                   TARGET
-                       ↓
-                   SpatialRenderer.renderAllTargets()
+           TARGET
+               ↓
+           Render Targets
+               ↓
+           Click Target
+               ↓
+           Render Related Sources
+               ↓
+           Click Source
+               ↓
+           Show Matching Cases
+        ============================================ */
 
-                   CLEAR
-                       ↓
-                   SpatialRenderer.clear()
-                ============================================ */
+        panel.innerHTML =
+            `
 
-                panel.innerHTML =
-                    `
+                <!-- =======================================
+                     HEADER
+                ======================================== -->
 
-                        <div
+                <div
+                    class="
+                        gg-offence-panel-header
+                    "
+                >
+
+                    <div
+                        class="
+                            gg-offence-panel-title
+                        "
+                    >
+
+                        <span
+                            aria-hidden="true"
+                        >
+                            🚨
+                        </span>
+
+                        <span>
+                            OFFENCE ANALYSIS
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
+                        type="button"
+                        title="Close Offence Analysis"
+                        aria-label="Close Offence Analysis"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+
+                <!-- =======================================
+                     STATUS
+                ======================================== -->
+
+                <div
+                    id="${UIController.CONFIG.STATUS_ID}"
+                    data-state="ready"
+                >
+
+                    Open Source or Target spatial analysis.
+
+                </div>
+
+
+
+                <!-- =======================================
+                     ACTION BUTTONS
+                ======================================== -->
+
+                <div
+                    class="
+                        gg-offence-panel-actions
+                    "
+                >
+
+
+                    <button
+                        id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
+                        class="
+                            gg-offence-action-button
+                        "
+                        type="button"
+                    >
+
+                        <span
                             class="
-                                gg-offence-panel-header
+                                gg-offence-action-icon
                             "
+                            aria-hidden="true"
                         >
+                            🏡
+                        </span>
 
-                            <div
-                                class="
-                                    gg-offence-panel-title
-                                "
-                            >
+                        <span>
 
-                                <span
-                                    aria-hidden="true"
-                                >
-                                    🚨
-                                </span>
+                            SOURCE
 
-                                <span>
-                                    OFFENCE ANALYSIS
-                                </span>
+                        </span>
 
-                            </div>
-
-
-                            <button
-                                id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
-                                type="button"
-                                title="Close Offence Analysis"
-                                aria-label="Close Offence Analysis"
-                            >
-                                ×
-                            </button>
-
-                        </div>
+                    </button>
 
 
 
-                        <div
-                            id="${UIController.CONFIG.STATUS_ID}"
-                            data-state="ready"
-                        >
-                            Open Source or Target spatial analysis.
-                        </div>
+                    <button
+                        id="${UIController.CONFIG.TARGET_BUTTON_ID}"
+                        class="
+                            gg-offence-action-button
+                        "
+                        type="button"
+                    >
 
-
-
-                        <div
+                        <span
                             class="
-                                gg-offence-panel-actions
+                                gg-offence-action-icon
                             "
+                            aria-hidden="true"
                         >
+                            🎯
+                        </span>
 
+                        <span>
 
-                            <button
-                                id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
-                                class="
-                                    gg-offence-action-button
-                                "
-                                type="button"
-                            >
+                            TARGET
 
-                                <span
-                                    class="
-                                        gg-offence-action-icon
-                                    "
-                                    aria-hidden="true"
-                                >
-                                    🏡
-                                </span>
+                        </span>
 
-                                <span>
-                                    SOURCE
-                                </span>
-
-                            </button>
+                    </button>
 
 
 
-                            <button
-                                id="${UIController.CONFIG.TARGET_BUTTON_ID}"
-                                class="
-                                    gg-offence-action-button
-                                "
-                                type="button"
-                            >
+                    <button
+                        id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
+                        class="
+                            gg-offence-action-button
+                        "
+                        type="button"
+                    >
 
-                                <span
-                                    class="
-                                        gg-offence-action-icon
-                                    "
-                                    aria-hidden="true"
-                                >
-                                    🎯
-                                </span>
+                        <span
+                            class="
+                                gg-offence-action-icon
+                            "
+                            aria-hidden="true"
+                        >
+                            🧹
+                        </span>
 
-                                <span>
-                                    TARGET
-                                </span>
+                        <span>
 
-                            </button>
+                            CLEAR
 
+                        </span>
 
-
-                            <button
-                                id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
-                                class="
-                                    gg-offence-action-button
-                                "
-                                type="button"
-                            >
-
-                                <span
-                                    class="
-                                        gg-offence-action-icon
-                                    "
-                                    aria-hidden="true"
-                                >
-                                    🧹
-                                </span>
-
-                                <span>
-                                    CLEAR
-                                </span>
-
-                            </button>
+                    </button>
 
 
-                        </div>
-
-                    `;
+                </div>
 
 
 
-                /* ============================================
-                   ADD PANEL TO PAGE
-                ============================================ */
+                <!-- =======================================
+                     CASE RESULTS
+                ======================================== -->
 
-                document
-                    .body
-                    .appendChild(
-                        panel
-                    );
+                <div
+                    class="
+                        gg-offence-case-results-header
+                    "
+                >
+
+                    CASE RESULTS
+
+                </div>
 
 
-                return panel;
+
+                <div
+                    id="gg-offence-case-results"
+                >
+
+                    <div
+                        class="
+                            gg-offence-empty
+                        "
+                    >
+
+                        Select a
+                        <b>Source → Target</b>
+                        or
+                        <b>Target → Source</b>
+                        pair to view matching offence cases.
+
+                    </div>
+
+                </div>
+
+            `;
 
 
-            },
+
+        /* ============================================
+           ADD PANEL TO PAGE
+        ============================================ */
+
+        document
+            .body
+            .appendChild(
+                panel
+            );
+
+
+        return panel;
+
+
+    },
 
 
 
