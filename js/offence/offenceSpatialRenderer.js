@@ -370,26 +370,65 @@ selectedChildId:
       null,
 
 
-    /* ==========================================================
-       SELECTION LAYER
-    ========================================================== */
+/* ==========================================================
+   PARENT / CHILD SELECTION LAYERS
+========================================================== */
 
 
-    /*
-     * Contains the selected Source or Target highlight.
-     *
-     * IMPORTANT:
-     *
-     * This is a visual overlay only.
-     *
-     * pointer-events must be disabled at pane level.
-     *
-     * Otherwise the duplicate selected polygon can sit above
-     * the original parent polygon and intercept mouse events.
-     */
+/*
+ * PARENT SELECTION LAYER
+ *
+ * Contains ONLY the currently selected GIS parent.
+ *
+ * SOURCE mode:
+ *     selected Source Village parent
+ *
+ * TARGET mode:
+ *     selected Target Range parent
+ *
+ * LIFECYCLE:
+ *
+ * Parent A selected
+ *      ↓
+ * Parent A remains highlighted
+ *      ↓
+ * Child A / B / C may be selected
+ *      ↓
+ * Parent A remains highlighted
+ *      ↓
+ * Parent B selected
+ *      ↓
+ * Parent A highlight removed
+ *      ↓
+ * Parent B highlighted
+ */
 
-    selectionLayer:
-      null,
+parentSelectionLayer:
+  null,
+
+
+/*
+ * CHILD SELECTION LAYER
+ *
+ * Contains ONLY the currently selected PANEL child.
+ *
+ * LIFECYCLE:
+ *
+ * Child A selected
+ *      ↓
+ * Child A highlighted
+ *
+ * Child B selected
+ *      ↓
+ * Child A highlight removed
+ *      ↓
+ * Child B highlighted
+ *
+ * This layer NEVER controls the parent highlight.
+ */
+
+childSelectionLayer:
+  null,
 
 
     /* ==========================================================
@@ -1270,17 +1309,33 @@ Renderer.createLayers =
 
 
     /* ========================================================
-       CREATE SELECTION LAYER
-    ======================================================== */
+   CREATE PARENT SELECTION LAYER
 
-    Renderer.selectionLayer =
+   Holds ONLY selected parent highlight.
+======================================================== */
 
-      Renderer.selectionLayer
+Renderer.parentSelectionLayer =
 
-      ||
+  Renderer.parentSelectionLayer
 
-      L.layerGroup();
+  ||
 
+  L.layerGroup();
+
+
+/* ========================================================
+   CREATE CHILD SELECTION LAYER
+
+   Holds ONLY selected PANEL-child highlight.
+======================================================== */
+
+Renderer.childSelectionLayer =
+
+  Renderer.childSelectionLayer
+
+  ||
+
+  L.layerGroup();
 
     /* ========================================================
        ATTACH PARENT SOURCE LAYER TO MAP
@@ -1360,23 +1415,42 @@ Renderer.createLayers =
     }
 
 
-    /* ========================================================
-       ATTACH SELECTION LAYER TO MAP
-    ======================================================== */
+/* ========================================================
+   ATTACH PARENT SELECTION LAYER TO MAP
+======================================================== */
 
-    if (
-      !map.hasLayer(
-        Renderer.selectionLayer
-      )
-    ) {
+if (
+  !map.hasLayer(
+    Renderer.parentSelectionLayer
+  )
+) {
 
-      Renderer
-        .selectionLayer
-        .addTo(
-          map
-        );
+  Renderer
+    .parentSelectionLayer
+    .addTo(
+      map
+    );
 
-    }
+}
+
+
+/* ========================================================
+   ATTACH CHILD SELECTION LAYER TO MAP
+======================================================== */
+
+if (
+  !map.hasLayer(
+    Renderer.childSelectionLayer
+  )
+) {
+
+  Renderer
+    .childSelectionLayer
+    .addTo(
+      map
+    );
+
+}
 
 
     /* ========================================================
@@ -1399,15 +1473,60 @@ Renderer.createLayers =
 Renderer.getLayerState =
   function () {
 
+    /* ========================================================
+       RESOLVE MAP
+    ======================================================== */
+
     const map =
       Renderer.getMap();
 
 
+    /* ========================================================
+       RETURN COMPLETE CURRENT LAYER STATE
+
+       CURRENT LAYER ARCHITECTURE
+       --------------------------------------------------------
+
+       NORMAL PARENT POLYGONS:
+
+           parentSourceLayer
+           parentTargetLayer
+
+
+       RELATED CHILD POLYGONS:
+
+           relatedSourceLayer
+           relatedTargetLayer
+
+
+       SELECTION OVERLAYS:
+
+           parentSelectionLayer
+               ↓
+           currently selected MAP parent
+
+
+           childSelectionLayer
+               ↓
+           currently selected PANEL child
+    ======================================================== */
+
     return {
+
+      /* ======================================================
+         MAP
+      ====================================================== */
 
       mapAvailable:
         !!map,
 
+
+      /* ======================================================
+         PARENT SOURCE LAYER
+
+         SOURCE MODE:
+             all Source Village parent polygons
+      ====================================================== */
 
       parentSourceLayer:
 
@@ -1426,6 +1545,13 @@ Renderer.getLayerState =
         ),
 
 
+      /* ======================================================
+         PARENT TARGET LAYER
+
+         TARGET MODE:
+             all Target Range parent polygons
+      ====================================================== */
+
       parentTargetLayer:
 
         !!Renderer
@@ -1442,6 +1568,15 @@ Renderer.getLayerState =
           )
         ),
 
+
+      /* ======================================================
+         RELATED SOURCE LAYER
+
+         TARGET → SOURCE
+
+         Contains GIS-renderable Source Village children
+         related to the currently selected Target parent.
+      ====================================================== */
 
       relatedSourceLayer:
 
@@ -1460,6 +1595,15 @@ Renderer.getLayerState =
         ),
 
 
+      /* ======================================================
+         RELATED TARGET LAYER
+
+         SOURCE → TARGET
+
+         Contains GIS-renderable Target Range children
+         related to the currently selected Source parent.
+      ====================================================== */
+
       relatedTargetLayer:
 
         !!Renderer
@@ -1477,21 +1621,232 @@ Renderer.getLayerState =
         ),
 
 
-      selectionLayer:
+      /* ======================================================
+         PARENT SELECTION LAYER
+
+         PURPOSE:
+         ------------------------------------------------------
+
+         Holds ONLY the currently selected parent highlight.
+
+         SOURCE mode:
+             selected Source Village
+
+         TARGET mode:
+             selected Target Range
+
+
+         IMPORTANT:
+         ------------------------------------------------------
+
+         Child navigation must NEVER clear this layer.
+
+         It is cleared only when:
+
+             - another parent is selected
+             - mode changes
+             - analysis is cleared
+             - hard reset occurs
+      ====================================================== */
+
+      parentSelectionLayer:
 
         !!Renderer
-          .selectionLayer,
+          .parentSelectionLayer,
 
 
-      selectionOnMap:
+      parentSelectionOnMap:
 
         !!(
           map &&
-          Renderer.selectionLayer &&
+          Renderer.parentSelectionLayer &&
           map.hasLayer(
-            Renderer.selectionLayer
+            Renderer.parentSelectionLayer
           )
-        )
+        ),
+
+
+      /* ======================================================
+         CHILD SELECTION LAYER
+
+         PURPOSE:
+         ------------------------------------------------------
+
+         Holds ONLY the currently selected PANEL-child
+         highlight.
+
+         SOURCE → TARGET:
+             selected Target Range child
+
+         TARGET → SOURCE:
+             selected Source Village child
+
+
+         IMPORTANT:
+         ------------------------------------------------------
+
+         When another child is selected:
+
+             childSelectionLayer.clearLayers()
+
+         Therefore the previous child automatically returns
+         to its underlying heatmap appearance.
+
+         parentSelectionLayer remains untouched.
+      ====================================================== */
+
+      childSelectionLayer:
+
+        !!Renderer
+          .childSelectionLayer,
+
+
+      childSelectionOnMap:
+
+        !!(
+          map &&
+          Renderer.childSelectionLayer &&
+          map.hasLayer(
+            Renderer.childSelectionLayer
+          )
+        ),
+
+
+      /* ======================================================
+         OPTIONAL LAYER COUNTS
+
+         These are useful for console diagnostics.
+
+         Expected selection counts during normal drill-down:
+
+             parentSelectionCount:
+                 normally 0 or 1 GeoJSON group
+
+             childSelectionCount:
+                 normally 0 or 1 GeoJSON group
+
+         NOTE:
+         A GeoJSON group may internally contain multiple
+         polygon features for multipart GIS geometry.
+      ====================================================== */
+
+      parentSelectionCount:
+
+        Renderer
+          .parentSelectionLayer
+          ?.getLayers
+          ?.()
+          ?.length
+
+        ||
+
+        0,
+
+
+      childSelectionCount:
+
+        Renderer
+          .childSelectionLayer
+          ?.getLayers
+          ?.()
+          ?.length
+
+        ||
+
+        0,
+
+
+      /* ======================================================
+         RENDERED INDEX COUNTS
+
+         Useful for verifying that normal heatmap polygons
+         remain available underneath selection overlays.
+      ====================================================== */
+
+      renderedParentSourceCount:
+
+        Renderer
+          .renderedParentSourceLayers
+          ?.size
+
+        ||
+
+        0,
+
+
+      renderedParentTargetCount:
+
+        Renderer
+          .renderedParentTargetLayers
+          ?.size
+
+        ||
+
+        0,
+
+
+      renderedRelatedSourceCount:
+
+        Renderer
+          .renderedRelatedSourceLayers
+          ?.size
+
+        ||
+
+        0,
+
+
+      renderedRelatedTargetCount:
+
+        Renderer
+          .renderedRelatedTargetLayers
+          ?.size
+
+        ||
+
+        0,
+
+
+      /* ======================================================
+         CURRENT SELECTION STATE
+
+         Added here for easier console diagnosis.
+      ====================================================== */
+
+      selectedSourceId:
+
+        Renderer.selectedSourceId
+
+        ||
+
+        null,
+
+
+      selectedTargetKey:
+
+        Renderer.selectedTargetKey
+
+        ||
+
+        null,
+
+
+      selectedChildType:
+
+        Renderer.selectedChildType
+
+        ||
+
+        null,
+
+
+      selectedChildId:
+
+        Renderer.selectedChildId
+
+        ||
+
+        null
 
     };
 
@@ -2703,8 +3058,15 @@ Renderer.clearRelatedTargets =
 Renderer.clearSelection =
   function () {
 
+    /*
+     * PARENT selection only.
+     *
+     * This function must NEVER clear the
+     * currently selected child overlay.
+     */
+
     Renderer
-      .selectionLayer
+      .parentSelectionLayer
       ?.clearLayers?.();
 
   };
@@ -2749,25 +3111,111 @@ Renderer.clearSelection =
 Renderer.clearSourceDrillDown =
   function () {
 
+    /* ========================================================
+       CLEAR PREVIOUS RELATED TARGET CHILDREN
+
+       SOURCE MODE:
+
+       Parent Source A
+           ↓
+       Related Targets A
+
+       Parent Source B clicked
+           ↓
+       Remove Related Targets A
+
+       IMPORTANT:
+       parentSourceLayer remains completely untouched.
+    ======================================================== */
+
     Renderer
       .clearRelatedTargets();
 
+
+    /* ========================================================
+       CLEAR PREVIOUS PARENT SELECTION
+
+       Removes ONLY:
+
+           parentSelectionLayer
+
+       Therefore:
+
+           Parent A highlight
+               ↓
+           removed
+
+       The normal Parent A heatmap polygon remains underneath.
+    ======================================================== */
 
     Renderer
       .clearSelection();
 
 
+    /* ========================================================
+       CLEAR PREVIOUS CHILD SELECTION
+
+       A child belongs to the previously selected parent.
+
+       Therefore when another parent is selected:
+
+           Parent A
+               ↓
+           Child C selected
+               ↓
+           Parent B clicked
+
+       Child C highlight must disappear.
+
+       IMPORTANT:
+
+       clearChildHighlight() touches ONLY:
+
+           childSelectionLayer
+
+       It does NOT touch:
+
+           parentSelectionLayer
+           parentSourceLayer
+           parentTargetLayer
+           relatedSourceLayer
+           relatedTargetLayer
+    ======================================================== */
+
+    Renderer
+      .clearChildHighlight();
+
+
+    /* ========================================================
+       RESET SOURCE PARENT SELECTION STATE
+
+       selectSource() will immediately assign the newly
+       selected Source parent after this function returns.
+    ======================================================== */
+
     Renderer.selectedSourceId =
       null;
 
+
+    /* ========================================================
+       RESET RELATIONSHIP TARGET STATE
+    ======================================================== */
 
     Renderer.selectedTargetKey =
       null;
 
 
+    /* ========================================================
+       RESET CURRENT RELATED TARGET COLLECTION
+    ======================================================== */
+
     Renderer.currentTargets =
       [];
 
+
+    /* ========================================================
+       RESET CURRENT CASE COLLECTION
+    ======================================================== */
 
     Renderer.currentCases =
       [];
@@ -3116,11 +3564,24 @@ Renderer.clearTargetDrillDown =
   function () {
 
     Renderer
-      .clearRelatedSources();
+  .clearRelatedSources();
 
 
-    Renderer
-      .clearSelection();
+/*
+ * Remove previous TARGET parent highlight.
+ */
+
+Renderer
+  .clearSelection();
+
+
+/*
+ * Remove child highlight belonging to
+ * previous TARGET parent.
+ */
+
+Renderer
+  .clearChildHighlight();
 
 
     Renderer.selectedTargetKey =
@@ -3191,12 +3652,28 @@ Renderer.clearDrillDown =
       .clearRelatedSources();
 
 
-    Renderer
-      .clearRelatedTargets();
+Renderer
+  .clearRelatedTargets();
 
 
-    Renderer
-      .clearSelection();
+/*
+ * NEW PARENT SOURCE is being selected.
+ *
+ * Remove previous parent highlight.
+ */
+
+Renderer
+  .clearSelection();
+
+
+/*
+ * Previous child belongs to previous parent.
+ *
+ * Remove child highlight too.
+ */
+
+Renderer
+  .clearChildHighlight();
 
 
     Renderer.selectedSourceId =
@@ -3317,8 +3794,12 @@ Renderer.clear =
       .clearRelatedTargets();
 
 
-    Renderer
-      .clearSelection();
+Renderer
+  .clearSelection();
+
+
+Renderer
+  .clearChildHighlight();
 
 
     /* ========================================================
@@ -3574,6 +4055,25 @@ Renderer.renderSource =
 
     /* ========================================================
        RESOLVE RENDER ROLE
+
+       SUPPORTED ROLES
+       --------------------------------------------------------
+
+       PARENT
+          Main Source polygon in SOURCE mode.
+
+       RELATED
+          Source child polygon in TARGET mode.
+
+       SELECTED
+          Selected PARENT Source highlight.
+          Goes to:
+              parentSelectionLayer
+
+       SELECTED_CHILD
+          Selected CHILD Source highlight.
+          Goes to:
+              childSelectionLayer
     ======================================================== */
 
     const role =
@@ -3588,7 +4088,9 @@ Renderer.renderSource =
     /* ========================================================
        RESOLVE LAYER / PANE / INDEX
 
-       Defaults to PARENT.
+       DEFAULT:
+       --------------------------------------------------------
+       PARENT Source polygon.
     ======================================================== */
 
     let parentLayer =
@@ -3613,9 +4115,11 @@ Renderer.renderSource =
     /* ========================================================
        RELATED SOURCE
 
-       TARGET
-          ↓
-       SOURCE
+       TARGET parent
+           ↓
+       RELATED SOURCE child
+
+       This remains interactive when used for GIS drill-down.
     ======================================================== */
 
     if (
@@ -3645,9 +4149,15 @@ Renderer.renderSource =
 
 
     /* ========================================================
-       SELECTED SOURCE
+       SELECTED PARENT SOURCE
 
-       Visual only.
+       SOURCE parent selected directly from MAP.
+
+       IMPORTANT:
+       --------------------------------------------------------
+       This goes ONLY to parentSelectionLayer.
+
+       Child selection must NEVER clear this layer.
     ======================================================== */
 
     else if (
@@ -3656,7 +4166,7 @@ Renderer.renderSource =
     ) {
 
       parentLayer =
-        Renderer.selectionLayer;
+        Renderer.parentSelectionLayer;
 
 
       paneName =
@@ -3666,13 +4176,93 @@ Renderer.renderSource =
 
 
       /*
-       * Selection polygons are not tracked in the normal
-       * rendered indexes.
+       * Selection overlays are temporary visual overlays.
+       *
+       * They must NOT be registered in normal rendered
+       * polygon indexes.
        */
 
       renderedIndex =
         null;
 
+
+      /*
+       * Selected parent overlay is visual only.
+       *
+       * Original PARENT polygon underneath remains the
+       * interactive GIS polygon.
+       */
+
+      interactive =
+        false;
+
+    }
+
+
+    /* ========================================================
+       SELECTED CHILD SOURCE
+
+       TARGET parent
+           ↓
+       Source child selected from PANEL
+
+       IMPORTANT:
+       --------------------------------------------------------
+       This goes ONLY to childSelectionLayer.
+
+       Therefore:
+
+       Parent A
+           ↓
+       Child A selected
+           ↓
+       Child A highlighted
+
+       Parent A remains highlighted.
+
+       Then:
+
+       Child B selected
+           ↓
+       childSelectionLayer.clearLayers()
+           ↓
+       Child A overlay disappears
+           ↓
+       Child A returns to underlying heatmap appearance
+           ↓
+       Child B highlighted
+
+       parentSelectionLayer remains untouched.
+    ======================================================== */
+
+    else if (
+      role ===
+      "SELECTED_CHILD"
+    ) {
+
+      parentLayer =
+        Renderer.childSelectionLayer;
+
+
+      paneName =
+        Renderer
+          .config
+          .selectionPane;
+
+
+      /*
+       * Child selection overlay is temporary.
+       *
+       * Do not register it in normal rendered indexes.
+       */
+
+      renderedIndex =
+        null;
+
+
+      /*
+       * PANEL-selected child highlight is visual only.
+       */
 
       interactive =
         false;
@@ -3701,6 +4291,28 @@ Renderer.renderSource =
 
 
     /* ========================================================
+       DETERMINE WHETHER THIS IS A SELECTION OVERLAY
+
+       BOTH:
+       --------------------------------------------------------
+       SELECTED
+       SELECTED_CHILD
+
+       must use the selected/highlight visual style.
+    ======================================================== */
+
+    const isSelected =
+
+      role ===
+        "SELECTED"
+
+      ||
+
+      role ===
+        "SELECTED_CHILD";
+
+
+    /* ========================================================
        CREATE GEOJSON LAYER
     ======================================================== */
 
@@ -3725,14 +4337,33 @@ Renderer.renderSource =
 
 
           /*
-           * PARENT and RELATED polygons are interactive.
+           * INTERACTION RULES
+           * ------------------------------------------------------
            *
-           * SELECTED polygon is visual only.
+           * PARENT
+           *    interactive
+           *
+           * RELATED
+           *    interactive
+           *
+           * SELECTED
+           *    visual only
+           *
+           * SELECTED_CHILD
+           *    visual only
            */
 
           interactive:
             interactive,
 
+
+          /* ====================================================
+             STYLE
+             ----------------------------------------------------
+
+             Both parent-selection and child-selection overlays
+             use the selected Source style.
+          ==================================================== */
 
           style:
             function () {
@@ -3744,8 +4375,7 @@ Renderer.renderSource =
 
                   maxCount,
 
-                  role ===
-                    "SELECTED"
+                  isSelected
 
                 );
 
@@ -3759,18 +4389,26 @@ Renderer.renderSource =
             ) {
 
               /* ==================================================
-                 SELECTED POLYGON
+                 SELECTION OVERLAY
 
-                 No tooltip.
-                 No hover.
-                 No click.
+                 SELECTED
+                    → Parent highlight
 
-                 It is visual only.
+                 SELECTED_CHILD
+                    → Child highlight
+
+                 Both are VISUAL ONLY.
+
+                 Therefore:
+                 --------------------------------------------------
+                 - no tooltip
+                 - no mouseover
+                 - no mouseout
+                 - no click
               ================================================== */
 
               if (
-                role ===
-                "SELECTED"
+                isSelected
               ) {
 
                 return;
@@ -3780,6 +4418,8 @@ Renderer.renderSource =
 
               /* ==================================================
                  TOOLTIP
+
+                 Only PARENT / RELATED polygons reach here.
               ================================================== */
 
               layer.bindTooltip(
@@ -3855,13 +4495,25 @@ Renderer.renderSource =
               /* ==================================================
                  CLICK
 
-                 Behavior depends on role.
+                 BEHAVIOR DEPENDS ON ROLE
 
-                 PARENT:
-                    SOURCE mode parent selection.
+                 PARENT
+                 --------------------------------------------------
+                 SOURCE mode parent selection.
 
-                 RELATED:
-                    TARGET mode Source → Cases.
+                 RELATED
+                 --------------------------------------------------
+                 TARGET mode:
+                     Target Parent
+                         ↓
+                     Related Source
+                         ↓
+                     Cases
+
+                 SELECTED / SELECTED_CHILD
+                 --------------------------------------------------
+                 Never reach this section because they return
+                 above as visual-only overlays.
               ================================================== */
 
               layer.on(
@@ -3888,11 +4540,11 @@ Renderer.renderSource =
                   /* ----------------------------------------------
                      PARENT SOURCE CLICK
 
-                     SOURCE MODE:
+                     SOURCE MODE
 
-                     Source
-                        ↓
-                     Related Targets
+                     Source Parent
+                         ↓
+                     Related Target Children
                   ---------------------------------------------- */
 
                   if (
@@ -3915,12 +4567,12 @@ Renderer.renderSource =
                   /* ----------------------------------------------
                      RELATED SOURCE CLICK
 
-                     TARGET MODE:
+                     TARGET MODE
 
-                     Target
-                        ↓
+                     Target Parent
+                         ↓
                      Related Source
-                        ↓
+                         ↓
                      Cases
                   ---------------------------------------------- */
 
@@ -3950,6 +4602,28 @@ Renderer.renderSource =
 
     /* ========================================================
        ADD TO CORRECT LAYER GROUP
+
+       ROLE                  DESTINATION
+       --------------------------------------------------------
+
+       PARENT
+           ↓
+       parentSourceLayer
+
+
+       RELATED
+           ↓
+       relatedSourceLayer
+
+
+       SELECTED
+           ↓
+       parentSelectionLayer
+
+
+       SELECTED_CHILD
+           ↓
+       childSelectionLayer
     ======================================================== */
 
     geoLayer.addTo(
@@ -3960,7 +4634,15 @@ Renderer.renderSource =
     /* ========================================================
        REGISTER RENDERED POLYGON
 
-       SELECTED overlays are intentionally not registered.
+       ONLY normal spatial polygons are indexed:
+
+       PARENT
+       RELATED
+
+       Selection overlays are intentionally NOT indexed:
+
+       SELECTED
+       SELECTED_CHILD
     ======================================================== */
 
     if (
@@ -3974,6 +4656,10 @@ Renderer.renderSource =
 
     }
 
+
+    /* ========================================================
+       RETURN CREATED LEAFLET GEOJSON LAYER
+    ======================================================== */
 
     return geoLayer;
 
@@ -4060,8 +4746,8 @@ Renderer.highlightChildSource =
 
       {
         role:
-          "SELECTED"
-      }
+      "SELECTED_CHILD"
+   }
 
     );
 
@@ -4148,7 +4834,7 @@ Renderer.highlightChildTarget =
 
       {
         role:
-          "SELECTED"
+      "SELECTED_CHILD"
       }
 
     );
@@ -4172,16 +4858,34 @@ Renderer.highlightChildTarget =
 Renderer.clearChildHighlight =
   function () {
 
-    if (
-      Renderer.selectionLayer
-    ) {
+    /* ========================================================
+       CLEAR ONLY CHILD SELECTION OVERLAY
 
-      Renderer
-        .selectionLayer
-        .clearLayers();
+       IMPORTANT:
 
-    }
+       parentSelectionLayer is NEVER touched here.
 
+       Therefore:
+
+           Parent A
+               ↓
+           Child A
+               ↓
+           Child B
+               ↓
+           Child C
+
+       Parent A remains highlighted throughout.
+    ======================================================== */
+
+    Renderer
+      .childSelectionLayer
+      ?.clearLayers?.();
+
+
+    /* ========================================================
+       RESET CHILD SELECTION STATE
+    ======================================================== */
 
     Renderer.selectedChildType =
       null;
@@ -4307,6 +5011,25 @@ Renderer.renderTarget =
 
     /* ========================================================
        RESOLVE RENDER ROLE
+
+       SUPPORTED ROLES
+       --------------------------------------------------------
+
+       PARENT
+          Main Target polygon in TARGET mode.
+
+       RELATED
+          Target child polygon in SOURCE mode.
+
+       SELECTED
+          Selected PARENT Target highlight.
+          Goes to:
+              parentSelectionLayer
+
+       SELECTED_CHILD
+          Selected CHILD Target highlight.
+          Goes to:
+              childSelectionLayer
     ======================================================== */
 
     const role =
@@ -4321,7 +5044,9 @@ Renderer.renderTarget =
     /* ========================================================
        RESOLVE LAYER / PANE / INDEX
 
-       Defaults to PARENT.
+       DEFAULT:
+       --------------------------------------------------------
+       PARENT Target polygon.
     ======================================================== */
 
     let parentLayer =
@@ -4346,9 +5071,11 @@ Renderer.renderTarget =
     /* ========================================================
        RELATED TARGET
 
-       SOURCE
-          ↓
-       TARGET
+       SOURCE parent
+           ↓
+       RELATED TARGET child
+
+       Normal relationship polygon.
     ======================================================== */
 
     if (
@@ -4378,9 +5105,15 @@ Renderer.renderTarget =
 
 
     /* ========================================================
-       SELECTED TARGET
+       SELECTED PARENT TARGET
 
-       Visual only.
+       TARGET parent selected directly from MAP.
+
+       IMPORTANT:
+       --------------------------------------------------------
+       This goes ONLY to parentSelectionLayer.
+
+       Child navigation must NEVER clear this layer.
     ======================================================== */
 
     else if (
@@ -4389,7 +5122,7 @@ Renderer.renderTarget =
     ) {
 
       parentLayer =
-        Renderer.selectionLayer;
+        Renderer.parentSelectionLayer;
 
 
       paneName =
@@ -4398,9 +5131,92 @@ Renderer.renderTarget =
           .selectionPane;
 
 
+      /*
+       * Selection overlays are visual-only overlays.
+       *
+       * They are not registered in the normal rendered
+       * polygon indexes.
+       */
+
       renderedIndex =
         null;
 
+
+      /*
+       * Selected parent overlay must not intercept GIS
+       * interaction.
+       */
+
+      interactive =
+        false;
+
+    }
+
+
+    /* ========================================================
+       SELECTED CHILD TARGET
+
+       SOURCE parent
+           ↓
+       Target child selected from PANEL
+
+       IMPORTANT:
+       --------------------------------------------------------
+       This goes ONLY to childSelectionLayer.
+
+       Therefore:
+
+       Parent A
+           ↓
+       Child Target A selected
+           ↓
+       Target A highlighted
+
+       Parent A remains highlighted.
+
+       Then:
+
+       Child Target B selected
+           ↓
+       childSelectionLayer.clearLayers()
+           ↓
+       Target A highlight disappears
+           ↓
+       Target A returns to its underlying heatmap appearance
+           ↓
+       Target B highlighted
+
+       parentSelectionLayer remains untouched.
+    ======================================================== */
+
+    else if (
+      role ===
+      "SELECTED_CHILD"
+    ) {
+
+      parentLayer =
+        Renderer.childSelectionLayer;
+
+
+      paneName =
+        Renderer
+          .config
+          .selectionPane;
+
+
+      /*
+       * Child selection overlay is temporary.
+       *
+       * Do not register it in the normal Target indexes.
+       */
+
+      renderedIndex =
+        null;
+
+
+      /*
+       * PANEL-selected Target child is visual only.
+       */
 
       interactive =
         false;
@@ -4429,6 +5245,28 @@ Renderer.renderTarget =
 
 
     /* ========================================================
+       DETERMINE WHETHER THIS IS A SELECTION OVERLAY
+
+       BOTH:
+       --------------------------------------------------------
+       SELECTED
+       SELECTED_CHILD
+
+       must receive selected/highlight styling.
+    ======================================================== */
+
+    const isSelected =
+
+      role ===
+        "SELECTED"
+
+      ||
+
+      role ===
+        "SELECTED_CHILD";
+
+
+    /* ========================================================
        CREATE GEOJSON LAYER
     ======================================================== */
 
@@ -4452,9 +5290,32 @@ Renderer.renderTarget =
             paneName,
 
 
+          /* ====================================================
+             INTERACTION RULES
+
+             PARENT
+                interactive
+
+             RELATED
+                interactive
+
+             SELECTED
+                visual only
+
+             SELECTED_CHILD
+                visual only
+          ==================================================== */
+
           interactive:
             interactive,
 
+
+          /* ====================================================
+             STYLE
+
+             Both selected PARENT and selected CHILD Target
+             overlays receive selected Target styling.
+          ==================================================== */
 
           style:
             function () {
@@ -4466,8 +5327,7 @@ Renderer.renderTarget =
 
                   maxCount,
 
-                  role ===
-                    "SELECTED"
+                  isSelected
 
                 );
 
@@ -4481,14 +5341,26 @@ Renderer.renderTarget =
             ) {
 
               /* ==================================================
-                 SELECTED TARGET
+                 SELECTION OVERLAY
 
-                 Visual only.
+                 SELECTED
+                    → selected Parent Target
+
+                 SELECTED_CHILD
+                    → selected Child Target
+
+                 Both are VISUAL ONLY.
+
+                 Therefore:
+                 --------------------------------------------------
+                 - no tooltip
+                 - no mouseover
+                 - no mouseout
+                 - no click
               ================================================== */
 
               if (
-                role ===
-                "SELECTED"
+                isSelected
               ) {
 
                 return;
@@ -4498,6 +5370,8 @@ Renderer.renderTarget =
 
               /* ==================================================
                  TOOLTIP
+
+                 Only PARENT / RELATED polygons reach here.
               ================================================== */
 
               layer.bindTooltip(
@@ -4573,11 +5447,26 @@ Renderer.renderTarget =
               /* ==================================================
                  CLICK
 
-                 PARENT:
-                    TARGET mode parent selection.
+                 BEHAVIOR DEPENDS ON ROLE
 
-                 RELATED:
-                    SOURCE mode Target → Cases.
+                 PARENT
+                 --------------------------------------------------
+                 TARGET mode parent selection.
+
+                 RELATED
+                 --------------------------------------------------
+                 SOURCE mode:
+
+                     Source Parent
+                         ↓
+                     Related Target
+                         ↓
+                     Cases
+
+                 SELECTED / SELECTED_CHILD
+                 --------------------------------------------------
+                 Never reach this section because selection
+                 overlays return above and are visual only.
               ================================================== */
 
               layer.on(
@@ -4604,11 +5493,11 @@ Renderer.renderTarget =
                   /* ----------------------------------------------
                      PARENT TARGET CLICK
 
-                     TARGET MODE:
+                     TARGET MODE
 
-                     Target
-                        ↓
-                     Related Sources
+                     Target Parent
+                         ↓
+                     Related Source Children
                   ---------------------------------------------- */
 
                   if (
@@ -4631,12 +5520,12 @@ Renderer.renderTarget =
                   /* ----------------------------------------------
                      RELATED TARGET CLICK
 
-                     SOURCE MODE:
+                     SOURCE MODE
 
-                     Source
-                        ↓
+                     Source Parent
+                         ↓
                      Related Target
-                        ↓
+                         ↓
                      Cases
                   ---------------------------------------------- */
 
@@ -4666,6 +5555,28 @@ Renderer.renderTarget =
 
     /* ========================================================
        ADD TO CORRECT LAYER GROUP
+
+       ROLE                  DESTINATION
+       --------------------------------------------------------
+
+       PARENT
+           ↓
+       parentTargetLayer
+
+
+       RELATED
+           ↓
+       relatedTargetLayer
+
+
+       SELECTED
+           ↓
+       parentSelectionLayer
+
+
+       SELECTED_CHILD
+           ↓
+       childSelectionLayer
     ======================================================== */
 
     geoLayer.addTo(
@@ -4675,6 +5586,16 @@ Renderer.renderTarget =
 
     /* ========================================================
        REGISTER RENDERED POLYGON
+
+       ONLY normal spatial polygons are indexed:
+
+       PARENT
+       RELATED
+
+       Selection overlays are intentionally NOT indexed:
+
+       SELECTED
+       SELECTED_CHILD
     ======================================================== */
 
     if (
@@ -4688,6 +5609,10 @@ Renderer.renderTarget =
 
     }
 
+
+    /* ========================================================
+       RETURN CREATED LEAFLET GEOJSON LAYER
+    ======================================================== */
 
     return geoLayer;
 
@@ -4732,6 +5657,27 @@ Renderer.hardResetLayerGroups =
 
     /* ========================================================
        REMOVE OLD GROUPS FROM MAP
+
+       CURRENT LAYER ARCHITECTURE
+       --------------------------------------------------------
+
+       PARENT DATA:
+           parentSourceLayer
+           parentTargetLayer
+
+       RELATED CHILD DATA:
+           relatedSourceLayer
+           relatedTargetLayer
+
+       SELECTION OVERLAYS:
+           parentSelectionLayer
+           childSelectionLayer
+
+       IMPORTANT:
+       --------------------------------------------------------
+       This is a HARD RESET.
+
+       Therefore ALL six layer groups are removed from the map.
     ======================================================== */
 
     [
@@ -4739,11 +5685,14 @@ Renderer.hardResetLayerGroups =
       Renderer.parentTargetLayer,
       Renderer.relatedSourceLayer,
       Renderer.relatedTargetLayer,
-      Renderer.selectionLayer
+      Renderer.parentSelectionLayer,
+      Renderer.childSelectionLayer
     ]
     .forEach(
 
-      layerGroup => {
+      function (
+        layerGroup
+      ) {
 
         if (
           layerGroup &&
@@ -4764,7 +5713,7 @@ Renderer.hardResetLayerGroups =
 
 
     /* ========================================================
-       CLEAR OLD GROUP CONTENT
+       CLEAR OLD PARENT / RELATED GROUP CONTENT
     ======================================================== */
 
     Renderer
@@ -4787,13 +5736,34 @@ Renderer.hardResetLayerGroups =
       ?.clearLayers?.();
 
 
+    /* ========================================================
+       CLEAR PARENT SELECTION OVERLAY
+
+       Contains ONLY the selected parent highlight.
+    ======================================================== */
+
     Renderer
-      .selectionLayer
+      .parentSelectionLayer
+      ?.clearLayers?.();
+
+
+    /* ========================================================
+       CLEAR CHILD SELECTION OVERLAY
+
+       Contains ONLY the currently selected panel-child
+       highlight.
+    ======================================================== */
+
+    Renderer
+      .childSelectionLayer
       ?.clearLayers?.();
 
 
     /* ========================================================
        DISCARD OLD LAYER GROUP REFERENCES
+
+       createLayers() below will create completely fresh
+       Leaflet LayerGroups.
     ======================================================== */
 
     Renderer.parentSourceLayer =
@@ -4812,12 +5782,21 @@ Renderer.hardResetLayerGroups =
       null;
 
 
-    Renderer.selectionLayer =
+    Renderer.parentSelectionLayer =
+      null;
+
+
+    Renderer.childSelectionLayer =
       null;
 
 
     /* ========================================================
        CLEAR RENDERED GEOJSON REFERENCES
+
+       Selection overlays are NOT stored in these indexes.
+
+       These indexes belong only to the normal PARENT /
+       RELATED rendered polygons.
     ======================================================== */
 
     Renderer
@@ -4841,7 +5820,7 @@ Renderer.hardResetLayerGroups =
 
 
     /* ========================================================
-       RESET SELECTION / DATA STATE
+       RESET PARENT SELECTION STATE
     ======================================================== */
 
     Renderer.selectedSourceId =
@@ -4851,6 +5830,29 @@ Renderer.hardResetLayerGroups =
     Renderer.selectedTargetKey =
       null;
 
+
+    /* ========================================================
+       RESET CHILD SELECTION STATE
+
+       IMPORTANT:
+       --------------------------------------------------------
+       hardResetLayerGroups() destroys the complete current
+       spatial drill-down.
+
+       Therefore no child can remain selected after this reset.
+    ======================================================== */
+
+    Renderer.selectedChildType =
+      null;
+
+
+    Renderer.selectedChildId =
+      null;
+
+
+    /* ========================================================
+       RESET CURRENT RELATIONSHIP DATA
+    ======================================================== */
 
     Renderer.currentSources =
       [];
@@ -4865,18 +5867,52 @@ Renderer.hardResetLayerGroups =
 
 
     /* ========================================================
+       RESET CURRENT CASE CONTEXT
+
+       If your renderer already uses currentCaseContext,
+       hard reset should remove that stale relationship
+       context as well.
+    ======================================================== */
+
+    Renderer.currentCaseContext =
+      null;
+
+
+    /* ========================================================
        CREATE COMPLETELY FRESH LAYER GROUPS
+
+       createLayers() must now create:
+
+           parentSourceLayer
+           parentTargetLayer
+           relatedSourceLayer
+           relatedTargetLayer
+           parentSelectionLayer
+           childSelectionLayer
     ======================================================== */
 
     const created =
       Renderer.createLayers();
 
 
+    /* ========================================================
+       DEBUG
+    ======================================================== */
+
     console.log(
+
       "🔥 Offence Leaflet layer groups hard reset",
-      Renderer.getLayerState?.()
+
+      Renderer
+        .getLayerState
+        ?.()
+
     );
 
+
+    /* ========================================================
+       RETURN CREATION RESULT
+    ======================================================== */
 
     return created;
 
