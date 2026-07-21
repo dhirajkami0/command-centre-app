@@ -2473,19 +2473,31 @@ createPanel:
                         );
 
 
-                UIController.elements.status =
-                    document
-                        .getElementById(
+UIController.elements.status =
+    document
+        .getElementById(
 
-                            UIController
-                                .CONFIG
-                                .STATUS_ID
+            UIController
+                .CONFIG
+                .STATUS_ID
 
-                        );
+        );
 
 
 
-                return UIController.elements;
+/* ============================================
+   CASE RESULTS
+============================================ */
+
+UIController.elements.caseResults =
+    document
+        .getElementById(
+            "gg-offence-case-results"
+        );
+
+
+
+return UIController.elements;
 
 
             },
@@ -4862,7 +4874,155 @@ const storeState =
             },
 
 
+/* ============================================================
+   SHOW SPATIAL CASE RESULTS
 
+   Called by:
+
+       Renderer.showCases()
+
+============================================================ */
+
+showSpatialCases:
+function (
+    cases = [],
+    context = {}
+) {
+
+    UIController.currentSpatialCases =
+        Array.isArray(cases)
+            ? cases
+            : [];
+
+    UIController.currentSpatialContext =
+        context || {};
+
+    const container =
+        UIController.elements.caseResults;
+
+    if (!container) {
+
+        console.warn(
+            "Case Results container not found."
+        );
+
+        return;
+
+    }
+
+    container.innerHTML = "";
+
+    if (
+        UIController.currentSpatialCases.length === 0
+    ) {
+
+        container.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                No matching offence cases found.
+
+            </div>
+            `;
+
+        return;
+
+    }
+
+    const ctx =
+        UIController.currentSpatialContext;
+
+    const header =
+        document.createElement(
+            "div"
+        );
+
+    header.className =
+        "gg-offence-case-context";
+
+    header.innerHTML =
+        `
+        <div class="gg-offence-case-context-title">
+
+            ${ctx.sourceName || "Source"}
+            →
+            ${ctx.targetName || "Target"}
+
+        </div>
+
+        <div class="gg-offence-case-count">
+
+            ${UIController.currentSpatialCases.length}
+            matching case(s)
+
+        </div>
+        `;
+
+    container.appendChild(
+        header
+    );
+
+    UIController.currentSpatialCases.forEach(
+
+        function (item) {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+            card.className =
+                "gg-offence-case-card";
+
+            card.dataset.por =
+                item.por ||
+                item.POR ||
+                "";
+
+            card.innerHTML =
+                `
+                <div class="gg-offence-case-title">
+
+                    ${item.por || item.POR || "-"}
+
+                </div>
+
+                <div class="gg-offence-case-meta">
+
+                    <div>
+
+                        <b>Date:</b>
+
+                        ${item.date || "-"}
+
+                    </div>
+
+                    <div>
+
+                        <b>Species:</b>
+
+                        ${item.species || "-"}
+
+                    </div>
+
+                </div>
+
+                <div class="gg-offence-case-view">
+
+                    View Details →
+
+                </div>
+                `;
+
+            container.appendChild(
+                card
+            );
+
+        }
+
+    );
+
+},
         /* ====================================================
            CLEAR OFFENCE SPATIAL ANALYSIS
 
