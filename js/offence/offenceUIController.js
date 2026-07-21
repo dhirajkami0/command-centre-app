@@ -10871,7 +10871,7 @@ function (
 },
 
 
-       showFieldDetails:
+showFieldDetails:
 function (
     title,
     value,
@@ -10880,7 +10880,13 @@ function (
 
 
     /* =======================================================
-       REFRESH DOM
+       REFRESH DOM REFERENCES
+
+       Safe if the offence panel has been recreated.
+
+       IMPORTANT:
+       This does NOT recreate the panel.
+       It only refreshes references to the existing DOM.
     ======================================================= */
 
     if (
@@ -10912,7 +10918,7 @@ function (
     ) {
 
         console.error(
-            "❌ Field Details container unavailable"
+            "❌ showFieldDetails(): Field Details container unavailable"
         );
 
         return false;
@@ -10924,7 +10930,25 @@ function (
     /* =======================================================
        VALUE CHECK
 
-       No value = no field.
+       PROFESSIONAL DISPLAY RULE:
+
+           No meaningful value
+               ↓
+           Do not render the field
+
+       Values treated as empty:
+
+           ""
+           "-"
+           "--"
+           null
+           undefined
+           N/A
+           NA
+           None
+           Nil
+           Not Available
+           Not Applicable
     ======================================================= */
 
     function hasValue(
@@ -10948,25 +10972,64 @@ function (
         ) {
 
             const text =
-                item.trim();
+                item
+                    .trim();
 
 
-            return (
+            if (
+                !text
+            ) {
 
-                text !== "" &&
+                return false;
 
-                text !== "-" &&
+            }
 
-                text.toLowerCase() !==
-                    "null" &&
 
-                text.toLowerCase() !==
-                    "undefined" &&
+            const normalized =
+                text
+                    .toLowerCase();
 
-                text.toLowerCase() !==
-                    "n/a"
 
-            );
+            if (
+
+                normalized ===
+                    "null" ||
+
+                normalized ===
+                    "undefined" ||
+
+                normalized ===
+                    "n/a" ||
+
+                normalized ===
+                    "na" ||
+
+                normalized ===
+                    "none" ||
+
+                normalized ===
+                    "nil" ||
+
+                normalized ===
+                    "not available" ||
+
+                normalized ===
+                    "not applicable" ||
+
+                text ===
+                    "-" ||
+
+                text ===
+                    "--"
+
+            ) {
+
+                return false;
+
+            }
+
+
+            return true;
 
         }
 
@@ -11053,15 +11116,19 @@ function (
     /* =======================================================
        HUMANIZE FIELD NAME
 
-       Example:
+       Examples:
 
            fatherName
-                ↓
+               ↓
            Father Name
 
            police_station
-                ↓
+               ↓
            Police Station
+
+           mobileNo
+               ↓
+           Mobile No
     ======================================================= */
 
     function humanize(
@@ -11070,7 +11137,8 @@ function (
 
 
         return String(
-            key || ""
+            key ||
+            ""
         )
 
             .replace(
@@ -11111,10 +11179,13 @@ function (
 
 
     /* =======================================================
-       INTERNAL FIELDS
+       INTERNAL / TECHNICAL FIELDS
 
-       Never show database/application metadata in professional
-       FIELD DETAILS.
+       Never expose database/application metadata in the
+       professional FIELD DETAILS view.
+
+       These fields may still exist in the original object.
+       We simply do not display them.
     ======================================================= */
 
     const hiddenKeys =
@@ -11159,7 +11230,165 @@ function (
 
 
     /* =======================================================
-       CREATE VALUE ROW
+       CHECK WHETHER A KEY IS INTERNAL
+
+       Case-insensitive protection for equivalent metadata
+       fields using different capitalization.
+    ======================================================= */
+
+    function isHiddenKey(
+        key
+    ) {
+
+
+        if (
+            hiddenKeys.has(
+                key
+            )
+        ) {
+
+            return true;
+
+        }
+
+
+        const normalized =
+            String(
+                key ||
+                ""
+            )
+                .trim()
+                .toLowerCase();
+
+
+        for (
+            const hiddenKey
+            of hiddenKeys
+        ) {
+
+            if (
+                String(
+                    hiddenKey
+                )
+                    .toLowerCase() ===
+                normalized
+            ) {
+
+                return true;
+
+            }
+
+        }
+
+
+        return false;
+
+
+    }
+
+
+
+    /* =======================================================
+       FORMAT SIMPLE DISPLAY VALUE
+
+       FIELD DETAILS should remain readable.
+
+       We do not dump:
+
+           [object Object]
+
+       or raw JSON into a normal information row.
+    ======================================================= */
+
+    function formatSimpleValue(
+        item
+    ) {
+
+
+        if (
+            !hasValue(
+                item
+            )
+        ) {
+
+            return "";
+
+        }
+
+
+        if (
+            Array.isArray(
+                item
+            )
+        ) {
+
+            const simpleValues =
+                item
+
+                    .filter(
+                        hasValue
+                    )
+
+                    .filter(
+
+                        function (
+                            entry
+                        ) {
+
+                            return (
+
+                                entry === null ||
+
+                                typeof entry !==
+                                    "object"
+
+                            );
+
+                        }
+
+                    );
+
+
+            return simpleValues
+                .join(
+                    ", "
+                );
+
+        }
+
+
+        if (
+            typeof item ===
+            "object"
+        ) {
+
+            return "";
+
+        }
+
+
+        return String(
+            item
+        )
+            .trim();
+
+
+    }
+
+
+
+    /* =======================================================
+       CREATE PROFESSIONAL INFORMATION ROW
+
+       Visual structure:
+
+           FIELD LABEL
+           Field value
+           -------------------------
+
+       Each field is an independent information block.
+
+       This matches the professional Case Details layout.
     ======================================================= */
 
     function row(
@@ -11179,9 +11408,16 @@ function (
         }
 
 
+        const formatted =
+            formatSimpleValue(
+                item
+            );
+
+
         if (
-            typeof item ===
-            "object"
+            !hasValue(
+                formatted
+            )
         ) {
 
             return "";
@@ -11190,14 +11426,22 @@ function (
 
 
         return `
-            <div class="gg-offence-field-row">
+            <div class="gg-offence-field-info-row">
 
-                <div class="gg-offence-field-label">
-                    ${escapeHTML(label)}
+                <div class="gg-offence-field-info-label">
+
+                    ${escapeHTML(
+                        label
+                    )}
+
                 </div>
 
-                <div class="gg-offence-field-value">
-                    ${escapeHTML(item)}
+                <div class="gg-offence-field-info-value">
+
+                    ${escapeHTML(
+                        formatted
+                    )}
+
                 </div>
 
             </div>
@@ -11209,9 +11453,24 @@ function (
 
 
     /* =======================================================
-       RENDER ONE OBJECT
+       RENDER OBJECT
 
-       Only fields with actual values are rendered.
+       Example:
+
+           ACCUSED
+
+           Name
+           Dhiraj Kami
+
+           Father Name
+           ...
+
+           Address
+           ...
+
+       Only meaningful fields are shown.
+
+       Internal metadata remains hidden.
     ======================================================= */
 
     function renderObject(
@@ -11220,9 +11479,16 @@ function (
 
 
         if (
+
             !object ||
+
             typeof object !==
-                "object"
+                "object" ||
+
+            Array.isArray(
+                object
+            )
+
         ) {
 
             return "";
@@ -11248,8 +11514,12 @@ function (
                 ) {
 
 
+                    /* -------------------------------------------
+                       HIDE INTERNAL FIELDS
+                    ------------------------------------------- */
+
                     if (
-                        hiddenKeys.has(
+                        isHiddenKey(
                             key
                         )
                     ) {
@@ -11258,6 +11528,11 @@ function (
 
                     }
 
+
+
+                    /* -------------------------------------------
+                       HIDE EMPTY FIELDS
+                    ------------------------------------------- */
 
                     if (
                         !hasValue(
@@ -11271,9 +11546,9 @@ function (
 
 
 
-                    /* ------------------------------------------
+                    /* -------------------------------------------
                        SIMPLE VALUE
-                    ------------------------------------------ */
+                    ------------------------------------------- */
 
                     if (
                         typeof item !==
@@ -11298,14 +11573,26 @@ function (
 
 
 
-                    /* ------------------------------------------
-                       SIMPLE ARRAY OF TEXT/NUMBERS
-                    ------------------------------------------ */
+                    /* -------------------------------------------
+                       SIMPLE ARRAY
+
+                       Example:
+
+                           sections:
+                               ["26", "33"]
+
+                       Display:
+
+                           Sections
+                           26, 33
+                    ------------------------------------------- */
 
                     if (
+
                         Array.isArray(
                             item
                         ) &&
+
                         item.every(
 
                             function (
@@ -11324,28 +11611,188 @@ function (
                             }
 
                         )
+
                     ) {
 
                         const text =
                             item
+
                                 .filter(
                                     hasValue
                                 )
+
                                 .join(
                                     ", "
                                 );
 
 
-                        output +=
-                            row(
-
-                                humanize(
-                                    key
-                                ),
-
+                        if (
+                            hasValue(
                                 text
+                            )
+                        ) {
 
+                            output +=
+                                row(
+
+                                    humanize(
+                                        key
+                                    ),
+
+                                    text
+
+                                );
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+
+                    /* -------------------------------------------
+                       NESTED OBJECT
+
+                       Do not dump raw JSON.
+
+                       Render its meaningful simple fields as a
+                       nested professional subsection.
+                    ------------------------------------------- */
+
+                    if (
+
+                        item &&
+
+                        typeof item ===
+                            "object" &&
+
+                        !Array.isArray(
+                            item
+                        )
+
+                    ) {
+
+                        const nested =
+                            renderObject(
+                                item
                             );
+
+
+                        if (
+                            nested
+                        ) {
+
+                            output +=
+                                `
+                                <div class="gg-offence-field-nested">
+
+                                    <div class="gg-offence-field-nested-title">
+
+                                        ${escapeHTML(
+                                            humanize(
+                                                key
+                                            )
+                                        )}
+
+                                    </div>
+
+                                    ${nested}
+
+                                </div>
+                                `;
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+
+                    /* -------------------------------------------
+                       ARRAY OF OBJECTS
+
+                       Render meaningful nested records instead
+                       of exposing raw object data.
+                    ------------------------------------------- */
+
+                    if (
+                        Array.isArray(
+                            item
+                        )
+                    ) {
+
+                        const nestedObjects =
+                            item
+                                .filter(
+                                    hasValue
+                                );
+
+
+                        nestedObjects.forEach(
+
+                            function (
+                                nestedItem,
+                                nestedIndex
+                            ) {
+
+
+                                if (
+
+                                    nestedItem &&
+
+                                    typeof nestedItem ===
+                                        "object"
+
+                                ) {
+
+                                    const nested =
+                                        renderObject(
+                                            nestedItem
+                                        );
+
+
+                                    if (
+                                        nested
+                                    ) {
+
+                                        output +=
+                                            `
+                                            <div class="gg-offence-field-nested">
+
+                                                <div class="gg-offence-field-nested-title">
+
+                                                    ${escapeHTML(
+                                                        humanize(
+                                                            key
+                                                        )
+                                                    )}
+
+                                                    ${
+                                                        nestedObjects.length > 1
+
+                                                            ? ` ${nestedIndex + 1}`
+
+                                                            : ""
+                                                    }
+
+                                                </div>
+
+                                                ${nested}
+
+                                            </div>
+                                            `;
+
+                                    }
+
+                                }
+
+                            }
+
+                        );
 
                     }
 
@@ -11363,7 +11810,7 @@ function (
 
 
     /* =======================================================
-       BUILD FIELD DETAILS
+       BUILD FIELD DETAILS BODY
     ======================================================= */
 
     let body =
@@ -11374,16 +11821,19 @@ function (
     /* =======================================================
        ARRAY
 
-       Example:
+       Typical examples:
 
            accused = [
                {...},
                {...}
            ]
 
-       or
-
            witnesses = [
+               {...},
+               {...}
+           ]
+
+           seizedArticles = [
                {...},
                {...}
            ]
@@ -11415,9 +11865,12 @@ function (
                 ---------------------------------------------- */
 
                 if (
+
                     item &&
+
                     typeof item ===
                         "object"
+
                 ) {
 
                     const rendered =
@@ -11439,7 +11892,14 @@ function (
 
                                         ? `
                                           <div class="gg-offence-field-group-title">
-                                              ${escapeHTML(title)} ${index + 1}
+
+                                              ${escapeHTML(
+                                                  title ||
+                                                  "DETAIL"
+                                              )}
+
+                                              ${index + 1}
+
                                           </div>
                                           `
 
@@ -11453,14 +11913,18 @@ function (
 
                     }
 
+
+                    return;
+
                 }
 
 
+
                 /* ----------------------------------------------
-                   TEXT ENTRY
+                   SIMPLE TEXT / NUMBER ENTRY
                 ---------------------------------------------- */
 
-                else if (
+                if (
                     hasValue(
                         item
                     )
@@ -11469,7 +11933,11 @@ function (
                     body +=
                         `
                         <div class="gg-offence-field-text">
-                            ${escapeHTML(item)}
+
+                            ${escapeHTML(
+                                item
+                            )}
+
                         </div>
                         `;
 
@@ -11487,6 +11955,14 @@ function (
 
     /* =======================================================
        OBJECT
+
+       Example:
+
+           seizure = {
+               seizureDate: ...,
+               seizurePlace: ...,
+               ...
+           }
     ======================================================= */
 
     else if (
@@ -11499,10 +11975,27 @@ function (
     ) {
 
 
-        body =
+        const rendered =
             renderObject(
                 value
             );
+
+
+        if (
+            rendered
+        ) {
+
+            body =
+                `
+                <div class="gg-offence-field-group">
+
+                    ${rendered}
+
+                </div>
+                `;
+
+        }
+
 
     }
 
@@ -11522,9 +12015,14 @@ function (
         body =
             `
             <div class="gg-offence-field-text">
-                ${escapeHTML(value)}
+
+                ${escapeHTML(
+                    value
+                )}
+
             </div>
             `;
+
 
     }
 
@@ -11532,6 +12030,11 @@ function (
 
     /* =======================================================
        EMPTY FALLBACK
+
+       Normally this should not occur because Case Details
+       only creates an expandable button when data exists.
+
+       Kept as a safe fallback.
     ======================================================= */
 
     if (
@@ -11541,7 +12044,9 @@ function (
         body =
             `
             <div class="gg-offence-empty">
+
                 No details available.
+
             </div>
             `;
 
@@ -11550,13 +12055,33 @@ function (
 
 
     /* =======================================================
-       RENDER
+       RENDER PROFESSIONAL FIELD DETAILS
 
-       The section itself already has FIELD DETAILS heading
-       and Back to Case Details button in your panel design.
+       The outer panel already contains:
 
-       Therefore we only render the selected subsection title
-       and meaningful values here.
+           FIELD DETAILS
+           Back to Case Details
+
+       Therefore this container displays:
+
+           selected category
+               ↓
+           structured information cards
+
+       Example:
+
+           ACCUSED
+
+           ┌───────────────────────────┐
+             NAME
+             John Doe
+             -------------------------
+             FATHER NAME
+             ...
+             -------------------------
+             ADDRESS
+             ...
+           └───────────────────────────┘
     ======================================================= */
 
     container.innerHTML =
@@ -11570,13 +12095,21 @@ function (
 
         </div>
 
-        ${body}
+        <div class="gg-offence-field-details-content">
+
+            ${body}
+
+        </div>
         `;
 
 
 
     /* =======================================================
        STORE CURRENT FIELD
+
+       Parent / children / cases / current case remain intact.
+
+       This stores only the current final drill-down field.
     ======================================================= */
 
     UIController.currentField = {
@@ -11589,6 +12122,11 @@ function (
 
         key:
             context.key ||
+            null,
+
+        caseData:
+            context.caseData ||
+            UIController.currentCase ||
             null
 
     };
@@ -11596,7 +12134,7 @@ function (
 
 
     /* =======================================================
-       SHOW FIELD DETAILS
+       SHOW FIELD DETAILS SECTION
     ======================================================= */
 
     if (
@@ -11613,21 +12151,188 @@ function (
 
 
     /* =======================================================
-       SCROLL FIELD DETAILS INTO VIEW
+       STABLE INTERNAL PANEL SCROLL
+
+       CRITICAL DESIGN RULE:
+
+           NEVER use:
+
+               scrollIntoView()
+
+           NEVER scroll:
+
+               window
+               document
+               map container
+               complete offence panel
+
+       ONLY:
+
+           .gg-offence-panel-body
+
+       is allowed to scroll.
+
+       This keeps:
+
+           panel position stable
+           map stable
+           panel width stable
+           header stable
+           status stable
     ======================================================= */
 
-    section
-        ?.scrollIntoView?.({
+    const panelBody =
 
-            block:
-                "nearest",
+        elements.panel
 
-            behavior:
-                "smooth"
+            ?.querySelector(
+                ".gg-offence-panel-body"
+            )
 
-        });
+        ||
+
+        document.querySelector(
+            "#gg-offence-analysis-panel .gg-offence-panel-body"
+        );
 
 
+
+    if (
+        panelBody &&
+        section
+    ) {
+
+
+        /* ---------------------------------------------------
+           READ CURRENT GEOMETRY
+
+           Determine where FIELD DETAILS currently sits
+           relative to the internal scroll container.
+        --------------------------------------------------- */
+
+        const bodyRect =
+            panelBody
+                .getBoundingClientRect();
+
+
+        const sectionRect =
+            section
+                .getBoundingClientRect();
+
+
+
+        /* ---------------------------------------------------
+           SMALL TOP SPACE
+
+           Keeps the FIELD DETAILS heading from touching the
+           upper boundary of the scrolling viewport.
+        --------------------------------------------------- */
+
+        const topOffset =
+            8;
+
+
+
+        /* ---------------------------------------------------
+           CALCULATE INTERNAL TARGET POSITION
+
+           Existing scrollTop is preserved as the reference.
+
+           Only the amount necessary to bring this section
+           near the top of the panel body is added.
+        --------------------------------------------------- */
+
+        const targetScrollTop =
+
+            panelBody.scrollTop +
+
+            (
+                sectionRect.top -
+                bodyRect.top
+            ) -
+
+            topOffset;
+
+
+
+        /* ---------------------------------------------------
+           CALCULATE MAXIMUM VALID SCROLL POSITION
+        --------------------------------------------------- */
+
+        const maxScrollTop =
+
+            Math.max(
+
+                0,
+
+                panelBody.scrollHeight -
+                panelBody.clientHeight
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           CLAMP TARGET
+
+           Prevent:
+
+               negative scrolling
+               overscroll
+               panel bounce
+               invalid scroll position
+        --------------------------------------------------- */
+
+        const safeScrollTop =
+
+            Math.max(
+
+                0,
+
+                Math.min(
+
+                    targetScrollTop,
+
+                    maxScrollTop
+
+                )
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           INTERNAL SCROLL ONLY
+
+           NO smooth animation.
+
+           Immediate positioning is deliberate because:
+
+               ACCUSED
+                   ↓
+               WITNESSES
+                   ↓
+               SEIZURE
+                   ↓
+               CASE DETAILS
+
+           can be switched repeatedly.
+
+           Smooth scrolling during those transitions makes
+           an analytical panel appear unstable.
+        --------------------------------------------------- */
+
+        panelBody.scrollTop =
+            safeScrollTop;
+
+
+    }
+
+
+
+    /* =======================================================
+       DEBUG
+    ======================================================= */
 
     console.log(
 
@@ -11643,11 +12348,28 @@ function (
             key:
 
                 context.key ||
-                null
+                null,
+
+            type:
+
+                Array.isArray(
+                    value
+                )
+
+                    ? "ARRAY"
+
+                    : typeof value,
+
+            panelScrollStable:
+
+                Boolean(
+                    panelBody
+                )
 
         }
 
     );
+
 
 
     return true;
@@ -11695,17 +12417,32 @@ function (
 
 
     /* =======================================================
-       VALIDATE
+       VALIDATE CASE
     ======================================================= */
 
     if (
         !caseData
     ) {
 
+        console.warn(
+            "⚠ showCaseDetails(): caseData unavailable"
+        );
+
         return false;
 
     }
 
+
+
+    /* =======================================================
+       REFRESH DOM REFERENCES
+
+       Safe if panel was recreated.
+
+       IMPORTANT:
+       This does NOT recreate the panel.
+       It only refreshes element references.
+    ======================================================= */
 
     if (
         typeof
@@ -11736,7 +12473,7 @@ function (
     ) {
 
         console.error(
-            "❌ Case Details container unavailable"
+            "❌ showCaseDetails(): case details container unavailable"
         );
 
         return false;
@@ -11746,9 +12483,18 @@ function (
 
 
     /* =======================================================
-       STORE CURRENT CASE
+       PRESERVE CURRENT DRILL-DOWN STATE
 
-       Parent / Child / Cases remain preserved.
+       Parent:
+           remains unchanged
+
+       Children:
+           remain unchanged
+
+       Cases:
+           remain unchanged
+
+       Only currentCase changes.
     ======================================================= */
 
     UIController.currentCase =
@@ -11761,80 +12507,85 @@ function (
 
 
     /* =======================================================
-       RESOLVE PRIMARY CASE OBJECT
+       RESOLVE PRIMARY CASE RECORD
 
-       Spatial result normally contains:
-
-           caseData
-               ├── porNo
-               ├── porKey
-               ├── caseId
-               ├── case
-               ├── cases
-               ├── accused
-               ├── sourceVillages
-               └── targetRange
-
-       The actual case fields normally live inside:
+       Spatial case wrapper may contain:
 
            caseData.case
 
-       or sometimes:
+       or:
 
            caseData.cases[0]
+
+       or caseData itself may already be the record.
     ======================================================= */
 
-    const record =
+    let record =
+        caseData;
 
-        (
-            caseData.case &&
-            typeof caseData.case ===
-                "object" &&
-            !Array.isArray(
-                caseData.case
-            )
+
+    if (
+
+        caseData.case &&
+
+        typeof
+        caseData.case ===
+            "object" &&
+
+        !Array.isArray(
+            caseData.case
         )
 
-            ? caseData.case
+    ) {
 
-            :
+        record =
+            caseData.case;
 
-        (
-            Array.isArray(
-                caseData.cases
-            ) &&
-            caseData.cases.length &&
-            typeof caseData.cases[0] ===
-                "object"
-        )
+    }
 
-            ? caseData.cases[0]
+    else if (
 
-            :
+        Array.isArray(
+            caseData.cases
+        ) &&
 
-            caseData;
+        caseData.cases.length > 0 &&
+
+        caseData.cases[0] &&
+
+        typeof
+        caseData.cases[0] ===
+            "object"
+
+    ) {
+
+        record =
+            caseData.cases[0];
+
+    }
 
 
 
     /* =======================================================
-       VALUE HELPERS
+       HAS MEANINGFUL VALUE
 
-       RULE:
+       PROFESSIONAL DISPLAY RULE:
 
-           no meaningful value
+           No value
                ↓
-           DO NOT DISPLAY FIELD NAME
+           No label
+               ↓
+           No empty row
 
-       This removes:
+       Therefore we never display:
 
-           null
-           undefined
-           ""
-           whitespace
-           empty arrays
-           empty objects
-           textual "null"
-           textual "undefined"
+           Court
+           —
+
+       or:
+
+           Witnesses
+           N/A
     ======================================================= */
 
     function hasValue(
@@ -11863,15 +12614,51 @@ function (
 
 
             if (
-                !text ||
-                text.toLowerCase() ===
+                !text
+            ) {
+
+                return false;
+
+            }
+
+
+            const normalized =
+                text
+                    .toLowerCase();
+
+
+            if (
+
+                normalized ===
                     "null" ||
-                text.toLowerCase() ===
+
+                normalized ===
                     "undefined" ||
-                text.toLowerCase() ===
+
+                normalized ===
                     "n/a" ||
+
+                normalized ===
+                    "na" ||
+
+                normalized ===
+                    "none" ||
+
+                normalized ===
+                    "nil" ||
+
+                normalized ===
+                    "not available" ||
+
+                normalized ===
+                    "not applicable" ||
+
                 text ===
-                    "-"
+                    "-" ||
+
+                text ===
+                    "--"
+
             ) {
 
                 return false;
@@ -11920,6 +12707,13 @@ function (
 
 
 
+    /* =======================================================
+       FIRST AVAILABLE VALUE
+
+       Allows compatibility with slightly different field
+       names without changing the underlying database.
+    ======================================================= */
+
     function firstValue(
         ...values
     ) {
@@ -11950,7 +12744,7 @@ function (
 
 
     /* =======================================================
-       ESCAPE HTML
+       HTML ESCAPE
     ======================================================= */
 
     function escapeHTML(
@@ -11993,9 +12787,11 @@ function (
 
 
     /* =======================================================
-       FORMAT VALUE
+       FORMAT SIMPLE VALUE
 
-       Do NOT dump raw JSON into CASE DETAILS.
+       CASE DETAILS should NEVER dump raw JSON.
+
+       Object / array drill-down belongs in FIELD DETAILS.
     ======================================================= */
 
     function formatValue(
@@ -12014,63 +12810,87 @@ function (
         }
 
 
+        /* ---------------------------------------------------
+           ARRAY
+        --------------------------------------------------- */
+
         if (
             Array.isArray(
                 value
             )
         ) {
 
-            return value
+            const values =
+                value
 
-                .filter(
-                    hasValue
-                )
+                    .map(
 
-                .map(
-
-                    function (
-                        item
-                    ) {
-
-                        if (
-                            typeof item ===
-                            "object" &&
-                            item !== null
+                        function (
+                            item
                         ) {
 
-                            return firstValue(
 
-                                item.name,
+                            if (
+                                !hasValue(
+                                    item
+                                )
+                            ) {
 
-                                item.label,
+                                return "";
 
-                                item.title,
+                            }
 
-                                item.value,
 
-                                item.description
+                            if (
 
-                            );
+                                item &&
+
+                                typeof item ===
+                                    "object"
+
+                            ) {
+
+                                return firstValue(
+
+                                    item.name,
+
+                                    item.label,
+
+                                    item.title,
+
+                                    item.value,
+
+                                    item.description
+
+                                );
+
+                            }
+
+
+                            return item;
+
 
                         }
 
+                    )
 
-                        return item;
+                    .filter(
+                        hasValue
+                    );
 
-                    }
 
-                )
-
-                .filter(
-                    hasValue
-                )
-
+            return values
                 .join(
                     ", "
                 );
 
         }
 
+
+
+        /* ---------------------------------------------------
+           OBJECT
+        --------------------------------------------------- */
 
         if (
             typeof value ===
@@ -12094,9 +12914,15 @@ function (
         }
 
 
+
+        /* ---------------------------------------------------
+           SIMPLE VALUE
+        --------------------------------------------------- */
+
         return String(
             value
-        );
+        )
+            .trim();
 
 
     }
@@ -12106,7 +12932,11 @@ function (
     /* =======================================================
        DATE FORMATTER
 
-       Leaves unknown/custom date strings untouched.
+       Valid JS-compatible dates:
+           → 27 May 2006
+
+       Unknown/custom date format:
+           → preserve original value
     ======================================================= */
 
     function formatDate(
@@ -12125,10 +12955,125 @@ function (
         }
 
 
+        /* ---------------------------------------------------
+           FIRESTORE-LIKE TIMESTAMP
+        --------------------------------------------------- */
+
+        if (
+
+            value &&
+
+            typeof value ===
+                "object"
+
+        ) {
+
+
+            if (
+                typeof value.toDate ===
+                "function"
+            ) {
+
+                try {
+
+                    const timestampDate =
+                        value.toDate();
+
+
+                    return timestampDate
+                        .toLocaleDateString(
+
+                            "en-IN",
+
+                            {
+
+                                day:
+                                    "2-digit",
+
+                                month:
+                                    "short",
+
+                                year:
+                                    "numeric"
+
+                            }
+
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    // Continue to other strategies.
+
+                }
+
+            }
+
+
+            if (
+                typeof value.seconds ===
+                    "number"
+            ) {
+
+                try {
+
+                    const timestampDate =
+                        new Date(
+
+                            value.seconds *
+                            1000
+
+                        );
+
+
+                    return timestampDate
+                        .toLocaleDateString(
+
+                            "en-IN",
+
+                            {
+
+                                day:
+                                    "2-digit",
+
+                                month:
+                                    "short",
+
+                                year:
+                                    "numeric"
+
+                            }
+
+                        );
+
+                }
+
+                catch (
+                    error
+                ) {
+
+                    // Preserve original if conversion fails.
+
+                }
+
+            }
+
+        }
+
+
+
+        /* ---------------------------------------------------
+           NORMAL DATE
+        --------------------------------------------------- */
+
         try {
 
 
             const date =
+
                 value instanceof Date
 
                     ? value
@@ -12178,7 +13123,8 @@ function (
         }
 
 
-        return String(
+
+        return formatValue(
             value
         );
 
@@ -12188,14 +13134,25 @@ function (
 
 
     /* =======================================================
-       CREATE STANDARD DETAIL ROW
+       PROFESSIONAL INFORMATION ROW
 
-       Empty values are NOT rendered.
+       Every field is its OWN visual information block:
+
+           POR NO.
+           12/NMT of 2006-07
+           ----------------
+
+           OFFENCE DATE
+           27 May 2006
+           ----------------
+
+       Empty values are completely omitted.
     ======================================================= */
 
     function createRow(
         label,
-        value
+        value,
+        options = {}
     ) {
 
 
@@ -12210,10 +13167,30 @@ function (
         }
 
 
-        const formatted =
-            formatValue(
-                value
-            );
+        let formatted =
+            value;
+
+
+        if (
+            options.date ===
+            true
+        ) {
+
+            formatted =
+                formatDate(
+                    value
+                );
+
+        }
+
+        else {
+
+            formatted =
+                formatValue(
+                    value
+                );
+
+        }
 
 
         if (
@@ -12228,14 +13205,22 @@ function (
 
 
         return `
-            <div class="gg-offence-detail-row">
+            <div class="gg-offence-case-info-row">
 
-                <div class="gg-offence-detail-label">
-                    ${escapeHTML(label)}
+                <div class="gg-offence-case-info-label">
+
+                    ${escapeHTML(
+                        label
+                    )}
+
                 </div>
 
-                <div class="gg-offence-detail-value">
-                    ${escapeHTML(formatted)}
+                <div class="gg-offence-case-info-value">
+
+                    ${escapeHTML(
+                        formatted
+                    )}
+
                 </div>
 
             </div>
@@ -12247,7 +13232,7 @@ function (
 
 
     /* =======================================================
-       RESOLVE SUMMARY FIELDS
+       RESOLVE POR NUMBER
     ======================================================= */
 
     const porNo =
@@ -12262,12 +13247,19 @@ function (
 
             record.PORNo,
 
+            record["POR No"],
+
             record["POR No."],
 
             caseData.porKey
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE OFFENCE DATE
+    ======================================================= */
 
     const offenceDate =
 
@@ -12279,10 +13271,17 @@ function (
 
             record.offence_date,
 
-            record.date
+            record["Offence Date"],
+
+            record["Date of Offence"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE NATURE OF OFFENCE
+    ======================================================= */
 
     const natureOfOffence =
 
@@ -12294,10 +13293,17 @@ function (
 
             record.nature,
 
-            record.offence
+            record["Nature of Offence"],
+
+            record.offenceType
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE ACT
+    ======================================================= */
 
     const act =
 
@@ -12307,10 +13313,17 @@ function (
 
             record.Act,
 
-            record.actName
+            record.actName,
+
+            record["Act"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE SECTION
+    ======================================================= */
 
     const sectionValue =
 
@@ -12322,42 +13335,110 @@ function (
 
             record.sections,
 
-            record.sectionOfAct
+            record.sectionOfAct,
+
+            record["Section"]
 
         );
 
+
+
+    /* =======================================================
+       BUILD ACT / SECTION
+
+       Examples:
+
+           IFA-1927 · Section 26
+
+       or if only Act exists:
+
+           IFA-1927
+
+       or if only Section exists:
+
+           Section 26
+    ======================================================= */
 
     let actSection =
         "";
 
 
     if (
+
         hasValue(
             act
         ) &&
+
+        hasValue(
+            sectionValue
+        )
+
+    ) {
+
+        const formattedSection =
+            formatValue(
+                sectionValue
+            );
+
+
+        actSection =
+
+            `${formatValue(act)} · ` +
+
+            (
+                /^section\b/i.test(
+                    formattedSection
+                )
+
+                    ? formattedSection
+
+                    : `Section ${formattedSection}`
+            );
+
+    }
+
+    else if (
+        hasValue(
+            act
+        )
+    ) {
+
+        actSection =
+            formatValue(
+                act
+            );
+
+    }
+
+    else if (
         hasValue(
             sectionValue
         )
     ) {
 
-        actSection =
-            `${formatValue(act)} · Section ${formatValue(sectionValue)}`;
-
-    }
-
-    else {
-
-        actSection =
-            firstValue(
-
-                act,
-
+        const formattedSection =
+            formatValue(
                 sectionValue
-
             );
 
+
+        actSection =
+
+            /^section\b/i.test(
+                formattedSection
+            )
+
+                ? formattedSection
+
+                : `Section ${formattedSection}`;
+
     }
 
+
+
+    /* =======================================================
+       RESOLVE CASE STATUS
+    ======================================================= */
 
     const caseStatus =
 
@@ -12367,10 +13448,17 @@ function (
 
             record.status,
 
-            record.case_status
+            record.case_status,
+
+            record["Case Status"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE COURT
+    ======================================================= */
 
     const court =
 
@@ -12380,10 +13468,19 @@ function (
 
             record.courtName,
 
-            record.nameOfCourt
+            record.nameOfCourt,
+
+            record["Court"],
+
+            record["Name of Court"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE CR NUMBER
+    ======================================================= */
 
     const crNo =
 
@@ -12395,10 +13492,21 @@ function (
 
             record.crNumber,
 
-            record.caseReferenceNo
+            record.crNoNumber,
+
+            record["CR No"],
+
+            record["CR No."],
+
+            record["CR Number"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE NEXT HEARING
+    ======================================================= */
 
     const nextHearing =
 
@@ -12408,10 +13516,19 @@ function (
 
             record.nextHearing,
 
-            record.hearingDate
+            record.hearingDate,
+
+            record["Next Hearing Date"],
+
+            record["Next Hearing"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE PURPOSE OF HEARING
+    ======================================================= */
 
     const hearingPurpose =
 
@@ -12421,10 +13538,17 @@ function (
 
             record.hearingPurpose,
 
-            record.purpose
+            record.purpose,
+
+            record["Purpose of Hearing"]
 
         );
 
+
+
+    /* =======================================================
+       RESOLVE ENQUIRY OFFICER
+    ======================================================= */
 
     const enquiryOfficer =
 
@@ -12436,18 +13560,28 @@ function (
 
             record.inquiryOfficer,
 
+            record.inquiryOfficerName,
+
             record.investigatingOfficer,
 
-            record.ioName
+            record.ioName,
+
+            record["Enquiry Officer"],
+
+            record["Inquiry Officer"]
 
         );
 
 
 
     /* =======================================================
-       RESOLVE ACCUSED
+       ACCUSED
 
-       Keep original data for FIELD DETAILS.
+       Preserve original structured data.
+
+       It is NOT flattened into CASE DETAILS.
+
+       Clicking ACCUSED opens FIELD DETAILS.
     ======================================================= */
 
     const accused =
@@ -12460,14 +13594,19 @@ function (
 
             record.accusedDetails,
 
-            record.accusedPersons
+            record.accusedPersons,
+
+            record.accusedList
 
         );
 
 
 
     /* =======================================================
-       RESOLVE WITNESSES
+       WITNESSES
+
+       Supports both structured witness collections and
+       simple witness-for-next-hearing fields.
     ======================================================= */
 
     const witnesses =
@@ -12475,6 +13614,8 @@ function (
         firstValue(
 
             caseData.witnesses,
+
+            caseData.witness,
 
             record.witnesses,
 
@@ -12486,14 +13627,18 @@ function (
 
             record.witnessesForNextHearing,
 
-            record.witnessesForEvidenceInNextHearingDate
+            record.witnessesForEvidenceInNextHearingDate,
+
+            record["Witnesses"],
+
+            record["Witness"]
 
         );
 
 
 
     /* =======================================================
-       RESOLVE SEIZURE DETAILS
+       SEIZURE DETAILS
     ======================================================= */
 
     const seizure =
@@ -12502,20 +13647,24 @@ function (
 
             caseData.seizure,
 
+            caseData.seizureDetails,
+
             record.seizure,
 
             record.seizureDetails,
 
             record.seizureMemo,
 
-            record.seizureInformation
+            record.seizureInformation,
+
+            record["Seizure Details"]
 
         );
 
 
 
     /* =======================================================
-       RESOLVE SEIZED ARTICLES
+       SEIZED ARTICLES
     ======================================================= */
 
     const seizedArticles =
@@ -12523,6 +13672,8 @@ function (
         firstValue(
 
             caseData.seizedArticles,
+
+            caseData.articlesSeized,
 
             record.seizedArticles,
 
@@ -12532,50 +13683,56 @@ function (
 
             record.seizedItems,
 
-            record.articleSeized
+            record.articleSeized,
+
+            record["Articles Seized"],
+
+            record["Seized Articles"]
 
         );
 
 
 
     /* =======================================================
-       BUILD SUMMARY
+       BUILD PROFESSIONAL CASE SUMMARY
 
-       Only available values are shown.
+       IMPORTANT:
+
+       Each available field gets its own separated row.
+
+       Missing fields are completely omitted.
     ======================================================= */
 
-    let html =
+    let summaryHTML =
         "";
 
 
-    html +=
+    summaryHTML +=
         createRow(
+
             "POR No.",
+
             porNo
+
         );
 
 
-    if (
-        hasValue(
-            offenceDate
-        )
-    ) {
+    summaryHTML +=
+        createRow(
 
-        html +=
-            createRow(
+            "Offence Date",
 
-                "Offence Date",
+            offenceDate,
 
-                formatDate(
-                    offenceDate
-                )
+            {
+                date:
+                    true
+            }
 
-            );
-
-    }
+        );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Nature of Offence",
@@ -12585,7 +13742,7 @@ function (
         );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Act / Section",
@@ -12595,7 +13752,7 @@ function (
         );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Case Status",
@@ -12605,7 +13762,7 @@ function (
         );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Court",
@@ -12615,7 +13772,7 @@ function (
         );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "CR No.",
@@ -12625,27 +13782,22 @@ function (
         );
 
 
-    if (
-        hasValue(
-            nextHearing
-        )
-    ) {
+    summaryHTML +=
+        createRow(
 
-        html +=
-            createRow(
+            "Next Hearing",
 
-                "Next Hearing",
+            nextHearing,
 
-                formatDate(
-                    nextHearing
-                )
+            {
+                date:
+                    true
+            }
 
-            );
-
-    }
+        );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Purpose of Hearing",
@@ -12655,7 +13807,7 @@ function (
         );
 
 
-    html +=
+    summaryHTML +=
         createRow(
 
             "Enquiry Officer",
@@ -12667,20 +13819,19 @@ function (
 
 
     /* =======================================================
-       EXPANDABLE DETAIL SECTIONS
+       BUILD EXPANDABLE PROFESSIONAL SECTIONS
 
-       CRITICAL RULE:
+       ONLY SHOW WHEN DATA EXISTS.
 
-       Section itself is not created when data is unavailable.
+       Possible sections:
 
-       Therefore there will NEVER be:
+           ACCUSED
+           WITNESSES
+           SEIZURE DETAILS
+           SEIZED ARTICLES
 
-           ACCUSED ›
-           WITNESSES ›
-           SEIZURE DETAILS ›
-           SEIZED ARTICLES ›
-
-       unless corresponding data actually exists.
+       No data:
+           section does not exist in DOM.
     ======================================================= */
 
     const expandable =
@@ -12777,8 +13928,38 @@ function (
 
 
     /* =======================================================
-       ADD EXPANDABLE SECTION CONTAINER
+       BUILD COMPLETE CASE DETAILS HTML
     ======================================================= */
+
+    let html =
+        "";
+
+
+
+    /* -------------------------------------------------------
+       CASE SUMMARY CARD
+    ------------------------------------------------------- */
+
+    if (
+        summaryHTML.trim()
+    ) {
+
+        html +=
+            `
+            <div class="gg-offence-case-summary">
+
+                ${summaryHTML}
+
+            </div>
+            `;
+
+    }
+
+
+
+    /* -------------------------------------------------------
+       DETAIL DRILL-DOWN ACTIONS
+    ------------------------------------------------------- */
 
     if (
         expandable.length
@@ -12800,16 +13981,31 @@ function (
                 html +=
                     `
                     <button
-                        type="button"
-                        class="gg-offence-detail-action"
-                        data-offence-field="${escapeHTML(item.key)}">
 
-                        <span class="gg-offence-detail-action-label">
-                            ${escapeHTML(item.label)}
+                        type="button"
+
+                        class="gg-offence-detail-action"
+
+                        data-offence-field="${escapeHTML(
+                            item.key
+                        )}">
+
+                        <span
+                            class="gg-offence-detail-action-label">
+
+                            ${escapeHTML(
+                                item.label
+                            )}
+
                         </span>
 
-                        <span class="gg-offence-detail-action-arrow">
+                        <span
+                            class="gg-offence-detail-action-arrow"
+
+                            aria-hidden="true">
+
                             ›
+
                         </span>
 
                     </button>
@@ -12841,7 +14037,9 @@ function (
         html =
             `
             <div class="gg-offence-empty">
+
                 No case details available.
+
             </div>
             `;
 
@@ -12850,7 +14048,7 @@ function (
 
 
     /* =======================================================
-       RENDER
+       RENDER CASE DETAILS
     ======================================================= */
 
     container.innerHTML =
@@ -12876,7 +14074,20 @@ function (
 
 
     /* =======================================================
-       HIDE FIELD DETAILS UNTIL A DETAIL SECTION IS CLICKED
+       RESET FIELD DETAILS
+
+       A new CASE was selected.
+
+       Therefore any previously opened:
+
+           ACCUSED
+           WITNESSES
+           SEIZURE DETAILS
+           SEIZED ARTICLES
+
+       must be closed.
+
+       Parent / child / case collection remain untouched.
     ======================================================= */
 
     if (
@@ -12906,7 +14117,7 @@ function (
 
 
     /* =======================================================
-       BIND EXPANDABLE DETAIL BUTTONS
+       BIND DETAIL DRILL-DOWN BUTTONS
     ======================================================= */
 
     container
@@ -12935,19 +14146,29 @@ function (
 
 
                         const key =
-                            button.dataset
+                            button
+                                .dataset
                                 .offenceField;
 
 
-                        const item =
+                        if (
+                            !key
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        const selected =
                             expandable.find(
 
                                 function (
-                                    entry
+                                    item
                                 ) {
 
                                     return (
-                                        entry.key ===
+                                        item.key ===
                                         key
                                     );
 
@@ -12957,7 +14178,7 @@ function (
 
 
                         if (
-                            !item
+                            !selected
                         ) {
 
                             return;
@@ -12965,9 +14186,24 @@ function (
                         }
 
 
-                        UIController.currentField =
-                            item;
 
+                        /* ---------------------------------------
+                           STORE CURRENT FIELD
+                        --------------------------------------- */
+
+                        UIController.currentField =
+                            selected;
+
+
+
+                        /* ---------------------------------------
+                           OPEN FIELD DETAILS
+
+                           No GIS action.
+                           No parent reset.
+                           No child reset.
+                           No case reset.
+                        --------------------------------------- */
 
                         if (
                             typeof
@@ -12977,14 +14213,14 @@ function (
 
                             UIController.showFieldDetails(
 
-                                item.label,
+                                selected.label,
 
-                                item.value,
+                                selected.value,
 
                                 {
 
                                     key:
-                                        item.key,
+                                        selected.key,
 
                                     caseData:
                                         caseData,
@@ -12993,6 +14229,16 @@ function (
                                         record
 
                                 }
+
+                            );
+
+                        }
+
+                        else {
+
+                            console.error(
+
+                                "❌ UIController.showFieldDetails() unavailable"
 
                             );
 
@@ -13009,19 +14255,139 @@ function (
 
 
     /* =======================================================
-       SCROLL INTO VIEW
+       STABLE INTERNAL PANEL SCROLL
+
+       CRITICAL:
+
+       DO NOT USE:
+
+           section.scrollIntoView()
+
+       or:
+
+           container.scrollIntoView()
+
+       because scrollIntoView() can scroll the browser/map
+       underneath the fixed offence panel.
+
+       ONLY .gg-offence-panel-body may scroll.
     ======================================================= */
 
-    section
-        ?.scrollIntoView?.({
+    const panelBody =
 
-            block:
-                "nearest",
+        elements.panel
 
-            behavior:
-                "smooth"
+            ?.querySelector(
+                ".gg-offence-panel-body"
+            )
 
-        });
+        ||
+
+        document.querySelector(
+            "#gg-offence-analysis-panel .gg-offence-panel-body"
+        );
+
+
+
+    if (
+        panelBody &&
+        section
+    ) {
+
+
+        /* ---------------------------------------------------
+           Calculate location RELATIVE TO scroll container.
+
+           offsetTop alone is unsafe if nested wrappers exist.
+
+           Bounding rectangles give the actual visual offset.
+        --------------------------------------------------- */
+
+        const bodyRect =
+            panelBody
+                .getBoundingClientRect();
+
+
+        const sectionRect =
+            section
+                .getBoundingClientRect();
+
+
+
+        /* ---------------------------------------------------
+           DESIRED POSITION
+
+           Keep a small visual breathing space above CASE
+           DETAILS.
+
+           No smooth behavior is used because repeated case
+           switching should feel immediate and stable.
+        --------------------------------------------------- */
+
+        const offset =
+            8;
+
+
+        const targetScrollTop =
+
+            panelBody.scrollTop +
+
+            (
+                sectionRect.top -
+                bodyRect.top
+            ) -
+
+            offset;
+
+
+
+        /* ---------------------------------------------------
+           Clamp scroll position.
+
+           Prevent negative / invalid scroll positions.
+        --------------------------------------------------- */
+
+        const maxScrollTop =
+
+            Math.max(
+
+                0,
+
+                panelBody.scrollHeight -
+                panelBody.clientHeight
+
+            );
+
+
+        const safeScrollTop =
+
+            Math.max(
+
+                0,
+
+                Math.min(
+
+                    targetScrollTop,
+
+                    maxScrollTop
+
+                )
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           INTERNAL SCROLL ONLY
+
+           Immediate movement = stable panel.
+        --------------------------------------------------- */
+
+        panelBody.scrollTop =
+            safeScrollTop;
+
+
+    }
 
 
 
@@ -13035,7 +14401,17 @@ function (
 
         {
 
-            porNo,
+            porNo:
+                porNo || null,
+
+            offenceDate:
+                offenceDate || null,
+
+            natureOfOffence:
+                natureOfOffence || null,
+
+            caseStatus:
+                caseStatus || null,
 
             expandableSections:
 
@@ -13054,6 +14430,7 @@ function (
         }
 
     );
+
 
 
     return true;
