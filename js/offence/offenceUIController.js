@@ -756,7 +756,7 @@ function () {
         18px;
 
     bottom:
-        390px;
+        450px;
 
     left:
         auto;
