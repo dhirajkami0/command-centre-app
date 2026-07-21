@@ -623,374 +623,394 @@ CONFIG: {
            the Monthly Status panel as happened previously.
         ==================================================== */
 
-        injectStyles:
-            function () {
+injectStyles:
+function () {
 
 
-                /* ============================================
-                   REMOVE OLD STYLE BLOCK
-                ============================================ */
+    /* ==========================================================
+       REMOVE PREVIOUS OFFENCE STYLE BLOCK
 
-                const existingStyle =
-                    document
-                        .getElementById(
+       IMPORTANT:
+       There must be only ONE authoritative offence stylesheet.
 
-                            UIController
-                                .CONFIG
-                                .STYLE_ID
+       This prevents old desktop/mobile rules from fighting
+       the new viewport-safe layout.
+    ========================================================== */
 
-                        );
+    const existingStyle =
+        document.getElementById(
 
+            UIController
+                .CONFIG
+                .STYLE_ID
 
+        );
 
-                if (
-                    existingStyle
-                ) {
 
+    if (
+        existingStyle
+    ) {
 
-                    existingStyle
-                        .remove();
+        existingStyle.remove();
 
+    }
 
-                }
 
 
+    /* ==========================================================
+       CREATE STYLE ELEMENT
+    ========================================================== */
 
-                /* ============================================
-                   CREATE STYLE ELEMENT
-                ============================================ */
+    const style =
+        document.createElement(
+            "style"
+        );
 
-                const style =
-                    document
-                        .createElement(
-                            "style"
-                        );
 
+    style.id =
+        UIController
+            .CONFIG
+            .STYLE_ID;
 
 
-                style.id =
-                    UIController
-                        .CONFIG
-                        .STYLE_ID;
 
+    /* ==========================================================
+       Z INDEX
 
+       Keep offence controls above the map/GIS layers.
 
-                /* ============================================
-                   POSITION VALUES
-                ============================================ */
+       The panel receives a slightly higher value than the
+       launcher button while open.
+    ========================================================== */
 
-                const buttonTop =
-                    UIController
-                        .CONFIG
-                        .BUTTON_TOP;
+    const zIndex =
+        UIController
+            .CONFIG
+            .Z_INDEX ||
+        10000;
 
 
 
-                const buttonRight =
-                    UIController
-                        .CONFIG
-                        .BUTTON_RIGHT;
+    /* ==========================================================
+       COMPLETE OFFENCE UI CSS
+    ========================================================== */
 
+    style.textContent =
+        `
 
 
-                /*
-                 * Main button height:
-                 *
-                 * 48 px
-                 *
-                 * Panel gap:
-                 *
-                 * CONFIG.PANEL_GAP
-                 */
+/* ============================================================
+   OFFENCE UI — GLOBAL BOX MODEL
+============================================================ */
 
-                const panelTop =
-                    buttonTop +
-                    48 +
-                    UIController
-                        .CONFIG
-                        .PANEL_GAP;
+#${UIController.CONFIG.BUTTON_ID},
+#${UIController.CONFIG.PANEL_ID},
+#${UIController.CONFIG.PANEL_ID} *,
+#${UIController.CONFIG.PANEL_ID} *::before,
+#${UIController.CONFIG.PANEL_ID} *::after {
 
+    box-sizing:
+        border-box;
 
+}
 
-                const panelWidth =
-                    UIController
-                        .CONFIG
-                        .PANEL_WIDTH;
 
 
+/* ============================================================
+   OFFENCE LAUNCHER BUTTON
 
-                const zIndex =
-                    UIController
-                        .CONFIG
-                        .Z_INDEX;
+   DESKTOP POSITION
+   ------------------------------------------------------------
 
+   IMPORTANT:
 
+   The old button was positioned on the lower-right side.
 
-                /* ============================================
-                   CSS
-                ============================================ */
+   That area is already occupied by:
 
-                style.textContent =
-                    `
+       Monthly Status
+       Analytics
+       Patrol information
 
+   Therefore the OFFENCE launcher is moved to the
+   UPPER-RIGHT MAP AREA.
 
-                    /* ========================================
-                       OFFENCE MAIN BUTTON
-                    ======================================== */
+   It stays below the normal top map controls.
 
-                    #${UIController.CONFIG.BUTTON_ID} {
+   When the offence panel opens, the panel itself covers this
+   side and the button may remain underneath/adjacent without
+   interfering with the analytical status card.
+============================================================ */
 
-                        position:
-                            fixed;
+#${UIController.CONFIG.BUTTON_ID} {
 
+    position:
+        fixed;
 
-                        top:
-                            ${buttonTop}px;
+    top:
+        88px;
 
+    right:
+        18px;
 
-                        right:
-                            ${buttonRight}px;
+    bottom:
+        auto;
 
+    left:
+        auto;
 
-                        z-index:
-                            ${zIndex};
+    z-index:
+        ${zIndex};
 
+    display:
+        flex;
 
-                        display:
-                            flex;
+    align-items:
+        center;
 
+    justify-content:
+        center;
 
-                        align-items:
-                            center;
+    gap:
+        7px;
 
+    width:
+        auto;
 
-                        justify-content:
-                            center;
+    min-width:
+        116px;
 
+    max-width:
+        calc(100vw - 36px);
 
-                        gap:
-                            8px;
+    height:
+        44px;
 
+    min-height:
+        44px;
 
-                        min-width:
-                            126px;
+    padding:
+        0 15px;
 
+    margin:
+        0;
 
-                        height:
-                            48px;
-
-
-                        padding:
-                            0 17px;
-
-
-                        margin:
-                            0;
-
-
-                        border:
-                            1px solid
-                            rgba(
-                                255,
-                                255,
-                                255,
-                                0.55
-                            );
-
-
-                        border-radius:
-                            17px;
-
-
-                        outline:
-                            none;
-
-
-                        background:
-                            rgba(
-                                255,
-                                255,
-                                255,
-                                0.96
-                            );
-
-
-                        color:
-                            #18202a;
-
-
-                        font-family:
-                            Arial,
-                            Helvetica,
-                            sans-serif;
-
-
-                        font-size:
-                            14px;
-
-
-                        font-weight:
-                            800;
-
-
-                        letter-spacing:
-                            0.3px;
-
-
-                        line-height:
-                            1;
-
-
-                        cursor:
-                            pointer;
-
-
-                        box-sizing:
-                            border-box;
-
-
-                        box-shadow:
-                            0 8px 28px
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.26
-                            );
-
-
-                        backdrop-filter:
-                            blur(
-                                12px
-                            );
-
-
-                        -webkit-backdrop-filter:
-                            blur(
-                                12px
-                            );
-
-
-                        transition:
-                            transform
-                            0.18s
-                            ease,
-
-                            box-shadow
-                            0.18s
-                            ease,
-
-                            background
-                            0.18s
-                            ease;
-
-                    }
-
-
-
-                    #${UIController.CONFIG.BUTTON_ID}:hover {
-
-                        transform:
-                            translateY(
-                                -2px
-                            );
-
-
-                        box-shadow:
-                            0 11px 32px
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.32
-                            );
-
-                    }
-
-
-
-                    #${UIController.CONFIG.BUTTON_ID}:active {
-
-                        transform:
-                            translateY(
-                                0
-                            );
-
-                    }
-
-
-
-                    #${UIController.CONFIG.BUTTON_ID}.gg-offence-open {
-
-                        background:
-                            rgba(
-                                245,
-                                247,
-                                249,
-                                0.99
-                            );
-
-
-                        box-shadow:
-                            0 10px 32px
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.30
-                            );
-
-                    }
-
-
-
-
-
-/* ========================================
-   OFFENCE ANALYSIS PANEL
-======================================== */
-
-#${UIController.CONFIG.PANEL_ID}{
-
-    position:fixed;
-
-    top:16px;
-
-    right:16px;
-
-    width:min(
-        420px,
-        calc(100vw - 32px)
-    );
-
-    height:calc(
-        100vh - 32px
-    );
-
-    display:none;
-
-    flex-direction:column;
-
-    overflow:hidden;
-
-    box-sizing:border-box;
-
-    border-radius:18px;
-
-    border:1px solid
+    border:
+        1px solid
         rgba(
             255,
             255,
             255,
-            .45
+            0.65
         );
+
+    border-radius:
+        14px;
+
+    outline:
+        none;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.96
+        );
+
+    color:
+        #18202a;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    font-size:
+        13px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1;
+
+    letter-spacing:
+        0.25px;
+
+    white-space:
+        nowrap;
+
+    cursor:
+        pointer;
+
+    box-shadow:
+        0 6px 22px
+        rgba(
+            0,
+            0,
+            0,
+            0.24
+        );
+
+    backdrop-filter:
+        blur(12px);
+
+    -webkit-backdrop-filter:
+        blur(12px);
+
+    transition:
+        transform
+        0.15s
+        ease,
+
+        box-shadow
+        0.15s
+        ease,
+
+        background
+        0.15s
+        ease;
+
+}
+
+
+
+#${UIController.CONFIG.BUTTON_ID}:hover {
+
+    transform:
+        translateY(-1px);
+
+    background:
+        #ffffff;
+
+    box-shadow:
+        0 9px 26px
+        rgba(
+            0,
+            0,
+            0,
+            0.28
+        );
+
+}
+
+
+
+#${UIController.CONFIG.BUTTON_ID}:active {
+
+    transform:
+        translateY(0);
+
+}
+
+
+
+#${UIController.CONFIG.BUTTON_ID}.gg-offence-open {
+
+    background:
+        rgba(
+            245,
+            247,
+            249,
+            0.99
+        );
+
+}
+
+
+
+/* ============================================================
+   MAIN OFFENCE ANALYSIS PANEL
+
+   VIEWPORT-SAFE DESIGN
+   ------------------------------------------------------------
+
+   CRITICAL RULE:
+
+       top + bottom are BOTH defined.
+
+   Therefore panel height is determined by the actual active
+   viewport rather than by content.
+
+   Desktop:
+
+       top    = 12px
+       bottom = 12px
+
+   Result:
+
+       panel can NEVER become taller than available screen.
+
+   The header and close button therefore always remain inside
+   the visible screen.
+============================================================ */
+
+#${UIController.CONFIG.PANEL_ID} {
+
+    position:
+        fixed;
+
+    top:
+        12px;
+
+    right:
+        12px;
+
+    bottom:
+        12px;
+
+    left:
+        auto;
+
+    width:
+        min(
+            420px,
+            calc(100vw - 24px)
+        );
+
+    height:
+        auto;
+
+    max-height:
+        none;
+
+    min-height:
+        0;
+
+    margin:
+        0;
+
+    padding:
+        0;
+
+    display:
+        none;
+
+    flex-direction:
+        column;
+
+    overflow:
+        hidden;
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.55
+        );
+
+    border-radius:
+        17px;
 
     background:
         rgba(
             248,
             249,
             250,
-            .98
+            0.985
         );
 
     box-shadow:
@@ -999,7 +1019,7 @@ CONFIG: {
             0,
             0,
             0,
-            .30
+            0.30
         );
 
     backdrop-filter:
@@ -1013,1077 +1033,2394 @@ CONFIG: {
         Helvetica,
         sans-serif;
 
-    z-index:${zIndex};
+    z-index:
+        ${zIndex + 2};
 
 }
 
 
 
+/* ============================================================
+   PANEL OPEN
+============================================================ */
 
+#${UIController.CONFIG.PANEL_ID}.gg-offence-panel-open {
 
-                    /* ========================================
-                       PANEL OPEN STATE
-                    ======================================== */
-
-#${UIController.CONFIG.PANEL_ID}.gg-offence-panel-open{
-
-    display:flex;
+    display:
+        flex;
 
 }
 
 
 
+/* ============================================================
+   PANEL HEADER
 
+   This is NOT part of the scrolling content.
 
-                    /* ========================================
-                       PANEL HEADER
-                    ======================================== */
+   Therefore:
 
-.gg-offence-panel-header{
+       OFFENCE ANALYSIS
+       X close button
 
-    position:sticky;
+   always remain visible.
+============================================================ */
 
-    top:0;
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-panel-header {
 
-    z-index:5;
+    position:
+        relative;
 
-    display:flex;
+    top:
+        auto;
 
-    align-items:center;
+    z-index:
+        10;
 
-    justify-content:space-between;
+    flex:
+        0 0 auto;
 
-    min-height:56px;
+    display:
+        flex;
 
-    padding:0 16px;
+    align-items:
+        center;
 
-    background:#ffffff;
+    justify-content:
+        space-between;
 
-    border-bottom:1px solid
+    gap:
+        12px;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    min-height:
+        56px;
+
+    padding:
+        0 14px 0 16px;
+
+    margin:
+        0;
+
+    background:
+        #ffffff;
+
+    border-bottom:
+        1px solid
         rgba(
-            0,
-            0,
-            0,
-            .08
+            15,
+            23,
+            42,
+            0.09
         );
 
-    flex-shrink:0;
+}
+
+
+
+/* ============================================================
+   PANEL TITLE
+============================================================ */
+
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-panel-title {
+
+    flex:
+        1 1 auto;
+
+    min-width:
+        0;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        6px;
+
+    margin:
+        0;
+
+    color:
+        #27313b;
+
+    font-size:
+        14px;
+
+    font-weight:
+        900;
+
+    line-height:
+        1.25;
+
+    letter-spacing:
+        0.25px;
+
+    white-space:
+        normal;
+
+    overflow-wrap:
+        anywhere;
 
 }
 
 
 
+/* ============================================================
+   CLOSE BUTTON
 
+   CRITICAL:
 
-                    /* ========================================
-                       PANEL TITLE
-                    ======================================== */
+   flex-shrink:0 prevents the X button from being pushed
+   outside the panel by a long title.
+============================================================ */
 
-                    .gg-offence-panel-title {
+#${UIController.CONFIG.CLOSE_BUTTON_ID} {
 
-                        display:
-                            flex;
+    position:
+        relative;
 
+    flex:
+        0 0 36px;
 
-                        align-items:
-                            center;
+    width:
+        36px;
 
+    height:
+        36px;
 
-                        gap:
-                            6px;
+    min-width:
+        36px;
 
+    min-height:
+        36px;
 
-                        color:
-                            #27313b;
+    display:
+        flex;
 
+    align-items:
+        center;
 
-                        font-size:
-                            14px;
+    justify-content:
+        center;
 
+    padding:
+        0;
 
-                        font-weight:
-                            900;
+    margin:
+        0;
 
+    border:
+        0;
 
-                        letter-spacing:
-                            0.25px;
+    border-radius:
+        50%;
 
+    outline:
+        none;
 
-                        white-space:
-                            nowrap;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       CLOSE BUTTON
-                    ======================================== */
-
-                    #${UIController.CONFIG.CLOSE_BUTTON_ID} {
-
-                        width:
-                            34px;
-
-
-                        height:
-                            34px;
-
-
-                        display:
-                            flex;
-
-
-                        align-items:
-                            center;
-
-
-                        justify-content:
-                            center;
-
-
-                        padding:
-                            0;
-
-
-                        margin:
-                            0;
-
-
-                        border:
-                            0;
-
-
-                        border-radius:
-                            50%;
-
-
-                        outline:
-                            none;
-
-
-                        background:
-                            transparent;
-
-
-                        color:
-                            #66717d;
-
-
-                        font-size:
-                            21px;
-
-
-                        font-weight:
-                            400;
-
-
-                        line-height:
-                            1;
-
-
-                        cursor:
-                            pointer;
-
-
-                        transition:
-                            background
-                            0.15s
-                            ease,
-
-                            color
-                            0.15s
-                            ease;
-
-                    }
-
-
-
-                    #${UIController.CONFIG.CLOSE_BUTTON_ID}:hover {
-
-                        background:
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.07
-                            );
-
-
-                        color:
-                            #202832;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       STATUS AREA
-                    ======================================== */
-
-#${UIController.CONFIG.STATUS_ID}{
-
-    position:sticky;
-
-    top:56px;
-
-    z-index:4;
-
-    display:flex;
-
-    align-items:center;
-
-    min-height:40px;
-
-    padding:8px 16px;
-
-    box-sizing:border-box;
-
-    background:#f7f8fa;
-
-    border-bottom:1px solid
+    background:
         rgba(
-            0,
-            0,
-            0,
-            .08
+            15,
+            23,
+            42,
+            0.045
         );
 
-    color:#66717d;
+    color:
+        #53606d;
 
-    font-size:12px;
+    font-size:
+        22px;
 
-    line-height:1.4;
+    font-weight:
+        500;
 
-    flex-shrink:0;
+    line-height:
+        1;
+
+    cursor:
+        pointer;
+
+    z-index:
+        20;
 
 }
 
 
-/* ========================================
+
+#${UIController.CONFIG.CLOSE_BUTTON_ID}:hover {
+
+    background:
+        rgba(
+            15,
+            23,
+            42,
+            0.10
+        );
+
+    color:
+        #111827;
+
+}
+
+
+
+/* ============================================================
+   STATUS BAR
+
+   Also remains outside the scrolling content.
+============================================================ */
+
+#${UIController.CONFIG.STATUS_ID} {
+
+    position:
+        relative;
+
+    top:
+        auto;
+
+    flex:
+        0 0 auto;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    min-height:
+        38px;
+
+    padding:
+        7px 16px;
+
+    margin:
+        0;
+
+    background:
+        #f7f8fa;
+
+    border-bottom:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+    color:
+        #66717d;
+
+    font-size:
+        12px;
+
+    line-height:
+        1.4;
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+/* ============================================================
+   STATUS STATES
+============================================================ */
+
+#${UIController.CONFIG.STATUS_ID}[data-state="ready"] {
+
+    color:
+        #687582;
+
+}
+
+
+#${UIController.CONFIG.STATUS_ID}[data-state="loading"] {
+
+    color:
+        #946200;
+
+}
+
+
+#${UIController.CONFIG.STATUS_ID}[data-state="success"] {
+
+    color:
+        #14733c;
+
+}
+
+
+#${UIController.CONFIG.STATUS_ID}[data-state="error"] {
+
+    color:
+        #b42318;
+
+}
+
+
+
+/* ============================================================
    PANEL BODY
-======================================== */
 
-.gg-offence-panel-body{
+   THIS IS THE ONE AND ONLY VERTICAL SCROLL OWNER.
 
-    flex:1;
+   Structure:
 
-    overflow-y:auto;
+       HEADER               fixed
+       STATUS               fixed
+       --------------------------
+       PANEL BODY           scroll
+          analysis mode
+          source/target
+          children
+          cases
+          case details
+          field details
+          clear analysis
 
-    overflow-x:hidden;
+   No inner section receives its own vertical scrollbar.
+============================================================ */
 
-    display:flex;
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-panel-body {
 
-    flex-direction:column;
+    position:
+        relative;
 
-    gap:18px;
+    flex:
+        1 1 auto;
 
-    padding:16px;
+    width:
+        100%;
 
-    box-sizing:border-box;
+    min-width:
+        0;
 
-    scrollbar-width:thin;
+    min-height:
+        0;
+
+    max-height:
+        none;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        16px;
+
+    padding:
+        14px;
+
+    margin:
+        0;
+
+    overflow-x:
+        hidden;
+
+    overflow-y:
+        auto;
+
+    overscroll-behavior:
+        contain;
+
+    scrollbar-width:
+        thin;
+
+    scrollbar-gutter:
+        stable;
+
+    -webkit-overflow-scrolling:
+        touch;
 
 }
 
-/* ========================================
-   SECTION
-======================================== */
 
-.gg-offence-section{
 
-    display:flex;
+/* ============================================================
+   GENERAL SECTION
+============================================================ */
 
-    flex-direction:column;
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-section {
 
-    gap:12px;
+    flex:
+        0 0 auto;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        10px;
 
 }
 
-/* ========================================
+
+
+/* ============================================================
    SECTION TITLE
-======================================== */
+============================================================ */
 
-.gg-offence-section-title{
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-section-title {
 
-    font-size:13px;
+    width:
+        100%;
 
-    font-weight:800;
+    min-width:
+        0;
 
-    color:#2b3642;
+    margin:
+        0;
 
-    letter-spacing:.3px;
+    font-size:
+        13px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.3;
+
+    color:
+        #2b3642;
+
+    letter-spacing:
+        0.3px;
+
+    overflow-wrap:
+        anywhere;
 
 }
 
-.gg-workflow-mode{
 
-    padding:10px;
 
-    border-radius:10px;
+/* ============================================================
+   ANALYSIS MODE / WORKFLOW
+============================================================ */
 
-    background:#eef5fb;
+#${UIController.CONFIG.PANEL_ID}
+.gg-workflow-mode {
 
-    font-weight:700;
+    width:
+        100%;
 
-    font-size:12px;
+    min-width:
+        0;
+
+    padding:
+        10px;
+
+    border-radius:
+        10px;
+
+    background:
+        #eef5fb;
+
+    font-weight:
+        700;
+
+    font-size:
+        12px;
 
 }
-.gg-workflow-step{
 
-    padding:12px;
 
-    border-radius:10px;
 
-    border:1px solid
+#${UIController.CONFIG.PANEL_ID}
+.gg-workflow-step {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    padding:
+        12px;
+
+    border:
+        1px solid
         rgba(
             0,
             0,
             0,
-            .08
+            0.08
         );
 
-    background:#ffffff;
+    border-radius:
+        10px;
 
-    font-size:12px;
+    background:
+        #ffffff;
 
-}
-
-
-                    /* ========================================
-                       STATUS — READY
-                    ======================================== */
-
-                    #${UIController.CONFIG.STATUS_ID}[data-state="ready"] {
-
-                        color:
-                            #687582;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       STATUS — LOADING
-                    ======================================== */
-
-                    #${UIController.CONFIG.STATUS_ID}[data-state="loading"] {
-
-                        color:
-                            #946200;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       STATUS — SUCCESS
-                    ======================================== */
-
-                    #${UIController.CONFIG.STATUS_ID}[data-state="success"] {
-
-                        color:
-                            #14733c;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       STATUS — ERROR
-                    ======================================== */
-
-                    #${UIController.CONFIG.STATUS_ID}[data-state="error"] {
-
-                        color:
-                            #b42318;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       ACTION BUTTON CONTAINER
-                    ======================================== */
-
-                    .gg-offence-panel-actions {
-
-                        display:
-                            flex;
-
-
-                        flex-direction:
-                            column;
-
-
-                        gap:
-                            9px;
-
-
-                        width:
-                            100%;
-
-
-                        padding:
-                            10px;
-
-
-                        box-sizing:
-                            border-box;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       SOURCE / TARGET / CLEAR BUTTONS
-                    ======================================== */
-
-                    .gg-offence-action-button {
-
-                        width:
-                            100%;
-
-
-                        min-height:
-                            45px;
-
-
-                        display:
-                            flex;
-
-
-                        align-items:
-                            center;
-
-
-                        justify-content:
-                            flex-start;
-
-
-                        gap:
-                            11px;
-
-
-                        padding:
-                            0 14px;
-
-
-                        margin:
-                            0;
-
-
-                        box-sizing:
-                            border-box;
-
-
-                        border:
-                            1px solid
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.09
-                            );
-
-
-                        border-radius:
-                            12px;
-
-
-                        outline:
-                            none;
-
-
-                        background:
-                            rgba(
-                                255,
-                                255,
-                                255,
-                                0.92
-                            );
-
-
-                        color:
-                            #27313b;
-
-
-                        font-family:
-                            Arial,
-                            Helvetica,
-                            sans-serif;
-
-
-                        font-size:
-                            14px;
-
-
-                        font-weight:
-                            800;
-
-
-                        text-align:
-                            left;
-
-
-                        cursor:
-                            pointer;
-
-
-                        transition:
-                            transform
-                            0.15s
-                            ease,
-
-                            background
-                            0.15s
-                            ease,
-
-                            box-shadow
-                            0.15s
-                            ease;
-
-                    }
-
-
-
-                    .gg-offence-action-button:hover {
-
-                        transform:
-                            translateY(
-                                -1px
-                            );
-
-
-                        background:
-                            #ffffff;
-
-
-                        box-shadow:
-                            0 4px 12px
-                            rgba(
-                                0,
-                                0,
-                                0,
-                                0.09
-                            );
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       ACTIVE MODE
-
-                       SOURCE selected
-                       OR
-                       TARGET selected
-                    ======================================== */
-
-                    .gg-offence-action-button.gg-active {
-
-                        background:
-                            rgba(
-                                226,
-                                241,
-                                253,
-                                0.98
-                            );
-
-
-                        outline:
-                            2px solid
-                            rgba(
-                                29,
-                                112,
-                                184,
-                                0.34
-                            );
-
-
-                        box-shadow:
-                            0 3px 12px
-                            rgba(
-                                29,
-                                112,
-                                184,
-                                0.14
-                            );
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       CLEAR BUTTON
-                    ======================================== */
-
-                    #${UIController.CONFIG.CLEAR_BUTTON_ID} {
-
-                        color:
-                            #b42318;
-
-                    }
-
-
-
-
-
-                    /* ========================================
-                       ACTION ICON
-                    ======================================== */
-
-                    .gg-offence-action-icon {
-
-                        width:
-                            22px;
-
-
-                        flex:
-                            0 0
-                            22px;
-
-
-                        text-align:
-                            center;
-
-
-                        font-size:
-                            17px;
-
-                    }
-
-
-/* ========================================
-   CASE DETAILS
-======================================== */
-
-#gg-offence-case-details{
-
-    min-height:160px;
-
-    max-height:260px;
-
-    overflow-y:auto;
-
-    padding:12px;
-
-    box-sizing:border-box;
-
-    border-top:1px solid rgba(0,0,0,.08);
-
-    background:#ffffff;
-
-}
-
-.gg-case-details{
-
-    display:flex;
-
-    flex-direction:column;
-
-    gap:8px;
-
-    font-size:12px;
-
-    line-height:1.6;
-
-}
-
-.gg-case-details-row{
-
-    display:flex;
-
-    justify-content:space-between;
-
-    gap:12px;
-
-}
-
-.gg-case-details-label{
-
-    font-weight:700;
-
-    color:#46515c;
-
-    min-width:90px;
-
-}
-
-.gg-case-details-value{
-
-    flex:1;
-
-    color:#1f2933;
-
-    word-break:break-word;
-
-}
-/* ========================================
-   CASE RESULTS HEADER
-======================================== */
-
-.gg-offence-case-results-header{
-
-    padding:10px 14px;
-
-    border-top:1px solid rgba(0,0,0,.08);
-
-    border-bottom:1px solid rgba(0,0,0,.08);
-
-    background:#f7f8fa;
-
-    font-size:12px;
-
-    font-weight:800;
-
-    letter-spacing:.4px;
-
-    color:#46515c;
+    font-size:
+        12px;
 
 }
 
 
 
-/* ========================================
-   CASE RESULTS CONTAINER
-======================================== */
+/* ============================================================
+   PANEL ACTION CONTAINER
+============================================================ */
 
-#gg-offence-case-results{
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-panel-actions {
 
-    min-height:120px;
+    display:
+        flex;
 
-    max-height:260px;
+    flex-direction:
+        column;
 
-    overflow-y:auto;
+    gap:
+        9px;
 
-    padding:10px;
+    width:
+        100%;
 
-    box-sizing:border-box;
+    min-width:
+        0;
 
-}
+    padding:
+        0;
 
-
-
-/* ========================================
-   EMPTY MESSAGE
-======================================== */
-
-.gg-offence-empty{
-
-    padding:18px 10px;
-
-    text-align:center;
-
-    color:#7b8794;
-
-    font-size:12px;
-
-    line-height:1.6;
+    margin:
+        0;
 
 }
 
 
 
-/* ========================================
-   CONTEXT HEADER
-======================================== */
+/* ============================================================
+   SOURCE / TARGET / CLEAR BUTTONS
+============================================================ */
 
-.gg-offence-case-context{
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-action-button {
 
-    margin-bottom:10px;
+    width:
+        100%;
 
-    padding:10px;
+    min-width:
+        0;
 
-    border-radius:10px;
+    min-height:
+        45px;
 
-    background:#eef5fb;
+    display:
+        flex;
 
-    border:1px solid rgba(29,112,184,.18);
+    align-items:
+        center;
 
-}
+    justify-content:
+        flex-start;
 
+    gap:
+        11px;
 
+    padding:
+        0 14px;
 
-.gg-offence-case-context-title{
+    margin:
+        0;
 
-    font-size:12px;
+    border:
+        1px solid
+        rgba(
+            0,
+            0,
+            0,
+            0.09
+        );
 
-    font-weight:700;
+    border-radius:
+        12px;
 
-    color:#234;
+    outline:
+        none;
 
-    margin-bottom:6px;
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.94
+        );
 
-}
+    color:
+        #27313b;
 
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
+    font-size:
+        14px;
 
-.gg-offence-case-count{
+    font-weight:
+        800;
 
-    margin-top:6px;
+    text-align:
+        left;
 
-    font-size:11px;
-
-    color:#5a6672;
-
-    font-weight:700;
-
-}
-
-
-
-/* ========================================
-   CASE CARD
-======================================== */
-
-.gg-offence-case-card{
-
-    padding:12px;
-
-    margin-bottom:10px;
-
-    border-radius:12px;
-
-    background:#fff;
-
-    border:1px solid rgba(0,0,0,.08);
-
-    cursor:pointer;
-
-    transition:.15s;
-
-}
-
-
-
-.gg-offence-case-card:hover{
-
-    transform:translateY(-1px);
-
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-
-}
-
-
-
-/* ========================================
-   POR NUMBER
-======================================== */
-
-.gg-offence-case-title{
-
-    font-size:13px;
-
-    font-weight:800;
-
-    color:#1f2933;
+    cursor:
+        pointer;
 
 }
 
 
 
-/* ========================================
-   DATE / SPECIES
-======================================== */
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-action-button:hover {
 
-.gg-offence-case-meta{
-
-    margin-top:6px;
-
-    font-size:11px;
-
-    color:#6d7782;
-
-    line-height:1.5;
-
-}
-
-
-
-/* ========================================
-   VIEW LINK
-======================================== */
-
-.gg-offence-case-view{
-
-    margin-top:8px;
-
-    font-size:12px;
-
-    font-weight:700;
-
-    color:#1565c0;
-
-}
-/* ========================================
-   SELECTED CASE
-======================================== */
-
-.gg-selected-case{
-
-    border:2px solid #1565c0;
-
-    background:#eef6ff;
+    background:
+        #ffffff;
 
     box-shadow:
-        0 0 0 2px
+        0 3px 10px
         rgba(
-            21,
-            101,
-            192,
-            .12
+            0,
+            0,
+            0,
+            0.08
         );
 
 }
-                    /* ========================================
-                       SHORT DESKTOP SCREENS
-
-                       If screen height is small, fixed TOP
-                       positioning may push the panel too low.
-
-                       In that situation move both controls to
-                       bottom-based positioning.
-                    ======================================== */
-
-                    @media (
-                        max-height:
-                        760px
-                    ) {
-
-
-                        #${UIController.CONFIG.BUTTON_ID} {
-
-                            top:
-                                auto;
-
-
-                            bottom:
-                                88px;
-
-                        }
 
 
 
-                        #${UIController.CONFIG.PANEL_ID} {
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-action-button.gg-active {
 
-                            top:
-                                auto;
-
-
-                            bottom:
-                                146px;
-
-                        }
-
-
-                    }
-
-
-@media(max-height:760px){
-
-    #${UIController.CONFIG.PANEL_ID}{
-
-        top:8px;
-
-        height:calc(
-            100vh - 16px
+    background:
+        rgba(
+            226,
+            241,
+            253,
+            0.98
         );
+
+    outline:
+        2px solid
+        rgba(
+            29,
+            112,
+            184,
+            0.30
+        );
+
+}
+
+
+
+/* ============================================================
+   ACTION ICON
+============================================================ */
+
+#${UIController.CONFIG.PANEL_ID}
+.gg-offence-action-icon {
+
+    flex:
+        0 0 22px;
+
+    width:
+        22px;
+
+    text-align:
+        center;
+
+    font-size:
+        17px;
+
+}
+
+
+
+/* ============================================================
+   CLEAR BUTTON
+============================================================ */
+
+#${UIController.CONFIG.CLEAR_BUTTON_ID} {
+
+    color:
+        #b42318;
+
+}
+
+
+
+/* ============================================================
+   PARENT CONTENT / CHILD LIST
+
+   Prevent cards from forcing the panel wider than viewport.
+============================================================ */
+
+#gg-offence-parent-content,
+#gg-offence-child-list {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+}
+
+
+
+/* ============================================================
+   CASE SECTION
+============================================================ */
+
+#gg-offence-case-section {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    overflow:
+        visible;
+
+}
+
+
+
+/* ============================================================
+   CASE RESULTS
+
+   IMPORTANT:
+
+   REMOVE OLD:
+
+       max-height:260px;
+       overflow-y:auto;
+
+   The MAIN PANEL BODY now owns scrolling.
+============================================================ */
+
+#gg-offence-case-results {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    min-height:
+        0;
+
+    max-height:
+        none;
+
+    padding:
+        0;
+
+    margin:
+        0;
+
+    overflow:
+        visible;
+
+}
+
+
+
+/* ============================================================
+   CASE RESULT LIST
+============================================================ */
+
+#gg-case-result-list {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+}
+
+
+
+/* ============================================================
+   CASE RESULTS HEADER
+============================================================ */
+
+.gg-offence-case-results-header {
+
+    width:
+        100%;
+
+    padding:
+        10px 12px;
+
+    border-top:
+        1px solid
+        rgba(
+            0,
+            0,
+            0,
+            0.08
+        );
+
+    border-bottom:
+        1px solid
+        rgba(
+            0,
+            0,
+            0,
+            0.08
+        );
+
+    background:
+        #f7f8fa;
+
+    font-size:
+        12px;
+
+    font-weight:
+        800;
+
+    letter-spacing:
+        0.4px;
+
+    color:
+        #46515c;
+
+}
+
+
+
+/* ============================================================
+   CASE CONTEXT
+============================================================ */
+
+.gg-offence-case-context {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    margin:
+        0 0 10px 0;
+
+    padding:
+        10px;
+
+    border:
+        1px solid
+        rgba(
+            29,
+            112,
+            184,
+            0.18
+        );
+
+    border-radius:
+        10px;
+
+    background:
+        #eef5fb;
+
+}
+
+
+
+.gg-offence-case-context-title {
+
+    margin:
+        0 0 6px 0;
+
+    font-size:
+        12px;
+
+    font-weight:
+        700;
+
+    color:
+        #234;
+
+}
+
+
+
+.gg-offence-case-count {
+
+    margin-top:
+        6px;
+
+    font-size:
+        11px;
+
+    color:
+        #5a6672;
+
+    font-weight:
+        700;
+
+}
+
+
+
+/* ============================================================
+   CASE CARD
+============================================================ */
+
+.gg-offence-case-card {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    padding:
+        12px;
+
+    margin:
+        0 0 9px 0;
+
+    border:
+        1px solid
+        rgba(
+            0,
+            0,
+            0,
+            0.08
+        );
+
+    border-radius:
+        11px;
+
+    background:
+        #ffffff;
+
+    cursor:
+        pointer;
+
+    overflow:
+        hidden;
+
+}
+
+
+
+.gg-offence-case-card:hover {
+
+    box-shadow:
+        0 3px 10px
+        rgba(
+            0,
+            0,
+            0,
+            0.10
+        );
+
+}
+
+
+
+.gg-offence-case-title {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    font-size:
+        13px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.35;
+
+    color:
+        #1f2933;
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+.gg-offence-case-meta {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    margin-top:
+        6px;
+
+    font-size:
+        11px;
+
+    color:
+        #6d7782;
+
+    line-height:
+        1.5;
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+.gg-offence-case-view {
+
+    margin-top:
+        8px;
+
+    font-size:
+        12px;
+
+    font-weight:
+        700;
+
+    color:
+        #1565c0;
+
+}
+
+
+
+.gg-selected-case {
+
+    border:
+        2px solid
+        #1565c0;
+
+    background:
+        #eef6ff;
+
+}
+
+
+
+/* ============================================================
+   CASE DETAILS SECTION
+============================================================ */
+
+#gg-offence-case-details-section {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    overflow:
+        visible;
+
+}
+
+
+
+/* ============================================================
+   CASE DETAILS
+
+   CRITICAL:
+
+   OLD CSS had:
+
+       max-height:260px;
+       overflow-y:auto;
+
+   REMOVE THAT BEHAVIOUR.
+
+   Otherwise there are TWO vertical scrollbars.
+============================================================ */
+
+#gg-offence-case-details {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    min-height:
+        0;
+
+    max-height:
+        none;
+
+    padding:
+        0;
+
+    margin:
+        0;
+
+    overflow:
+        visible;
+
+    background:
+        transparent;
+
+}
+
+
+
+/* ============================================================
+   PROFESSIONAL CASE DETAILS
+============================================================ */
+
+.gg-case-details {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        9px;
+
+    font-size:
+        12px;
+
+    line-height:
+        1.5;
+
+}
+
+
+
+.gg-case-details-row {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        3px;
+
+    padding:
+        9px 10px;
+
+    background:
+        #ffffff;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+    border-radius:
+        8px;
+
+}
+
+
+
+.gg-case-details-label {
+
+    min-width:
+        0;
+
+    color:
+        #64748b;
+
+    font-size:
+        10px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.25;
+
+    letter-spacing:
+        0.04em;
+
+    text-transform:
+        uppercase;
+
+}
+
+
+
+.gg-case-details-value {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    color:
+        #172033;
+
+    font-size:
+        13px;
+
+    font-weight:
+        600;
+
+    line-height:
+        1.45;
+
+    white-space:
+        normal;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+
+
+/* ============================================================
+   FIELD DETAILS SECTION
+============================================================ */
+
+#gg-offence-field-details-section {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    overflow:
+        visible;
+
+}
+
+
+
+/* ============================================================
+   FIELD DETAILS CONTAINER
+
+   NO SECONDARY SCROLLBAR.
+============================================================ */
+
+#gg-offence-field-details {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    min-height:
+        0;
+
+    max-height:
+        none;
+
+    overflow:
+        visible;
+
+}
+
+
+
+/* ============================================================
+   PROFESSIONAL FIELD DETAILS TITLE
+============================================================ */
+
+.gg-offence-field-selected-title {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    margin:
+        2px 0 10px 0;
+
+    padding:
+        0 2px 9px 2px;
+
+    border-bottom:
+        2px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.10
+        );
+
+    color:
+        #172033;
+
+    font-size:
+        12px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.3;
+
+    letter-spacing:
+        0.055em;
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+/* ============================================================
+   FIELD DETAILS CONTENT
+============================================================ */
+
+.gg-offence-field-details-content {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        10px;
+
+}
+
+
+
+/* ============================================================
+   FIELD GROUP
+============================================================ */
+
+.gg-offence-field-group {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    margin:
+        0;
+
+    background:
+        #ffffff;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.10
+        );
+
+    border-radius:
+        10px;
+
+    overflow:
+        hidden;
+
+}
+
+
+
+/* ============================================================
+   FIELD GROUP TITLE
+============================================================ */
+
+.gg-offence-field-group-title {
+
+    width:
+        100%;
+
+    padding:
+        9px 12px;
+
+    background:
+        rgba(
+            15,
+            23,
+            42,
+            0.035
+        );
+
+    border-bottom:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+    color:
+        #475569;
+
+    font-size:
+        10px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.3;
+
+    letter-spacing:
+        0.05em;
+
+    text-transform:
+        uppercase;
+
+}
+
+
+
+/* ============================================================
+   FIELD INFORMATION ROW
+============================================================ */
+
+.gg-offence-field-info-row {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        4px;
+
+    padding:
+        11px 12px;
+
+    border-bottom:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+}
+
+
+
+.gg-offence-field-info-row:last-child {
+
+    border-bottom:
+        none;
+
+}
+
+
+
+.gg-offence-field-info-label {
+
+    width:
+        100%;
+
+    color:
+        #64748b;
+
+    font-size:
+        10px;
+
+    font-weight:
+        700;
+
+    line-height:
+        1.25;
+
+    letter-spacing:
+        0.055em;
+
+    text-transform:
+        uppercase;
+
+}
+
+
+
+.gg-offence-field-info-value {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    color:
+        #172033;
+
+    font-size:
+        13px;
+
+    font-weight:
+        600;
+
+    line-height:
+        1.45;
+
+    white-space:
+        normal;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+
+
+/* ============================================================
+   FIELD SIMPLE TEXT
+============================================================ */
+
+.gg-offence-field-text {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    padding:
+        11px 12px;
+
+    background:
+        #ffffff;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.10
+        );
+
+    border-radius:
+        8px;
+
+    color:
+        #172033;
+
+    font-size:
+        13px;
+
+    font-weight:
+        600;
+
+    line-height:
+        1.5;
+
+    white-space:
+        normal;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+
+
+/* ============================================================
+   NESTED FIELD
+============================================================ */
+
+.gg-offence-field-nested {
+
+    width:
+        calc(100% - 16px);
+
+    min-width:
+        0;
+
+    max-width:
+        calc(100% - 16px);
+
+    margin:
+        8px;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+    border-radius:
+        8px;
+
+    overflow:
+        hidden;
+
+}
+
+
+
+.gg-offence-field-nested-title {
+
+    padding:
+        8px 10px;
+
+    background:
+        rgba(
+            15,
+            23,
+            42,
+            0.035
+        );
+
+    border-bottom:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.08
+        );
+
+    color:
+        #475569;
+
+    font-size:
+        10px;
+
+    font-weight:
+        800;
+
+    line-height:
+        1.3;
+
+    letter-spacing:
+        0.05em;
+
+    text-transform:
+        uppercase;
+
+}
+
+
+
+/* ============================================================
+   EMPTY MESSAGE
+============================================================ */
+
+.gg-offence-empty {
+
+    width:
+        100%;
+
+    padding:
+        18px 10px;
+
+    text-align:
+        center;
+
+    color:
+        #7b8794;
+
+    font-size:
+        12px;
+
+    line-height:
+        1.6;
+
+}
+
+
+
+/* ============================================================
+   BACK BUTTONS
+
+   Keep drill-down navigation clear and touch-friendly.
+============================================================ */
+
+#gg-offence-back-to-children,
+#gg-offence-back-to-cases,
+#gg-offence-back-to-case-details {
+
+    width:
+        100%;
+
+    min-height:
+        40px;
+
+    padding:
+        8px 12px;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.10
+        );
+
+    border-radius:
+        9px;
+
+    background:
+        #ffffff;
+
+    color:
+        #334155;
+
+    font-size:
+        12px;
+
+    font-weight:
+        700;
+
+    cursor:
+        pointer;
+
+}
+
+
+
+/* ============================================================
+   DESKTOP — SHORT HEIGHT
+
+   IMPORTANT:
+
+   DO NOT use the old:
+
+       bottom:146px
+       top:auto
+
+   logic.
+
+   Even on a short laptop display, the panel remains bounded
+   by top/bottom viewport margins.
+============================================================ */
+
+@media (
+    max-height:
+    760px
+) {
+
+
+    #${UIController.CONFIG.PANEL_ID} {
+
+        top:
+            6px;
+
+        right:
+            8px;
+
+        bottom:
+            6px;
+
+        width:
+            min(
+                400px,
+                calc(100vw - 16px)
+            );
+
+        border-radius:
+            13px;
 
     }
 
-}
 
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-header {
 
-                    /* ========================================
-                       MOBILE / NARROW SCREEN
-                    ======================================== */
-
-@media(max-width:768px){
-
-    #${UIController.CONFIG.PANEL_ID}{
-
-        top:8px;
-
-        right:8px;
-
-        left:8px;
-
-        width:auto;
-
-        height:calc(
-            100vh - 16px
-        );
-
-        border-radius:14px;
+        min-height:
+            50px;
 
     }
 
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-body {
+
+        gap:
+            12px;
+
+        padding:
+            12px;
+
+    }
+
+
+    #${UIController.CONFIG.BUTTON_ID} {
+
+        top:
+            76px;
+
+        right:
+            12px;
+
+        height:
+            42px;
+
+        min-height:
+            42px;
+
+    }
+
+
 }
 
 
-                        #${UIController.CONFIG.PANEL_ID} {
 
-                            top:
-                                auto;
+/* ============================================================
+   TABLET / NARROW DESKTOP
+============================================================ */
 
-
-                            right:
-                                12px;
-
-
-                            bottom:
-                                142px;
+@media (
+    max-width:
+    900px
+) {
 
 
-                            width:
-                                min(
-                                    ${panelWidth}px,
-                                    calc(
-                                        100vw - 24px
-                                    )
-                                );
+    #${UIController.CONFIG.PANEL_ID} {
 
-                        }
+        width:
+            min(
+                390px,
+                calc(100vw - 20px)
+            );
 
+        top:
+            10px;
 
-                    }
+        right:
+            10px;
 
+        bottom:
+            10px;
 
-                    `;
-
-
-
-                /* ============================================
-                   ADD CSS TO DOCUMENT
-                ============================================ */
-
-                document
-                    .head
-                    .appendChild(
-                        style
-                    );
+    }
 
 
-            },
+}
+
+
+
+/* ============================================================
+   MOBILE
+
+   FULL SAFE-SCREEN PANEL
+   ------------------------------------------------------------
+
+   The panel receives an 8px safe margin on every side.
+
+   Therefore:
+
+       close button visible
+       header visible
+       bottom content reachable
+       no horizontal clipping
+       no off-screen panel
+============================================================ */
+
+@media (
+    max-width:
+    768px
+) {
+
+
+    #${UIController.CONFIG.PANEL_ID} {
+
+        top:
+            max(
+                8px,
+                env(safe-area-inset-top)
+            );
+
+        right:
+            8px;
+
+        bottom:
+            max(
+                8px,
+                env(safe-area-inset-bottom)
+            );
+
+        left:
+            8px;
+
+        width:
+            auto;
+
+        height:
+            auto;
+
+        max-width:
+            none;
+
+        max-height:
+            none;
+
+        border-radius:
+            14px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-header {
+
+        min-height:
+            52px;
+
+        padding:
+            0 10px 0 13px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-title {
+
+        font-size:
+            13px;
+
+    }
+
+
+
+    #${UIController.CONFIG.CLOSE_BUTTON_ID} {
+
+        flex-basis:
+            38px;
+
+        width:
+            38px;
+
+        height:
+            38px;
+
+        min-width:
+            38px;
+
+        min-height:
+            38px;
+
+        font-size:
+            23px;
+
+    }
+
+
+
+    #${UIController.CONFIG.STATUS_ID} {
+
+        min-height:
+            36px;
+
+        padding:
+            6px 13px;
+
+        font-size:
+            11px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-body {
+
+        padding:
+            12px;
+
+        gap:
+            14px;
+
+    }
+
+
+
+    /* --------------------------------------------------------
+       MOBILE OFFENCE BUTTON
+
+       Keep it in the upper-right map area.
+
+       Do NOT return it to the bottom-right because that is
+       where analytical/status overlays commonly appear.
+    -------------------------------------------------------- */
+
+    #${UIController.CONFIG.BUTTON_ID} {
+
+        top:
+            max(
+                70px,
+                calc(
+                    env(safe-area-inset-top) +
+                    58px
+                )
+            );
+
+        right:
+            10px;
+
+        bottom:
+            auto;
+
+        left:
+            auto;
+
+        min-width:
+            104px;
+
+        max-width:
+            calc(100vw - 20px);
+
+        height:
+            42px;
+
+        min-height:
+            42px;
+
+        padding:
+            0 12px;
+
+        border-radius:
+            13px;
+
+        font-size:
+            12px;
+
+    }
+
+
+}
+
+
+
+/* ============================================================
+   VERY SMALL MOBILE
+============================================================ */
+
+@media (
+    max-width:
+    420px
+) {
+
+
+    #${UIController.CONFIG.PANEL_ID} {
+
+        top:
+            max(
+                5px,
+                env(safe-area-inset-top)
+            );
+
+        right:
+            5px;
+
+        bottom:
+            max(
+                5px,
+                env(safe-area-inset-bottom)
+            );
+
+        left:
+            5px;
+
+        border-radius:
+            12px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-body {
+
+        padding:
+            10px;
+
+        gap:
+            12px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-header {
+
+        min-height:
+            50px;
+
+    }
+
+
+
+    #${UIController.CONFIG.BUTTON_ID} {
+
+        right:
+            8px;
+
+        min-width:
+            96px;
+
+        height:
+            40px;
+
+        min-height:
+            40px;
+
+        padding:
+            0 10px;
+
+        font-size:
+            11px;
+
+    }
+
+
+}
+
+
+
+/* ============================================================
+   LANDSCAPE MOBILE / VERY SHORT VIEWPORT
+============================================================ */
+
+@media (
+    max-height:
+    520px
+) {
+
+
+    #${UIController.CONFIG.PANEL_ID} {
+
+        top:
+            4px;
+
+        right:
+            4px;
+
+        bottom:
+            4px;
+
+        border-radius:
+            10px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-header {
+
+        min-height:
+            46px;
+
+    }
+
+
+
+    #${UIController.CONFIG.STATUS_ID} {
+
+        min-height:
+            32px;
+
+        padding-top:
+            5px;
+
+        padding-bottom:
+            5px;
+
+    }
+
+
+
+    #${UIController.CONFIG.PANEL_ID}
+    .gg-offence-panel-body {
+
+        padding:
+            9px;
+
+        gap:
+            10px;
+
+    }
+
+
+}
+
+
+
+/* ============================================================
+   ABSOLUTE WIDTH SAFETY
+
+   No child generated from case/accused/witness/seizure data
+   is allowed to expand the offence panel beyond viewport.
+============================================================ */
+
+#${UIController.CONFIG.PANEL_ID} div,
+#${UIController.CONFIG.PANEL_ID} section,
+#${UIController.CONFIG.PANEL_ID} button {
+
+    max-width:
+        100%;
+
+}
+
+
+
+#${UIController.CONFIG.PANEL_ID} {
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+/* ============================================================
+   END OFFENCE RESPONSIVE UI
+============================================================ */
+
+        `;
+
+
+
+    /* ==========================================================
+       ADD STYLE TO DOCUMENT
+    ========================================================== */
+
+    document
+        .head
+        .appendChild(
+            style
+        );
+
+
+
+    /* ==========================================================
+       DEBUG
+    ========================================================== */
+
+    console.log(
+        "🎨 Offence responsive viewport-safe styles injected"
+    );
+
+
+},
 
                /* ====================================================
            CREATE MAIN OFFENCE BUTTON
