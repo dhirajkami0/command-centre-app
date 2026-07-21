@@ -2295,6 +2295,7 @@ function () {
     }
 
 
+
     /* =======================================================
        CREATE PANEL ROOT
     ======================================================= */
@@ -2327,6 +2328,7 @@ function () {
         "aria-hidden",
         "true"
     );
+
 
 
     /* =======================================================
@@ -2405,11 +2407,28 @@ function () {
 
 <!-- =========================================================
      SCROLLABLE PANEL BODY
+
+     EVERYTHING BELOW THIS POINT SCROLLS TOGETHER:
+
+         Analysis Mode
+              ↓
+         Offence Source / Target Area
+              ↓
+         Related Target / Source Areas
+              ↓
+         Cases
+              ↓
+         Case Details
+              ↓
+         Field Details
+              ↓
+         Clear Analysis
 ========================================================= -->
 
 <div
     class="gg-offence-panel-body"
 >
+
 
 
     <!-- =====================================================
@@ -2523,15 +2542,20 @@ function () {
 
 
     <!-- =====================================================
-         PARENT
+         SELECTED OFFENCE AREA
 
-         SOURCE → TARGET:
-             Parent = Source Village
+         INTERNAL ARCHITECTURE NAME:
+             PARENT
 
-         TARGET → SOURCE:
-             Parent = Target Range
+         VISIBLE NAME IS DYNAMIC:
 
-         Parent is selected from GIS / MAP.
+         SOURCE → TARGET
+             OFFENCE SOURCE AREA
+
+         TARGET → SOURCE
+             OFFENCE TARGET AREA
+
+         This area is selected from GIS / MAP.
     ====================================================== -->
 
     <section
@@ -2540,16 +2564,20 @@ function () {
 
         class="gg-offence-section"
 
-        aria-label="Selected Parent"
+        aria-label="Selected Offence Area"
 
     >
 
 
         <div
+
+            id="gg-offence-parent-title"
+
             class="gg-offence-section-title"
+
         >
 
-            PARENT
+            OFFENCE AREA
 
         </div>
 
@@ -2568,7 +2596,7 @@ function () {
             >
 
                 Select an analysis mode,
-                then select a parent polygon
+                then select an offence area
                 from the map.
 
             </div>
@@ -2581,22 +2609,35 @@ function () {
 
 
     <!-- =====================================================
-         CHILD
+         RELATED OFFENCE AREAS
 
-         SOURCE → TARGET:
-             Child = Target Range
+         INTERNAL ARCHITECTURE NAME:
+             CHILD
 
-         TARGET → SOURCE:
-             Child = Source Village
+         VISIBLE NAME IS DYNAMIC:
+
+         SOURCE → TARGET
+             OFFENCE TARGET AREA
+
+         TARGET → SOURCE
+             OFFENCE SOURCE AREA
 
          IMPORTANT:
 
-         Child cards are clickable HERE in the panel.
+         ALL relationship children appear here,
+         including children without GIS.
 
-         Child polygons on map may be highlighted,
-         but should use:
+         Child cards are ALWAYS CLICKABLE in this panel.
+
+         Child polygons on the map are visual only and
+         remain:
 
              interactive: false
+
+         Clicking a child:
+             CHILD
+                ↓
+             MATCHING CASES
     ====================================================== -->
 
     <section
@@ -2605,16 +2646,20 @@ function () {
 
         class="gg-offence-section"
 
-        aria-label="Related Children"
+        aria-label="Related Offence Areas"
 
     >
 
 
         <div
+
+            id="gg-offence-child-title"
+
             class="gg-offence-section-title"
+
         >
 
-            CHILD
+            RELATED OFFENCE AREA
 
         </div>
 
@@ -2632,9 +2677,9 @@ function () {
                 class="gg-offence-empty"
             >
 
-                Select a parent polygon
+                Select an offence area
                 from the map to view
-                related children.
+                related areas.
 
             </div>
 
@@ -2648,7 +2693,13 @@ function () {
     <!-- =====================================================
          CASE RESULTS
 
-         Populated after a CHILD card is selected.
+         Populated when a CHILD CARD is clicked.
+
+         CHILD
+             ↓
+         CASES
+
+         Every rendered case card is clickable.
 
          Existing compatibility IDs retained:
 
@@ -2699,12 +2750,17 @@ function () {
 
 
         <!-- ===============================================
-             BACK TO CHILDREN
+             BACK TO RELATED AREAS
 
-             Initially hidden.
+             CASES
+                ↓ BACK
+             CHILD
 
-             New navigation logic can show this when
-             entering CASE level.
+             IMPORTANT:
+
+             This does NOT reset the selected GIS parent.
+
+             Parent and complete child list remain preserved.
         ================================================ -->
 
         <button
@@ -2717,18 +2773,18 @@ function () {
 
             style="display:none;"
 
-            title="Back to Children"
+            title="Back to Related Areas"
 
         >
 
-            ← Back to Children
+            ← Back to Related Areas
 
         </button>
 
 
 
         <!-- ===============================================
-             EXISTING CASE RESULTS CONTAINER
+             CASE RESULTS CONTAINER
         ================================================ -->
 
         <div
@@ -2753,8 +2809,8 @@ function () {
                     class="gg-offence-empty"
                 >
 
-                    Select a child to view
-                    matching offence cases.
+                    Select a related offence area
+                    to view matching cases.
 
                 </div>
 
@@ -2772,7 +2828,16 @@ function () {
     <!-- =====================================================
          CASE DETAILS
 
-         Populated when a particular CASE is clicked.
+         Populated when a CASE CARD is clicked.
+
+         CHILD
+             ↓
+         CASES
+             ↓
+         CASE DETAILS
+
+         Individual detail fields may themselves be
+         clickable/expandable.
 
          Existing compatibility ID retained:
 
@@ -2803,10 +2868,11 @@ function () {
         <!-- ===============================================
              BACK TO CASES
 
-             Initially hidden.
+             CASE DETAILS
+                 ↓ BACK
+             CASES
 
-             New navigation logic can show this when
-             displaying a selected case.
+             Current child and parent remain preserved.
         ================================================ -->
 
         <button
@@ -2830,7 +2896,7 @@ function () {
 
 
         <!-- ===============================================
-             EXISTING CASE DETAILS CONTAINER
+             CASE DETAILS CONTAINER
         ================================================ -->
 
         <div
@@ -2862,10 +2928,18 @@ function () {
     <!-- =====================================================
          FIELD DETAILS
 
-         Populated when an expandable/clickable field
+         Populated when a clickable / expandable field
          inside CASE DETAILS is selected.
 
-         This level has NO GIS interaction.
+         CHILD
+             ↓
+         CASES
+             ↓
+         CASE DETAILS
+             ↓
+         FIELD DETAILS
+
+         NO GIS interaction occurs at this level.
     ====================================================== -->
 
     <section
@@ -2891,6 +2965,10 @@ function () {
 
         <!-- ===============================================
              BACK TO CASE DETAILS
+
+             FIELD DETAILS
+                  ↓ BACK
+             CASE DETAILS
         ================================================ -->
 
         <button
@@ -2947,9 +3025,10 @@ function () {
     <!-- =====================================================
          CLEAR ANALYSIS
 
-         Kept at bottom because CLEAR is a global action.
+         GLOBAL RESET.
 
-         Existing CONFIG.CLEAR_BUTTON_ID retained.
+         This remains at the bottom of the complete
+         scrollable panel.
     ====================================================== -->
 
     <section
@@ -3000,6 +3079,7 @@ function () {
     </section>
 
 
+
 </div>
 `;
 
@@ -3013,6 +3093,7 @@ function () {
         .appendChild(
             panel
         );
+
 
 
     /* =======================================================
