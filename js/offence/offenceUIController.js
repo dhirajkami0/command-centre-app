@@ -15366,545 +15366,620 @@ function (
 ) {
 
 
-    try {
+    /* =======================================================
+       NORMALIZE CASE COLLECTION
+    ======================================================= */
 
+    const list =
+        Array.isArray(
+            cases
+        )
+            ? cases
+            : [];
 
-        /* ===================================================
-           NORMALIZE CASE ARRAY
-        =================================================== */
 
-        const list =
-            Array.isArray(
-                cases
-            )
+    console.group(
+        "🚨 UI.showSpatialCases"
+    );
 
-                ? cases
 
-                : [];
+    console.log(
+        "Cases:",
+        list.length
+    );
 
 
+    console.log(
+        "Context:",
+        context
+    );
 
-        /* ===================================================
-           GET CASE RESULT CONTAINER
-        =================================================== */
 
-        const container =
-            UIController.elements
-                ?.caseResultList;
 
+    /* =======================================================
+       ENSURE CURRENT DOM REFERENCES
 
-        if (
-            !container
-        ) {
+       The panel may have been recreated, so always make sure
+       we are working against the current DOM.
+    ======================================================= */
 
+    if (
+        typeof
+        UIController.captureElements ===
+        "function"
+    ) {
 
-            console.error(
-                "❌ CASE result container unavailable."
-            );
+        UIController.captureElements();
 
+    }
 
-            return false;
 
+    const elements =
+        UIController.elements ||
+        {};
 
-        }
 
 
+    /* =======================================================
+       STORE CURRENT CASE STATE
 
-        /* ===================================================
-           STORE CURRENT CASE COLLECTION
+       IMPORTANT:
 
-           This replaces the previous child's case collection.
+       Selecting a CHILD replaces only:
 
-           Parent and child state are intentionally untouched.
-        =================================================== */
+           current child
+           current case collection
+           current case
+           current field
 
-        UIController.currentSpatialCases =
-            list;
+       Parent and complete child collection remain preserved.
+    ======================================================= */
 
+    UIController.currentSpatialCases =
+        list;
 
 
-        /* ===================================================
-           STORE CURRENT CONTEXT
+    UIController.currentCases =
+        list;
 
-           Typical context:
 
-               {
-                   mode,
-                   parent,
-                   child
-               }
+    UIController.currentSpatialContext =
+        context;
 
-           Preserve explicitly supplied context while ensuring
-           the current authoritative selection is available.
-        =================================================== */
 
-        UIController.currentSpatialContext =
-            {
+    UIController.currentCaseContext =
+        context;
 
-                ...context,
 
+    UIController.currentCase =
+        null;
 
-                mode:
 
-                    context?.mode ||
+    UIController.currentField =
+        null;
 
-                    UIController.activeMode ||
-                    null,
 
 
-                parent:
+    /* =======================================================
+       SYNCHRONIZE CURRENT CHILD
 
-                    context?.parent ||
+       The child may be supplied by different callers under
+       slightly different context properties.
 
-                    UIController.currentParent ||
-                    null,
+       Preserve the existing child when the context does not
+       explicitly provide one.
+    ======================================================= */
 
+    const contextChild =
 
-                child:
+        context.child ||
 
-                    context?.child ||
+        context.selectedChild ||
 
-                    UIController.currentChild ||
-                    null
+        context.target ||
 
-            };
+        context.source ||
 
+        null;
 
 
-        /* ===================================================
-           RESET EVERYTHING BELOW CASE COLLECTION
+    if (
+        contextChild
+    ) {
 
-           We are rendering a new set of cases.
+        UIController.currentChild =
+            contextChild;
 
-           Therefore an old selected case / field cannot remain
-           authoritative.
-        =================================================== */
+    }
 
-        UIController.currentCase =
-            null;
 
 
-        UIController.currentField =
-            null;
+    /* =======================================================
+       SHOW CASE SECTION
+    ======================================================= */
 
+    if (
+        elements.caseSection
+    ) {
 
+        elements
+            .caseSection
+            .style
+            .display =
+                "";
 
-        /* ===================================================
-           CLEAR OLD CASE CARDS
-        =================================================== */
+    }
 
-        container.innerHTML =
-            "";
 
+    if (
+        elements.caseResults
+    ) {
 
+        elements
+            .caseResults
+            .style
+            .display =
+                "";
 
-        /* ===================================================
-           RESET CASE DETAILS
+    }
 
-           A new case must be selected before details appear.
-        =================================================== */
 
-        if (
-            UIController.elements
-                ?.caseDetails
-        ) {
 
+    /* =======================================================
+       HIDE LOWER DRILL-DOWN SECTIONS
 
-            UIController.elements
-                .caseDetails
-                .innerHTML =
-                    `
-                    <div class="gg-offence-empty">
+       CHILD
+          ↓
+       CASES
 
-                        Select a case to view details.
+       Therefore a new child selection must close any previous:
 
-                    </div>
-                    `;
+           CASE DETAILS
+           FIELD DETAILS
+    ======================================================= */
 
+    if (
+        elements.caseDetailsSection
+    ) {
 
-            UIController.elements
-                .caseDetails
-                .scrollTop =
-                    0;
+        elements
+            .caseDetailsSection
+            .style
+            .display =
+                "none";
 
+    }
 
-        }
 
+    if (
+        elements.fieldDetailsSection
+    ) {
 
+        elements
+            .fieldDetailsSection
+            .style
+            .display =
+                "none";
 
-        /* ===================================================
-           HIDE CASE DETAILS SECTION
+    }
 
-           It becomes visible when selectCase() is called.
-        =================================================== */
 
-        if (
-            UIController.elements
-                ?.caseDetailsSection
-        ) {
 
+    /* =======================================================
+       RESET OLD CASE DETAILS
+    ======================================================= */
 
-            UIController.elements
-                .caseDetailsSection
-                .style
-                .display =
-                    "none";
+    if (
+        elements.caseDetails
+    ) {
 
-
-        }
-
-
-
-        /* ===================================================
-           RESET FIELD DETAILS
-        =================================================== */
-
-        if (
-            UIController.elements
-                ?.fieldDetails
-        ) {
-
-
-            UIController.elements
-                .fieldDetails
-                .innerHTML =
-                    `
-                    <div class="gg-offence-empty">
-
-                        Select a field from case details
-                        to view complete information.
-
-                    </div>
-                    `;
-
-
-            UIController.elements
-                .fieldDetails
-                .scrollTop =
-                    0;
-
-
-        }
-
-
-
-        /* ===================================================
-           HIDE FIELD DETAILS SECTION
-        =================================================== */
-
-        if (
-            UIController.elements
-                ?.fieldDetailsSection
-        ) {
-
-
-            UIController.elements
-                .fieldDetailsSection
-                .style
-                .display =
-                    "none";
-
-
-        }
-
-
-
-        /* ===================================================
-           SHOW CASE SECTION
-        =================================================== */
-
-        if (
-            UIController.elements
-                ?.caseSection
-        ) {
-
-
-            UIController.elements
-                .caseSection
-                .style
-                .display =
-                    "";
-
-
-        }
-
-
-
-        /* ===================================================
-           CASE COUNT
-        =================================================== */
-
-        const count =
-            list.length;
-
-
-        if (
-            UIController.elements
-                ?.caseCount
-        ) {
-
-
-            UIController.elements
-                .caseCount
-                .textContent =
-
-                count +
-
-                " case" +
-
-                (
-                    count === 1
-                        ? ""
-                        : "s"
-                );
-
-
-        }
-
-
-
-        /* ===================================================
-           NO CASES
-        =================================================== */
-
-        if (
-            count === 0
-        ) {
-
-
-            container.innerHTML =
+        elements
+            .caseDetails
+            .innerHTML =
                 `
                 <div class="gg-offence-empty">
-
-                    No matching offence cases found
-                    for the selected child.
-
+                    Select a case to view details.
                 </div>
                 `;
 
+    }
 
 
-            UIController.setStatus(
+    if (
+        elements.fieldDetails
+    ) {
 
-                "No matching offence cases found.",
+        elements
+            .fieldDetails
+            .innerHTML =
+                `
+                <div class="gg-offence-empty">
+                    Select a field to view details.
+                </div>
+                `;
 
-                "ready"
-
-            );
-
-
-
-            UIController.elements
-                ?.caseSection
-                ?.scrollIntoView?.(
-
-                    {
-
-                        block:
-                            "start",
-
-                        behavior:
-                            "smooth"
-
-                    }
-
-                );
+    }
 
 
 
-            return [];
+    /* =======================================================
+       UPDATE CASE COUNT
+
+       This is the count currently appearing correctly in
+       your panel.
+    ======================================================= */
+
+    if (
+        elements.caseCount
+    ) {
+
+        elements
+            .caseCount
+            .textContent =
+
+                `${list.length} case${
+                    list.length === 1
+                        ? ""
+                        : "s"
+                }`;
+
+    }
 
 
-        }
+
+    /* =======================================================
+       VALIDATE CASE LIST CONTAINER
+
+       THIS IS THE IMPORTANT DOM CONTAINER:
+
+           #gg-case-result-list
+
+       The count can work even when this reference is missing,
+       which explains the behaviour you are currently seeing.
+    ======================================================= */
+
+    const caseResultList =
+
+        elements.caseResultList ||
+
+        document.getElementById(
+            "gg-case-result-list"
+        );
+
+
+    if (
+        !caseResultList
+    ) {
+
+        console.error(
+
+            "❌ CASE LIST CONTAINER NOT FOUND: #gg-case-result-list"
+
+        );
+
+
+        UIController.setStatus?.(
+
+            "Case list container unavailable.",
+
+            "error"
+
+        );
+
+
+        console.groupEnd();
+
+
+        return false;
+
+    }
 
 
 
-        /* ===================================================
-           CREATE CASE CARDS
-        =================================================== */
+    /* =======================================================
+       CLEAR PREVIOUS CASE LIST
 
-        list.forEach(
+       Switching CHILD:
 
-            function (
-                caseData,
-                index
+           Child A
+              ↓
+           15 cases
+
+       then
+
+           Child B
+              ↓
+           20 cases
+
+       must REPLACE the previous case list.
+    ======================================================= */
+
+    caseResultList.innerHTML =
+        "";
+
+
+
+    /* =======================================================
+       NO CASES
+    ======================================================= */
+
+    if (
+        !list.length
+    ) {
+
+        caseResultList.innerHTML =
+            `
+            <div class="gg-offence-empty">
+
+                No matching offence cases found.
+
+            </div>
+            `;
+
+
+        UIController.setStatus?.(
+
+            "No offence cases found.",
+
+            "ready"
+
+        );
+
+
+        console.log(
+            "No cases to render."
+        );
+
+
+        console.groupEnd();
+
+
+        return false;
+
+    }
+
+
+
+    /* =======================================================
+       RENDER EVERY RELATED CASE
+
+       Each resolved cascade becomes one clickable CASE card.
+    ======================================================= */
+
+    list.forEach(
+
+        function (
+            caseData,
+            index
+        ) {
+
+
+            if (
+                !caseData
             ) {
 
+                return;
 
-                /* ===========================================
-                   CREATE CASE CARD
-                =========================================== */
-
-                const card =
-                    document.createElement(
-                        "div"
-                    );
+            }
 
 
-                card.className =
-                    "gg-offence-case-card";
+
+            /* =================================================
+               RESOLVE CASE / POR NUMBER
+
+               Current spatial cascades commonly expose:
+
+                   porNo
+                   porKey
+                   caseId
+
+               Additional fallbacks are retained for safety.
+            ================================================= */
+
+            const porNo =
+
+                caseData.porNo ||
+
+                caseData.porKey ||
+
+                caseData.POR_NO ||
+
+                caseData.por ||
+
+                caseData.caseNo ||
+
+                caseData.caseNumber ||
+
+                caseData.caseId ||
+
+                `Case ${index + 1}`;
 
 
-                card.setAttribute(
-                    "role",
+
+            /* =================================================
+               RESOLVE OPTIONAL SECONDARY INFORMATION
+            ================================================= */
+
+            const caseObject =
+
+                caseData.case ||
+
+                {};
+
+
+            const offenceDate =
+
+                caseObject.offenceDate ||
+
+                caseObject.date ||
+
+                caseData.offenceDate ||
+
+                caseData.date ||
+
+                "";
+
+
+            const targetName =
+
+                caseData.targetRange?.name ||
+
+                caseData.targetRange?.cleanName ||
+
+                caseData.targetName ||
+
+                "";
+
+
+            const sourceNames =
+
+                Array.isArray(
+                    caseData.sourceVillages
+                )
+
+                    ? caseData.sourceVillages
+
+                        .map(
+
+                            function (
+                                item
+                            ) {
+
+                                return (
+
+                                    item?.name ||
+
+                                    item?.cleanName ||
+
+                                    item?.villageName ||
+
+                                    ""
+
+                                );
+
+                            }
+
+                        )
+
+                        .filter(Boolean)
+
+                        .join(", ")
+
+                    : "";
+
+
+
+            /* =================================================
+               CREATE CASE CARD
+            ================================================= */
+
+            const card =
+                document.createElement(
                     "button"
                 );
 
 
-                card.setAttribute(
-                    "tabindex",
-                    "0"
+            card.type =
+                "button";
+
+
+            card.className =
+                "gg-offence-case-card";
+
+
+            card.dataset.caseIndex =
+                String(
+                    index
                 );
 
 
+            card.dataset.caseId =
 
-                /* ===========================================
-                   CASE INDEX
+                caseData.caseId ||
 
-                   Useful for debugging and stable UI lookup.
-                =========================================== */
+                caseData.porKey ||
 
-                card.dataset.caseIndex =
+                caseData.porNo ||
+
+                "";
+
+
+
+            /* =================================================
+               CASE CARD CONTENT
+            ================================================= */
+
+            const title =
+                document.createElement(
+                    "div"
+                );
+
+
+            title.className =
+                "gg-offence-case-card-title";
+
+
+            title.textContent =
+                porNo;
+
+
+            card.appendChild(
+                title
+            );
+
+
+
+            /* =================================================
+               OPTIONAL META ROW
+
+               Do not manufacture data.
+
+               Show only information already available in the
+               resolved cascade.
+            ================================================= */
+
+            const metaParts =
+                [];
+
+
+            if (
+                offenceDate
+            ) {
+
+                metaParts.push(
                     String(
-                        index
-                    );
+                        offenceDate
+                    )
+                );
+
+            }
 
 
+            if (
+                sourceNames
+            ) {
 
-                /* ===========================================
-                   RESOLVE POR NUMBER
+                metaParts.push(
+                    sourceNames
+                );
 
-                   Support common offence field variations.
-
-                   This is DISPLAY normalization only.
-
-                   It does not mutate caseData.
-                =========================================== */
-
-                const porNumber =
-
-                    caseData?.porNo ||
-
-                    caseData?.porNumber ||
-
-                    caseData?.POR_NO ||
-
-                    caseData?.PORNo ||
-
-                    caseData?.por_no ||
-
-                    caseData?.por ||
-
-                    caseData?.caseNo ||
-
-                    caseData?.caseNumber ||
-
-                    caseData?.id ||
-
-                    (
-                        "Case " +
-                        (
-                            index + 1
-                        )
-                    );
+            }
 
 
+            if (
+                targetName
+            ) {
 
-                /* ===========================================
-                   RESOLVE DATE
-                =========================================== */
+                metaParts.push(
+                    targetName
+                );
 
-                const offenceDate =
-
-                    caseData?.date ||
-
-                    caseData?.offenceDate ||
-
-                    caseData?.offenseDate ||
-
-                    caseData?.PORDate ||
-
-                    caseData?.porDate ||
-
-                    caseData?.caseDate ||
-
-                    caseData?.Date ||
-
-                    "";
+            }
 
 
-
-                /* ===========================================
-                   RESOLVE SPECIES
-
-                   Only used for compact case-card preview.
-
-                   Complete information belongs in
-                   CASE DETAILS.
-                =========================================== */
-
-                const species =
-
-                    caseData?.species ||
-
-                    caseData?.Species ||
-
-                    caseData?.wildlife ||
-
-                    caseData?.wildlifeSpecies ||
-
-                    caseData?.animal ||
-
-                    "";
-
-
-
-                /* ===========================================
-                   RESOLVE OFFENCE TYPE
-
-                   Used only if species is unavailable.
-                =========================================== */
-
-                const offence =
-
-                    caseData?.offence ||
-
-                    caseData?.offense ||
-
-                    caseData?.offenceType ||
-
-                    caseData?.offenseType ||
-
-                    caseData?.type ||
-
-                    "";
-
-
-
-                /* ===========================================
-                   CASE TITLE
-                =========================================== */
-
-                const title =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                title.className =
-                    "gg-offence-case-title";
-
-
-                title.textContent =
-                    String(
-                        porNumber
-                    );
-
-
-
-                /* ===========================================
-                   CASE META
-                =========================================== */
+            if (
+                metaParts.length
+            ) {
 
                 const meta =
                     document.createElement(
@@ -15913,389 +15988,161 @@ function (
 
 
                 meta.className =
-                    "gg-offence-case-meta";
-
-
-
-                const metaParts =
-                    [];
-
-
-                if (
-                    offenceDate
-                ) {
-
-
-                    metaParts.push(
-
-                        String(
-                            offenceDate
-                        )
-
-                    );
-
-
-                }
-
-
-                if (
-                    species
-                ) {
-
-
-                    metaParts.push(
-
-                        String(
-                            species
-                        )
-
-                    );
-
-
-                }
-
-                else if (
-                    offence
-                ) {
-
-
-                    metaParts.push(
-
-                        String(
-                            offence
-                        )
-
-                    );
-
-
-                }
-
+                    "gg-offence-case-card-meta";
 
 
                 meta.textContent =
-                    metaParts.length
-
-                        ? metaParts.join(
-                            " • "
-                        )
-
-                        : "Offence case";
-
-
-
-                /* ===========================================
-                   VIEW DETAILS INDICATOR
-                =========================================== */
-
-                const view =
-                    document.createElement(
-                        "div"
+                    metaParts.join(
+                        " • "
                     );
-
-
-                view.className =
-                    "gg-offence-case-view";
-
-
-                view.textContent =
-                    "View case details →";
-
-
-
-                /* ===========================================
-                   BUILD CARD
-                =========================================== */
-
-                card.appendChild(
-                    title
-                );
 
 
                 card.appendChild(
                     meta
                 );
 
-
-                card.appendChild(
-                    view
-                );
-
-
-
-                /* ===========================================
-                   SELECT CASE
-
-                   Clicking one case:
-
-                       preserves Parent
-                       preserves Children
-                       preserves selected Child
-                       preserves complete Cases list
-
-                   and replaces only:
-
-                       currentCase
-                       Case Details
-
-                   while resetting:
-
-                       currentField
-                       Field Details
-                =========================================== */
-
-                card.onclick =
-                    function (
-                        event
-                    ) {
-
-
-                        event
-                            ?.preventDefault?.();
-
-
-                        event
-                            ?.stopPropagation?.();
-
-
-                        if (
-                            typeof
-                            UIController.selectCase ===
-                            "function"
-                        ) {
-
-
-                            UIController.selectCase(
-
-                                caseData,
-
-                                card
-
-                            );
-
-
-                        }
-
-                        else {
-
-
-                            console.error(
-
-                                "❌ OffenceUIController.selectCase() unavailable"
-
-                            );
-
-
-                        }
-
-
-                    };
-
-
-
-                /* ===========================================
-                   KEYBOARD ACCESSIBILITY
-
-                   ENTER
-                   SPACE
-                =========================================== */
-
-                card.onkeydown =
-                    function (
-                        event
-                    ) {
-
-
-                        if (
-                            event.key !==
-                                "Enter" &&
-
-                            event.key !==
-                                " "
-                        ) {
-
-
-                            return;
-
-
-                        }
-
-
-                        event.preventDefault();
-
-
-                        event.stopPropagation();
-
-
-                        if (
-                            typeof
-                            UIController.selectCase ===
-                            "function"
-                        ) {
-
-
-                            UIController.selectCase(
-
-                                caseData,
-
-                                card
-
-                            );
-
-
-                        }
-
-
-                    };
-
-
-
-                /* ===========================================
-                   ADD CARD
-                =========================================== */
-
-                container.appendChild(
-                    card
-                );
-
-
             }
 
-        );
+
+
+            /* =================================================
+               CLICK CASE
+
+               CASE
+                  ↓
+               CASE DETAILS
+            ================================================= */
+
+            card.onclick =
+                function (
+                    event
+                ) {
+
+
+                    event
+                        ?.preventDefault?.();
+
+
+                    event
+                        ?.stopPropagation?.();
 
 
 
-        /* ===================================================
-           RESET CASE RESULTS SCROLL
+                    /* ------------------------------------------
+                       STORE SELECTED CASE
+                    ------------------------------------------ */
 
-           When changing from Child A → Child B, start the new
-           case collection from the top.
-        =================================================== */
-
-        if (
-            UIController.elements
-                ?.caseResults
-        ) {
+                    UIController.currentCase =
+                        caseData;
 
 
-            UIController.elements
-                .caseResults
-                .scrollTop =
-                    0;
+
+                    /* ------------------------------------------
+                       SELECT CASE THROUGH EXISTING CONTROLLER
+
+                       This preserves your existing:
+
+                           highlightSelectedCase()
+                           showCaseDetails()
+                           scrolling
+
+                       logic.
+                    ------------------------------------------ */
+
+                    if (
+                        typeof
+                        UIController.selectCase ===
+                        "function"
+                    ) {
+
+                        UIController.selectCase(
+
+                            caseData,
+
+                            card
+
+                        );
+
+                    }
+
+
+                    else if (
+                        typeof
+                        UIController.showCaseDetails ===
+                        "function"
+                    ) {
+
+                        UIController.showCaseDetails(
+                            caseData
+                        );
+
+                    }
+
+
+                    else {
+
+                        console.error(
+
+                            "❌ No case-detail handler available."
+
+                        );
+
+                    }
+
+
+                };
+
+
+
+            /* =================================================
+               ADD CASE TO LIST
+            ================================================= */
+
+            caseResultList.appendChild(
+                card
+            );
 
 
         }
 
-
-
-        /* ===================================================
-           CURRENT CHILD NAME
-
-           Used only for status text.
-        =================================================== */
-
-        const child =
-            UIController.currentChild;
-
-
-        const childName =
-
-            child?.name ||
-
-            child?.label ||
-
-            child?.title ||
-
-            child?.range ||
-
-            child?.village ||
-
-            child?.id ||
-
-            "";
+    );
 
 
 
-        /* ===================================================
-           STATUS
-        =================================================== */
+    /* =======================================================
+       STATUS
+    ======================================================= */
 
-        UIController.setStatus(
+    UIController.setStatus?.(
 
-            count +
+        `${list.length} offence case${
+            list.length === 1
+                ? ""
+                : "s"
+        } found.`,
 
-            " offence case" +
+        "success"
 
-            (
-                count === 1
-                    ? ""
-                    : "s"
-            ) +
-
-            (
-                childName
-
-                    ? (
-                        " found for " +
-                        childName +
-                        "."
-                    )
-
-                    : " found."
-            ),
-
-            "success"
-
-        );
+    );
 
 
 
-        /* ===================================================
-           SCROLL CASE SECTION INTO VIEW
+    /* =======================================================
+       SCROLL CASE SECTION INTO VIEW
 
-           PANEL ONLY.
+       Panel remains the scrolling container.
+    ======================================================= */
 
-           This does NOT pan / zoom the map.
-        =================================================== */
-
-        UIController.elements
-            ?.caseSection
-            ?.scrollIntoView?.(
-
-                {
-
-                    block:
-                        "start",
-
-                    behavior:
-                        "smooth"
-
-                }
-
-            );
-
-
-
-        /* ===================================================
-           DEBUG
-        =================================================== */
-
-        console.log(
-
-            "📂 Offence CASES rendered",
+    elements.caseSection
+        ?.scrollIntoView?.(
 
             {
 
-                mode:
-                    UIController.activeMode,
+                block:
+                    "nearest",
 
-                parent:
-                    UIController.currentParent,
-
-                child:
-                    UIController.currentChild,
-
-                cases:
-                    count
+                behavior:
+                    "smooth"
 
             }
 
@@ -16303,52 +16150,66 @@ function (
 
 
 
-        return list;
+    /* =======================================================
+       DEBUG VALIDATION
+
+       The two numbers below MUST now be identical.
+
+       Example:
+
+           Resolved cases: 15
+           Rendered case cards: 15
+    ======================================================= */
+
+    console.log(
+
+        "📂 Offence CASES rendered",
+
+        {
+
+            mode:
+
+                context.mode ||
+
+                UIController.currentMode ||
+
+                "",
+
+            parent:
+
+                UIController.currentParent ||
+
+                null,
+
+            child:
+
+                UIController.currentChild ||
+
+                null,
+
+            resolvedCases:
+                list.length,
+
+            renderedCaseCards:
+
+                caseResultList
+                    .querySelectorAll(
+                        ".gg-offence-case-card"
+                    )
+                    .length
+
+        }
+
+    );
 
 
-    }
+    console.groupEnd();
 
 
-    catch (
-        error
-    ) {
-
-
-        UIController.lastError =
-            error;
-
-
-
-        UIController.setStatus(
-
-            error?.message ||
-            "Unable to display offence cases.",
-
-            "error"
-
-        );
-
-
-
-        console.error(
-
-            "❌ Offence showSpatialCases() failed:",
-
-            error
-
-        );
-
-
-
-        return false;
-
-
-    }
+    return list;
 
 
 },
-  
-};
 
        /* ========================================================
        EXPORT MODULE
