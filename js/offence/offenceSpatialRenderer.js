@@ -6617,7 +6617,23 @@ Renderer.selectTargetForSource =
                 targetName
 
             );
+/* ========================================================
+   SYNCHRONIZE SELECTED CHILD WITH PANEL
+======================================================== */
 
+if (
+    GG
+        ?.Offence
+        ?.UIController
+) {
+
+    GG
+        .Offence
+        .UIController
+        .currentChild =
+        target;
+
+}
 
         /* ========================================================
            GET SOURCE ↔ TARGET CASES
@@ -6795,7 +6811,23 @@ Renderer.selectSourceForTarget =
         Renderer.selectedSourceId =
             sourceId;
 
+/* ========================================================
+   SYNCHRONIZE SELECTED CHILD WITH PANEL
+======================================================== */
 
+if (
+    GG
+        ?.Offence
+        ?.UIController
+) {
+
+    GG
+        .Offence
+        .UIController
+        .currentChild =
+        source;
+
+}
         /* ========================================================
            RESOLVE TARGET OBJECT
         ======================================================== */
