@@ -5486,21 +5486,24 @@ Renderer.selectSource =
         source
     ) {
 
-
         const Spatial =
             Renderer
                 .getSpatialEngine();
 
 
-        /* ====================================================
+        /* ========================================================
            VALIDATE
-        ==================================================== */
+        ======================================================== */
 
         if (
+
             !Spatial ||
+
             !source ||
+
             Renderer.mode !==
                 "SOURCE"
+
         ) {
 
             return [];
@@ -5508,9 +5511,9 @@ Renderer.selectSource =
         }
 
 
-        /* ====================================================
+        /* ========================================================
            RESOLVE SOURCE ID
-        ==================================================== */
+        ======================================================== */
 
         const sourceId =
 
@@ -5528,7 +5531,7 @@ Renderer.selectSource =
         }
 
 
-        /* ====================================================
+        /* ========================================================
            CLEAR PREVIOUS SOURCE DRILL-DOWN
 
            IMPORTANT:
@@ -5537,18 +5540,18 @@ Renderer.selectSource =
 
            This clears only the previous selected-parent
            drill-down state / child rendering.
-        ==================================================== */
+        ======================================================== */
 
         Renderer
             .clearSourceDrillDown();
 
 
-        /* ====================================================
+        /* ========================================================
            RESET CURRENT RENDERER STATE
 
            New parent means everything below the previous
            parent is invalid.
-        ==================================================== */
+        ======================================================== */
 
         Renderer.selectedSourceId =
             sourceId;
@@ -5566,11 +5569,11 @@ Renderer.selectSource =
             [];
 
 
-        /* ====================================================
+        /* ========================================================
            HIGHLIGHT SELECTED SOURCE PARENT
 
            This is the GIS-selected PARENT.
-        ==================================================== */
+        ======================================================== */
 
         Renderer.renderSource(
 
@@ -5587,9 +5590,16 @@ Renderer.selectSource =
         );
 
 
-        /* ====================================================
+        /* ========================================================
            GET SOURCE → TARGET RELATIONSHIPS
-        ==================================================== */
+
+           IMPORTANT:
+
+           These relationships are authoritative for PANEL
+           children.
+
+           GIS availability must NOT remove a relationship.
+        ======================================================== */
 
         const relations =
 
@@ -5601,9 +5611,9 @@ Renderer.selectSource =
             [];
 
 
-        /* ====================================================
+        /* ========================================================
            GET MASTER TARGET LIST
-        ==================================================== */
+        ======================================================== */
 
         const allTargets =
 
@@ -5613,18 +5623,32 @@ Renderer.selectSource =
             [];
 
 
-        /* ====================================================
-           BUILD CHILD TARGET OBJECTS
+        /* ========================================================
+           BUILD ALL RELATIONSHIP CHILD TARGETS
 
-           Each resulting target becomes a CHILD in the
-           new UI architecture.
+           CURRENT DESIGN:
 
-           Relationship offenceCount is preserved because
-           CHILD cards can display:
+               ALL relationship children
+                       │
+                       ├── PANEL
+                       │     show ALL
+                       │
+                       └── GIS
+                             render only if geometry exists
 
-               Madarihat Range       12 cases
-               Jaldapara Range        7 cases
-        ==================================================== */
+           IMPORTANT:
+
+           DO NOT GIS-FILTER THIS ARRAY.
+
+           Example:
+
+               Bairiguri
+                   ├── WestDamanpur  13
+                   └── RE             2
+
+           Both must remain in this array even though RE
+           currently has no GIS polygon.
+        ======================================================== */
 
         const targets =
 
@@ -5636,6 +5660,20 @@ Renderer.selectSource =
                         relation
                     ) {
 
+                        /* ========================================
+                           RESOLVE RELATIONSHIP TARGET NAME / KEY
+                        ======================================== */
+
+                        const relationName =
+
+                            relation.targetName ||
+
+                            relation.name ||
+
+                            relation.targetKey ||
+
+                            "";
+
 
                         const relationKey =
 
@@ -5644,9 +5682,7 @@ Renderer.selectSource =
 
                                     relation.targetKey ||
 
-                                    relation.targetName ||
-
-                                    relation.name
+                                    relationName
 
                                 );
 
@@ -5660,9 +5696,18 @@ Renderer.selectSource =
                         }
 
 
-                        /* ====================================
+                        /* ========================================
                            FIND CANONICAL TARGET
-                        ==================================== */
+
+                           If available, enrich relationship with
+                           canonical target information.
+
+                           IMPORTANT:
+
+                           Failure to resolve GIS/canonical target
+                           must NOT automatically remove the
+                           relationship child from the panel.
+                        ======================================== */
 
                         const target =
 
@@ -5672,11 +5717,14 @@ Renderer.selectSource =
                                     item
                                 ) {
 
-
                                     const itemKey =
 
                                         Renderer
                                             .normalizeText(
+
+                                                item.key ||
+
+                                                item.id ||
 
                                                 item.cleanName ||
 
@@ -5692,57 +5740,94 @@ Renderer.selectSource =
 
                                     );
 
-
                                 }
 
-                            );
+                            ) ||
+
+                            null;
 
 
-                        if (
-                            !target
-                        ) {
+                        /* ========================================
+                           BUILD PANEL CHILD
 
-                            return null;
+                           Prefer canonical target data when
+                           available.
 
-                        }
+                           Otherwise preserve relationship data.
+                        ======================================== */
 
+                        const child = {
 
-                        /* ====================================
-                           BUILD CHILD OBJECT
-                        ==================================== */
-
-                        return {
-
-                            ...target,
-
+                            ...(target || {}),
 
                             key:
 
                                 relation.targetKey ||
 
-                                target.key ||
+                                target?.key ||
 
-                                target.id ||
+                                target?.id ||
 
-                                target.cleanName ||
+                                target?.cleanName ||
 
-                                target.name,
+                                relationKey,
+
+
+                            id:
+
+                                target?.id ||
+
+                                relation.targetKey ||
+
+                                relationKey,
+
+
+                            name:
+
+                                target?.name ||
+
+                                relation.targetName ||
+
+                                relation.name ||
+
+                                relation.targetKey ||
+
+                                "Unknown Target",
+
+
+                            cleanName:
+
+                                target?.cleanName ||
+
+                                relationKey,
 
 
                             offenceCount:
 
                                 relation.offenceCount ??
 
-                                target.offenceCount ??
+                                target?.offenceCount ??
 
                                 0,
 
 
                             /*
-                             * Keep complete relationship.
+                             * Preserve canonical GIS status if
+                             * available.
+                             */
+
+                            gisResolved:
+
+                                target?.gisResolved ===
+                                true,
+
+
+                            /*
+                             * Preserve complete relationship.
                              *
-                             * This may be required later when
-                             * CHILD selection resolves cases.
+                             * This is important when this CHILD
+                             * is selected from the panel and cases
+                             * must be resolved.
                              */
 
                             relation:
@@ -5751,76 +5836,103 @@ Renderer.selectSource =
                         };
 
 
-                    }
+                        /* ========================================
+                           DETERMINE ACTUAL GIS AVAILABILITY
 
-                )
+                           Do not rely only on gisResolved.
 
+                           Final rendering requires:
 
-                /* ============================================
-                   REMOVE UNRESOLVED TARGET OBJECTS
-                ============================================ */
+                               1. target resolved
+                               2. gisResolved === true
+                               3. rangeFeatureIndex contains it
+                        ======================================== */
 
-                .filter(
-                    Boolean
-                )
-
-
-                /* ============================================
-                   KEEP GIS-RESOLVED CHILDREN
-
-                   Child GIS geometry is still useful for:
-
-                       polygon highlight
-                       visual relationship
-
-                   But child polygon interaction is disabled
-                   below.
-                ============================================ */
-
-                .filter(
-
-                    function (
-                        target
-                    ) {
-
-
-                        if (
-                            target.gisResolved !==
-                            true
-                        ) {
-
-                            return false;
-
-                        }
-
-
-                        const targetKey =
+                        const gisKey =
 
                             Renderer
                                 .normalizeText(
 
-                                    target.cleanName ||
+                                    child.cleanName ||
 
-                                    target.name
+                                    child.name
 
                                 );
 
 
-                        return Renderer
-                            .rangeFeatureIndex
-                            .has(
-                                targetKey
-                            );
+                        child.gisRenderable =
 
+                            child.gisResolved ===
+                                true &&
+
+                            !!gisKey &&
+
+                            Renderer
+                                .rangeFeatureIndex
+                                .has(
+                                    gisKey
+                                );
+
+
+                        return child;
 
                     }
 
+                )
+
+                .filter(
+                    Boolean
                 );
 
 
-        /* ====================================================
+        /* ========================================================
+           IMPORTANT — ALL PANEL CHILDREN
+
+           targets contains EVERY relationship child.
+
+           DO NOT GIS FILTER THIS ARRAY.
+        ======================================================== */
+
+        Renderer.currentTargets =
+            targets;
+
+
+        /* ========================================================
+           BUILD SEPARATE GIS-RENDERABLE CHILD ARRAY
+
+           This array exists ONLY for map rendering.
+
+           It does NOT control panel visibility.
+        ======================================================== */
+
+        const renderableTargets =
+
+            targets.filter(
+
+                function (
+                    target
+                ) {
+
+                    return (
+
+                        target.gisRenderable ===
+                        true
+
+                    );
+
+                }
+
+            );
+
+
+        /* ========================================================
            RELATED CHILD HEAT SCALE
-        ==================================================== */
+
+           Use GIS-renderable targets for map heat styling.
+
+           Non-GIS children have nothing to render and therefore
+           do not need to influence polygon rendering.
+        ======================================================== */
 
         const maxCount =
 
@@ -5828,7 +5940,7 @@ Renderer.selectSource =
 
                 1,
 
-                ...targets.map(
+                ...renderableTargets.map(
 
                     function (
                         target
@@ -5849,49 +5961,25 @@ Renderer.selectSource =
             );
 
 
-        /* ====================================================
-           STORE CURRENT CHILD TARGETS
+        /* ========================================================
+           RENDER ONLY GIS-AVAILABLE CHILD TARGET POLYGONS
 
-           Renderer compatibility:
+           IMPORTANT:
 
-               currentTargets
+           Child polygons are visual only.
 
-           New UIController terminology:
-
-               children
-        ==================================================== */
-
-        Renderer.currentTargets =
-            targets;
-
-
-        /* ====================================================
-           RENDER CHILD TARGET POLYGONS
-
-           IMPORTANT — CURRENT DESIGN:
-
-           Child polygons may remain visually highlighted.
-
-           They MUST NOT become the next GIS interaction.
-
-           CHILD selection happens from the panel.
-
-           Therefore:
+           They MUST remain:
 
                interactive: false
 
-           is passed explicitly.
+           CHILD selection happens from the PANEL.
+        ======================================================== */
 
-           renderTarget() should respect this flag when
-           creating/updating its Leaflet layer.
-        ==================================================== */
-
-        targets.forEach(
+        renderableTargets.forEach(
 
             function (
                 target
             ) {
-
 
                 Renderer.renderTarget(
 
@@ -5909,29 +5997,29 @@ Renderer.selectSource =
 
                 );
 
-
             }
 
         );
 
 
-        /* ====================================================
-           UPDATE NEW PARENT / CHILD PANEL
+        /* ========================================================
+           UPDATE PARENT / CHILD PANEL
+
+           CRITICAL:
+
+           Pass Renderer.currentTargets.
+
+           This contains ALL relationship children,
+           NOT only GIS-renderable children.
 
            SOURCE → TARGET
 
-               parent:
-                   source village
+               PARENT:
+                   Source Village
 
-               children:
-                   related target ranges
-
-           This replaces the OLD:
-
-               openSourceModePanel()
-
-           architecture.
-        ==================================================== */
+               CHILD:
+                   ALL related Target Ranges
+        ======================================================== */
 
         if (
 
@@ -5949,7 +6037,6 @@ Renderer.selectSource =
 
         ) {
 
-
             GG
                 .Offence
                 .UIController
@@ -5961,11 +6048,9 @@ Renderer.selectSource =
 
                 );
 
-
         }
 
         else {
-
 
             console.error(
 
@@ -5973,13 +6058,40 @@ Renderer.selectSource =
 
             );
 
-
         }
 
 
-        /* ====================================================
-           STATUS / DEBUG
-        ==================================================== */
+        /* ========================================================
+           DEBUG
+
+           This deliberately reports:
+
+               total relationship children
+               GIS-renderable children
+               non-GIS children
+
+           so mismatch can immediately be diagnosed.
+        ======================================================== */
+
+        const nonRenderableTargets =
+
+            targets.filter(
+
+                function (
+                    target
+                ) {
+
+                    return (
+
+                        target.gisRenderable !==
+                        true
+
+                    );
+
+                }
+
+            );
+
 
         console.log(
 
@@ -5991,7 +6103,26 @@ Renderer.selectSource =
 
             targets.length,
 
-            "target children",
+            "total target children",
+
+            "→",
+
+            renderableTargets.length,
+
+            "GIS-renderable",
+
+            "→",
+
+            nonRenderableTargets.length,
+
+            "non-GIS"
+
+        );
+
+
+        console.log(
+
+            "📋 ALL PANEL TARGET CHILDREN:",
 
             targets.map(
 
@@ -6005,7 +6136,13 @@ Renderer.selectSource =
                             target.name,
 
                         offenceCount:
-                            target.offenceCount
+                            target.offenceCount,
+
+                        gisResolved:
+                            target.gisResolved,
+
+                        gisRenderable:
+                            target.gisRenderable
 
                     };
 
@@ -6016,12 +6153,50 @@ Renderer.selectSource =
         );
 
 
-        /* ====================================================
-           RETURN CHILDREN
-        ==================================================== */
+        if (
+            nonRenderableTargets.length
+        ) {
+
+            console.log(
+
+                "⚪ PANEL-ONLY TARGET CHILDREN:",
+
+                nonRenderableTargets.map(
+
+                    function (
+                        target
+                    ) {
+
+                        return {
+
+                            name:
+                                target.name,
+
+                            offenceCount:
+                                target.offenceCount
+
+                        };
+
+                    }
+
+                )
+
+            );
+
+        }
+
+
+        /* ========================================================
+           RETURN ALL CHILDREN
+
+           IMPORTANT:
+
+           Return relationship children, not GIS children.
+
+           This keeps Renderer/UI state synchronized.
+        ======================================================== */
 
         return targets;
-
 
     };
 
@@ -6129,7 +6304,7 @@ Renderer.selectTarget =
            This clears only:
 
            - previous selected-parent highlight
-           - previous related SOURCE children
+           - previous related SOURCE child polygons
            - previous child/case drill-down state
         ======================================================== */
 
@@ -6163,7 +6338,7 @@ Renderer.selectTarget =
         /* ========================================================
            RENDER VISUAL TARGET PARENT SELECTION
 
-           SELECTED is visual only.
+           SELECTED parent is visual only.
         ======================================================== */
 
         Renderer.renderTarget(
@@ -6186,6 +6361,13 @@ Renderer.selectTarget =
 
         /* ========================================================
            GET TARGET → SOURCE RELATIONSHIPS
+
+           IMPORTANT:
+
+           These relationships are authoritative for PANEL
+           children.
+
+           GIS availability must NOT remove a relationship.
         ======================================================== */
 
         const relations =
@@ -6199,15 +6381,28 @@ Renderer.selectTarget =
 
 
         /* ========================================================
-           BUILD CHILD SOURCE OBJECTS
+           BUILD ALL RELATIONSHIP SOURCE CHILDREN
 
-           TARGET → SOURCE
+           CURRENT DESIGN:
 
-           Parent:
-               selected target range
+               ALL relationship children
+                       │
+                       ├── PANEL
+                       │     show ALL children
+                       │     including children without GIS
+                       │
+                       └── GIS CHECK
+                             │
+                             ├── GIS found
+                             │     render child polygon
+                             │
+                             └── GIS not found
+                                   no polygon
+                                   KEEP child in panel
 
-           Children:
-               related source villages
+           IMPORTANT:
+
+           DO NOT GIS-FILTER THIS ARRAY.
         ======================================================== */
 
         const sources =
@@ -6220,6 +6415,10 @@ Renderer.selectTarget =
                         relation
                     ) {
 
+                        /* ========================================
+                           RESOLVE SOURCE ID
+                        ======================================== */
+
                         const sourceId =
 
                             relation.sourceId ||
@@ -6229,51 +6428,131 @@ Renderer.selectTarget =
                             relation.id;
 
 
-                        if (
-                            !sourceId
-                        ) {
+                        /* ========================================
+                           TRY TO RESOLVE CANONICAL SOURCE
 
-                            return null;
-
-                        }
-
+                           A missing canonical/GIS source must NOT
+                           automatically remove the relationship
+                           child from the PANEL.
+                        ======================================== */
 
                         const source =
 
-                            Spatial
-                                .getSourceVillage?.(
-                                    sourceId
-                                );
+                            sourceId
+
+                                ? Spatial
+                                    .getSourceVillage?.(
+                                        sourceId
+                                    )
+
+                                : null;
 
 
-                        if (
-                            !source
-                        ) {
+                        /* ========================================
+                           RESOLVE RELATIONSHIP SOURCE NAME
+                        ======================================== */
 
-                            return null;
+                        const relationName =
 
-                        }
+                            relation.sourceName ||
+
+                            relation.name ||
+
+                            relation.cleanName ||
+
+                            source?.name ||
+
+                            source?.cleanName ||
+
+                            sourceId ||
+
+                            "Unknown Source";
 
 
-                        return {
+                        /* ========================================
+                           RESOLVE FINAL SOURCE ID
 
-                            ...source,
+                           Prefer canonical source ID when found.
+
+                           Otherwise preserve relationship ID.
+                        ======================================== */
+
+                        const finalSourceId =
+
+                            source?.canonicalId ||
+
+                            source?.id ||
+
+                            sourceId ||
+
+                            null;
+
+
+                        /* ========================================
+                           BUILD PANEL CHILD OBJECT
+
+                           Canonical source data is used whenever
+                           available.
+
+                           Relationship data is preserved even when
+                           GIS/canonical source cannot be resolved.
+                        ======================================== */
+
+                        const child = {
+
+                            ...(source || {}),
+
+
+                            id:
+
+                                source?.id ||
+
+                                sourceId || null,
+
+
+                            canonicalId:
+
+                                source?.canonicalId ||
+
+                                sourceId || null,
+
+
+                            name:
+
+                                source?.name ||
+
+                                relation.sourceName ||
+
+                                relation.name ||
+
+                                relationName,
+
+
+                            cleanName:
+
+                                source?.cleanName ||
+
+                                Renderer
+                                    .normalizeText(
+                                        relationName
+                                    ),
 
 
                             offenceCount:
 
                                 relation.offenceCount ??
 
-                                source.offenceCount ??
+                                source?.offenceCount ??
 
                                 0,
 
 
                             /*
-                             * Preserve the complete relationship.
+                             * Preserve complete relationship.
                              *
-                             * This remains available when the
-                             * CHILD card is selected from panel.
+                             * This remains available when this
+                             * CHILD is selected from the panel
+                             * and cases are resolved.
                              */
 
                             relation:
@@ -6281,58 +6560,117 @@ Renderer.selectTarget =
 
                         };
 
+
+                        /* ========================================
+                           DETERMINE ACTUAL GIS AVAILABILITY
+
+                           SOURCE GIS uses villageFeatureIndex.
+
+                           GIS rendering requires a valid canonical
+                           source ID present in that index.
+                        ======================================== */
+
+                        child.gisRenderable =
+
+                            !!finalSourceId &&
+
+                            Renderer
+                                .villageFeatureIndex
+                                .has(
+                                    finalSourceId
+                                );
+
+
+                        return child;
+
                     }
 
                 )
 
                 .filter(
                     Boolean
-                )
-
-                /* =================================================
-                   KEEP ONLY GIS-RESOLVED SOURCE CHILDREN
-
-                   GIS is used here only to render/highlight the
-                   related children.
-
-                   The child polygons themselves are NOT clickable.
-                ================================================= */
-
-                .filter(
-
-                    function (
-                        source
-                    ) {
-
-                        const sourceId =
-
-                            source.canonicalId ||
-
-                            source.id;
-
-
-                        if (
-                            !sourceId
-                        ) {
-
-                            return false;
-
-                        }
-
-
-                        return Renderer
-                            .villageFeatureIndex
-                            .has(
-                                sourceId
-                            );
-
-                    }
-
                 );
 
 
         /* ========================================================
+           STORE ALL PANEL CHILDREN
+
+           CRITICAL:
+
+           Renderer.currentSources contains ALL relationship
+           children.
+
+           It is NOT GIS-filtered.
+        ======================================================== */
+
+        Renderer.currentSources =
+            sources;
+
+
+        /* ========================================================
+           BUILD SEPARATE GIS-RENDERABLE SOURCE CHILDREN
+
+           This array is ONLY for map rendering.
+
+           It must NOT control which children appear in panel.
+        ======================================================== */
+
+        const renderableSources =
+
+            sources.filter(
+
+                function (
+                    source
+                ) {
+
+                    return (
+
+                        source.gisRenderable ===
+                        true
+
+                    );
+
+                }
+
+            );
+
+
+        /* ========================================================
+           BUILD NON-GIS CHILD LIST
+
+           Diagnostic only.
+
+           These children remain fully available in PANEL.
+        ======================================================== */
+
+        const nonRenderableSources =
+
+            sources.filter(
+
+                function (
+                    source
+                ) {
+
+                    return (
+
+                        source.gisRenderable !==
+                        true
+
+                    );
+
+                }
+
+            );
+
+
+        /* ========================================================
            CALCULATE CHILD SOURCE HEAT SCALE
+
+           Heat scale applies only to polygons which can actually
+           be rendered.
+
+           Non-GIS children remain panel children but have no map
+           polygon.
         ======================================================== */
 
         const maxCount =
@@ -6341,7 +6679,7 @@ Renderer.selectTarget =
 
                 1,
 
-                ...sources.map(
+                ...renderableSources.map(
 
                     function (
                         source
@@ -6363,29 +6701,22 @@ Renderer.selectTarget =
 
 
         /* ========================================================
-           STORE CURRENT CHILD SOURCES
-        ======================================================== */
-
-        Renderer.currentSources =
-            sources;
-
-
-        /* ========================================================
-           RENDER ALL SOURCE CHILD POLYGONS
+           RENDER ONLY GIS-AVAILABLE SOURCE CHILD POLYGONS
 
            CRITICAL CURRENT DESIGN:
 
            CHILD polygons are visual only.
 
-           They MUST always be:
+           They MUST ALWAYS be:
 
                interactive: false
 
-           Child selection happens from the CHILD section
-           of the panel — never from the map.
+           Child selection happens from CHILD section of PANEL.
+
+           Never from child polygon on map.
         ======================================================== */
 
-        sources.forEach(
+        renderableSources.forEach(
 
             function (
                 source
@@ -6413,20 +6744,27 @@ Renderer.selectTarget =
 
 
         /* ========================================================
-           POPULATE NEW PARENT / CHILD PANEL
+           POPULATE PARENT / CHILD PANEL
 
            TARGET → SOURCE
 
            PARENT:
-               selected target range
+               selected Target Range
 
            CHILD:
-               all related source villages
+               ALL related Source Villages
 
            IMPORTANT:
 
-           This is the missing symmetrical operation corresponding
-           to Renderer.selectSource().
+           Pass Renderer.currentSources.
+
+           Renderer.currentSources contains:
+
+               GIS children
+               +
+               non-GIS children
+
+           GIS availability has NO effect on panel membership.
         ======================================================== */
 
         if (
@@ -6471,6 +6809,12 @@ Renderer.selectTarget =
 
         /* ========================================================
            STATUS / DEBUG
+
+           Report separately:
+
+               1. total relationship children
+               2. GIS-renderable children
+               3. non-GIS children
         ======================================================== */
 
         console.log(
@@ -6483,7 +6827,30 @@ Renderer.selectTarget =
 
             sources.length,
 
-            "source children",
+            "total source children",
+
+            "→",
+
+            renderableSources.length,
+
+            "GIS-renderable",
+
+            "→",
+
+            nonRenderableSources.length,
+
+            "non-GIS"
+
+        );
+
+
+        /* ========================================================
+           DEBUG — ALL PANEL CHILDREN
+        ======================================================== */
+
+        console.log(
+
+            "📋 ALL PANEL SOURCE CHILDREN:",
 
             sources.map(
 
@@ -6493,11 +6860,23 @@ Renderer.selectTarget =
 
                     return {
 
+                        id:
+
+                            source.canonicalId ||
+
+                            source.id,
+
+
                         name:
                             source.name,
 
+
                         offenceCount:
-                            source.offenceCount
+                            source.offenceCount,
+
+
+                        gisRenderable:
+                            source.gisRenderable
 
                     };
 
@@ -6509,7 +6888,114 @@ Renderer.selectTarget =
 
 
         /* ========================================================
-           RETURN CHILDREN
+           DEBUG — GIS-RENDERABLE CHILDREN
+        ======================================================== */
+
+        if (
+            renderableSources.length
+        ) {
+
+            console.log(
+
+                "🗺️ GIS-RENDERABLE SOURCE CHILDREN:",
+
+                renderableSources.map(
+
+                    function (
+                        source
+                    ) {
+
+                        return {
+
+                            id:
+
+                                source.canonicalId ||
+
+                                source.id,
+
+
+                            name:
+                                source.name,
+
+
+                            offenceCount:
+                                source.offenceCount
+
+                        };
+
+                    }
+
+                )
+
+            );
+
+        }
+
+
+        /* ========================================================
+           DEBUG — PANEL-ONLY CHILDREN
+
+           These have no usable GIS polygon but MUST remain
+           visible/selectable in panel.
+        ======================================================== */
+
+        if (
+            nonRenderableSources.length
+        ) {
+
+            console.log(
+
+                "⚪ PANEL-ONLY SOURCE CHILDREN:",
+
+                nonRenderableSources.map(
+
+                    function (
+                        source
+                    ) {
+
+                        return {
+
+                            id:
+
+                                source.canonicalId ||
+
+                                source.id,
+
+
+                            name:
+                                source.name,
+
+
+                            offenceCount:
+                                source.offenceCount
+
+                        };
+
+                    }
+
+                )
+
+            );
+
+        }
+
+
+        /* ========================================================
+           RETURN ALL RELATIONSHIP CHILDREN
+
+           IMPORTANT:
+
+           Return ALL source children.
+
+           Do NOT return only renderableSources.
+
+           This keeps:
+
+               Renderer
+               UIController
+               panel
+
+           synchronized with the complete relationship dataset.
         ======================================================== */
 
         return sources;
