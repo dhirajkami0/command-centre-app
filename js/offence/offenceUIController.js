@@ -3530,48 +3530,60 @@ function () {
            bottom navigation / device safe area
     -------------------------------------------------------- */
 
-    #${UIController.CONFIG.BUTTON_ID} {
+#${UIController.CONFIG.BUTTON_ID} {
 
-        top:
-            auto;
+    position:
+        fixed;
 
-        right:
-            10px;
+    top:
+        auto;
 
-        bottom:
-            max(
-                150px,
-                calc(
-                    env(safe-area-inset-bottom) +
-                    130px
-                )
-            );
+    right:
+        10px;
 
-        left:
-            auto;
+    /*
+     * MOBILE POSITION
+     *
+     * Keep OFFENCE above the Analytics panel.
+     *
+     * Unlike the previous 150px position,
+     * this moves the launcher substantially upward.
+     */
 
-        min-width:
-            104px;
+    bottom:
+        max(
+            330px,
+            calc(
+                env(safe-area-inset-bottom) +
+                310px
+            )
+        );
 
-        max-width:
-            calc(100vw - 20px);
+    left:
+        auto;
 
-        height:
-            42px;
+    min-width:
+        104px;
 
-        min-height:
-            42px;
+    max-width:
+        calc(100vw - 20px);
 
-        padding:
-            0 12px;
+    height:
+        42px;
 
-        border-radius:
-            13px;
+    min-height:
+        42px;
 
-        font-size:
-            12px;
+    padding:
+        0 12px;
 
-    }
+    border-radius:
+        13px;
+
+    font-size:
+        12px;
+
+}
 
 
     /* --------------------------------------------------------
