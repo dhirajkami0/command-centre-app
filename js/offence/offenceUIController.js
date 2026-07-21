@@ -3260,8 +3260,8 @@ function () {
        Rebuild references from the current DOM every time this
        function runs.
 
-       This is safer than retaining stale references if the
-       panel is destroyed and recreated.
+       This prevents stale DOM references if the offence panel
+       is ever destroyed and recreated.
     ======================================================= */
 
     UIController.elements =
@@ -3353,20 +3353,41 @@ function () {
 
 
     /* =======================================================
-       PARENT
+       SELECTED OFFENCE AREA
+
+       INTERNAL ROLE:
+           PARENT
 
        SOURCE → TARGET
-           Parent = Source Village
+           Visible heading:
+               OFFENCE SOURCE AREA
+
+           Area type:
+               Village
 
        TARGET → SOURCE
-           Parent = Target Range
+           Visible heading:
+               OFFENCE TARGET AREA
 
-       Parent selection is performed through GIS / map click.
+           Area type:
+               Range
+
+       Parent selection continues to happen through
+       GIS / map click.
+
+       IMPORTANT:
+       "parentTitle" is the dynamic visible heading.
     ======================================================= */
 
     elements.parentSection =
         document.getElementById(
             "gg-offence-parent-section"
+        );
+
+
+    elements.parentTitle =
+        document.getElementById(
+            "gg-offence-parent-title"
         );
 
 
@@ -3378,23 +3399,55 @@ function () {
 
 
     /* =======================================================
-       CHILD
+       RELATED OFFENCE AREAS
+
+       INTERNAL ROLE:
+           CHILD
 
        SOURCE → TARGET
-           Child = Target Range
+           Visible heading:
+               OFFENCE TARGET AREA
+
+           Area type:
+               Range
 
        TARGET → SOURCE
-           Child = Source Village
+           Visible heading:
+               OFFENCE SOURCE AREA
 
-       Child selection happens from this panel.
+           Area type:
+               Village
 
-       Child polygons on the map are display/highlight only
-       and should remain non-interactive.
+       ALL relationship children are displayed in this panel.
+
+       GIS availability does NOT determine whether a child
+       appears here.
+
+       GIS found:
+           child polygon may be rendered/highlighted.
+
+       GIS not found:
+           no polygon is rendered,
+           but child remains in this panel.
+
+       Child cards are clickable HERE.
+
+       Child GIS polygons remain visual only:
+           interactive: false
+
+       IMPORTANT:
+       "childTitle" is the dynamic visible heading.
     ======================================================= */
 
     elements.childSection =
         document.getElementById(
             "gg-offence-child-section"
+        );
+
+
+    elements.childTitle =
+        document.getElementById(
+            "gg-offence-child-title"
         );
 
 
@@ -3408,7 +3461,14 @@ function () {
     /* =======================================================
        CASES
 
-       Populated after a CHILD is selected.
+       CHILD CARD
+           ↓
+       MATCHING OFFENCE CASES
+
+       The case list is replaced whenever another child
+       is selected.
+
+       Parent and complete child collection remain preserved.
     ======================================================= */
 
     elements.caseSection =
@@ -3445,7 +3505,17 @@ function () {
     /* =======================================================
        CASE DETAILS
 
-       Populated after a particular offence case is selected.
+       CASE CARD
+           ↓
+       CASE DETAILS
+
+       Selecting another case replaces the currently displayed
+       case details while preserving:
+
+           selected parent
+           selected child
+           child collection
+           current case collection
     ======================================================= */
 
     elements.caseDetailsSection =
@@ -3470,10 +3540,13 @@ function () {
     /* =======================================================
        FIELD DETAILS
 
-       Populated when a particular expandable field from
-       CASE DETAILS is selected.
+       CASE DETAILS FIELD
+           ↓
+       FIELD DETAILS
 
-       No GIS interaction occurs at this level.
+       This is the final panel drill-down level.
+
+       No GIS selection or map interaction occurs here.
     ======================================================= */
 
     elements.fieldDetailsSection =
@@ -3497,6 +3570,11 @@ function () {
 
     /* =======================================================
        CLEAR ANALYSIS
+
+       Global reset control.
+
+       This clears the current offence spatial analysis
+       according to the existing clearAnalysis() logic.
     ======================================================= */
 
     elements.clearSection =
@@ -3518,6 +3596,42 @@ function () {
 
     /* =======================================================
        RETURN CURRENT DOM REFERENCES
+
+       EXPECTED REFERENCES:
+
+           mainButton
+           panel
+           closeButton
+           status
+
+           modeSection
+           sourceButton
+           targetButton
+
+           parentSection
+           parentTitle
+           parentContent
+
+           childSection
+           childTitle
+           childList
+
+           caseSection
+           caseCount
+           caseResults
+           caseResultList
+           backToChildren
+
+           caseDetailsSection
+           caseDetails
+           backToCases
+
+           fieldDetailsSection
+           fieldDetails
+           backToCaseDetails
+
+           clearSection
+           clearButton
     ======================================================= */
 
     return elements;
@@ -7201,8 +7315,10 @@ function (
     context = {}
 ) {
 
+
     const elements =
         UIController.elements;
+
 
 
     /* ========================================================
@@ -7223,23 +7339,32 @@ function (
     }
 
 
+
     /* ========================================================
-       NORMALIZE MODE
-
-       SOURCE
-           Parent = Source Village
-           Child  = Target Range
-
-       TARGET
-           Parent = Target Range
-           Child  = Source Village
+       GET SPATIAL RENDERER
     ======================================================== */
 
-    const renderer =
+    const SpatialRenderer =
         GG
             ?.Offence
             ?.SpatialRenderer;
 
+
+
+    /* ========================================================
+       NORMALIZE CURRENT MODE
+
+       SOURCE
+           OFFENCE SOURCE AREA
+                    ↓
+           OFFENCE TARGET AREA
+
+
+       TARGET
+           OFFENCE TARGET AREA
+                    ↓
+           OFFENCE SOURCE AREA
+    ======================================================== */
 
     const rawMode =
 
@@ -7247,7 +7372,7 @@ function (
 
         UIController.currentMode ||
 
-        renderer?.mode ||
+        SpatialRenderer?.mode ||
 
         "";
 
@@ -7260,6 +7385,7 @@ function (
             .toLowerCase();
 
 
+
     const isSourceMode =
         mode ===
         "source";
@@ -7270,8 +7396,26 @@ function (
         "target";
 
 
+
     /* ========================================================
        NORMALIZE CHILDREN
+
+       IMPORTANT:
+
+       This receives ALL relationship children.
+
+       DO NOT filter children here based on GIS.
+
+       Therefore:
+
+           GIS child
+               → shown in panel
+
+           NON-GIS child
+               → ALSO shown in panel
+
+       GIS filtering belongs only to SpatialRenderer polygon
+       rendering logic.
     ======================================================== */
 
     const childList =
@@ -7282,8 +7426,56 @@ function (
             : [];
 
 
+
     /* ========================================================
-       RESOLVE LABELS
+       RESOLVE VISIBLE SECTION HEADINGS
+
+       IMPORTANT:
+
+       We DO NOT display:
+
+           PARENT
+           CHILD
+
+       Those are only internal architecture concepts.
+    ======================================================== */
+
+    const parentHeading =
+
+        isSourceMode
+            ? "OFFENCE SOURCE AREA"
+            :
+        isTargetMode
+            ? "OFFENCE TARGET AREA"
+            :
+        "OFFENCE AREA";
+
+
+    const childHeading =
+
+        isSourceMode
+            ? "OFFENCE TARGET AREA"
+            :
+        isTargetMode
+            ? "OFFENCE SOURCE AREA"
+            :
+        "RELATED OFFENCE AREA";
+
+
+
+    /* ========================================================
+       RESOLVE DISPLAY AREA TYPES
+
+       SOURCE → TARGET
+
+           Parent = Village
+           Child  = Range
+
+
+       TARGET → SOURCE
+
+           Parent = Range
+           Child  = Village
     ======================================================== */
 
     const parentType =
@@ -7292,12 +7484,12 @@ function (
 
         (
             isSourceMode
-                ? "Source Village"
+                ? "Village"
                 :
             isTargetMode
-                ? "Target Range"
+                ? "Range"
                 :
-            "Parent"
+            "Area"
         );
 
 
@@ -7307,24 +7499,52 @@ function (
 
         (
             isSourceMode
-                ? "Target Range"
+                ? "Range"
                 :
             isTargetMode
-                ? "Source Village"
+                ? "Village"
                 :
-            "Child"
+            "Area"
         );
+
 
 
     /* ========================================================
        STORE CURRENT PANEL STATE
 
+       THIS IS A NEW PARENT SELECTION.
+
+       Therefore:
+
+           currentParent
+               → replaced
+
+           currentChildren
+               → replaced
+
+           currentChild
+               → reset
+
+           currentCases
+               → reset
+
+           currentCase
+               → reset
+
+           currentField
+               → reset
+
+
        IMPORTANT:
 
-       Selecting a CHILD later must NOT replace this parent.
+       Once this parent has been selected, clicking different
+       children MUST NOT replace currentParent/currentChildren.
 
-       Parent remains selected until another GIS parent is
-       selected or analysis is cleared.
+       They remain until:
+
+           1. another GIS parent is selected
+           OR
+           2. Clear Analysis is used
     ======================================================== */
 
     UIController.currentParent =
@@ -7347,11 +7567,6 @@ function (
         childType;
 
 
-    /*
-     * New parent means previous child/case/detail state
-     * is no longer valid.
-     */
-
     UIController.currentChild =
         null;
 
@@ -7372,6 +7587,7 @@ function (
         null;
 
 
+
     /* ========================================================
        ENSURE PANEL IS OPEN
     ======================================================== */
@@ -7387,7 +7603,50 @@ function (
                 "gg-offence-panel-open"
             );
 
+
+        elements
+            .panel
+            .setAttribute(
+                "aria-hidden",
+                "false"
+            );
+
     }
+
+
+
+    /* ========================================================
+       UPDATE DYNAMIC PARENT HEADING
+    ======================================================== */
+
+    if (
+        elements.parentTitle
+    ) {
+
+        elements
+            .parentTitle
+            .textContent =
+                parentHeading;
+
+    }
+
+
+
+    /* ========================================================
+       UPDATE DYNAMIC CHILD HEADING
+    ======================================================== */
+
+    if (
+        elements.childTitle
+    ) {
+
+        elements
+            .childTitle
+            .textContent =
+                childHeading;
+
+    }
+
 
 
     /* ========================================================
@@ -7407,37 +7666,66 @@ function (
     }
 
 
+
     /* ========================================================
-       POPULATE PARENT
+       RESOLVE PARENT INFORMATION
+    ======================================================== */
+
+    const parentName =
+
+        parent.name ||
+
+        parent.cleanName ||
+
+        parent.label ||
+
+        parent.title ||
+
+        parent.id ||
+
+        parent.key ||
+
+        "Unknown";
+
+
+    const parentCount =
+
+        Number(
+
+            parent.offenceCount ??
+
+            parent.caseCount ??
+
+            parent.count ??
+
+            0
+
+        );
+
+
+
+    /* ========================================================
+       POPULATE PARENT CARD
+
+       SOURCE → TARGET EXAMPLE:
+
+           OFFENCE SOURCE AREA
+
+           📍 Bairiguri
+           Village                 15 cases
+
+
+       TARGET → SOURCE EXAMPLE:
+
+           OFFENCE TARGET AREA
+
+           📍 WestDamanpur
+           Range                   80 cases
     ======================================================== */
 
     if (
         elements.parentContent
     ) {
-
-        const parentName =
-
-            parent.name ||
-
-            parent.cleanName ||
-
-            parent.label ||
-
-            parent.title ||
-
-            parent.id ||
-
-            "Unknown";
-
-
-        const parentCount =
-
-            Number(
-                parent.offenceCount ??
-                parent.caseCount ??
-                0
-            );
-
 
         elements
             .parentContent
@@ -7455,8 +7743,9 @@ function (
             "gg-offence-parent-card";
 
 
+
         /* ----------------------------------------------------
-           Parent main information
+           PARENT MAIN
         ---------------------------------------------------- */
 
         const parentMain =
@@ -7468,6 +7757,11 @@ function (
         parentMain.className =
             "gg-offence-parent-main";
 
+
+
+        /* ----------------------------------------------------
+           PARENT NAME
+        ---------------------------------------------------- */
 
         const parentNameElement =
             document.createElement(
@@ -7483,6 +7777,11 @@ function (
             `📍 ${parentName}`;
 
 
+
+        /* ----------------------------------------------------
+           PARENT TYPE
+        ---------------------------------------------------- */
+
         const parentTypeElement =
             document.createElement(
                 "div"
@@ -7495,6 +7794,7 @@ function (
 
         parentTypeElement.textContent =
             parentType;
+
 
 
         parentMain.appendChild(
@@ -7512,40 +7812,39 @@ function (
         );
 
 
-        /* ----------------------------------------------------
-           Parent offence count
 
-           Only display when available.
+        /* ----------------------------------------------------
+           PARENT CASE COUNT
         ---------------------------------------------------- */
 
-        if (
-            parentCount > 0
-        ) {
-
-            const countElement =
-                document.createElement(
-                    "div"
-                );
-
-
-            countElement.className =
-                "gg-offence-parent-count";
-
-
-            countElement.textContent =
-                `${parentCount} case${
-                    parentCount === 1
-                        ? ""
-                        : "s"
-                }`;
-
-
-            parentCard.appendChild(
-                countElement
+        const parentCountElement =
+            document.createElement(
+                "div"
             );
 
-        }
 
+        parentCountElement.className =
+            "gg-offence-parent-count";
+
+
+        parentCountElement.textContent =
+
+            `${parentCount} case${
+                parentCount === 1
+                    ? ""
+                    : "s"
+            }`;
+
+
+        parentCard.appendChild(
+            parentCountElement
+        );
+
+
+
+        /* ----------------------------------------------------
+           APPEND PARENT CARD
+        ---------------------------------------------------- */
 
         elements
             .parentContent
@@ -7554,6 +7853,7 @@ function (
             );
 
     }
+
 
 
     /* ========================================================
@@ -7573,8 +7873,9 @@ function (
     }
 
 
+
     /* ========================================================
-       POPULATE CHILDREN
+       CLEAR CHILD LIST
     ======================================================== */
 
     if (
@@ -7586,491 +7887,478 @@ function (
             .innerHTML =
                 "";
 
-
-        /* ====================================================
-           NO CHILDREN
-        ==================================================== */
-
-        if (
-            !childList.length
-        ) {
-
-            const empty =
-                document.createElement(
-                    "div"
-                );
+    }
 
 
-            empty.className =
-                "gg-offence-empty";
+
+    /* ========================================================
+       NO CHILDREN
+    ======================================================== */
+
+    if (
+        elements.childList &&
+        !childList.length
+    ) {
+
+        const empty =
+            document.createElement(
+                "div"
+            );
 
 
-            empty.textContent =
-                `No related ${childType.toLowerCase()} found.`;
+        empty.className =
+            "gg-offence-empty";
 
 
-            elements
-                .childList
-                .appendChild(
-                    empty
-                );
+        empty.textContent =
 
-        }
+            isSourceMode
+                ? "No related offence target areas found."
+                :
+            isTargetMode
+                ? "No related offence source areas found."
+                :
+            "No related offence areas found.";
 
 
-        /* ====================================================
-           CHILD CARDS
-        ==================================================== */
+        elements
+            .childList
+            .appendChild(
+                empty
+            );
 
-        else {
+    }
 
-            childList.forEach(
 
-                function (
-                    child,
-                    index
+
+    /* ========================================================
+       POPULATE ALL RELATIONSHIP CHILDREN
+
+       IMPORTANT ARCHITECTURE:
+
+                   RELATIONSHIPS
+                        │
+                        ▼
+                 ALL CHILDREN
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+              ▼                   ▼
+            PANEL               GIS
+              │                   │
+          SHOW ALL          GIS AVAILABLE?
+          CHILDREN            │       │
+                              YES      NO
+                               │        │
+                             render    nothing
+                             polygon
+                               │
+                         interactive:false
+
+
+       Therefore NO GIS filtering occurs here.
+    ======================================================== */
+
+    if (
+        elements.childList &&
+        childList.length
+    ) {
+
+        childList.forEach(
+
+            function (
+                child,
+                index
+            ) {
+
+
+                if (
+                    !child
                 ) {
 
-                    if (
-                        !child
+                    return;
+
+                }
+
+
+
+                /* =================================================
+                   CHILD NAME
+                ================================================= */
+
+                const childName =
+
+                    child.name ||
+
+                    child.cleanName ||
+
+                    child.label ||
+
+                    child.title ||
+
+                    child.id ||
+
+                    child.key ||
+
+                    `Area ${index + 1}`;
+
+
+
+                /* =================================================
+                   CHILD CASE COUNT
+
+                   Prefer relationship-specific offence count.
+
+                   This is important because:
+
+                       Bairiguri
+                           ↓
+                       WestDamanpur = 13
+
+                   while WestDamanpur itself may have a much
+                   larger total offence count across all sources.
+                ================================================= */
+
+                const childCount =
+
+                    Number(
+
+                        child.relation
+                            ?.offenceCount ??
+
+                        child.offenceCount ??
+
+                        child.caseCount ??
+
+                        child.count ??
+
+                        0
+
+                    );
+
+
+
+                /* =================================================
+                   CREATE CLICKABLE CHILD CARD
+                ================================================= */
+
+                const button =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                button.type =
+                    "button";
+
+
+                button.className =
+                    "gg-offence-child-item";
+
+
+
+                /* =================================================
+                   CHILD DATA
+                ================================================= */
+
+                button.dataset.index =
+                    String(
+                        index
+                    );
+
+
+                button.dataset.child =
+
+                    child.key ||
+
+                    child.canonicalId ||
+
+                    child.id ||
+
+                    child.cleanName ||
+
+                    child.name ||
+
+                    "";
+
+
+
+                /* =================================================
+                   CHILD MAIN CONTAINER
+                ================================================= */
+
+                const childMain =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                childMain.className =
+                    "gg-offence-child-main";
+
+
+
+                /* =================================================
+                   CHILD NAME
+                ================================================= */
+
+                const childNameElement =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                childNameElement.className =
+                    "gg-offence-child-name";
+
+
+                childNameElement.textContent =
+                    childName;
+
+
+
+                /* =================================================
+                   CHILD TYPE
+
+                   SOURCE → TARGET
+                       Range
+
+                   TARGET → SOURCE
+                       Village
+                ================================================= */
+
+                const childTypeElement =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                childTypeElement.className =
+                    "gg-offence-child-type";
+
+
+                childTypeElement.textContent =
+                    childType;
+
+
+
+                childMain.appendChild(
+                    childNameElement
+                );
+
+
+                childMain.appendChild(
+                    childTypeElement
+                );
+
+
+                button.appendChild(
+                    childMain
+                );
+
+
+
+                /* =================================================
+                   CHILD CASE COUNT
+                ================================================= */
+
+                const countElement =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                countElement.className =
+                    "gg-offence-child-count";
+
+
+                countElement.textContent =
+
+                    `${childCount} case${
+                        childCount === 1
+                            ? ""
+                            : "s"
+                    }`;
+
+
+                button.appendChild(
+                    countElement
+                );
+
+
+
+                /* =================================================
+                   CHILD CLICK
+
+                   IMPORTANT:
+
+                   CHILD selection occurs ONLY through panel.
+
+                   Do NOT perform another independent case lookup.
+
+                   Use the existing SpatialRenderer functions:
+
+                   SOURCE MODE
+                       selectTargetForSource()
+
+                   TARGET MODE
+                       selectSourceForTarget()
+
+                   Those functions already resolve the authoritative
+                   Source ↔ Target case relationship.
+                ================================================= */
+
+                button.onclick =
+                    function (
+                        event
                     ) {
 
-                        return;
 
-                    }
+                        event
+                            ?.preventDefault?.();
 
 
-                    /* ========================================
-                       CHILD NAME
-                    ======================================== */
+                        event
+                            ?.stopPropagation?.();
 
-                    const childName =
 
-                        child.name ||
 
-                        child.cleanName ||
+                        /* =========================================
+                           VALIDATE RENDERER
+                        ========================================= */
 
-                        child.label ||
+                        if (
+                            !SpatialRenderer
+                        ) {
 
-                        child.title ||
+                            console.error(
+                                "❌ SpatialRenderer unavailable for child selection"
+                            );
 
-                        child.id ||
+                            return;
 
-                        child.key ||
+                        }
 
-                        `Child ${index + 1}`;
 
 
-                    /* ========================================
-                       CHILD CASE COUNT
-                    ======================================== */
+                        /* =========================================
+                           STORE CURRENT CHILD
 
-                    const childCount =
+                           DO NOT CHANGE:
 
-                        Number(
+                               currentParent
+                               currentChildren
 
-                            child.offenceCount ??
+                           They must remain preserved.
+                        ========================================= */
 
-                            child.caseCount ??
+                        UIController.currentChild =
+                            child;
 
-                            child.count ??
 
-                            child.relation
-                                ?.offenceCount ??
+                        UIController.currentCase =
+                            null;
 
-                            0
 
-                        );
+                        UIController.currentField =
+                            null;
 
 
-                    /* ========================================
-                       CREATE CHILD BUTTON
-                    ======================================== */
 
-                    const button =
-                        document.createElement(
-                            "button"
-                        );
+                        /* =========================================
+                           CLEAR PREVIOUS CHILD VISUAL SELECTION
+                        ========================================= */
 
+                        if (
+                            elements.childList
+                        ) {
 
-                    button.type =
-                        "button";
+                            elements
+                                .childList
+                                .querySelectorAll(
+                                    ".gg-offence-child-item"
+                                )
+                                .forEach(
 
+                                    function (
+                                        item
+                                    ) {
 
-                    button.className =
-                        "gg-offence-child-item";
+                                        item
+                                            .classList
+                                            .remove(
+                                                "gg-offence-child-selected"
+                                            );
 
+                                    }
 
-                    /* ========================================
-                       DATA ATTRIBUTES
-                    ======================================== */
+                                );
 
-                    button.dataset.index =
-                        String(
-                            index
-                        );
+                        }
 
 
-                    button.dataset.child =
 
-                        child.key ||
+                        /* =========================================
+                           SELECT CURRENT CHILD CARD
+                        ========================================= */
 
-                        child.canonicalId ||
-
-                        child.id ||
-
-                        child.cleanName ||
-
-                        child.name ||
-
-                        "";
-
-
-                    /* ========================================
-                       CHILD MAIN
-                    ======================================== */
-
-                    const childMain =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    childMain.className =
-                        "gg-offence-child-main";
-
-
-                    const childNameElement =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    childNameElement.className =
-                        "gg-offence-child-name";
-
-
-                    childNameElement.textContent =
-                        childName;
-
-
-                    const childTypeElement =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    childTypeElement.className =
-                        "gg-offence-child-type";
-
-
-                    childTypeElement.textContent =
-                        childType;
-
-
-                    childMain.appendChild(
-                        childNameElement
-                    );
-
-
-                    childMain.appendChild(
-                        childTypeElement
-                    );
-
-
-                    button.appendChild(
-                        childMain
-                    );
-
-
-                    /* ========================================
-                       CASE COUNT
-                    ======================================== */
-
-                    if (
-                        childCount >= 0
-                    ) {
-
-                        const countElement =
-                            document.createElement(
-                                "div"
+                        button
+                            .classList
+                            .add(
+                                "gg-offence-child-selected"
                             );
 
 
-                        countElement.className =
-                            "gg-offence-child-count";
 
+                        /* =========================================
+                           SOURCE → TARGET
 
-                        countElement.textContent =
+                           Parent:
+                               Offence Source Area
+                               Village
 
-                            `${childCount} case${
-                                childCount === 1
-                                    ? ""
-                                    : "s"
-                            }`;
+                           Child:
+                               Offence Target Area
+                               Range
+                        ========================================= */
 
-
-                        button.appendChild(
-                            countElement
-                        );
-
-                    }
-
-
-                    /* ========================================
-                       CHILD CLICK
-
-                       IMPORTANT:
-
-                       Do NOT independently resolve cases here.
-
-                       Use the SAME Renderer functions already
-                       proven to work from the GIS flow.
-                    ======================================== */
-
-                    button.onclick =
-                        function (
-                            event
+                        if (
+                            mode ===
+                            "source"
                         ) {
 
-                            event
-                                ?.preventDefault?.();
-
-
-                            event
-                                ?.stopPropagation?.();
-
-
-                            const SpatialRenderer =
-                                GG
-                                    ?.Offence
-                                    ?.SpatialRenderer;
-
-
                             if (
-                                !SpatialRenderer
-                            ) {
-
-                                console.error(
-                                    "❌ SpatialRenderer unavailable for child selection"
-                                );
-
-                                return;
-
-                            }
-
-
-                            /* ==================================
-                               STORE CURRENT CHILD
-
-                               Parent and original child list
-                               remain untouched.
-                            ================================== */
-
-                            UIController.currentChild =
-                                child;
-
-
-                            UIController.currentCase =
-                                null;
-
-
-                            UIController.currentField =
-                                null;
-
-
-                            /* ==================================
-                               VISUAL CHILD SELECTION
-
-                               Does NOT affect GIS.
-                            ================================== */
-
-                            if (
-                                elements.childList
-                            ) {
-
-                                elements
-                                    .childList
-                                    .querySelectorAll(
-                                        ".gg-offence-child-item"
-                                    )
-                                    .forEach(
-
-                                        function (
-                                            item
-                                        ) {
-
-                                            item
-                                                .classList
-                                                .remove(
-                                                    "gg-offence-child-selected"
-                                                );
-
-                                        }
-
-                                    );
-
-                            }
-
-
-                            button
-                                .classList
-                                .add(
-                                    "gg-offence-child-selected"
-                                );
-
-
-                            /* ==================================
-                               SOURCE → TARGET
-
-                               Parent:
-                                   Source Village
-
-                               Child:
-                                   Target Range
-                            ================================== */
-
-                            if (
-                                mode ===
-                                "source"
-                            ) {
-
-                                if (
-                                    typeof
-                                    SpatialRenderer
-                                        .selectTargetForSource ===
-                                    "function"
-                                ) {
-
-                                    const cases =
-                                        SpatialRenderer
-                                            .selectTargetForSource(
-                                                child
-                                            );
-
-
-                                    console.log(
-
-                                        "🎯 Panel Target child selected:",
-
-                                        childName,
-
-                                        "→",
-
-                                        Array.isArray(cases)
-                                            ? cases.length
-                                            : 0,
-
-                                        "cases"
-
-                                    );
-
-
-                                    return;
-
-                                }
-
-
-                                console.error(
-                                    "❌ SpatialRenderer.selectTargetForSource() unavailable"
-                                );
-
-
-                                return;
-
-                            }
-
-
-                            /* ==================================
-                               TARGET → SOURCE
-
-                               Parent:
-                                   Target Range
-
-                               Child:
-                                   Source Village
-                            ================================== */
-
-                            if (
-                                mode ===
-                                "target"
-                            ) {
-
-                                if (
-                                    typeof
-                                    SpatialRenderer
-                                        .selectSourceForTarget ===
-                                    "function"
-                                ) {
-
-                                    const cases =
-                                        SpatialRenderer
-                                            .selectSourceForTarget(
-                                                child
-                                            );
-
-
-                                    console.log(
-
-                                        "🏡 Panel Source child selected:",
-
-                                        childName,
-
-                                        "→",
-
-                                        Array.isArray(cases)
-                                            ? cases.length
-                                            : 0,
-
-                                        "cases"
-
-                                    );
-
-
-                                    return;
-
-                                }
-
-
-                                console.error(
-                                    "❌ SpatialRenderer.selectSourceForTarget() unavailable"
-                                );
-
-
-                                return;
-
-                            }
-
-
-                            /* ==================================
-                               FALLBACK MODE CHECK
-
-                               Protect against UI mode casing /
-                               synchronization differences.
-                            ================================== */
-
-                            const rendererMode =
-                                String(
-                                    SpatialRenderer.mode ||
-                                    ""
-                                )
-                                    .trim()
-                                    .toUpperCase();
-
-
-                            if (
-                                rendererMode ===
-                                "SOURCE" &&
                                 typeof
                                 SpatialRenderer
                                     .selectTargetForSource ===
                                 "function"
                             ) {
 
-                                SpatialRenderer
-                                    .selectTargetForSource(
-                                        child
-                                    );
+                                const cases =
+
+                                    SpatialRenderer
+                                        .selectTargetForSource(
+                                            child
+                                        );
+
+
+                                console.log(
+
+                                    "🎯 Panel Offence Target Area selected:",
+
+                                    childName,
+
+                                    "→",
+
+                                    Array.isArray(
+                                        cases
+                                    )
+                                        ? cases.length
+                                        : 0,
+
+                                    "cases"
+
+                                );
 
 
                                 return;
@@ -8078,19 +8366,66 @@ function (
                             }
 
 
+                            console.error(
+                                "❌ SpatialRenderer.selectTargetForSource() unavailable"
+                            );
+
+
+                            return;
+
+                        }
+
+
+
+                        /* =========================================
+                           TARGET → SOURCE
+
+                           Parent:
+                               Offence Target Area
+                               Range
+
+                           Child:
+                               Offence Source Area
+                               Village
+                        ========================================= */
+
+                        if (
+                            mode ===
+                            "target"
+                        ) {
+
                             if (
-                                rendererMode ===
-                                "TARGET" &&
                                 typeof
                                 SpatialRenderer
                                     .selectSourceForTarget ===
                                 "function"
                             ) {
 
-                                SpatialRenderer
-                                    .selectSourceForTarget(
-                                        child
-                                    );
+                                const cases =
+
+                                    SpatialRenderer
+                                        .selectSourceForTarget(
+                                            child
+                                        );
+
+
+                                console.log(
+
+                                    "🏡 Panel Offence Source Area selected:",
+
+                                    childName,
+
+                                    "→",
+
+                                    Array.isArray(
+                                        cases
+                                    )
+                                        ? cases.length
+                                        : 0,
+
+                                    "cases"
+
+                                );
 
 
                                 return;
@@ -8098,56 +8433,131 @@ function (
                             }
 
 
-                            console.warn(
-
-                                "⚠ Unable to determine child selection mode",
-
-                                {
-
-                                    panelMode:
-                                        mode,
-
-                                    rendererMode:
-                                        SpatialRenderer.mode,
-
-                                    parent:
-                                        UIController.currentParent,
-
-                                    child:
-                                        child
-
-                                }
-
+                            console.error(
+                                "❌ SpatialRenderer.selectSourceForTarget() unavailable"
                             );
 
-                        };
+
+                            return;
+
+                        }
 
 
-                    /* ========================================
-                       APPEND CHILD
-                    ======================================== */
 
-                    elements
-                        .childList
-                        .appendChild(
-                            button
+                        /* =========================================
+                           FALLBACK
+
+                           Protect against UI / Renderer mode
+                           synchronization differences.
+                        ========================================= */
+
+                        const rendererMode =
+
+                            String(
+                                SpatialRenderer.mode ||
+                                ""
+                            )
+                                .trim()
+                                .toUpperCase();
+
+
+
+                        if (
+                            rendererMode ===
+                            "SOURCE" &&
+                            typeof
+                            SpatialRenderer
+                                .selectTargetForSource ===
+                            "function"
+                        ) {
+
+                            SpatialRenderer
+                                .selectTargetForSource(
+                                    child
+                                );
+
+
+                            return;
+
+                        }
+
+
+
+                        if (
+                            rendererMode ===
+                            "TARGET" &&
+                            typeof
+                            SpatialRenderer
+                                .selectSourceForTarget ===
+                            "function"
+                        ) {
+
+                            SpatialRenderer
+                                .selectSourceForTarget(
+                                    child
+                                );
+
+
+                            return;
+
+                        }
+
+
+
+                        console.warn(
+
+                            "⚠ Unable to determine child selection mode",
+
+                            {
+
+                                panelMode:
+                                    mode,
+
+                                rendererMode:
+                                    SpatialRenderer.mode,
+
+                                parent:
+                                    UIController.currentParent,
+
+                                child:
+                                    child
+
+                            }
+
                         );
 
-                }
+                    };
 
-            );
 
-        }
+
+                /* =================================================
+                   APPEND CHILD CARD
+                ================================================= */
+
+                elements
+                    .childList
+                    .appendChild(
+                        button
+                    );
+
+
+            }
+
+        );
 
     }
+
 
 
     /* ========================================================
        RESET CASE SECTION
 
-       Parent was newly selected.
+       A NEW GIS PARENT has just been selected.
 
-       CASES are populated only after CHILD click.
+       Therefore previous child cases must disappear.
+
+       Cases will be populated when one of the new child cards
+       is clicked.
     ======================================================== */
 
     if (
@@ -8197,7 +8607,7 @@ function (
             .innerHTML =
                 `
                 <div class="gg-offence-empty">
-                    Select a ${childType.toLowerCase()}
+                    Select a related offence area
                     to view matching offence cases.
                 </div>
                 `;
@@ -8205,8 +8615,24 @@ function (
     }
 
 
+    if (
+        elements.backToChildren
+    ) {
+
+        elements
+            .backToChildren
+            .style
+            .display =
+                "none";
+
+    }
+
+
+
     /* ========================================================
        RESET CASE DETAILS
+
+       New parent invalidates previously selected case.
     ======================================================== */
 
     if (
@@ -8238,8 +8664,24 @@ function (
     }
 
 
+    if (
+        elements.backToCases
+    ) {
+
+        elements
+            .backToCases
+            .style
+            .display =
+                "none";
+
+    }
+
+
+
     /* ========================================================
        RESET FIELD DETAILS
+
+       New parent invalidates previously selected field.
     ======================================================== */
 
     if (
@@ -8264,15 +8706,41 @@ function (
             .innerHTML =
                 `
                 <div class="gg-offence-empty">
-                    Select a field to view complete details.
+                    Select a field from Case Details
+                    to view complete information.
                 </div>
                 `;
 
     }
 
 
+    if (
+        elements.backToCaseDetails
+    ) {
+
+        elements
+            .backToCaseDetails
+            .style
+            .display =
+                "none";
+
+    }
+
+
+
     /* ========================================================
        STATUS
+
+       SOURCE → TARGET
+
+           Bairiguri selected.
+           Choose an offence target area.
+
+
+       TARGET → SOURCE
+
+           WestDamanpur selected.
+           Choose an offence source area.
     ======================================================== */
 
     if (
@@ -8281,28 +8749,27 @@ function (
         "function"
     ) {
 
-        const parentName =
+        const instruction =
 
-            parent.name ||
-
-            parent.cleanName ||
-
-            parent.label ||
-
-            parent.id ||
-
-            "Parent";
+            isSourceMode
+                ? `${parentName} selected. Choose an offence target area.`
+                :
+            isTargetMode
+                ? `${parentName} selected. Choose an offence source area.`
+                :
+            `${parentName} selected. Choose a related offence area.`;
 
 
         UIController.setStatus(
 
-            `${parentName} selected. Choose a ${childType.toLowerCase()}.`,
+            instruction,
 
             "success"
 
         );
 
     }
+
 
 
     /* ========================================================
@@ -8318,17 +8785,69 @@ function (
             mode:
                 mode,
 
+            parentHeading:
+                parentHeading,
+
             parent:
                 parent,
 
+            parentName:
+                parentName,
+
             parentType:
                 parentType,
+
+            parentCaseCount:
+                parentCount,
+
+            childHeading:
+                childHeading,
 
             childType:
                 childType,
 
             childCount:
                 childList.length,
+
+            childCaseTotal:
+
+                childList.reduce(
+
+                    function (
+                        total,
+                        child
+                    ) {
+
+                        return (
+
+                            total +
+
+                            Number(
+
+                                child
+                                    ?.relation
+                                    ?.offenceCount ??
+
+                                child
+                                    ?.offenceCount ??
+
+                                child
+                                    ?.caseCount ??
+
+                                child
+                                    ?.count ??
+
+                                0
+
+                            )
+
+                        );
+
+                    },
+
+                    0
+
+                ),
 
             children:
                 childList
@@ -8338,7 +8857,13 @@ function (
     );
 
 
+
+    /* ========================================================
+       RETURN ALL RELATIONSHIP CHILDREN
+    ======================================================== */
+
     return childList;
+
 
 },
                /* ====================================================
