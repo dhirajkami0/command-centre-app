@@ -5239,15 +5239,151 @@ const storeState =
 
 
 
-                return UIController
-                    .getStats();
+return UIController
+    .getStats();
 
+},
 
-            }
+/* ====================================================
+   SHOW SPATIAL CASES
+==================================================== */
 
+showSpatialCases: function (cases, context = {}) {
 
+    const list = Array.isArray(cases)
+        ? cases
+        : [];
 
-    };
+    console.group(
+        "🚨 UI.showSpatialCases"
+    );
+
+    console.log(
+        "Cases:",
+        list.length
+    );
+
+    console.log(
+        "Context:",
+        context
+    );
+
+    if (!list.length) {
+
+        UIController.setStatus(
+            "No offence cases found.",
+            "ready"
+        );
+
+        console.groupEnd();
+
+        return false;
+    }
+
+    UIController.setStatus(
+        `${list.length} offence case${
+            list.length === 1 ? "" : "s"
+        } found.`,
+        "success"
+    );
+
+    /*
+    ---------------------------------------------------
+    Cache current spatial selection
+    ---------------------------------------------------
+    */
+
+    UIController.currentSpatialCases = list;
+
+    UIController.currentSpatialContext = context;
+
+    /*
+    ---------------------------------------------------
+    Preferred architecture
+
+    UIController
+          ↓
+    Offence.UI
+          ↓
+    Case Panel
+    ---------------------------------------------------
+    */
+
+    if (
+
+        GG.Offence &&
+        GG.Offence.UI &&
+        typeof GG.Offence.UI.showSpatialCases ===
+            "function" &&
+
+        GG.Offence.UI !== UIController
+
+    ) {
+
+        console.log(
+            "Delegating to GG.Offence.UI.showSpatialCases()"
+        );
+
+        console.groupEnd();
+
+        return GG.Offence.UI.showSpatialCases(
+            list,
+            context
+        );
+
+    }
+
+    /*
+    ---------------------------------------------------
+    Temporary compatibility
+
+    Existing Cascade UI
+    ---------------------------------------------------
+    */
+
+    if (
+
+        GG.Offence &&
+        GG.Offence.CascadeUI &&
+        typeof GG.Offence.CascadeUI.showCases ===
+            "function"
+
+    ) {
+
+        console.log(
+            "Delegating to CascadeUI.showCases()"
+        );
+
+        console.groupEnd();
+
+        return GG.Offence.CascadeUI.showCases(
+            list,
+            context
+        );
+
+    }
+
+    /*
+    ---------------------------------------------------
+    Final fallback
+    ---------------------------------------------------
+    */
+
+    console.warn(
+        "No Spatial Case UI registered."
+    );
+
+    console.table(
+        list
+    );
+
+    console.groupEnd();
+
+    return list;
+
+}
+
+};
 
 
     /* ========================================================
@@ -5266,7 +5402,8 @@ const storeState =
     GG.Offence.UIController =
         UIController;
 
-
+GG.Offence.UI =
+    UIController;
 
     /* ========================================================
        OPTIONAL GREENGUARDAI EXPORT
