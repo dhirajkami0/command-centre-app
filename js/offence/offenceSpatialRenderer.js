@@ -284,7 +284,11 @@
     selectedTargetKey:
       null,
 
+selectedChildType:
+  null,
 
+selectedChildId:
+  null,
     /* ==========================================================
        LEAFLET MAP REFERENCE
     ========================================================== */
@@ -2030,12 +2034,38 @@ Renderer.getHeatColor =
    according to its offenceCount relative to maxCount.
 ============================================================ */
 
+/* ============================================================
+   🎨 SOURCE HEAT STYLE
+
+   USED FOR
+   ------------------------------------------------------------
+   - Parent Source Village polygons
+   - Related Source Village polygons
+   - Selected Source polygon / child highlight
+
+   DESIGN
+   ------------------------------------------------------------
+   NORMAL:
+       Heat color according to offence count.
+
+   SELECTED:
+       Original heat color is preserved.
+       Strong dark border identifies selected polygon.
+
+   ZERO CASE:
+       Neutral grey polygon.
+============================================================ */
+
 Renderer.getSourceStyle =
   function (
     count,
     maxCount,
     selected
   ) {
+
+    /* ========================================================
+       NORMALIZE COUNT
+    ======================================================== */
 
     const value =
       Number(
@@ -2045,31 +2075,53 @@ Renderer.getSourceStyle =
       0;
 
 
+    /* ========================================================
+       RESOLVE HEAT COLOR
+
+       Heat color remains based on offence count.
+    ======================================================== */
+
     const heatColor =
       Renderer.getHeatColor(
+
         value,
+
         maxCount
+
       );
 
 
-    /*
-     * Selected polygon remains unmistakable.
-     *
-     * We retain its heat color but use a very strong
-     * dark outline and higher fill opacity.
-     */
+    /* ========================================================
+       SELECTED SOURCE POLYGON
+
+       IMPORTANT
+       --------------------------------------------------------
+
+       The original heat color is retained.
+
+       Selection is shown through:
+
+       - very strong dark border
+       - thicker outline
+       - full outline opacity
+       - stronger fill opacity
+
+       Therefore the polygon remains part of the heatmap
+       while being immediately identifiable as selected.
+    ======================================================== */
 
     if (
-      selected
+      selected ===
+      true
     ) {
 
       return {
 
         color:
-          "#111827",
+          "#111111",
 
         weight:
-          4,
+          5,
 
         opacity:
           1,
@@ -2078,18 +2130,24 @@ Renderer.getSourceStyle =
           heatColor,
 
         fillOpacity:
-          0.90
+          0.92,
+
+        lineCap:
+          "round",
+
+        lineJoin:
+          "round"
 
       };
 
     }
 
 
-    /*
-     * No offence:
-     *
-     * Keep polygon visible but neutral.
-     */
+    /* ========================================================
+       SOURCE WITH NO OFFENCE
+
+       Keep visible but neutral.
+    ======================================================== */
 
     if (
       value <= 0
@@ -2110,23 +2168,27 @@ Renderer.getSourceStyle =
           "#E5E7EB",
 
         fillOpacity:
-          0.28
+          0.28,
+
+        lineCap:
+          "round",
+
+        lineJoin:
+          "round"
 
       };
 
     }
 
 
-    /*
-     * Normal Source heat polygon.
-     *
-     * IMPORTANT:
-     *
-     * Do NOT reduce heat visibility through a large
-     * opacity range.
-     *
-     * The COLOR now carries the heat information.
-     */
+    /* ========================================================
+       NORMAL SOURCE HEAT POLYGON
+
+       Fill color carries the offence heat intensity.
+
+       Opacity remains strong and consistent so that
+       differences between heat classes remain prominent.
+    ======================================================== */
 
     return {
 
@@ -2143,22 +2205,19 @@ Renderer.getSourceStyle =
         heatColor,
 
       fillOpacity:
-        0.78
+        0.78,
+
+      lineCap:
+        "round",
+
+      lineJoin:
+        "round"
 
     };
 
   };
 
 
-/* ============================================================
-   🎨 TARGET HEAT STYLE
-
-   Used for:
-
-   - Parent Target Ranges
-   - Related Target Ranges
-   - Selected Target highlight
-============================================================ */
 
 /* ============================================================
    🎯 TARGET HEAT STYLE
@@ -2166,13 +2225,20 @@ Renderer.getSourceStyle =
    USED FOR
    ------------------------------------------------------------
    - Parent Target Range polygons
-   - Related Target polygons
-   - Selected Target polygon
+   - Related Target Range polygons
+   - Selected Target polygon / child highlight
 
-   HEAT RULE
+   DESIGN
    ------------------------------------------------------------
-   Every Range receives a distinct heat class according to
-   its offenceCount relative to the highest Range count.
+   NORMAL:
+       Heat color according to offence count.
+
+   SELECTED:
+       Original heat color is preserved.
+       Strong dark border identifies selected polygon.
+
+   ZERO CASE:
+       Neutral grey polygon.
 ============================================================ */
 
 Renderer.getTargetStyle =
@@ -2182,6 +2248,10 @@ Renderer.getTargetStyle =
     selected
   ) {
 
+    /* ========================================================
+       NORMALIZE COUNT
+    ======================================================== */
+
     const value =
       Number(
         count
@@ -2190,28 +2260,53 @@ Renderer.getTargetStyle =
       0;
 
 
+    /* ========================================================
+       RESOLVE HEAT COLOR
+
+       Heat color remains based on offence count.
+    ======================================================== */
+
     const heatColor =
       Renderer.getHeatColor(
+
         value,
+
         maxCount
+
       );
 
 
-    /*
-     * Selected Target.
-     */
+    /* ========================================================
+       SELECTED TARGET POLYGON
+
+       IMPORTANT
+       --------------------------------------------------------
+
+       The original heat color is retained.
+
+       Selection is shown through:
+
+       - very strong dark border
+       - thicker outline
+       - full outline opacity
+       - stronger fill opacity
+
+       Therefore the Range remains visually connected to
+       its offence-count heat class.
+    ======================================================== */
 
     if (
-      selected
+      selected ===
+      true
     ) {
 
       return {
 
         color:
-          "#111827",
+          "#111111",
 
         weight:
-          4,
+          5,
 
         opacity:
           1,
@@ -2220,16 +2315,24 @@ Renderer.getTargetStyle =
           heatColor,
 
         fillOpacity:
-          0.90
+          0.92,
+
+        lineCap:
+          "round",
+
+        lineJoin:
+          "round"
 
       };
 
     }
 
 
-    /*
-     * Zero offence Range.
-     */
+    /* ========================================================
+       TARGET WITH NO OFFENCE
+
+       Keep visible but neutral.
+    ======================================================== */
 
     if (
       value <= 0
@@ -2250,16 +2353,27 @@ Renderer.getTargetStyle =
           "#E5E7EB",
 
         fillOpacity:
-          0.28
+          0.28,
+
+        lineCap:
+          "round",
+
+        lineJoin:
+          "round"
 
       };
 
     }
 
 
-    /*
-     * Normal Target Range heat polygon.
-     */
+    /* ========================================================
+       NORMAL TARGET HEAT POLYGON
+
+       Fill color carries the offence heat intensity.
+
+       Keep opacity strong and consistent so adjacent
+       Range polygons remain clearly distinguishable.
+    ======================================================== */
 
     return {
 
@@ -2276,12 +2390,17 @@ Renderer.getTargetStyle =
         heatColor,
 
       fillOpacity:
-        0.78
+        0.78,
+
+      lineCap:
+        "round",
+
+      lineJoin:
+        "round"
 
     };
 
   };
-
 
 /* ============================================================
    🏷 CREATE SOURCE TOOLTIP
@@ -3860,6 +3979,218 @@ Renderer.renderSource =
 
   };
 
+   /* ============================================================
+   ✨ HIGHLIGHT CHILD SOURCE
+
+   USED WHEN
+   ------------------------------------------------------------
+   TARGET parent
+       ↓
+   Source child selected from offence panel
+============================================================ */
+
+Renderer.highlightChildSource =
+  function (
+    source
+  ) {
+
+    if (
+      !source
+    ) {
+
+      return null;
+
+    }
+
+
+    /* --------------------------------------------------------
+       REMOVE PREVIOUS CHILD HIGHLIGHT
+    -------------------------------------------------------- */
+
+    Renderer.clearChildHighlight();
+
+
+    const sourceId =
+
+      source.canonicalId
+
+      ||
+
+      source.id;
+
+
+    if (
+      !sourceId
+    ) {
+
+      return null;
+
+    }
+
+
+    Renderer.selectedChildType =
+      "SOURCE";
+
+
+    Renderer.selectedChildId =
+      sourceId;
+
+
+    /*
+     * renderSource() already understands SELECTED.
+     *
+     * SELECTED:
+     *   → selectionLayer
+     *   → visual only
+     *   → non-interactive
+     */
+
+    return Renderer.renderSource(
+
+      source,
+
+      Math.max(
+        1,
+        Number(
+          source.offenceCount
+        )
+        ||
+        0
+      ),
+
+      {
+        role:
+          "SELECTED"
+      }
+
+    );
+
+  };
+
+
+   /* ============================================================
+   ✨ HIGHLIGHT CHILD TARGET
+
+   USED WHEN
+   ------------------------------------------------------------
+   SOURCE parent
+       ↓
+   Target child selected from offence panel
+============================================================ */
+
+Renderer.highlightChildTarget =
+  function (
+    target
+  ) {
+
+    if (
+      !target
+    ) {
+
+      return null;
+
+    }
+
+
+    /* --------------------------------------------------------
+       REMOVE PREVIOUS CHILD HIGHLIGHT
+    -------------------------------------------------------- */
+
+    Renderer.clearChildHighlight();
+
+
+    const targetKey =
+
+      Renderer.normalizeText(
+
+        target.cleanName
+
+        ||
+
+        target.name
+
+      );
+
+
+    if (
+      !targetKey
+    ) {
+
+      return null;
+
+    }
+
+
+    Renderer.selectedChildType =
+      "TARGET";
+
+
+    Renderer.selectedChildId =
+      targetKey;
+
+
+    /*
+     * renderTarget() already understands SELECTED.
+     */
+
+    return Renderer.renderTarget(
+
+      target,
+
+      Math.max(
+        1,
+        Number(
+          target.offenceCount
+        )
+        ||
+        0
+      ),
+
+      {
+        role:
+          "SELECTED"
+      }
+
+    );
+
+  };
+/* ============================================================
+   🧹 CLEAR SELECTED CHILD HIGHLIGHT
+
+   PURPOSE
+   ------------------------------------------------------------
+   Removes ONLY the temporary CHILD selection overlay.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   The underlying child polygon is NOT changed.
+
+   Therefore when this overlay disappears, the polygon
+   automatically shows its original heatmap color again.
+============================================================ */
+
+Renderer.clearChildHighlight =
+  function () {
+
+    if (
+      Renderer.selectionLayer
+    ) {
+
+      Renderer
+        .selectionLayer
+        .clearLayers();
+
+    }
+
+
+    Renderer.selectedChildType =
+      null;
+
+
+    Renderer.selectedChildId =
+      null;
+
+  };
 
 /* ============================================================
    🎯 RENDER ONE TARGET RANGE
