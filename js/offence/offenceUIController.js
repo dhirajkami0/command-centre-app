@@ -633,8 +633,8 @@ function () {
        IMPORTANT:
        There must be only ONE authoritative offence stylesheet.
 
-       This prevents old desktop/mobile rules from fighting
-       the new viewport-safe layout.
+       This prevents previous desktop/mobile rules from fighting
+       the current responsive layout.
     ========================================================== */
 
     const existingStyle =
@@ -676,11 +676,6 @@ function () {
 
     /* ==========================================================
        Z INDEX
-
-       Keep offence controls above the map/GIS layers.
-
-       The panel receives a slightly higher value than the
-       launcher button while open.
     ========================================================== */
 
     const zIndex =
@@ -719,27 +714,34 @@ function () {
 /* ============================================================
    OFFENCE LAUNCHER BUTTON
 
-   DESKTOP POSITION
+   FINAL DESKTOP POSITION
    ------------------------------------------------------------
 
-   IMPORTANT:
+   DO NOT place this in the upper-right Leaflet control column.
 
-   The old button was positioned on the lower-right side.
+   Upper-right is occupied by:
 
-   That area is already occupied by:
+       Zoom + / -
+       Layer controls
+       Other Leaflet controls
 
-       Monthly Status
-       Analytics
-       Patrol information
+   Lower-right is occupied by:
 
-   Therefore the OFFENCE launcher is moved to the
-   UPPER-RIGHT MAP AREA.
+       Monthly Status / Analytics
 
-   It stays below the normal top map controls.
+   Therefore the OFFENCE button is positioned in the
+   RIGHT-SIDE GAP immediately ABOVE the analytics panel.
 
-   When the offence panel opens, the panel itself covers this
-   side and the button may remain underneath/adjacent without
-   interfering with the analytical status card.
+   Current intended vertical stack:
+
+       Leaflet controls
+             ↓
+       Chat / AI button
+             ↓
+       OFFENCE button
+             ↓
+       Monthly Status / Analytics panel
+
 ============================================================ */
 
 #${UIController.CONFIG.BUTTON_ID} {
@@ -748,13 +750,13 @@ function () {
         fixed;
 
     top:
-        88px;
+        auto;
 
     right:
         18px;
 
     bottom:
-        auto;
+        390px;
 
     left:
         auto;
@@ -801,7 +803,7 @@ function () {
             255,
             255,
             255,
-            0.65
+            0.70
         );
 
     border-radius:
@@ -815,7 +817,7 @@ function () {
             255,
             255,
             255,
-            0.96
+            0.97
         );
 
     color:
@@ -923,27 +925,16 @@ function () {
 /* ============================================================
    MAIN OFFENCE ANALYSIS PANEL
 
-   VIEWPORT-SAFE DESIGN
-   ------------------------------------------------------------
+   VIEWPORT SAFE
 
-   CRITICAL RULE:
+   CRITICAL:
 
-       top + bottom are BOTH defined.
+       top + bottom are defined.
 
-   Therefore panel height is determined by the actual active
-   viewport rather than by content.
+   Therefore the panel can never become taller than the
+   currently available screen.
 
-   Desktop:
-
-       top    = 12px
-       bottom = 12px
-
-   Result:
-
-       panel can NEVER become taller than available screen.
-
-   The header and close button therefore always remain inside
-   the visible screen.
+   Header and CLOSE button always remain visible.
 ============================================================ */
 
 #${UIController.CONFIG.PANEL_ID} {
@@ -1056,12 +1047,12 @@ function () {
 /* ============================================================
    PANEL HEADER
 
-   This is NOT part of the scrolling content.
+   HEADER DOES NOT SCROLL.
 
    Therefore:
 
        OFFENCE ANALYSIS
-       X close button
+       CLOSE X
 
    always remain visible.
 ============================================================ */
@@ -1176,11 +1167,6 @@ function () {
 
 /* ============================================================
    CLOSE BUTTON
-
-   CRITICAL:
-
-   flex-shrink:0 prevents the X button from being pushed
-   outside the panel by a long title.
 ============================================================ */
 
 #${UIController.CONFIG.CLOSE_BUTTON_ID} {
@@ -1277,7 +1263,7 @@ function () {
 /* ============================================================
    STATUS BAR
 
-   Also remains outside the scrolling content.
+   STATUS ALSO REMAINS OUTSIDE SCROLL BODY.
 ============================================================ */
 
 #${UIController.CONFIG.STATUS_ID} {
@@ -1380,23 +1366,10 @@ function () {
 /* ============================================================
    PANEL BODY
 
-   THIS IS THE ONE AND ONLY VERTICAL SCROLL OWNER.
+   THIS IS THE ONLY VERTICAL SCROLL OWNER.
 
-   Structure:
-
-       HEADER               fixed
-       STATUS               fixed
-       --------------------------
-       PANEL BODY           scroll
-          analysis mode
-          source/target
-          children
-          cases
-          case details
-          field details
-          clear analysis
-
-   No inner section receives its own vertical scrollbar.
+   DO NOT give case details, field details or case list
+   another vertical scrollbar.
 ============================================================ */
 
 #${UIController.CONFIG.PANEL_ID}
@@ -1525,7 +1498,7 @@ function () {
 
 
 /* ============================================================
-   ANALYSIS MODE / WORKFLOW
+   ANALYSIS MODE
 ============================================================ */
 
 #${UIController.CONFIG.PANEL_ID}
@@ -1784,8 +1757,6 @@ function () {
 
 /* ============================================================
    PARENT CONTENT / CHILD LIST
-
-   Prevent cards from forcing the panel wider than viewport.
 ============================================================ */
 
 #gg-offence-parent-content,
@@ -1826,14 +1797,7 @@ function () {
 /* ============================================================
    CASE RESULTS
 
-   IMPORTANT:
-
-   REMOVE OLD:
-
-       max-height:260px;
-       overflow-y:auto;
-
-   The MAIN PANEL BODY now owns scrolling.
+   NO SECOND SCROLLBAR.
 ============================================================ */
 
 #gg-offence-case-results {
@@ -2173,18 +2137,9 @@ function () {
 
 
 /* ============================================================
-   CASE DETAILS
+   CASE DETAILS CONTAINER
 
-   CRITICAL:
-
-   OLD CSS had:
-
-       max-height:260px;
-       overflow-y:auto;
-
-   REMOVE THAT BEHAVIOUR.
-
-   Otherwise there are TWO vertical scrollbars.
+   NO SECONDARY SCROLLBAR.
 ============================================================ */
 
 #gg-offence-case-details {
@@ -2221,7 +2176,183 @@ function () {
 
 
 /* ============================================================
-   PROFESSIONAL CASE DETAILS
+   CASE DETAILS
+   PROFESSIONAL SEPARATE CARD DESIGN
+============================================================ */
+
+.gg-offence-case-items {
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        8px;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    box-sizing:
+        border-box;
+
+}
+
+
+
+/* ============================================================
+   INDIVIDUAL CASE FIELD CARD
+============================================================ */
+
+.gg-offence-case-item-box {
+
+    display:
+        block;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    padding:
+        10px 12px;
+
+    box-sizing:
+        border-box;
+
+    background:
+        #ffffff;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.12
+        );
+
+    border-radius:
+        8px;
+
+    box-shadow:
+        0 1px 2px
+        rgba(
+            15,
+            23,
+            42,
+            0.04
+        );
+
+}
+
+
+
+/* ============================================================
+   CASE FIELD LABEL
+============================================================ */
+
+.gg-offence-case-item-label {
+
+    display:
+        block;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    margin:
+        0 0 4px 0;
+
+    padding:
+        0;
+
+    font-size:
+        10px;
+
+    line-height:
+        1.25;
+
+    font-weight:
+        700;
+
+    letter-spacing:
+        0.45px;
+
+    text-transform:
+        uppercase;
+
+    color:
+        #64748b;
+
+}
+
+
+
+/* ============================================================
+   CASE FIELD VALUE
+============================================================ */
+
+.gg-offence-case-item-value {
+
+    display:
+        block;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    margin:
+        0;
+
+    padding:
+        0;
+
+    font-size:
+        13px;
+
+    line-height:
+        1.45;
+
+    font-weight:
+        600;
+
+    color:
+        #0f172a;
+
+    white-space:
+        normal;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+
+
+/* ============================================================
+   LEGACY CASE DETAILS COMPATIBILITY
+
+   Keep this because older rendering paths may still use
+   these classes.
 ============================================================ */
 
 .gg-case-details {
@@ -2345,6 +2476,263 @@ function () {
 
     word-break:
         break-word;
+
+}
+
+
+
+/* ============================================================
+   EXPANDABLE CASE DETAIL ACTIONS
+
+   ACCUSED
+   WITNESSES
+   SEIZURE DETAILS
+   SEIZED ARTICLES
+============================================================ */
+
+.gg-offence-detail-actions {
+
+    display:
+        flex;
+
+    flex-direction:
+        column;
+
+    gap:
+        8px;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    margin-top:
+        10px;
+
+    box-sizing:
+        border-box;
+
+}
+
+
+
+/* ============================================================
+   CLICKABLE DETAIL CARD
+============================================================ */
+
+.gg-offence-detail-action,
+.gg-offence-detail-action-box {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        10px;
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    max-width:
+        100%;
+
+    min-height:
+        44px;
+
+    padding:
+        10px 12px;
+
+    margin:
+        0;
+
+    box-sizing:
+        border-box;
+
+    appearance:
+        none;
+
+    -webkit-appearance:
+        none;
+
+    background:
+        #ffffff;
+
+    border:
+        1px solid
+        rgba(
+            15,
+            23,
+            42,
+            0.12
+        );
+
+    border-radius:
+        8px;
+
+    box-shadow:
+        0 1px 2px
+        rgba(
+            15,
+            23,
+            42,
+            0.04
+        );
+
+    cursor:
+        pointer;
+
+    text-align:
+        left;
+
+    font-family:
+        inherit;
+
+    transition:
+        background
+        0.15s
+        ease,
+
+        border-color
+        0.15s
+        ease,
+
+        box-shadow
+        0.15s
+        ease;
+
+}
+
+
+
+.gg-offence-detail-action:hover,
+.gg-offence-detail-action-box:hover {
+
+    background:
+        #f8fafc;
+
+    border-color:
+        rgba(
+            15,
+            23,
+            42,
+            0.20
+        );
+
+    box-shadow:
+        0 2px 5px
+        rgba(
+            15,
+            23,
+            42,
+            0.07
+        );
+
+}
+
+
+
+.gg-offence-detail-action:active,
+.gg-offence-detail-action-box:active {
+
+    background:
+        #f1f5f9;
+
+}
+
+
+
+.gg-offence-detail-action:focus-visible,
+.gg-offence-detail-action-box:focus-visible {
+
+    outline:
+        2px solid
+        currentColor;
+
+    outline-offset:
+        2px;
+
+}
+
+
+
+/* ============================================================
+   DETAIL ACTION LABEL
+============================================================ */
+
+.gg-offence-detail-action-label {
+
+    flex:
+        1 1 auto;
+
+    min-width:
+        0;
+
+    font-size:
+        11px;
+
+    line-height:
+        1.35;
+
+    font-weight:
+        700;
+
+    letter-spacing:
+        0.45px;
+
+    text-transform:
+        uppercase;
+
+    color:
+        #334155;
+
+    overflow-wrap:
+        anywhere;
+
+}
+
+
+
+/* ============================================================
+   DETAIL ACTION ARROW
+============================================================ */
+
+.gg-offence-detail-action-arrow {
+
+    flex:
+        0 0 auto;
+
+    display:
+        inline-flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    font-size:
+        22px;
+
+    line-height:
+        1;
+
+    font-weight:
+        400;
+
+    color:
+        #64748b;
 
 }
 
@@ -2845,8 +3233,6 @@ function () {
 
 /* ============================================================
    BACK BUTTONS
-
-   Keep drill-down navigation clear and touch-friendly.
 ============================================================ */
 
 #gg-offence-back-to-children,
@@ -2896,17 +3282,8 @@ function () {
 /* ============================================================
    DESKTOP — SHORT HEIGHT
 
-   IMPORTANT:
-
-   DO NOT use the old:
-
-       bottom:146px
-       top:auto
-
-   logic.
-
-   Even on a short laptop display, the panel remains bounded
-   by top/bottom viewport margins.
+   Keep launcher above analytics instead of returning it
+   to the Leaflet upper-right control column.
 ============================================================ */
 
 @media (
@@ -2962,10 +3339,13 @@ function () {
     #${UIController.CONFIG.BUTTON_ID} {
 
         top:
-            76px;
+            auto;
 
         right:
             12px;
+
+        bottom:
+            330px;
 
         height:
             42px;
@@ -3017,18 +3397,15 @@ function () {
 /* ============================================================
    MOBILE
 
-   FULL SAFE-SCREEN PANEL
-   ------------------------------------------------------------
+   PANEL:
+       Safe margin on every edge.
 
-   The panel receives an 8px safe margin on every side.
+   BUTTON:
+       Do not use desktop analytics offset because mobile
+       overlays differ significantly.
 
-   Therefore:
-
-       close button visible
-       header visible
-       bottom content reachable
-       no horizontal clipping
-       no off-screen panel
+       Place the launcher on the RIGHT side in the lower-middle
+       map area, but safely above the bottom edge.
 ============================================================ */
 
 @media (
@@ -3075,7 +3452,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-header {
 
@@ -3088,7 +3464,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-title {
 
@@ -3096,7 +3471,6 @@ function () {
             13px;
 
     }
-
 
 
     #${UIController.CONFIG.CLOSE_BUTTON_ID} {
@@ -3122,7 +3496,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.STATUS_ID} {
 
         min-height:
@@ -3137,7 +3510,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-body {
 
@@ -3150,32 +3522,30 @@ function () {
     }
 
 
-
     /* --------------------------------------------------------
-       MOBILE OFFENCE BUTTON
+       MOBILE OFFENCE LAUNCHER
 
-       Keep it in the upper-right map area.
-
-       Do NOT return it to the bottom-right because that is
-       where analytical/status overlays commonly appear.
+       Avoid:
+           upper-right Leaflet controls
+           bottom navigation / device safe area
     -------------------------------------------------------- */
 
     #${UIController.CONFIG.BUTTON_ID} {
 
         top:
-            max(
-                70px,
-                calc(
-                    env(safe-area-inset-top) +
-                    58px
-                )
-            );
+            auto;
 
         right:
             10px;
 
         bottom:
-            auto;
+            max(
+                150px,
+                calc(
+                    env(safe-area-inset-bottom) +
+                    130px
+                )
+            );
 
         left:
             auto;
@@ -3200,6 +3570,90 @@ function () {
 
         font-size:
             12px;
+
+    }
+
+
+    /* --------------------------------------------------------
+       CASE DETAILS MOBILE
+    -------------------------------------------------------- */
+
+    .gg-offence-case-items {
+
+        gap:
+            7px;
+
+    }
+
+
+    .gg-offence-case-item-box {
+
+        padding:
+            9px 10px;
+
+        border-radius:
+            7px;
+
+    }
+
+
+    .gg-offence-case-item-label {
+
+        font-size:
+            9.5px;
+
+    }
+
+
+    .gg-offence-case-item-value {
+
+        font-size:
+            12.5px;
+
+        line-height:
+            1.4;
+
+    }
+
+
+    .gg-offence-detail-actions {
+
+        gap:
+            7px;
+
+        margin-top:
+            9px;
+
+    }
+
+
+    .gg-offence-detail-action,
+    .gg-offence-detail-action-box {
+
+        min-height:
+            42px;
+
+        padding:
+            9px 10px;
+
+        border-radius:
+            7px;
+
+    }
+
+
+    .gg-offence-detail-action-label {
+
+        font-size:
+            10.5px;
+
+    }
+
+
+    .gg-offence-detail-action-arrow {
+
+        font-size:
+            20px;
 
     }
 
@@ -3244,7 +3698,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-body {
 
@@ -3257,7 +3710,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-header {
 
@@ -3267,11 +3719,25 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.BUTTON_ID} {
+
+        top:
+            auto;
 
         right:
             8px;
+
+        bottom:
+            max(
+                125px,
+                calc(
+                    env(safe-area-inset-bottom) +
+                    110px
+                )
+            );
+
+        left:
+            auto;
 
         min-width:
             96px;
@@ -3322,7 +3788,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-header {
 
@@ -3330,7 +3795,6 @@ function () {
             46px;
 
     }
-
 
 
     #${UIController.CONFIG.STATUS_ID} {
@@ -3347,7 +3811,6 @@ function () {
     }
 
 
-
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-body {
 
@@ -3360,6 +3823,25 @@ function () {
     }
 
 
+    /*
+     * Short landscape screens cannot safely use a large
+     * bottom analytics offset.
+     */
+
+    #${UIController.CONFIG.BUTTON_ID} {
+
+        top:
+            auto;
+
+        right:
+            8px;
+
+        bottom:
+            72px;
+
+    }
+
+
 }
 
 
@@ -3367,8 +3849,8 @@ function () {
 /* ============================================================
    ABSOLUTE WIDTH SAFETY
 
-   No child generated from case/accused/witness/seizure data
-   is allowed to expand the offence panel beyond viewport.
+   No generated case / accused / witness / seizure element
+   may expand the offence panel outside the viewport.
 ============================================================ */
 
 #${UIController.CONFIG.PANEL_ID} div,
@@ -3416,7 +3898,9 @@ function () {
     ========================================================== */
 
     console.log(
-        "🎨 Offence responsive viewport-safe styles injected"
+
+        "🎨 Offence styles injected — viewport-safe panel + relocated launcher + professional case details"
+
     );
 
 
