@@ -138,7 +138,17 @@
         elements:
             {},
 
+/*----------------------------------
+Source Mode State
+----------------------------------*/
 
+sourcePanelExpanded: true,
+
+casePanelExpanded: false,
+
+currentSource: null,
+
+currentTargets: [],
 CONFIG: {
 
     /* ========================================================
@@ -2154,9 +2164,15 @@ createPanel:
                ↓
            Click Source
                ↓
+           Highlight Parent
+               ↓
            Render Related Targets
                ↓
-           Click Target
+           Open SOURCE MODE
+               ↓
+           Click Related Target
+               ↓
+           Highlight Child Polygon
                ↓
            Show Matching Cases
 
@@ -2175,7 +2191,6 @@ createPanel:
 
         panel.innerHTML =
             `
-
                 <!-- =======================================
                      HEADER
                 ======================================== -->
@@ -2199,7 +2214,9 @@ createPanel:
                         </span>
 
                         <span>
+
                             OFFENCE ANALYSIS
+
                         </span>
 
                     </div>
@@ -2242,7 +2259,6 @@ createPanel:
                         gg-offence-panel-actions
                     "
                 >
-
 
                     <button
                         id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
@@ -2323,12 +2339,130 @@ createPanel:
 
                     </button>
 
-
                 </div>
 
 
+                                <!-- =======================================
+                     SOURCE MODE
+                ======================================== -->
 
-                <!-- =======================================
+                <div
+                    id="gg-source-mode"
+                    style="
+                        display:none;
+                    "
+                >
+
+                    <!-- ==============================
+                         SOURCE HEADER
+                    =============================== -->
+
+                    <div
+                        class="
+                            gg-source-mode-header
+                        "
+                    >
+
+                        SOURCE MODE
+
+                    </div>
+
+
+
+                    <!-- ==============================
+                         SELECTED SOURCE
+                    =============================== -->
+
+                    <div
+                        id="gg-selected-source"
+                        class="
+                            gg-selected-source
+                        "
+                    >
+
+                        No Source Selected
+
+                    </div>
+
+
+
+                    <!-- ==============================
+                         RELATED TARGETS
+                    =============================== -->
+
+                    <div
+                        class="
+                            gg-source-section
+                        "
+                    >
+
+                        <button
+                            id="gg-related-target-toggle"
+                            class="
+                                gg-source-toggle
+                            "
+                            type="button"
+                        >
+
+                            ▼ Related Targets
+
+                        </button>
+
+                        <div
+                            id="gg-related-target-list"
+                        >
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- ==============================
+                         CASE RESULT TOGGLE
+                    =============================== -->
+
+                    <div
+                        class="
+                            gg-source-section
+                        "
+                    >
+
+                        <button
+                            id="gg-case-results-toggle"
+                            class="
+                                gg-source-toggle
+                            "
+                            type="button"
+                        >
+
+                            ▶ CASE RESULTS
+
+                        </button>
+
+                    </div>
+
+
+
+                    <!-- ==============================
+                         BACK BUTTON
+                    =============================== -->
+
+                    <button
+                        id="gg-source-back-button"
+                        class="
+                            gg-source-back-button
+                        "
+                        type="button"
+                    >
+
+                        ← Back to Parent Sources
+
+                    </button>
+
+                </div>
+
+                                <!-- =======================================
                      CASE RESULTS
                 ======================================== -->
 
@@ -2349,16 +2483,22 @@ createPanel:
                 >
 
                     <div
-                        class="
-                            gg-offence-empty
-                        "
+                        id="gg-case-result-list"
                     >
 
-                        Select a
-                        <b>Source → Target</b>
-                        or
-                        <b>Target → Source</b>
-                        pair to view matching offence cases.
+                        <div
+                            class="
+                                gg-offence-empty
+                            "
+                        >
+
+                            Select a
+                            <b>Source → Target</b>
+                            or
+                            <b>Target → Source</b>
+                            pair to view matching offence cases.
+
+                        </div>
 
                     </div>
 
@@ -2366,9 +2506,7 @@ createPanel:
 
             `;
 
-
-
-        /* ============================================
+               /* ============================================
            ADD PANEL TO PAGE
         ============================================ */
 
@@ -2383,9 +2521,349 @@ createPanel:
 
 
     },
+/* ===========================================================
+   TOGGLE RELATED TARGETS
+=========================================================== */
+
+toggleRelatedTargets:
+    function () {
+
+
+        const elements =
+            UIController.elements;
+
+
+        if (
+            !elements ||
+            !elements.relatedTargetList
+        ) {
+
+            return;
+
+        }
+
+
+        /* ============================================
+           TOGGLE STATE
+        ============================================ */
+
+        UIController.sourcePanelExpanded =
+            !UIController.sourcePanelExpanded;
 
 
 
+        /* ============================================
+           EXPANDED
+        ============================================ */
+
+        if (
+            UIController.sourcePanelExpanded
+        ) {
+
+            elements
+                .relatedTargetList
+                .style
+                .display =
+                    "";
+
+
+            if (
+                elements.relatedTargetToggle
+            ) {
+
+                elements
+                    .relatedTargetToggle
+                    .textContent =
+                        "▼ Related Targets";
+
+            }
+
+        }
+
+
+        /* ============================================
+           COLLAPSED
+        ============================================ */
+
+        else {
+
+            elements
+                .relatedTargetList
+                .style
+                .display =
+                    "none";
+
+
+            if (
+                elements.relatedTargetToggle
+            ) {
+
+                elements
+                    .relatedTargetToggle
+                    .textContent =
+                        "▶ Related Targets";
+
+            }
+
+        }
+
+
+    },
+
+       /* ===========================================================
+   TOGGLE CASE RESULTS
+=========================================================== */
+
+toggleCases:
+    function () {
+
+
+        const elements =
+            UIController.elements;
+
+
+        if (
+            !elements ||
+            !elements.caseResults
+        ) {
+
+            return;
+
+        }
+
+
+        /* ============================================
+           TOGGLE STATE
+        ============================================ */
+
+        UIController.casePanelExpanded =
+            !UIController.casePanelExpanded;
+
+
+
+        /* ============================================
+           EXPANDED
+        ============================================ */
+
+        if (
+            UIController.casePanelExpanded
+        ) {
+
+            elements
+                .caseResults
+                .style
+                .display =
+                    "";
+
+
+            if (
+                elements.caseResultsToggle
+            ) {
+
+                elements
+                    .caseResultsToggle
+                    .textContent =
+                        "▼ CASE RESULTS";
+
+            }
+
+        }
+
+
+
+        /* ============================================
+           COLLAPSED
+        ============================================ */
+
+        else {
+
+            elements
+                .caseResults
+                .style
+                .display =
+                    "none";
+
+
+            if (
+                elements.caseResultsToggle
+            ) {
+
+                elements
+                    .caseResultsToggle
+                    .textContent =
+                        "▶ CASE RESULTS";
+
+            }
+
+        }
+
+
+    },
+
+       /* ===========================================================
+   BACK TO PARENT SOURCES
+=========================================================== */
+
+/* ===========================================================
+   BACK TO PARENT SOURCES
+
+   Responsibilities
+
+   ✓ Restore parent source map
+   ✓ Reset UI state
+   ✓ Reinitialize SOURCE MODE
+   ✓ Hide case results
+=========================================================== */
+
+backToSources:
+    function () {
+
+
+        const elements =
+            UIController.elements;
+
+
+        if (
+            !elements
+        ) {
+
+            return;
+
+        }
+
+
+        /* ============================================
+           RESTORE PARENT SOURCE MAP
+        ============================================ */
+
+        if (
+
+            GG
+                ?.Offence
+                ?.SpatialRenderer
+                ?.clearSourceDrillDown
+
+        ) {
+
+            GG
+                .Offence
+                .SpatialRenderer
+                .clearSourceDrillDown();
+
+        }
+
+
+        /* ============================================
+           RESET INTERNAL STATE
+        ============================================ */
+
+        UIController.currentSource =
+            null;
+
+
+        UIController.currentTargets =
+            [];
+
+
+        UIController.sourcePanelExpanded =
+            true;
+
+
+        UIController.casePanelExpanded =
+            false;
+
+
+        /* ============================================
+           REBUILD SOURCE MODE PANEL
+
+           Reuse the same initialization used when
+           SOURCE MODE is first opened.
+        ============================================ */
+
+        UIController.openSourceModePanel(
+
+            {
+                name:
+                    "Select a Parent Source"
+            },
+
+            []
+
+        );
+
+
+        /* ============================================
+           HIDE CASE RESULTS
+        ============================================ */
+
+        if (
+            elements.caseResults
+        ) {
+
+            elements
+                .caseResults
+                .style
+                .display =
+                    "none";
+
+        }
+
+
+        if (
+            elements.caseResultsToggle
+        ) {
+
+            elements
+                .caseResultsToggle
+                .textContent =
+                    "▶ CASE RESULTS";
+
+        }
+
+
+        if (
+            elements.caseResultList
+        ) {
+
+            elements
+                .caseResultList
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a Parent Source
+                        and then choose one of its
+                        Related Targets to view
+                        matching offence cases.
+
+                    </div>
+                    `;
+
+        }
+
+
+        /* ============================================
+           STATUS
+        ============================================ */
+
+        if (
+            typeof
+            UIController
+                .setStatus ===
+            "function"
+        ) {
+
+            UIController
+                .setStatus(
+
+                    "Showing all parent sources."
+
+                );
+
+        }
+
+
+    },
         /* ====================================================
            CAPTURE DOM REFERENCES
 
@@ -2398,109 +2876,167 @@ createPanel:
            };
         ==================================================== */
 
-        captureElements:
-            function () {
+captureElements:
+    function () {
 
 
-                UIController.elements =
-                    UIController.elements ||
-                    {};
+        UIController.elements =
+            UIController.elements ||
+            {};
 
 
-                UIController.elements.mainButton =
-                    document
-                        .getElementById(
+        /* ============================================
+           MAIN UI
+        ============================================ */
 
-                            UIController
-                                .CONFIG
-                                .BUTTON_ID
+        UIController.elements.mainButton =
+            document
+                .getElementById(
 
-                        );
+                    UIController
+                        .CONFIG
+                        .BUTTON_ID
 
-
-                UIController.elements.panel =
-                    document
-                        .getElementById(
-
-                            UIController
-                                .CONFIG
-                                .PANEL_ID
-
-                        );
+                );
 
 
-                UIController.elements.closeButton =
-                    document
-                        .getElementById(
+        UIController.elements.panel =
+            document
+                .getElementById(
 
-                            UIController
-                                .CONFIG
-                                .CLOSE_BUTTON_ID
+                    UIController
+                        .CONFIG
+                        .PANEL_ID
 
-                        );
-
-
-                UIController.elements.sourceButton =
-                    document
-                        .getElementById(
-
-                            UIController
-                                .CONFIG
-                                .SOURCE_BUTTON_ID
-
-                        );
+                );
 
 
-                UIController.elements.targetButton =
-                    document
-                        .getElementById(
+        UIController.elements.closeButton =
+            document
+                .getElementById(
 
-                            UIController
-                                .CONFIG
-                                .TARGET_BUTTON_ID
+                    UIController
+                        .CONFIG
+                        .CLOSE_BUTTON_ID
 
-                        );
-
-
-                UIController.elements.clearButton =
-                    document
-                        .getElementById(
-
-                            UIController
-                                .CONFIG
-                                .CLEAR_BUTTON_ID
-
-                        );
+                );
 
 
-UIController.elements.status =
-    document
-        .getElementById(
+        UIController.elements.sourceButton =
+            document
+                .getElementById(
 
-            UIController
-                .CONFIG
-                .STATUS_ID
+                    UIController
+                        .CONFIG
+                        .SOURCE_BUTTON_ID
 
-        );
+                );
 
 
+        UIController.elements.targetButton =
+            document
+                .getElementById(
 
-/* ============================================
-   CASE RESULTS
-============================================ */
+                    UIController
+                        .CONFIG
+                        .TARGET_BUTTON_ID
 
-UIController.elements.caseResults =
-    document
-        .getElementById(
-            "gg-offence-case-results"
-        );
+                );
+
+
+        UIController.elements.clearButton =
+            document
+                .getElementById(
+
+                    UIController
+                        .CONFIG
+                        .CLEAR_BUTTON_ID
+
+                );
+
+
+        UIController.elements.status =
+            document
+                .getElementById(
+
+                    UIController
+                        .CONFIG
+                        .STATUS_ID
+
+                );
 
 
 
-return UIController.elements;
+        /* ============================================
+           SOURCE MODE
+        ============================================ */
+
+        UIController.elements.sourceMode =
+            document
+                .getElementById(
+                    "gg-source-mode"
+                );
 
 
-            },
+        UIController.elements.selectedSource =
+            document
+                .getElementById(
+                    "gg-selected-source"
+                );
+
+
+        UIController.elements.relatedTargetToggle =
+            document
+                .getElementById(
+                    "gg-related-target-toggle"
+                );
+
+
+        UIController.elements.relatedTargetList =
+            document
+                .getElementById(
+                    "gg-related-target-list"
+                );
+
+
+        UIController.elements.caseResultsToggle =
+            document
+                .getElementById(
+                    "gg-case-results-toggle"
+                );
+
+
+        UIController.elements.sourceBackButton =
+            document
+                .getElementById(
+                    "gg-source-back-button"
+                );
+
+
+
+        /* ============================================
+           CASE RESULTS
+        ============================================ */
+
+        UIController.elements.caseResults =
+            document
+                .getElementById(
+                    "gg-offence-case-results"
+                );
+
+
+        UIController.elements.caseResultList =
+            document
+                .getElementById(
+                    "gg-case-result-list"
+                );
+
+
+
+        return UIController.elements;
+
+
+    },
 
 
 
@@ -2816,262 +3352,902 @@ return UIController.elements;
            BIND UI EVENTS
         ==================================================== */
 
-        bindEvents:
-            function () {
+bindEvents:
+    function () {
 
 
-                const elements =
-                    UIController
-                        .elements;
+        const elements =
+            UIController
+                .elements;
 
 
-                if (
-                    !elements
-                ) {
+        if (
+            !elements
+        ) {
 
-                    console.warn(
-                        "⚠ OffenceUIController cannot bind events: elements unavailable"
+            console.warn(
+                "⚠ OffenceUIController cannot bind events: elements unavailable"
+            );
+
+            return false;
+
+        }
+
+
+
+        /* ============================================
+           MAIN OFFENCE BUTTON
+        ============================================ */
+
+        if (
+            elements.mainButton
+        ) {
+
+            elements
+                .mainButton
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        UIController
+                            .togglePanel();
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           CLOSE BUTTON
+        ============================================ */
+
+        if (
+            elements.closeButton
+        ) {
+
+            elements
+                .closeButton
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        UIController
+                            .closePanel();
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           SOURCE BUTTON
+        ============================================ */
+
+        if (
+            elements.sourceButton
+        ) {
+
+            elements
+                .sourceButton
+                .onclick =
+                    async function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .activateSource ===
+                            "function"
+                        ) {
+
+                            await UIController
+                                .activateSource();
+
+                        }
+
+                        else {
+
+                            console.error(
+                                "❌ OffenceUIController.activateSource() unavailable"
+                            );
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           TARGET BUTTON
+        ============================================ */
+
+        if (
+            elements.targetButton
+        ) {
+
+            elements
+                .targetButton
+                .onclick =
+                    async function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .activateTarget ===
+                            "function"
+                        ) {
+
+                            await UIController
+                                .activateTarget();
+
+                        }
+
+                        else {
+
+                            console.error(
+                                "❌ OffenceUIController.activateTarget() unavailable"
+                            );
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           CLEAR BUTTON
+        ============================================ */
+
+        if (
+            elements.clearButton
+        ) {
+
+            elements
+                .clearButton
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .clearAnalysis ===
+                            "function"
+                        ) {
+
+                            UIController
+                                .clearAnalysis();
+
+                        }
+
+                        else {
+
+                            console.error(
+                                "❌ OffenceUIController.clearAnalysis() unavailable"
+                            );
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           RELATED TARGETS TOGGLE
+        ============================================ */
+
+        if (
+            elements.relatedTargetToggle
+        ) {
+
+            elements
+                .relatedTargetToggle
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .toggleRelatedTargets ===
+                            "function"
+                        ) {
+
+                            UIController
+                                .toggleRelatedTargets();
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           CASE RESULTS TOGGLE
+        ============================================ */
+
+        if (
+            elements.caseResultsToggle
+        ) {
+
+            elements
+                .caseResultsToggle
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .toggleCases ===
+                            "function"
+                        ) {
+
+                            UIController
+                                .toggleCases();
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        /* ============================================
+           BACK TO SOURCES
+        ============================================ */
+
+        if (
+            elements.sourceBackButton
+        ) {
+
+            elements
+                .sourceBackButton
+                .onclick =
+                    function (
+                        event
+                    ) {
+
+
+                        event
+                            ?.preventDefault?.();
+
+
+                        event
+                            ?.stopPropagation?.();
+
+
+                        if (
+                            typeof
+                            UIController
+                                .backToSources ===
+                            "function"
+                        ) {
+
+                            UIController
+                                .backToSources();
+
+                        }
+
+
+                    };
+
+        }
+
+
+
+        return true;
+
+
+    },
+
+/* ===========================================================
+   SELECT RELATED TARGET
+
+   Called when the user clicks a target in SOURCE MODE.
+
+   Responsibilities
+
+   ✓ Remember selected target
+   ✓ Highlight selected button
+   ✓ Delegate processing to SpatialRenderer
+=========================================================== */
+
+selectRelatedTarget:
+    function (
+        target
+    ) {
+
+
+        if (
+            !target
+        ) {
+
+            return;
+
+        }
+
+
+        const elements =
+            UIController.elements;
+
+
+        /* ============================================
+           STORE CURRENT TARGET
+        ============================================ */
+
+        UIController.currentTarget =
+            target;
+
+
+        /* ============================================
+           HIGHLIGHT SELECTED BUTTON
+        ============================================ */
+
+        if (
+            elements?.relatedTargetList
+        ) {
+
+            Array
+                .from(
+
+                    elements
+                        .relatedTargetList
+                        .children
+
+                )
+                .forEach(
+
+                    function (
+                        button
+                    ) {
+
+                        button.classList.remove(
+                            "gg-related-target-active"
+                        );
+
+                    }
+
+                );
+
+
+            const targetKey =
+
+                target.key ||
+                target.id ||
+                target.name;
+
+
+            const selectedButton =
+                elements
+                    .relatedTargetList
+                    .querySelector(
+
+                        `[data-target="${targetKey}"]`
+
                     );
 
-                    return false;
 
-                }
+            if (
+                selectedButton
+            ) {
 
+                selectedButton
+                    .classList
+                    .add(
+                        "gg-related-target-active"
+                    );
 
+            }
 
-                /* ============================================
-                   MAIN OFFENCE BUTTON
-                ============================================ */
-
-                if (
-                    elements.mainButton
-                ) {
-
-                    elements
-                        .mainButton
-                        .onclick =
-                            function (
-                                event
-                            ) {
+        }
 
 
-                                event
-                                    ?.preventDefault?.();
+        /* ============================================
+           UPDATE STATUS
+        ============================================ */
+
+        if (
+
+            typeof
+            UIController
+                .setStatus ===
+            "function"
+
+        ) {
+
+            UIController
+                .setStatus(
+
+                    "Loading matching offence cases..."
+
+                );
+
+        }
 
 
-                                event
-                                    ?.stopPropagation?.();
+        /* ============================================
+           DELEGATE TO RENDERER
+        ============================================ */
+
+        if (
+
+            GG
+                ?.Offence
+                ?.SpatialRenderer
+                ?.selectTargetForSource
+
+        ) {
+
+            GG
+                .Offence
+                .SpatialRenderer
+                .selectTargetForSource(
+
+                    target.key ||
+                    target.id ||
+                    target.name
+
+                );
+
+        }
+
+        else {
+
+            console.error(
+
+                "❌ SpatialRenderer.selectTargetForSource() unavailable"
+
+            );
+
+        }
 
 
-                                UIController
-                                    .togglePanel();
+    },
+       /* ===========================================================
+   OPEN SOURCE MODE PANEL
+
+   Called by:
+
+       Renderer.selectSource()
+
+   Responsibilities
+
+   ✓ Show SOURCE MODE
+   ✓ Remember selected source
+   ✓ Store related targets
+   ✓ Populate target list
+   ✓ Reset case section
+=========================================================== */
+
+openSourceModePanel:
+    function (
+        source,
+        targets = []
+    ) {
 
 
-                            };
-
-                }
-
+        const elements =
+            UIController.elements;
 
 
-                /* ============================================
-                   CLOSE BUTTON
-                ============================================ */
+        if (
+            !elements
+        ) {
 
-                if (
-                    elements.closeButton
-                ) {
+            return;
 
-                    elements
-                        .closeButton
-                        .onclick =
-                            function (
-                                event
-                            ) {
+        }
 
 
-                                event
-                                    ?.preventDefault?.();
+        /* ============================================
+           SAVE STATE
+        ============================================ */
+
+        UIController.currentSource =
+            source || null;
 
 
-                                event
-                                    ?.stopPropagation?.();
+        UIController.currentTargets =
+            Array.isArray(
+                targets
+            )
+                ? targets
+                : [];
 
 
-                                UIController
-                                    .closePanel();
+        UIController.sourcePanelExpanded =
+            true;
 
 
-                            };
-
-                }
+        UIController.casePanelExpanded =
+            false;
 
 
 
-                /* ============================================
-                   SOURCE BUTTON
+        /* ============================================
+           SHOW SOURCE MODE
+        ============================================ */
 
-                   The complete tested initialization sequence
-                   will be inside:
+        if (
+            elements.sourceMode
+        ) {
 
-                   UIController.activateSource()
+            elements
+                .sourceMode
+                .style
+                .display =
+                    "";
 
-                   which is added in Part 4.
-                ============================================ */
-
-                if (
-                    elements.sourceButton
-                ) {
-
-                    elements
-                        .sourceButton
-                        .onclick =
-                            async function (
-                                event
-                            ) {
+        }
 
 
-                                event
-                                    ?.preventDefault?.();
+
+        /* ============================================
+           UPDATE SELECTED SOURCE
+        ============================================ */
+
+        if (
+            elements.selectedSource
+        ) {
+
+            elements
+                .selectedSource
+                .textContent =
+                    source
+                        ?.name ||
+                    source
+                        ?.label ||
+                    source
+                        ?.title ||
+                    source
+                        ?.id ||
+                    "Unknown Source";
+
+        }
 
 
-                                event
-                                    ?.stopPropagation?.();
+
+        /* ============================================
+           RESET TARGET LIST
+        ============================================ */
+
+        if (
+            elements.relatedTargetList
+        ) {
+
+            elements
+                .relatedTargetList
+                .innerHTML =
+                    "";
+
+        }
+
+
+
+        /* ============================================
+           POPULATE TARGETS
+        ============================================ */
+
+        if (
+
+            elements.relatedTargetList &&
+
+            UIController.currentTargets.length
+
+        ) {
+
+            UIController.currentTargets
+                .forEach(
+
+                    function (
+                        target
+                    ) {
+
+
+                        const button =
+                            document
+                                .createElement(
+                                    "button"
+                                );
+
+
+                        button.type =
+                            "button";
+
+
+button.type =
+    "button";
+
+
+button.className =
+    "gg-related-target-item";
+
+
+button.dataset.target =
+
+    target?.key ||
+
+    target?.id ||
+
+    target?.name ||
+
+    target?.label ||
+
+    "";
+
+
+button.textContent =
+
+    target?.name ||
+
+    target?.label ||
+
+    target?.title ||
+
+    target?.id ||
+
+    "Unnamed Target";
+
+
+                        button.onclick =
+                            function () {
 
 
                                 if (
+
                                     typeof
                                     UIController
-                                        .activateSource ===
+                                        .selectRelatedTarget ===
                                     "function"
+
                                 ) {
 
-                                    await UIController
-                                        .activateSource();
-
-                                }
-
-                                else {
-
-                                    console.error(
-                                        "❌ OffenceUIController.activateSource() unavailable"
-                                    );
+                                    UIController
+                                        .selectRelatedTarget(
+                                            target
+                                        );
 
                                 }
 
 
                             };
 
-                }
+
+                        elements
+                            .relatedTargetList
+                            .appendChild(
+                                button
+                            );
+
+
+                    }
+
+                );
+
+        }
+
+
+        else if (
+
+            elements.relatedTargetList
+
+        ) {
+
+            elements
+                .relatedTargetList
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        No related targets found.
+
+                    </div>
+                    `;
+
+        }
 
 
 
-                /* ============================================
-                   TARGET BUTTON
-                ============================================ */
+        /* ============================================
+           SHOW TARGET LIST
+        ============================================ */
 
-                if (
-                    elements.targetButton
-                ) {
+        if (
+            elements.relatedTargetList
+        ) {
 
-                    elements
-                        .targetButton
-                        .onclick =
-                            async function (
-                                event
-                            ) {
+            elements
+                .relatedTargetList
+                .style
+                .display =
+                    "";
 
-
-                                event
-                                    ?.preventDefault?.();
-
-
-                                event
-                                    ?.stopPropagation?.();
-
-
-                                if (
-                                    typeof
-                                    UIController
-                                        .activateTarget ===
-                                    "function"
-                                ) {
-
-                                    await UIController
-                                        .activateTarget();
-
-                                }
-
-                                else {
-
-                                    console.error(
-                                        "❌ OffenceUIController.activateTarget() unavailable"
-                                    );
-
-                                }
-
-
-                            };
-
-                }
+        }
 
 
 
-                /* ============================================
-                   CLEAR BUTTON
-                ============================================ */
+        /* ============================================
+           UPDATE TOGGLE LABELS
+        ============================================ */
 
-                if (
-                    elements.clearButton
-                ) {
+        if (
+            elements.relatedTargetToggle
+        ) {
 
-                    elements
-                        .clearButton
-                        .onclick =
-                            function (
-                                event
-                            ) {
+            elements
+                .relatedTargetToggle
+                .textContent =
+                    "▼ Related Targets";
 
-
-                                event
-                                    ?.preventDefault?.();
+        }
 
 
-                                event
-                                    ?.stopPropagation?.();
+        if (
+            elements.caseResultsToggle
+        ) {
 
+            elements
+                .caseResultsToggle
+                .textContent =
+                    "▶ CASE RESULTS";
 
-                                if (
-                                    typeof
-                                    UIController
-                                        .clearAnalysis ===
-                                    "function"
-                                ) {
-
-                                    UIController
-                                        .clearAnalysis();
-
-                                }
-
-                                else {
-
-                                    console.error(
-                                        "❌ OffenceUIController.clearAnalysis() unavailable"
-                                    );
-
-                                }
-
-
-                            };
-
-                }
+        }
 
 
 
-                return true;
+        /* ============================================
+           HIDE CASE RESULTS
+        ============================================ */
+
+        if (
+            elements.caseResults
+        ) {
+
+            elements
+                .caseResults
+                .style
+                .display =
+                    "none";
+
+        }
 
 
-            },
 
+        /* ============================================
+           CLEAR PREVIOUS CASES
+        ============================================ */
+
+        if (
+            elements.caseResultList
+        ) {
+
+            elements
+                .caseResultList
+                .innerHTML =
+                    `
+                    <div class="gg-offence-empty">
+
+                        Select a related target.
+
+                    </div>
+                    `;
+
+        }
+
+
+
+        /* ============================================
+           STATUS
+        ============================================ */
+
+        if (
+            typeof
+            UIController
+                .setStatus ===
+            "function"
+        ) {
+
+            UIController
+                .setStatus(
+
+                    "Source selected. Choose a related target."
+
+                );
+
+        }
+
+
+    },
                /* ====================================================
            GET AUTHORITATIVE STORE CASCADES
 
@@ -4897,7 +6073,13 @@ function (
     UIController.currentSpatialContext =
         context || {};
 
+    UIController.casePanelExpanded =
+        true;
+
     const container =
+        document.getElementById(
+            "gg-case-result-list"
+        ) ||
         UIController.elements.caseResults;
 
     if (!container) {
@@ -4911,7 +6093,7 @@ function (
     }
 
     container.innerHTML = "";
-
+UIController.casePanelExpanded = true;
     if (
         UIController.currentSpatialCases.length === 0
     ) {
