@@ -6454,47 +6454,146 @@ function () {
    RESPONSIBILITIES
    -----------------------------------------------------------
 
-   ✓ Preserve selected parent
+/* ===========================================================
+   SELECT CHILD
 
-   ✓ Preserve complete child list
+   CURRENT OFFENCE PANEL + SPATIAL ARCHITECTURE
+   -----------------------------------------------------------
 
-   ✓ Replace current selected child
+   NAVIGATION:
 
-   ✓ Highlight selected child card
+       PARENT
+          ↓
+       CHILD              ← THIS FUNCTION
+          ↓
+       CASES
+          ↓
+       CASE DETAILS
+          ↓
+       FIELD DETAILS
 
-   ✓ Reset previous case selection
 
-   ✓ Reset previous case details
+   AUTHORITATIVE DESIGN
+   -----------------------------------------------------------
 
-   ✓ Reset previous field details
+   GIS interaction ends at PARENT selection.
 
-   ✓ Load / display cases belonging to selected child
+   Parent selection happens on the Leaflet map.
 
-   ✓ Keep all further navigation inside the panel
+   Child selection happens ONLY from the CHILD cards
+   displayed inside the offence panel.
+
+
+   SOURCE MODE
+   -----------------------------------------------------------
+
+       PARENT = Source Village
+
+       CHILD  = Target Range
+
+
+       MAP:
+
+       parentSelectionLayer
+           ↓
+       selected SOURCE parent
+
+
+       childSelectionLayer
+           ↓
+       selected TARGET child
+
+
+   TARGET MODE
+   -----------------------------------------------------------
+
+       PARENT = Target Range
+
+       CHILD  = Source Village
+
+
+       MAP:
+
+       parentSelectionLayer
+           ↓
+       selected TARGET parent
+
+
+       childSelectionLayer
+           ↓
+       selected SOURCE child
+
+
+   CRITICAL SELECTION RULE
+   -----------------------------------------------------------
+
+   Selecting another CHILD must:
+
+       ✓ preserve currentParent
+       ✓ preserve currentChildren
+       ✓ preserve activeMode
+
+       ✓ replace currentChild
+
+       ✓ clear previous case state
+       ✓ clear previous case details
+       ✓ clear previous field state
+       ✓ clear previous field details
+
+       ✓ remove previous CHILD CARD highlight
+       ✓ highlight newly selected CHILD CARD
+
+       ✓ replace ONLY childSelectionLayer map highlight
+
+       ✓ preserve parentSelectionLayer
+
+       ✓ resolve cases for:
+
+             currentParent
+                  +
+             currentChild
+
+       ✓ open CASES
+
+
+   CHILD MAP HIGHLIGHT
+   -----------------------------------------------------------
+
+   SOURCE MODE:
+
+       child = TARGET
+
+       SpatialRenderer.highlightChildTarget(
+           child
+       )
+
+
+   TARGET MODE:
+
+       child = SOURCE
+
+       SpatialRenderer.highlightChildSource(
+           child
+       )
 
 
    IMPORTANT
    -----------------------------------------------------------
 
-   This function does NOT:
+   This function MUST NOT call:
 
-       - clear the selected parent
-       - require another map click
-       - render parent polygons again
-       - rebuild SpatialEngine
-       - rebuild Store
-       - change analysis mode
-       - make child polygons interactive
+       SpatialRenderer.clear()
+       SpatialRenderer.clearSelection()
+       SpatialRenderer.clearSourceDrillDown()
+       SpatialRenderer.clearTargetDrillDown()
 
+   It MUST NOT clear:
 
-   CHILD MAP POLYGON
-   -----------------------------------------------------------
+       parentSelectionLayer
 
-   SpatialRenderer may visually highlight the selected child.
+   It MUST NOT make child polygons interactive.
 
-   However child polygons must remain:
-
-       interactive: false
+   Child polygons remain visual-only selections.
 
 =========================================================== */
 
@@ -6523,6 +6622,13 @@ function (
         );
 
 
+        console.warn(
+
+            "⚠ selectChild(): child unavailable"
+
+        );
+
+
         return false;
 
 
@@ -6531,10 +6637,18 @@ function (
 
 
     /* =======================================================
-       VALIDATE PARENT
+       VALIDATE AUTHORITATIVE PARENT
 
-       A child cannot exist in the current workflow without
-       an authoritative selected parent.
+       A CHILD belongs to the currently selected PARENT.
+
+       Therefore CHILD selection is invalid if no PARENT
+       currently exists.
+
+       IMPORTANT:
+
+       We do NOT attempt another GIS lookup here.
+
+       PARENT selection already happened on the map.
     ======================================================= */
 
     if (
@@ -6551,6 +6665,21 @@ function (
         );
 
 
+        console.warn(
+
+            "⚠ selectChild(): currentParent unavailable",
+
+            {
+                mode:
+                    UIController.activeMode,
+
+                child:
+                    child
+            }
+
+        );
+
+
         return false;
 
 
@@ -6562,17 +6691,30 @@ function (
 
 
         /* ===================================================
+           PRESERVE AUTHORITATIVE UPPER-LEVEL STATE
+
+           DO NOT MODIFY:
+
+               UIController.activeMode
+
+               UIController.currentParent
+
+               UIController.currentChildren
+
+
+           These remain authoritative until:
+
+               another PARENT is selected
+
+           OR:
+
+               CLEAR ANALYSIS is pressed.
+        =================================================== */
+
+
+
+        /* ===================================================
            STORE SELECTED CHILD
-
-           IMPORTANT:
-
-           DO NOT modify:
-
-               currentParent
-               currentChildren
-
-           They remain authoritative until another parent is
-           selected or CLEAR ANALYSIS is pressed.
         =================================================== */
 
         UIController.currentChild =
@@ -6581,17 +6723,55 @@ function (
 
 
         /* ===================================================
+           SOURCE MODE COMPATIBILITY
+
+           In SOURCE → TARGET mode:
+
+               PARENT = SOURCE
+               CHILD  = TARGET
+
+           currentTarget may still be used elsewhere in the
+           existing offence architecture.
+
+           Therefore keep it synchronized with currentChild.
+
+           IMPORTANT:
+
+           This is STATE compatibility only.
+
+           NO GIS operation occurs here.
+        =================================================== */
+
+        if (
+            UIController.activeMode ===
+            "source"
+        ) {
+
+
+            UIController.currentTarget =
+                child;
+
+
+        }
+
+
+
+        /* ===================================================
            RESET EVERYTHING BELOW CHILD
 
-           Changing child invalidates:
+           CHILD changed.
 
-               previous cases
+           Therefore the following previous state is invalid:
+
+               previous case collection
+               previous case context
                previous selected case
-               previous case details
                previous selected field
-               previous field details
+               previous field key
+               previous field value
 
-           Parent + child collection remain untouched.
+
+           PARENT and CHILD COLLECTION remain untouched.
         =================================================== */
 
         UIController.currentSpatialCases =
@@ -6610,19 +6790,37 @@ function (
             null;
 
 
+        UIController.currentFieldKey =
+            null;
+
+
+        UIController.currentFieldValue =
+            null;
+
+
 
         /* ===================================================
-           REMOVE PREVIOUS CHILD HIGHLIGHT
+           REMOVE PREVIOUS CHILD CARD HIGHLIGHT
+
+           IMPORTANT:
+
+           This affects PANEL DOM only.
+
+           It has nothing to do with the Leaflet
+           childSelectionLayer.
         =================================================== */
 
-        if (
+        const childList =
             UIController.elements
-                ?.childList
+                ?.childList;
+
+
+        if (
+            childList
         ) {
 
 
-            UIController.elements
-                .childList
+            childList
                 .querySelectorAll(
                     ".gg-offence-child-card"
                 )
@@ -6633,9 +6831,18 @@ function (
                     ) {
 
 
-                        childCard.classList.remove(
-                            "gg-selected-child"
-                        );
+                        childCard
+                            .classList
+                            .remove(
+                                "gg-selected-child"
+                            );
+
+
+                        childCard
+                            .setAttribute(
+                                "aria-selected",
+                                "false"
+                            );
 
 
                     }
@@ -6650,10 +6857,27 @@ function (
         /* ===================================================
            HIGHLIGHT CURRENT CHILD CARD
 
-           Prefer the card supplied directly by the click
-           handler.
+           Prefer the card supplied by the dynamically-created
+           child-card click handler.
 
-           This avoids searching the DOM unnecessarily.
+           Expected architecture:
+
+               renderChildren(children)
+
+                       ↓
+
+               create child card
+
+                       ↓
+
+               card.onclick
+
+                       ↓
+
+               UIController.selectChild(
+                   child,
+                   card
+               )
         =================================================== */
 
         if (
@@ -6661,9 +6885,18 @@ function (
         ) {
 
 
-            card.classList.add(
-                "gg-selected-child"
-            );
+            card
+                .classList
+                .add(
+                    "gg-selected-child"
+                );
+
+
+            card
+                .setAttribute(
+                    "aria-selected",
+                    "true"
+                );
 
 
         }
@@ -6673,7 +6906,8 @@ function (
         /* ===================================================
            RESET CASE RESULTS UI
 
-           We are about to replace the previous child's cases.
+           Previous child's cases must never remain visually
+           visible while another child is being processed.
         =================================================== */
 
         if (
@@ -6751,10 +6985,9 @@ function (
 
 
         /* ===================================================
-           HIDE CASE DETAILS
+           HIDE CASE DETAILS SECTION
 
-           It becomes visible again when a particular case is
-           selected.
+           It becomes visible only after a CASE is selected.
         =================================================== */
 
         if (
@@ -6808,7 +7041,7 @@ function (
 
 
         /* ===================================================
-           HIDE FIELD DETAILS
+           HIDE FIELD DETAILS SECTION
         =================================================== */
 
         if (
@@ -6831,8 +7064,10 @@ function (
         /* ===================================================
            SHOW CASE SECTION
 
-           The CASES section becomes the active downstream
-           section after a child has been selected.
+           CHILD has now been selected.
+
+           Therefore CASES becomes the active downstream
+           navigation level.
         =================================================== */
 
         if (
@@ -6890,19 +7125,21 @@ function (
 
 
         /* ===================================================
-           GET CASES
+           RESOLVE CASES
 
-           NEW DESIGN PRINCIPLE
-           ---------------------------------------------------
+           IMPORTANT ARCHITECTURE:
 
-           The selected child should already contain, or be
-           associated with, the offence cases calculated from
-           the selected parent/child relationship.
+           CASE resolution is DATA processing.
 
-           We first support direct case arrays.
+           It is NOT GIS selection.
 
-           This keeps CHILD → CASE navigation independent of
-           GIS interaction.
+           Therefore:
+
+               no map click
+               no polygon selection
+               no parent re-selection
+               no SpatialEngine rebuild
+               no Store rebuild
         =================================================== */
 
         let cases =
@@ -6931,7 +7168,8 @@ function (
 
         /* ===================================================
            ALTERNATIVE:
-           OFFENCE CASES PROPERTY
+
+           offenceCases
         =================================================== */
 
         else if (
@@ -6951,7 +7189,8 @@ function (
 
         /* ===================================================
            ALTERNATIVE:
-           MATCHING CASES PROPERTY
+
+           matchingCases
         =================================================== */
 
         else if (
@@ -6971,10 +7210,11 @@ function (
 
         /* ===================================================
            ALTERNATIVE:
-           CASCADES PROPERTY
 
-           Some existing offence structures may carry the
-           matched POR cascades directly.
+           cascades
+
+           Existing offence structures may carry matched POR
+           cascades directly on the child relationship.
         =================================================== */
 
         else if (
@@ -6993,20 +7233,35 @@ function (
 
 
         /* ===================================================
-           OPTIONAL CHILD CASE RESOLVER
+           RELATIONSHIP CASE RESOLVER
 
-           If cases are not directly attached to the child,
-           allow the SpatialEngine to resolve the relationship.
+           If no cases are directly attached to CHILD:
+
+               currentParent
+                     +
+               currentChild
+                     +
+               activeMode
+
+           are passed to SpatialEngine.getCasesForPair().
 
            IMPORTANT:
 
-           This is DATA LOOKUP only.
+           getCasesForPair() must be DATA LOOKUP only.
 
-           It is NOT another GIS/map selection operation.
+           It must NOT:
+
+               select GIS polygons
+               clear selection layers
+               render parent
+               render child
+               change currentParent
+               change currentChild
         =================================================== */
 
         if (
-            cases.length === 0
+            cases.length ===
+            0
         ) {
 
 
@@ -7064,6 +7319,7 @@ function (
         =================================================== */
 
         UIController.currentSpatialCases =
+
             Array.isArray(
                 cases
             )
@@ -7077,13 +7333,16 @@ function (
         /* ===================================================
            STORE CURRENT PANEL CONTEXT
 
-           This represents the currently selected relationship:
+           This is the authoritative PANEL relationship:
 
-               mode
-               parent
-               child
+               MODE
+                 ↓
+               PARENT
+                 ↓
+               CHILD
 
-           No map interaction is required from this point.
+
+           CASES belong to this relationship.
         =================================================== */
 
         UIController.currentSpatialContext =
@@ -7103,27 +7362,88 @@ function (
 
 
         /* ===================================================
-           OPTIONAL MAP VISUAL HIGHLIGHT
+           CHILD MAP VISUAL HIGHLIGHT
+
+           THIS IS THE IMPORTANT NEW ARCHITECTURE
+           ---------------------------------------------------
+
+           PARENT and CHILD selections use separate Leaflet
+           selection layers.
+
+
+           PARENT:
+
+               parentSelectionLayer
+
+
+           CHILD:
+
+               childSelectionLayer
+
+
+           Therefore selecting CHILD must NEVER remove or
+           re-render the currently selected PARENT.
+
+
+           ---------------------------------------------------
+           SOURCE MODE
+           ---------------------------------------------------
+
+               PARENT = SOURCE Village
+
+               CHILD = TARGET Range
+
+               therefore:
+
+               highlightChildTarget(child)
+
+
+           ---------------------------------------------------
+           TARGET MODE
+           ---------------------------------------------------
+
+               PARENT = TARGET Range
+
+               CHILD = SOURCE Village
+
+               therefore:
+
+               highlightChildSource(child)
+
+
+           ---------------------------------------------------
+           RENDERER OWNERSHIP
+           ---------------------------------------------------
+
+           SpatialRenderer.highlightChildTarget()
+           and
+           SpatialRenderer.highlightChildSource()
+
+           should internally perform:
+
+               clearChildHighlight()
+
+                       ↓
+
+               childSelectionLayer.clearLayers()
+
+                       ↓
+
+               render selected child
+
+                       ↓
+
+               role = "SELECTED_CHILD"
+
+
+           parentSelectionLayer MUST remain untouched.
+
 
            IMPORTANT:
 
-           This is VISUAL ONLY.
+           Do NOT call clearChildHighlight() directly here.
 
-           The child polygon must remain non-interactive.
-
-           We deliberately do NOT call:
-
-               SpatialRenderer.clear()
-
-           because that could destroy the authoritative parent
-           map state.
-
-           Renderer implementations may optionally expose:
-
-               highlightChild()
-
-           If it does not exist, panel operation continues
-           normally.
+           Renderer owns Leaflet layer lifecycle.
         =================================================== */
 
         const SpatialRenderer =
@@ -7132,35 +7452,155 @@ function (
 
 
         if (
-            SpatialRenderer &&
-            typeof
-            SpatialRenderer.highlightChild ===
-            "function"
+            SpatialRenderer
         ) {
 
 
             try {
 
 
-                SpatialRenderer
-                    .highlightChild(
+                /* ===============================================
+                   SOURCE → TARGET
 
-                        child,
+                   CURRENT PARENT:
+                       SOURCE
 
-                        {
+                   CURRENT CHILD:
+                       TARGET
+                =============================================== */
 
-                            interactive:
-                                false,
+                if (
+                    UIController.activeMode ===
+                    "source"
+                ) {
 
-                            mode:
-                                UIController.activeMode,
 
-                            parent:
-                                UIController.currentParent
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .highlightChildTarget ===
+                        "function"
+                    ) {
 
-                        }
+
+                        SpatialRenderer
+                            .highlightChildTarget(
+                                child
+                            );
+
+
+                    }
+
+
+                    else {
+
+
+                        console.warn(
+
+                            "⚠ SpatialRenderer.highlightChildTarget() unavailable",
+
+                            {
+                                mode:
+                                    UIController.activeMode,
+
+                                parent:
+                                    UIController.currentParent,
+
+                                child:
+                                    child
+                            }
+
+                        );
+
+
+                    }
+
+
+                }
+
+
+
+                /* ===============================================
+                   TARGET → SOURCE
+
+                   CURRENT PARENT:
+                       TARGET
+
+                   CURRENT CHILD:
+                       SOURCE
+                =============================================== */
+
+                else if (
+                    UIController.activeMode ===
+                    "target"
+                ) {
+
+
+                    if (
+                        typeof
+                        SpatialRenderer
+                            .highlightChildSource ===
+                        "function"
+                    ) {
+
+
+                        SpatialRenderer
+                            .highlightChildSource(
+                                child
+                            );
+
+
+                    }
+
+
+                    else {
+
+
+                        console.warn(
+
+                            "⚠ SpatialRenderer.highlightChildSource() unavailable",
+
+                            {
+                                mode:
+                                    UIController.activeMode,
+
+                                parent:
+                                    UIController.currentParent,
+
+                                child:
+                                    child
+                            }
+
+                        );
+
+
+                    }
+
+
+                }
+
+
+
+                /* ===============================================
+                   UNKNOWN MODE
+
+                   Never touch map selection layers if mode is
+                   invalid or unavailable.
+                =============================================== */
+
+                else {
+
+
+                    console.warn(
+
+                        "⚠ Cannot highlight offence child — unknown mode:",
+
+                        UIController.activeMode
 
                     );
+
+
+                }
 
 
             }
@@ -7170,6 +7610,17 @@ function (
                 highlightError
             ) {
 
+
+                /*
+                 * Map visual highlighting is optional to panel
+                 * navigation.
+                 *
+                 * Therefore a rendering failure must NOT stop:
+                 *
+                 *     CHILD
+                 *       ↓
+                 *     CASES
+                 */
 
                 console.warn(
 
@@ -7189,6 +7640,13 @@ function (
 
         /* ===================================================
            NO CASES
+
+           CHILD remains selected even when its relationship
+           contains zero offence cases.
+
+           Parent also remains selected.
+
+           Child map highlight also remains selected.
         =================================================== */
 
         if (
@@ -7267,6 +7725,45 @@ function (
 
 
 
+            console.log(
+
+                "➡ Offence CHILD selected — no cases",
+
+                {
+
+                    mode:
+                        UIController.activeMode,
+
+                    parent:
+                        UIController.currentParent,
+
+                    child:
+                        UIController.currentChild,
+
+                    childType:
+
+                        UIController.activeMode ===
+                        "source"
+
+                            ? "TARGET"
+
+                            :
+
+                        UIController.activeMode ===
+                        "target"
+
+                            ? "SOURCE"
+
+                            : "UNKNOWN",
+
+                    cases:
+                        0
+
+                }
+
+            );
+
+
             return [];
 
 
@@ -7277,14 +7774,17 @@ function (
         /* ===================================================
            RENDER CASES
 
-           showSpatialCases() is responsible for displaying
-           the current case collection.
+           showSpatialCases() is PANEL UI ONLY.
 
-           IMPORTANT:
+           It must NOT:
 
-           Under the new architecture this should eventually
-           be the controller's panel renderer and must not
-           delegate back into an old Cascade UI.
+               perform GIS selection
+               clear parentSelectionLayer
+               clear childSelectionLayer
+               rebuild SpatialEngine
+               rebuild Store
+               modify currentParent
+               modify currentChild
         =================================================== */
 
         if (
@@ -7307,6 +7807,7 @@ function (
 
 
         }
+
 
         else {
 
@@ -7350,8 +7851,11 @@ function (
                 " case" +
 
                 (
-                    caseCount === 1
+                    caseCount ===
+                    1
+
                         ? ""
+
                         : "s"
                 );
 
@@ -7361,20 +7865,28 @@ function (
 
 
         /* ===================================================
-           STATUS
+           FINAL STATUS
         =================================================== */
 
         UIController.setStatus(
 
             caseCount +
+
             " offence case" +
+
             (
-                caseCount === 1
+                caseCount ===
+                1
+
                     ? ""
+
                     : "s"
             ) +
+
             " found for " +
+
             childName +
+
             ".",
 
             "success"
@@ -7386,9 +7898,9 @@ function (
         /* ===================================================
            SCROLL CASE SECTION INTO VIEW
 
-           Panel only.
+           PANEL navigation only.
 
-           Leaflet map is not moved.
+           Leaflet map position is NOT changed.
         =================================================== */
 
         UIController.elements
@@ -7409,6 +7921,13 @@ function (
 
 
 
+        /* ===================================================
+           DEBUG
+
+           This log allows verification that PARENT remains
+           unchanged after CHILD selection.
+        =================================================== */
+
         console.log(
 
             "➡ Offence CHILD selected",
@@ -7424,8 +7943,47 @@ function (
                 child:
                     UIController.currentChild,
 
+                childType:
+
+                    UIController.activeMode ===
+                    "source"
+
+                        ? "TARGET"
+
+                        :
+
+                    UIController.activeMode ===
+                    "target"
+
+                        ? "SOURCE"
+
+                        : "UNKNOWN",
+
+                childrenPreserved:
+
+                    UIController
+                        .currentChildren
+                        ?.length ||
+                    0,
+
                 cases:
-                    caseCount
+                    caseCount,
+
+                mapHighlightMethod:
+
+                    UIController.activeMode ===
+                    "source"
+
+                        ? "highlightChildTarget"
+
+                        :
+
+                    UIController.activeMode ===
+                    "target"
+
+                        ? "highlightChildSource"
+
+                        : null
 
             }
 
@@ -7475,6 +8033,57 @@ function (
 
 
 },
+
+
+
+
+   
+
+   ✓ Preserve selected parent
+
+   ✓ Preserve complete child list
+
+   ✓ Replace current selected child
+
+   ✓ Highlight selected child card
+
+   ✓ Reset previous case selection
+
+   ✓ Reset previous case details
+
+   ✓ Reset previous field details
+
+   ✓ Load / display cases belonging to selected child
+
+   ✓ Keep all further navigation inside the panel
+
+
+   IMPORTANT
+   -----------------------------------------------------------
+
+   This function does NOT:
+
+       - clear the selected parent
+       - require another map click
+       - render parent polygons again
+       - rebuild SpatialEngine
+       - rebuild Store
+       - change analysis mode
+       - make child polygons interactive
+
+
+   CHILD MAP POLYGON
+   -----------------------------------------------------------
+
+   SpatialRenderer may visually highlight the selected child.
+
+   However child polygons must remain:
+
+       interactive: false
+
+=========================================================== */
+
+
 
 bindEvents:
 function () {
@@ -8158,903 +8767,7 @@ function () {
 
 =========================================================== */
 
-selectChild:
-function (
-    child,
-    card = null
-) {
 
-
-    /* ============================================
-       VALIDATE CHILD
-    ============================================ */
-
-    if (
-        !child
-    ) {
-
-        console.warn(
-            "⚠ selectChild(): child unavailable"
-        );
-
-
-        return false;
-
-    }
-
-
-    /* ============================================
-       PRESERVE PARENT
-
-       IMPORTANT:
-
-       Do NOT modify:
-
-           currentParent
-           currentSource
-           currentChildren
-           currentTargets
-           activeMode
-
-       Parent remains selected until another
-       parent polygon is clicked on the map.
-    ============================================ */
-
-
-    /* ============================================
-       STORE SELECTED CHILD
-    ============================================ */
-
-    UIController.currentChild =
-        child;
-
-
-    /*
-     * Compatibility with the previous
-     * SOURCE → TARGET implementation.
-     *
-     * In SOURCE mode the child may still
-     * conceptually be the target.
-     *
-     * This is state compatibility only.
-     *
-     * NO GIS operation is performed here.
-     */
-
-    if (
-        UIController.activeMode ===
-        "source"
-    ) {
-
-        UIController.currentTarget =
-            child;
-
-    }
-
-
-    /* ============================================
-       CLEAR PREVIOUS CHILD-SPECIFIC CASE STATE
-
-       A different child may previously have
-       been selected.
-
-       Never allow cases from child A to remain
-       visible while child B is active.
-    ============================================ */
-
-    UIController.currentSpatialCases =
-        [];
-
-
-    UIController.currentSpatialContext =
-        {};
-
-
-    /* ============================================
-       CLEAR PREVIOUS CASE
-    ============================================ */
-
-    UIController.currentCase =
-        null;
-
-
-    /* ============================================
-       CLEAR PREVIOUS FIELD
-    ============================================ */
-
-    UIController.currentField =
-        null;
-
-
-    UIController.currentFieldKey =
-        null;
-
-
-    UIController.currentFieldValue =
-        null;
-
-
-    /* ============================================
-       HIGHLIGHT SELECTED CHILD
-
-       First remove any previous child highlight.
-    ============================================ */
-
-    const childList =
-        UIController.elements
-            ?.childList;
-
-
-    if (
-        childList
-    ) {
-
-        childList
-            .querySelectorAll(
-                ".gg-offence-child-card"
-            )
-            .forEach(
-
-                function (
-                    childCard
-                ) {
-
-                    childCard
-                        .classList
-                        .remove(
-                            "gg-selected-child"
-                        );
-
-
-                    childCard
-                        .setAttribute(
-                            "aria-selected",
-                            "false"
-                        );
-
-                }
-
-            );
-
-
-        /*
-         * Migration compatibility.
-         *
-         * Remove the old related-target
-         * highlight if any old class remains.
-         */
-
-        childList
-            .querySelectorAll(
-                ".gg-related-target-item"
-            )
-            .forEach(
-
-                function (
-                    childCard
-                ) {
-
-                    childCard
-                        .classList
-                        .remove(
-                            "gg-related-target-active"
-                        );
-
-
-                    childCard
-                        .setAttribute(
-                            "aria-selected",
-                            "false"
-                        );
-
-                }
-
-            );
-
-    }
-
-
-    /* ============================================
-       APPLY SELECTED CHILD HIGHLIGHT
-
-       Preferred:
-
-           card passed directly from click handler
-
-       Fallback:
-
-           locate using data-child-key
-    ============================================ */
-
-    let selectedCard =
-        card;
-
-
-    if (
-        !selectedCard &&
-        childList
-    ) {
-
-
-        const childKey =
-
-            child?.key ||
-
-            child?.id ||
-
-            child?.name ||
-
-            child?.label ||
-
-            child?.title ||
-
-            "";
-
-
-        if (
-            childKey
-        ) {
-
-            /*
-             * Avoid placing an unescaped arbitrary
-             * value directly into a selector.
-             */
-
-            const childCards =
-                Array.from(
-                    childList.children
-                );
-
-
-            selectedCard =
-                childCards.find(
-
-                    function (
-                        candidate
-                    ) {
-
-                        return (
-
-                            candidate
-                                ?.dataset
-                                ?.childKey ===
-                            String(
-                                childKey
-                            )
-
-                        );
-
-                    }
-
-                ) ||
-                null;
-
-        }
-
-    }
-
-
-    if (
-        selectedCard
-    ) {
-
-        selectedCard
-            .classList
-            .add(
-                "gg-selected-child"
-            );
-
-
-        selectedCard
-            .setAttribute(
-                "aria-selected",
-                "true"
-            );
-
-    }
-
-
-    /* ============================================
-       RESET CASE RESULTS UI
-
-       We are about to load the cases belonging
-       to the newly selected child.
-    ============================================ */
-
-    const caseResultList =
-        UIController.elements
-            ?.caseResultList;
-
-
-    if (
-        caseResultList
-    ) {
-
-        caseResultList.innerHTML =
-            `
-            <div class="gg-offence-empty">
-
-                Loading matching offence cases...
-
-            </div>
-            `;
-
-
-        caseResultList.scrollTop =
-            0;
-
-    }
-
-
-    /* ============================================
-       RESET CASE DETAILS
-    ============================================ */
-
-    const caseDetails =
-        UIController.elements
-            ?.caseDetails;
-
-
-    if (
-        caseDetails
-    ) {
-
-        caseDetails.innerHTML =
-            `
-            <div class="gg-offence-empty">
-
-                Select a case to view complete
-                offence details.
-
-            </div>
-            `;
-
-
-        caseDetails.scrollTop =
-            0;
-
-    }
-
-
-    /* ============================================
-       RESET FIELD DETAILS
-    ============================================ */
-
-    const fieldDetails =
-        UIController.elements
-            ?.fieldDetails;
-
-
-    if (
-        fieldDetails
-    ) {
-
-        fieldDetails.innerHTML =
-            `
-            <div class="gg-offence-empty">
-
-                Select a field from CASE DETAILS
-                to view its complete content.
-
-            </div>
-            `;
-
-
-        fieldDetails.scrollTop =
-            0;
-
-    }
-
-
-    /* ============================================
-       HIDE CASE DETAILS
-
-       A case has not yet been selected for this
-       child.
-    ============================================ */
-
-    const caseDetailsSection =
-        UIController.elements
-            ?.caseDetailsSection;
-
-
-    if (
-        caseDetailsSection
-    ) {
-
-        caseDetailsSection
-            .style
-            .display =
-                "none";
-
-    }
-
-
-    /* ============================================
-       HIDE FIELD DETAILS
-    ============================================ */
-
-    const fieldDetailsSection =
-        UIController.elements
-            ?.fieldDetailsSection;
-
-
-    if (
-        fieldDetailsSection
-    ) {
-
-        fieldDetailsSection
-            .style
-            .display =
-                "none";
-
-    }
-
-
-    /* ============================================
-       SHOW CASES SECTION
-    ============================================ */
-
-    const casesSection =
-        UIController.elements
-            ?.casesSection;
-
-
-    if (
-        casesSection
-    ) {
-
-        casesSection
-            .style
-            .display =
-                "";
-
-    }
-
-
-    /* ============================================
-       SHOW CASE RESULTS CONTAINER
-    ============================================ */
-
-    const caseResults =
-        UIController.elements
-            ?.caseResults;
-
-
-    if (
-        caseResults
-    ) {
-
-        caseResults
-            .style
-            .display =
-                "";
-
-    }
-
-
-    /* ============================================
-       UPDATE CURRENT VIEW
-    ============================================ */
-
-    UIController.currentView =
-        "cases";
-
-
-    /* ============================================
-       BUILD CHILD CONTEXT
-
-       This context travels with the case list.
-
-       It contains UI/data relationship state,
-       not a new GIS selection.
-    ============================================ */
-
-    const parent =
-
-        UIController.currentParent ||
-
-        (
-            UIController.activeMode ===
-            "source"
-
-                ? UIController.currentSource
-
-                : UIController.currentTarget
-
-        ) ||
-
-        null;
-
-
-    const context = {
-
-        mode:
-            UIController.activeMode,
-
-        parent:
-            parent,
-
-        child:
-            child,
-
-        parentKey:
-
-            parent?.key ||
-
-            parent?.id ||
-
-            parent?.name ||
-
-            parent?.label ||
-
-            null,
-
-        childKey:
-
-            child?.key ||
-
-            child?.id ||
-
-            child?.name ||
-
-            child?.label ||
-
-            null
-
-    };
-
-
-    UIController.currentSpatialContext =
-        context;
-
-
-    /* ============================================
-       UPDATE STATUS
-    ============================================ */
-
-    const childName =
-
-        child?.name ||
-
-        child?.label ||
-
-        child?.title ||
-
-        child?.id ||
-
-        "selected child";
-
-
-    UIController
-        .setStatus(
-
-            "Loading offence cases for " +
-            childName +
-            "...",
-
-            "loading"
-
-        );
-
-
-    /* ============================================
-       RESOLVE CHILD CASES
-
-       IMPORTANT:
-
-       CHILD → CASES is no longer a GIS action.
-
-       We first use cases already carried by the
-       child object.
-
-       Supported structures:
-
-           child.cases
-           child.caseList
-           child.offenceCases
-           child.matchedCases
-           child.cascades
-
-       This allows the renderer/controller that
-       created the CHILD list to attach the
-       authoritative case collection directly.
-    ============================================ */
-
-    let cases =
-        [];
-
-
-    if (
-        Array.isArray(
-            child.cases
-        )
-    ) {
-
-        cases =
-            child.cases;
-
-    }
-
-    else if (
-        Array.isArray(
-            child.caseList
-        )
-    ) {
-
-        cases =
-            child.caseList;
-
-    }
-
-    else if (
-        Array.isArray(
-            child.offenceCases
-        )
-    ) {
-
-        cases =
-            child.offenceCases;
-
-    }
-
-    else if (
-        Array.isArray(
-            child.matchedCases
-        )
-    ) {
-
-        cases =
-            child.matchedCases;
-
-    }
-
-    else if (
-        Array.isArray(
-            child.cascades
-        )
-    ) {
-
-        cases =
-            child.cascades;
-
-    }
-
-
-    /* ============================================
-       OPTIONAL RELATIONSHIP LOOKUP
-
-       If child cards do not directly carry cases,
-       allow a dedicated NON-GIS resolver.
-
-       Preferred future API:
-
-           UIController.resolveCasesForChild()
-
-       This keeps relationship lookup separate
-       from map rendering.
-    ============================================ */
-
-    if (
-        !cases.length &&
-        typeof
-        UIController.resolveCasesForChild ===
-        "function"
-    ) {
-
-        try {
-
-            const resolved =
-                UIController
-                    .resolveCasesForChild(
-
-                        child,
-
-                        parent,
-
-                        context
-
-                    );
-
-
-            /*
-             * Support synchronous resolver.
-             *
-             * If your resolver later becomes async,
-             * selectChild() should then be converted
-             * to async.
-             */
-
-            if (
-                Array.isArray(
-                    resolved
-                )
-            ) {
-
-                cases =
-                    resolved;
-
-            }
-
-        }
-
-        catch (
-            error
-        ) {
-
-            console.error(
-
-                "❌ Unable to resolve cases for child:",
-
-                error
-
-            );
-
-        }
-
-    }
-
-
-    /* ============================================
-       CASES FOUND
-
-       Delegate rendering to the controller's
-       case rendering function.
-    ============================================ */
-
-    if (
-        cases.length > 0
-    ) {
-
-        if (
-            typeof
-            UIController.showSpatialCases ===
-            "function"
-        ) {
-
-            UIController
-                .showSpatialCases(
-
-                    cases,
-
-                    context
-
-                );
-
-        }
-
-        else {
-
-            UIController.currentSpatialCases =
-                cases;
-
-
-            UIController
-                .setStatus(
-
-                    cases.length +
-                    " offence case" +
-                    (
-                        cases.length === 1
-                            ? ""
-                            : "s"
-                    ) +
-                    " found.",
-
-                    "success"
-
-                );
-
-        }
-
-    }
-
-
-    /* ============================================
-       NO CASES FOUND
-    ============================================ */
-
-    else {
-
-        UIController.currentSpatialCases =
-            [];
-
-
-        if (
-            caseResultList
-        ) {
-
-            caseResultList.innerHTML =
-                `
-                <div class="gg-offence-empty">
-
-                    No matching offence cases
-                    found for this child.
-
-                </div>
-                `;
-
-        }
-
-
-        UIController
-            .setStatus(
-
-                "No offence cases found for " +
-                childName +
-                ".",
-
-                "ready"
-
-            );
-
-    }
-
-
-    /* ============================================
-       SCROLL TO CASES
-
-       PANEL navigation only.
-
-       No map pan.
-       No map zoom.
-       No polygon click.
-    ============================================ */
-
-    if (
-        casesSection
-    ) {
-
-        casesSection
-            .scrollIntoView?.(
-
-                {
-                    block:
-                        "nearest",
-
-                    behavior:
-                        "smooth"
-                }
-
-            );
-
-    }
-
-
-    /* ============================================
-       DEBUG
-    ============================================ */
-
-    console.log(
-
-        "➡ Offence navigation: CHILD → CASES",
-
-        {
-
-            mode:
-                UIController.activeMode,
-
-            parent:
-                parent,
-
-            child:
-                child,
-
-            caseCount:
-                cases.length,
-
-            currentView:
-                UIController.currentView
-
-        }
-
-    );
-
-
-    return cases;
-
-
-},
        /* ===========================================================
    OPEN SOURCE MODE PANEL
 
