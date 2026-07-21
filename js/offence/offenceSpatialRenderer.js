@@ -6223,87 +6223,14 @@ Renderer.selectTargetForSource =
 
 
         /* ========================================================
-           RESOLVE TARGET OBJECT
-
-           Supports:
-
-           • Target object (map click)
-           • Target key (UI click)
-        ======================================================== */
-
-        let targetObject =
-            target;
-
-
-        if (
-
-            typeof target ===
-            "string"
-
-        ) {
-
-            const targetKey =
-
-                Renderer
-                    .normalizeText(
-                        target
-                    );
-
-
-            targetObject =
-
-                Renderer
-                    .currentTargets
-                    .find(
-
-                        item => {
-
-                            const itemKey =
-
-                                Renderer
-                                    .normalizeText(
-
-                                        item.key ||
-
-                                        item.id ||
-
-                                        item.cleanName ||
-
-                                        item.name
-
-                                    );
-
-
-                            return (
-                                itemKey ===
-                                targetKey
-                            );
-
-                        }
-
-                    );
-
-        }
-
-
-        if (
-            !targetObject
-        ) {
-
-            return [];
-
-        }
-
-
-        /* ========================================================
            RESOLVE TARGET NAME
         ======================================================== */
 
         const targetName =
 
-            targetObject.name ||
+            target.name ||
 
-            targetObject.cleanName ||
+            target.cleanName ||
 
             "";
 
@@ -6318,21 +6245,20 @@ Renderer.selectTargetForSource =
 
 
         /* ========================================================
-           STORE TARGET STATE
+           STORE SELECTED TARGET
         ======================================================== */
 
         Renderer.selectedTargetKey =
 
-            Renderer
-                .normalizeText(
+            Renderer.normalizeText(
 
-                    targetObject.key ||
+                target.key ||
 
-                    targetObject.id ||
+                target.id ||
 
-                    targetName
+                targetName
 
-                );
+            );
 
 
         /* ========================================================
@@ -6356,7 +6282,7 @@ Renderer.selectTargetForSource =
 
 
         /* ========================================================
-           STORE CURRENT CASES
+           STORE CURRENT STATE
         ======================================================== */
 
         Renderer.currentCases =
@@ -6485,64 +6411,14 @@ Renderer.selectSourceForTarget =
 
 
         /* ========================================================
-           RESOLVE SOURCE OBJECT
-
-           Supports:
-
-           • Source object (map click)
-           • Source ID (UI click)
-        ======================================================== */
-
-        let sourceObject =
-            source;
-
-
-        if (
-
-            typeof source ===
-            "string"
-
-        ) {
-
-            sourceObject =
-
-                Renderer
-                    .currentSources
-                    .find(
-
-                        item =>
-
-                            (
-
-                                item.canonicalId ||
-
-                                item.id
-
-                            ) === source
-
-                    );
-
-        }
-
-
-        if (
-            !sourceObject
-        ) {
-
-            return [];
-
-        }
-
-
-        /* ========================================================
            RESOLVE SOURCE ID
         ======================================================== */
 
         const sourceId =
 
-            sourceObject.canonicalId ||
+            source.canonicalId ||
 
-            sourceObject.id;
+            source.id;
 
 
         if (
@@ -6601,7 +6477,6 @@ Renderer.selectSourceForTarget =
                     return (
 
                         itemKey ===
-
                         Renderer.selectedTargetKey
 
                     );
@@ -6667,7 +6542,12 @@ Renderer.selectSourceForTarget =
             sourceId,
 
             sourceName:
-                sourceObject.name,
+
+                source.name ||
+
+                source.cleanName ||
+
+                "",
 
             targetName:
                 target.name,
@@ -6686,7 +6566,7 @@ Renderer.selectSourceForTarget =
 
             "🏡 Related Source selected:",
 
-            sourceObject.name,
+            source.name,
 
             "→ Target:",
 
@@ -6717,7 +6597,6 @@ Renderer.selectSourceForTarget =
         return cases;
 
     };
-
 
 /* ============================================================
    📋 SHOW SPATIAL CASES
