@@ -12218,12 +12218,6 @@ function (
 
     /* =======================================================
        REFRESH DOM REFERENCES
-
-       Safe if the offence panel has been recreated.
-
-       IMPORTANT:
-       This does NOT recreate the panel.
-       It only refreshes references to the existing DOM.
     ======================================================= */
 
     if (
@@ -12267,25 +12261,7 @@ function (
     /* =======================================================
        VALUE CHECK
 
-       PROFESSIONAL DISPLAY RULE:
-
-           No meaningful value
-               ↓
-           Do not render the field
-
-       Values treated as empty:
-
-           ""
-           "-"
-           "--"
-           null
-           undefined
-           N/A
-           NA
-           None
-           Nil
-           Not Available
-           Not Applicable
+       Empty / meaningless values are never displayed.
     ======================================================= */
 
     function hasValue(
@@ -12309,8 +12285,7 @@ function (
         ) {
 
             const text =
-                item
-                    .trim();
+                item.trim();
 
 
             if (
@@ -12323,8 +12298,7 @@ function (
 
 
             const normalized =
-                text
-                    .toLowerCase();
+                text.toLowerCase();
 
 
             if (
@@ -12451,21 +12425,47 @@ function (
 
 
     /* =======================================================
-       HUMANIZE FIELD NAME
+       NORMALIZE KEY
+
+       Used only for matching equivalent database field names.
 
        Examples:
 
+           father_name
            fatherName
-               ↓
            Father Name
 
-           police_station
-               ↓
-           Police Station
+       all become:
 
-           mobileNo
-               ↓
-           Mobile No
+           FATHERNAME
+    ======================================================= */
+
+    function normalizeKey(
+        key
+    ) {
+
+
+        return String(
+            key ||
+            ""
+        )
+
+            .trim()
+
+            .toUpperCase()
+
+            .replace(
+                /[^A-Z0-9]/g,
+                ""
+            );
+
+
+    }
+
+
+
+    /* =======================================================
+       HUMANIZE GENERIC FIELD NAME
     ======================================================= */
 
     function humanize(
@@ -12516,109 +12516,97 @@ function (
 
 
     /* =======================================================
-       INTERNAL / TECHNICAL FIELDS
+       GET FIRST MATCHING OBJECT VALUE
 
-       Never expose database/application metadata in the
-       professional FIELD DETAILS view.
+       This provides compatibility with different field naming
+       styles in your offence dataset.
 
-       These fields may still exist in the original object.
-       We simply do not display them.
+       Example:
+
+           accusedName
+           Accused Name
+           accused_name
+           name
+
+       can all resolve to ACCUSED NAME.
     ======================================================= */
 
-    const hiddenKeys =
-        new Set([
-
-            "id",
-
-            "caseId",
-
-            "porKey",
-
-            "documentId",
-
-            "importSource",
-
-            "importVersion",
-
-            "importedAt",
-
-            "createdAt",
-
-            "updatedAt",
-
-            "timestamp",
-
-            "gisResolved",
-
-            "rangeGISResolved",
-
-            "canonicalId",
-
-            "cleanName",
-
-            "searchTokens",
-
-            "relation",
-
-            "key"
-
-        ]);
-
-
-
-    /* =======================================================
-       CHECK WHETHER A KEY IS INTERNAL
-
-       Case-insensitive protection for equivalent metadata
-       fields using different capitalization.
-    ======================================================= */
-
-    function isHiddenKey(
-        key
+    function getFirstValue(
+        object,
+        aliases
     ) {
 
 
         if (
-            hiddenKeys.has(
-                key
-            )
+
+            !object ||
+
+            typeof object !==
+                "object"
+
         ) {
 
-            return true;
+            return null;
 
         }
 
 
-        const normalized =
-            String(
-                key ||
-                ""
-            )
-                .trim()
-                .toLowerCase();
+        const entries =
+            Object.entries(
+                object
+            );
 
 
         for (
-            const hiddenKey
-            of hiddenKeys
+            const alias
+            of aliases
         ) {
 
-            if (
-                String(
-                    hiddenKey
-                )
-                    .toLowerCase() ===
-                normalized
+
+            const wanted =
+                normalizeKey(
+                    alias
+                );
+
+
+            for (
+                const [
+                    key,
+                    item
+                ]
+                of entries
             ) {
 
-                return true;
+
+                if (
+                    normalizeKey(
+                        key
+                    ) ===
+                    wanted
+                ) {
+
+
+                    if (
+                        hasValue(
+                            item
+                        )
+                    ) {
+
+                        return item;
+
+                    }
+
+
+                }
+
 
             }
+
 
         }
 
 
-        return false;
+        return null;
 
 
     }
@@ -12626,15 +12614,7 @@ function (
 
 
     /* =======================================================
-       FORMAT SIMPLE DISPLAY VALUE
-
-       FIELD DETAILS should remain readable.
-
-       We do not dump:
-
-           [object Object]
-
-       or raw JSON into a normal information row.
+       FORMAT SIMPLE VALUE
     ======================================================= */
 
     function formatSimpleValue(
@@ -12659,37 +12639,36 @@ function (
             )
         ) {
 
-            const simpleValues =
-                item
 
-                    .filter(
-                        hasValue
-                    )
+            return item
 
-                    .filter(
+                .filter(
+                    hasValue
+                )
 
-                        function (
-                            entry
-                        ) {
+                .filter(
 
-                            return (
+                    function (
+                        entry
+                    ) {
 
-                                entry === null ||
+                        return (
 
-                                typeof entry !==
-                                    "object"
+                            entry === null ||
 
-                            );
+                            typeof entry !==
+                                "object"
 
-                        }
+                        );
 
-                    );
+                    }
 
+                )
 
-            return simpleValues
                 .join(
                     ", "
                 );
+
 
         }
 
@@ -12706,8 +12685,7 @@ function (
 
         return String(
             item
-        )
-            .trim();
+        ).trim();
 
 
     }
@@ -12715,17 +12693,7 @@ function (
 
 
     /* =======================================================
-       CREATE PROFESSIONAL INFORMATION ROW
-
-       Visual structure:
-
-           FIELD LABEL
-           Field value
-           -------------------------
-
-       Each field is an independent information block.
-
-       This matches the professional Case Details layout.
+       PROFESSIONAL INFORMATION ROW
     ======================================================= */
 
     function row(
@@ -12790,24 +12758,604 @@ function (
 
 
     /* =======================================================
-       RENDER OBJECT
+       DETERMINE FIELD CATEGORY
 
-       Example:
+       We use both:
 
-           ACCUSED
+           context.key
+           title
 
-           Name
-           Dhiraj Kami
+       because Case Details may call this using either one.
+    ======================================================= */
 
-           Father Name
-           ...
+    const categoryText =
+        normalizeKey(
 
-           Address
-           ...
+            context.key ||
 
-       Only meaningful fields are shown.
+            title ||
 
-       Internal metadata remains hidden.
+            ""
+
+        );
+
+
+    const isAccusedCategory =
+
+        categoryText ===
+            "ACCUSED" ||
+
+        categoryText ===
+            "ACCUSEDS" ||
+
+        categoryText ===
+            "ACCUSEDDETAIL" ||
+
+        categoryText ===
+            "ACCUSEDDETAILS";
+
+
+    const isWitnessCategory =
+
+        categoryText ===
+            "WITNESS" ||
+
+        categoryText ===
+            "WITNESSES" ||
+
+        categoryText ===
+            "WITNESSDETAIL" ||
+
+        categoryText ===
+            "WITNESSDETAILS";
+
+
+
+    /* =======================================================
+       ACCUSED STRICT PROFESSIONAL RENDERER
+
+       DISPLAY ONLY:
+
+           1. Sl No.
+           2. Accused Name
+           3. Age
+           4. Father Name
+           5. Address
+
+       NOTHING ELSE FROM THE ACCUSED OBJECT IS DISPLAYED.
+    ======================================================= */
+
+    function renderAccused(
+        accused,
+        index
+    ) {
+
+
+        if (
+
+            !accused ||
+
+            typeof accused !==
+                "object" ||
+
+            Array.isArray(
+                accused
+            )
+
+        ) {
+
+            return "";
+
+        }
+
+
+
+        /* ---------------------------------------------------
+           SL NO.
+
+           Prefer stored serial number.
+
+           If absent, use array position + 1.
+        --------------------------------------------------- */
+
+        const storedSlNo =
+            getFirstValue(
+
+                accused,
+
+                [
+                    "slNo",
+                    "sl_no",
+                    "sl no",
+                    "serialNo",
+                    "serial_no",
+                    "serial number",
+                    "serialNumber",
+                    "srNo",
+                    "sr_no",
+                    "sr no"
+                ]
+
+            );
+
+
+        const slNo =
+
+            hasValue(
+                storedSlNo
+            )
+
+                ? storedSlNo
+
+                : index + 1;
+
+
+
+        /* ---------------------------------------------------
+           ACCUSED NAME
+        --------------------------------------------------- */
+
+        const accusedName =
+            getFirstValue(
+
+                accused,
+
+                [
+                    "accusedName",
+                    "accused_name",
+                    "accused name",
+                    "name",
+                    "fullName",
+                    "full_name",
+                    "full name"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           AGE
+        --------------------------------------------------- */
+
+        const age =
+            getFirstValue(
+
+                accused,
+
+                [
+                    "age",
+                    "accusedAge",
+                    "accused_age",
+                    "accused age"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           FATHER NAME
+        --------------------------------------------------- */
+
+        const fatherName =
+            getFirstValue(
+
+                accused,
+
+                [
+                    "fatherName",
+                    "father_name",
+                    "father name",
+                    "fathersName",
+                    "fathers_name",
+                    "father's name",
+                    "father",
+                    "s/o",
+                    "sonOf",
+                    "son_of"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           ADDRESS
+        --------------------------------------------------- */
+
+        const address =
+            getFirstValue(
+
+                accused,
+
+                [
+                    "address",
+                    "accusedAddress",
+                    "accused_address",
+                    "accused address",
+                    "fullAddress",
+                    "full_address",
+                    "full address",
+                    "residentialAddress",
+                    "residential_address",
+                    "residential address"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           BUILD ONLY APPROVED FIELDS
+        --------------------------------------------------- */
+
+        let output =
+            "";
+
+
+        output +=
+            row(
+                "Sl No.",
+                slNo
+            );
+
+
+        output +=
+            row(
+                "Accused Name",
+                accusedName
+            );
+
+
+        output +=
+            row(
+                "Age",
+                age
+            );
+
+
+        output +=
+            row(
+                "Father Name",
+                fatherName
+            );
+
+
+        output +=
+            row(
+                "Address",
+                address
+            );
+
+
+        return output;
+
+
+    }
+
+
+
+    /* =======================================================
+       WITNESS STRICT PROFESSIONAL RENDERER
+
+       DISPLAY ONLY:
+
+           1. Sl No.
+           2. Witness Name
+           3. Age
+           4. Father Name
+           5. Address
+
+       NOTHING ELSE FROM THE WITNESS OBJECT IS DISPLAYED.
+    ======================================================= */
+
+    function renderWitness(
+        witness,
+        index
+    ) {
+
+
+        if (
+
+            !witness ||
+
+            typeof witness !==
+                "object" ||
+
+            Array.isArray(
+                witness
+            )
+
+        ) {
+
+            return "";
+
+        }
+
+
+
+        /* ---------------------------------------------------
+           SL NO.
+        --------------------------------------------------- */
+
+        const storedSlNo =
+            getFirstValue(
+
+                witness,
+
+                [
+                    "slNo",
+                    "sl_no",
+                    "sl no",
+                    "serialNo",
+                    "serial_no",
+                    "serial number",
+                    "serialNumber",
+                    "srNo",
+                    "sr_no",
+                    "sr no"
+                ]
+
+            );
+
+
+        const slNo =
+
+            hasValue(
+                storedSlNo
+            )
+
+                ? storedSlNo
+
+                : index + 1;
+
+
+
+        /* ---------------------------------------------------
+           WITNESS NAME
+        --------------------------------------------------- */
+
+        const witnessName =
+            getFirstValue(
+
+                witness,
+
+                [
+                    "witnessName",
+                    "witness_name",
+                    "witness name",
+                    "name",
+                    "fullName",
+                    "full_name",
+                    "full name"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           AGE
+        --------------------------------------------------- */
+
+        const age =
+            getFirstValue(
+
+                witness,
+
+                [
+                    "age",
+                    "witnessAge",
+                    "witness_age",
+                    "witness age"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           FATHER NAME
+        --------------------------------------------------- */
+
+        const fatherName =
+            getFirstValue(
+
+                witness,
+
+                [
+                    "fatherName",
+                    "father_name",
+                    "father name",
+                    "fathersName",
+                    "fathers_name",
+                    "father's name",
+                    "father",
+                    "s/o",
+                    "sonOf",
+                    "son_of"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           ADDRESS
+        --------------------------------------------------- */
+
+        const address =
+            getFirstValue(
+
+                witness,
+
+                [
+                    "address",
+                    "witnessAddress",
+                    "witness_address",
+                    "witness address",
+                    "fullAddress",
+                    "full_address",
+                    "full address",
+                    "residentialAddress",
+                    "residential_address",
+                    "residential address"
+                ]
+
+            );
+
+
+
+        /* ---------------------------------------------------
+           BUILD ONLY APPROVED FIELDS
+        --------------------------------------------------- */
+
+        let output =
+            "";
+
+
+        output +=
+            row(
+                "Sl No.",
+                slNo
+            );
+
+
+        output +=
+            row(
+                "Witness Name",
+                witnessName
+            );
+
+
+        output +=
+            row(
+                "Age",
+                age
+            );
+
+
+        output +=
+            row(
+                "Father Name",
+                fatherName
+            );
+
+
+        output +=
+            row(
+                "Address",
+                address
+            );
+
+
+        return output;
+
+
+    }
+
+
+
+    /* =======================================================
+       GENERIC INTERNAL / TECHNICAL FIELDS
+
+       Used for NON-ACCUSED and NON-WITNESS categories such as:
+
+           Seizure
+           Seized Articles
+
+       Accused/Witness DO NOT use this generic renderer.
+    ======================================================= */
+
+    const hiddenKeys =
+        new Set([
+
+            "id",
+
+            "caseId",
+
+            "porKey",
+
+            "documentId",
+
+            "importSource",
+
+            "importVersion",
+
+            "importedAt",
+
+            "createdAt",
+
+            "updatedAt",
+
+            "timestamp",
+
+            "gisResolved",
+
+            "rangeGISResolved",
+
+            "canonicalId",
+
+            "cleanName",
+
+            "searchTokens",
+
+            "relation",
+
+            "key"
+
+        ]);
+
+
+
+    function isHiddenKey(
+        key
+    ) {
+
+
+        const normalized =
+            normalizeKey(
+                key
+            );
+
+
+        for (
+            const hiddenKey
+            of hiddenKeys
+        ) {
+
+
+            if (
+                normalizeKey(
+                    hiddenKey
+                ) ===
+                normalized
+            ) {
+
+                return true;
+
+            }
+
+
+        }
+
+
+        return false;
+
+
+    }
+
+
+
+    /* =======================================================
+       GENERIC OBJECT RENDERER
+
+       IMPORTANT:
+
+       Used only for OTHER field categories.
+
+       ACCUSED and WITNESSES bypass this completely.
     ======================================================= */
 
     function renderObject(
@@ -12852,7 +13400,7 @@ function (
 
 
                     /* -------------------------------------------
-                       HIDE INTERNAL FIELDS
+                       INTERNAL FIELD
                     ------------------------------------------- */
 
                     if (
@@ -12868,7 +13416,7 @@ function (
 
 
                     /* -------------------------------------------
-                       HIDE EMPTY FIELDS
+                       EMPTY FIELD
                     ------------------------------------------- */
 
                     if (
@@ -12892,6 +13440,7 @@ function (
                             "object"
                     ) {
 
+
                         output +=
                             row(
 
@@ -12912,16 +13461,6 @@ function (
 
                     /* -------------------------------------------
                        SIMPLE ARRAY
-
-                       Example:
-
-                           sections:
-                               ["26", "33"]
-
-                       Display:
-
-                           Sections
-                           26, 33
                     ------------------------------------------- */
 
                     if (
@@ -12951,6 +13490,7 @@ function (
 
                     ) {
 
+
                         const text =
                             item
 
@@ -12969,6 +13509,7 @@ function (
                             )
                         ) {
 
+
                             output +=
                                 row(
 
@@ -12979,6 +13520,7 @@ function (
                                     text
 
                                 );
+
 
                         }
 
@@ -12991,11 +13533,6 @@ function (
 
                     /* -------------------------------------------
                        NESTED OBJECT
-
-                       Do not dump raw JSON.
-
-                       Render its meaningful simple fields as a
-                       nested professional subsection.
                     ------------------------------------------- */
 
                     if (
@@ -13011,6 +13548,7 @@ function (
 
                     ) {
 
+
                         const nested =
                             renderObject(
                                 item
@@ -13021,24 +13559,26 @@ function (
                             nested
                         ) {
 
+
                             output +=
                                 `
-                                <div class="gg-offence-field-nested">
+                                    <div class="gg-offence-field-nested">
 
-                                    <div class="gg-offence-field-nested-title">
+                                        <div class="gg-offence-field-nested-title">
 
-                                        ${escapeHTML(
-                                            humanize(
-                                                key
-                                            )
-                                        )}
+                                            ${escapeHTML(
+                                                humanize(
+                                                    key
+                                                )
+                                            )}
+
+                                        </div>
+
+                                        ${nested}
 
                                     </div>
-
-                                    ${nested}
-
-                                </div>
                                 `;
+
 
                         }
 
@@ -13051,9 +13591,6 @@ function (
 
                     /* -------------------------------------------
                        ARRAY OF OBJECTS
-
-                       Render meaningful nested records instead
-                       of exposing raw object data.
                     ------------------------------------------- */
 
                     if (
@@ -13062,11 +13599,11 @@ function (
                         )
                     ) {
 
+
                         const nestedObjects =
-                            item
-                                .filter(
-                                    hasValue
-                                );
+                            item.filter(
+                                hasValue
+                            );
 
 
                         nestedObjects.forEach(
@@ -13086,6 +13623,7 @@ function (
 
                                 ) {
 
+
                                     const nested =
                                         renderObject(
                                             nestedItem
@@ -13096,40 +13634,45 @@ function (
                                         nested
                                     ) {
 
+
                                         output +=
                                             `
-                                            <div class="gg-offence-field-nested">
+                                                <div class="gg-offence-field-nested">
 
-                                                <div class="gg-offence-field-nested-title">
+                                                    <div class="gg-offence-field-nested-title">
 
-                                                    ${escapeHTML(
-                                                        humanize(
-                                                            key
-                                                        )
-                                                    )}
+                                                        ${escapeHTML(
+                                                            humanize(
+                                                                key
+                                                            )
+                                                        )}
 
-                                                    ${
-                                                        nestedObjects.length > 1
+                                                        ${
+                                                            nestedObjects.length > 1
 
-                                                            ? ` ${nestedIndex + 1}`
+                                                                ? ` ${nestedIndex + 1}`
 
-                                                            : ""
-                                                    }
+                                                                : ""
+                                                        }
+
+                                                    </div>
+
+                                                    ${nested}
 
                                                 </div>
-
-                                                ${nested}
-
-                                            </div>
                                             `;
+
 
                                     }
 
+
                                 }
+
 
                             }
 
                         );
+
 
                     }
 
@@ -13156,27 +13699,192 @@ function (
 
 
     /* =======================================================
-       ARRAY
+       ACCUSED
 
-       Typical examples:
+       STRICT WHITELIST MODE.
 
-           accused = [
-               {...},
-               {...}
-           ]
+       This branch intentionally runs BEFORE the generic
+       array/object renderer.
 
-           witnesses = [
-               {...},
-               {...}
-           ]
-
-           seizedArticles = [
-               {...},
-               {...}
-           ]
+       Therefore no unwanted accused properties can leak into
+       the visible panel.
     ======================================================= */
 
     if (
+        isAccusedCategory
+    ) {
+
+
+        const accusedList =
+
+            Array.isArray(
+                value
+            )
+
+                ? value.filter(
+                    hasValue
+                )
+
+                : (
+
+                    value &&
+                    typeof value ===
+                        "object"
+
+                        ? [
+                            value
+                        ]
+
+                        : []
+
+                );
+
+
+        accusedList.forEach(
+
+            function (
+                accused,
+                index
+            ) {
+
+
+                const rendered =
+                    renderAccused(
+                        accused,
+                        index
+                    );
+
+
+                if (
+                    !rendered
+                ) {
+
+                    return;
+
+                }
+
+
+                body +=
+                    `
+                        <div class="gg-offence-field-group">
+
+                            <div class="gg-offence-field-group-title">
+
+                                ACCUSED ${index + 1}
+
+                            </div>
+
+                            ${rendered}
+
+                        </div>
+                    `;
+
+
+            }
+
+        );
+
+
+    }
+
+
+
+    /* =======================================================
+       WITNESSES
+
+       STRICT WHITELIST MODE.
+
+       Exactly the same professional structure as ACCUSED.
+    ======================================================= */
+
+    else if (
+        isWitnessCategory
+    ) {
+
+
+        const witnessList =
+
+            Array.isArray(
+                value
+            )
+
+                ? value.filter(
+                    hasValue
+                )
+
+                : (
+
+                    value &&
+                    typeof value ===
+                        "object"
+
+                        ? [
+                            value
+                        ]
+
+                        : []
+
+                );
+
+
+        witnessList.forEach(
+
+            function (
+                witness,
+                index
+            ) {
+
+
+                const rendered =
+                    renderWitness(
+                        witness,
+                        index
+                    );
+
+
+                if (
+                    !rendered
+                ) {
+
+                    return;
+
+                }
+
+
+                body +=
+                    `
+                        <div class="gg-offence-field-group">
+
+                            <div class="gg-offence-field-group-title">
+
+                                WITNESS ${index + 1}
+
+                            </div>
+
+                            ${rendered}
+
+                        </div>
+                    `;
+
+
+            }
+
+        );
+
+
+    }
+
+
+
+    /* =======================================================
+       OTHER ARRAY CATEGORIES
+
+       Example:
+
+           seizedArticles
+    ======================================================= */
+
+    else if (
         Array.isArray(
             value
         )
@@ -13197,10 +13905,6 @@ function (
             ) {
 
 
-                /* ----------------------------------------------
-                   OBJECT ENTRY
-                ---------------------------------------------- */
-
                 if (
 
                     item &&
@@ -13209,6 +13913,7 @@ function (
                         "object"
 
                 ) {
+
 
                     const rendered =
                         renderObject(
@@ -13220,33 +13925,35 @@ function (
                         rendered
                     ) {
 
+
                         body +=
                             `
-                            <div class="gg-offence-field-group">
+                                <div class="gg-offence-field-group">
 
-                                ${
-                                    meaningful.length > 1
+                                    ${
+                                        meaningful.length > 1
 
-                                        ? `
-                                          <div class="gg-offence-field-group-title">
+                                            ? `
+                                                <div class="gg-offence-field-group-title">
 
-                                              ${escapeHTML(
-                                                  title ||
-                                                  "DETAIL"
-                                              )}
+                                                    ${escapeHTML(
+                                                        title ||
+                                                        "DETAIL"
+                                                    )}
 
-                                              ${index + 1}
+                                                    ${index + 1}
 
-                                          </div>
-                                          `
+                                                </div>
+                                            `
 
-                                        : ""
-                                }
+                                            : ""
+                                    }
 
-                                ${rendered}
+                                    ${rendered}
 
-                            </div>
+                                </div>
                             `;
+
 
                     }
 
@@ -13257,26 +13964,24 @@ function (
 
 
 
-                /* ----------------------------------------------
-                   SIMPLE TEXT / NUMBER ENTRY
-                ---------------------------------------------- */
-
                 if (
                     hasValue(
                         item
                     )
                 ) {
 
+
                     body +=
                         `
-                        <div class="gg-offence-field-text">
+                            <div class="gg-offence-field-text">
 
-                            ${escapeHTML(
-                                item
-                            )}
+                                ${escapeHTML(
+                                    item
+                                )}
 
-                        </div>
+                            </div>
                         `;
+
 
                 }
 
@@ -13291,15 +13996,11 @@ function (
 
 
     /* =======================================================
-       OBJECT
+       OTHER OBJECT CATEGORIES
 
        Example:
 
-           seizure = {
-               seizureDate: ...,
-               seizurePlace: ...,
-               ...
-           }
+           seizure
     ======================================================= */
 
     else if (
@@ -13322,14 +14023,16 @@ function (
             rendered
         ) {
 
+
             body =
                 `
-                <div class="gg-offence-field-group">
+                    <div class="gg-offence-field-group">
 
-                    ${rendered}
+                        ${rendered}
 
-                </div>
+                    </div>
                 `;
+
 
         }
 
@@ -13339,7 +14042,7 @@ function (
 
 
     /* =======================================================
-       SIMPLE TEXT / NUMBER
+       SIMPLE VALUE
     ======================================================= */
 
     else if (
@@ -13351,13 +14054,13 @@ function (
 
         body =
             `
-            <div class="gg-offence-field-text">
+                <div class="gg-offence-field-text">
 
-                ${escapeHTML(
-                    value
-                )}
+                    ${escapeHTML(
+                        value
+                    )}
 
-            </div>
+                </div>
             `;
 
 
@@ -13367,76 +14070,47 @@ function (
 
     /* =======================================================
        EMPTY FALLBACK
-
-       Normally this should not occur because Case Details
-       only creates an expandable button when data exists.
-
-       Kept as a safe fallback.
     ======================================================= */
 
     if (
         !body.trim()
     ) {
 
+
         body =
             `
-            <div class="gg-offence-empty">
+                <div class="gg-offence-empty">
 
-                No details available.
+                    No details available.
 
-            </div>
+                </div>
             `;
+
 
     }
 
 
 
     /* =======================================================
-       RENDER PROFESSIONAL FIELD DETAILS
-
-       The outer panel already contains:
-
-           FIELD DETAILS
-           Back to Case Details
-
-       Therefore this container displays:
-
-           selected category
-               ↓
-           structured information cards
-
-       Example:
-
-           ACCUSED
-
-           ┌───────────────────────────┐
-             NAME
-             John Doe
-             -------------------------
-             FATHER NAME
-             ...
-             -------------------------
-             ADDRESS
-             ...
-           └───────────────────────────┘
+       RENDER FIELD DETAILS
     ======================================================= */
 
     container.innerHTML =
         `
-        <div class="gg-offence-field-selected-title">
+            <div class="gg-offence-field-selected-title">
 
-            ${escapeHTML(
-                title ||
-                "DETAILS"
-            )}
+                ${escapeHTML(
+                    title ||
+                    "DETAILS"
+                )}
 
-        </div>
+            </div>
 
-        <div class="gg-offence-field-details-content">
+            <div class="gg-offence-field-details-content">
 
-            ${body}
+                ${body}
 
-        </div>
+            </div>
         `;
 
 
@@ -13445,8 +14119,6 @@ function (
        STORE CURRENT FIELD
 
        Parent / children / cases / current case remain intact.
-
-       This stores only the current final drill-down field.
     ======================================================= */
 
     UIController.currentField = {
@@ -13478,10 +14150,12 @@ function (
         section
     ) {
 
+
         section
             .style
             .display =
                 "";
+
 
     }
 
@@ -13490,32 +14164,13 @@ function (
     /* =======================================================
        STABLE INTERNAL PANEL SCROLL
 
-       CRITICAL DESIGN RULE:
-
-           NEVER use:
-
-               scrollIntoView()
-
-           NEVER scroll:
-
-               window
-               document
-               map container
-               complete offence panel
-
        ONLY:
 
            .gg-offence-panel-body
 
-       is allowed to scroll.
+       is allowed to move.
 
-       This keeps:
-
-           panel position stable
-           map stable
-           panel width stable
-           header stable
-           status stable
+       Never use scrollIntoView().
     ======================================================= */
 
     const panelBody =
@@ -13540,13 +14195,6 @@ function (
     ) {
 
 
-        /* ---------------------------------------------------
-           READ CURRENT GEOMETRY
-
-           Determine where FIELD DETAILS currently sits
-           relative to the internal scroll container.
-        --------------------------------------------------- */
-
         const bodyRect =
             panelBody
                 .getBoundingClientRect();
@@ -13557,27 +14205,9 @@ function (
                 .getBoundingClientRect();
 
 
-
-        /* ---------------------------------------------------
-           SMALL TOP SPACE
-
-           Keeps the FIELD DETAILS heading from touching the
-           upper boundary of the scrolling viewport.
-        --------------------------------------------------- */
-
         const topOffset =
             8;
 
-
-
-        /* ---------------------------------------------------
-           CALCULATE INTERNAL TARGET POSITION
-
-           Existing scrollTop is preserved as the reference.
-
-           Only the amount necessary to bring this section
-           near the top of the panel body is added.
-        --------------------------------------------------- */
 
         const targetScrollTop =
 
@@ -13591,11 +14221,6 @@ function (
             topOffset;
 
 
-
-        /* ---------------------------------------------------
-           CALCULATE MAXIMUM VALID SCROLL POSITION
-        --------------------------------------------------- */
-
         const maxScrollTop =
 
             Math.max(
@@ -13607,18 +14232,6 @@ function (
 
             );
 
-
-
-        /* ---------------------------------------------------
-           CLAMP TARGET
-
-           Prevent:
-
-               negative scrolling
-               overscroll
-               panel bounce
-               invalid scroll position
-        --------------------------------------------------- */
 
         const safeScrollTop =
 
@@ -13636,28 +14249,6 @@ function (
 
             );
 
-
-
-        /* ---------------------------------------------------
-           INTERNAL SCROLL ONLY
-
-           NO smooth animation.
-
-           Immediate positioning is deliberate because:
-
-               ACCUSED
-                   ↓
-               WITNESSES
-                   ↓
-               SEIZURE
-                   ↓
-               CASE DETAILS
-
-           can be switched repeatedly.
-
-           Smooth scrolling during those transitions makes
-           an analytical panel appear unstable.
-        --------------------------------------------------- */
 
         panelBody.scrollTop =
             safeScrollTop;
@@ -13678,27 +14269,31 @@ function (
         {
 
             title:
-
                 title ||
                 "DETAILS",
 
             key:
-
                 context.key ||
                 null,
 
-            type:
+            category:
 
-                Array.isArray(
-                    value
-                )
+                isAccusedCategory
 
-                    ? "ARRAY"
+                    ? "ACCUSED"
 
-                    : typeof value,
+                    : isWitnessCategory
+
+                        ? "WITNESSES"
+
+                        : "GENERAL",
+
+            strictPersonFields:
+
+                isAccusedCategory ||
+                isWitnessCategory,
 
             panelScrollStable:
-
                 Boolean(
                     panelBody
                 )
@@ -13773,12 +14368,6 @@ function (
 
     /* =======================================================
        REFRESH DOM REFERENCES
-
-       Safe if panel was recreated.
-
-       IMPORTANT:
-       This does NOT recreate the panel.
-       It only refreshes element references.
     ======================================================= */
 
     if (
@@ -13822,16 +14411,11 @@ function (
     /* =======================================================
        PRESERVE CURRENT DRILL-DOWN STATE
 
-       Parent:
-           remains unchanged
+       Parent      → preserved
+       Children    → preserved
+       Case list   → preserved
 
-       Children:
-           remain unchanged
-
-       Cases:
-           remain unchanged
-
-       Only currentCase changes.
+       Only selected case changes.
     ======================================================= */
 
     UIController.currentCase =
@@ -13845,16 +14429,6 @@ function (
 
     /* =======================================================
        RESOLVE PRIMARY CASE RECORD
-
-       Spatial case wrapper may contain:
-
-           caseData.case
-
-       or:
-
-           caseData.cases[0]
-
-       or caseData itself may already be the record.
     ======================================================= */
 
     let record =
@@ -13865,8 +14439,7 @@ function (
 
         caseData.case &&
 
-        typeof
-        caseData.case ===
+        typeof caseData.case ===
             "object" &&
 
         !Array.isArray(
@@ -13890,8 +14463,7 @@ function (
 
         caseData.cases[0] &&
 
-        typeof
-        caseData.cases[0] ===
+        typeof caseData.cases[0] ===
             "object"
 
     ) {
@@ -13906,23 +14478,13 @@ function (
     /* =======================================================
        HAS MEANINGFUL VALUE
 
-       PROFESSIONAL DISPLAY RULE:
+       IMPORTANT:
 
-           No value
-               ↓
-           No label
-               ↓
-           No empty row
+       If no meaningful value exists:
 
-       Therefore we never display:
-
-           Court
-           —
-
-       or:
-
-           Witnesses
-           N/A
+           NO BOX
+           NO LABEL
+           NO EMPTY PLACEHOLDER
     ======================================================= */
 
     function hasValue(
@@ -13946,8 +14508,7 @@ function (
         ) {
 
             const text =
-                value
-                    .trim();
+                value.trim();
 
 
             if (
@@ -13960,8 +14521,7 @@ function (
 
 
             const normalized =
-                text
-                    .toLowerCase();
+                text.toLowerCase();
 
 
             if (
@@ -14046,9 +14606,6 @@ function (
 
     /* =======================================================
        FIRST AVAILABLE VALUE
-
-       Allows compatibility with slightly different field
-       names without changing the underlying database.
     ======================================================= */
 
     function firstValue(
@@ -14126,9 +14683,7 @@ function (
     /* =======================================================
        FORMAT SIMPLE VALUE
 
-       CASE DETAILS should NEVER dump raw JSON.
-
-       Object / array drill-down belongs in FIELD DETAILS.
+       Never dump raw JSON into Case Details.
     ======================================================= */
 
     function formatValue(
@@ -14147,6 +14702,7 @@ function (
         }
 
 
+
         /* ---------------------------------------------------
            ARRAY
         --------------------------------------------------- */
@@ -14156,6 +14712,7 @@ function (
                 value
             )
         ) {
+
 
             const values =
                 value
@@ -14231,8 +14788,9 @@ function (
 
         if (
             typeof value ===
-            "object"
+                "object"
         ) {
+
 
             return firstValue(
 
@@ -14248,6 +14806,7 @@ function (
 
             );
 
+
         }
 
 
@@ -14258,8 +14817,7 @@ function (
 
         return String(
             value
-        )
-            .trim();
+        ).trim();
 
 
     }
@@ -14268,12 +14826,6 @@ function (
 
     /* =======================================================
        DATE FORMATTER
-
-       Valid JS-compatible dates:
-           → 27 May 2006
-
-       Unknown/custom date format:
-           → preserve original value
     ======================================================= */
 
     function formatDate(
@@ -14292,8 +14844,9 @@ function (
         }
 
 
+
         /* ---------------------------------------------------
-           FIRESTORE-LIKE TIMESTAMP
+           FIRESTORE TIMESTAMP
         --------------------------------------------------- */
 
         if (
@@ -14308,16 +14861,17 @@ function (
 
             if (
                 typeof value.toDate ===
-                "function"
+                    "function"
             ) {
 
                 try {
 
-                    const timestampDate =
+
+                    const date =
                         value.toDate();
 
 
-                    return timestampDate
+                    return date
                         .toLocaleDateString(
 
                             "en-IN",
@@ -14337,17 +14891,19 @@ function (
 
                         );
 
+
                 }
 
                 catch (
                     error
                 ) {
 
-                    // Continue to other strategies.
+                    // Continue.
 
                 }
 
             }
+
 
 
             if (
@@ -14357,7 +14913,8 @@ function (
 
                 try {
 
-                    const timestampDate =
+
+                    const date =
                         new Date(
 
                             value.seconds *
@@ -14366,7 +14923,7 @@ function (
                         );
 
 
-                    return timestampDate
+                    return date
                         .toLocaleDateString(
 
                             "en-IN",
@@ -14386,17 +14943,19 @@ function (
 
                         );
 
+
                 }
 
                 catch (
                     error
                 ) {
 
-                    // Preserve original if conversion fails.
+                    // Continue.
 
                 }
 
             }
+
 
         }
 
@@ -14426,6 +14985,7 @@ function (
                 )
             ) {
 
+
                 return date
                     .toLocaleDateString(
 
@@ -14446,6 +15006,7 @@ function (
 
                     );
 
+
             }
 
 
@@ -14460,7 +15021,6 @@ function (
         }
 
 
-
         return formatValue(
             value
         );
@@ -14471,22 +15031,23 @@ function (
 
 
     /* =======================================================
-       PROFESSIONAL INFORMATION ROW
+       CREATE PROFESSIONAL CASE ITEM BOX
 
-       Every field is its OWN visual information block:
+       NEW DESIGN:
 
-           POR NO.
-           12/NMT of 2006-07
-           ----------------
+       EACH CASE FIELD GETS ITS OWN BOX.
 
-           OFFENCE DATE
-           27 May 2006
-           ----------------
+       Example:
 
-       Empty values are completely omitted.
+       ┌─────────────────────────────┐
+       │ OFFENCE DATE                │
+       │ 17 Jul 2024                 │
+       └─────────────────────────────┘
+
+       Missing value = complete box omitted.
     ======================================================= */
 
-    function createRow(
+    function createCaseItem(
         label,
         value,
         options = {}
@@ -14510,22 +15071,26 @@ function (
 
         if (
             options.date ===
-            true
+                true
         ) {
+
 
             formatted =
                 formatDate(
                     value
                 );
 
+
         }
 
         else {
+
 
             formatted =
                 formatValue(
                     value
                 );
+
 
         }
 
@@ -14542,9 +15107,9 @@ function (
 
 
         return `
-            <div class="gg-offence-case-info-row">
+            <div class="gg-offence-case-item-box">
 
-                <div class="gg-offence-case-info-label">
+                <div class="gg-offence-case-item-label">
 
                     ${escapeHTML(
                         label
@@ -14552,7 +15117,7 @@ function (
 
                 </div>
 
-                <div class="gg-offence-case-info-value">
+                <div class="gg-offence-case-item-value">
 
                     ${escapeHTML(
                         formatted
@@ -14682,18 +15247,6 @@ function (
 
     /* =======================================================
        BUILD ACT / SECTION
-
-       Examples:
-
-           IFA-1927 · Section 26
-
-       or if only Act exists:
-
-           IFA-1927
-
-       or if only Section exists:
-
-           Section 26
     ======================================================= */
 
     let actSection =
@@ -14712,6 +15265,7 @@ function (
 
     ) {
 
+
         const formattedSection =
             formatValue(
                 sectionValue
@@ -14723,6 +15277,7 @@ function (
             `${formatValue(act)} · ` +
 
             (
+
                 /^section\b/i.test(
                     formattedSection
                 )
@@ -14730,7 +15285,9 @@ function (
                     ? formattedSection
 
                     : `Section ${formattedSection}`
+
             );
+
 
     }
 
@@ -14740,10 +15297,12 @@ function (
         )
     ) {
 
+
         actSection =
             formatValue(
                 act
             );
+
 
     }
 
@@ -14752,6 +15311,7 @@ function (
             sectionValue
         )
     ) {
+
 
         const formattedSection =
             formatValue(
@@ -14768,6 +15328,7 @@ function (
                 ? formattedSection
 
                 : `Section ${formattedSection}`;
+
 
     }
 
@@ -14913,12 +15474,6 @@ function (
 
     /* =======================================================
        ACCUSED
-
-       Preserve original structured data.
-
-       It is NOT flattened into CASE DETAILS.
-
-       Clicking ACCUSED opens FIELD DETAILS.
     ======================================================= */
 
     const accused =
@@ -14941,9 +15496,6 @@ function (
 
     /* =======================================================
        WITNESSES
-
-       Supports both structured witness collections and
-       simple witness-for-next-hearing fields.
     ======================================================= */
 
     const witnesses =
@@ -15031,13 +15583,9 @@ function (
 
 
     /* =======================================================
-       BUILD PROFESSIONAL CASE SUMMARY
+       BUILD CASE ITEM BOXES
 
-       IMPORTANT:
-
-       Each available field gets its own separated row.
-
-       Missing fields are completely omitted.
+       EVERY FIELD IS A COMPLETELY SEPARATE CARD.
     ======================================================= */
 
     let summaryHTML =
@@ -15045,7 +15593,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "POR No.",
 
@@ -15055,7 +15603,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Offence Date",
 
@@ -15070,7 +15618,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Nature of Offence",
 
@@ -15080,7 +15628,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Act / Section",
 
@@ -15090,7 +15638,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Case Status",
 
@@ -15100,7 +15648,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Court",
 
@@ -15110,7 +15658,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "CR No.",
 
@@ -15120,7 +15668,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Next Hearing",
 
@@ -15135,7 +15683,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Purpose of Hearing",
 
@@ -15145,7 +15693,7 @@ function (
 
 
     summaryHTML +=
-        createRow(
+        createCaseItem(
 
             "Enquiry Officer",
 
@@ -15156,19 +15704,9 @@ function (
 
 
     /* =======================================================
-       BUILD EXPANDABLE PROFESSIONAL SECTIONS
+       BUILD EXPANDABLE DETAIL ITEMS
 
-       ONLY SHOW WHEN DATA EXISTS.
-
-       Possible sections:
-
-           ACCUSED
-           WITNESSES
-           SEIZURE DETAILS
-           SEIZED ARTICLES
-
-       No data:
-           section does not exist in DOM.
+       Only available categories are shown.
     ======================================================= */
 
     const expandable =
@@ -15180,6 +15718,7 @@ function (
             accused
         )
     ) {
+
 
         expandable.push({
 
@@ -15194,6 +15733,7 @@ function (
 
         });
 
+
     }
 
 
@@ -15202,6 +15742,7 @@ function (
             witnesses
         )
     ) {
+
 
         expandable.push({
 
@@ -15216,6 +15757,7 @@ function (
 
         });
 
+
     }
 
 
@@ -15224,6 +15766,7 @@ function (
             seizure
         )
     ) {
+
 
         expandable.push({
 
@@ -15238,6 +15781,7 @@ function (
 
         });
 
+
     }
 
 
@@ -15246,6 +15790,7 @@ function (
             seizedArticles
         )
     ) {
+
 
         expandable.push({
 
@@ -15259,6 +15804,7 @@ function (
                 seizedArticles
 
         });
+
 
     }
 
@@ -15274,37 +15820,40 @@ function (
 
 
     /* -------------------------------------------------------
-       CASE SUMMARY CARD
+       CASE INFORMATION CARDS
     ------------------------------------------------------- */
 
     if (
         summaryHTML.trim()
     ) {
 
+
         html +=
             `
-            <div class="gg-offence-case-summary">
+                <div class="gg-offence-case-items">
 
-                ${summaryHTML}
+                    ${summaryHTML}
 
-            </div>
+                </div>
             `;
+
 
     }
 
 
 
     /* -------------------------------------------------------
-       DETAIL DRILL-DOWN ACTIONS
+       DETAIL DRILL-DOWN CARDS
     ------------------------------------------------------- */
 
     if (
         expandable.length
     ) {
 
+
         html +=
             `
-            <div class="gg-offence-detail-actions">
+                <div class="gg-offence-detail-actions">
             `;
 
 
@@ -15317,35 +15866,38 @@ function (
 
                 html +=
                     `
-                    <button
+                        <button
 
-                        type="button"
+                            type="button"
 
-                        class="gg-offence-detail-action"
+                            class="
+                                gg-offence-detail-action
+                                gg-offence-detail-action-box
+                            "
 
-                        data-offence-field="${escapeHTML(
-                            item.key
-                        )}">
+                            data-offence-field="${escapeHTML(
+                                item.key
+                            )}">
 
-                        <span
-                            class="gg-offence-detail-action-label">
+                            <span
+                                class="gg-offence-detail-action-label">
 
-                            ${escapeHTML(
-                                item.label
-                            )}
+                                ${escapeHTML(
+                                    item.label
+                                )}
 
-                        </span>
+                            </span>
 
-                        <span
-                            class="gg-offence-detail-action-arrow"
+                            <span
+                                class="gg-offence-detail-action-arrow"
 
-                            aria-hidden="true">
+                                aria-hidden="true">
 
-                            ›
+                                ›
 
-                        </span>
+                            </span>
 
-                    </button>
+                        </button>
                     `;
 
 
@@ -15356,8 +15908,9 @@ function (
 
         html +=
             `
-            </div>
+                </div>
             `;
+
 
     }
 
@@ -15371,14 +15924,16 @@ function (
         !html.trim()
     ) {
 
+
         html =
             `
-            <div class="gg-offence-empty">
+                <div class="gg-offence-empty">
 
-                No case details available.
+                    No case details available.
 
-            </div>
+                </div>
             `;
+
 
     }
 
@@ -15401,41 +15956,39 @@ function (
         section
     ) {
 
+
         section
             .style
             .display =
                 "";
+
 
     }
 
 
 
     /* =======================================================
-       RESET FIELD DETAILS
+       RESET PREVIOUS FIELD DETAILS
 
-       A new CASE was selected.
+       New case selected:
 
-       Therefore any previously opened:
+           previous ACCUSED / WITNESSES / etc.
+           must disappear.
 
-           ACCUSED
-           WITNESSES
-           SEIZURE DETAILS
-           SEIZED ARTICLES
-
-       must be closed.
-
-       Parent / child / case collection remain untouched.
+       Parent / child / case list remain untouched.
     ======================================================= */
 
     if (
         elements.fieldDetailsSection
     ) {
 
+
         elements
             .fieldDetailsSection
             .style
             .display =
                 "none";
+
 
     }
 
@@ -15444,17 +15997,19 @@ function (
         elements.fieldDetails
     ) {
 
+
         elements
             .fieldDetails
             .innerHTML =
                 "";
+
 
     }
 
 
 
     /* =======================================================
-       BIND DETAIL DRILL-DOWN BUTTONS
+       BIND DETAIL DRILL-DOWN CARDS
     ======================================================= */
 
     container
@@ -15535,18 +16090,14 @@ function (
 
                         /* ---------------------------------------
                            OPEN FIELD DETAILS
-
-                           No GIS action.
-                           No parent reset.
-                           No child reset.
-                           No case reset.
                         --------------------------------------- */
 
                         if (
                             typeof
                             UIController.showFieldDetails ===
-                            "function"
+                                "function"
                         ) {
+
 
                             UIController.showFieldDetails(
 
@@ -15569,15 +16120,18 @@ function (
 
                             );
 
+
                         }
 
                         else {
+
 
                             console.error(
 
                                 "❌ UIController.showFieldDetails() unavailable"
 
                             );
+
 
                         }
 
@@ -15594,20 +16148,22 @@ function (
     /* =======================================================
        STABLE INTERNAL PANEL SCROLL
 
-       CRITICAL:
+       IMPORTANT:
 
-       DO NOT USE:
+       ONLY:
 
-           section.scrollIntoView()
+           .gg-offence-panel-body
 
-       or:
+       moves.
 
-           container.scrollIntoView()
+       NEVER:
 
-       because scrollIntoView() can scroll the browser/map
-       underneath the fixed offence panel.
+           window
+           document
+           map
+           whole panel
 
-       ONLY .gg-offence-panel-body may scroll.
+       NEVER use scrollIntoView().
     ======================================================= */
 
     const panelBody =
@@ -15632,14 +16188,6 @@ function (
     ) {
 
 
-        /* ---------------------------------------------------
-           Calculate location RELATIVE TO scroll container.
-
-           offsetTop alone is unsafe if nested wrappers exist.
-
-           Bounding rectangles give the actual visual offset.
-        --------------------------------------------------- */
-
         const bodyRect =
             panelBody
                 .getBoundingClientRect();
@@ -15649,17 +16197,6 @@ function (
             section
                 .getBoundingClientRect();
 
-
-
-        /* ---------------------------------------------------
-           DESIRED POSITION
-
-           Keep a small visual breathing space above CASE
-           DETAILS.
-
-           No smooth behavior is used because repeated case
-           switching should feel immediate and stable.
-        --------------------------------------------------- */
 
         const offset =
             8;
@@ -15676,13 +16213,6 @@ function (
 
             offset;
 
-
-
-        /* ---------------------------------------------------
-           Clamp scroll position.
-
-           Prevent negative / invalid scroll positions.
-        --------------------------------------------------- */
 
         const maxScrollTop =
 
@@ -15713,13 +16243,6 @@ function (
             );
 
 
-
-        /* ---------------------------------------------------
-           INTERNAL SCROLL ONLY
-
-           Immediate movement = stable panel.
-        --------------------------------------------------- */
-
         panelBody.scrollTop =
             safeScrollTop;
 
@@ -15734,21 +16257,25 @@ function (
 
     console.log(
 
-        "📋 Professional CASE DETAILS rendered",
+        "📋 Professional CASE DETAILS cards rendered",
 
         {
 
             porNo:
-                porNo || null,
+                porNo ||
+                null,
 
             offenceDate:
-                offenceDate || null,
+                offenceDate ||
+                null,
 
             natureOfOffence:
-                natureOfOffence || null,
+                natureOfOffence ||
+                null,
 
             caseStatus:
-                caseStatus || null,
+                caseStatus ||
+                null,
 
             expandableSections:
 
@@ -15762,6 +16289,14 @@ function (
 
                     }
 
+                ),
+
+            separateCaseItemBoxes:
+                true,
+
+            panelScrollStable:
+                Boolean(
+                    panelBody
                 )
 
         }
