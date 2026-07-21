@@ -2969,6 +2969,46 @@ Renderer.clearDrillDown =
    This preserves the stable five-layer architecture.
 ============================================================ */
 
+/* ============================================================
+   🧹 CLEAR COMPLETE SPATIAL RENDERER STATE
+
+   PURPOSE
+   ------------------------------------------------------------
+
+   Clears all offence spatial rendering and runtime selection
+   state.
+
+   This resets:
+
+   - Parent Source polygons
+   - Parent Target polygons
+   - Related Source polygons
+   - Related Target polygons
+   - Selection overlay
+   - Selected Source
+   - Selected Target
+   - Current Source data
+   - Current Target data
+   - Current Case data
+   - Current Case relationship context
+   - Active Renderer mode
+
+
+   IMPORTANT
+   ------------------------------------------------------------
+
+   This does NOT:
+
+   - Destroy the Renderer object
+   - Destroy Leaflet panes
+   - Destroy persistent layer groups
+   - Clear GIS feature indexes
+   - Clear Offence Store
+   - Clear SpatialEngine
+
+   It only resets the current spatial visualization state.
+============================================================ */
+
 Renderer.clear =
   function () {
 
@@ -3009,7 +3049,7 @@ Renderer.clear =
 
 
     /* ========================================================
-       RESET CURRENT DATA
+       RESET CURRENT SPATIAL DATA
     ======================================================== */
 
     Renderer.currentSources =
@@ -3020,12 +3060,64 @@ Renderer.clear =
       [];
 
 
+    /* ========================================================
+       RESET CURRENT CASE DATA
+
+       currentCases contains the cases resolved for the latest:
+
+       Source
+          ↓
+       Target
+
+       or:
+
+       Target
+          ↓
+       Source
+
+       relationship.
+    ======================================================== */
+
     Renderer.currentCases =
       [];
 
 
     /* ========================================================
+       RESET CURRENT CASE CONTEXT
+
+       This context is created by:
+
+       Renderer.showCases()
+
+       and can contain:
+
+       - mode
+       - relationship
+       - source
+       - target
+       - sourceId
+       - targetKey
+       - sourceName
+       - targetName
+       - caseCount
+    ======================================================== */
+
+    Renderer.currentCaseContext =
+      null;
+
+
+    /* ========================================================
        RESET MODE
+
+       After a complete clear there is no active spatial mode.
+
+       renderAllSources() will later set:
+
+       Renderer.mode = "SOURCE"
+
+       renderAllTargets() will later set:
+
+       Renderer.mode = "TARGET"
     ======================================================== */
 
     Renderer.mode =
@@ -6733,6 +6825,550 @@ Renderer.showCases =
 
   };
 
+/* ============================================================
+   ⚖️ SHOW SPATIAL CASES
+
+   PURPOSE
+   ------------------------------------------------------------
+
+   Final bridge between:
+
+   SpatialRenderer
+        ↓
+   Source ↔ Target relationship
+        ↓
+   Resolved matching cases
+        ↓
+   GG.Offence.UI.showSpatialCases()
+        ↓
+   Case Results Panel
+        ↓
+   Full POR-authoritative Case Cascade
+
+
+   RESPONSIBILITY
+   ------------------------------------------------------------
+
+   SpatialRenderer does NOT render:
+
+   - Case detail cards
+   - Accused details
+   - Witness details
+   - Seizure details
+   - Seized article details
+
+   It only passes the resolved cases and spatial relationship
+   context to the Offence UI layer.
+============================================================ */
+
+Renderer.showCases =
+  function (
+    cases,
+    context = {}
+  ) {
+
+    /* ========================================================
+       NORMALIZE CASE ARRAY
+    ======================================================== */
+
+    const resolvedCases =
+
+      Array.isArray(
+        cases
+      )
+
+        ?
+
+        cases.filter(
+          Boolean
+        )
+
+        :
+
+        [];
+
+
+    /* ========================================================
+       BUILD CANONICAL SPATIAL CONTEXT
+
+       This allows both directions to use the same Case UI:
+
+       SOURCE
+          ↓
+       TARGET
+          ↓
+       CASES
+
+       and
+
+       TARGET
+          ↓
+       SOURCE
+          ↓
+       CASES
+    ======================================================== */
+
+    const resolvedContext = {
+
+      /* ------------------------------------------------------
+         ACTIVE RENDERER MODE
+      ------------------------------------------------------ */
+
+      mode:
+
+        context.mode
+
+        ||
+
+        Renderer.mode
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         COMPLETE SOURCE OBJECT
+      ------------------------------------------------------ */
+
+      source:
+
+        context.source
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         COMPLETE TARGET OBJECT
+      ------------------------------------------------------ */
+
+      target:
+
+        context.target
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         SOURCE CANONICAL ID
+      ------------------------------------------------------ */
+
+      sourceId:
+
+        context.sourceId
+
+        ||
+
+        context.source
+          ?.canonicalId
+
+        ||
+
+        context.source
+          ?.id
+
+        ||
+
+        Renderer.selectedSourceId
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         TARGET CANONICAL KEY
+      ------------------------------------------------------ */
+
+      targetKey:
+
+        context.targetKey
+
+        ||
+
+        context.target
+          ?.key
+
+        ||
+
+        context.target
+          ?.id
+
+        ||
+
+        Renderer.selectedTargetKey
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         SOURCE DISPLAY NAME
+      ------------------------------------------------------ */
+
+      sourceName:
+
+        context.sourceName
+
+        ||
+
+        context.source
+          ?.name
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         TARGET DISPLAY NAME
+      ------------------------------------------------------ */
+
+      targetName:
+
+        context.targetName
+
+        ||
+
+        context.target
+          ?.name
+
+        ||
+
+        null,
+
+
+      /* ------------------------------------------------------
+         RELATIONSHIP DIRECTION
+
+         Examples:
+
+         SOURCE_TO_TARGET
+         TARGET_TO_SOURCE
+      ------------------------------------------------------ */
+
+      relationship:
+
+        context.relationship
+
+        ||
+
+        context.direction
+
+        ||
+
+        "SOURCE_TARGET",
+
+
+      /* ------------------------------------------------------
+         TOTAL MATCHING CASES
+      ------------------------------------------------------ */
+
+      caseCount:
+
+        resolvedCases.length
+
+    };
+
+
+    /* ========================================================
+       STORE CURRENT CASE STATE
+
+       Keeps the latest selected spatial relationship available
+       to the Renderer and future UI navigation.
+    ======================================================== */
+
+    Renderer.currentCases =
+      resolvedCases;
+
+
+    Renderer.currentCaseContext =
+      resolvedContext;
+
+
+    /* ========================================================
+       DEBUG
+    ======================================================== */
+
+    console.log(
+
+      "⚖️ Offence spatial cases resolved",
+
+      {
+
+        mode:
+
+          resolvedContext.mode,
+
+
+        relationship:
+
+          resolvedContext.relationship,
+
+
+        source:
+
+          resolvedContext.sourceName
+
+          ||
+
+          resolvedContext.sourceId,
+
+
+        target:
+
+          resolvedContext.targetName
+
+          ||
+
+          resolvedContext.targetKey,
+
+
+        caseCount:
+
+          resolvedCases.length
+
+      }
+
+    );
+
+
+    /* ========================================================
+       GET OFFENCE UI
+
+       Expected canonical API:
+
+       GG.Offence.UI.showSpatialCases(
+         cases,
+         context
+       )
+    ======================================================== */
+
+    const OffenceUI =
+
+      window.GG
+        ?.Offence
+        ?.UI
+
+      ||
+
+      null;
+
+
+    /* ========================================================
+       CALL NEW OFFENCE CASE UI
+    ======================================================== */
+
+    if (
+
+      OffenceUI
+
+      &&
+
+      typeof OffenceUI
+        .showSpatialCases ===
+        "function"
+
+    ) {
+
+      try {
+
+        return OffenceUI
+          .showSpatialCases(
+
+            resolvedCases,
+
+            resolvedContext
+
+          );
+
+      }
+
+      catch (
+        error
+      ) {
+
+        console.error(
+
+          "❌ OffenceSpatialRenderer.showCases: " +
+          "GG.Offence.UI.showSpatialCases() failed",
+
+          error
+
+        );
+
+
+        return {
+
+          success:
+            false,
+
+          reason:
+            "SPATIAL_CASE_UI_ERROR",
+
+          error:
+            error,
+
+          cases:
+            resolvedCases,
+
+          context:
+            resolvedContext
+
+        };
+
+      }
+
+    }
+
+
+    /* ========================================================
+       OPTIONAL GLOBAL FALLBACK
+
+       Useful during development before the final Offence UI
+       case panel is installed.
+
+       If this function exists:
+
+       window.showOffenceSpatialCases()
+
+       it will receive the same canonical arguments.
+    ======================================================== */
+
+    if (
+
+      typeof window
+        .showOffenceSpatialCases ===
+        "function"
+
+    ) {
+
+      try {
+
+        return window
+          .showOffenceSpatialCases(
+
+            resolvedCases,
+
+            resolvedContext
+
+          );
+
+      }
+
+      catch (
+        error
+      ) {
+
+        console.error(
+
+          "❌ Global showOffenceSpatialCases() failed",
+
+          error
+
+        );
+
+
+        return {
+
+          success:
+            false,
+
+          reason:
+            "GLOBAL_SPATIAL_CASE_UI_ERROR",
+
+          error:
+            error,
+
+          cases:
+            resolvedCases,
+
+          context:
+            resolvedContext
+
+        };
+
+      }
+
+    }
+
+
+    /* ========================================================
+       UI NOT YET AVAILABLE
+
+       This is expected until:
+
+       GG.Offence.UI.showSpatialCases()
+
+       is added.
+
+       The resolved case data is still preserved in:
+
+       Renderer.currentCases
+       Renderer.currentCaseContext
+    ======================================================== */
+
+    console.warn(
+
+      "⚠ Spatial cases resolved but Case Results UI is not installed",
+
+      {
+
+        expectedFunction:
+
+          "GG.Offence.UI.showSpatialCases",
+
+
+        caseCount:
+
+          resolvedCases.length,
+
+
+        context:
+
+          resolvedContext
+
+      }
+
+    );
+
+
+    /* ========================================================
+       RETURN RESULT
+
+       This allows console testing even before the Case Results
+       Panel is implemented.
+    ======================================================== */
+
+    return {
+
+      success:
+        true,
+
+      rendered:
+        false,
+
+      reason:
+        "SPATIAL_CASE_UI_NOT_INSTALLED",
+
+      caseCount:
+        resolvedCases.length,
+
+      cases:
+        resolvedCases,
+
+      context:
+        resolvedContext
+
+    };
+
+  };
+
 
 /* ============================================================
    📊 GET RENDERER STATS
@@ -6751,14 +7387,46 @@ Renderer.showCases =
    - Current cases
 ============================================================ */
 
+/* ============================================================
+   📊 GET RENDERER STATS
+
+   PURPOSE
+   ------------------------------------------------------------
+
+   Provides complete runtime diagnostics for:
+
+   - Renderer state
+   - Current mode
+   - Five-layer architecture
+   - Parent polygons
+   - Related polygons
+   - Current Source / Target data
+   - Current Case data
+   - Current Case relationship context
+   - Current spatial selection
+   - Leaflet layer state
+============================================================ */
+
 Renderer.getStats =
   function () {
+
+    /* ========================================================
+       GET MAP
+    ======================================================== */
 
     const map =
       Renderer.getMap();
 
 
+    /* ========================================================
+       RETURN COMPLETE RUNTIME STATE
+    ======================================================== */
+
     return {
+
+      /* ======================================================
+         RENDERER STATE
+      ====================================================== */
 
       version:
         Renderer.VERSION,
@@ -6778,6 +7446,16 @@ Renderer.getStats =
 
       /* ======================================================
          FEATURE INDEXES
+
+         Village Feature Groups
+         ----------------------
+         Canonical village GIS feature groups available for
+         Source rendering.
+
+         Range Feature Groups
+         --------------------
+         Canonical range GIS feature groups available for
+         Target rendering.
       ====================================================== */
 
       villageFeatureGroups:
@@ -6794,6 +7472,12 @@ Renderer.getStats =
 
       /* ======================================================
          PARENT RENDER COUNTS
+
+         SOURCE MODE:
+         renderedParentSources = all Source polygons.
+
+         TARGET MODE:
+         renderedParentTargets = all Target polygons.
       ====================================================== */
 
       renderedParentSources:
@@ -6810,6 +7494,16 @@ Renderer.getStats =
 
       /* ======================================================
          RELATED RENDER COUNTS
+
+         SOURCE MODE:
+         Source selected
+             ↓
+         renderedRelatedTargets
+
+         TARGET MODE:
+         Target selected
+             ↓
+         renderedRelatedSources
       ====================================================== */
 
       renderedRelatedSources:
@@ -6825,7 +7519,7 @@ Renderer.getStats =
 
 
       /* ======================================================
-         CURRENT DATA
+         CURRENT SPATIAL DATA
       ====================================================== */
 
       currentSources:
@@ -6840,6 +7534,26 @@ Renderer.getStats =
           .length,
 
 
+      /* ======================================================
+         CURRENT CASE DATA
+
+         Populated after the complete relationship is selected:
+
+         Source
+            ↓
+         Target
+            ↓
+         Cases
+
+         or:
+
+         Target
+            ↓
+         Source
+            ↓
+         Cases
+      ====================================================== */
+
       currentCases:
         Renderer
           .currentCases
@@ -6847,7 +7561,41 @@ Renderer.getStats =
 
 
       /* ======================================================
-         CURRENT SELECTION
+         CURRENT CASE CONTEXT
+
+         Created by:
+
+         Renderer.showCases()
+
+         Expected structure:
+
+         {
+           mode,
+           relationship,
+           source,
+           target,
+           sourceId,
+           targetKey,
+           sourceName,
+           targetName,
+           caseCount
+         }
+
+         This is intentionally returned as the complete object
+         for runtime diagnostics.
+      ====================================================== */
+
+      currentCaseContext:
+
+        Renderer.currentCaseContext
+
+        ||
+
+        null,
+
+
+      /* ======================================================
+         CURRENT SPATIAL SELECTION
       ====================================================== */
 
       selectedSourceId:
@@ -6862,13 +7610,29 @@ Renderer.getStats =
 
       /* ======================================================
          MAP LAYER STATE
+
+         These confirm whether each persistent Leaflet layer
+         group is currently attached to the map.
+
+         NOTE:
+
+         A layer group being attached to the map does NOT mean
+         that it contains rendered polygons.
+
+         Polygon counts are reported separately above.
       ====================================================== */
 
       parentSourceOnMap:
 
         !!(
-          map &&
-          Renderer.parentSourceLayer &&
+          map
+
+          &&
+
+          Renderer.parentSourceLayer
+
+          &&
+
           map.hasLayer(
             Renderer.parentSourceLayer
           )
@@ -6878,8 +7642,14 @@ Renderer.getStats =
       parentTargetOnMap:
 
         !!(
-          map &&
-          Renderer.parentTargetLayer &&
+          map
+
+          &&
+
+          Renderer.parentTargetLayer
+
+          &&
+
           map.hasLayer(
             Renderer.parentTargetLayer
           )
@@ -6889,8 +7659,14 @@ Renderer.getStats =
       relatedSourceOnMap:
 
         !!(
-          map &&
-          Renderer.relatedSourceLayer &&
+          map
+
+          &&
+
+          Renderer.relatedSourceLayer
+
+          &&
+
           map.hasLayer(
             Renderer.relatedSourceLayer
           )
@@ -6900,8 +7676,14 @@ Renderer.getStats =
       relatedTargetOnMap:
 
         !!(
-          map &&
-          Renderer.relatedTargetLayer &&
+          map
+
+          &&
+
+          Renderer.relatedTargetLayer
+
+          &&
+
           map.hasLayer(
             Renderer.relatedTargetLayer
           )
@@ -6911,8 +7693,14 @@ Renderer.getStats =
       selectionOnMap:
 
         !!(
-          map &&
-          Renderer.selectionLayer &&
+          map
+
+          &&
+
+          Renderer.selectionLayer
+
+          &&
+
           map.hasLayer(
             Renderer.selectionLayer
           )
