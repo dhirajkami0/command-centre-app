@@ -7366,15 +7366,15 @@ function (
            OFFENCE SOURCE AREA
     ======================================================== */
 
-    const rawMode =
+const rawMode =
 
-        context.mode ||
+    context.mode ||
 
-        UIController.currentMode ||
+    SpatialRenderer?.mode ||
 
-        SpatialRenderer?.mode ||
+    UIController.currentMode ||
 
-        "";
+    "";
 
 
     const mode =
