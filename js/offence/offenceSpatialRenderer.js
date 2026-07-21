@@ -2371,7 +2371,308 @@ Renderer.getHeatColor =
    - Related Source Villages
    - Selected Source highlight
 ============================================================ */
+/* ============================================================
+   🔥 SOURCE HEAT COLOR
 
+   USED FOR
+   ------------------------------------------------------------
+   SOURCE VILLAGE polygons only.
+
+   PURPOSE
+   ------------------------------------------------------------
+   SOURCE and TARGET must NOT use the same heat palette.
+
+   SOURCE PALETTE:
+
+       Low
+        ↓
+       Yellow
+        ↓
+       Orange
+        ↓
+       Red
+        ↓
+       Dark Red
+        ↓
+       Very High
+
+   IMPORTANT
+   ------------------------------------------------------------
+   Colour represents RELATIVE offence intensity against the
+   highest SOURCE offence count currently being rendered.
+============================================================ */
+
+Renderer.getSourceHeatColor =
+  function (
+    count,
+    maxCount
+  ) {
+
+    const value =
+      Math.max(
+        0,
+        Number(
+          count
+        ) || 0
+      );
+
+
+    const maximum =
+      Math.max(
+        1,
+        Number(
+          maxCount
+        ) || 1
+      );
+
+
+    /* ========================================================
+       ZERO OFFENCE
+
+       Neutral colour.
+
+       getSourceStyle() normally handles zero separately,
+       but keeping this here makes this function safe when
+       called independently.
+    ======================================================== */
+
+    if (
+      value <= 0
+    ) {
+
+      return "#E5E7EB";
+
+    }
+
+
+    /* ========================================================
+       NORMALIZED INTENSITY
+
+       0.00 → lowest
+
+       1.00 → highest
+    ======================================================== */
+
+    const intensity =
+      Math.min(
+        1,
+        value /
+        maximum
+      );
+
+
+    /* ========================================================
+       SOURCE HEAT CLASSES
+
+       Distinct warm palette.
+    ======================================================== */
+
+    if (
+      intensity <= 0.15
+    ) {
+
+      return "#FDE047";
+
+    }
+
+
+    if (
+      intensity <= 0.30
+    ) {
+
+      return "#FACC15";
+
+    }
+
+
+    if (
+      intensity <= 0.45
+    ) {
+
+      return "#FB923C";
+
+    }
+
+
+    if (
+      intensity <= 0.60
+    ) {
+
+      return "#F97316";
+
+    }
+
+
+    if (
+      intensity <= 0.75
+    ) {
+
+      return "#EF4444";
+
+    }
+
+
+    if (
+      intensity <= 0.90
+    ) {
+
+      return "#DC2626";
+
+    }
+
+
+    return "#991B1B";
+
+  };
+
+
+
+/* ============================================================
+   🔵 TARGET HEAT COLOR
+
+   USED FOR
+   ------------------------------------------------------------
+   TARGET RANGE polygons only.
+
+   PURPOSE
+   ------------------------------------------------------------
+   TARGET polygons use a completely different visual family
+   from SOURCE polygons.
+
+   TARGET PALETTE:
+
+       Low
+        ↓
+       Light Cyan
+        ↓
+       Cyan / Sky
+        ↓
+       Blue
+        ↓
+       Indigo
+        ↓
+       Dark Blue
+        ↓
+       Very High
+
+   IMPORTANT
+   ------------------------------------------------------------
+   Colour represents RELATIVE offence intensity against the
+   highest TARGET offence count currently being rendered.
+============================================================ */
+
+Renderer.getTargetHeatColor =
+  function (
+    count,
+    maxCount
+  ) {
+
+    const value =
+      Math.max(
+        0,
+        Number(
+          count
+        ) || 0
+      );
+
+
+    const maximum =
+      Math.max(
+        1,
+        Number(
+          maxCount
+        ) || 1
+      );
+
+
+    /* ========================================================
+       ZERO OFFENCE
+    ======================================================== */
+
+    if (
+      value <= 0
+    ) {
+
+      return "#E5E7EB";
+
+    }
+
+
+    /* ========================================================
+       NORMALIZED INTENSITY
+    ======================================================== */
+
+    const intensity =
+      Math.min(
+        1,
+        value /
+        maximum
+      );
+
+
+    /* ========================================================
+       TARGET HEAT CLASSES
+
+       Distinct cool palette.
+    ======================================================== */
+
+    if (
+      intensity <= 0.15
+    ) {
+
+      return "#A5F3FC";
+
+    }
+
+
+    if (
+      intensity <= 0.30
+    ) {
+
+      return "#67E8F9";
+
+    }
+
+
+    if (
+      intensity <= 0.45
+    ) {
+
+      return "#38BDF8";
+
+    }
+
+
+    if (
+      intensity <= 0.60
+    ) {
+
+      return "#0EA5E9";
+
+    }
+
+
+    if (
+      intensity <= 0.75
+    ) {
+
+      return "#2563EB";
+
+    }
+
+
+    if (
+      intensity <= 0.90
+    ) {
+
+      return "#1D4ED8";
+
+    }
+
+
+    return "#1E3A8A";
+
+  };
 /* ============================================================
    🎨 SOURCE HEAT STYLE
 
@@ -2411,16 +2712,14 @@ Renderer.getHeatColor =
        Neutral grey polygon.
 ============================================================ */
 
+
+
 Renderer.getSourceStyle =
   function (
     count,
     maxCount,
     selected
   ) {
-
-    /* ========================================================
-       NORMALIZE COUNT
-    ======================================================== */
 
     const value =
       Number(
@@ -2430,19 +2729,10 @@ Renderer.getSourceStyle =
       0;
 
 
-    /* ========================================================
-       RESOLVE HEAT COLOR
-
-       Heat color remains based on offence count.
-    ======================================================== */
-
     const heatColor =
-      Renderer.getHeatColor(
-
+      Renderer.getSourceHeatColor(
         value,
-
         maxCount
-
       );
 
 
@@ -2621,14 +2911,11 @@ Renderer.getTargetStyle =
        Heat color remains based on offence count.
     ======================================================== */
 
-    const heatColor =
-      Renderer.getHeatColor(
-
-        value,
-
-        maxCount
-
-      );
+const heatColor =
+  Renderer.getTargetHeatColor(
+    value,
+    maxCount
+  );
 
 
     /* ========================================================
