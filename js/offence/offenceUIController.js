@@ -3345,7 +3345,7 @@ function () {
             12px;
 
         bottom:
-            330px;
+            400px;
 
         height:
             42px;
