@@ -138,17 +138,7 @@
         elements:
             {},
 
-/*----------------------------------
-Source Mode State
-----------------------------------*/
 
-sourcePanelExpanded: true,
-
-casePanelExpanded: false,
-
-currentSource: null,
-
-currentTargets: [],
 CONFIG: {
 
     /* ========================================================
@@ -2212,49 +2202,176 @@ CONFIG: {
    CREATE PANEL
 =========================================================== */
 
+/* ===========================================================
+   CREATE OFFENCE ANALYSIS PANEL
+
+   CURRENT DESIGN
+   -----------------------------------------------------------
+
+   Runtime hierarchy:
+
+       ANALYSIS MODE
+            ↓
+       PARENT
+            ↓
+       CHILD
+            ↓
+       CASES
+            ↓
+       CASE DETAILS
+            ↓
+       FIELD DETAILS
+
+
+   GIS INTERACTION
+   -----------------------------------------------------------
+
+   GIS / map interaction is required only until:
+
+       PARENT selection
+
+   After Parent selection:
+
+       CHILD
+       CASES
+       CASE DETAILS
+       FIELD DETAILS
+
+   are controlled from this panel.
+
+   Child polygons may still be rendered/highlighted on the map,
+   but should be:
+
+       interactive: false
+
+
+   COMPATIBILITY
+   -----------------------------------------------------------
+
+   Existing important IDs are preserved:
+
+       CONFIG.SOURCE_BUTTON_ID
+       CONFIG.TARGET_BUTTON_ID
+       CONFIG.CLEAR_BUTTON_ID
+       CONFIG.CLOSE_BUTTON_ID
+       CONFIG.STATUS_ID
+
+       gg-offence-case-results
+       gg-case-result-list
+       gg-offence-case-details
+
+   This allows existing controller / renderer logic to continue
+   working while the new Parent → Child UI is introduced.
+=========================================================== */
+
 createPanel:
 function () {
+
+
+    /* =======================================================
+       PREVENT DUPLICATE PANEL
+    ======================================================= */
 
     if (
 
         document.getElementById(
 
-            UIController.CONFIG.PANEL_ID
+            UIController
+                .CONFIG
+                .PANEL_ID
 
         )
 
     ) {
 
-        return;
+        return document.getElementById(
+
+            UIController
+                .CONFIG
+                .PANEL_ID
+
+        );
 
     }
+
+
+    /* =======================================================
+       CREATE PANEL ROOT
+    ======================================================= */
 
     const panel =
         document.createElement(
             "div"
         );
 
+
     panel.id =
-        UIController.CONFIG.PANEL_ID;
+        UIController
+            .CONFIG
+            .PANEL_ID;
+
+
+    panel.setAttribute(
+        "role",
+        "dialog"
+    );
+
+
+    panel.setAttribute(
+        "aria-label",
+        "Offence Spatial Analysis"
+    );
+
+
+    panel.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    /* =======================================================
+       PANEL CONTENT
+    ======================================================= */
 
     panel.innerHTML =
-
 `
-<!-- =======================================================
+
+<!-- =========================================================
      PANEL HEADER
-======================================================= -->
+========================================================= -->
 
-<div class="gg-offence-panel-header">
+<div
+    class="gg-offence-panel-header"
+>
 
-    <div class="gg-offence-panel-title">
+    <div
+        class="gg-offence-panel-title"
+    >
 
-        🌍 OFFENCE SPATIAL ANALYSIS
+        <span
+            aria-hidden="true"
+        >
+            🌍
+        </span>
+
+        <span>
+            OFFENCE SPATIAL ANALYSIS
+        </span>
 
     </div>
 
+
     <button
+
         id="${UIController.CONFIG.CLOSE_BUTTON_ID}"
-        title="Close">
+
+        type="button"
+
+        title="Close Offence Spatial Analysis"
+
+        aria-label="Close Offence Spatial Analysis"
+
+    >
 
         ✕
 
@@ -2262,305 +2379,655 @@ function () {
 
 </div>
 
-<!-- =======================================================
-     STATUS
-======================================================= -->
+
+
+<!-- =========================================================
+     STATUS / CURRENT INSTRUCTION
+========================================================= -->
 
 <div
-    id="${UIController.CONFIG.STATUS_ID}"
-    data-state="ready">
 
-    Ready.
+    id="${UIController.CONFIG.STATUS_ID}"
+
+    data-state="ready"
+
+    role="status"
+
+    aria-live="polite"
+
+>
+
+    Select an analysis mode.
 
 </div>
 
-<!-- =======================================================
-     SCROLLABLE BODY
-======================================================= -->
+
+
+<!-- =========================================================
+     SCROLLABLE PANEL BODY
+========================================================= -->
 
 <div
-    class="gg-offence-panel-body">
+    class="gg-offence-panel-body"
+>
 
-    <!-- ==============================================
+
+    <!-- =====================================================
          ANALYSIS MODE
-    =============================================== -->
+    ====================================================== -->
 
-    <div
-        class="gg-offence-section">
+    <section
+
+        id="gg-offence-mode-section"
+
+        class="gg-offence-section"
+
+        aria-label="Analysis Mode"
+
+    >
+
 
         <div
-            class="gg-offence-section-title">
+            class="gg-offence-section-title"
+        >
 
             ANALYSIS MODE
 
         </div>
 
+
         <div
-            class="gg-offence-panel-actions">
+            class="gg-offence-panel-actions"
+        >
+
+
+            <!-- =============================================
+                 SOURCE → TARGET
+            ============================================== -->
 
             <button
 
                 id="${UIController.CONFIG.SOURCE_BUTTON_ID}"
 
-                class="gg-offence-action-button">
+                type="button"
+
+                class="gg-offence-action-button"
+
+                data-mode="source"
+
+                title="Analyse Source to Target"
+
+                aria-pressed="false"
+
+            >
 
                 <span
-                    class="gg-offence-action-icon">
+                    class="gg-offence-action-icon"
+                    aria-hidden="true"
+                >
 
                     🟢
 
                 </span>
 
-                Source → Target
+
+                <span>
+                    Source → Target
+                </span>
 
             </button>
+
+
+
+            <!-- =============================================
+                 TARGET → SOURCE
+            ============================================== -->
 
             <button
 
                 id="${UIController.CONFIG.TARGET_BUTTON_ID}"
 
-                class="gg-offence-action-button">
+                type="button"
+
+                class="gg-offence-action-button"
+
+                data-mode="target"
+
+                title="Analyse Target to Source"
+
+                aria-pressed="false"
+
+            >
 
                 <span
-                    class="gg-offence-action-icon">
+                    class="gg-offence-action-icon"
+                    aria-hidden="true"
+                >
 
                     🔵
 
                 </span>
 
-                Target → Source
 
-            </button>
-
-            <button
-
-                id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
-
-                class="gg-offence-action-button">
-
-                <span
-                    class="gg-offence-action-icon">
-
-                    🔴
-
+                <span>
+                    Target → Source
                 </span>
 
-                Clear Analysis
-
             </button>
 
+
         </div>
 
-    </div>
+    </section>
 
-    <!-- ==============================================
-         WORKFLOW
-    =============================================== -->
 
-    <div
-        class="gg-offence-section">
+
+    <!-- =====================================================
+         PARENT
+
+         SOURCE → TARGET:
+             Parent = Source Village
+
+         TARGET → SOURCE:
+             Parent = Target Range
+
+         Parent is selected from GIS / MAP.
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-parent-section"
+
+        class="gg-offence-section"
+
+        aria-label="Selected Parent"
+
+    >
+
 
         <div
-            id="gg-workflow-toggle"
-            class="gg-offence-section-title">
+            class="gg-offence-section-title"
+        >
 
-            ▼ ANALYSIS WORKFLOW
+            PARENT
 
         </div>
+
 
         <div
-            id="gg-workflow-panel">
+
+            id="gg-offence-parent-content"
+
+            class="gg-offence-parent-content"
+
+        >
+
 
             <div
-                id="gg-workflow-mode"
-                class="gg-workflow-mode">
+                class="gg-offence-empty"
+            >
 
-                Select an analysis mode.
+                Select an analysis mode,
+                then select a parent polygon
+                from the map.
 
             </div>
 
-            <div
-                id="gg-workflow-step1"
-                class="gg-workflow-step">
-
-                Step 1
-
-            </div>
-
-            <div
-                id="gg-workflow-step2"
-                class="gg-workflow-step">
-
-                Step 2
-
-            </div>
 
         </div>
 
-    </div>
+    </section>
 
-    <!-- ==============================================
+
+
+    <!-- =====================================================
+         CHILD
+
+         SOURCE → TARGET:
+             Child = Target Range
+
+         TARGET → SOURCE:
+             Child = Source Village
+
+         IMPORTANT:
+
+         Child cards are clickable HERE in the panel.
+
+         Child polygons on map may be highlighted,
+         but should use:
+
+             interactive: false
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-child-section"
+
+        class="gg-offence-section"
+
+        aria-label="Related Children"
+
+    >
+
+
+        <div
+            class="gg-offence-section-title"
+        >
+
+            CHILD
+
+        </div>
+
+
+        <div
+
+            id="gg-offence-child-list"
+
+            class="gg-offence-child-list"
+
+        >
+
+
+            <div
+                class="gg-offence-empty"
+            >
+
+                Select a parent polygon
+                from the map to view
+                related children.
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
          CASE RESULTS
-    =============================================== -->
 
-    <div
-        class="gg-offence-section">
+         Populated after a CHILD card is selected.
+
+         Existing compatibility IDs retained:
+
+             gg-offence-case-results
+             gg-case-result-list
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-case-section"
+
+        class="gg-offence-section"
+
+        aria-label="Matching Offence Cases"
+
+    >
+
+
+        <!-- ===============================================
+             CASE SECTION HEADER
+        ================================================ -->
 
         <div
+            class="gg-offence-section-header"
+        >
 
-            id="gg-case-results-toggle"
 
-            class="gg-offence-section-title">
+            <div
+                class="gg-offence-section-title"
+            >
 
-            ▶ MATCHING OFFENCE CASES
+                CASES
+
+            </div>
+
+
+            <span
+
+                id="gg-offence-case-count"
+
+                class="gg-offence-section-count"
+
+            ></span>
+
 
         </div>
 
+
+
+        <!-- ===============================================
+             BACK TO CHILDREN
+
+             Initially hidden.
+
+             New navigation logic can show this when
+             entering CASE level.
+        ================================================ -->
+
+        <button
+
+            id="gg-offence-back-to-children"
+
+            type="button"
+
+            class="gg-offence-back-button"
+
+            style="display:none;"
+
+            title="Back to Children"
+
+        >
+
+            ← Back to Children
+
+        </button>
+
+
+
+        <!-- ===============================================
+             EXISTING CASE RESULTS CONTAINER
+        ================================================ -->
+
         <div
+
             id="gg-offence-case-results"
-            style="display:none;">
+
+            class="gg-offence-case-results"
+
+        >
+
 
             <div
-                id="gg-case-result-list">
+
+                id="gg-case-result-list"
+
+                class="gg-offence-case-list"
+
+            >
+
 
                 <div
-                    class="gg-offence-empty">
+                    class="gg-offence-empty"
+                >
 
-                    Select a Source / Target pair
-                    to view matching offence cases.
+                    Select a child to view
+                    matching offence cases.
 
                 </div>
 
+
             </div>
+
 
         </div>
 
-    </div>
 
-    <!-- ==============================================
+    </section>
+
+
+
+    <!-- =====================================================
          CASE DETAILS
-    =============================================== -->
 
-    <div
-        class="gg-offence-section">
+         Populated when a particular CASE is clicked.
+
+         Existing compatibility ID retained:
+
+             gg-offence-case-details
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-case-details-section"
+
+        class="gg-offence-section"
+
+        aria-label="Case Details"
+
+    >
+
 
         <div
-            class="gg-offence-section-title">
+            class="gg-offence-section-title"
+        >
 
             CASE DETAILS
 
         </div>
 
+
+
+        <!-- ===============================================
+             BACK TO CASES
+
+             Initially hidden.
+
+             New navigation logic can show this when
+             displaying a selected case.
+        ================================================ -->
+
+        <button
+
+            id="gg-offence-back-to-cases"
+
+            type="button"
+
+            class="gg-offence-back-button"
+
+            style="display:none;"
+
+            title="Back to Cases"
+
+        >
+
+            ← Back to Cases
+
+        </button>
+
+
+
+        <!-- ===============================================
+             EXISTING CASE DETAILS CONTAINER
+        ================================================ -->
+
         <div
-            id="gg-offence-case-details">
+
+            id="gg-offence-case-details"
+
+            class="gg-offence-case-details-container"
+
+        >
+
 
             <div
-                class="gg-offence-empty">
+                class="gg-offence-empty"
+            >
 
-                Select a case to view details.
+                Select a case to view
+                complete offence details.
 
             </div>
 
+
         </div>
 
-    </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         FIELD DETAILS
+
+         Populated when an expandable/clickable field
+         inside CASE DETAILS is selected.
+
+         This level has NO GIS interaction.
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-field-details-section"
+
+        class="gg-offence-section"
+
+        aria-label="Field Details"
+
+    >
+
+
+        <div
+            class="gg-offence-section-title"
+        >
+
+            FIELD DETAILS
+
+        </div>
+
+
+
+        <!-- ===============================================
+             BACK TO CASE DETAILS
+        ================================================ -->
+
+        <button
+
+            id="gg-offence-back-to-case-details"
+
+            type="button"
+
+            class="gg-offence-back-button"
+
+            style="display:none;"
+
+            title="Back to Case Details"
+
+        >
+
+            ← Back to Case Details
+
+        </button>
+
+
+
+        <!-- ===============================================
+             FIELD DETAILS CONTENT
+        ================================================ -->
+
+        <div
+
+            id="gg-offence-field-details"
+
+            class="gg-offence-field-details"
+
+        >
+
+
+            <div
+                class="gg-offence-empty"
+            >
+
+                Select a field from
+                Case Details to view
+                complete information.
+
+            </div>
+
+
+        </div>
+
+
+    </section>
+
+
+
+    <!-- =====================================================
+         CLEAR ANALYSIS
+
+         Kept at bottom because CLEAR is a global action.
+
+         Existing CONFIG.CLEAR_BUTTON_ID retained.
+    ====================================================== -->
+
+    <section
+
+        id="gg-offence-clear-section"
+
+        class="gg-offence-section gg-offence-clear-section"
+
+        aria-label="Clear Analysis"
+
+    >
+
+
+        <button
+
+            id="${UIController.CONFIG.CLEAR_BUTTON_ID}"
+
+            type="button"
+
+            class="gg-offence-action-button gg-offence-clear-button"
+
+            title="Clear Offence Spatial Analysis"
+
+        >
+
+
+            <span
+
+                class="gg-offence-action-icon"
+
+                aria-hidden="true"
+
+            >
+
+                🔴
+
+            </span>
+
+
+            <span>
+                Clear Analysis
+            </span>
+
+
+        </button>
+
+
+    </section>
+
 
 </div>
 `;
 
-    document.body.appendChild(
-        panel
-    );
+
+    /* =======================================================
+       ADD PANEL TO DOCUMENT
+    ======================================================= */
+
+    document
+        .body
+        .appendChild(
+            panel
+        );
+
+
+    /* =======================================================
+       RETURN CREATED PANEL
+    ======================================================= */
+
+    return panel;
+
 
 },
 /* ===========================================================
    TOGGLE RELATED TARGETS
 =========================================================== */
 
-toggleRelatedTargets:
-    function () {
 
-
-        const elements =
-            UIController.elements;
-
-
-        if (
-            !elements ||
-            !elements.relatedTargetList
-        ) {
-
-            return;
-
-        }
-
-
-        /* ============================================
-           TOGGLE STATE
-        ============================================ */
-
-        UIController.sourcePanelExpanded =
-            !UIController.sourcePanelExpanded;
-
-
-
-        /* ============================================
-           EXPANDED
-        ============================================ */
-
-        if (
-            UIController.sourcePanelExpanded
-        ) {
-
-            elements
-                .relatedTargetList
-                .style
-                .display =
-                    "";
-
-
-            if (
-                elements.relatedTargetToggle
-            ) {
-
-                elements
-                    .relatedTargetToggle
-                    .textContent =
-                        "▼ Related Targets";
-
-            }
-
-        }
-
-
-        /* ============================================
-           COLLAPSED
-        ============================================ */
-
-        else {
-
-            elements
-                .relatedTargetList
-                .style
-                .display =
-                    "none";
-
-
-            if (
-                elements.relatedTargetToggle
-            ) {
-
-                elements
-                    .relatedTargetToggle
-                    .textContent =
-                        "▶ Related Targets";
-
-            }
-
-        }
-
-
-    },
 
        /* ===========================================================
    TOGGLE CASE RESULTS
@@ -2575,73 +3042,7 @@ toggleRelatedTargets:
    ✓ Update toggle arrow
 =========================================================== */
 
-updateCaseResultsPanel:
-function (
-    expanded
-) {
 
-    const elements =
-        UIController.elements;
-
-    if (
-
-        !elements ||
-
-        !elements.caseResults
-
-    ) {
-
-        return false;
-
-    }
-
-    /* ============================================
-       STORE STATE
-    ============================================ */
-
-    UIController.casePanelExpanded =
-        Boolean(
-            expanded
-        );
-
-    /* ============================================
-       SHOW / HIDE PANEL
-    ============================================ */
-
-    elements
-        .caseResults
-        .style
-        .display =
-
-        UIController.casePanelExpanded
-
-            ? "block"
-
-            : "none";
-
-    /* ============================================
-       UPDATE TOGGLE TEXT
-    ============================================ */
-
-    if (
-        elements.caseResultsToggle
-    ) {
-
-        elements
-            .caseResultsToggle
-            .textContent =
-
-            UIController.casePanelExpanded
-
-                ? "▼ CASE RESULTS"
-
-                : "▶ CASE RESULTS";
-
-    }
-
-    return true;
-
-},
 /* ===========================================================
    TOGGLE CASE RESULTS
 
@@ -2652,16 +3053,7 @@ function (
    ✓ Update toggle arrow
 =========================================================== */
 
-toggleCases:
-function () {
 
-    UIController.updateCaseResultsPanel(
-
-        !UIController.casePanelExpanded
-
-    );
-
-},
 
        /* ===========================================================
    BACK TO PARENT SOURCES
@@ -2705,158 +3097,7 @@ function () {
    ✓ Reset CASE DETAILS
 =========================================================== */
 
-backToSources:
-function () {
 
-    const elements =
-        UIController.elements;
-
-    if (
-        !elements
-    ) {
-
-        return;
-
-    }
-
-    /* ============================================
-       RESTORE PARENT SOURCE MAP
-    ============================================ */
-
-    if (
-
-        GG
-            ?.Offence
-            ?.SpatialRenderer
-            ?.clearSourceDrillDown
-
-    ) {
-
-        GG
-            .Offence
-            .SpatialRenderer
-            .clearSourceDrillDown();
-
-    }
-
-    /* ============================================
-       RESET INTERNAL STATE
-    ============================================ */
-
-    UIController.currentSource =
-        null;
-
-    UIController.currentTargets =
-        [];
-
-    UIController.currentSpatialCases =
-        [];
-
-    UIController.currentSpatialContext =
-        {};
-
-    UIController.sourcePanelExpanded =
-        true;
-
-    UIController.casePanelExpanded =
-        false;
-
-    /* ============================================
-       REBUILD SOURCE MODE PANEL
-
-       Reuse the same initialization used when
-       SOURCE MODE is first opened.
-    ============================================ */
-
-    UIController.openSourceModePanel(
-
-        {
-            name:
-                "Select a Parent Source"
-        },
-
-        []
-
-    );
-
-    /* ============================================
-   HIDE CASE RESULTS
-============================================ */
-
-UIController.updateCaseResultsPanel(
-    false
-);
-
-/* ============================================
-   RESET CASE RESULTS CONTENT
-============================================ */
-
-if (
-    elements.caseResultList
-) {
-
-    elements
-        .caseResultList
-        .innerHTML =
-
-        `
-        <div class="gg-offence-empty">
-
-            Select a Parent Source
-            and then choose one of its
-            Related Targets to view
-            matching offence cases.
-
-        </div>
-        `;
-
-}
-
-    /* ============================================
-       CLEAR CASE SELECTION
-
-       Resets:
-
-       ✓ currentCase
-       ✓ selected highlight
-       ✓ CASE DETAILS panel
-    ============================================ */
-
-    if (
-
-        typeof
-        UIController
-            .clearCaseSelection ===
-        "function"
-
-    ) {
-
-        UIController
-            .clearCaseSelection();
-
-    }
-
-    /* ============================================
-       STATUS
-    ============================================ */
-
-    if (
-        typeof
-        UIController
-            .setStatus ===
-        "function"
-    ) {
-
-        UIController
-            .setStatus(
-
-                "Showing all parent sources."
-
-            );
-
-    }
-
-},
         /* ====================================================
            CAPTURE DOM REFERENCES
 
@@ -3937,12 +4178,7 @@ openSourceModePanel:
                 : [];
 
 
-        UIController.sourcePanelExpanded =
-            true;
 
-
-        UIController.casePanelExpanded =
-            false;
 
 
 
@@ -6066,237 +6302,6 @@ const storeState =
    ✓ Scroll results to top
 =========================================================== */
 
-showSpatialCases:
-function (
-    cases = [],
-    context = {}
-) {
-
-    /* ============================================
-       STORE STATE
-    ============================================ */
-
-    UIController.currentSpatialCases =
-        Array.isArray(
-            cases
-        )
-            ? cases
-            : [];
-
-    UIController.currentSpatialContext =
-        context || {};
-
-    /* ============================================
-       EXPAND CASE PANEL
-    ============================================ */
-
-UIController.updateCaseResultsPanel(
-    true
-);
-
-    /* ============================================
-       RESET PREVIOUS CASE
-    ============================================ */
-
-    if (
-
-        typeof
-        UIController
-            .clearCaseSelection ===
-        "function"
-
-    ) {
-
-        UIController
-            .clearCaseSelection();
-
-    }
-
-    /* ============================================
-       GET RESULTS CONTAINER
-    ============================================ */
-
-    const container =
-
-        elements
-            ?.caseResultList ||
-
-        document.getElementById(
-            "gg-case-result-list"
-        );
-
-    if (
-        !container
-    ) {
-
-        console.warn(
-            "⚠ Case Results container not found."
-        );
-
-        return;
-
-    }
-
-    container.innerHTML = "";
-
-    container.scrollTop = 0;
-
-    /* ============================================
-       NO CASES
-    ============================================ */
-
-    if (
-
-        UIController
-            .currentSpatialCases
-            .length === 0
-
-    ) {
-
-        container.innerHTML =
-
-            `
-            <div class="gg-offence-empty">
-
-                No matching offence cases found.
-
-            </div>
-            `;
-
-        return;
-
-    }
-
-    /* ============================================
-       CONTEXT HEADER
-    ============================================ */
-
-    const ctx =
-        UIController
-            .currentSpatialContext;
-
-    const header =
-        document.createElement(
-            "div"
-        );
-
-    header.className =
-        "gg-offence-case-context";
-
-    header.innerHTML =
-
-        `
-        <div class="gg-offence-case-context-title">
-
-            ${ctx.sourceName || "Source"}
-
-            →
-
-            ${ctx.targetName || "Target"}
-
-        </div>
-
-        <div class="gg-offence-case-count">
-
-            ${UIController.currentSpatialCases.length}
-
-            matching case(s)
-
-        </div>
-        `;
-
-    container.appendChild(
-        header
-    );
-
-    /* ============================================
-       CASE CARDS
-    ============================================ */
-
-    UIController.currentSpatialCases.forEach(
-
-        function (
-            item
-        ) {
-
-            const card =
-                document.createElement(
-                    "div"
-                );
-
-            card.className =
-                "gg-offence-case-card";
-
-            card.dataset.por =
-
-                item.por ||
-
-                item.POR ||
-
-                "";
-
-            card.innerHTML =
-
-                `
-                <div class="gg-offence-case-title">
-
-                    ${item.por || item.POR || "-"}
-
-                </div>
-
-                <div class="gg-offence-case-meta">
-
-                    <div>
-
-                        <b>Date:</b>
-
-                        ${item.date || "-"}
-
-                    </div>
-
-                    <div>
-
-                        <b>Species:</b>
-
-                        ${item.species || "-"}
-
-                    </div>
-
-                </div>
-
-                <div class="gg-offence-case-view">
-
-                    View Details →
-
-                </div>
-                `;
-
-            /* ====================================
-               CASE CLICK
-            ==================================== */
-
-            card.onclick =
-                function () {
-
-                    UIController.selectCase(
-
-                        item,
-
-                        card
-
-                    );
-
-                };
-
-            container.appendChild(
-                card
-            );
-
-        }
-
-    );
-
-},
 
 
 /* ===========================================================
@@ -6376,42 +6381,7 @@ function (
    ✓ Highlight selected case only
 =========================================================== */
 
-highlightSelectedCase:
-function (
-    selectedCard
-) {
 
-    document
-
-        .querySelectorAll(
-            ".gg-offence-case-card"
-        )
-
-        .forEach(
-
-            function (
-                card
-            ) {
-
-                card.classList.remove(
-                    "gg-selected-case"
-                );
-
-            }
-
-        );
-
-    if (
-        selectedCard
-    ) {
-
-        selectedCard.classList.add(
-            "gg-selected-case"
-        );
-
-    }
-
-},
 
        /* ===========================================================
    SHOW CASE DETAILS
@@ -6424,249 +6394,7 @@ function (
    ✓ No selection logic
 =========================================================== */
 
-showCaseDetails:
-function (
-    caseData
-) {
 
-    if (
-        !caseData
-    ) {
-
-        return;
-
-    }
-
-    const container =
-
-        UIController.elements
-            ?.caseDetails ||
-
-        document.getElementById(
-            "gg-offence-case-details"
-        );
-
-    if (
-        !container
-    ) {
-
-        console.warn(
-            "Case Details container not found."
-        );
-
-        return;
-
-    }
-
-    container.style.display = "";
-
-    container.innerHTML =
-
-        `
-        <div class="gg-case-details">
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    POR
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.por ||
-                      caseData.POR ||
-                      "-"}
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Date
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.date || "-"}
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Species
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.species || "-"}
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Sections
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${
-                        caseData.sections ||
-                        caseData.section ||
-                        "-"
-                    }
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Accused
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${
-                        caseData.accused ||
-                        caseData.accusedName ||
-                        "-"
-                    }
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Place
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${
-                        caseData.place ||
-                        caseData.location ||
-                        "-"
-                    }
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Range
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.range || "-"}
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Beat
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.beat || "-"}
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Latitude
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${
-                        caseData.latitude ||
-                        caseData.lat ||
-                        "-"
-                    }
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Longitude
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${
-                        caseData.longitude ||
-                        caseData.lng ||
-                        "-"
-                    }
-
-                </div>
-
-            </div>
-
-            <div class="gg-case-details-row">
-
-                <div class="gg-case-details-label">
-
-                    Status
-
-                </div>
-
-                <div class="gg-case-details-value">
-
-                    ${caseData.status || "-"}
-
-                </div>
-
-            </div>
-
-        </div>
-        `;
-
-},
 
        /* ===========================================================
    CLEAR CASE SELECTION
