@@ -7135,81 +7135,376 @@ Resolver.getTargetContext = function (
 
     ===================================================== */
 
-    Resolver.buildScoredCandidates = function (
-        accused
+/* =========================================================
+   BUILD SCORED CANDIDATES
+   ========================================================= */
+
+Resolver.buildScoredCandidates = function (
+    accused
+) {
+
+    /* =====================================================
+       VALIDATION
+       ===================================================== */
+
+    if (!accused) {
+
+        return {
+
+            accused:
+                null,
+
+            address:
+                "",
+
+            parsed:
+                null,
+
+            generated:
+                null,
+
+            caseRecord:
+                null,
+
+            target:
+                null,
+
+            targetInfo:
+                null,
+
+            candidates:
+                []
+
+        };
+
+    }
+
+
+    /* =====================================================
+       ADDRESS
+       ===================================================== */
+
+    const address =
+
+        accused.addressOfAccused ||
+
+        accused.address ||
+
+        accused.accusedAddress ||
+
+        accused.residentialAddress ||
+
+        accused.location ||
+
+        "";
+
+
+    /* =====================================================
+       PARSE ADDRESS
+       ===================================================== */
+
+    const parsed =
+        Resolver.parseAddress(
+            address
+        ) || {};
+
+
+    /* =====================================================
+       GENERATE STRICT VILLAGE CANDIDATES
+
+       IMPORTANT:
+
+       generateCandidates expects:
+
+           accused,
+           parsed
+
+       and returns:
+
+           {
+               candidates: [...],
+               candidateCount: ...,
+               primarySegment: ...,
+               primaryVillage: ...,
+               ...
+           }
+
+       ===================================================== */
+
+    const generated =
+        Resolver.generateCandidates(
+            accused,
+            parsed
+        ) || {};
+
+
+    /*
+     * Actual candidate ARRAY.
+     */
+
+    const rawCandidates =
+        Array.isArray(
+            generated.candidates
+        )
+            ? generated.candidates
+            : [];
+
+
+    /* =====================================================
+       CASE RECORD
+       ===================================================== */
+
+    const caseRecord =
+        Resolver.getCaseForAccused(
+            accused
+        );
+
+
+    /* =====================================================
+       TARGET CONTEXT
+
+       Must receive CASE RECORD.
+
+       We previously fixed this because:
+
+           caseRecord.rangeGISResolved = true
+
+       must NOT become the range name.
+
+       getTargetContext(caseRecord) resolves:
+
+           rangeCanonical
+           rangeRaw
+           division
+           beat
+           compartment
+
+       ===================================================== */
+
+    const target =
+        Resolver.getTargetContext(
+            caseRecord
+        );
+
+
+    /* =====================================================
+       ADMINISTRATIVE SCORING
+
+       IMPORTANT:
+
+       scoreAdministrativeCandidates expects ARRAY.
+
+       Never pass the whole `generated` object.
+       ===================================================== */
+
+    let administrative =
+        Resolver.scoreAdministrativeCandidates(
+            rawCandidates,
+            parsed
+        );
+
+
+    /*
+     * Defensive normalization in case the scoring function
+     * returns something unexpected.
+     */
+
+    if (
+        !Array.isArray(
+            administrative
+        )
     ) {
 
-        const address =
+        if (
+            Array.isArray(
+                administrative?.candidates
+            )
+        ) {
 
-            accused?.addressOfAccused ||
+            administrative =
+                administrative.candidates;
 
-            accused?.address ||
+        }
 
-            accused?.location ||
+        else {
 
-            "";
+            administrative =
+                [];
 
+        }
 
-        const parsed =
-            Resolver.parseAddress(
-                address
-            );
-
-
-        const rawCandidates =
-            Resolver.generateCandidates(
-                parsed
-            );
+    }
 
 
-        const administrative =
-            Resolver
-                .scoreAdministrativeCandidates(
-                    rawCandidates,
-                    parsed
-                );
+    /* =====================================================
+       SPATIAL SCORING AGAINST OFFENCE TARGET
+
+       Even if candidate array is empty, this call should
+       remain safe.
+       ===================================================== */
+
+    let spatial;
 
 
-        const caseRecord =
-            Resolver.getCaseForAccused(
-                accused
-            );
+    try {
 
-
-        const target =
-            Resolver.getTargetContext(
-                caseRecord
-            );
-
-
-        const spatial =
+        spatial =
             Resolver.scoreSpatialCandidates(
                 administrative,
                 target
             );
 
+    }
 
-        return {
+    catch (error) {
 
-            accused,
+        console.error(
+            "❌ Spatial candidate scoring failed",
+            {
+                accused:
+                    accused.nameOfAccused ||
+                    accused.name ||
+                    "",
 
-            address,
+                porNo:
+                    accused.refPorNo ||
+                    accused.porNo ||
+                    "",
 
-            parsed,
+                target,
 
-            caseRecord,
+                candidateCount:
+                    administrative.length,
 
-            target,
+                error
+            }
+        );
 
-            targetInfo:
-                spatial.targetInfo,
+
+        spatial = {
 
             candidates:
-                spatial.candidates
+                administrative,
+
+            targetInfo:
+                {
+
+                    targetRange:
+                        target?.range || "",
+
+                    targetDivision:
+                        target?.division || "",
+
+                    targetBeat:
+                        target?.beat || "",
+
+                    targetCompartment:
+                        target?.compartment || "",
+
+                    targetLevel:
+                        "NONE",
+
+                    targetFeatureCount:
+                        0
+
+                }
 
         };
 
+    }
+
+
+    /* =====================================================
+       NORMALIZE SPATIAL RESULT
+       ===================================================== */
+
+    const spatialCandidates =
+
+        Array.isArray(
+            spatial
+        )
+            ? spatial
+
+            : Array.isArray(
+                spatial?.candidates
+            )
+                ? spatial.candidates
+
+                : administrative;
+
+
+    const targetInfo =
+
+        (
+            spatial &&
+            !Array.isArray(spatial)
+        )
+
+            ? spatial.targetInfo || null
+
+            : null;
+
+
+    /* =====================================================
+       FINAL CONTEXT
+       ===================================================== */
+
+    return {
+
+        accused,
+
+        address,
+
+        parsed,
+
+
+        /*
+         * Preserve generation metadata.
+         *
+         * buildResolvedResult can use this later if needed.
+         */
+
+        generated,
+
+
+        candidateSegments:
+            generated.candidateSegments ||
+            [],
+
+        primarySegment:
+            generated.primarySegment ||
+            "",
+
+        primaryVillage:
+            generated.primaryVillage ||
+            "",
+
+        locality:
+            generated.locality ||
+            "",
+
+
+        /* -------------------------------------------------
+           CASE / TARGET
+           ------------------------------------------------- */
+
+        caseRecord,
+
+        target,
+
+        targetInfo,
+
+
+        /* -------------------------------------------------
+           FINAL SCORED CANDIDATES
+           ------------------------------------------------- */
+
+        candidates:
+            spatialCandidates
+
     };
+
+};
 
 
     /* =====================================================
