@@ -2092,13 +2092,128 @@ Resolver.parseAddress = function (
 ========================================================= */
 
 
+/* =========================================================
+   GENERATE VILLAGE CANDIDATES
+   =========================================================
+
+   DESIGN PRINCIPLES
+
+   1. Village candidates come ONLY from unlabelled address
+      segments / explicit village-settlement text.
+
+   2. PO / PS / District / PIN / Block values are NEVER
+      converted into village candidates merely because their
+      text happens to match a village name.
+
+   3. Administrative fields are EVIDENCE only.
+
+   4. Address order matters.
+
+      Example:
+
+          Salbari, Malbazar, Jalpaiguri
+
+      Search order:
+
+          Salbari
+          Malbazar
+          Jalpaiguri
+
+      If Salbari is a valid village-name match, it receives
+      higher positional priority than later matches.
+
+   5. Example:
+
+          Malbazar, Salbari, Jalpaiguri
+
+      Malbazar is tested FIRST.
+
+      If Malbazar itself is a valid village/settlement name,
+      it becomes the primary village-name candidate.
+
+   6. Example:
+
+          Jalpaiguri, Malbazar, Salbari
+
+      Jalpaiguri is tested FIRST as a VILLAGE NAME.
+
+      It must NOT expand into all villages having
+      district = Jalpaiguri.
+
+   7. Example:
+
+          Salbari, PO-Malbazar
+
+      Candidate:
+          Salbari
+
+      Evidence:
+          PO = Malbazar
+
+      Malbazar MUST NOT become a village candidate.
+
+   8. Example:
+
+          Malbazar, PO-Salbari
+
+      Candidate:
+          Malbazar
+
+      Evidence:
+          PO = Salbari
+
+      Salbari MUST NOT become a village candidate.
+
+   9. Example:
+
+          Lohar Line,
+          Salbari T.G.,
+          PS-Kalchini,
+          Dist-Alipurduar
+
+      Search:
+          Lohar Line
+          Salbari T.G.
+
+      Expected village:
+          Salbari
+
+      Evidence:
+          PS Kalchini
+          District Alipurduar
+
+   10. Locality words such as:
+
+          Lohar Line
+          Neech Line
+          Gudam Line
+          Pakaline
+          4 No Dhura
+
+       may be retained as locality evidence but do not
+       override a later genuine village-name match.
+
+   11. Candidate generation does NOT finally decide between
+       duplicate villages having the same normalized name.
+
+       Duplicate resolution belongs to:
+
+           administrative scoring
+           +
+           forest metadata
+           +
+           target-range spatial distance.
+
+   ========================================================= */
+
 Resolver.generateCandidates = function (
-    accused
+    accused,
+    parsedInput = null
 ) {
 
     /* =====================================================
-       1. VALIDATION
-    ===================================================== */
+       VALIDATION
+       ===================================================== */
 
     if (!accused) {
 
@@ -2107,58 +2222,20 @@ Resolver.generateCandidates = function (
             accused:
                 null,
 
+            parsed:
+                null,
+
             address:
                 "",
-
-            parsed:
-                Resolver.parseAddress(
-                    ""
-                ),
 
             candidateSegments:
                 [],
 
-            segmentAnalysis:
-                [],
-
-            firstVillageSegmentIndex:
-                -1,
-
-            firstVillageCandidatePosition:
-                -1,
-
-            primaryVillageName:
+            primarySegment:
                 "",
 
-            extractedSettlement:
+            primaryVillage:
                 "",
-
-            matchedSettlementSegments:
-                [],
-
-            localitySegments:
-                [],
-
-            locality:
-                "",
-
-            po:
-                "",
-
-            ps:
-                "",
-
-            district:
-                "",
-
-            block:
-                "",
-
-            pin:
-                "",
-
-            allCandidates:
-                [],
 
             candidates:
                 [],
@@ -2175,574 +2252,791 @@ Resolver.generateCandidates = function (
 
 
     /* =====================================================
-       2. GET ORIGINAL ADDRESS
-    ===================================================== */
+       ENSURE INDEX
+       ===================================================== */
+
+    if (!Resolver.index) {
+
+        Resolver.buildIndexes();
+
+    }
+
+
+    /* =====================================================
+       ADDRESS
+       ===================================================== */
 
     const address =
+
         String(
 
             accused.addressOfAccused ||
 
             accused.address ||
 
-            accused.location ||
+            accused.accusedAddress ||
+
+            accused.residentialAddress ||
 
             ""
 
         ).trim();
 
 
-    /* =====================================================
-       3. PARSE ADDRESS
+    if (!address) {
 
-       parseAddress() is responsible for separating:
+        return {
 
-           candidateSegments
+            accused,
 
-       from explicitly labelled:
+            parsed:
+                null,
 
-           PO
-           PS
-           DISTRICT
-           BLOCK
-           PIN
+            address:
+                "",
 
-       Therefore labelled administrative values must NOT
-       become village candidates through this function.
-    ===================================================== */
+            candidateSegments:
+                [],
 
-    const parsed =
-        Resolver.parseAddress(
-            address
-        );
+            primarySegment:
+                "",
 
+            primaryVillage:
+                "",
 
-    /* =====================================================
-       4. ENSURE VILLAGE INDEXES
-    ===================================================== */
+            candidates:
+                [],
 
-    Resolver.buildIndexes();
+            candidateCount:
+                0,
 
+            reason:
+                "NO_ADDRESS"
 
-    const villages =
-        Resolver.getVillages();
-
-
-    /* =====================================================
-       5. GENERAL TEXT HELPERS
-    ===================================================== */
-
-    function cleanText(
-        value
-    ) {
-
-        return String(
-            value || ""
-        )
-
-        .replace(
-            /\s+/g,
-            " "
-        )
-
-        .replace(
-            /^[\s,;:.+\-–—/]+/,
-            ""
-        )
-
-        .replace(
-            /[\s,;:.+\-–—/]+$/,
-            ""
-        )
-
-        .trim();
+        };
 
     }
 
 
-    function norm(
+    /* =====================================================
+       PARSE ADDRESS
+       ===================================================== */
+
+    const parsed =
+
+        parsedInput ||
+
+        Resolver.parseAddress(
+            address
+        ) ||
+
+        {};
+
+
+    /* =====================================================
+       NORMALIZATION HELPERS
+       ===================================================== */
+
+    function normalize(
         value
     ) {
 
         return Resolver.normalize(
-            value
+            value || ""
         );
 
     }
 
 
-    function uniquePush(
-        array,
+    function safeString(
         value
     ) {
 
-        const cleaned =
-            cleanText(
-                value
-            );
-
-
-        if (!cleaned) {
-
-            return;
-
-        }
-
-
-        const normalized =
-            norm(
-                cleaned
-            );
-
-
-        if (!normalized) {
-
-            return;
-
-        }
-
-
-        const exists =
-            array.some(
-
-                item =>
-
-                    norm(
-                        item
-                    ) === normalized
-
-            );
-
-
-        if (!exists) {
-
-            array.push(
-                cleaned
-            );
-
-        }
-
-    }
-
-
-    /* =====================================================
-       6. VILLAGE FIELD HELPERS
-    ===================================================== */
-
-    function getVillageCode(
-        village
-    ) {
-
         return String(
-
-            village?.villageCode ??
-
-            village?.Vill_LGD ??
-
-            village?.lgd ??
-
-            village?.LGD ??
-
-            village?.code ??
-
-            ""
-
+            value ?? ""
         ).trim();
 
     }
 
 
-    function getVillageName(
-        village
-    ) {
-
-        return String(
-
-            village?.name ??
-
-            village?.villageName ??
-
-            village?.villageNameEnglish ??
-
-            village?.canonicalVillage ??
-
-            village?.cleanName ??
-
-            ""
-
-        ).trim();
-
-    }
-
-
-    function getVillageCleanName(
-        village
-    ) {
-
-        return norm(
-
-            getVillageName(
-                village
-            )
-
-        );
-
-    }
-
-
     /* =====================================================
-       7. REMOVE SETTLEMENT-TYPE QUALIFIERS
+       NORMALIZE SETTLEMENT EXPRESSION
 
-       These qualifiers describe settlement type.
+       We want:
 
-       They should NOT prevent canonical village matching.
+           Salbari T.G.
+                 ↓
+           SALBARI
 
-       Examples:
+           Salbari T.E.
+                 ↓
+           SALBARI
 
-           SALBARI T.G.
-           SALBARI TG
-           SALBARI TEA GARDEN
-           SALBARI T.E.
-           SALBARI TEA ESTATE
+           Salbari Tea Garden
+                 ↓
+           SALBARI
 
-           RANGAMATI F.V.
-           RANGAMATI FOREST VILLAGE
-    ===================================================== */
+           Salbari (Neech Line)
+                 ↓
+           SALBARI
 
-    function stripSettlementType(
+       BUT the original segment remains available as
+       evidence.
+       ===================================================== */
+
+    function normalizeSettlementExpression(
         value
     ) {
 
         let text =
-            cleanText(
+            safeString(
                 value
             );
 
 
-        if (!text) {
-
+        if (!text)
             return "";
 
-        }
 
-
-        /* Tea Garden */
-
-        text =
-            text.replace(
-
-                /\bT\s*\.?\s*G\s*\.?\b/gi,
-
-                " "
-
-            );
-
+        /*
+         * Remove leading village labels.
+         */
 
         text =
             text.replace(
-
-                /\bTEA\s+GARDEN\b/gi,
-
-                " "
-
+                /^\s*(?:VILLAGE|VILL|VIL|V)\s*[-:.]?\s*/i,
+                ""
             );
 
 
-        /* Tea Estate */
+        /*
+         * Remove parenthetical locality.
+         *
+         * Salbari (Neech Line)
+         *       ↓
+         * Salbari
+         */
 
         text =
             text.replace(
-
-                /\bT\s*\.?\s*E\s*\.?\b/gi,
-
-                " "
-
-            );
-
-
-        text =
-            text.replace(
-
-                /\bTEA\s+ESTATE\b/gi,
-
-                " "
-
-            );
-
-
-        /* Forest Village */
-
-        text =
-            text.replace(
-
-                /\bF\s*\.?\s*V\s*\.?\b/gi,
-
-                " "
-
-            );
-
-
-        text =
-            text.replace(
-
-                /\bFOREST\s+VILLAGE\b/gi,
-
-                " "
-
-            );
-
-
-        return cleanText(
-            text
-        );
-
-    }
-
-
-    /* =====================================================
-       8. PARENTHETICAL LOCALITY
-
-       Example:
-
-           Salbari (Neech Line)
-
-       canonical lookup:
-           Salbari
-
-       locality:
-           Neech Line
-    ===================================================== */
-
-    function stripParenthetical(
-        value
-    ) {
-
-        return cleanText(
-
-            String(
-                value || ""
-            )
-
-            .replace(
                 /\([^)]*\)/g,
                 " "
+            );
+
+
+        /*
+         * Remove Tea Garden suffix variants.
+         *
+         * We first try the base settlement because our
+         * canonical LGD name may simply be SALBARI.
+         */
+
+        text =
+            text.replace(
+                /\b(?:T\s*\.?\s*G\s*\.?|T\s*\.?\s*E\s*\.?|TEA\s+GARDEN|TEA\s+ESTATE)\b/gi,
+                " "
+            );
+
+
+        text =
+            text.replace(
+                /\s+/g,
+                " "
             )
-
-        );
-
-    }
-
-
-    function getParentheticalLocalities(
-        value
-    ) {
-
-        const text =
-            String(
-                value || ""
-            );
+            .replace(
+                /^[,\s.-]+|[,\s.-]+$/g,
+                ""
+            )
+            .trim();
 
 
-        const result =
-            [];
-
-
-        const regex =
-            /\(([^)]+)\)/g;
-
-
-        let match;
-
-
-        while (
-            (
-                match =
-                    regex.exec(
-                        text
-                    )
-            ) !== null
-        ) {
-
-            const locality =
-                cleanText(
-                    match[1]
-                );
-
-
-            if (locality) {
-
-                uniquePush(
-                    result,
-                    locality
-                );
-
-            }
-
-        }
-
-
-        return result;
+        return text;
 
     }
 
 
     /* =====================================================
-       9. LOCALITY-LIKE TEXT
+       ADMINISTRATIVE LABEL DETECTOR
 
-       These terms often indicate a hamlet/line/locality
-       within a larger settlement.
+       Anything explicitly labelled as one of these fields
+       MUST NOT enter village candidate generation.
+       ===================================================== */
 
-       IMPORTANT:
-
-       We do NOT automatically delete such a component.
-
-       If it genuinely exists as an LGD village it can
-       still match.
-
-       It simply receives locality-like classification.
-
-       Examples:
-
-           Lohar Line
-           Gudam Line
-           Neech Line
-           Lower Line
-           Pakaline
-           4 No Dhura
-    ===================================================== */
-
-    function looksLikeLocality(
-        value
-    ) {
-
-        const n =
-            norm(
-                value
-            );
-
-
-        if (!n) {
-
-            return false;
-
-        }
-
-
-        return (
-
-            /\bLINE\b/.test(n) ||
-
-            /\bDHURA\b/.test(n) ||
-
-            /\bPARA\b/.test(n) ||
-
-            /\bBASTI\b/.test(n) ||
-
-            /\bCOLONY\b/.test(n) ||
-
-            /\bQUARTER\b/.test(n) ||
-
-            /\bQUARTERS\b/.test(n) ||
-
-            /\bCAMP\b/.test(n)
-
-        );
-
-    }
-
-
-    /* =====================================================
-       10. SAFE LOOKUP VARIANTS
-
-       IMPORTANT:
-
-       We generate only meaningful canonical variants.
-
-       We DO NOT generate:
-
-           every word
-           every substring
-           every n-gram
-
-       This prevents candidate explosion.
-    ===================================================== */
-
-    function buildVariants(
+    function isAdministrativeSegment(
         segment
     ) {
 
-        const original =
-            cleanText(
+        const raw =
+            safeString(
                 segment
             );
 
 
-        const variants =
-            [];
+        if (!raw)
+            return true;
 
+
+        return (
+
+            /^\s*(?:P\s*\.?\s*O\s*\.?|POST\s+OFFICE)\s*[-:=+]?/i
+                .test(raw)
+
+            ||
+
+            /^\s*(?:P\s*\.?\s*S\s*\.?|POLICE\s+STATION)\s*[-:=+]?/i
+                .test(raw)
+
+            ||
+
+            /^\s*(?:DIST(?:RICT)?|DISTT)\s*[-:=+]?/i
+                .test(raw)
+
+            ||
+
+            /^\s*(?:PIN|PINCODE|POSTAL\s+CODE)\s*[-:=+]?/i
+                .test(raw)
+
+            ||
+
+            /^\s*(?:BLOCK|BLK)\s*[-:=+]?/i
+                .test(raw)
+
+            ||
+
+            /^\s*(?:SUBDIVISION|SUB\s*DIVISION|SUBDIV)\s*[-:=+]?/i
+                .test(raw)
+
+        );
+
+    }
+
+
+    /* =====================================================
+       GET CANDIDATE SEGMENTS
+
+       parseAddress() should already provide the authoritative
+       unlabelled candidate segments.
+
+       We DO NOT rebuild candidates from PO/PS/District.
+       ===================================================== */
+
+    let candidateSegments = [];
+
+
+    if (
+        Array.isArray(
+            parsed.candidateSegments
+        )
+    ) {
+
+        candidateSegments =
+            parsed.candidateSegments
+                .map(
+                    safeString
+                )
+                .filter(Boolean);
+
+    }
+
+
+    /* =====================================================
+       FALLBACK
+
+       For compatibility with older parseAddress versions.
+
+       This fallback splits the raw address but explicitly
+       removes labelled administrative segments.
+       ===================================================== */
+
+    if (
+        !candidateSegments.length
+    ) {
+
+        candidateSegments =
+            address
+                .split(
+                    /[,;]+/
+                )
+                .map(
+                    safeString
+                )
+                .filter(Boolean)
+                .filter(
+                    segment =>
+                        !isAdministrativeSegment(
+                            segment
+                        )
+                );
+
+    }
+
+
+    /* =====================================================
+       REMOVE DUPLICATE SEGMENTS WHILE PRESERVING ORDER
+       ===================================================== */
+
+    {
 
         const seen =
             new Set();
 
 
-        function add(
-            value,
-            type,
-            quality
-        ) {
+        candidateSegments =
+            candidateSegments.filter(
+                segment => {
 
-            const cleaned =
-                cleanText(
-                    value
-                );
+                    const key =
+                        normalize(
+                            segment
+                        );
 
 
-            if (!cleaned) {
-
-                return;
-
-            }
+                    if (!key)
+                        return false;
 
 
-            const normalized =
-                norm(
-                    cleaned
-                );
+                    if (
+                        seen.has(
+                            key
+                        )
+                    ) {
+
+                        return false;
+
+                    }
 
 
-            if (!normalized) {
-
-                return;
-
-            }
+                    seen.add(
+                        key
+                    );
 
 
-            if (
-                seen.has(
-                    normalized
-                )
-            ) {
+                    return true;
 
-                return;
+                }
+            );
 
-            }
+    }
 
 
-            seen.add(
-                normalized
+    /* =====================================================
+       CANDIDATE RESULT COLLECTION
+       ===================================================== */
+
+    const candidates = [];
+
+    const candidateByCode =
+        new Map();
+
+
+    /* =====================================================
+       ADD CANDIDATE
+
+       Same LGD may be found through several expressions.
+       Keep ONE candidate but preserve its strongest /
+       earliest positional evidence.
+       ===================================================== */
+
+    function addCandidate(
+        village,
+        evidence
+    ) {
+
+        if (!village)
+            return;
+
+
+        const villageCode =
+            safeString(
+
+                village.villageCode ||
+
+                village.Vill_LGD ||
+
+                village.vill_LGD ||
+
+                village.lgdCode ||
+
+                village.LGD ||
+
+                ""
+
             );
 
 
-            variants.push({
+        /*
+         * LGD is preferred as identity.
+         *
+         * Fallback identity protects records where LGD is
+         * temporarily unavailable.
+         */
 
-                text:
-                    cleaned,
+        const identity =
 
-                normalized,
+            villageCode ||
 
-                type,
+            [
 
-                quality
+                normalize(
+                    village.name ||
+                    village.cleanName
+                ),
+
+                normalize(
+                    village.block
+                ),
+
+                normalize(
+                    village.district
+                )
+
+            ].join("|");
+
+
+        if (!identity)
+            return;
+
+
+        const existing =
+            candidateByCode.get(
+                identity
+            );
+
+
+        if (existing) {
+
+            /*
+             * Preserve all discovery evidence.
+             */
+
+            if (
+                !Array.isArray(
+                    existing.matchEvidence
+                )
+            ) {
+
+                existing.matchEvidence = [];
+
+            }
+
+
+            existing.matchEvidence.push(
+                evidence
+            );
+
+
+            /*
+             * Earlier address position always wins.
+             */
+
+            if (
+                Number.isFinite(
+                    evidence.segmentIndex
+                ) &&
+                (
+                    !Number.isFinite(
+                        existing.segmentIndex
+                    )
+                    ||
+                    evidence.segmentIndex <
+                    existing.segmentIndex
+                )
+            ) {
+
+                existing.segmentIndex =
+                    evidence.segmentIndex;
+
+                existing.candidatePosition =
+                    evidence.candidatePosition;
+
+                existing.matchedSegment =
+                    evidence.segment;
+
+                existing.matchedExpression =
+                    evidence.expression;
+
+                existing.matchType =
+                    evidence.matchType;
+
+            }
+
+
+            /*
+             * Exact name match is stronger than derived /
+             * phrase match at same position.
+             */
+
+            const strength = {
+
+                EXACT:
+                    4,
+
+                NORMALIZED_EXACT:
+                    3,
+
+                SETTLEMENT_BASE:
+                    2,
+
+                PHRASE:
+                    1
+
+            };
+
+
+            if (
+                (
+                    strength[
+                        evidence.matchType
+                    ] || 0
+                )
+                >
+                (
+                    strength[
+                        existing.matchType
+                    ] || 0
+                )
+            ) {
+
+                existing.matchType =
+                    evidence.matchType;
+
+                existing.matchedExpression =
+                    evidence.expression;
+
+            }
+
+
+            return;
+
+        }
+
+
+        const candidate = {
+
+            ...village,
+
+
+            /* -----------------------------------------
+               Stable identity
+               ----------------------------------------- */
+
+            villageCode,
+
+            Vill_LGD:
+                villageCode,
+
+
+            /* -----------------------------------------
+               Matching metadata
+               ----------------------------------------- */
+
+            matchedSegment:
+                evidence.segment,
+
+            matchedExpression:
+                evidence.expression,
+
+            normalizedMatchedExpression:
+                normalize(
+                    evidence.expression
+                ),
+
+            matchType:
+                evidence.matchType,
+
+            segmentIndex:
+                evidence.segmentIndex,
+
+            candidatePosition:
+                evidence.candidatePosition,
+
+            addressPosition:
+                evidence.segmentIndex,
+
+
+            /* -----------------------------------------
+               Positional evidence
+
+               First address segment gets strongest
+               positional priority.
+               ----------------------------------------- */
+
+            positionScore:
+
+                Math.max(
+                    0,
+                    100 -
+                    (
+                        evidence.segmentIndex *
+                        20
+                    )
+                ),
+
+
+            /* -----------------------------------------
+               Administrative evidence copied separately.
+
+               IMPORTANT:
+               these fields DO NOT create the candidate.
+               ----------------------------------------- */
+
+            addressPO:
+                parsed.po || "",
+
+            addressPS:
+                parsed.ps || "",
+
+            addressDistrict:
+                parsed.district || "",
+
+            addressPIN:
+                parsed.pin || "",
+
+            addressBlock:
+                parsed.block || "",
+
+
+            matchEvidence: [
+                evidence
+            ]
+
+        };
+
+
+        candidateByCode.set(
+            identity,
+            candidate
+        );
+
+
+        candidates.push(
+            candidate
+        );
+
+    }
+
+
+    /* =====================================================
+       EXACT LOOKUP HELPER
+
+       IMPORTANT:
+
+       Resolver.getVillagesByName() MUST search only the
+       village-name index.
+
+       It must NOT return villages merely because district,
+       PS, PO or block matches the expression.
+       ===================================================== */
+
+    function lookupExact(
+        expression
+    ) {
+
+        const value =
+            safeString(
+                expression
+            );
+
+
+        if (!value)
+            return [];
+
+
+        const found =
+            Resolver.getVillagesByName(
+                value
+            );
+
+
+        return Array.isArray(
+            found
+        )
+            ? found
+            : [];
+
+    }
+
+
+    /* =====================================================
+       SEARCH EACH UNLABELLED SEGMENT IN ADDRESS ORDER
+       ===================================================== */
+
+    const segmentDiagnostics = [];
+
+
+    for (
+        let segmentIndex = 0;
+        segmentIndex < candidateSegments.length;
+        segmentIndex++
+    ) {
+
+        const segment =
+            candidateSegments[
+                segmentIndex
+            ];
+
+
+        if (
+            !segment ||
+            isAdministrativeSegment(
+                segment
+            )
+        ) {
+
+            continue;
+
+        }
+
+
+        const expressions = [];
+
+
+        /* -------------------------------------------------
+           ORIGINAL EXPRESSION
+           ------------------------------------------------- */
+
+        expressions.push({
+
+            value:
+                segment,
+
+            type:
+                "EXACT"
+
+        });
+
+
+        /* -------------------------------------------------
+           CLEAN SETTLEMENT EXPRESSION
+
+           Salbari T.G.
+                 ↓
+           Salbari
+           ------------------------------------------------- */
+
+        const settlementBase =
+            normalizeSettlementExpression(
+                segment
+            );
+
+
+        if (
+            settlementBase &&
+            normalize(
+                settlementBase
+            ) !==
+            normalize(
+                segment
+            )
+        ) {
+
+            expressions.push({
+
+                value:
+                    settlementBase,
+
+                type:
+                    "SETTLEMENT_BASE"
 
             });
 
@@ -2750,1807 +3044,539 @@ Resolver.generateCandidates = function (
 
 
         /* -------------------------------------------------
-           Exact segment
-        ------------------------------------------------- */
+           If parser already extracted settlement and this
+           segment contains it, allow that expression.
 
-        add(
+           This is useful for:
 
-            original,
+               Lohar Line, Salbari T.G.
 
-            "EXACT_SEGMENT",
+           parsed.settlement = Salbari T.G.
+           ------------------------------------------------- */
 
-            100
-
-        );
-
-
-        /* -------------------------------------------------
-           Remove only parenthetical locality
-        ------------------------------------------------- */
-
-        const noParenthetical =
-            stripParenthetical(
-                original
+        const parsedSettlement =
+            safeString(
+                parsed.settlement
             );
 
 
-        add(
-
-            noParenthetical,
-
-            "PARENTHETICAL_LOCALITY_REMOVED",
-
-            99
-
-        );
-
-
-        /* -------------------------------------------------
-           Remove only settlement type
-        ------------------------------------------------- */
-
-        const noSettlementType =
-            stripSettlementType(
-                original
-            );
-
-
-        add(
-
-            noSettlementType,
-
-            "SETTLEMENT_TYPE_REMOVED",
-
-            99
-
-        );
-
-
-        /* -------------------------------------------------
-           Canonical:
-
-           remove parenthetical locality
-           +
-           remove TG/TE/FV
-        ------------------------------------------------- */
-
-        const canonical =
-            stripSettlementType(
-
-                stripParenthetical(
-                    original
+        if (
+            parsedSettlement &&
+            (
+                normalize(
+                    segment
+                ).includes(
+                    normalize(
+                        parsedSettlement
+                    )
                 )
-
-            );
-
-
-        add(
-
-            canonical,
-
-            "CANONICAL_SETTLEMENT",
-
-            100
-
-        );
-
-
-        return variants;
-
-    }
-
-
-    /* =====================================================
-       11. EXACT VILLAGE LOOKUP
-
-       ALL LGDs sharing the name must be returned.
-    ===================================================== */
-
-    function findExactVillages(
-        lookup
-    ) {
-
-        const normalized =
-            norm(
-                lookup
-            );
-
-
-        if (!normalized) {
-
-            return [];
-
-        }
-
-
-        /* -------------------------------------------------
-           Existing indexed resolver lookup
-        ------------------------------------------------- */
-
-        let found =
-            Resolver.getVillagesByName(
-                lookup
-            );
-
-
-        if (
-            Array.isArray(
-                found
-            ) &&
-            found.length
-        ) {
-
-            return found;
-
-        }
-
-
-        /* -------------------------------------------------
-           Try normalized form
-        ------------------------------------------------- */
-
-        found =
-            Resolver.getVillagesByName(
-                normalized
-            );
-
-
-        if (
-            Array.isArray(
-                found
-            ) &&
-            found.length
-        ) {
-
-            return found;
-
-        }
-
-
-        /* -------------------------------------------------
-           Exact-normalized fallback
-        ------------------------------------------------- */
-
-        if (
-            !Array.isArray(
-                villages
-            )
-        ) {
-
-            return [];
-
-        }
-
-
-        return villages.filter(
-
-            village =>
-
-                getVillageCleanName(
-                    village
-                ) === normalized
-
-        );
-
-    }
-
-
-    /* =====================================================
-       12. KNOWN VILLAGE PHRASE INSIDE A COMBINED SEGMENT
-
-       Example parser output could theoretically be:
-
-           "Lohar Line Salbari T.G."
-
-       Exact segment lookup fails.
-
-       But SALBARI is a known complete village phrase.
-
-       We may therefore detect SALBARI.
-
-       IMPORTANT:
-
-       This is based on KNOWN village names.
-
-       It is NOT arbitrary word candidate generation.
-    ===================================================== */
-
-    function findVillagePhrasesInside(
-        segment
-    ) {
-
-        const prepared =
-            norm(
-
-                stripSettlementType(
-
-                    stripParenthetical(
+                ||
+                normalize(
+                    parsedSettlement
+                ).includes(
+                    normalize(
                         segment
                     )
-
                 )
-
-            );
-
-
-        if (
-            !prepared ||
-            !Array.isArray(
-                villages
             )
         ) {
 
-            return [];
+            expressions.push({
 
-        }
+                value:
+                    parsedSettlement,
 
+                type:
+                    "NORMALIZED_EXACT"
 
-        const haystack =
-            " " +
-            prepared +
-            " ";
-
-
-        const matches =
-            [];
+            });
 
 
-        const seen =
-            new Set();
-
-
-        villages.forEach(
-
-            village => {
-
-                const villageName =
-                    getVillageName(
-                        village
-                    );
-
-
-                const normalizedVillage =
-                    norm(
-                        villageName
-                    );
-
-
-                if (!normalizedVillage) {
-
-                    return;
-
-                }
-
-
-                /*
-                 * Avoid very short noisy phrase matches.
-                 */
-
-                if (
-                    normalizedVillage.length < 4
-                ) {
-
-                    return;
-
-                }
-
-
-                const needle =
-                    " " +
-                    normalizedVillage +
-                    " ";
-
-
-                if (
-                    !haystack.includes(
-                        needle
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                const code =
-                    getVillageCode(
-                        village
-                    );
-
-
-                const key =
-                    (
-
-                        code ||
-
-                        normalizedVillage +
-                        "::" +
-                        norm(
-                            village?.block
-                        ) +
-                        "::" +
-                        norm(
-                            village?.district
-                        )
-
-                    );
-
-
-                if (
-                    seen.has(
-                        key
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                seen.add(
-                    key
+            const parsedSettlementBase =
+                normalizeSettlementExpression(
+                    parsedSettlement
                 );
 
 
-                matches.push({
+            if (
+                parsedSettlementBase
+            ) {
 
-                    village,
+                expressions.push({
 
-                    villageName,
+                    value:
+                        parsedSettlementBase,
 
-                    normalized:
-                        normalizedVillage
+                    type:
+                        "SETTLEMENT_BASE"
 
                 });
 
             }
 
-        );
-
-
-        return matches;
-
-    }
-
-
-    /* =====================================================
-       13. GET CANDIDATE SEGMENTS
-
-       Primary source:
-           parsed.candidateSegments
-
-       These MUST already exclude explicitly labelled:
-
-           PO
-           PS
-           DIST
-           DISTRICT
-           BLOCK
-           PIN
-
-       Compatibility fallback:
-           parsed.candidateText
-    ===================================================== */
-
-    let segments =
-        Array.isArray(
-            parsed?.candidateSegments
-        )
-
-        ? parsed.candidateSegments
-            .map(
-                cleanText
-            )
-            .filter(
-                Boolean
-            )
-
-        : [];
-
-
-    if (
-        !segments.length &&
-        parsed?.candidateText
-    ) {
-
-        segments =
-            String(
-                parsed.candidateText
-            )
-
-            .split(
-                ","
-            )
-
-            .map(
-                cleanText
-            )
-
-            .filter(
-                Boolean
-            );
-
-    }
-
-
-    /* =====================================================
-       14. ANALYSE EACH UNLABELLED SEGMENT
-
-       At this stage we ask:
-
-           Does this address component actually match
-           a known village?
-
-       Example:
-
-           Lohar Line
-               → no village match
-
-           Salbari T.G.
-               → SALBARI match
-
-           Kalchini
-               → possible village match
-
-           Alipurduar
-               → possible village match
-    ===================================================== */
-
-    const segmentAnalysis =
-        [];
-
-
-    segments.forEach(
-
-        (
-            segment,
-            segmentIndex
-        ) => {
-
-            const variants =
-                buildVariants(
-                    segment
-                );
-
-
-            const exactMatches =
-                [];
-
-
-            const exactSeen =
-                new Set();
-
-
-            /* -------------------------------------------------
-               Exact/canonical lookup
-            ------------------------------------------------- */
-
-            variants.forEach(
-
-                variant => {
-
-                    const matches =
-                        findExactVillages(
-                            variant.text
-                        );
-
-
-                    matches.forEach(
-
-                        village => {
-
-                            const code =
-                                getVillageCode(
-                                    village
-                                );
-
-
-                            const villageKey =
-                                (
-
-                                    code ||
-
-                                    getVillageCleanName(
-                                        village
-                                    ) +
-                                    "::" +
-                                    norm(
-                                        village?.block
-                                    ) +
-                                    "::" +
-                                    norm(
-                                        village?.district
-                                    )
-
-                                );
-
-
-                            const evidenceKey =
-                                villageKey +
-                                "::" +
-                                variant.normalized;
-
-
-                            if (
-                                exactSeen.has(
-                                    evidenceKey
-                                )
-                            ) {
-
-                                return;
-
-                            }
-
-
-                            exactSeen.add(
-                                evidenceKey
-                            );
-
-
-                            exactMatches.push({
-
-                                village,
-
-                                variant,
-
-                                mode:
-                                    "EXACT"
-
-                            });
-
-                        }
-
-                    );
-
-                }
-
-            );
-
-
-            /* -------------------------------------------------
-               Known-village phrase fallback
-
-               Only needed when exact/canonical lookup
-               produced nothing.
-            ------------------------------------------------- */
-
-            const phraseMatches =
-                [];
-
-
-            if (
-                exactMatches.length === 0
-            ) {
-
-                const phraseResults =
-                    findVillagePhrasesInside(
-                        segment
-                    );
-
-
-                phraseResults.forEach(
-
-                    result => {
-
-                        phraseMatches.push({
-
-                            village:
-                                result.village,
-
-                            variant: {
-
-                                text:
-                                    result.villageName,
-
-                                normalized:
-                                    result.normalized,
-
-                                type:
-                                    "KNOWN_VILLAGE_PHRASE",
-
-                                quality:
-                                    94
-
-                            },
-
-                            mode:
-                                "PHRASE"
-
-                        });
-
-                    }
-
-                );
-
-            }
-
-
-            const matches =
-                exactMatches.length
-                    ? exactMatches
-                    : phraseMatches;
-
-
-            segmentAnalysis.push({
-
-                segment,
-
-                segmentIndex,
-
-                localityLike:
-                    looksLikeLocality(
-                        segment
-                    ),
-
-                variants,
-
-                exactMatches,
-
-                phraseMatches,
-
-                matches,
-
-                candidatePosition:
-                    -1
-
-            });
-
         }
-
-    );
-
-
-    /* =====================================================
-       15. ASSIGN GENUINE VILLAGE-CANDIDATE POSITION
-
-       THIS IS IMPORTANT.
-
-       We do NOT use raw address segment position alone.
-
-       Example:
-
-           segment 0 = Lohar Line
-                       no village match
-
-           segment 1 = Salbari
-                       village match
-
-           segment 2 = Kalchini
-                       village match
-
-           segment 3 = Alipurduar
-                       village match
-
-
-       Genuine village candidate positions become:
-
-           Lohar Line   = -1
-           Salbari      = 0
-           Kalchini     = 1
-           Alipurduar   = 2
-
-
-       Therefore SALBARI is the FIRST genuine village
-       candidate even though it was address segment 1.
-    ===================================================== */
-
-    let nextCandidatePosition =
-        0;
-
-
-    segmentAnalysis.forEach(
-
-        analysis => {
-
-            if (
-                Array.isArray(
-                    analysis.matches
-                ) &&
-                analysis.matches.length
-            ) {
-
-                analysis.candidatePosition =
-                    nextCandidatePosition;
-
-
-                nextCandidatePosition++;
-
-            }
-
-            else {
-
-                analysis.candidatePosition =
-                    -1;
-
-            }
-
-        }
-
-    );
-
-
-    /* =====================================================
-       16. FIRST ACTUAL VILLAGE-CONTAINING SEGMENT
-    ===================================================== */
-
-    const firstVillageAnalysis =
-        segmentAnalysis.find(
-
-            analysis =>
-
-                analysis.candidatePosition === 0
-
-        ) || null;
-
-
-    const firstVillageSegmentIndex =
-        firstVillageAnalysis
-
-            ? firstVillageAnalysis.segmentIndex
-
-            : -1;
-
-
-    /* =====================================================
-       17. EXTRACT LEADING LOCALITY
-
-       Anything BEFORE the first genuine village match,
-       which itself did not match a village, is preserved
-       as locality.
-
-       Example:
-
-           Lohar Line,
-           Salbari T.G.
-
-       locality:
-           Lohar Line
-    ===================================================== */
-
-    const localitySegments =
-        [];
-
-
-    if (
-        firstVillageSegmentIndex > 0
-    ) {
-
-        segmentAnalysis
-
-        .filter(
-
-            analysis =>
-
-                analysis.segmentIndex <
-                firstVillageSegmentIndex
-
-        )
-
-        .forEach(
-
-            analysis => {
-
-                if (
-                    !analysis.matches.length
-                ) {
-
-                    uniquePush(
-
-                        localitySegments,
-
-                        analysis.segment
-
-                    );
-
-                }
-
-            }
-
-        );
-
-    }
-
-
-    /* =====================================================
-       18. EXTRACT PARENTHETICAL LOCALITIES
-
-       Example:
-
-           Salbari (Neech Line)
-
-       locality:
-           Neech Line
-    ===================================================== */
-
-    segmentAnalysis.forEach(
-
-        analysis => {
-
-            const localities =
-                getParentheticalLocalities(
-                    analysis.segment
-                );
-
-
-            localities.forEach(
-
-                locality => {
-
-                    uniquePush(
-
-                        localitySegments,
-
-                        locality
-
-                    );
-
-                }
-
-            );
-
-        }
-
-    );
-
-
-    /* =====================================================
-       19. POSITION / STRUCTURAL SCORE
-
-       ADDRESS ORDER RULE
-
-       Among genuine unlabelled village candidates:
-
-           candidate position 0 → strongest
-           candidate position 1 → weaker
-           candidate position 2 → weaker
-           candidate position 3 → weaker
-
-       Example:
-
-           SALBARI, MALBAZAR, JALPAIGURI
-
-       if all three are village names:
-
-           SALBARI      position 0 → 100
-           MALBAZAR     position 1 → 60
-           JALPAIGURI   position 2 → 35
-
-
-       Therefore when there is no stronger evidence:
-
-           SALBARI wins.
-
-
-       Example:
-
-           JALPAIGURI, MALBAZAR, SALBARI
-
-       gives:
-
-           JALPAIGURI position 0 → strongest.
-
-
-       IMPORTANT:
-
-       Labelled PO/PS/District fields are not part of this
-       competition.
-    ===================================================== */
-
-    function getStructuralScore(
-        analysis
-    ) {
-
-        if (!analysis) {
-
-            return 0;
-
-        }
-
-
-        const position =
-            Number(
-                analysis.candidatePosition
-            );
-
-
-        if (
-            position < 0
-        ) {
-
-            return 0;
-
-        }
-
-
-        if (
-            position === 0
-        ) {
-
-            return 100;
-
-        }
-
-
-        if (
-            position === 1
-        ) {
-
-            return 60;
-
-        }
-
-
-        if (
-            position === 2
-        ) {
-
-            return 35;
-
-        }
-
-
-        if (
-            position === 3
-        ) {
-
-            return 20;
-
-        }
-
-
-        return Math.max(
-
-            5,
-
-            20 -
-            (
-                (
-                    position - 3
-                ) * 5
-            )
-
-        );
-
-    }
-
-
-    /* =====================================================
-       20. CANDIDATE IDENTITY
-
-       Keep duplicate village names separated by LGD.
-    ===================================================== */
-
-    function candidateKey(
-        village
-    ) {
-
-        const code =
-            getVillageCode(
-                village
-            );
-
-
-        if (code) {
-
-            return (
-                "LGD::" +
-                code
-            );
-
-        }
-
-
-        return [
-
-            "NAME",
-
-            getVillageCleanName(
-                village
-            ),
-
-            norm(
-                village?.block
-            ),
-
-            norm(
-                village?.policeStation
-            ),
-
-            norm(
-                village?.district
-            )
-
-        ].join(
-            "::"
-        );
-
-    }
-
-
-    /* =====================================================
-       21. BUILD ALL RAW VILLAGE CANDIDATES
-    ===================================================== */
-
-    const candidateMap =
-        new Map();
-
-
-    function addCandidate(
-        match,
-        analysis
-    ) {
-
-        const village =
-            match?.village;
-
-
-        if (!village) {
-
-            return;
-
-        }
-
-
-        const key =
-            candidateKey(
-                village
-            );
-
-
-        const structuralScore =
-            getStructuralScore(
-                analysis
-            );
-
-
-        const matchQuality =
-            Number(
-                match?.variant?.quality || 0
-            );
 
 
         /* -------------------------------------------------
-           Locality-like wording penalty
+           DEDUP EXPRESSIONS
+           ------------------------------------------------- */
 
-           Example:
-               Lohar Line
+        const uniqueExpressions = [];
 
-           If LOHAR LINE happens to exist as an LGD
-           village, we do NOT delete it.
-
-           But locality-like wording is weaker than a clean
-           settlement candidate.
-
-           This penalty must NOT affect:
-
-               Salbari (Neech Line)
-
-           because the canonical lookup there is SALBARI,
-           while Neech Line is separately preserved.
-        ------------------------------------------------- */
-
-        let localityPenalty =
-            0;
+        const expressionKeys =
+            new Set();
 
 
-        if (
-            analysis.localityLike &&
-            match?.mode === "EXACT"
+        for (
+            const expression
+            of expressions
         ) {
 
-            localityPenalty =
-                15;
-
-        }
-
-
-        const generationScore =
-            Math.max(
-
-                0,
-
-                structuralScore +
-                matchQuality -
-                localityPenalty
-
-            );
+            const key =
+                normalize(
+                    expression.value
+                );
 
 
-        const evidence = {
+            if (
+                !key ||
+                expressionKeys.has(
+                    key
+                )
+            ) {
 
-            source:
-                "ADDRESS_SETTLEMENT",
+                continue;
 
-            segment:
-                analysis.segment,
-
-            segmentIndex:
-                analysis.segmentIndex,
-
-            candidatePosition:
-                analysis.candidatePosition,
-
-            firstVillageCandidate:
-                analysis.candidatePosition === 0,
-
-            lookupText:
-                match?.variant?.text || "",
-
-            normalizedLookup:
-                match?.variant?.normalized || "",
-
-            matchType:
-                match?.variant?.type || "",
-
-            matchMode:
-                match?.mode || "",
-
-            localityLike:
-                analysis.localityLike,
-
-            structuralScore,
-
-            matchQuality,
-
-            localityPenalty,
-
-            generationScore
-
-        };
+            }
 
 
-        let candidate =
-            candidateMap.get(
+            expressionKeys.add(
                 key
             );
 
 
-        if (!candidate) {
-
-            candidate = {
-
-                /* -------------------------------------
-                   Preserve original canonical village
-                   record
-                ------------------------------------- */
-
-                ...village,
-
-
-                /* -------------------------------------
-                   Canonical village identity
-                ------------------------------------- */
-
-                village:
-                    getVillageName(
-                        village
-                    ),
-
-                matchedVillage:
-                    getVillageName(
-                        village
-                    ),
-
-                canonicalVillage:
-                    getVillageName(
-                        village
-                    ),
-
-                Vill_LGD:
-                    getVillageCode(
-                        village
-                    ),
-
-
-                /* -------------------------------------
-                   Address interpretation
-                ------------------------------------- */
-
-                addressSegment:
-                    analysis.segment,
-
-                segmentIndex:
-                    analysis.segmentIndex,
-
-                candidatePosition:
-                    analysis.candidatePosition,
-
-                lookupText:
-                    match?.variant?.text || "",
-
-                matchType:
-                    match?.variant?.type || "",
-
-                matchMode:
-                    match?.mode || "",
-
-
-                /* -------------------------------------
-                   Candidate generation scores
-                ------------------------------------- */
-
-                structuralScore,
-
-                matchQuality,
-
-                localityPenalty,
-
-                generationScore,
-
-
-                /* -------------------------------------
-                   Later production scoring stages
-                ------------------------------------- */
-
-                administrativeScore:
-                    0,
-
-                forestScore:
-                    0,
-
-                spatialScore:
-                    0,
-
-                distanceKm:
-                    null,
-
-                totalScore:
-                    generationScore,
-
-
-                /* -------------------------------------
-                   Evidence
-                ------------------------------------- */
-
-                generationEvidence: [
-                    evidence
-                ]
-
-            };
-
-
-            candidateMap.set(
-                key,
-                candidate
+            uniqueExpressions.push(
+                expression
             );
-
-
-            return;
 
         }
 
 
         /* -------------------------------------------------
-           Same LGD found through another normalization or
-           segment.
+           LOOKUP
+           ------------------------------------------------- */
 
-           Preserve all evidence.
-        ------------------------------------------------- */
-
-        candidate
-            .generationEvidence
-            .push(
-                evidence
-            );
+        let segmentMatchCount =
+            0;
 
 
-        /* -------------------------------------------------
-           Keep strongest interpretation for this LGD.
-        ------------------------------------------------- */
+        const diagnostic = {
+
+            segment,
+
+            segmentIndex,
+
+            expressions:
+                [],
+
+            matchCount:
+                0
+
+        };
+
+
+        for (
+            const expression
+            of uniqueExpressions
+        ) {
+
+            const matches =
+                lookupExact(
+                    expression.value
+                );
+
+
+            diagnostic.expressions.push({
+
+                expression:
+                    expression.value,
+
+                type:
+                    expression.type,
+
+                matches:
+                    matches.length
+
+            });
+
+
+            if (
+                !matches.length
+            ) {
+
+                continue;
+
+            }
+
+
+            for (
+                const village
+                of matches
+            ) {
+
+                addCandidate(
+                    village,
+                    {
+
+                        segment,
+
+                        expression:
+                            expression.value,
+
+                        matchType:
+                            expression.type,
+
+                        segmentIndex,
+
+                        candidatePosition:
+                            segmentIndex
+
+                    }
+                );
+
+
+                segmentMatchCount++;
+
+            }
+
+        }
+
+
+        diagnostic.matchCount =
+            segmentMatchCount;
+
+
+        segmentDiagnostics.push(
+            diagnostic
+        );
+
+    }
+
+
+    /* =====================================================
+       DETERMINE PRIMARY MATCHED SEGMENT
+
+       Find the EARLIEST address segment that actually
+       produced a village-name candidate.
+
+       This is critical.
+
+       Example:
+
+           Lohar Line,
+           Salbari T.G.,
+           Kalchini,
+           Alipurduar
+
+       Lohar Line -> no village match
+       Salbari    -> match
+
+       therefore primary segment = Salbari T.G.
+       ===================================================== */
+
+    let primarySegmentIndex =
+        null;
+
+
+    for (
+        const candidate
+        of candidates
+    ) {
 
         if (
-            generationScore >
-            Number(
-                candidate.generationScore || 0
+            !Number.isFinite(
+                candidate.segmentIndex
             )
         ) {
 
-            candidate.addressSegment =
-                analysis.segment;
+            continue;
 
-            candidate.segmentIndex =
-                analysis.segmentIndex;
+        }
 
-            candidate.candidatePosition =
-                analysis.candidatePosition;
 
-            candidate.lookupText =
-                match?.variant?.text || "";
+        if (
+            primarySegmentIndex === null
+            ||
+            candidate.segmentIndex <
+            primarySegmentIndex
+        ) {
 
-            candidate.matchType =
-                match?.variant?.type || "";
-
-            candidate.matchMode =
-                match?.mode || "";
-
-            candidate.structuralScore =
-                structuralScore;
-
-            candidate.matchQuality =
-                matchQuality;
-
-            candidate.localityPenalty =
-                localityPenalty;
-
-            candidate.generationScore =
-                generationScore;
-
-            candidate.totalScore =
-                generationScore;
+            primarySegmentIndex =
+                candidate.segmentIndex;
 
         }
 
     }
 
 
-    /* =====================================================
-       22. ADD EVERY GENUINE MATCH
+    const primarySegment =
 
-       At this point:
+        primarySegmentIndex !== null
 
-           labelled admin fields are excluded
-
-       but:
-
-           every unlabelled component which genuinely
-           matches a village remains available.
-
-       Example:
-
-           Salbari, Malbazar, Jalpaiguri
-
-       may initially produce all three village-name groups.
-
-       Position later identifies SALBARI as primary.
-    ===================================================== */
-
-    segmentAnalysis.forEach(
-
-        analysis => {
-
-            analysis.matches.forEach(
-
-                match => {
-
-                    addCandidate(
-
-                        match,
-
-                        analysis
-
-                    );
-
-                }
-
-            );
-
-        }
-
-    );
-
-
-    /* =====================================================
-       23. ALL CANDIDATES BEFORE PRIMARY VILLAGE-NAME
-           SELECTION
-    ===================================================== */
-
-    let allCandidates =
-        Array.from(
-            candidateMap.values()
-        );
-
-
-    allCandidates.sort(
-
-        (
-            a,
-            b
-        ) => {
-
-            const positionDifference =
-
-                Number(
-                    a.candidatePosition ?? 999
-                ) -
-
-                Number(
-                    b.candidatePosition ?? 999
-                );
-
-
-            if (
-                positionDifference !== 0
-            ) {
-
-                return positionDifference;
-
-            }
-
-
-            const scoreDifference =
-
-                Number(
-                    b.generationScore || 0
-                ) -
-
-                Number(
-                    a.generationScore || 0
-                );
-
-
-            if (
-                scoreDifference !== 0
-            ) {
-
-                return scoreDifference;
-
-            }
-
-
-            return String(
-                a.Vill_LGD || ""
-            ).localeCompare(
-
-                String(
-                    b.Vill_LGD || ""
-                )
-
-            );
-
-        }
-
-    );
-
-
-    /* =====================================================
-       24. DETERMINE PRIMARY VILLAGE NAME
-
-       THIS IMPLEMENTS THE ADDRESS-ORDER RULE.
-
-       We first select the village NAME represented by the
-       first genuine village-containing address component.
-
-       Example:
-
-           Salbari, Malbazar, Jalpaiguri
-
-       first genuine village component:
-           SALBARI
-
-       primaryVillageName:
-           SALBARI
-
-
-       Example:
-
-           Lohar Line, Salbari T.G., Kalchini, Alipurduar
-
-       Lohar Line:
-           no village match
-
-       Salbari:
-           first genuine village match
-
-       primaryVillageName:
-           SALBARI
-
-
-       IMPORTANT:
-
-       If SALBARI has multiple LGDs, we DO NOT choose the
-       LGD here.
-    ===================================================== */
-
-    let primaryVillageName =
-        "";
-
-
-    let primaryVillageNormalized =
-        "";
-
-
-    if (
-        firstVillageAnalysis &&
-        firstVillageAnalysis.matches.length
-    ) {
-
-        /*
-         * Prefer the lookup village name from the first
-         * genuine village match.
-         */
-
-        const firstMatch =
-            firstVillageAnalysis.matches[0];
-
-
-        primaryVillageName =
-            getVillageName(
-                firstMatch.village
-            );
-
-
-        primaryVillageNormalized =
-            getVillageCleanName(
-                firstMatch.village
-            );
-
-    }
-
-
-    /* =====================================================
-       25. PRIMARY VILLAGE CANDIDATES
-
-       This is the crucial two-stage design.
-
-       allCandidates:
-           every genuine village name detected in the
-           unlabelled address.
-
-       candidates:
-           all LGDs belonging to the PRIMARY village name.
-
-
-       Example:
-
-           SALBARI, MALBAZAR, JALPAIGURI
-
-       allCandidates:
-           Salbari LGDs
-           Malbazar LGDs
-           Jalpaiguri LGDs
-
-       candidates:
-           Salbari LGD #1
-           Salbari LGD #2
-           Salbari LGD #3
-
-
-       Then admin/forest/spatial scoring determines which
-       SALBARI LGD is correct.
-    ===================================================== */
-
-    let candidates =
-        [];
-
-
-    if (
-        primaryVillageNormalized
-    ) {
-
-        candidates =
-            allCandidates.filter(
-
-                candidate =>
-
-                    norm(
-                        candidate.canonicalVillage ||
-                        candidate.village ||
-                        candidate.name
-                    ) ===
-                    primaryVillageNormalized
-
-            );
-
-    }
-
-
-    /* =====================================================
-       26. SAFETY FALLBACK
-
-       If primary-name filtering somehow produced zero
-       candidates, retain all generated candidates rather
-       than silently losing evidence.
-    ===================================================== */
-
-    if (
-        !candidates.length &&
-        allCandidates.length
-    ) {
-
-        candidates =
-            allCandidates.slice();
-
-    }
-
-
-    /* =====================================================
-       27. SORT PRIMARY LGD CANDIDATES
-
-       All should normally have same village name.
-
-       Do NOT choose one LGD by generation position.
-
-       Later admin/forest/spatial scoring must decide.
-    ===================================================== */
-
-    candidates.sort(
-
-        (
-            a,
-            b
-        ) => {
-
-            const scoreDifference =
-
-                Number(
-                    b.generationScore || 0
-                ) -
-
-                Number(
-                    a.generationScore || 0
-                );
-
-
-            if (
-                scoreDifference !== 0
-            ) {
-
-                return scoreDifference;
-
-            }
-
-
-            return String(
-                a.Vill_LGD || ""
-            ).localeCompare(
-
-                String(
-                    b.Vill_LGD || ""
-                )
-
-            );
-
-        }
-
-    );
-
-
-    /* =====================================================
-       28. EXTRACTED SETTLEMENT
-
-       Preserve the original address wording.
-
-       Example:
-
-           Salbari T.G.
-
-       rather than replacing immediately with:
-
-           Salbari
-    ===================================================== */
-
-    const extractedSettlement =
-        firstVillageAnalysis
-
-            ? firstVillageAnalysis.segment
+            ? candidateSegments[
+                primarySegmentIndex
+            ] || ""
 
             : "";
 
 
     /* =====================================================
-       29. MATCHED SETTLEMENT SEGMENTS
-    ===================================================== */
+       MARK PRIMARY-SEGMENT CANDIDATES
 
-    const matchedSettlementSegments =
-        [];
+       All duplicate villages matching the first successful
+       settlement remain alive.
 
+       Example:
 
-    if (
-        firstVillageAnalysis
+           Salbari
+
+       If multiple genuine SALBARI villages exist:
+
+           Salbari LGD A
+           Salbari LGD B
+           Salbari LGD C
+
+       DO NOT select one here.
+
+       Later administrative + spatial scoring resolves them.
+       ===================================================== */
+
+    for (
+        const candidate
+        of candidates
     ) {
 
-        uniquePush(
+        candidate.isPrimarySegment =
 
-            matchedSettlementSegments,
+            primarySegmentIndex !== null
 
-            firstVillageAnalysis.segment
+            &&
 
-        );
+            candidate.segmentIndex ===
+                primarySegmentIndex;
+
+
+        candidate.primaryPositionBonus =
+
+            candidate.isPrimarySegment
+
+                ? 100
+
+                : Math.max(
+                    0,
+                    60 -
+                    (
+                        candidate.segmentIndex *
+                        15
+                    )
+                );
 
     }
 
 
     /* =====================================================
-       30. LOCALITY STRING
-    ===================================================== */
+       SORT CANDIDATES
 
-    const locality =
-        localitySegments.join(
-            ", "
-        );
+       1. Earlier address segment
+       2. Exact match strength
+       3. Original order
+
+       Administrative/spatial scoring happens later.
+       ===================================================== */
+
+    const matchStrength = {
+
+        EXACT:
+            4,
+
+        NORMALIZED_EXACT:
+            3,
+
+        SETTLEMENT_BASE:
+            2,
+
+        PHRASE:
+            1
+
+    };
+
+
+    candidates.sort(
+        (
+            a,
+            b
+        ) => {
+
+            const aPos =
+                Number.isFinite(
+                    a.segmentIndex
+                )
+                    ? a.segmentIndex
+                    : 9999;
+
+
+            const bPos =
+                Number.isFinite(
+                    b.segmentIndex
+                )
+                    ? b.segmentIndex
+                    : 9999;
+
+
+            if (
+                aPos !== bPos
+            ) {
+
+                return aPos - bPos;
+
+            }
+
+
+            const aStrength =
+                matchStrength[
+                    a.matchType
+                ] || 0;
+
+
+            const bStrength =
+                matchStrength[
+                    b.matchType
+                ] || 0;
+
+
+            if (
+                aStrength !==
+                bStrength
+            ) {
+
+                return (
+                    bStrength -
+                    aStrength
+                );
+
+            }
+
+
+            return 0;
+
+        }
+    );
 
 
     /* =====================================================
-       31. RETURN FULL GENERATION CONTEXT
-    ===================================================== */
+       PRIMARY VILLAGE
+
+       This is only the first candidate by ADDRESS POSITION.
+
+       It is NOT necessarily the final resolved LGD when
+       duplicate same-name villages exist.
+       ===================================================== */
+
+    const primaryCandidate =
+
+        candidates.find(
+            candidate =>
+                candidate.isPrimarySegment
+        )
+
+        ||
+
+        candidates[0]
+
+        ||
+
+        null;
+
+
+    const primaryVillage =
+
+        primaryCandidate
+
+            ? (
+                primaryCandidate.name ||
+
+                primaryCandidate.cleanName ||
+
+                ""
+            )
+
+            : "";
+
+
+    /* =====================================================
+       RESULT
+       ===================================================== */
 
     return {
 
         accused,
 
-        address,
-
         parsed,
+
+        address,
 
 
         /* ---------------------------------------------
            Address interpretation
-        --------------------------------------------- */
+           --------------------------------------------- */
 
-        candidateSegments:
-            segments.slice(),
+        candidateSegments,
 
-        segmentAnalysis,
+        segmentDiagnostics,
 
-        firstVillageSegmentIndex,
+        primarySegmentIndex,
 
-        firstVillageCandidatePosition:
-            firstVillageAnalysis
-                ? 0
-                : -1,
+        primarySegment,
+
+        primaryVillage,
 
 
         /* ---------------------------------------------
-           Village-name selection
-        --------------------------------------------- */
+           Locality evidence
+           --------------------------------------------- */
 
-        primaryVillageName,
+        locality:
+            parsed.locality || "",
 
-        primaryVillageNormalized,
-
-        extractedSettlement,
-
-        matchedSettlementSegments,
-
-
-        /* ---------------------------------------------
-           Locality / hamlet / line
-        --------------------------------------------- */
-
-        localitySegments,
-
-        locality,
+        settlement:
+            parsed.settlement || "",
 
 
         /* ---------------------------------------------
            Administrative evidence
 
            EVIDENCE ONLY.
-
-           These values are NOT village candidates merely
-           because they appear here.
-        --------------------------------------------- */
+           --------------------------------------------- */
 
         po:
-            parsed?.po || "",
+            parsed.po || "",
 
         ps:
-            parsed?.ps || "",
+            parsed.ps || "",
 
         district:
-            parsed?.district || "",
-
-        block:
-            parsed?.block || "",
+            parsed.district || "",
 
         pin:
-            parsed?.pin || "",
+            parsed.pin || "",
+
+        block:
+            parsed.block || "",
 
 
         /* ---------------------------------------------
-           Candidate sets
-
-           allCandidates:
-               all genuine village-name matches detected
-
-           candidates:
-               LGD alternatives for primary village name
-        --------------------------------------------- */
-
-        allCandidates,
-
-        allCandidateCount:
-            allCandidates.length,
+           Village candidates
+           --------------------------------------------- */
 
         candidates,
 
@@ -4559,20 +3585,16 @@ Resolver.generateCandidates = function (
 
 
         /* ---------------------------------------------
-           Resolution-stage diagnostic
-        --------------------------------------------- */
+           Diagnostics
+           --------------------------------------------- */
 
         reason:
 
             candidates.length
 
-                ? "PRIMARY_VILLAGE_CANDIDATES_GENERATED"
+                ? "VILLAGE_NAME_CANDIDATES_FOUND"
 
-                : allCandidates.length
-
-                    ? "VILLAGE_CANDIDATES_GENERATED_NO_PRIMARY_FILTER"
-
-                    : "NO_VILLAGE_NAME_MATCH"
+                : "NO_VILLAGE_NAME_MATCH"
 
     };
 
