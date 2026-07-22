@@ -1157,21 +1157,57 @@ Resolver.parseAddress = function (
 
    ========================================================= */
 
+/* =========================================================
+   BUILD VILLAGE INDEXES
+   =========================================================
+
+   DESIGN RULE
+
+   VILLAGE IDENTITY:
+       name
+       cleanName
+       aliases[]
+
+   ADMINISTRATIVE EVIDENCE:
+       district
+       block
+       subdivision
+       policeStation
+       postOffice
+       pinCode
+
+   ABSOLUTELY NEVER:
+       searchTokens[] -> byName
+
+   Because searchTokens contains:
+       village
+       LGD
+       block
+       district
+       state
+       country
+
+   Therefore using searchTokens for byName would make:
+
+       JALPAIGURI -> hundreds of villages
+       ALIPURDUAR -> hundreds of villages
+       KALCHINI   -> entire block
+
+   which is incorrect.
+
+   ========================================================= */
+
 Resolver.buildIndexes = function (
     force = false
 ) {
 
     /* =====================================================
-       1. RETURN EXISTING VALID INDEX
+       RETURN EXISTING INDEX
        ===================================================== */
 
     if (
-        !force &&
         Resolver.index &&
-        Resolver.index.byName instanceof Map &&
-        Resolver.index.byCode instanceof Map &&
-        Resolver.index.byDistrict instanceof Map &&
-        Resolver.index.byBlock instanceof Map
+        !force
     ) {
 
         return Resolver.index;
@@ -1180,38 +1216,22 @@ Resolver.buildIndexes = function (
 
 
     /* =====================================================
-       2. GET CANONICAL VILLAGE DATA
+       GET CANONICAL VILLAGES
        ===================================================== */
 
     const villages =
-        Resolver.getVillages();
-
-
-    if (
-        !Array.isArray(
-            villages
-        )
-    ) {
-
-        console.error(
-            "❌ AccusedAddressResolver.buildIndexes(): " +
-            "Village dataset is not an array."
-        );
-
-        return null;
-
-    }
+        Resolver.getVillages() || [];
 
 
     /* =====================================================
-       3. CREATE INDEX CONTAINER
+       CREATE CLEAN INDEX OBJECT
        ===================================================== */
 
     const index = {
 
-        /* -------------------------------------------------
+        /* -----------------------------------------------
            VILLAGE IDENTITY
-           ------------------------------------------------- */
+           ----------------------------------------------- */
 
         byName:
             new Map(),
@@ -1220,12 +1240,9 @@ Resolver.buildIndexes = function (
             new Map(),
 
 
-        /* -------------------------------------------------
-           CIVIL / ADMINISTRATIVE EVIDENCE
-           ------------------------------------------------- */
-
-        byPIN:
-            new Map(),
+        /* -----------------------------------------------
+           ADMINISTRATIVE HIERARCHY
+           ----------------------------------------------- */
 
         byDistrict:
             new Map(),
@@ -1236,80 +1253,43 @@ Resolver.buildIndexes = function (
         bySubdivision:
             new Map(),
 
-        bySubdistrictLGD:
-            new Map(),
-
         byPS:
             new Map(),
 
         byPO:
             new Map(),
 
-
-        /* -------------------------------------------------
-           LGD ADMINISTRATIVE CODES
-           ------------------------------------------------- */
-
-        byStateLGD:
+        byPIN:
             new Map(),
+
+
+        /* -----------------------------------------------
+           OPTIONAL GOVERNMENT CODES
+           ----------------------------------------------- */
 
         byDistrictLGD:
             new Map(),
 
-        byGramPanchayatLGD:
+        bySubdistrictLGD:
             new Map(),
 
 
-        /* -------------------------------------------------
-           GRAM PANCHAYAT
-           ------------------------------------------------- */
-
-        byGramPanchayat:
-            new Map(),
-
-
-        /* -------------------------------------------------
-           FOREST / PROTECTED-AREA EVIDENCE
-           ------------------------------------------------- */
-
-        byForestCircle:
-            new Map(),
-
-        byForestDivision:
-            new Map(),
-
-        byForestRange:
-            new Map(),
-
-        byForestBeat:
-            new Map(),
-
-        byForestCompartment:
-            new Map(),
-
-        byProtectedArea:
-            new Map(),
-
-
-        /* -------------------------------------------------
-           DIAGNOSTICS
-           ------------------------------------------------- */
+        /* -----------------------------------------------
+           STATS
+           ----------------------------------------------- */
 
         stats: {
 
             villages:
                 0,
 
-            villageNameKeys:
+            names:
                 0,
 
-            aliasesInserted:
+            aliases:
                 0,
 
             codes:
-                0,
-
-            pins:
                 0,
 
             districts:
@@ -1321,34 +1301,13 @@ Resolver.buildIndexes = function (
             subdivisions:
                 0,
 
-            subdistrictLGDs:
-                0,
-
             policeStations:
                 0,
 
             postOffices:
                 0,
 
-            gramPanchayats:
-                0,
-
-            forestCircles:
-                0,
-
-            forestDivisions:
-                0,
-
-            forestRanges:
-                0,
-
-            forestBeats:
-                0,
-
-            forestCompartments:
-                0,
-
-            protectedAreas:
+            pins:
                 0
 
         }
@@ -1357,112 +1316,61 @@ Resolver.buildIndexes = function (
 
 
     /* =====================================================
-       4. HELPERS
+       HELPERS
        ===================================================== */
-
-    function normalize(
-        value
-    ) {
-
-        return Resolver.normalize(
-            value || ""
-        );
-
-    }
-
 
     function safeString(
         value
     ) {
 
+        if (
+            value === null ||
+            value === undefined
+        ) {
+
+            return "";
+
+        }
+
+
         return String(
-            value ?? ""
+            value
         ).trim();
 
     }
 
 
-    /* =====================================================
-       5. CANONICAL VILLAGE IDENTITY
-
-       Village LGD is authoritative.
-
-       Fallback exists only for records without villageCode.
-       ===================================================== */
-
-    function getVillageIdentity(
-        village
+    function normalize(
+        value
     ) {
 
-        if (!village)
-            return "";
-
-
-        const code =
+        const raw =
             safeString(
-                village.villageCode ||
-                village.Vill_LGD ||
-                village.vill_LGD
+                value
             );
 
 
-        if (code) {
+        if (!raw) {
 
-            return (
-                "LGD:" +
-                code
-            );
+            return "";
 
         }
 
 
-        return (
-
-            "FALLBACK:" +
-
-            [
-                normalize(
-                    village.name
-                ),
-
-                normalize(
-                    village.block
-                ),
-
-                normalize(
-                    village.district
-                ),
-
-                normalize(
-                    village.policeStation
-                )
-
-            ].join("|")
-
+        return Resolver.normalize(
+            raw
         );
 
     }
 
 
     /* =====================================================
-       6. ADD TO MULTI-MAP
-
-       Structure:
-
-           KEY
-            ↓
-           [
-             village A,
-             village B,
-             ...
-           ]
-
-       Duplicate village LGDs are prevented.
+       ADD UNIQUE RECORD TO MULTI-MAP
        ===================================================== */
 
-    function addMulti(
+    function addToMultiMap(
         map,
-        value,
+        rawKey,
         village
     ) {
 
@@ -1478,46 +1386,107 @@ Resolver.buildIndexes = function (
 
         const key =
             normalize(
-                value
+                rawKey
             );
 
 
-        if (!key)
+        if (!key) {
+
             return false;
-
-
-        if (
-            !map.has(
-                key
-            )
-        ) {
-
-            map.set(
-                key,
-                []
-            );
 
         }
 
 
-        const list =
+        let bucket =
             map.get(
                 key
             );
 
 
-        const identity =
-            getVillageIdentity(
-                village
+        if (!bucket) {
+
+            bucket = [];
+
+            map.set(
+                key,
+                bucket
+            );
+
+        }
+
+
+        /*
+         * Deduplicate by villageCode first.
+         *
+         * If code unavailable, fall back to canonical ID.
+         */
+
+        const villageCode =
+            safeString(
+                village.villageCode ||
+                village.Vill_LGD
+            );
+
+
+        const canonicalId =
+            safeString(
+                village.canonicalId ||
+                village.id
             );
 
 
         const exists =
-            list.some(
-                existing =>
-                    getVillageIdentity(
-                        existing
-                    ) === identity
+            bucket.some(
+
+                existing => {
+
+                    const existingCode =
+                        safeString(
+                            existing.villageCode ||
+                            existing.Vill_LGD
+                        );
+
+
+                    const existingId =
+                        safeString(
+                            existing.canonicalId ||
+                            existing.id
+                        );
+
+
+                    if (
+                        villageCode &&
+                        existingCode
+                    ) {
+
+                        return (
+                            villageCode ===
+                            existingCode
+                        );
+
+                    }
+
+
+                    if (
+                        canonicalId &&
+                        existingId
+                    ) {
+
+                        return (
+                            canonicalId ===
+                            existingId
+                        );
+
+                    }
+
+
+                    return (
+                        existing ===
+                        village
+                    );
+
+                }
+
             );
 
 
@@ -1528,7 +1497,7 @@ Resolver.buildIndexes = function (
         }
 
 
-        list.push(
+        bucket.push(
             village
         );
 
@@ -1539,115 +1508,164 @@ Resolver.buildIndexes = function (
 
 
     /* =====================================================
-       7. ADD CODE INDEX
-
-       Code → canonical village
-
-       Village LGD should normally be unique.
+       ADD SINGLE CODE LOOKUP
        ===================================================== */
 
     function addCode(
-        code,
+        map,
+        rawCode,
         village
     ) {
 
-        const key =
+        const code =
             safeString(
-                code
+                rawCode
             );
 
 
         if (
-            !key ||
+            !code ||
             !village
         ) {
 
-            return;
+            return false;
+
+        }
+
+
+        /*
+         * LGD codes must not be passed through normal
+         * place-name normalization.
+         */
+
+        const key =
+            code
+                .toUpperCase()
+                .replace(
+                    /\s+/g,
+                    ""
+                );
+
+
+        if (!key) {
+
+            return false;
 
         }
 
 
         if (
-            !index.byCode.has(
+            !map.has(
                 key
             )
         ) {
 
-            index.byCode.set(
+            map.set(
                 key,
                 village
             );
 
+            return true;
+
         }
+
+
+        return false;
 
     }
 
 
     /* =====================================================
-       8. STRICT VILLAGE-NAME INSERTION
+       ADD VILLAGE NAME
 
-       ONLY values representing the actual settlement may
-       enter byName.
+       CRITICAL:
+       ONLY actual village identity enters byName.
        ===================================================== */
 
     function addVillageName(
-        value,
+        rawName,
         village,
-        source = "NAME"
+        source
     ) {
 
-        const key =
-            normalize(
-                value
+        const name =
+            safeString(
+                rawName
             );
 
 
-        if (!key)
-            return;
+        if (!name) {
 
-
-        /*
-         * Reject meaningless one-character tokens.
-         */
-
-        const compact =
-            key.replace(
-                /\s+/g,
-                ""
-            );
-
-
-        if (
-            compact.length < 2
-        ) {
-
-            return;
+            return false;
 
         }
 
 
-        const inserted =
-            addMulti(
+        const key =
+            normalize(
+                name
+            );
+
+
+        if (!key) {
+
+            return false;
+
+        }
+
+
+        /*
+         * No district/block/PS/PO logic here.
+         *
+         * If a village genuinely has the same name as
+         * a district or block, that is perfectly valid.
+         *
+         * Example:
+         *
+         *     village.name = "Kalchini"
+         *
+         * Then:
+         *
+         *     byName["KALCHINI"]
+         *
+         * is valid.
+         *
+         * We determine validity from SOURCE FIELD,
+         * not from the word itself.
+         */
+
+
+        const added =
+            addToMultiMap(
                 index.byName,
                 key,
                 village
             );
 
 
-        if (
-            inserted &&
-            source === "ALIAS"
-        ) {
+        if (added) {
 
-            index.stats.aliasesInserted++;
+            index.stats.names++;
+
+            if (
+                source ===
+                "ALIAS"
+            ) {
+
+                index.stats.aliases++;
+
+            }
 
         }
+
+
+        return added;
 
     }
 
 
     /* =====================================================
-       9. PROCESS VILLAGES
+       BUILD INDEX
        ===================================================== */
 
     for (
@@ -1655,88 +1673,86 @@ Resolver.buildIndexes = function (
         of villages
     ) {
 
-        if (!village)
+        if (!village) {
+
             continue;
+
+        }
 
 
         index.stats.villages++;
 
 
         /* =================================================
-           A. VILLAGE LGD CODE
+           1. VILLAGE IDENTITY
            ================================================= */
 
-        addCode(
-            village.villageCode ||
-            village.Vill_LGD ||
-            village.vill_LGD,
-            village
-        );
+
+        /* -------------------------------------------------
+           CANONICAL NAME
+
+           Actual canonical structure:
+               village.name
+           ------------------------------------------------- */
+
+        const villageName =
+            safeString(
+                village.name
+            );
 
 
-        /* =================================================
-           B. STRICT VILLAGE NAME
+        if (villageName) {
 
-           These are allowed to generate village candidates.
-           ================================================= */
-
-        addVillageName(
-            village.name,
-            village,
-            "NAME"
-        );
-
-
-        addVillageName(
-            village.cleanName,
-            village,
-            "CLEAN_NAME"
-        );
-
-
-        /* =================================================
-           C. GENUINE VILLAGE ALIASES
-
-           Aliases are allowed ONLY because aliases represent
-           alternate names of the settlement itself.
-           ================================================= */
-
-        let aliases =
-            village.aliases;
-
-
-        if (
-            typeof aliases === "string"
-        ) {
-
-            /*
-             * Support older datasets where aliases were
-             * stored as a delimited string.
-             */
-
-            aliases =
-                aliases
-                    .split(
-                        /[|;,]+/
-                    )
-                    .map(
-                        x =>
-                            x.trim()
-                    )
-                    .filter(Boolean);
+            addVillageName(
+                villageName,
+                village,
+                "NAME"
+            );
 
         }
 
 
+        /* -------------------------------------------------
+           CLEAN NAME
+
+           Actual canonical structure:
+               village.cleanName
+
+           Usually normalized form of name.
+           Safe because it is explicitly a village field.
+           ------------------------------------------------- */
+
+        const cleanName =
+            safeString(
+                village.cleanName
+            );
+
+
         if (
-            !Array.isArray(
-                aliases
+            cleanName &&
+            normalize(cleanName) !==
+            normalize(villageName)
+        ) {
+
+            addVillageName(
+                cleanName,
+                village,
+                "CLEAN_NAME"
+            );
+
+        }
+
+
+        /* -------------------------------------------------
+           GENUINE VILLAGE ALIASES ONLY
+           ------------------------------------------------- */
+
+        const aliases =
+            Array.isArray(
+                village.aliases
             )
-        ) {
-
-            aliases = [];
-
-        }
+                ? village.aliases
+                : [];
 
 
         for (
@@ -1744,8 +1760,21 @@ Resolver.buildIndexes = function (
             of aliases
         ) {
 
+            const aliasText =
+                safeString(
+                    alias
+                );
+
+
+            if (!aliasText) {
+
+                continue;
+
+            }
+
+
             addVillageName(
-                alias,
+                aliasText,
                 village,
                 "ALIAS"
             );
@@ -1754,245 +1783,274 @@ Resolver.buildIndexes = function (
 
 
         /* =================================================
-           D. SEARCH TOKENS
+           IMPORTANT — SEARCH TOKENS ARE NOT VILLAGE NAMES
 
-           INTENTIONALLY NOT INDEXED INTO byName.
+           DO NOT ADD:
 
-           searchTokens may contain:
+               village.searchTokens
 
-               district
+           to byName.
+
+           searchTokens can contain:
+
+               village name
+               clean name
+               village code
                block
-               PS
-               PO
-               administrative names
-               generic search words
+               district
+               state
+               country
 
-           Therefore:
+           Therefore this intentionally does NOTHING:
 
-               NEVER DO THIS:
-
-               addMulti(
-                   index.byName,
-                   searchToken,
-                   village
-               );
+               village.searchTokens
 
            ================================================= */
 
 
         /* =================================================
-           E. PIN
+           2. VILLAGE LGD CODE
            ================================================= */
 
-        addMulti(
-            index.byPIN,
-            village.pinCode,
-            village
-        );
+        const villageCode =
+            safeString(
+
+                village.villageCode ||
+
+                village.Vill_LGD ||
+
+                village.villageLGD ||
+
+                ""
+
+            );
+
+
+        if (villageCode) {
+
+            if (
+                addCode(
+                    index.byCode,
+                    villageCode,
+                    village
+                )
+            ) {
+
+                index.stats.codes++;
+
+            }
+
+        }
 
 
         /* =================================================
-           F. DISTRICT
-
-           Evidence only.
-
-           Example:
-
-               district = Jalpaiguri
-
-           does NOT make this village a candidate for the
-           address token "Jalpaiguri".
+           3. DISTRICT
            ================================================= */
 
-        addMulti(
-            index.byDistrict,
-            village.district,
-            village
-        );
+        const district =
+            safeString(
+                village.district
+            );
+
+
+        if (district) {
+
+            addToMultiMap(
+                index.byDistrict,
+                district,
+                village
+            );
+
+        }
 
 
         /* =================================================
-           G. BLOCK
+           4. BLOCK / SUBDISTRICT
            ================================================= */
 
-        addMulti(
-            index.byBlock,
-            village.block,
-            village
-        );
+        const block =
+            safeString(
+                village.block
+            );
+
+
+        if (block) {
+
+            addToMultiMap(
+                index.byBlock,
+                block,
+                village
+            );
+
+        }
+
+
+        /*
+         * subdivision is separate if available.
+         */
+
+        const subdivision =
+            safeString(
+                village.subdivision
+            );
+
+
+        if (subdivision) {
+
+            addToMultiMap(
+                index.bySubdivision,
+                subdivision,
+                village
+            );
+
+        }
 
 
         /* =================================================
-           H. SUBDIVISION
+           5. POLICE STATION
            ================================================= */
 
-        addMulti(
-            index.bySubdivision,
-            village.subdivision,
-            village
-        );
+        const policeStation =
+            safeString(
+
+                village.policeStation ||
+
+                village.ps ||
+
+                ""
+
+            );
+
+
+        if (policeStation) {
+
+            addToMultiMap(
+                index.byPS,
+                policeStation,
+                village
+            );
+
+        }
 
 
         /* =================================================
-           I. SUBDISTRICT LGD
+           6. POST OFFICE
            ================================================= */
 
-        addMulti(
-            index.bySubdistrictLGD,
-            village.subdistrictLGD,
-            village
-        );
+        const postOffice =
+            safeString(
+
+                village.postOffice ||
+
+                village.po ||
+
+                ""
+
+            );
+
+
+        if (postOffice) {
+
+            addToMultiMap(
+                index.byPO,
+                postOffice,
+                village
+            );
+
+        }
 
 
         /* =================================================
-           J. POLICE STATION
+           7. PIN CODE
            ================================================= */
 
-        addMulti(
-            index.byPS,
-            village.policeStation,
-            village
-        );
+        const pinCode =
+            safeString(
+
+                village.pinCode ||
+
+                village.pincode ||
+
+                village.pin ||
+
+                ""
+
+            );
+
+
+        if (pinCode) {
+
+            /*
+             * PIN should remain a literal numeric key.
+             */
+
+            const pinKey =
+                pinCode.replace(
+                    /\D/g,
+                    ""
+                );
+
+
+            if (pinKey) {
+
+                addToMultiMap(
+                    index.byPIN,
+                    pinKey,
+                    village
+                );
+
+            }
+
+        }
 
 
         /* =================================================
-           K. POST OFFICE
+           8. DISTRICT LGD
            ================================================= */
 
-        addMulti(
-            index.byPO,
-            village.postOffice,
-            village
-        );
+        const districtLGD =
+            safeString(
+                village.districtLGD
+            );
+
+
+        if (districtLGD) {
+
+            addToMultiMap(
+                index.byDistrictLGD,
+                districtLGD,
+                village
+            );
+
+        }
 
 
         /* =================================================
-           L. GRAM PANCHAYAT
+           9. SUBDISTRICT LGD
            ================================================= */
 
-        addMulti(
-            index.byGramPanchayat,
-            village.gramPanchayat,
-            village
-        );
+        const subdistrictLGD =
+            safeString(
+                village.subdistrictLGD
+            );
 
 
-        /* =================================================
-           M. STATE LGD
-           ================================================= */
+        if (subdistrictLGD) {
 
-        addMulti(
-            index.byStateLGD,
-            village.stateLGD,
-            village
-        );
+            addToMultiMap(
+                index.bySubdistrictLGD,
+                subdistrictLGD,
+                village
+            );
 
-
-        /* =================================================
-           N. DISTRICT LGD
-           ================================================= */
-
-        addMulti(
-            index.byDistrictLGD,
-            village.districtLGD,
-            village
-        );
-
-
-        /* =================================================
-           O. GRAM PANCHAYAT LGD
-           ================================================= */
-
-        addMulti(
-            index.byGramPanchayatLGD,
-            village.gramPanchayatLGD,
-            village
-        );
-
-
-        /* =================================================
-           P. FOREST CIRCLE
-           ================================================= */
-
-        addMulti(
-            index.byForestCircle,
-            village.forestCircle,
-            village
-        );
-
-
-        /* =================================================
-           Q. FOREST DIVISION
-           ================================================= */
-
-        addMulti(
-            index.byForestDivision,
-            village.forestDivision,
-            village
-        );
-
-
-        /* =================================================
-           R. FOREST RANGE
-           ================================================= */
-
-        addMulti(
-            index.byForestRange,
-            village.forestRange,
-            village
-        );
-
-
-        /* =================================================
-           S. FOREST BEAT
-           ================================================= */
-
-        addMulti(
-            index.byForestBeat,
-            village.forestBeat,
-            village
-        );
-
-
-        /* =================================================
-           T. FOREST COMPARTMENT
-           ================================================= */
-
-        addMulti(
-            index.byForestCompartment,
-            village.forestCompartment,
-            village
-        );
-
-
-        /* =================================================
-           U. PROTECTED AREA
-           ================================================= */
-
-        addMulti(
-            index.byProtectedArea,
-            village.protectedArea,
-            village
-        );
+        }
 
     }
 
 
     /* =====================================================
-       10. BUILD STATISTICS
+       CALCULATE UNIQUE ADMINISTRATIVE COUNTS
        ===================================================== */
-
-    index.stats.villageNameKeys =
-        index.byName.size;
-
-
-    index.stats.codes =
-        index.byCode.size;
-
-
-    index.stats.pins =
-        index.byPIN.size;
-
 
     index.stats.districts =
         index.byDistrict.size;
@@ -2006,10 +2064,6 @@ Resolver.buildIndexes = function (
         index.bySubdivision.size;
 
 
-    index.stats.subdistrictLGDs =
-        index.bySubdistrictLGD.size;
-
-
     index.stats.policeStations =
         index.byPS.size;
 
@@ -2018,36 +2072,24 @@ Resolver.buildIndexes = function (
         index.byPO.size;
 
 
-    index.stats.gramPanchayats =
-        index.byGramPanchayat.size;
+    index.stats.pins =
+        index.byPIN.size;
 
 
-    index.stats.forestCircles =
-        index.byForestCircle.size;
+    /*
+     * Actual number of unique normalized village-name keys.
+     */
+
+    index.stats.nameKeys =
+        index.byName.size;
 
 
-    index.stats.forestDivisions =
-        index.byForestDivision.size;
-
-
-    index.stats.forestRanges =
-        index.byForestRange.size;
-
-
-    index.stats.forestBeats =
-        index.byForestBeat.size;
-
-
-    index.stats.forestCompartments =
-        index.byForestCompartment.size;
-
-
-    index.stats.protectedAreas =
-        index.byProtectedArea.size;
+    index.stats.codeKeys =
+        index.byCode.size;
 
 
     /* =====================================================
-       11. REGISTER INDEX
+       REGISTER INDEX
        ===================================================== */
 
     Resolver.index =
@@ -2055,316 +2097,48 @@ Resolver.buildIndexes = function (
 
 
     /* =====================================================
-       12. SUMMARY
+       PRODUCTION DIAGNOSTIC
        ===================================================== */
 
     console.log(
-        "🏡 AccusedAddressResolver STRICT indexes built",
+        "🏡 AccusedAddressResolver STRICT village indexes built",
         {
 
             villages:
                 index.stats.villages,
 
-            villageNameKeys:
-                index.stats.villageNameKeys,
+            nameKeys:
+                index.byName.size,
 
-            aliasesInserted:
-                index.stats.aliasesInserted,
+            nameEntries:
+                index.stats.names,
+
+            aliases:
+                index.stats.aliases,
 
             codes:
-                index.stats.codes,
-
-            pins:
-                index.stats.pins,
+                index.byCode.size,
 
             districts:
-                index.stats.districts,
+                index.byDistrict.size,
 
             blocks:
-                index.stats.blocks,
+                index.byBlock.size,
 
             subdivisions:
-                index.stats.subdivisions,
-
-            subdistrictLGDs:
-                index.stats.subdistrictLGDs,
+                index.bySubdivision.size,
 
             policeStations:
-                index.stats.policeStations,
+                index.byPS.size,
 
             postOffices:
-                index.stats.postOffices,
+                index.byPO.size,
 
-            gramPanchayats:
-                index.stats.gramPanchayats,
-
-            forestCircles:
-                index.stats.forestCircles,
-
-            forestDivisions:
-                index.stats.forestDivisions,
-
-            forestRanges:
-                index.stats.forestRanges,
-
-            forestBeats:
-                index.stats.forestBeats,
-
-            forestCompartments:
-                index.stats.forestCompartments,
-
-            protectedAreas:
-                index.stats.protectedAreas
+            pins:
+                index.byPIN.size
 
         }
     );
-
-
-    /* =====================================================
-       13. COLLISION DIAGNOSTIC
-
-       This is NOT an error test.
-
-       The SAME TEXT is allowed to exist at several levels.
-
-       Example:
-
-           ALIPURDUAR
-
-       could legitimately occur in:
-
-           byName
-           byDistrict
-           byBlock
-           byPS
-           byPO
-
-       We want to SEE that distinction, not remove it.
-       ===================================================== */
-
-    const diagnosticNames = [
-
-        "SALBARI",
-
-        "ALIPURDUAR",
-
-        "JALPAIGURI",
-
-        "COOCH BEHAR",
-
-        "COOCHBEHAR",
-
-        "KALCHINI",
-
-        "MALBAZAR",
-
-        "MAL"
-
-    ];
-
-
-    const diagnosticRows =
-        diagnosticNames.map(
-
-            name => {
-
-                const key =
-                    normalize(
-                        name
-                    );
-
-
-                const villageMatches =
-                    index.byName.get(
-                        key
-                    ) || [];
-
-
-                const districtMatches =
-                    index.byDistrict.get(
-                        key
-                    ) || [];
-
-
-                const blockMatches =
-                    index.byBlock.get(
-                        key
-                    ) || [];
-
-
-                const subdivisionMatches =
-                    index.bySubdivision.get(
-                        key
-                    ) || [];
-
-
-                const psMatches =
-                    index.byPS.get(
-                        key
-                    ) || [];
-
-
-                const poMatches =
-                    index.byPO.get(
-                        key
-                    ) || [];
-
-
-                return {
-
-                    name,
-
-
-                    /* ---------------------------------
-                       Actual village-name candidates
-                       --------------------------------- */
-
-                    villageNameMatches:
-                        villageMatches.length,
-
-                    villageNames:
-                        villageMatches
-                            .slice(
-                                0,
-                                10
-                            )
-                            .map(
-                                v =>
-                                    v.name
-                            )
-                            .join(
-                                " | "
-                            ),
-
-                    villageLGDs:
-                        villageMatches
-                            .slice(
-                                0,
-                                10
-                            )
-                            .map(
-                                v =>
-                                    v.villageCode
-                            )
-                            .join(
-                                " | "
-                            ),
-
-
-                    /* ---------------------------------
-                       Administrative occurrence counts
-                       --------------------------------- */
-
-                    districtEvidence:
-                        districtMatches.length,
-
-                    blockEvidence:
-                        blockMatches.length,
-
-                    subdivisionEvidence:
-                        subdivisionMatches.length,
-
-                    psEvidence:
-                        psMatches.length,
-
-                    poEvidence:
-                        poMatches.length
-
-                };
-
-            }
-
-        );
-
-
-    console.log(
-        "🔎 PLACE-NAME LEVEL COLLISION CHECK"
-    );
-
-
-    console.table(
-        diagnosticRows
-    );
-
-
-    /* =====================================================
-       14. CRITICAL CONTAMINATION CHECK
-
-       If JALPAIGURI has 439 district villages, that is fine
-       in byDistrict.
-
-       It is NOT fine if byName also contains those same 439
-       merely because their district is Jalpaiguri.
-       ===================================================== */
-
-    const suspicious = [];
-
-
-    for (
-        const [
-            key,
-            villageMatches
-        ]
-        of index.byName
-    ) {
-
-        const districtMatches =
-            index.byDistrict.get(
-                key
-            ) || [];
-
-
-        /*
-         * Only flag extreme situations for inspection.
-         *
-         * Do NOT automatically delete anything because
-         * legitimate same-name collisions are possible.
-         */
-
-        if (
-            villageMatches.length >= 25 &&
-            districtMatches.length >= 25
-        ) {
-
-            suspicious.push({
-
-                key,
-
-                villageNameMatches:
-                    villageMatches.length,
-
-                districtEvidence:
-                    districtMatches.length
-
-            });
-
-        }
-
-    }
-
-
-    if (
-        suspicious.length
-    ) {
-
-        console.warn(
-            "⚠️ Inspect unusually large name/admin collisions:"
-        );
-
-
-        console.table(
-            suspicious
-        );
-
-    }
-
-    else {
-
-        console.log(
-            "✅ No obvious village-name/admin index contamination."
-        );
-
-    }
 
 
     return index;
