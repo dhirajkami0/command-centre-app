@@ -351,319 +351,642 @@
        ADDRESS PARSER
     ===================================================== */
 
-    Resolver.parseAddress = function (
-        address
-    ) {
+/* =========================================================
+   ACCUSED ADDRESS PARSER
+   =========================================================
 
-        const raw =
-            String(
-                address || ""
-            )
-                .trim();
+   DESIGN RULE
 
+   1. Explicit administrative fields are extracted:
+        PO
+        PS
+        DISTRICT
+        BLOCK
+        PIN
 
-        const result = {
+   2. Those exact occurrences are REMOVED from village
+      candidate-generating text.
 
-            raw,
+   3. Everything remaining unlabelled stays available for
+      village-name matching.
 
-            settlement: "",
+   EXAMPLE A
 
-            locality: "",
+       Salbari, PO-Malbazar
 
-            po: "",
+       candidateSegments:
+           ["Salbari"]
 
-            ps: "",
+       po:
+           "Malbazar"
 
-            pin: "",
 
-            district: "",
+   EXAMPLE B
 
-            normalized:
-                Resolver.normalize(
-                    raw
-                )
+       Malbazar, PO-Salbari
 
-        };
+       candidateSegments:
+           ["Malbazar"]
 
+       po:
+           "Salbari"
 
-        if (!raw) {
 
-            return result;
+   EXAMPLE C
 
-        }
+       Lohar Line,
+       Salbari T.G.,
+       Kalchini,
+       Alipurduar
 
+       candidateSegments:
+           [
+               "Lohar Line",
+               "Salbari T.G.",
+               "Kalchini",
+               "Alipurduar"
+           ]
 
-        /* =================================================
-           PIN
-        ================================================= */
+       All four are SEARCHABLE.
 
-        const pin =
-            raw.match(
-                /\b([1-9][0-9]{5})\b/
-            );
+       Only names actually matching the village index
+       become village candidates.
 
 
-        if (pin) {
+   EXAMPLE D
 
-            result.pin =
-                pin[1];
+       Lohar Line,
+       Salbari T.G.,
+       PS-Kalchini,
+       Dist-Alipurduar
 
-        }
+       candidateSegments:
+           [
+               "Lohar Line",
+               "Salbari T.G."
+           ]
 
+       ps:
+           Kalchini
 
-        /* =================================================
-           POST OFFICE
-        ================================================= */
+       district:
+           Alipurduar
 
-        const po =
-            raw.match(
+       Kalchini and Alipurduar CANNOT create village
+       candidates from those labelled occurrences.
 
-                /\bP\.?\s*O\.?\s*[-.:+]*\s*([^,;]+)/i
+========================================================= */
 
-            );
+Resolver.parseAddress = function (
+    address
+) {
 
+    const raw =
+        String(
+            address || ""
+        )
+        .replace(/\r?\n/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-        if (po) {
 
-            result.po =
-                po[1]
-                    .trim();
+    const result = {
 
-        }
+        raw,
 
+        /* ---------------------------------------------
+           Candidate-generating information
+        --------------------------------------------- */
 
-        /* =================================================
-           POLICE STATION
-        ================================================= */
+        settlement:
+            "",
 
-        const ps =
-            raw.match(
+        locality:
+            "",
 
-                /\bP\.?\s*S\.?\s*[-.:+]*\s*([^,;]+)/i
+        candidateText:
+            "",
 
-            );
+        candidateSegments:
+            [],
 
-
-        if (ps) {
-
-            result.ps =
-                ps[1]
-                    .trim();
-
-        }
-
-
-        /* =================================================
-           DISTRICT — EXPLICIT
-        ================================================= */
-
-        const district =
-            raw.match(
-
-                /\bDIST(?:RICT)?\.?\s*[-.:+]*\s*([^,;]+)/i
-
-            );
-
-
-        if (district) {
-
-            result.district =
-                district[1]
-                    .trim();
-
-        }
-
-        else {
-
-
-            /* =============================================
-               DISTRICT — INFER FROM COMPLETE ADDRESS
-            ============================================= */
-
-            const n =
-                Resolver.normalize(
-                    raw
-                );
-
-
-            if (
-
-                n.includes(
-                    "ALIPURDUAR"
-                ) ||
-
-                /\bAPD\b/i.test(
-                    raw
-                )
-
-            ) {
-
-                result.district =
-                    "Alipurduar";
-
-            }
-
-            else if (
-
-                n.includes(
-                    "COOCH BEHAR"
-                )
-
-            ) {
-
-                result.district =
-                    "Cooch Behar";
-
-            }
-
-            else if (
-
-                n.includes(
-                    "JALPAIGURI"
-                )
-
-            ) {
-
-                result.district =
-                    "Jalpaiguri";
-
-            }
-
-        }
-
-
-        /* =================================================
-           SETTLEMENT PART
-
-           This is still useful for locality extraction.
-
-           IMPORTANT:
-
-           Candidate generation later searches BOTH:
-
-           parsed.settlement
-
-           AND
-
-           parsed.raw
-
-           Therefore:
-
-           Lohar Line, Salbari T.G.,
-           PS Kalchini, Alipurduar
-
-           can still detect SALBARI.
-        ================================================= */
-
-        let settlementPart =
-            raw;
+        unclassifiedSegments:
+            [],
 
 
         /* ---------------------------------------------
-           Remove leading VILL / VILLAGE
+           Administrative evidence
+
+           NEVER independently generate village
+           candidates from these fields.
         --------------------------------------------- */
 
-        settlementPart =
-            settlementPart.replace(
+        po:
+            "",
 
-                /^\s*(VILLAGE|VILL|VIL)\s*[\.\-:+]*\s*/i,
+        ps:
+            "",
 
-                ""
+        district:
+            "",
 
-            );
+        block:
+            "",
+
+        pin:
+            "",
 
 
         /* ---------------------------------------------
-           Remove leading VILL + PO
+           Diagnostics
         --------------------------------------------- */
 
-        settlementPart =
-            settlementPart.replace(
+        administrativeText:
+            [],
 
-                /^\s*VILL\s*\+\s*PO\s*[\.\-:+]*\s*/i,
+        excludedSegments:
+            []
 
-                ""
-
-            );
-
-
-        /* ---------------------------------------------
-           Find administrative boundary in address
-        --------------------------------------------- */
-
-        const stopPatterns = [
-
-            /\bP\.?\s*O\.?\b/i,
-
-            /\bP\.?\s*S\.?\b/i,
-
-            /\bPOST\s+OFFICE\b/i,
-
-            /\bPOLICE\s+STATION\b/i,
-
-            /\bDIST(?:RICT)?\b/i,
-
-            /\bPIN(?:CODE)?\b/i,
-
-            /\b[1-9][0-9]{5}\b/
-
-        ];
+    };
 
 
-        let stop =
-            settlementPart.length;
-
-
-        for (
-            const pattern
-            of stopPatterns
-        ) {
-
-            const m =
-                pattern.exec(
-                    settlementPart
-                );
-
-
-            if (
-
-                m &&
-
-                m.index < stop
-
-            ) {
-
-                stop =
-                    m.index;
-
-            }
-
-        }
-
-
-        settlementPart =
-            settlementPart
-
-                .slice(
-                    0,
-                    stop
-                )
-
-                .replace(
-                    /[\s,;:+\-]+$/g,
-                    ""
-                )
-
-                .trim();
-
-
-        result.settlement =
-            settlementPart;
-
+    if (!raw) {
 
         return result;
 
-    };
+    }
+
+
+    /* =================================================
+       HELPERS
+    ================================================= */
+
+    function clean(
+        value
+    ) {
+
+        return String(
+            value || ""
+        )
+
+        .replace(
+            /^[\s,;:.+\-–—/]+/,
+            ""
+        )
+
+        .replace(
+            /[\s,;:.+\-–—/]+$/,
+            ""
+        )
+
+        .replace(
+            /\s+/g,
+            " "
+        )
+
+        .trim();
+
+    }
+
+
+    function saveAdmin(
+        field,
+        value,
+        source
+    ) {
+
+        const cleaned =
+            clean(
+                value
+            );
+
+
+        if (!cleaned) {
+
+            return;
+
+        }
+
+
+        /*
+         * Keep first explicit value.
+         */
+
+        if (
+            !result[field]
+        ) {
+
+            result[field] =
+                cleaned;
+
+        }
+
+
+        result
+            .administrativeText
+            .push({
+
+                field:
+                    field,
+
+                value:
+                    cleaned,
+
+                source:
+                    String(
+                        source || ""
+                    )
+                    .trim()
+
+            });
+
+
+        result
+            .excludedSegments
+            .push(
+                cleaned
+            );
+
+    }
+
+
+    /* =================================================
+       PRE-NORMALIZATION
+    ================================================= */
+
+    let working =
+        raw
+
+        .replace(
+            /[;|]+/g,
+            ","
+        )
+
+        /*
+         * Standardize VILL labels.
+
+         * IMPORTANT:
+         * We remove the LABEL only.
+         * Its value remains searchable.
+         */
+
+        .replace(
+            /\b(?:VILLAGE|VILL\.?|VIL\.?)\s*(?:[:=+\-/]+\s*)?/gi,
+            ""
+        );
+
+
+    /* =================================================
+       ADMINISTRATIVE LABEL DEFINITIONS
+    ================================================= */
+
+    const adminLabelPattern =
+
+        "(?:" +
+
+            "P\\.?\\s*O\\.?" +
+
+            "|" +
+
+            "POST\\s+OFFICE" +
+
+            "|" +
+
+            "P\\.?\\s*S\\.?" +
+
+            "|" +
+
+            "POLICE\\s+STATION" +
+
+            "|" +
+
+            "DISTRICT" +
+
+            "|" +
+
+            "DIST\\.?" +
+
+            "|" +
+
+            "DT\\.?" +
+
+            "|" +
+
+            "BLOCK" +
+
+            "|" +
+
+            "BLK\\.?" +
+
+        ")";
+
+
+    /* =================================================
+       EXTRACT EXPLICIT ADMINISTRATIVE FIELDS
+
+       This works even when fields are not separated
+       cleanly by commas:
+
+       Atiabari P.O-Salbari P.S-Kalchini Dist-Alipurduar
+    ================================================= */
+
+    const adminRegex =
+        new RegExp(
+
+            "(" +
+
+                "P\\.?\\s*O\\.?" +
+
+                "|" +
+
+                "POST\\s+OFFICE" +
+
+                "|" +
+
+                "P\\.?\\s*S\\.?" +
+
+                "|" +
+
+                "POLICE\\s+STATION" +
+
+                "|" +
+
+                "DISTRICT" +
+
+                "|" +
+
+                "DIST\\.?" +
+
+                "|" +
+
+                "DT\\.?" +
+
+                "|" +
+
+                "BLOCK" +
+
+                "|" +
+
+                "BLK\\.?" +
+
+            ")" +
+
+            "\\s*" +
+
+            "(?:[:=+\\-/]+\\s*)?" +
+
+            "(.+?)" +
+
+            "(?=" +
+
+                "\\s*,?\\s*" +
+
+                adminLabelPattern +
+
+                "|" +
+
+                "," +
+
+                "|" +
+
+                "$" +
+
+            ")",
+
+            "gi"
+
+        );
+
+
+    working =
+        working.replace(
+
+            adminRegex,
+
+            function (
+                full,
+                label,
+                value
+            ) {
+
+                const normalizedLabel =
+                    String(
+                        label || ""
+                    )
+                    .toUpperCase()
+                    .replace(
+                        /[^A-Z]/g,
+                        ""
+                    );
+
+
+                let field =
+                    "";
+
+
+                if (
+                    normalizedLabel === "PO" ||
+                    normalizedLabel === "POSTOFFICE"
+                ) {
+
+                    field =
+                        "po";
+
+                }
+
+                else if (
+                    normalizedLabel === "PS" ||
+                    normalizedLabel ===
+                        "POLICESTATION"
+                ) {
+
+                    field =
+                        "ps";
+
+                }
+
+                else if (
+                    normalizedLabel ===
+                        "DISTRICT" ||
+                    normalizedLabel ===
+                        "DIST" ||
+                    normalizedLabel ===
+                        "DT"
+                ) {
+
+                    field =
+                        "district";
+
+                }
+
+                else if (
+                    normalizedLabel ===
+                        "BLOCK" ||
+                    normalizedLabel ===
+                        "BLK"
+                ) {
+
+                    field =
+                        "block";
+
+                }
+
+
+                if (field) {
+
+                    saveAdmin(
+                        field,
+                        value,
+                        full
+                    );
+
+                }
+
+
+                /*
+                 * Remove the complete labelled
+                 * occurrence from candidate text.
+                 */
+
+                return ",";
+
+            }
+
+        );
+
+
+    /* =================================================
+       EXTRACT PIN
+
+       Six-digit Indian PIN is administrative evidence.
+       It cannot become village candidate text.
+    ================================================= */
+
+    working =
+        working.replace(
+
+            /\b([1-9][0-9]{5})\b/g,
+
+            function (
+                full,
+                pin
+            ) {
+
+                if (
+                    !result.pin
+                ) {
+
+                    result.pin =
+                        pin;
+
+                }
+
+
+                result
+                    .administrativeText
+                    .push({
+
+                        field:
+                            "pin",
+
+                        value:
+                            pin,
+
+                        source:
+                            full
+
+                    });
+
+
+                result
+                    .excludedSegments
+                    .push(
+                        pin
+                    );
+
+
+                return ",";
+
+            }
+
+        );
+
+
+    /* =================================================
+       CLEAN REMAINING TEXT
+    ================================================= */
+
+    working =
+        working
+
+        .replace(
+            /,+/g,
+            ","
+        )
+
+        .replace(
+            /\s*,\s*/g,
+            ","
+        )
+
+        .replace(
+            /^,+|,+$/g,
+            ""
+        )
+
+        .replace(
+            /\s+/g,
+            " "
+        )
+
+        .trim();
+
+
+    /* =================================================
+       REMAINING UNLABELLED SEGMENTS
+
+       THESE ARE THE ONLY SEGMENTS ALLOWED TO CREATE
+       VILLAGE CANDIDATES.
+    ================================================= */
+
+    const segments =
+        working
+
+        .split(",")
+
+        .map(
+            clean
+        )
+
+        .filter(Boolean);
+
+
+    result.candidateSegments =
+        segments.slice();
+
+
+    result.unclassifiedSegments =
+        segments.slice();
+
+
+    /*
+     * Preserve combined representation for existing
+     * resolver functions.
+     */
+
+    result.candidateText =
+        segments.join(
+            ", "
+        );
+
+
+    result.settlement =
+        result.candidateText;
+
+
+    return result;
+
+};
 
 
     /* =====================================================
@@ -1676,627 +1999,1325 @@
 
     ===================================================== */
 
-    Resolver.generateCandidates = function (
-        parsed
+/* =========================================================
+   GENERATE VILLAGE CANDIDATES
+   =========================================================
+
+   PURPOSE
+
+   Generate ONLY legitimate village / settlement candidates
+   from the accused address.
+
+   IMPORTANT DESIGN RULES
+
+   ---------------------------------------------------------
+   A. EXPLICIT ADMINISTRATIVE FIELDS DO NOT GENERATE
+      VILLAGE CANDIDATES
+   ---------------------------------------------------------
+
+   Example:
+
+       Salbari, PO-Malbazar
+
+   Candidate:
+       SALBARI
+
+   NOT:
+       MALBAZAR
+
+
+   Example:
+
+       Malbazar, PO-Salbari
+
+   Candidate:
+       MALBAZAR
+
+   NOT:
+       SALBARI
+
+
+   ---------------------------------------------------------
+   B. UNLABELLED COMPONENTS ARE SEARCHABLE
+   ---------------------------------------------------------
+
+       Lohar Line,
+       Salbari T.G.,
+       Kalchini,
+       Alipurduar
+
+   Search:
+
+       Lohar Line
+       Salbari
+       Kalchini
+       Alipurduar
+
+   Only components matching village index become candidates.
+
+
+   ---------------------------------------------------------
+   C. POSITION MATTERS
+   ---------------------------------------------------------
+
+       Salbari, Malbazar, Jalpaiguri
+
+   Salbari receives strongest positional support.
+
+   But Malbazar/Jalpaiguri remain candidates if they
+   genuinely exist in village GeoJSON.
+
+
+   ---------------------------------------------------------
+   D. LOCALITY / SETTLEMENT QUALIFIERS
+   ---------------------------------------------------------
+
+       Salbari T.G.
+       Salbari T.E.
+       Rangamati F.V.
+       Panbari 20 Mile F.V.
+       Salbari (Neech Line)
+
+   Resolver tries useful normalized forms without creating
+   hundreds of arbitrary substrings.
+
+
+   ---------------------------------------------------------
+   E. DUPLICATE VILLAGE NAMES MUST REMAIN SEPARATE
+   ---------------------------------------------------------
+
+   If SALBARI exists as:
+
+       LGD A
+       LGD B
+       LGD C
+
+   all three candidates survive.
+
+   Administrative scoring + forest metadata + target-range
+   spatial distance resolve the correct LGD later.
+
+========================================================= */
+
+Resolver.generateCandidates = function (
+    accused
+) {
+
+    /* =====================================================
+       VALIDATION
+    ===================================================== */
+
+    if (!accused) {
+
+        return {
+
+            accused:
+                accused,
+
+            address:
+                "",
+
+            parsed:
+                Resolver.parseAddress(
+                    ""
+                ),
+
+            candidateSegments:
+                [],
+
+            candidates:
+                [],
+
+            candidateCount:
+                0
+
+        };
+
+    }
+
+
+    /* =====================================================
+       ADDRESS
+    ===================================================== */
+
+    const address =
+
+        accused.addressOfAccused ||
+
+        accused.address ||
+
+        accused.location ||
+
+        "";
+
+
+    const parsed =
+        Resolver.parseAddress(
+            address
+        );
+
+
+    /* =====================================================
+       ENSURE INDEXES EXIST
+    ===================================================== */
+
+    Resolver.buildIndexes();
+
+
+    /* =====================================================
+       HELPERS
+    ===================================================== */
+
+    function cleanText(
+        value
     ) {
 
-        if (!Resolver.index) {
+        return String(
+            value || ""
+        )
 
-            Resolver.buildIndexes();
+        .replace(
+            /\s+/g,
+            " "
+        )
+
+        .replace(
+            /^[\s,;:.+\-–—/]+/,
+            ""
+        )
+
+        .replace(
+            /[\s,;:.+\-–—/]+$/,
+            ""
+        )
+
+        .trim();
+
+    }
+
+
+    function normalize(
+        value
+    ) {
+
+        return Resolver.normalize(
+            value
+        );
+
+    }
+
+
+    /*
+     * Remove common settlement-type suffixes.
+     *
+     * IMPORTANT:
+     * We remove them only for LOOKUP.
+     * Original address text is preserved.
+     */
+
+    function removeSettlementType(
+        value
+    ) {
+
+        let text =
+            String(
+                value || ""
+            );
+
+
+        text =
+            text.replace(
+
+                /\b(?:T\.?\s*G\.?|TEA\s+GARDEN|T\.?\s*E\.?|TEA\s+ESTATE|F\.?\s*V\.?|FOREST\s+VILLAGE)\b/gi,
+
+                " "
+
+            );
+
+
+        return cleanText(
+            text
+        );
+
+    }
+
+
+    /*
+     * Remove parenthetical locality.
+     *
+     * Salbari (Neech Line)
+     *
+     * becomes
+     *
+     * Salbari
+     */
+
+    function removeParenthetical(
+        value
+    ) {
+
+        return cleanText(
+
+            String(
+                value || ""
+            )
+
+            .replace(
+                /\([^)]*\)/g,
+                " "
+            )
+
+        );
+
+    }
+
+
+    /*
+     * Remove trailing locality terms where the leading
+     * part is likely the canonical settlement.
+     *
+     * This is deliberately conservative.
+     */
+
+    function getLeadingPhrase(
+        value
+    ) {
+
+        const text =
+            cleanText(
+                value
+            );
+
+
+        if (!text) {
+
+            return "";
 
         }
 
 
-        const settlement =
-            Resolver.normalize(
-                parsed.settlement
-            );
-
-
-        const fullAddress =
-            Resolver.normalize(
-                parsed.raw
-            );
-
+        /*
+         * Parenthetical locality:
+         *
+         * Salbari (Neech Line)
+         */
 
         if (
-            !settlement &&
-            !fullAddress
+            text.includes("(")
         ) {
+
+            return removeParenthetical(
+                text
+            );
+
+        }
+
+
+        return text;
+
+    }
+
+
+    /* =====================================================
+       BUILD LOOKUP VARIANTS FOR ONE SEGMENT
+
+       NO arbitrary every-word explosion.
+    ===================================================== */
+
+    function buildSegmentVariants(
+        segment
+    ) {
+
+        const original =
+            cleanText(
+                segment
+            );
+
+
+        if (!original) {
 
             return [];
 
         }
 
 
-        const candidates =
-            new Map();
+        const variants =
+            [];
 
 
-        /* =================================================
-           ADD / MERGE CANDIDATE
+        const seen =
+            new Set();
 
-           Candidate uniqueness is LGD villageCode.
-        ================================================= */
 
         function add(
-            village,
-            method,
-            baseScore,
-            matchedName
+            value,
+            type,
+            priority
         ) {
 
-            if (!village)
-                return;
-
-
-            const code =
-                String(
-                    village.villageCode ||
-                    ""
-                )
-                    .trim();
-
-
-            if (!code)
-                return;
-
-
-            const normalizedMatchedName =
-                Resolver.normalize(
-                    matchedName ||
-                    village.name
+            const cleaned =
+                cleanText(
+                    value
                 );
 
 
-            const matchLength =
-                normalizedMatchedName
+            if (!cleaned) {
 
-                    .split(
-                        " "
-                    )
+                return;
 
-                    .filter(Boolean)
-
-                    .length;
+            }
 
 
-            const existing =
-                candidates.get(
-                    code
+            const normalized =
+                normalize(
+                    cleaned
                 );
 
 
-            const record = {
+            if (!normalized) {
 
-                village,
+                return;
 
-                method,
+            }
 
-                baseScore,
-
-                matchedName:
-                    matchedName ||
-                    village.name ||
-                    "",
-
-                normalizedMatchedName,
-
-                matchLength
-
-            };
-
-
-            /*
-             * If same LGD is discovered by several mechanisms,
-             * retain the strongest mechanism.
-             */
 
             if (
-
-                !existing ||
-
-                baseScore >
-                    existing.baseScore ||
-
-                (
-                    baseScore ===
-                        existing.baseScore &&
-
-                    matchLength >
-                        (
-                            existing.matchLength ||
-                            0
-                        )
+                seen.has(
+                    normalized
                 )
-
             ) {
 
-                candidates.set(
-                    code,
-                    record
-                );
+                return;
 
             }
 
-        }
 
-
-        /* =================================================
-           STAGE A
-           WHOLE SETTLEMENT EXACT / ALIAS
-        ================================================= */
-
-        if (settlement) {
-
-            const exact =
-                Resolver.index
-                    .byName
-                    .get(
-                        settlement
-                    ) ||
-                [];
-
-
-            for (
-                const village
-                of exact
-            ) {
-
-                const official =
-                    Resolver.same(
-                        parsed.settlement,
-                        village.name
-                    );
-
-
-                add(
-
-                    village,
-
-                    official
-                        ? "EXACT_NAME"
-                        : "ALIAS",
-
-                    official
-                        ? Resolver.SCORE.EXACT_NAME
-                        : Resolver.SCORE.ALIAS,
-
-                    settlement
-
-                );
-
-            }
-
-        }
-
-
-/* =================================================
-   STAGE B
-   FIND VILLAGE NAMES INSIDE SETTLEMENT ONLY
-
-   CRITICAL DESIGN RULE:
-
-   Village candidates may ONLY originate from the
-   parsed settlement/locality portion of the address.
-
-   PO / PS / DISTRICT / PIN are administrative
-   evidence. They MUST NEVER independently create
-   village candidates.
-
-   Examples:
-
-   Vill-Salbari(Neech Line),
-   PS-Kalchini,
-   Dist-Alipurduar
-
-       settlement = SALBARI NEECH LINE
-
-       Candidate:
-           SALBARI
-
-       NOT:
-           KALCHINI
-           ALIPURDUAR
-
-
-   Vill-Atiabari (Pakaline),
-   PO-Salbari,
-   PS-Kalchini,
-   Dist-Alipurduar
-
-       settlement = ATIABARI PAKALINE
-
-       Candidate:
-           ATIABARI
-
-       Salbari is PO evidence only.
-
-
-   Vill-Lohar Line, Salbari T.G.,
-   PS-Kalchini,
-   Alipurduar
-
-       settlement =
-           LOHAR LINE SALBARI T G
-
-       Candidate:
-           SALBARI
-
-================================================= */
-
-const embeddedMatches =
-    [];
-
-
-/*
- * IMPORTANT:
- *
- * Search ONLY `settlement`.
- *
- * Do NOT search:
- *
- *     fullAddress
- *     parsed.po
- *     parsed.ps
- *     parsed.district
- *     parsed.pin
- *
- * Those fields belong to the scoring stage.
- */
-
-if (settlement) {
-
-    for (
-        const [
-            indexedName,
-            records
-        ]
-        of Resolver.index.byName
-    ) {
-
-        if (!indexedName) {
-
-            continue;
-
-        }
-
-
-        const words =
-            indexedName
-                .split(" ")
-                .filter(Boolean);
-
-
-        const compact =
-            indexedName.replace(
-                /\s+/g,
-                ""
+            seen.add(
+                normalized
             );
 
 
-        /*
-         * Reject tiny generic names.
-         */
+            variants.push({
 
-        if (
-            words.length === 1 &&
-            compact.length < 4
-        ) {
+                text:
+                    cleaned,
 
-            continue;
+                normalized,
 
-        }
+                type,
 
+                priority
 
-        /*
-         * Village/alias must actually occur inside
-         * the parsed SETTLEMENT.
-         */
-
-        const inSettlement =
-            Resolver.containsPhrase(
-                settlement,
-                indexedName
-            );
-
-
-        if (!inSettlement) {
-
-            continue;
+            });
 
         }
 
 
-        embeddedMatches.push({
+        /* -------------------------------------------------
+           1. Exact segment
+        ------------------------------------------------- */
 
-            indexedName,
-
-            records,
-
-            wordCount:
-                words.length,
-
-            charCount:
-                indexedName.length
-
-        });
-
-    }
-
-}
-
-
-/* =================================================
-   MOST SPECIFIC SETTLEMENT MATCH
-
-   Example:
-
-       UTTAR PORO
-
-   If database contains:
-
-       PORO
-       UTTAR PORO
-
-   choose:
-
-       UTTAR PORO
-
-
-   IMPORTANT:
-
-   Duplicate LGDs with the SAME matched village
-   name are deliberately retained.
-
-   Example:
-
-       SALBARI LGD-A
-       SALBARI LGD-B
-       SALBARI LGD-C
-
-   All remain candidates.
-
-   Administrative + forest spatial scoring will
-   determine the correct LGD later.
-================================================= */
-
-embeddedMatches.sort(
-
-    (a, b) =>
-
-        b.wordCount -
-            a.wordCount ||
-
-        b.charCount -
-            a.charCount
-
-);
-
-
-const longestWordCount =
-    embeddedMatches.length
-
-        ? embeddedMatches[0]
-            .wordCount
-
-        : 0;
-
-
-const longestCharCount =
-    embeddedMatches.length
-
-        ? embeddedMatches[0]
-            .charCount
-
-        : 0;
-
-
-for (
-    const match
-    of embeddedMatches
-) {
-
-    const isMostSpecific =
-        (
-            match.wordCount ===
-                longestWordCount
-        ) &&
-        (
-            match.charCount ===
-                longestCharCount
+        add(
+            original,
+            "EXACT_SEGMENT",
+            100
         );
 
 
-    if (!isMostSpecific) {
+        /* -------------------------------------------------
+           2. Remove TG / TE / FV etc.
+        ------------------------------------------------- */
 
-        continue;
-
-    }
-
-
-    for (
-        const village
-        of match.records
-    ) {
-
-        const official =
-            Resolver.same(
-                match.indexedName,
-                village.name
+        const withoutType =
+            removeSettlementType(
+                original
             );
 
 
-        let baseScore =
-            official
-
-                ? Resolver.SCORE
-                    .ADDRESS_VILLAGE_NAME
-
-                : Resolver.SCORE
-                    .ADDRESS_VILLAGE_ALIAS;
-
-
-        /*
-         * Exact settlement is stronger than
-         * settlement containing locality words.
-         */
-
         if (
-            settlement ===
-            match.indexedName
+            normalize(
+                withoutType
+            ) !==
+            normalize(
+                original
+            )
         ) {
 
-            baseScore += 10;
+            add(
+                withoutType,
+                "SETTLEMENT_TYPE_NORMALIZED",
+                96
+            );
 
         }
+
+
+        /* -------------------------------------------------
+           3. Remove parenthetical locality
+        ------------------------------------------------- */
+
+        const withoutParenthetical =
+            removeParenthetical(
+                original
+            );
+
+
+        if (
+            normalize(
+                withoutParenthetical
+            ) !==
+            normalize(
+                original
+            )
+        ) {
+
+            add(
+                withoutParenthetical,
+                "PARENTHETICAL_LOCALITY_REMOVED",
+                95
+            );
+
+        }
+
+
+        /* -------------------------------------------------
+           4. Combined normalization
+
+           Salbari T.G. (Neech Line)
+              ↓
+           Salbari
+        ------------------------------------------------- */
+
+        const combined =
+            removeSettlementType(
+                withoutParenthetical
+            );
 
 
         add(
+            combined,
+            "CANONICALIZED_SEGMENT",
+            94
+        );
 
-            village,
 
-            official
-                ? "SETTLEMENT_VILLAGE_NAME"
-                : "SETTLEMENT_VILLAGE_ALIAS",
+        /* -------------------------------------------------
+           5. Leading phrase helper
+        ------------------------------------------------- */
 
-            baseScore,
+        const leading =
+            getLeadingPhrase(
+                original
+            );
 
-            match.indexedName
 
+        add(
+            leading,
+            "LEADING_SETTLEMENT",
+            92
+        );
+
+
+        return variants;
+
+    }
+
+
+    /* =====================================================
+       GET VILLAGE RECORDS FOR A LOOKUP NAME
+    ===================================================== */
+
+    function findVillages(
+        lookup
+    ) {
+
+        if (!lookup) {
+
+            return [];
+
+        }
+
+
+        /*
+         * Existing resolver function is authoritative.
+         */
+
+        const direct =
+            Resolver.getVillagesByName(
+                lookup
+            );
+
+
+        if (
+            Array.isArray(
+                direct
+            ) &&
+            direct.length
+        ) {
+
+            return direct;
+
+        }
+
+
+        /*
+         * Try normalized lookup.
+         */
+
+        const normalized =
+            normalize(
+                lookup
+            );
+
+
+        if (!normalized) {
+
+            return [];
+
+        }
+
+
+        const normalizedResult =
+            Resolver.getVillagesByName(
+                normalized
+            );
+
+
+        if (
+            Array.isArray(
+                normalizedResult
+            )
+        ) {
+
+            return normalizedResult;
+
+        }
+
+
+        return [];
+
+    }
+
+
+    /* =====================================================
+       CANDIDATE SEGMENTS
+
+       parseAddress() already removed explicitly labelled:
+
+           PO
+           PS
+           DISTRICT
+           BLOCK
+           PIN
+
+       Therefore ONLY candidateSegments are searched.
+    ===================================================== */
+
+    const segments =
+        Array.isArray(
+            parsed.candidateSegments
+        )
+
+        ? parsed.candidateSegments
+
+        : [];
+
+
+    /* =====================================================
+       RESULT COLLECTION
+    ===================================================== */
+
+    const candidateMap =
+        new Map();
+
+
+    function getVillageCode(
+        village
+    ) {
+
+        return String(
+
+            village?.villageCode ??
+
+            village?.Vill_LGD ??
+
+            village?.lgd ??
+
+            village?.LGD ??
+
+            village?.code ??
+
+            ""
+
+        ).trim();
+
+    }
+
+
+    function getVillageName(
+        village
+    ) {
+
+        return String(
+
+            village?.name ??
+
+            village?.villageName ??
+
+            village?.canonicalVillage ??
+
+            village?.cleanName ??
+
+            ""
+
+        ).trim();
+
+    }
+
+
+    function makeCandidateKey(
+        village
+    ) {
+
+        const code =
+            getVillageCode(
+                village
+            );
+
+
+        if (code) {
+
+            return (
+                "LGD::" +
+                code
+            );
+
+        }
+
+
+        /*
+         * Fallback only.
+         */
+
+        return [
+
+            "NAME",
+
+            normalize(
+                getVillageName(
+                    village
+                )
+            ),
+
+            normalize(
+                village?.block
+            ),
+
+            normalize(
+                village?.district
+            )
+
+        ].join(
+            "::"
         );
 
     }
 
-}
+
+    /* =====================================================
+       POSITION SUPPORT
+
+       Earlier unlabelled components receive more support.
+
+       This does NOT resolve the village by itself.
+
+       Spatial/admin evidence may override it.
+    ===================================================== */
+
+    function getPositionScore(
+        segmentIndex
+    ) {
+
+        if (
+            segmentIndex === 0
+        ) {
+
+            return 40;
+
+        }
 
 
-        /* =================================================
-           STAGE C
-           PREFIX LOCALITY FALLBACK
+        if (
+            segmentIndex === 1
+        ) {
 
-           Example:
+            return 28;
 
-           Panbari Lohar Dangi
-
-           ↓
-
-           Panbari
-
-           locality = Lohar Dangi
-        ================================================= */
-
-        if (settlement) {
-
-            for (
-                const [
-                    name,
-                    records
-                ]
-                of Resolver.index.byName
-            ) {
-
-                if (!name)
-                    continue;
+        }
 
 
-                if (
-                    settlement.startsWith(
-                        name + " "
-                    )
-                ) {
+        if (
+            segmentIndex === 2
+        ) {
 
-                    for (
-                        const village
-                        of records
-                    ) {
+            return 18;
 
-                        add(
+        }
+
+
+        if (
+            segmentIndex === 3
+        ) {
+
+            return 10;
+
+        }
+
+
+        return 5;
+
+    }
+
+
+    /* =====================================================
+       ADD / MERGE CANDIDATE
+    ===================================================== */
+
+    function addCandidate(
+        village,
+        segment,
+        segmentIndex,
+        variant
+    ) {
+
+        if (!village) {
+
+            return;
+
+        }
+
+
+        const key =
+            makeCandidateKey(
+                village
+            );
+
+
+        if (!key) {
+
+            return;
+
+        }
+
+
+        const positionScore =
+            getPositionScore(
+                segmentIndex
+            );
+
+
+        const variantScore =
+            Number(
+                variant?.priority || 0
+            );
+
+
+        /*
+         * Candidate-generation support only.
+         *
+         * This is NOT final administrative/spatial score.
+         */
+
+        const generationScore =
+            positionScore +
+            variantScore;
+
+
+        const evidence = {
+
+            source:
+                "ADDRESS_UNLABELLED_SEGMENT",
+
+            segment,
+
+            segmentIndex,
+
+            lookupText:
+                variant?.text || "",
+
+            normalizedLookup:
+                variant?.normalized || "",
+
+            matchType:
+                variant?.type || "",
+
+            positionScore,
+
+            variantScore,
+
+            generationScore
+
+        };
+
+
+        const existing =
+            candidateMap.get(
+                key
+            );
+
+
+        if (!existing) {
+
+            candidateMap.set(
+                key,
+                {
+
+                    /*
+                     * Preserve complete canonical village
+                     * record.
+                     */
+
+                    ...village,
+
+
+                    /* -------------------------------------
+                       Standard candidate fields
+                    ------------------------------------- */
+
+                    village:
+                        getVillageName(
+                            village
+                        ),
+
+                    matchedVillage:
+                        getVillageName(
+                            village
+                        ),
+
+                    Vill_LGD:
+                        getVillageCode(
+                            village
+                        ),
+
+
+                    /* -------------------------------------
+                       Candidate-generation metadata
+                    ------------------------------------- */
+
+                    addressSegment:
+                        segment,
+
+                    segmentIndex,
+
+                    lookupText:
+                        variant?.text || "",
+
+                    matchType:
+                        variant?.type || "",
+
+                    positionScore,
+
+                    variantScore,
+
+                    generationScore,
+
+
+                    /* -------------------------------------
+                       Later scoring stages can populate:
+                    ------------------------------------- */
+
+                    administrativeScore:
+                        0,
+
+                    forestScore:
+                        0,
+
+                    spatialScore:
+                        0,
+
+                    distanceKm:
+                        null,
+
+                    totalScore:
+                        generationScore,
+
+
+                    /* -------------------------------------
+                       Evidence
+                    ------------------------------------- */
+
+                    generationEvidence: [
+                        evidence
+                    ]
+
+                }
+
+            );
+
+
+            return;
+
+        }
+
+
+        /* -------------------------------------------------
+           Same LGD found from multiple address variants.
+
+           Keep strongest generation match.
+        ------------------------------------------------- */
+
+        existing
+            .generationEvidence
+            .push(
+                evidence
+            );
+
+
+        if (
+            generationScore >
+            Number(
+                existing.generationScore || 0
+            )
+        ) {
+
+            existing.addressSegment =
+                segment;
+
+            existing.segmentIndex =
+                segmentIndex;
+
+            existing.lookupText =
+                variant?.text || "";
+
+            existing.matchType =
+                variant?.type || "";
+
+            existing.positionScore =
+                positionScore;
+
+            existing.variantScore =
+                variantScore;
+
+            existing.generationScore =
+                generationScore;
+
+
+            /*
+             * At this stage totalScore only contains
+             * generation support.
+             */
+
+            existing.totalScore =
+                generationScore;
+
+        }
+
+    }
+
+
+    /* =====================================================
+       SEARCH EACH UNLABELLED ADDRESS COMPONENT
+    ===================================================== */
+
+    segments.forEach(
+
+        (
+            segment,
+            segmentIndex
+        ) => {
+
+            const variants =
+                buildSegmentVariants(
+                    segment
+                );
+
+
+            variants.forEach(
+
+                variant => {
+
+                    const villages =
+                        findVillages(
+                            variant.text
+                        );
+
+
+                    villages.forEach(
+
+                        village => {
+
+                            addCandidate(
+                                village,
+                                segment,
+                                segmentIndex,
+                                variant
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        }
+
+    );
+
+
+    /* =====================================================
+       OPTIONAL PHRASE-INTERNAL MATCHING
+
+       This is needed for:
+
+           "Lohar Line Salbari T.G."
+
+       where parser may occasionally return one combined
+       segment instead of two.
+
+       IMPORTANT:
+       We do NOT search arbitrary single words globally.
+
+       We only test known village names occurring as
+       complete phrases inside the segment.
+    ===================================================== */
+
+    const allVillages =
+        Resolver.getVillages();
+
+
+    if (
+        Array.isArray(
+            allVillages
+        ) &&
+        allVillages.length
+    ) {
+
+        segments.forEach(
+
+            (
+                segment,
+                segmentIndex
+            ) => {
+
+                const normalizedSegment =
+                    normalize(
+
+                        removeSettlementType(
+
+                            removeParenthetical(
+                                segment
+                            )
+
+                        )
+
+                    );
+
+
+                if (!normalizedSegment) {
+
+                    return;
+
+                }
+
+
+                allVillages.forEach(
+
+                    village => {
+
+                        const villageName =
+                            getVillageName(
+                                village
+                            );
+
+
+                        const normalizedVillage =
+                            normalize(
+                                villageName
+                            );
+
+
+                        if (
+                            !normalizedVillage
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        /*
+                         * Avoid tiny/noisy names.
+                         */
+
+                        if (
+                            normalizedVillage.length < 4
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        /*
+                         * Whole phrase boundary test.
+                         *
+                         * Example:
+                         *
+                         * LOHAR LINE SALBARI
+                         *
+                         * contains:
+                         *
+                         * SALBARI
+                         */
+
+                        const haystack =
+                            " " +
+                            normalizedSegment +
+                            " ";
+
+
+                        const needle =
+                            " " +
+                            normalizedVillage +
+                            " ";
+
+
+                        if (
+                            !haystack.includes(
+                                needle
+                            )
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        addCandidate(
 
                             village,
 
-                            "PREFIX_LOCALITY",
+                            segment,
 
-                            Resolver.SCORE
-                                .PREFIX_LOCALITY,
+                            segmentIndex,
 
-                            name
+                            {
+
+                                text:
+                                    villageName,
+
+                                normalized:
+                                    normalizedVillage,
+
+                                type:
+                                    "KNOWN_VILLAGE_PHRASE",
+
+                                priority:
+                                    90
+
+                            }
 
                         );
 
                     }
 
-                }
+                );
 
             }
 
-        }
+        );
+
+    }
 
 
-        /* =================================================
-           STAGE D
-           VERIFIED CONTEXTUAL RESOLUTION
+    /* =====================================================
+       CONVERT TO ARRAY
+    ===================================================== */
 
-           Do not discard the other candidates here.
-
-           Instead, mark the verified LGD so scoring can give
-           it authoritative preference later.
-        ================================================= */
-
-        const list =
-            [
-                ...candidates.values()
-            ];
+    let candidates =
+        Array.from(
+            candidateMap.values()
+        );
 
 
-        for (
-            const candidate
-            of list
-        ) {
+    /* =====================================================
+       INITIAL SORT
 
-            const verified =
-                Resolver.findVerifiedResolution(
+       This is NOT the final resolution.
 
-                    parsed,
+       Administrative / forest / spatial stages later
+       re-score candidates.
+    ===================================================== */
 
-                    candidate.matchedName
+    candidates.sort(
 
+        (
+            a,
+            b
+        ) => {
+
+            const scoreDifference =
+
+                Number(
+                    b.generationScore || 0
+                ) -
+
+                Number(
+                    a.generationScore || 0
                 );
 
 
-            candidate.verified =
-                false;
-
-
-            candidate.verifiedRule =
-                null;
-
-
             if (
-                verified &&
-                String(
-                    verified.villageCode
-                ) ===
-                String(
-                    candidate.village
-                        ?.villageCode
-                )
+                scoreDifference !== 0
             ) {
 
-                candidate.verified =
-                    true;
-
-                candidate.verifiedRule =
-                    verified;
+                return scoreDifference;
 
             }
 
+
+            return (
+
+                Number(
+                    a.segmentIndex ?? 999
+                ) -
+
+                Number(
+                    b.segmentIndex ?? 999
+                )
+
+            );
+
         }
 
+    );
 
-        return list;
+
+    /* =====================================================
+       RETURN CONTEXT
+    ===================================================== */
+
+    return {
+
+        accused,
+
+        address,
+
+        parsed,
+
+        candidateSegments:
+            segments.slice(),
+
+        candidates,
+
+        candidateCount:
+            candidates.length
 
     };
+
+};
 
 
     /* =====================================================
