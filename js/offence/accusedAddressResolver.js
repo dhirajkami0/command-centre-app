@@ -4785,11 +4785,27 @@ candidate.village = {
         }
 
 
-        let score =
-            Number(
-                candidate.baseScore ||
-                0
-            );
+/* =================================================
+   BASE VILLAGE MATCH SCORE
+
+   Candidate generation now stores village-match
+   strength in positionScore.
+
+   Do NOT add primaryPositionBonus here because it
+   represents the same address-position evidence and
+   would double-count the first-position preference.
+================================================= */
+
+const baseScore =
+    Number(
+        candidate.baseScore ??
+        candidate.positionScore ??
+        0
+    );
+
+
+let score =
+    baseScore;
 
 
         const evidence =
@@ -4811,11 +4827,8 @@ candidate.village = {
                 village.name ||
                 "",
 
-            score:
-                Number(
-                    candidate.baseScore ||
-                    0
-                )
+score:
+    baseScore
 
         });
 
