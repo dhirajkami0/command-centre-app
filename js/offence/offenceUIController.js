@@ -9712,325 +9712,171 @@ const rawMode =
                    Source ↔ Target case relationship.
                 ================================================= */
 
-                button.onclick =
-                    function (
-                        event
-                    ) {
+/* =================================================
+   CHILD CLICK
 
+   AUTHORITATIVE FLOW
 
-                        event
-                            ?.preventDefault?.();
+   PANEL CHILD CLICK
+        ↓
+   UIController.selectChild(
+       child,
+       button
+   )
+        ↓
+   preserve currentParent
+        ↓
+   preserve currentChildren
+        ↓
+   replace currentChild
+        ↓
+   replace child card selection
+        ↓
+   highlightChildTarget()
+   OR
+   highlightChildSource()
+        ↓
+   childSelectionLayer
+        ↓
+   resolve matching cases
+        ↓
+   showSpatialCases()
 
+   IMPORTANT:
 
-                        event
-                            ?.stopPropagation?.();
+   DO NOT call:
 
+       selectTargetForSource()
 
+   or:
 
-                        /* =========================================
-                           VALIDATE RENDERER
-                        ========================================= */
+       selectSourceForTarget()
 
-                        if (
-                            !SpatialRenderer
-                        ) {
+   directly from this button.
 
-                            console.error(
-                                "❌ SpatialRenderer unavailable for child selection"
-                            );
+   UIController.selectChild() is now the
+   authoritative CHILD navigation function.
+================================================= */
 
-                            return;
+button.onclick =
+    function (
+        event
+    ) {
 
-                        }
+        /* =========================================
+           STOP BUTTON EVENT
+        ========================================= */
 
+        event
+            ?.preventDefault?.();
 
 
-                        /* =========================================
-                           STORE CURRENT CHILD
+        event
+            ?.stopPropagation?.();
 
-                           DO NOT CHANGE:
 
-                               currentParent
-                               currentChildren
+        /* =========================================
+           VALIDATE CHILD SELECTOR
+        ========================================= */
 
-                           They must remain preserved.
-                        ========================================= */
+        if (
+            typeof
+            UIController.selectChild !==
+            "function"
+        ) {
 
-                        UIController.currentChild =
-                            child;
+            console.error(
 
+                "❌ UIController.selectChild() unavailable",
 
-                        UIController.currentCase =
-                            null;
+                {
 
+                    mode:
+                        mode,
 
-                        UIController.currentField =
-                            null;
+                    parent:
+                        UIController.currentParent,
 
+                    child:
+                        child
 
+                }
 
-                        /* =========================================
-                           CLEAR PREVIOUS CHILD VISUAL SELECTION
-                        ========================================= */
+            );
 
-                        if (
-                            elements.childList
-                        ) {
 
-                            elements
-                                .childList
-                                .querySelectorAll(
-                                    ".gg-offence-child-item"
-                                )
-                                .forEach(
+            return;
 
-                                    function (
-                                        item
-                                    ) {
+        }
 
-                                        item
-                                            .classList
-                                            .remove(
-                                                "gg-offence-child-selected"
-                                            );
 
-                                    }
+        /* =========================================
+           AUTHORITATIVE CHILD SELECTION
 
-                                );
+           SOURCE MODE:
 
-                        }
+               Parent = SOURCE
+               Child  = TARGET
 
+               selectChild()
+                    ↓
+               highlightChildTarget()
 
 
-                        /* =========================================
-                           SELECT CURRENT CHILD CARD
-                        ========================================= */
+           TARGET MODE:
 
-                        button
-                            .classList
-                            .add(
-                                "gg-offence-child-selected"
-                            );
+               Parent = TARGET
+               Child  = SOURCE
 
+               selectChild()
+                    ↓
+               highlightChildSource()
 
 
-                        /* =========================================
-                           SOURCE → TARGET
+           Parent selection is preserved because
+           selectChild() operates only on the
+           childSelectionLayer.
+        ========================================= */
 
-                           Parent:
-                               Offence Source Area
-                               Village
+        const result =
 
-                           Child:
-                               Offence Target Area
-                               Range
-                        ========================================= */
+            UIController
+                .selectChild(
 
-                        if (
-                            mode ===
-                            "source"
-                        ) {
+                    child,
 
-                            if (
-                                typeof
-                                SpatialRenderer
-                                    .selectTargetForSource ===
-                                "function"
-                            ) {
+                    button
 
-                                const cases =
+                );
 
-                                    SpatialRenderer
-                                        .selectTargetForSource(
-                                            child
-                                        );
 
+        /* =========================================
+           DEBUG
+        ========================================= */
 
-                                console.log(
+        console.log(
 
-                                    "🎯 Panel Offence Target Area selected:",
+            "🎯 Offence panel child selected",
 
-                                    childName,
+            {
 
-                                    "→",
+                mode:
+                    mode,
 
-                                    Array.isArray(
-                                        cases
-                                    )
-                                        ? cases.length
-                                        : 0,
+                parent:
+                    UIController.currentParent,
 
-                                    "cases"
+                child:
+                    child,
 
-                                );
+                result:
+                    result
 
+            }
 
-                                return;
+        );
 
-                            }
-
-
-                            console.error(
-                                "❌ SpatialRenderer.selectTargetForSource() unavailable"
-                            );
-
-
-                            return;
-
-                        }
-
-
-
-                        /* =========================================
-                           TARGET → SOURCE
-
-                           Parent:
-                               Offence Target Area
-                               Range
-
-                           Child:
-                               Offence Source Area
-                               Village
-                        ========================================= */
-
-                        if (
-                            mode ===
-                            "target"
-                        ) {
-
-                            if (
-                                typeof
-                                SpatialRenderer
-                                    .selectSourceForTarget ===
-                                "function"
-                            ) {
-
-                                const cases =
-
-                                    SpatialRenderer
-                                        .selectSourceForTarget(
-                                            child
-                                        );
-
-
-                                console.log(
-
-                                    "🏡 Panel Offence Source Area selected:",
-
-                                    childName,
-
-                                    "→",
-
-                                    Array.isArray(
-                                        cases
-                                    )
-                                        ? cases.length
-                                        : 0,
-
-                                    "cases"
-
-                                );
-
-
-                                return;
-
-                            }
-
-
-                            console.error(
-                                "❌ SpatialRenderer.selectSourceForTarget() unavailable"
-                            );
-
-
-                            return;
-
-                        }
-
-
-
-                        /* =========================================
-                           FALLBACK
-
-                           Protect against UI / Renderer mode
-                           synchronization differences.
-                        ========================================= */
-
-                        const rendererMode =
-
-                            String(
-                                SpatialRenderer.mode ||
-                                ""
-                            )
-                                .trim()
-                                .toUpperCase();
-
-
-
-                        if (
-                            rendererMode ===
-                            "SOURCE" &&
-                            typeof
-                            SpatialRenderer
-                                .selectTargetForSource ===
-                            "function"
-                        ) {
-
-                            SpatialRenderer
-                                .selectTargetForSource(
-                                    child
-                                );
-
-
-                            return;
-
-                        }
-
-
-
-                        if (
-                            rendererMode ===
-                            "TARGET" &&
-                            typeof
-                            SpatialRenderer
-                                .selectSourceForTarget ===
-                            "function"
-                        ) {
-
-                            SpatialRenderer
-                                .selectSourceForTarget(
-                                    child
-                                );
-
-
-                            return;
-
-                        }
-
-
-
-                        console.warn(
-
-                            "⚠ Unable to determine child selection mode",
-
-                            {
-
-                                panelMode:
-                                    mode,
-
-                                rendererMode:
-                                    SpatialRenderer.mode,
-
-                                parent:
-                                    UIController.currentParent,
-
-                                child:
-                                    child
-
-                            }
-
-                        );
-
-                    };
+    };
 
 
 
