@@ -3817,23 +3817,124 @@ function addCandidate(
        points recursively back to candidate.
        ================================================= */
 
-    Object.defineProperty(
-        candidate,
-        "village",
-        {
-            value:
-                candidate,
+/* =====================================================
+   LEGACY VILLAGE VIEW
 
-            writable:
-                false,
+   Downstream resolver functions still expect:
 
-            enumerable:
-                false,
+       candidate.village
 
-            configurable:
-                true
-        }
-    );
+   This must survive object spreading/cloning.
+
+   Do NOT point village back to candidate because that
+   creates a circular structure.
+   ===================================================== */
+
+candidate.village = {
+
+    id:
+        candidate.id || "",
+
+    canonicalId:
+        candidate.canonicalId || "",
+
+    villageCode:
+        candidate.villageCode || "",
+
+    Vill_LGD:
+        candidate.Vill_LGD ||
+        candidate.villageCode ||
+        "",
+
+    name:
+        candidate.name || "",
+
+    cleanName:
+        candidate.cleanName || "",
+
+    category:
+        candidate.category || "",
+
+    villageType:
+        candidate.villageType || "",
+
+    gramPanchayat:
+        candidate.gramPanchayat || "",
+
+    block:
+        candidate.block || "",
+
+    subdivision:
+        candidate.subdivision || "",
+
+    district:
+        candidate.district || "",
+
+    state:
+        candidate.state || "",
+
+    country:
+        candidate.country || "",
+
+    policeStation:
+        candidate.policeStation || "",
+
+    policeStationCode:
+        candidate.policeStationCode || "",
+
+    pinCode:
+        candidate.pinCode || "",
+
+    postOffice:
+        candidate.postOffice || "",
+
+    stateLGD:
+        candidate.stateLGD || "",
+
+    districtLGD:
+        candidate.districtLGD || "",
+
+    subdistrictLGD:
+        candidate.subdistrictLGD || "",
+
+    gramPanchayatLGD:
+        candidate.gramPanchayatLGD || "",
+
+    forestCircle:
+        candidate.forestCircle || "",
+
+    forestDivision:
+        candidate.forestDivision || "",
+
+    forestRange:
+        candidate.forestRange || "",
+
+    forestBeat:
+        candidate.forestBeat || "",
+
+    forestCompartment:
+        candidate.forestCompartment || "",
+
+    protectedArea:
+        candidate.protectedArea || "",
+
+    latitude:
+        candidate.latitude ?? null,
+
+    longitude:
+        candidate.longitude ?? null,
+
+    aliases:
+        Array.isArray(
+            candidate.aliases
+        )
+            ? [...candidate.aliases]
+            : [],
+
+    source:
+        candidate.source || ""
+
+};
 
 
     /* =================================================
