@@ -442,7 +442,7 @@ Resolver.parseAddress = function (
 ) {
 
     /* =====================================================
-       RAW ADDRESS
+       RAW INPUT
        ===================================================== */
 
     const raw =
@@ -460,17 +460,13 @@ Resolver.parseAddress = function (
         .trim();
 
 
-    /* =====================================================
-       RESULT
-       ===================================================== */
-
     const result = {
 
         raw,
 
         /* ---------------------------------------------
            Candidate-generating information
-           --------------------------------------------- */
+        --------------------------------------------- */
 
         settlement:
             "",
@@ -490,10 +486,7 @@ Resolver.parseAddress = function (
 
         /* ---------------------------------------------
            Administrative evidence
-
-           These fields NEVER independently create
-           village candidates.
-           --------------------------------------------- */
+        --------------------------------------------- */
 
         po:
             "",
@@ -513,7 +506,7 @@ Resolver.parseAddress = function (
 
         /* ---------------------------------------------
            Diagnostics
-           --------------------------------------------- */
+        --------------------------------------------- */
 
         administrativeText:
             [],
@@ -544,12 +537,12 @@ Resolver.parseAddress = function (
         )
 
         .replace(
-            /^[\s,;:.+\-–—/]+/,
+            /^[\s,;:+\-–—/]+/,
             ""
         )
 
         .replace(
-            /[\s,;:.+\-–—/]+$/,
+            /[\s,;:+\-–—/]+$/,
             ""
         )
 
@@ -583,7 +576,7 @@ Resolver.parseAddress = function (
 
 
         /*
-         * Keep first explicit value.
+         * Preserve first explicit occurrence.
          */
 
         if (
@@ -600,8 +593,7 @@ Resolver.parseAddress = function (
             .administrativeText
             .push({
 
-                field:
-                    field,
+                field,
 
                 value:
                     cleaned,
@@ -609,16 +601,10 @@ Resolver.parseAddress = function (
                 source:
                     String(
                         source || ""
-                    )
-                    .trim()
+                    ).trim()
 
             });
 
-
-        /*
-         * Administrative values are explicitly excluded
-         * from village-candidate generation.
-         */
 
         result
             .excludedSegments
@@ -629,208 +615,46 @@ Resolver.parseAddress = function (
     }
 
 
-    function normalizeLabel(
-        label
-    ) {
-
-        return String(
-            label || ""
-        )
-        .toUpperCase()
-        .replace(
-            /[^A-Z]/g,
-            ""
-        );
-
-    }
-
-
     /* =====================================================
-       PRE-NORMALIZATION
+       NORMALIZE SEPARATORS
        ===================================================== */
 
     let working =
         raw
-
-        /*
-         * Alternative separators.
-         */
 
         .replace(
             /[;|]+/g,
             ","
         )
 
-        /*
-         * Remove VILLAGE/VILL/VIL LABEL ONLY.
-         *
-         * Village value remains candidate-generating text.
-         *
-         * Vill-Salbari
-         *      ↓
-         * Salbari
-         */
-
         .replace(
-            /\b(?:VILLAGE|VILL\.?|VIL\.?)\s*(?:[:=+\-/]+\s*)?/gi,
-            ""
+            /\s+/g,
+            " "
         );
 
 
     /* =====================================================
-       ADMINISTRATIVE LABEL PATTERNS
+       REMOVE VILLAGE LABEL ONLY
 
        IMPORTANT:
 
-       Every abbreviated label starts with \b.
+       Vill-Uttar Poro
+               ↓
+       Uttar Poro
 
-       Therefore:
+       Vill.-Uttar Poro F.V.
+               ↓
+       Uttar Poro F.V.
 
-           Uttar Poro
-
-       CANNOT be interpreted as:
-
-           Uttar + PO + ro
-
-       because PO inside PORO is not a standalone
-       administrative label.
+       The settlement itself is NEVER removed.
        ===================================================== */
 
-    const PO_PATTERN =
-        "\\bP\\.?\\s*O\\.?";
+    working =
+        working.replace(
 
-    const POST_OFFICE_PATTERN =
-        "\\bPOST\\s+OFFICE\\b";
+            /(?:^|(?<=[,\s]))(?:VILLAGE|VILL|VIL)\.?\s*(?=[:=+\-/]|\s)/gi,
 
-    const PS_PATTERN =
-        "\\bP\\.?\\s*S\\.?";
-
-    const POLICE_STATION_PATTERN =
-        "\\bPOLICE\\s+STATION\\b";
-
-    const DISTRICT_PATTERN =
-        "\\bDISTRICT\\b";
-
-    const DIST_PATTERN =
-        "\\bDIST\\.?";
-
-    const DISTT_PATTERN =
-        "\\bDISTT\\.?";
-
-    const DT_PATTERN =
-        "\\bDT\\.?";
-
-    const BLOCK_PATTERN =
-        "\\bBLOCK\\b";
-
-    const BLK_PATTERN =
-        "\\bBLK\\.?";
-
-
-    const adminLabelPattern =
-
-        "(?:" +
-
-            PO_PATTERN +
-
-            "|" +
-
-            POST_OFFICE_PATTERN +
-
-            "|" +
-
-            PS_PATTERN +
-
-            "|" +
-
-            POLICE_STATION_PATTERN +
-
-            "|" +
-
-            DISTRICT_PATTERN +
-
-            "|" +
-
-            DISTT_PATTERN +
-
-            "|" +
-
-            DIST_PATTERN +
-
-            "|" +
-
-            DT_PATTERN +
-
-            "|" +
-
-            BLOCK_PATTERN +
-
-            "|" +
-
-            BLK_PATTERN +
-
-        ")";
-
-
-    /* =====================================================
-       SPECIAL CASE: COMBINED PO + PS LABEL
-
-       Examples:
-
-           P.O+P.S-Kalchini
-           PO + PS - Kalchini
-           P.O./P.S.-Kalchini
-
-       This is administrative evidence for BOTH fields.
-
-       Kalchini must NOT become a village candidate from
-       this labelled occurrence.
-       ===================================================== */
-
-    const combinedPoPsRegex =
-        new RegExp(
-
-            "(" +
-
-                PO_PATTERN +
-
-            ")" +
-
-            "\\s*" +
-
-            "(?:\\+|&|/)" +
-
-            "\\s*" +
-
-            "(" +
-
-                PS_PATTERN +
-
-            ")" +
-
-            "\\s*" +
-
-            "(?:[:=+\\-/]+\\s*)?" +
-
-            "(.+?)" +
-
-            "(?=" +
-
-                "\\s*,?\\s*" +
-
-                adminLabelPattern +
-
-                "|" +
-
-                "," +
-
-                "|" +
-
-                "$" +
-
-            ")",
-
-            "gi"
+            ""
 
         );
 
@@ -838,98 +662,155 @@ Resolver.parseAddress = function (
     working =
         working.replace(
 
-            combinedPoPsRegex,
+            /^\s*[:=+\-/]+\s*/,
 
-            function (
-                full,
-                poLabel,
-                psLabel,
-                value
-            ) {
-
-                saveAdmin(
-                    "po",
-                    value,
-                    full
-                );
-
-
-                saveAdmin(
-                    "ps",
-                    value,
-                    full
-                );
-
-
-                return ",";
-
-            }
+            ""
 
         );
 
 
     /* =====================================================
-       EXTRACT EXPLICIT ADMINISTRATIVE FIELDS
+       ADMIN LABEL
 
-       Examples:
+       CRITICAL RULE:
 
-           PO-Malbazar
-           P.O. Salbari
-           PS-Kalchini
-           P.S Kalchini
-           Dist-Alipurduar
-           District Jalpaiguri
-           Block Kalchini
+       PO must NOT match:
 
-       Also works without commas:
+           PORO
+           POKHRI
+           POLASH
+           POTA
 
-           Atiabari PO-Salbari PS-Kalchini
-           Dist-Alipurduar
+       PS must NOT match:
+
+           PSEUDO
+           PSALM
+
+       Therefore every abbreviation requires a boundary
+       AFTER the complete label.
+       ===================================================== */
+
+    const labelSource =
+
+        "(?:" +
+
+            "P\\s*\\.\\s*O\\s*\\." +
+
+            "|" +
+
+            "P\\s*\\.\\s*O" +
+
+            "|" +
+
+            "PO" +
+
+            "|" +
+
+            "POST\\s+OFFICE" +
+
+            "|" +
+
+            "P\\s*\\.\\s*S\\s*\\." +
+
+            "|" +
+
+            "P\\s*\\.\\s*S" +
+
+            "|" +
+
+            "PS" +
+
+            "|" +
+
+            "POLICE\\s+STATION" +
+
+            "|" +
+
+            "DISTRICT" +
+
+            "|" +
+
+            "DIST\\s*\\." +
+
+            "|" +
+
+            "DIST" +
+
+            "|" +
+
+            "DISTT\\s*\\." +
+
+            "|" +
+
+            "DISTT" +
+
+            "|" +
+
+            "DT\\s*\\." +
+
+            "|" +
+
+            "DT" +
+
+            "|" +
+
+            "BLOCK" +
+
+            "|" +
+
+            "BLK\\s*\\." +
+
+            "|" +
+
+            "BLK" +
+
+        ")";
+
+
+    /* =====================================================
+       EXPLICIT ADMINISTRATIVE FIELD REGEX
+
+       Label must begin:
+
+       - at beginning of string
+       - after comma
+       - OR after whitespace
+
+       AND label must end before:
+
+       - whitespace
+       - :
+       - -
+       - =
+       - +
+       - /
+       - comma
+       - end
+
+       Therefore:
+
+           Uttar Poro
+
+       DOES NOT interpret "Po" inside "Poro".
        ===================================================== */
 
     const adminRegex =
         new RegExp(
 
+            "(^|[,\\s])" +
+
             "(" +
+                labelSource +
+            ")" +
 
-                PO_PATTERN +
-
+            "(?=" +
+                "\\s" +
                 "|" +
-
-                POST_OFFICE_PATTERN +
-
+                "[:=+\\-/]" +
                 "|" +
-
-                PS_PATTERN +
-
+                "," +
                 "|" +
-
-                POLICE_STATION_PATTERN +
-
-                "|" +
-
-                DISTRICT_PATTERN +
-
-                "|" +
-
-                DISTT_PATTERN +
-
-                "|" +
-
-                DIST_PATTERN +
-
-                "|" +
-
-                DT_PATTERN +
-
-                "|" +
-
-                BLOCK_PATTERN +
-
-                "|" +
-
-                BLK_PATTERN +
-
+                "$" +
             ")" +
 
             "\\s*" +
@@ -942,7 +823,17 @@ Resolver.parseAddress = function (
 
                 "\\s*,?\\s*" +
 
-                adminLabelPattern +
+                labelSource +
+
+                "(?=" +
+                    "\\s" +
+                    "|" +
+                    "[:=+\\-/]" +
+                    "|" +
+                    "," +
+                    "|" +
+                    "$" +
+                ")" +
 
                 "|" +
 
@@ -958,6 +849,10 @@ Resolver.parseAddress = function (
 
         );
 
+
+    /* =====================================================
+       EXTRACT ADMINISTRATIVE FIELDS
+       ===================================================== */
 
     working =
         working.replace(
@@ -966,13 +861,21 @@ Resolver.parseAddress = function (
 
             function (
                 full,
+                prefix,
                 label,
                 value
             ) {
 
                 const normalizedLabel =
-                    normalizeLabel(
-                        label
+                    String(
+                        label || ""
+                    )
+
+                    .toUpperCase()
+
+                    .replace(
+                        /[^A-Z]/g,
+                        ""
                     );
 
 
@@ -982,14 +885,11 @@ Resolver.parseAddress = function (
 
                 /* -----------------------------------------
                    POST OFFICE
-                   ----------------------------------------- */
+                ----------------------------------------- */
 
                 if (
-                    normalizedLabel ===
-                        "PO" ||
-
-                    normalizedLabel ===
-                        "POSTOFFICE"
+                    normalizedLabel === "PO" ||
+                    normalizedLabel === "POSTOFFICE"
                 ) {
 
                     field =
@@ -1000,12 +900,10 @@ Resolver.parseAddress = function (
 
                 /* -----------------------------------------
                    POLICE STATION
-                   ----------------------------------------- */
+                ----------------------------------------- */
 
                 else if (
-                    normalizedLabel ===
-                        "PS" ||
-
+                    normalizedLabel === "PS" ||
                     normalizedLabel ===
                         "POLICESTATION"
                 ) {
@@ -1018,7 +916,7 @@ Resolver.parseAddress = function (
 
                 /* -----------------------------------------
                    DISTRICT
-                   ----------------------------------------- */
+                ----------------------------------------- */
 
                 else if (
                     normalizedLabel ===
@@ -1042,7 +940,7 @@ Resolver.parseAddress = function (
 
                 /* -----------------------------------------
                    BLOCK
-                   ----------------------------------------- */
+                ----------------------------------------- */
 
                 else if (
                     normalizedLabel ===
@@ -1058,23 +956,30 @@ Resolver.parseAddress = function (
                 }
 
 
-                if (field) {
+                if (
+                    field
+                ) {
 
                     saveAdmin(
+
                         field,
+
                         value,
+
                         full
+
                     );
 
                 }
 
 
                 /*
-                 * Remove entire explicitly-labelled
-                 * administrative occurrence.
+                 * Preserve comma boundary if one existed.
                  */
 
-                return ",";
+                return prefix === ","
+                    ? ","
+                    : " ";
 
             }
 
@@ -1082,11 +987,10 @@ Resolver.parseAddress = function (
 
 
     /* =====================================================
-       EXTRACT PIN
+       PIN CODE
 
-       Six-digit Indian PIN is administrative evidence.
-
-       It must NEVER become village candidate text.
+       PIN is administrative evidence only.
+       It must never generate a village candidate.
        ===================================================== */
 
     working =
@@ -1140,7 +1044,7 @@ Resolver.parseAddress = function (
 
 
     /* =====================================================
-       CLEAN REMAINING CANDIDATE TEXT
+       CLEAN REMAINING SETTLEMENT TEXT
        ===================================================== */
 
     working =
@@ -1170,43 +1074,18 @@ Resolver.parseAddress = function (
 
 
     /* =====================================================
-       REMAINING UNLABELLED SEGMENTS
+       BUILD CANDIDATE SEGMENTS
 
-       CRITICAL DESIGN RULE:
-
-       ONLY these remaining segments may generate village
-       candidates.
-
-       Examples:
-
-       Salbari, Malbazar, Jalpaiguri
-
-           candidateSegments:
-               Salbari
-               Malbazar
-               Jalpaiguri
-
-       Salbari, PO-Malbazar
-
-           candidateSegments:
-               Salbari
-
-           PO:
-               Malbazar
-
-       Malbazar, PO-Salbari
-
-           candidateSegments:
-               Malbazar
-
-           PO:
-               Salbari
+       ONLY remaining unlabelled text may generate
+       village candidates.
        ===================================================== */
 
     const segments =
         working
 
-        .split(",")
+        .split(
+            ","
+        )
 
         .map(
             clean
@@ -1217,16 +1096,6 @@ Resolver.parseAddress = function (
         );
 
 
-    /* =====================================================
-       PRESERVE ORIGINAL ADDRESS ORDER
-
-       generateCandidates() decides which segment actually
-       exists as a canonical village.
-
-       parseAddress() must NOT compare candidate segments
-       against PO / PS / district here.
-       ===================================================== */
-
     result.candidateSegments =
         segments.slice();
 
@@ -1234,13 +1103,6 @@ Resolver.parseAddress = function (
     result.unclassifiedSegments =
         segments.slice();
 
-
-    /* =====================================================
-       COMBINED CANDIDATE REPRESENTATION
-
-       Retained for compatibility with existing resolver
-       functions.
-       ===================================================== */
 
     result.candidateText =
         segments.join(
@@ -1251,29 +1113,6 @@ Resolver.parseAddress = function (
     result.settlement =
         result.candidateText;
 
-
-    /* =====================================================
-       LOCALITY
-
-       Do not invent locality here.
-
-       Locality interpretation belongs to candidate
-       generation/resolution because:
-
-           Lohar Line, Salbari T.G.
-
-       cannot be interpreted correctly until we know that
-       Salbari resolves to a canonical village while
-       Lohar Line does not.
-       ===================================================== */
-
-    result.locality =
-        "";
-
-
-    /* =====================================================
-       RETURN
-       ===================================================== */
 
     return result;
 
