@@ -3351,231 +3351,208 @@ Resolver.generateCandidates = function (
        earliest positional evidence.
        ===================================================== */
 
-    function addCandidate(
-        village,
-        evidence
-    ) {
+/* =====================================================
+   ADD CANDIDATE
 
-        if (!village)
-            return;
+   Same LGD may be found through several expressions.
 
+   IMPORTANT ARCHITECTURE:
 
-        const villageCode =
-            safeString(
+   1. The candidate itself remains the canonical flat
+      village object.
 
-                village.villageCode ||
+   2. Older downstream resolver functions still expect:
 
-                village.Vill_LGD ||
+          candidate.village
 
-                village.vill_LGD ||
+   3. Therefore candidate.village points back to the SAME
+      candidate object.
 
-                village.lgdCode ||
+   4. `.village` is NON-ENUMERABLE so:
+      - Object.keys() stays clean
+      - object spread stays clean
+      - JSON serialization does not recurse
+      - existing flat candidate architecture is preserved
 
-                village.LGD ||
+   5. PO / PS / District / PIN / Block remain EVIDENCE.
+      They never create village candidates.
+   ===================================================== */
 
-                ""
+function addCandidate(
+    village,
+    evidence
+) {
 
-            );
+    /* =================================================
+       VALIDATION
+       ================================================= */
 
+    if (!village) {
 
-        /*
-         * LGD is preferred as identity.
-         *
-         * Fallback identity protects records where LGD is
-         * temporarily unavailable.
-         */
+        return;
 
-        const identity =
-
-            villageCode ||
-
-            [
-
-                normalize(
-                    village.name ||
-                    village.cleanName
-                ),
-
-                normalize(
-                    village.block
-                ),
-
-                normalize(
-                    village.district
-                )
-
-            ].join("|");
+    }
 
 
-        if (!identity)
-            return;
+    /* =================================================
+       CANONICAL VILLAGE CODE / LGD
+       ================================================= */
+
+    const villageCode =
+        safeString(
+
+            village.villageCode ||
+
+            village.Vill_LGD ||
+
+            village.vill_LGD ||
+
+            village.lgdCode ||
+
+            village.LGD ||
+
+            ""
+
+        );
 
 
-        const existing =
-            candidateByCode.get(
-                identity
-            );
+    /* =================================================
+       STABLE IDENTITY
+
+       LGD is authoritative whenever available.
+
+       Fallback identity exists only for records where
+       LGD is temporarily unavailable.
+       ================================================= */
+
+    const identity =
+
+        villageCode ||
+
+        [
+
+            normalize(
+                village.name ||
+                village.cleanName
+            ),
+
+            normalize(
+                village.block
+            ),
+
+            normalize(
+                village.district
+            )
+
+        ].join("|");
 
 
-        if (existing) {
+    if (!identity) {
 
-            /*
-             * Preserve all discovery evidence.
-             */
+        return;
 
-            if (
-                !Array.isArray(
-                    existing.matchEvidence
-                )
-            ) {
-
-                existing.matchEvidence = [];
-
-            }
+    }
 
 
-            existing.matchEvidence.push(
-                evidence
-            );
+    /* =================================================
+       EXISTING CANDIDATE
+
+       Same village may be discovered through multiple
+       expressions.
+
+       Example:
+
+           Salbari T.G.
+                ↓
+           exact / settlement-base
+                ↓
+           same LGD
+
+       We preserve ONE canonical candidate.
+       ================================================= */
+
+    const existing =
+        candidateByCode.get(
+            identity
+        );
 
 
-            /*
-             * Earlier address position always wins.
-             */
+    if (existing) {
 
-            if (
-                Number.isFinite(
-                    evidence.segmentIndex
-                ) &&
-                (
-                    !Number.isFinite(
-                        existing.segmentIndex
-                    )
-                    ||
-                    evidence.segmentIndex <
-                    existing.segmentIndex
-                )
-            ) {
+        /* ---------------------------------------------
+           Preserve discovery evidence
+           --------------------------------------------- */
 
-                existing.segmentIndex =
-                    evidence.segmentIndex;
+        if (
+            !Array.isArray(
+                existing.matchEvidence
+            )
+        ) {
 
-                existing.candidatePosition =
-                    evidence.candidatePosition;
-
-                existing.matchedSegment =
-                    evidence.segment;
-
-                existing.matchedExpression =
-                    evidence.expression;
-
-                existing.matchType =
-                    evidence.matchType;
-
-            }
-
-
-            /*
-             * Exact name match is stronger than derived /
-             * phrase match at same position.
-             */
-
-            const strength = {
-
-                EXACT:
-                    4,
-
-                NORMALIZED_EXACT:
-                    3,
-
-                SETTLEMENT_BASE:
-                    2,
-
-                PHRASE:
-                    1
-
-            };
-
-
-            if (
-                (
-                    strength[
-                        evidence.matchType
-                    ] || 0
-                )
-                >
-                (
-                    strength[
-                        existing.matchType
-                    ] || 0
-                )
-            ) {
-
-                existing.matchType =
-                    evidence.matchType;
-
-                existing.matchedExpression =
-                    evidence.expression;
-
-            }
-
-
-            return;
+            existing.matchEvidence = [];
 
         }
 
 
-        const candidate = {
-
-            ...village,
-
-
-            /* -----------------------------------------
-               Stable identity
-               ----------------------------------------- */
-
-            villageCode,
-
-            Vill_LGD:
-                villageCode,
+        existing.matchEvidence.push(
+            evidence
+        );
 
 
-            /* -----------------------------------------
-               Matching metadata
-               ----------------------------------------- */
+        /* ---------------------------------------------
+           Earlier address position wins
 
-            matchedSegment:
-                evidence.segment,
+           Example:
 
-            matchedExpression:
-                evidence.expression,
+               Lohar Line,
+               Salbari T.G.
 
-            normalizedMatchedExpression:
+           Lohar Line does not match.
+
+           Salbari T.G. becomes the first successful
+           village candidate.
+           --------------------------------------------- */
+
+        if (
+            Number.isFinite(
+                evidence.segmentIndex
+            )
+            &&
+            (
+                !Number.isFinite(
+                    existing.segmentIndex
+                )
+                ||
+                evidence.segmentIndex <
+                    existing.segmentIndex
+            )
+        ) {
+
+            existing.segmentIndex =
+                evidence.segmentIndex;
+
+            existing.candidatePosition =
+                evidence.candidatePosition;
+
+            existing.addressPosition =
+                evidence.segmentIndex;
+
+            existing.matchedSegment =
+                evidence.segment;
+
+            existing.matchedExpression =
+                evidence.expression;
+
+            existing.normalizedMatchedExpression =
                 normalize(
                     evidence.expression
-                ),
+                );
 
-            matchType:
-                evidence.matchType,
-
-            segmentIndex:
-                evidence.segmentIndex,
-
-            candidatePosition:
-                evidence.candidatePosition,
-
-            addressPosition:
-                evidence.segmentIndex,
+            existing.matchType =
+                evidence.matchType;
 
 
-            /* -----------------------------------------
-               Positional evidence
-
-               First address segment gets strongest
-               positional priority.
-               ----------------------------------------- */
-
-            positionScore:
+            existing.positionScore =
 
                 Math.max(
                     0,
@@ -3584,84 +3561,296 @@ Resolver.generateCandidates = function (
                         evidence.segmentIndex *
                         20
                     )
-                ),
+                );
+
+        }
 
 
-            /* -----------------------------------------
-               Administrative evidence copied separately.
+        /* ---------------------------------------------
+           Strongest textual match wins when preserving
+           matching metadata.
+           --------------------------------------------- */
 
-               IMPORTANT:
-               these fields DO NOT create the candidate.
-               ----------------------------------------- */
+        const strength = {
 
-            addressPO:
-                parsed.po || "",
+            EXACT:
+                4,
 
-            addressPS:
-                parsed.ps || "",
+            NORMALIZED_EXACT:
+                3,
 
-            addressDistrict:
-                parsed.district || "",
+            SETTLEMENT_BASE:
+                2,
 
-            addressPIN:
-                parsed.pin || "",
-
-            addressBlock:
-                parsed.block || "",
-
-
-            matchEvidence: [
-                evidence
-            ]
+            PHRASE:
+                1
 
         };
 
 
-        candidateByCode.set(
-            identity,
-            candidate
-        );
+        const newStrength =
+
+            strength[
+                evidence.matchType
+            ] || 0;
 
 
-        candidates.push(
-            candidate
-        );
+        const oldStrength =
+
+            strength[
+                existing.matchType
+            ] || 0;
+
+
+        if (
+            newStrength >
+            oldStrength
+        ) {
+
+            existing.matchType =
+                evidence.matchType;
+
+            existing.matchedExpression =
+                evidence.expression;
+
+            existing.normalizedMatchedExpression =
+                normalize(
+                    evidence.expression
+                );
+
+        }
+
+
+        /*
+         * Compatibility safety.
+         *
+         * Normally this already exists because it was
+         * installed when the candidate was created.
+         *
+         * This guard makes the function safe if an older
+         * candidate somehow entered candidateByCode.
+         */
+
+        if (
+            existing.village !==
+            existing
+        ) {
+
+            Object.defineProperty(
+                existing,
+                "village",
+                {
+                    value:
+                        existing,
+
+                    writable:
+                        false,
+
+                    enumerable:
+                        false,
+
+                    configurable:
+                        true
+                }
+            );
+
+        }
+
+
+        return;
 
     }
-/*
- * BACKWARD-COMPATIBILITY ADAPTER
- *
- * Current resolver candidates are canonical village objects
- * themselves (flat structure).
- *
- * Older downstream scoring/result functions expect:
- *
- *     candidate.village
- *
- * Point that property back to the same canonical candidate.
- *
- * IMPORTANT:
- * Make it non-enumerable so spreading / Object.keys /
- * serialization does not create recursion or duplicate data.
- */
 
-Object.defineProperty(
-    candidate,
-    "village",
-    {
-        value:
-            candidate,
 
-        writable:
+    /* =================================================
+       CREATE CANONICAL FLAT CANDIDATE
+       ================================================= */
+
+    const candidate = {
+
+        ...village,
+
+
+        /* ---------------------------------------------
+           Stable identity
+           --------------------------------------------- */
+
+        villageCode,
+
+        Vill_LGD:
+            villageCode,
+
+
+        /* ---------------------------------------------
+           Matching metadata
+           --------------------------------------------- */
+
+        matchedSegment:
+            evidence.segment,
+
+        matchedExpression:
+            evidence.expression,
+
+        normalizedMatchedExpression:
+            normalize(
+                evidence.expression
+            ),
+
+        matchType:
+            evidence.matchType,
+
+        segmentIndex:
+            evidence.segmentIndex,
+
+        candidatePosition:
+            evidence.candidatePosition,
+
+        addressPosition:
+            evidence.segmentIndex,
+
+
+        /* ---------------------------------------------
+           Positional evidence
+
+           Earlier address position receives stronger
+           priority.
+
+           This does NOT itself decide between duplicate
+           LGDs having the same village name.
+           --------------------------------------------- */
+
+        positionScore:
+
+            Math.max(
+                0,
+                100 -
+                (
+                    evidence.segmentIndex *
+                    20
+                )
+            ),
+
+
+        /* ---------------------------------------------
+           Administrative evidence
+
+           EVIDENCE ONLY.
+
+           These values may later score/disambiguate the
+           village candidate.
+
+           They MUST NEVER create a village candidate.
+           --------------------------------------------- */
+
+        addressPO:
+            parsed.po || "",
+
+        addressPS:
+            parsed.ps || "",
+
+        addressDistrict:
+            parsed.district || "",
+
+        addressPIN:
+            parsed.pin || "",
+
+        addressBlock:
+            parsed.block || "",
+
+
+        /* ---------------------------------------------
+           Preserve all matching evidence
+           --------------------------------------------- */
+
+        matchEvidence: [
+            evidence
+        ],
+
+
+        /* ---------------------------------------------
+           Filled later after primary segment is known
+           --------------------------------------------- */
+
+        isPrimarySegment:
             false,
 
-        enumerable:
-            false,
+        primaryPositionBonus:
+            0
 
-        configurable:
-            true
-    }
-);
+    };
+
+
+    /* =================================================
+       DOWNSTREAM COMPATIBILITY ADAPTER
+
+       THIS MUST BE HERE.
+
+       It must happen:
+
+           AFTER candidate creation
+           BEFORE candidateByCode.set()
+           BEFORE candidates.push()
+
+       Old resolver code expects:
+
+           candidate.village.name
+           candidate.village.villageCode
+           candidate.village.district
+           candidate.village.block
+
+       Current architecture uses:
+
+           candidate.name
+           candidate.villageCode
+           candidate.district
+           candidate.block
+
+       Point `.village` to the SAME object.
+
+       DO NOT use:
+
+           candidate.village = {...candidate}
+
+       because that creates two competing representations.
+
+       DO NOT make it enumerable because candidate.village
+       points recursively back to candidate.
+       ================================================= */
+
+    Object.defineProperty(
+        candidate,
+        "village",
+        {
+            value:
+                candidate,
+
+            writable:
+                false,
+
+            enumerable:
+                false,
+
+            configurable:
+                true
+        }
+    );
+
+
+    /* =================================================
+       REGISTER CANONICAL CANDIDATE
+       ================================================= */
+
+    candidateByCode.set(
+        identity,
+        candidate
+    );
+
+
+    candidates.push(
+        candidate
+    );
+
+}
 
     /* =====================================================
        EXACT LOOKUP HELPER
