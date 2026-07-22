@@ -3628,7 +3628,40 @@ Resolver.generateCandidates = function (
         );
 
     }
+/*
+ * BACKWARD-COMPATIBILITY ADAPTER
+ *
+ * Current resolver candidates are canonical village objects
+ * themselves (flat structure).
+ *
+ * Older downstream scoring/result functions expect:
+ *
+ *     candidate.village
+ *
+ * Point that property back to the same canonical candidate.
+ *
+ * IMPORTANT:
+ * Make it non-enumerable so spreading / Object.keys /
+ * serialization does not create recursion or duplicate data.
+ */
 
+Object.defineProperty(
+    candidate,
+    "village",
+    {
+        value:
+            candidate,
+
+        writable:
+            false,
+
+        enumerable:
+            false,
+
+        configurable:
+            true
+    }
+);
 
     /* =====================================================
        EXACT LOOKUP HELPER
