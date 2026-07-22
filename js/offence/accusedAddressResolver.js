@@ -1871,238 +1871,304 @@
         }
 
 
-        /* =================================================
-           STAGE B
-           FIND VILLAGE NAMES ANYWHERE IN FULL ADDRESS
-        ================================================= */
+/* =================================================
+   STAGE B
+   FIND VILLAGE NAMES INSIDE SETTLEMENT ONLY
 
-        const embeddedMatches =
-            [];
+   CRITICAL DESIGN RULE:
 
+   Village candidates may ONLY originate from the
+   parsed settlement/locality portion of the address.
 
-        for (
-            const [
-                indexedName,
-                records
-            ]
-            of Resolver.index.byName
-        ) {
+   PO / PS / DISTRICT / PIN are administrative
+   evidence. They MUST NEVER independently create
+   village candidates.
 
-            if (!indexedName)
-                continue;
+   Examples:
 
+   Vill-Salbari(Neech Line),
+   PS-Kalchini,
+   Dist-Alipurduar
 
-            const words =
-                indexedName
+       settlement = SALBARI NEECH LINE
 
-                    .split(
-                        " "
-                    )
+       Candidate:
+           SALBARI
 
-                    .filter(Boolean);
+       NOT:
+           KALCHINI
+           ALIPURDUAR
 
 
-            const compact =
-                indexedName.replace(
-                    /\s+/g,
-                    ""
-                );
+   Vill-Atiabari (Pakaline),
+   PO-Salbari,
+   PS-Kalchini,
+   Dist-Alipurduar
+
+       settlement = ATIABARI PAKALINE
+
+       Candidate:
+           ATIABARI
+
+       Salbari is PO evidence only.
 
 
-            /*
-             * Avoid tiny generic names/tokens.
-             */
+   Vill-Lohar Line, Salbari T.G.,
+   PS-Kalchini,
+   Alipurduar
 
-            if (
-                words.length === 1 &&
-                compact.length < 4
-            ) {
+       settlement =
+           LOHAR LINE SALBARI T G
 
-                continue;
+       Candidate:
+           SALBARI
 
-            }
+================================================= */
 
-
-            const inSettlement =
-                Resolver.containsPhrase(
-                    settlement,
-                    indexedName
-                );
+const embeddedMatches =
+    [];
 
 
-            const inAddress =
-                Resolver.containsPhrase(
-                    fullAddress,
-                    indexedName
-                );
+/*
+ * IMPORTANT:
+ *
+ * Search ONLY `settlement`.
+ *
+ * Do NOT search:
+ *
+ *     fullAddress
+ *     parsed.po
+ *     parsed.ps
+ *     parsed.district
+ *     parsed.pin
+ *
+ * Those fields belong to the scoring stage.
+ */
 
+if (settlement) {
 
-            if (
-                !inSettlement &&
-                !inAddress
-            ) {
+    for (
+        const [
+            indexedName,
+            records
+        ]
+        of Resolver.index.byName
+    ) {
 
-                continue;
+        if (!indexedName) {
 
-            }
-
-
-            embeddedMatches.push({
-
-                indexedName,
-
-                records,
-
-                wordCount:
-                    words.length,
-
-                charCount:
-                    indexedName.length,
-
-                inSettlement,
-
-                inAddress
-
-            });
+            continue;
 
         }
 
 
-        /* =================================================
-           LONGEST / MOST SPECIFIC VILLAGE NAME
+        const words =
+            indexedName
+                .split(" ")
+                .filter(Boolean);
 
-           Example:
 
-           If official village names include:
+        const compact =
+            indexedName.replace(
+                /\s+/g,
+                ""
+            );
 
-           PORO
-           UTTAR PORO
 
-           and address contains:
+        /*
+         * Reject tiny generic names.
+         */
 
-           UTTAR PORO
+        if (
+            words.length === 1 &&
+            compact.length < 4
+        ) {
 
-           prefer UTTAR PORO.
+            continue;
 
-           IMPORTANT:
+        }
 
-           This does NOT remove duplicate LGDs having the
-           SAME village name.
 
-           Example:
+        /*
+         * Village/alias must actually occur inside
+         * the parsed SETTLEMENT.
+         */
 
-           SALBARI LGD A
-           SALBARI LGD B
-           SALBARI LGD C
+        const inSettlement =
+            Resolver.containsPhrase(
+                settlement,
+                indexedName
+            );
 
-           all remain.
-        ================================================= */
 
-        embeddedMatches.sort(
+        if (!inSettlement) {
 
-            (a, b) =>
+            continue;
 
-                b.wordCount -
-                    a.wordCount ||
+        }
 
-                b.charCount -
-                    a.charCount
 
+        embeddedMatches.push({
+
+            indexedName,
+
+            records,
+
+            wordCount:
+                words.length,
+
+            charCount:
+                indexedName.length
+
+        });
+
+    }
+
+}
+
+
+/* =================================================
+   MOST SPECIFIC SETTLEMENT MATCH
+
+   Example:
+
+       UTTAR PORO
+
+   If database contains:
+
+       PORO
+       UTTAR PORO
+
+   choose:
+
+       UTTAR PORO
+
+
+   IMPORTANT:
+
+   Duplicate LGDs with the SAME matched village
+   name are deliberately retained.
+
+   Example:
+
+       SALBARI LGD-A
+       SALBARI LGD-B
+       SALBARI LGD-C
+
+   All remain candidates.
+
+   Administrative + forest spatial scoring will
+   determine the correct LGD later.
+================================================= */
+
+embeddedMatches.sort(
+
+    (a, b) =>
+
+        b.wordCount -
+            a.wordCount ||
+
+        b.charCount -
+            a.charCount
+
+);
+
+
+const longestWordCount =
+    embeddedMatches.length
+
+        ? embeddedMatches[0]
+            .wordCount
+
+        : 0;
+
+
+const longestCharCount =
+    embeddedMatches.length
+
+        ? embeddedMatches[0]
+            .charCount
+
+        : 0;
+
+
+for (
+    const match
+    of embeddedMatches
+) {
+
+    const isMostSpecific =
+        (
+            match.wordCount ===
+                longestWordCount
+        ) &&
+        (
+            match.charCount ===
+                longestCharCount
         );
 
 
-        const longestWordCount =
-            embeddedMatches.length
+    if (!isMostSpecific) {
 
-                ? embeddedMatches[0]
-                    .wordCount
+        continue;
 
-                : 0;
+    }
 
 
-        const longestCharCount =
-            embeddedMatches.length
+    for (
+        const village
+        of match.records
+    ) {
 
-                ? embeddedMatches[0]
-                    .charCount
+        const official =
+            Resolver.same(
+                match.indexedName,
+                village.name
+            );
 
-                : 0;
+
+        let baseScore =
+            official
+
+                ? Resolver.SCORE
+                    .ADDRESS_VILLAGE_NAME
+
+                : Resolver.SCORE
+                    .ADDRESS_VILLAGE_ALIAS;
 
 
-        for (
-            const match
-            of embeddedMatches
+        /*
+         * Exact settlement is stronger than
+         * settlement containing locality words.
+         */
+
+        if (
+            settlement ===
+            match.indexedName
         ) {
 
-            const isMostSpecific =
-                (
-                    match.wordCount ===
-                        longestWordCount
-                ) &&
-                (
-                    match.charCount ===
-                        longestCharCount
-                );
-
-
-            if (!isMostSpecific)
-                continue;
-
-
-            for (
-                const village
-                of match.records
-            ) {
-
-                const official =
-                    Resolver.same(
-                        match.indexedName,
-                        village.name
-                    );
-
-
-                let baseScore =
-                    official
-
-                        ? Resolver.SCORE
-                            .ADDRESS_VILLAGE_NAME
-
-                        : Resolver.SCORE
-                            .ADDRESS_VILLAGE_ALIAS;
-
-
-                /*
-                 * Whole settlement exact is slightly stronger
-                 * than village name embedded inside a locality.
-                 */
-
-                if (
-                    settlement ===
-                    match.indexedName
-                ) {
-
-                    baseScore += 10;
-
-                }
-
-
-                add(
-
-                    village,
-
-                    official
-                        ? "ADDRESS_VILLAGE_NAME"
-                        : "ADDRESS_VILLAGE_ALIAS",
-
-                    baseScore,
-
-                    match.indexedName
-
-                );
-
-            }
+            baseScore += 10;
 
         }
+
+
+        add(
+
+            village,
+
+            official
+                ? "SETTLEMENT_VILLAGE_NAME"
+                : "SETTLEMENT_VILLAGE_ALIAS",
+
+            baseScore,
+
+            match.indexedName
+
+        );
+
+    }
+
+}
 
 
         /* =================================================
