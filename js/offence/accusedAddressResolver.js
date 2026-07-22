@@ -690,81 +690,69 @@ Resolver.parseAddress = function (
        AFTER the complete label.
        ===================================================== */
 
-    const labelSource =
+const labelSource =
 
-        "(?:" +
+    "(?:" +
 
-            "P\\s*\\.\\s*O\\s*\\." +
+        /* POST OFFICE:
+           PO
+           P.O
+           P.O.
+           P O
+           P. O.
+        */
 
-            "|" +
+        "P\\s*\\.?\\s*O\\s*\\.?" +
 
-            "P\\s*\\.\\s*O" +
+        "|" +
 
-            "|" +
+        "POST\\s+OFFICE" +
 
-            "PO" +
+        "|" +
 
-            "|" +
+        /* POLICE STATION:
+           PS
+           P.S
+           P.S.
+           P S
+           P. S.
+        */
 
-            "POST\\s+OFFICE" +
+        "P\\s*\\.?\\s*S\\s*\\.?" +
 
-            "|" +
+        "|" +
 
-            "P\\s*\\.\\s*S\\s*\\." +
+        "POLICE\\s+STATION" +
 
-            "|" +
+        "|" +
 
-            "P\\s*\\.\\s*S" +
+        /* DISTRICT */
 
-            "|" +
+        "DISTRICT" +
 
-            "PS" +
+        "|" +
 
-            "|" +
+        "DISTT\\s*\\.?" +
 
-            "POLICE\\s+STATION" +
+        "|" +
 
-            "|" +
+        "DIST\\s*\\.?" +
 
-            "DISTRICT" +
+        "|" +
 
-            "|" +
+        "DT\\s*\\.?" +
 
-            "DIST\\s*\\." +
+        "|" +
 
-            "|" +
+        /* BLOCK */
 
-            "DIST" +
+        "BLOCK" +
 
-            "|" +
+        "|" +
 
-            "DISTT\\s*\\." +
+        "BLK\\s*\\.?" +
 
-            "|" +
-
-            "DISTT" +
-
-            "|" +
-
-            "DT\\s*\\." +
-
-            "|" +
-
-            "DT" +
-
-            "|" +
-
-            "BLOCK" +
-
-            "|" +
-
-            "BLK\\s*\\." +
-
-            "|" +
-
-            "BLK" +
-
-        ")";
+    ")";
 
 
     /* =====================================================
