@@ -3450,102 +3450,176 @@
 
     ===================================================== */
 
-    Resolver.getTargetContext = function (
-        caseRecord
-    ) {
+Resolver.getTargetContext = function (
+    caseRecord
+) {
 
-        if (!caseRecord) {
+    if (!caseRecord) {
 
-            return null;
+        return null;
 
-        }
+    }
 
 
-        const range =
+    /* =================================================
+       TARGET FOREST RANGE
 
-            caseRecord.rangeGISResolved ||
+       IMPORTANT:
 
-            caseRecord.rangeCanonical ||
+       rangeGISResolved is a BOOLEAN status flag in the
+       offence case schema. It is NOT the range name.
 
-            caseRecord.range ||
+       Authoritative preference:
+
+       1. rangeCanonical
+       2. range
+       3. rangeRaw
+       4. rangeCode
+    ================================================= */
+
+    const range =
+
+        caseRecord.rangeCanonical ||
+
+        caseRecord.range ||
+
+        caseRecord.rangeRaw ||
+
+        caseRecord.rangeCode ||
+
+        "";
+
+
+    /* =================================================
+       DIVISION
+    ================================================= */
+
+    const division =
+
+        caseRecord.divisionCanonical ||
+
+        caseRecord.division ||
+
+        "";
+
+
+    /* =================================================
+       OPTIONAL TARGET BEAT
+    ================================================= */
+
+    const beat =
+
+        caseRecord.beatCanonical ||
+
+        caseRecord.beat ||
+
+        caseRecord.targetBeat ||
+
+        "";
+
+
+    /* =================================================
+       OPTIONAL TARGET COMPARTMENT
+    ================================================= */
+
+    const compartment =
+
+        caseRecord.compartment ||
+
+        caseRecord.targetCompartment ||
+
+        "";
+
+
+    /* =================================================
+       BUILD CONTEXT
+    ================================================= */
+
+    return {
+
+        range,
+
+        division,
+
+        beat,
+
+        compartment,
+
+
+        normalizedRange:
+
+            Resolver.normalizeRangeName(
+                range
+            ),
+
+
+        normalizedDivision:
+
+            Resolver.normalize(
+                division
+            ),
+
+
+        normalizedBeat:
+
+            Resolver.normalizeBeatName(
+                beat
+            ),
+
+
+        normalizedCompartment:
+
+            Resolver.normalizeCompartmentName(
+                compartment
+            ),
+
+
+        rangeCode:
+
+            caseRecord.rangeCode ||
+
+            "",
+
+
+        rangeRaw:
 
             caseRecord.rangeRaw ||
 
-            "";
+            "",
 
 
-        const division =
+        rangeCanonical:
 
-            caseRecord.division ||
+            caseRecord.rangeCanonical ||
 
-            caseRecord.divisionCanonical ||
-
-            "";
+            "",
 
 
-        const beat =
+        rangeGISResolved:
 
-            caseRecord.beat ||
-
-            caseRecord.beatCanonical ||
-
-            caseRecord.targetBeat ||
-
-            "";
+            caseRecord.rangeGISResolved === true,
 
 
-        const compartment =
+        porNo:
 
-            caseRecord.compartment ||
+            caseRecord.porNo ||
 
-            caseRecord.targetCompartment ||
+            caseRecord.refPorNo ||
 
-            "";
+            "",
 
 
-        return {
+        caseId:
 
-            range,
+            caseRecord.caseId ||
 
-            division,
+            caseRecord.id ||
 
-            beat,
-
-            compartment,
-
-            normalizedRange:
-                Resolver.normalizeRangeName(
-                    range
-                ),
-
-            normalizedDivision:
-                Resolver.normalize(
-                    division
-                ),
-
-            normalizedBeat:
-                Resolver.normalizeBeatName(
-                    beat
-                ),
-
-            normalizedCompartment:
-                Resolver.normalizeCompartmentName(
-                    compartment
-                ),
-
-            porNo:
-                caseRecord.porNo ||
-                caseRecord.refPorNo ||
-                "",
-
-            caseId:
-                caseRecord.caseId ||
-                caseRecord.id ||
-                ""
-
-        };
+            ""
 
     };
+
+};
 
 
     /* =====================================================
