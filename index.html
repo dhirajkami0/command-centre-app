@@ -32003,6 +32003,509 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
     btn.style.cursor = "pointer";
   }
 }
+
+    /* =========================================================
+   FIRESTORE-FIRST ELEPHANT SIGHTING SAVE
+
+   Generates:
+   BTR-W-WDPO-42/4252
+
+   range count    = 42
+   division count = 4252
+
+   Counter resets every financial year:
+   1 April → 31 March
+========================================================= */
+
+async function saveSightingToFirestore(
+  payload
+){
+
+  const {
+
+    getFirestore,
+    doc,
+    collection,
+    runTransaction,
+    serverTimestamp
+
+  } = await import(
+    "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+  );
+
+
+  const db =
+    getFirestore();
+
+
+  /* =====================================================
+     FINANCIAL YEAR
+  ===================================================== */
+
+  const now =
+    new Date();
+
+
+  const year =
+    now.getFullYear();
+
+
+  const month =
+    now.getMonth();
+
+
+  const startYear =
+    month >= 3
+      ? year
+      : year - 1;
+
+
+  const endYear =
+    startYear + 1;
+
+
+  const financialYear =
+    startYear +
+    "-" +
+    String(endYear).slice(-2);
+
+
+  /* =====================================================
+     GIS VALUES
+  ===================================================== */
+
+  const division =
+    String(
+      payload.gis_division || ""
+    ).trim();
+
+
+  const range =
+    String(
+      payload.gis_range || ""
+    ).trim();
+
+
+  if(
+    !division ||
+    !range
+  ){
+
+    throw new Error(
+      "GIS division/range missing"
+    );
+
+  }
+
+
+  /* =====================================================
+     CREATE SHORT CODES
+
+     No GIS hierarchy is hard-coded here.
+
+     First try existing GIS properties / IDs.
+     Otherwise normalize current GIS names.
+
+     We can later replace this with your official
+     short-code field if one already exists in GIS.
+  ===================================================== */
+
+/* =====================================================
+   GIS IDENTIFIERS
+
+   IMPORTANT:
+   Use GIS values exactly as resolved.
+
+   NO hard-coded abbreviations.
+   NO WDPO / KMG mapping.
+   NO division-name conversion.
+
+   Later official short-code fields can be added to GIS
+   without changing the counter architecture.
+===================================================== */
+
+const divisionCode =
+  String(
+    payload.gis_division || ""
+  ).trim();
+
+
+const rangeCode =
+  String(
+    payload.gis_range || ""
+  ).trim();
+
+
+if(
+  !divisionCode ||
+  !rangeCode
+){
+
+  throw new Error(
+    "GIS division/range missing"
+  );
+
+}
+
+
+  /* =====================================================
+     COUNTER DOCUMENT KEYS
+  ===================================================== */
+
+  const safeFY =
+    financialYear.replace(
+      /[^A-Za-z0-9_-]/g,
+      "_"
+    );
+
+
+  const safeDivision =
+    divisionCode.replace(
+      /[^A-Za-z0-9_-]/g,
+      "_"
+    );
+
+
+  const safeRange =
+    rangeCode.replace(
+      /[^A-Za-z0-9_-]/g,
+      "_"
+    );
+
+
+  /*
+   * Example:
+   *
+   * elephant_sighting_counters/
+   * 2026-27__BTR-W
+   *
+   * elephant_sighting_counters/
+   * 2026-27__BTR-W__WDPO
+   */
+
+  const divisionCounterRef =
+    doc(
+
+      db,
+
+      "elephant_sighting_counters",
+
+      safeFY +
+      "__" +
+      safeDivision
+
+    );
+
+
+  const rangeCounterRef =
+    doc(
+
+      db,
+
+      "elephant_sighting_counters",
+
+      safeFY +
+      "__" +
+      safeDivision +
+      "__" +
+      safeRange
+
+    );
+
+
+  /* =====================================================
+     TRANSACTION
+
+     Firestore serializes concurrent counter updates.
+
+     Therefore 200 simultaneous submissions cannot simply
+     read the same count and all receive the same number.
+  ===================================================== */
+
+  const result =
+
+    await runTransaction(
+
+      db,
+
+      async function(
+        transaction
+      ){
+
+        /* -----------------------------------------------
+           ALL READS FIRST
+        ----------------------------------------------- */
+
+        const divisionSnap =
+          await transaction.get(
+            divisionCounterRef
+          );
+
+
+        const rangeSnap =
+          await transaction.get(
+            rangeCounterRef
+          );
+
+
+        const oldDivisionCount =
+
+          divisionSnap.exists()
+
+            ? Number(
+                divisionSnap.data()
+                  .count || 0
+              )
+
+            : 0;
+
+
+        const oldRangeCount =
+
+          rangeSnap.exists()
+
+            ? Number(
+                rangeSnap.data()
+                  .count || 0
+              )
+
+            : 0;
+
+
+        const divisionCount =
+          oldDivisionCount + 1;
+
+
+        const rangeCount =
+          oldRangeCount + 1;
+
+
+        /* -----------------------------------------------
+           FINAL SIGHTING ID
+        ----------------------------------------------- */
+
+const idDivision =
+
+  divisionCode
+    .replace(/\s+/g, "");
+
+
+const idRange =
+
+  rangeCode
+    .replace(/\s+/g, "");
+
+
+const finalSightingID =
+
+  idDivision +
+  "-" +
+  idRange +
+  "-" +
+  rangeCount +
+  "/" +
+  divisionCount;
+
+
+        /* -----------------------------------------------
+           SIGHTING DOCUMENT
+        ----------------------------------------------- */
+
+        const sightingRef =
+
+          doc(
+
+            collection(
+              db,
+              "elephant_sightings"
+            )
+
+          );
+
+
+        /* -----------------------------------------------
+           COUNTER WRITES
+        ----------------------------------------------- */
+
+        transaction.set(
+
+          divisionCounterRef,
+
+          {
+
+            type:
+              "division",
+
+            financialYear:
+              financialYear,
+
+            division:
+              division,
+
+            divisionCode:
+              divisionCode,
+
+            count:
+              divisionCount,
+
+            updatedAt:
+              serverTimestamp()
+
+          },
+
+          {
+            merge: true
+          }
+
+        );
+
+
+        transaction.set(
+
+          rangeCounterRef,
+
+          {
+
+            type:
+              "range",
+
+            financialYear:
+              financialYear,
+
+            division:
+              division,
+
+            divisionCode:
+              divisionCode,
+
+            range:
+              range,
+
+            rangeCode:
+              rangeCode,
+
+            count:
+              rangeCount,
+
+            updatedAt:
+              serverTimestamp()
+
+          },
+
+          {
+            merge: true
+          }
+
+        );
+
+
+        /* -----------------------------------------------
+           CREATE LIVE SIGHTING
+        ----------------------------------------------- */
+
+        transaction.set(
+
+          sightingRef,
+
+          {
+
+            ...payload,
+
+
+            /* canonical ID */
+
+            sighting_id:
+              finalSightingID,
+
+
+            /* keep Firestore document ID separately */
+
+            firestore_id:
+              sightingRef.id,
+
+
+            /* counter metadata */
+
+            financial_year:
+              financialYear,
+
+            division_code:
+              divisionCode,
+
+            range_code:
+              rangeCode,
+
+            range_sighting_no:
+              rangeCount,
+
+            division_sighting_no:
+              divisionCount,
+
+
+            /* live-state defaults */
+
+            status:
+              "ACTIVE",
+
+            active:
+              true,
+
+
+            /* timestamps */
+
+            sighting_datetime:
+              serverTimestamp(),
+
+            created_at:
+              serverTimestamp(),
+
+            updated_at:
+              serverTimestamp()
+
+          }
+
+        );
+
+
+        return {
+
+          firestoreId:
+            sightingRef.id,
+
+          sightingId:
+            finalSightingID,
+
+          financialYear:
+            financialYear,
+
+          divisionCode:
+            divisionCode,
+
+          rangeCode:
+            rangeCode,
+
+          rangeCount:
+            rangeCount,
+
+          divisionCount:
+            divisionCount
+
+        };
+
+      }
+
+    );
+
+
+  console.log(
+    "🔥 Firestore sighting saved:",
+    result
+  );
+
+
+  return result;
+
+}
 async function submitSightingForm(event){
 
   if(event){
@@ -33173,9 +33676,9 @@ async function submitSightingForm(event){
     // EXISTING BACKEND FLOW PRESERVED
     // =====================================================
 
-    function submitToServer(
-      finalPayload
-    ){
+    async function submitToServer(
+  finalPayload
+){
 
       if(
         !navigator.onLine
@@ -33201,16 +33704,217 @@ async function submitSightingForm(event){
       }
 
 
-      callBackend(
+// =====================================================
+// 🔥 FIRESTORE FIRST
+// =====================================================
 
-        "saveElephantSighting",
+try{
 
+  /*
+   * NEW sighting:
+   * allocate atomic counter + create Firestore document.
+   *
+   * EDITING is intentionally excluded because editing an
+   * existing sighting must NEVER consume another number.
+   */
+
+  if(
+    !window.isEditingSighting
+  ){
+
+    const firestoreResult =
+
+      await saveSightingToFirestore(
         finalPayload
+      );
 
-      )
 
-      .then(function(){
+    /*
+     * Replace temporary SIGHT-* ID with canonical ID.
+     */
 
+    finalPayload.sighting_id =
+      firestoreResult.sightingId;
+
+
+    finalPayload.firestore_id =
+      firestoreResult.firestoreId;
+
+
+    finalPayload.financial_year =
+      firestoreResult.financialYear;
+
+
+    finalPayload.division_code =
+      firestoreResult.divisionCode;
+
+
+    finalPayload.range_code =
+      firestoreResult.rangeCode;
+
+
+    finalPayload.range_sighting_no =
+      firestoreResult.rangeCount;
+
+
+    finalPayload.division_sighting_no =
+      firestoreResult.divisionCount;
+
+
+    /*
+     * Keep outer variable synchronized because your
+     * existing success logic uses sightingID.
+     */
+
+    sightingID =
+      firestoreResult.sightingId;
+
+
+    console.log(
+      "🆔 FINAL SIGHTING ID:",
+      sightingID
+    );
+
+  }
+
+
+  // ===================================================
+  // EXISTING BACKEND
+  //
+  // Google Sheet / Telegram / existing processing.
+  // Firestore has already completed.
+  // ===================================================
+
+  callBackend(
+
+    "saveElephantSighting",
+
+    finalPayload
+
+  )
+
+  .then(function(){
+
+    alert(
+      "✅ Submitted to Command Centre"
+    );
+
+
+    setSubmitLoading(
+      false
+    );
+
+
+    if(
+      window.isEditingSighting
+    ){
+
+      window.currentSightingId =
+        sightingID;
+
+    }
+
+    else{
+
+      window.currentSightingId =
+        null;
+
+    }
+
+
+    window.isEditingSighting =
+      false;
+
+
+    if(
+
+      typeof closeSightingForm ===
+      "function"
+
+    ){
+
+      closeSightingForm();
+
+    }
+
+
+    const form =
+
+      document.getElementById(
+        "elephantForm"
+      );
+
+
+    if(form){
+
+      form.reset();
+
+    }
+
+  })
+
+  .catch(function(err){
+
+    /*
+     * IMPORTANT:
+     *
+     * Firestore may already contain the sighting.
+     * Therefore DO NOT create another Firestore sighting.
+     *
+     * Save the same canonical payload for backend retry.
+     */
+
+    console.error(
+      "❌ Background backend failed:",
+      err
+    );
+
+
+    saveSightingOffline(
+      finalPayload
+    );
+
+
+    alert(
+      "✅ Sighting saved. Background sync pending."
+    );
+
+
+    setSubmitLoading(
+      false
+    );
+
+  });
+
+}
+
+catch(firestoreErr){
+
+  console.error(
+    "❌ Firestore sighting save failed:",
+    firestoreErr
+  );
+
+
+  /*
+   * Preserve your existing offline mechanism.
+   */
+
+  saveSightingOffline(
+    finalPayload
+  );
+
+
+  alert(
+    "⚠ Sighting queued for sync"
+  );
+
+
+  setSubmitLoading(
+    false
+  );
+
+}
         alert(
           "✅ Submitted to Command Centre"
         );
