@@ -11,23 +11,24 @@ const GG =
     window.GreenGuardAI || {};
 
 /*=========================================================
- DEPENDENCIES
+ PREVENT DOUBLE LOADING
 =========================================================*/
 
-/*
-    Domain routers are resolved lazily
-    inside each dispatch method.
+if (
 
-    Example:
-    - dispatchStaff()
-    - dispatchGIS()
-    - dispatchWildlife()
-    - dispatchPatrol()
-    - dispatchAnalytics()
-    - dispatchLegal()
-    - dispatchReport()
-    - dispatchFire()
-*/
+    GG.AIDispatcher
+
+) {
+
+    console.warn(
+
+        "[GreenGuardAI] AIDispatcher already loaded."
+
+    );
+
+    return;
+
+}
 
 /*=========================================================
  MODULE
@@ -41,7 +42,7 @@ const AIDispatcher = {};
 
 AIDispatcher.VERSION =
 
-    "1.0.0";
+    "1.1.0";
 
 /*=========================================================
  STATUS
@@ -63,11 +64,19 @@ AIDispatcher.cache =
 
     new Map();
 
+/*=========================================================
+ LAST EXECUTION STATE
+=========================================================*/
+
 AIDispatcher.lastQuery =
 
     "";
 
 AIDispatcher.lastIntent =
+
+    null;
+
+AIDispatcher.lastRequest =
 
     null;
 
@@ -101,7 +110,9 @@ AIDispatcher.createResponse = function (
 
             false,
 
-        query,
+        query:
+
+            query,
 
         domain:
 
@@ -133,6 +144,10 @@ AIDispatcher.createResponse = function (
 
                 AIDispatcher.VERSION,
 
+            module:
+
+                "AIDispatcher",
+
             createdAt:
 
                 Date.now(),
@@ -148,15 +163,186 @@ AIDispatcher.createResponse = function (
 };
 
 /*=========================================================
- MASTER DISPATCH
+ NORMALIZE REQUEST
 =========================================================*/
+
+/**
+ * Converts the incoming dispatcher request into the
+ * canonical request shape expected by domain routers.
+ *
+ * Supports:
+ *
+ * 1.
+ * {
+ *     query,
+ *     detectedIntent: {...}
+ * }
+ *
+ * 2.
+ * {
+ *     query,
+ *     domain,
+ *     intent,
+ *     ...
+ * }
+ */
+
+AIDispatcher.normalizeRequest = function (
+
+    request
+
+) {
+
+    if (
+
+        !request ||
+
+        typeof request !==
+
+        "object"
+
+    ) {
+
+        return null;
+
+    }
+
+    const detectedIntent =
+
+        request.detectedIntent &&
+        typeof request.detectedIntent ===
+        "object"
+
+            ? request.detectedIntent
+
+            : null;
+
+    const intent =
+
+        detectedIntent ||
+
+        request;
+
+    /*----------------------------------
+      Domain
+    ----------------------------------*/
+
+    request.domain =
+
+        intent.domain ||
+
+        request.domain ||
+
+        null;
+
+    /*----------------------------------
+      Intent
+    ----------------------------------*/
+
+    request.intent =
+
+        intent.intent ||
+
+        request.intent ||
+
+        null;
+
+    /*----------------------------------
+      Confidence
+    ----------------------------------*/
+
+    request.confidence =
+
+        Number(
+
+            intent.confidence ??
+
+            request.confidence ??
+
+            0
+
+        );
+
+    /*----------------------------------
+      Entities
+    ----------------------------------*/
+
+    request.entities = {
+
+        ...(request.entities || {}),
+
+        ...(intent.entities || {})
+
+    };
+
+    /*----------------------------------
+      Parameters
+    ----------------------------------*/
+
+    request.parameters = {
+
+        ...(request.parameters || {}),
+
+        ...(intent.parameters || {})
+
+    };
+
+    /*----------------------------------
+      Context
+    ----------------------------------*/
+
+    request.context = {
+
+        ...(request.context || {}),
+
+        ...(intent.context || {})
+
+    };
+
+    /*----------------------------------
+      Query
+    ----------------------------------*/
+
+    request.query =
+
+        request.query ||
+
+        intent.query ||
+
+        request.originalQuery ||
+
+        "";
+
+    /*----------------------------------
+      Original Query
+    ----------------------------------*/
+
+    request.originalQuery =
+
+        request.originalQuery ||
+
+        request.query ||
+
+        intent.query ||
+
+        "";
+
+    return {
+
+        request:
+
+            request,
+
+        intent:
+
+            intent
+
+    };
+
+};
 
 /*=========================================================
  MASTER DISPATCH
-=========================================================*/
-
-/*=========================================================
-  MASTER DISPATCH
 =========================================================*/
 
 AIDispatcher.dispatch = async function (
@@ -213,11 +399,27 @@ AIDispatcher.dispatch = async function (
 
     ) {
 
+        console.error(
+
+            "Invalid dispatcher request."
+
+        );
+
         console.groupEnd();
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                null,
+
+            intent:
+
+                null,
 
             message:
 
@@ -231,51 +433,47 @@ AIDispatcher.dispatch = async function (
       Normalize
     ----------------------------------*/
 
-    const intent =
+    const normalized =
 
-        request.detectedIntent ||
+        AIDispatcher.normalizeRequest(
 
-        request;
+            request
+
+        );
 
     if (
 
-        request.detectedIntent
+        !normalized
 
     ) {
 
-        request.intent =
+        console.groupEnd();
 
-            intent.intent;
+        return {
 
-        request.domain =
+            success:
 
-            intent.domain;
+                false,
 
-        request.parameters =
+            message:
 
-            intent.parameters ||
+                "Unable to normalize request."
 
-            {};
-
-        request.entities =
-
-            intent.entities ||
-
-            {};
-
-        request.context =
-
-            intent.context ||
-
-            {};
-
-        request.confidence =
-
-            intent.confidence ||
-
-            0;
+        };
 
     }
+
+    request =
+
+        normalized.request;
+
+    const intent =
+
+        normalized.intent;
+
+    /*----------------------------------
+      Runtime State
+    ----------------------------------*/
 
     AIDispatcher.lastRequest =
 
@@ -291,11 +489,15 @@ AIDispatcher.dispatch = async function (
 
         "";
 
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
     console.log(
 
         "Domain:",
 
-        intent.domain
+        request.domain
 
     );
 
@@ -303,7 +505,7 @@ AIDispatcher.dispatch = async function (
 
         "Intent:",
 
-        intent.intent
+        request.intent
 
     );
 
@@ -311,7 +513,31 @@ AIDispatcher.dispatch = async function (
 
         "Confidence:",
 
-        intent.confidence
+        request.confidence
+
+    );
+
+    console.log(
+
+        "Entities:",
+
+        request.entities
+
+    );
+
+    console.log(
+
+        "Parameters:",
+
+        request.parameters
+
+    );
+
+    console.log(
+
+        "Context:",
+
+        request.context
 
     );
 
@@ -329,195 +555,362 @@ AIDispatcher.dispatch = async function (
 
     );
 
-    switch (
+    try {
 
-        intent.domain
+        switch (
 
-    ) {
+            request.domain
 
-        case "staff":
+        ) {
 
-            response =
+            /*==================================
+              STAFF
+            ==================================*/
 
-                await AIDispatcher.dispatchStaff(
+            case "staff":
 
-                    request
+                response =
 
-                );
+                    await AIDispatcher.dispatchStaff(
 
-            break;
+                        request
 
-        case "gis":
+                    );
 
-            response =
+                break;
 
-                await AIDispatcher.dispatchGIS(
 
-                    request
+            /*==================================
+              GIS
+            ==================================*/
 
-                );
+            case "gis":
 
-            break;
+                response =
 
-        case "wildlife":
+                    await AIDispatcher.dispatchGIS(
 
-            response =
+                        request
 
-                await AIDispatcher.dispatchWildlife(
+                    );
 
-                    request
+                break;
 
-                );
 
-            break;
-        case "wildlife":
+            /*==================================
+              WILDLIFE
+            ==================================*/
 
-            response =
+            case "wildlife":
 
-                await AIDispatcher.dispatchWildlife(
+                response =
 
-                    request
+                    await AIDispatcher.dispatchWildlife(
 
-                );
+                        request
 
-            break;
+                    );
 
+                break;
 
-        /*==================================
-          ELEPHANT SIGHTING / HEC
-        ==================================*/
 
-        case "sighting":
+            /*==================================
+              ELEPHANT SIGHTING / HEC
+            ==================================*/
 
-            response =
+            case "sighting":
 
-                await AIDispatcher.dispatchSighting(
+                response =
 
-                    request
+                    await AIDispatcher.dispatchSighting(
 
-                );
+                        request
 
-            break;
+                    );
 
+                break;
 
-        case "fire":
 
-            response =
+            /*==================================
+              FIRE
+            ==================================*/
 
-                await AIDispatcher.dispatchFire(
+            case "fire":
 
-                    request
+                response =
 
-                );
+                    await AIDispatcher.dispatchFire(
 
-            break;
-        case "fire":
+                        request
 
-            response =
+                    );
 
-                await AIDispatcher.dispatchFire(
+                break;
 
-                    request
 
-                );
+            /*==================================
+              PATROL
+            ==================================*/
 
-            break;
+            case "patrol":
 
-        case "patrol":
+                response =
 
-            response =
+                    await AIDispatcher.dispatchPatrol(
 
-                await AIDispatcher.dispatchPatrol(
+                        request
 
-                    request
+                    );
 
-                );
+                break;
 
-            break;
 
-        case "analytics":
+            /*==================================
+              ANALYTICS
+            ==================================*/
 
-            response =
+            case "analytics":
 
-                await AIDispatcher.dispatchAnalytics(
+                response =
 
-                    request
+                    await AIDispatcher.dispatchAnalytics(
 
-                );
+                        request
 
-            break;
+                    );
 
-        case "legal":
+                break;
 
-            response =
 
-                await AIDispatcher.dispatchLegal(
+            /*==================================
+              LEGAL
+            ==================================*/
 
-                    request
+            case "legal":
 
-                );
+                response =
 
-            break;
+                    await AIDispatcher.dispatchLegal(
 
-        case "report":
+                        request
 
-            response =
+                    );
 
-                await AIDispatcher.dispatchReport(
+                break;
 
-                    request
 
-                );
+            /*==================================
+              REPORT
+            ==================================*/
 
-            break;
+            case "report":
 
-        default:
+                response =
 
-            response = {
+                    await AIDispatcher.dispatchReport(
 
-                success: false,
+                        request
 
-                message:
+                    );
 
-                    "Unsupported AI domain."
+                break;
 
-            };
+
+            /*==================================
+              UNKNOWN
+            ==================================*/
+
+            default:
+
+                response = {
+
+                    success:
+
+                        false,
+
+                    domain:
+
+                        request.domain ||
+
+                        "unknown",
+
+                    intent:
+
+                        request.intent ||
+
+                        null,
+
+                    message:
+
+                        "Unsupported AI domain: " +
+
+                        (
+
+                            request.domain ||
+
+                            "unknown"
+
+                        )
+
+                };
+
+        }
 
     }
 
-    console.timeEnd(
+    catch (
 
-        "Dispatch"
+        error
 
-    );
+    ) {
+
+        console.error(
+
+            "❌ Dispatcher Exception:",
+
+            error
+
+        );
+
+        response = {
+
+            success:
+
+                false,
+
+            domain:
+
+                request.domain ||
+
+                null,
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                error?.message ||
+
+                "AI dispatcher execution failed.",
+
+            errors: [
+
+                error?.message ||
+
+                "Unknown dispatcher error."
+
+            ]
+
+        };
+
+    }
+
+    finally {
+
+        console.timeEnd(
+
+            "Dispatch"
+
+        );
+
+    }
 
     /*----------------------------------
-      Failed
+      Invalid Response
     ----------------------------------*/
 
     if (
 
         !response ||
 
-        response.success !==
+        typeof response !==
 
-        true
+        "object"
 
     ) {
 
-        console.error(
+        response = {
 
-            "❌ Dispatcher Failed",
+            success:
 
-            response
+                false,
 
-        );
+            domain:
 
-        console.groupEnd();
+                request.domain ||
 
-        return response;
+                null,
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                "Domain dispatcher returned an invalid response."
+
+        };
 
     }
+
+    /*----------------------------------
+      Preserve Canonical Request Data
+    ----------------------------------*/
+
+    response.request =
+
+        response.request ||
+
+        request;
+
+    response.detectedIntent =
+
+        intent;
+
+    response.domain =
+
+        response.domain ||
+
+        request.domain ||
+
+        null;
+
+    response.intent =
+
+        response.intent ||
+
+        request.intent ||
+
+        null;
+
+    response.entities =
+
+        response.entities ||
+
+        request.entities ||
+
+        {};
+
+    response.parameters =
+
+        response.parameters ||
+
+        request.parameters ||
+
+        {};
+
+    response.context =
+
+        response.context ||
+
+        request.context ||
+
+        {};
 
     /*----------------------------------
       Metadata
@@ -529,306 +922,102 @@ AIDispatcher.dispatch = async function (
 
         {};
 
+    response.metadata.dispatcher =
+
+        "AIDispatcher";
+
+    response.metadata.dispatcherVersion =
+
+        AIDispatcher.VERSION;
+
     response.metadata.executionTime =
 
         Date.now() -
 
         started;
 
-    response.request =
-
-        request;
-
-    response.detectedIntent =
-
-        intent;
+    /*----------------------------------
+      Save Last Response
+    ----------------------------------*/
 
     AIDispatcher.lastResponse =
 
         response;
 
-
-
-console.log(
-    "=============================="
-);
-
-console.log(
-    "DISPATCH RETURN"
-);
-
-console.log(
-    "Success:",
-    response.success
-);
-
-console.log(
-    "Module:",
-    response.module
-);
-
-console.log(
-    "Intent:",
-    response.intent
-);
-
-console.log(
-    "Markdown:",
-    !!response.markdown
-);
-
-console.dir(
-    response
-);
-
-console.log(
-    "=============================="
-);
-
-return response;
-
-
-}; /*=========================================================
- DISPATCH STAFF
-=========================================================*/
-
-/*=========================================================
- DISPATCH STAFF
-=========================================================*/
- /*=========================================================
- DISPATCH LEGAL
-=========================================================*/
-
-AIDispatcher.dispatchLegal = async function (
-
-    intent
-
-) {
-
     /*----------------------------------
-      Validate
+      Debug
     ----------------------------------*/
 
-    if (
+    console.log(
 
-        !intent ||
+        "=============================="
 
-        typeof intent !==
+    );
 
-        "object"
+    console.log(
 
-    ) {
+        "DISPATCH RETURN"
 
-        return {
+    );
 
-            success: false,
+    console.log(
 
-            message:
+        "Success:",
 
-                "Invalid legal intent."
+        response.success
 
-        };
+    );
 
-    }
+    console.log(
 
-    /*----------------------------------
-      Router
-    ----------------------------------*/
+        "Domain:",
 
-    const LegalRouter =
+        response.domain
 
-        GG.LegalRouter;
+    );
 
-    if (
+    console.log(
 
-        !LegalRouter ||
+        "Module:",
 
-        typeof LegalRouter.route !==
+        response.module
 
-        "function"
+    );
 
-    ) {
+    console.log(
 
-        return {
+        "Intent:",
 
-            success: false,
+        response.intent
 
-            message:
+    );
 
-                "LegalRouter unavailable."
+    console.log(
 
-        };
+        "Markdown:",
 
-    }
+        !!response.markdown
 
-    /*----------------------------------
-      Route
-    ----------------------------------*/
+    );
 
-    const response =
+    console.dir(
 
-        await LegalRouter.route(
+        response
 
-            intent
+    );
 
-        );
+    console.log(
 
-    /*----------------------------------
-      Failed
-    ----------------------------------*/
+        "=============================="
 
-    if (
+    );
 
-        !response ||
-
-        response.success !==
-
-        true
-
-    ) {
-
-        return (
-
-            response ||
-
-            {
-
-                success: false,
-
-                message:
-
-                    "Legal router failed."
-
-            }
-
-        );
-
-    }
-
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
+    console.groupEnd();
 
     return response;
 
 };
- /*=========================================================
- DISPATCH REPORT
-=========================================================*/
 
-AIDispatcher.dispatchReport = async function (
-
-    intent
-
-) {
-
-    /*----------------------------------
-      Validate
-    ----------------------------------*/
-
-    if (
-
-        !intent ||
-
-        typeof intent !==
-
-        "object"
-
-    ) {
-
-        return {
-
-            success: false,
-
-            message:
-
-                "Invalid report intent."
-
-        };
-
-    }
-
-    /*----------------------------------
-      Router
-    ----------------------------------*/
-
-    const ReportRouter =
-
-        GG.ReportRouter;
-
-    if (
-
-        !ReportRouter ||
-
-        typeof ReportRouter.route !==
-
-        "function"
-
-    ) {
-
-        return {
-
-            success: false,
-
-            message:
-
-                "ReportRouter unavailable."
-
-        };
-
-    }
-
-    /*----------------------------------
-      Route
-    ----------------------------------*/
-
-    const response =
-
-        await ReportRouter.route(
-
-            intent
-
-        );
-
-    /*----------------------------------
-      Failed
-    ----------------------------------*/
-
-    if (
-
-        !response ||
-
-        response.success !==
-
-        true
-
-    ) {
-
-        return (
-
-            response ||
-
-            {
-
-                success: false,
-
-                message:
-
-                    "Report router failed."
-
-                }
-
-        );
-
-    }
-
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
-
-    return response;
-
-};
 /*=========================================================
  DISPATCH STAFF
 =========================================================*/
@@ -855,7 +1044,13 @@ AIDispatcher.dispatchStaff = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "staff",
 
             message:
 
@@ -866,7 +1061,7 @@ AIDispatcher.dispatchStaff = async function (
     }
 
     /*----------------------------------
-      Normalize Staff Entities
+      Normalize Containers
     ----------------------------------*/
 
     request.entities =
@@ -875,12 +1070,35 @@ AIDispatcher.dispatchStaff = async function (
 
         {};
 
-    /* AI returns:
-       entities.name = "DHIRAJ KAMI"
+    request.parameters =
 
-       Staff pipeline expects:
-       entities.staff = ["DHIRAJ KAMI"]
-    */
+        request.parameters ||
+
+        {};
+
+    request.context =
+
+        request.context ||
+
+        {};
+
+    request.domain =
+
+        request.domain ||
+
+        "staff";
+
+    /*----------------------------------
+      Normalize Staff Entities
+
+      AI may return:
+
+      entities.name = "DHIRAJ KAMI"
+
+      Staff pipeline expects:
+
+      entities.staff = ["DHIRAJ KAMI"]
+    ----------------------------------*/
 
     if (
 
@@ -903,6 +1121,10 @@ AIDispatcher.dispatchStaff = async function (
         ];
 
     }
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
 
     console.log(
 
@@ -938,7 +1160,19 @@ AIDispatcher.dispatchStaff = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "staff",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -952,13 +1186,67 @@ AIDispatcher.dispatchStaff = async function (
       Route
     ----------------------------------*/
 
-    const response =
+    let response;
 
-        await StaffRouter.route(
+    try {
 
-            request
+        response =
+
+            await StaffRouter.route(
+
+                request
+
+            );
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            "❌ StaffRouter Exception:",
+
+            error
 
         );
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "staff",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                error?.message ||
+
+                "Staff router execution failed.",
+
+            errors: [
+
+                error?.message ||
+
+                "Unknown staff router error."
+
+            ]
+
+        };
+
+    }
 
     /*----------------------------------
       Failed
@@ -988,7 +1276,19 @@ AIDispatcher.dispatchStaff = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "staff",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -1019,9 +1319,6 @@ AIDispatcher.dispatchStaff = async function (
     return response;
 
 };
- /*=========================================================
- DISPATCH GIS
-=========================================================*/
 
 /*=========================================================
  DISPATCH GIS
@@ -1029,7 +1326,7 @@ AIDispatcher.dispatchStaff = async function (
 
 AIDispatcher.dispatchGIS = async function (
 
-    intent
+    request
 
 ) {
 
@@ -1039,9 +1336,9 @@ AIDispatcher.dispatchGIS = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -1049,11 +1346,17 @@ AIDispatcher.dispatchGIS = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "gis",
 
             message:
 
-                "Invalid GIS intent."
+                "Invalid GIS request."
 
         };
 
@@ -1079,7 +1382,19 @@ AIDispatcher.dispatchGIS = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "gis",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -1113,7 +1428,7 @@ AIDispatcher.dispatchGIS = async function (
 
         await GISRouter.route(
 
-            intent
+            request
 
         );
 
@@ -1137,7 +1452,19 @@ AIDispatcher.dispatchGIS = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "gis",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -1149,15 +1476,9 @@ AIDispatcher.dispatchGIS = async function (
 
     }
 
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
-
     return response;
 
-};/*=========================================================
- DISPATCH WILDLIFE
-=========================================================*/
+};
 
 /*=========================================================
  DISPATCH WILDLIFE
@@ -1165,7 +1486,7 @@ AIDispatcher.dispatchGIS = async function (
 
 AIDispatcher.dispatchWildlife = async function (
 
-    intent
+    request
 
 ) {
 
@@ -1175,9 +1496,9 @@ AIDispatcher.dispatchWildlife = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -1185,11 +1506,17 @@ AIDispatcher.dispatchWildlife = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "wildlife",
 
             message:
 
-                "Invalid wildlife intent."
+                "Invalid wildlife request."
 
         };
 
@@ -1215,7 +1542,19 @@ AIDispatcher.dispatchWildlife = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "wildlife",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -1233,7 +1572,7 @@ AIDispatcher.dispatchWildlife = async function (
 
         await WildlifeRouter.route(
 
-            intent
+            request
 
         );
 
@@ -1257,7 +1596,19 @@ AIDispatcher.dispatchWildlife = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "wildlife",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -1269,22 +1620,16 @@ AIDispatcher.dispatchWildlife = async function (
 
     }
 
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
-
     return response;
 
 };
- 
+
 /*=========================================================
  DISPATCH SIGHTING
 =========================================================*/
 
 /**
- * Dispatch Elephant Sighting / HEC requests.
- *
- * Pipeline:
+ * Elephant Sighting / HEC pipeline:
  *
  * AIDispatcher
  *      ↓
@@ -1294,21 +1639,20 @@ AIDispatcher.dispatchWildlife = async function (
  *      ↓
  * SightingFormatter
  *
- * IMPORTANT:
- *
  * SightingRouter owns:
  *
- * - intent → query-handler routing
+ * - intent → handler routing
  * - query execution
- * - formatter invocation
+ * - formatter selection/invocation
  *
- * Therefore AIDispatcher MUST NOT:
+ * Dispatcher deliberately does NOT:
  *
- * - query sightings directly
- * - read Firestore directly
+ * - read sighting storage
+ * - query Firestore
  * - calculate HEC analytics
  * - calculate mitigation
- * - format the response again
+ * - apply jurisdiction filters
+ * - format Sighting responses
  */
 
 AIDispatcher.dispatchSighting = async function (
@@ -1349,9 +1693,8 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
-      Normalize Request Containers
+      Normalize Containers
     ----------------------------------*/
 
     request.entities =
@@ -1360,20 +1703,17 @@ AIDispatcher.dispatchSighting = async function (
 
         {};
 
-
     request.parameters =
 
         request.parameters ||
 
         {};
 
-
     request.context =
 
         request.context ||
 
         {};
-
 
     /*----------------------------------
       Preserve Domain
@@ -1385,14 +1725,19 @@ AIDispatcher.dispatchSighting = async function (
 
         "sighting";
 
-
     /*----------------------------------
       Debug
     ----------------------------------*/
 
+    const debug =
+
+        GG.Config?.DEBUG?.ENABLED ===
+
+        true;
+
     if (
 
-        GG.Config?.DEBUG?.ENABLED
+        debug
 
     ) {
 
@@ -1444,7 +1789,6 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
       Resolve Router Lazily
     ----------------------------------*/
@@ -1452,7 +1796,6 @@ AIDispatcher.dispatchSighting = async function (
     const SightingRouter =
 
         GG.SightingRouter;
-
 
     if (
 
@@ -1466,7 +1809,7 @@ AIDispatcher.dispatchSighting = async function (
 
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            debug
 
         ) {
 
@@ -1479,7 +1822,6 @@ AIDispatcher.dispatchSighting = async function (
             console.groupEnd();
 
         }
-
 
         return {
 
@@ -1505,9 +1847,8 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
-      Ensure Router Initialized
+      Initialize Router If Required
     ----------------------------------*/
 
     if (
@@ -1542,13 +1883,54 @@ AIDispatcher.dispatchSighting = async function (
 
             );
 
+            if (
+
+                debug
+
+            ) {
+
+                console.groupEnd();
+
+            }
+
+            return {
+
+                success:
+
+                    false,
+
+                domain:
+
+                    "sighting",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
+
+                message:
+
+                    error?.message ||
+
+                    "SightingRouter initialization failed.",
+
+                errors: [
+
+                    error?.message ||
+
+                    "Unknown SightingRouter initialization error."
+
+                ]
+
+            };
+
         }
 
     }
 
-
     /*----------------------------------
-      Optional Route Registration
+      Register Routes If Supported
     ----------------------------------*/
 
     if (
@@ -1579,17 +1961,57 @@ AIDispatcher.dispatchSighting = async function (
 
             );
 
+            if (
+
+                debug
+
+            ) {
+
+                console.groupEnd();
+
+            }
+
+            return {
+
+                success:
+
+                    false,
+
+                domain:
+
+                    "sighting",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
+
+                message:
+
+                    error?.message ||
+
+                    "SightingRouter route registration failed.",
+
+                errors: [
+
+                    error?.message ||
+
+                    "Unknown SightingRouter registration error."
+
+                ]
+
+            };
+
         }
 
     }
-
 
     /*----------------------------------
       Route
     ----------------------------------*/
 
     let response;
-
 
     try {
 
@@ -1617,17 +2039,15 @@ AIDispatcher.dispatchSighting = async function (
 
         );
 
-
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            debug
 
         ) {
 
             console.groupEnd();
 
         }
-
 
         return {
 
@@ -1663,7 +2083,6 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
       Validate Router Response
     ----------------------------------*/
@@ -1680,7 +2099,7 @@ AIDispatcher.dispatchSighting = async function (
 
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            debug
 
         ) {
 
@@ -1695,7 +2114,6 @@ AIDispatcher.dispatchSighting = async function (
             console.groupEnd();
 
         }
-
 
         return {
 
@@ -1721,7 +2139,6 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
       Router Failure
     ----------------------------------*/
@@ -1742,10 +2159,9 @@ AIDispatcher.dispatchSighting = async function (
 
         );
 
-
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            debug
 
         ) {
 
@@ -1753,11 +2169,9 @@ AIDispatcher.dispatchSighting = async function (
 
         }
 
-
         return response;
 
     }
-
 
     /*----------------------------------
       Preserve Canonical Request
@@ -1769,13 +2183,11 @@ AIDispatcher.dispatchSighting = async function (
 
         request;
 
-
     response.domain =
 
         response.domain ||
 
         "sighting";
-
 
     response.intent =
 
@@ -1785,7 +2197,6 @@ AIDispatcher.dispatchSighting = async function (
 
         null;
 
-
     response.entities =
 
         response.entities ||
@@ -1793,7 +2204,6 @@ AIDispatcher.dispatchSighting = async function (
         request.entities ||
 
         {};
-
 
     response.parameters =
 
@@ -1803,7 +2213,6 @@ AIDispatcher.dispatchSighting = async function (
 
         {};
 
-
     response.context =
 
         response.context ||
@@ -1812,14 +2221,13 @@ AIDispatcher.dispatchSighting = async function (
 
         {};
 
-
     /*----------------------------------
-      Success Debug
+      Debug
     ----------------------------------*/
 
     if (
 
-        GG.Config?.DEBUG?.ENABLED
+        debug
 
     ) {
 
@@ -1884,37 +2292,29 @@ AIDispatcher.dispatchSighting = async function (
 
     }
 
-
     /*----------------------------------
       IMPORTANT
 
       SightingRouter already owns the
-      formatter stage.
+      formatting stage.
 
-      DO NOT call:
+      DO NOT call SightingFormatter here.
 
-      GG.SightingFormatter.format()
-
-      here again.
-
-      Otherwise the response would be
-      formatted twice.
+      Calling it here would format the
+      same response twice.
     ----------------------------------*/
-
 
     return response;
 
 };
- 
- 
- 
- /*=========================================================
+
+/*=========================================================
  DISPATCH FIRE
 =========================================================*/
 
 AIDispatcher.dispatchFire = async function (
 
-    intent
+    request
 
 ) {
 
@@ -1924,9 +2324,9 @@ AIDispatcher.dispatchFire = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -1934,11 +2334,17 @@ AIDispatcher.dispatchFire = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "fire",
 
             message:
 
-                "Invalid fire intent."
+                "Invalid fire request."
 
         };
 
@@ -1964,7 +2370,19 @@ AIDispatcher.dispatchFire = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "fire",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -1982,7 +2400,7 @@ AIDispatcher.dispatchFire = async function (
 
         await FireRouter.route(
 
-            intent
+            request
 
         );
 
@@ -2006,7 +2424,19 @@ AIDispatcher.dispatchFire = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "fire",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -2018,15 +2448,9 @@ AIDispatcher.dispatchFire = async function (
 
     }
 
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
-
     return response;
 
-};/*=========================================================
- DISPATCH PATROL
-=========================================================*/
+};
 
 /*=========================================================
  DISPATCH PATROL
@@ -2034,7 +2458,7 @@ AIDispatcher.dispatchFire = async function (
 
 AIDispatcher.dispatchPatrol = async function (
 
-    intent
+    request
 
 ) {
 
@@ -2044,9 +2468,9 @@ AIDispatcher.dispatchPatrol = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -2054,11 +2478,17 @@ AIDispatcher.dispatchPatrol = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "patrol",
 
             message:
 
-                "Invalid patrol intent."
+                "Invalid patrol request."
 
         };
 
@@ -2084,7 +2514,19 @@ AIDispatcher.dispatchPatrol = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "patrol",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -2102,7 +2544,7 @@ AIDispatcher.dispatchPatrol = async function (
 
         await PatrolRouter.route(
 
-            intent
+            request
 
         );
 
@@ -2126,7 +2568,19 @@ AIDispatcher.dispatchPatrol = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "patrol",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -2138,15 +2592,9 @@ AIDispatcher.dispatchPatrol = async function (
 
     }
 
-    /*----------------------------------
-      Already Formatted
-    ----------------------------------*/
-
     return response;
 
-};/*=========================================================
- DISPATCH ANALYTICS
-=========================================================*/
+};
 
 /*=========================================================
  DISPATCH ANALYTICS
@@ -2154,7 +2602,7 @@ AIDispatcher.dispatchPatrol = async function (
 
 AIDispatcher.dispatchAnalytics = async function (
 
-    intent
+    request
 
 ) {
 
@@ -2164,9 +2612,9 @@ AIDispatcher.dispatchAnalytics = async function (
 
     if (
 
-        !intent ||
+        !request ||
 
-        typeof intent !==
+        typeof request !==
 
         "object"
 
@@ -2174,11 +2622,17 @@ AIDispatcher.dispatchAnalytics = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "analytics",
 
             message:
 
-                "Invalid analytics intent."
+                "Invalid analytics request."
 
         };
 
@@ -2204,7 +2658,19 @@ AIDispatcher.dispatchAnalytics = async function (
 
         return {
 
-            success: false,
+            success:
+
+                false,
+
+            domain:
+
+                "analytics",
+
+            intent:
+
+                request.intent ||
+
+                null,
 
             message:
 
@@ -2222,7 +2688,7 @@ AIDispatcher.dispatchAnalytics = async function (
 
         await AnalyticsRouter.route(
 
-            intent
+            request
 
         );
 
@@ -2246,7 +2712,19 @@ AIDispatcher.dispatchAnalytics = async function (
 
             {
 
-                success: false,
+                success:
+
+                    false,
+
+                domain:
+
+                    "analytics",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
 
                 message:
 
@@ -2258,37 +2736,402 @@ AIDispatcher.dispatchAnalytics = async function (
 
     }
 
+    return response;
+
+};
+
+/*=========================================================
+ DISPATCH LEGAL
+=========================================================*/
+
+AIDispatcher.dispatchLegal = async function (
+
+    request
+
+) {
+
     /*----------------------------------
-      Already Formatted
+      Validate
     ----------------------------------*/
+
+    if (
+
+        !request ||
+
+        typeof request !==
+
+        "object"
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "legal",
+
+            message:
+
+                "Invalid legal request."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Router
+    ----------------------------------*/
+
+    const LegalRouter =
+
+        GG.LegalRouter;
+
+    if (
+
+        !LegalRouter ||
+
+        typeof LegalRouter.route !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "legal",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                "LegalRouter unavailable."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    const response =
+
+        await LegalRouter.route(
+
+            request
+
+        );
+
+    /*----------------------------------
+      Failed
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        response.success !==
+
+        true
+
+    ) {
+
+        return (
+
+            response ||
+
+            {
+
+                success:
+
+                    false,
+
+                domain:
+
+                    "legal",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
+
+                message:
+
+                    "Legal router failed."
+
+            }
+
+        );
+
+    }
 
     return response;
 
-};/*=========================================================
- REGISTER
+};
+
+/*=========================================================
+ DISPATCH REPORT
+=========================================================*/
+
+AIDispatcher.dispatchReport = async function (
+
+    request
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !request ||
+
+        typeof request !==
+
+        "object"
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "report",
+
+            message:
+
+                "Invalid report request."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Router
+    ----------------------------------*/
+
+    const ReportRouter =
+
+        GG.ReportRouter;
+
+    if (
+
+        !ReportRouter ||
+
+        typeof ReportRouter.route !==
+
+        "function"
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "report",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                "ReportRouter unavailable."
+
+        };
+
+    }
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    const response =
+
+        await ReportRouter.route(
+
+            request
+
+        );
+
+    /*----------------------------------
+      Failed
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        response.success !==
+
+        true
+
+    ) {
+
+        return (
+
+            response ||
+
+            {
+
+                success:
+
+                    false,
+
+                domain:
+
+                    "report",
+
+                intent:
+
+                    request.intent ||
+
+                    null,
+
+                message:
+
+                    "Report router failed."
+
+            }
+
+        );
+
+    }
+
+    return response;
+
+};
+
+/*=========================================================
+ GET STATUS
+=========================================================*/
+
+AIDispatcher.getStatus = function () {
+
+    return {
+
+        loaded:
+
+            AIDispatcher.loaded,
+
+        loading:
+
+            AIDispatcher.loading,
+
+        version:
+
+            AIDispatcher.VERSION,
+
+        cacheSize:
+
+            AIDispatcher.cache.size,
+
+        lastQuery:
+
+            AIDispatcher.lastQuery,
+
+        lastIntent:
+
+            AIDispatcher.lastIntent,
+
+        lastRequest:
+
+            AIDispatcher.lastRequest,
+
+        lastResponse:
+
+            AIDispatcher.lastResponse,
+
+        routers: {
+
+            staff:
+
+                !!GG.StaffRouter,
+
+            gis:
+
+                !!GG.GISRouter,
+
+            wildlife:
+
+                !!GG.WildlifeRouter,
+
+            sighting:
+
+                !!GG.SightingRouter,
+
+            fire:
+
+                !!GG.FireRouter,
+
+            patrol:
+
+                !!GG.PatrolRouter,
+
+            analytics:
+
+                !!GG.AnalyticsRouter,
+
+            legal:
+
+                !!GG.LegalRouter,
+
+            report:
+
+                !!GG.ReportRouter
+
+        }
+
+    };
+
+};
+
+/*=========================================================
+ REGISTER GLOBAL DISPATCH FUNCTION
 =========================================================*/
 
 GG.dispatchAI = function (
 
-    intent
+    request
 
 ) {
 
     return AIDispatcher.dispatch(
 
-        intent
+        request
 
     );
 
 };
-/*=========================================================
-INITIALIZE
-=========================================================*/
-
-
 
 /*=========================================================
-EXPORT
+ EXPORT
 =========================================================*/
 
 GG.AIDispatcher =
@@ -2296,7 +3139,7 @@ GG.AIDispatcher =
     AIDispatcher;
 
 /*=========================================================
-READY
+ READY
 =========================================================*/
 
 if (
@@ -2314,5 +3157,21 @@ if (
     );
 
 }
+
+/*=========================================================
+ MODULE LOADED
+=========================================================*/
+
+console.log(
+
+    "✅ AIDispatcher Loaded",
+
+    AIDispatcher.VERSION
+
+);
+
+/*=========================================================
+ END MODULE
+=========================================================*/
 
 })(window);
