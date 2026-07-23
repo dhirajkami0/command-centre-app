@@ -2,23 +2,11 @@
  * GreenGuard AI
  * sightingRouter.js
  *
- * Version: 1.0.0
+ * Version: 1.1.0
  *
  * PURPOSE
  * ---------------------------------------------------------
- * Canonical business router for:
- *
- * - Elephant sightings
- * - Active sightings
- * - Sighting history
- * - Movement / driven / resolved sightings
- * - Range / beat / compartment sighting queries
- * - HEC analytics
- * - Human-Elephant Conflict mitigation
- * - Depredation analysis
- * - Risk / hotspot analysis
- * - Response prioritization
- * - Operational sighting intelligence
+ * Canonical business router for Elephant Sighting / HEC.
  *
  * PIPELINE
  * ---------------------------------------------------------
@@ -42,23 +30,19 @@
  * IMPORTANT
  * ---------------------------------------------------------
  *
- * This module DOES NOT:
+ * This router:
  *
- * - detect intent
- * - extract entities
- * - query Firestore directly
- * - calculate GIS polygons
- * - calculate analytics
- * - format final markdown
+ * - DOES NOT detect intent
+ * - DOES NOT extract entities
+ * - DOES NOT read Firestore directly
+ * - DOES NOT calculate GIS
+ * - DOES NOT format markdown
  *
- * It ONLY:
+ * It only maps:
  *
- *      canonical intent
- *              ↓
- *      canonical query handler
- *
- * This keeps the Sighting domain aligned with the
- * existing GreenGuard Staff architecture.
+ * canonical / legacy intent
+ *          ↓
+ * SightingQuery handler
  */
 
 (function (
@@ -74,7 +58,6 @@
       NAMESPACE
     =========================================================*/
 
-
     const GG =
 
         window.GreenGuardAI =
@@ -85,7 +68,6 @@
     /*=========================================================
       PREVENT DOUBLE LOADING
     =========================================================*/
-
 
     if (
 
@@ -108,7 +90,6 @@
       DEPENDENCIES
     =========================================================*/
 
-
     const SightingConstants =
 
         GG.SightingConstants || {};
@@ -118,7 +99,6 @@
       MODULE
     =========================================================*/
 
-
     const SightingRouter = {};
 
 
@@ -126,16 +106,14 @@
       VERSION
     =========================================================*/
 
-
     SightingRouter.VERSION =
 
-        "1.0.0";
+        "1.1.0";
 
 
     /*=========================================================
       DOMAIN
     =========================================================*/
-
 
     SightingRouter.DOMAIN =
 
@@ -148,8 +126,22 @@
       STATUS
     =========================================================*/
 
-
     SightingRouter.initialized =
+
+        false;
+
+
+    /*
+     * Compatibility with AIDispatcher.dispatchSighting().
+     *
+     * AIDispatcher may inspect:
+     *
+     *     SightingRouter.loaded
+     *
+     * Therefore expose it explicitly.
+     */
+
+    SightingRouter.loaded =
 
         false;
 
@@ -174,10 +166,14 @@
         null;
 
 
+    SightingRouter.lastCanonicalIntent =
+
+        null;
+
+
     /*=========================================================
       STATISTICS
     =========================================================*/
-
 
     SightingRouter.statistics = {
 
@@ -216,7 +212,6 @@
       ROUTE TABLE
     =========================================================*/
 
-
     SightingRouter.routes =
 
         new Map();
@@ -226,6 +221,26 @@
       NORMALIZE INTENT KEY
     =========================================================*/
 
+    /*
+     * All of the following normalize to a stable key:
+     *
+     * sightingActiveList
+     * SIGHTING_ACTIVE_LIST
+     * sighting-active-list
+     * sighting active list
+     *
+     * IMPORTANT:
+     *
+     * camelCase is split before uppercasing.
+     *
+     * Therefore:
+     *
+     * sightingActiveList
+     *
+     * becomes:
+     *
+     * SIGHTING_ACTIVE_LIST
+     */
 
     SightingRouter.normalizeIntentKey = function (
 
@@ -256,6 +271,14 @@
 
             .replace(
 
+                /([a-z0-9])([A-Z])/g,
+
+                "$1_$2"
+
+            )
+
+            .replace(
+
                 /[\s\-]+/g,
 
                 "_"
@@ -276,15 +299,85 @@
 
 
     /*=========================================================
-      REGISTER ROUTE
+      GET CANONICAL INTENT
     =========================================================*/
 
+    SightingRouter.getCanonicalIntent = function (
+
+        constantName,
+
+        fallbackValue = ""
+
+    ) {
+
+        const intents =
+
+            SightingConstants.INTENTS ||
+
+            {};
+
+
+        const value =
+
+            intents[
+
+                constantName
+
+            ];
+
+
+        if (
+
+            typeof value ===
+
+                "string" &&
+
+            value.trim()
+
+        ) {
+
+            return value.trim();
+
+        }
+
+
+        if (
+
+            fallbackValue
+
+        ) {
+
+            return String(
+
+                fallbackValue
+
+            ).trim();
+
+        }
+
+
+        return String(
+
+            constantName ||
+
+            ""
+
+        ).trim();
+
+    };
+
+
+    /*=========================================================
+      REGISTER ROUTE
+    =========================================================*/
 
     SightingRouter.register = function (
 
         intent,
 
-        handlerName
+        handlerName,
+
+        canonicalIntent = null
 
     ) {
 
@@ -301,21 +394,12 @@
         }
 
 
-        const canonicalIntent =
-
-            String(
-
-                intent
-
-            ).trim();
-
-
         const key =
 
             SightingRouter
                 .normalizeIntentKey(
 
-                    canonicalIntent
+                    intent
 
                 );
 
@@ -331,6 +415,17 @@
         }
 
 
+        const canonical =
+
+            canonicalIntent ||
+
+            String(
+
+                intent
+
+            ).trim();
+
+
         SightingRouter.routes.set(
 
             key,
@@ -339,7 +434,15 @@
 
                 intent:
 
-                    canonicalIntent,
+                    canonical,
+
+                alias:
+
+                    String(
+
+                        intent
+
+                    ).trim(),
 
                 handler:
 
@@ -363,57 +466,64 @@
       REGISTER CONSTANT ROUTE
     =========================================================*/
 
+    /*
+     * Registers:
+     *
+     * 1. Canonical SightingConstants value
+     * 2. Constant-style name
+     * 3. Optional compatibility aliases
+     *
+     * Example:
+     *
+     * SIGHTING_ACTIVE_LIST
+     *      ↓
+     * sightingActiveList
+     *
+     * aliases:
+     *
+     * sightingActive
+     * SIGHTING_ACTIVE
+     *
+     * All resolve to:
+     *
+     * sightingActiveList
+     */
 
     SightingRouter.registerConstant = function (
 
         constantName,
 
-        handlerName
+        handlerName,
+
+        aliases = [],
+
+        fallbackValue = ""
 
     ) {
 
-        const intents =
-
-            SightingConstants.INTENTS ||
-
-            {};
-
-
-        /*
-         * Preferred:
-         *
-         * INTENTS.SIGHTING_ACTIVE
-         *      -> "sightingActive"
-         *
-         * Fallback:
-         *
-         * "SIGHTING_ACTIVE"
-         *
-         * This makes the router tolerant while the
-         * Sighting domain is being integrated.
-         */
-
         const canonicalIntent =
 
-            intents[
+            SightingRouter
+                .getCanonicalIntent(
 
-                constantName
+                    constantName,
 
-            ] ||
+                    fallbackValue
 
-            constantName;
+                );
 
 
         /*----------------------------------
           Canonical Value
         ----------------------------------*/
 
-
         SightingRouter.register(
 
             canonicalIntent,
 
-            handlerName
+            handlerName,
+
+            canonicalIntent
 
         );
 
@@ -422,14 +532,49 @@
           Constant-Style Alias
         ----------------------------------*/
 
-
         SightingRouter.register(
 
             constantName,
 
-            handlerName
+            handlerName,
+
+            canonicalIntent
 
         );
+
+
+        /*----------------------------------
+          Compatibility Aliases
+        ----------------------------------*/
+
+        for (
+
+            const alias of aliases
+
+        ) {
+
+            if (
+
+                !alias
+
+            ) {
+
+                continue;
+
+            }
+
+
+            SightingRouter.register(
+
+                alias,
+
+                handlerName,
+
+                canonicalIntent
+
+            );
+
+        }
 
 
         return true;
@@ -441,7 +586,6 @@
       BUILD ROUTES
     =========================================================*/
 
-
     SightingRouter.buildRoutes = function () {
 
 
@@ -449,60 +593,29 @@
 
 
         /*=====================================================
-          BASIC SIGHTING QUERIES
+          CURRENT CANONICAL SIGHTING CONSTANTS
         =====================================================*/
 
 
-        SightingRouter.registerConstant(
-
-            "SIGHTING_SEARCH",
-
-            "querySightingSearch"
-
-        );
-
+        /*=====================================================
+          DETAILS / LIST / COUNT
+        =====================================================*/
 
         SightingRouter.registerConstant(
 
             "SIGHTING_DETAILS",
 
-            "querySightingDetails"
+            "querySightingDetails",
 
-        );
+            [
 
+                "SIGHTINGDETAILS",
 
-        SightingRouter.registerConstant(
+                "sightingDetails"
 
-            "SIGHTING_LIST",
+            ],
 
-            "querySightingList"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_COUNT",
-
-            "querySightingCount"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_SUMMARY",
-
-            "querySightingSummary"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_HISTORY",
-
-            "querySightingHistory"
+            "sightingDetails"
 
         );
 
@@ -511,125 +624,366 @@
 
             "SIGHTING_LATEST",
 
-            "queryLatestSighting"
+            "queryLatestSighting",
+
+            [
+
+                "SIGHTINGLATEST",
+
+                "sightingLatest"
+
+            ],
+
+            "sightingLatest"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_RECENT",
+            "SIGHTING_LIST",
 
-            "queryRecentSightings"
+            "querySightingList",
+
+            [
+
+                "SIGHTINGLIST",
+
+                "sightingList",
+
+                "SIGHTING_SEARCH",
+
+                "sightingSearch",
+
+                "SIGHTING_HISTORY",
+
+                "sightingHistory",
+
+                "SIGHTING_RECENT",
+
+                "sightingRecent"
+
+            ],
+
+            "sightingList"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_COUNT",
+
+            "querySightingCount",
+
+            [
+
+                "SIGHTINGCOUNT",
+
+                "sightingCount"
+
+            ],
+
+            "sightingCount"
 
         );
 
 
         /*=====================================================
-          ACTIVE / LIFECYCLE
+          ACTIVE
         =====================================================*/
 
-
         SightingRouter.registerConstant(
 
-            "SIGHTING_ACTIVE",
+            "SIGHTING_ACTIVE_LIST",
 
-            "queryActiveSightings"
+            "queryActiveSightings",
+
+            [
+
+                /*
+                 * IMPORTANT LEGACY COMPATIBILITY
+                 *
+                 * Current SightingIntent previously returned:
+                 *
+                 *     sightingActive
+                 *
+                 * Keep accepting it.
+                 */
+
+                "sightingActive",
+
+                "SIGHTING_ACTIVE",
+
+                "SIGHTING_ACTIVE_LIST",
+
+                "activeSightings"
+
+            ],
+
+            "sightingActiveList"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_INACTIVE",
+            "SIGHTING_ACTIVE_COUNT",
 
-            "queryInactiveSightings"
+            "querySightingCount",
 
-        );
+            [
 
+                "sightingActiveCount",
 
-        SightingRouter.registerConstant(
+                "SIGHTING_ACTIVE_COUNT"
 
-            "SIGHTING_RESOLVED",
+            ],
 
-            "queryResolvedSightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_MOVED",
-
-            "queryMovedSightings"
+            "sightingActiveCount"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_DRIVEN",
+            "SIGHTING_ACTIVE_NEARBY",
 
-            "queryDrivenSightings"
+            "querySightingsNearLocation",
 
-        );
+            [
 
+                "sightingActiveNearby",
 
-        SightingRouter.registerConstant(
+                "SIGHTING_ACTIVE_NEARBY",
 
-            "SIGHTING_STATUS",
+                "SIGHTING_NEAR_LOCATION",
 
-            "querySightingStatus"
+                "sightingNearLocation"
 
-        );
+            ],
 
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_LIFECYCLE",
-
-            "querySightingLifecycle"
+            "sightingActiveNearby"
 
         );
 
 
         /*=====================================================
-          ELEPHANT / HERD INFORMATION
+          JURISDICTION
         =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_BY_DIVISION",
+
+            "queryDivisionSightings",
+
+            [
+
+                "SIGHTING_DIVISION",
+
+                "sightingDivision",
+
+                "sightingByDivision"
+
+            ],
+
+            "sightingByDivision"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_BY_RANGE",
+
+            "queryRangeSightings",
+
+            [
+
+                "SIGHTING_RANGE",
+
+                "sightingRange",
+
+                "sightingByRange"
+
+            ],
+
+            "sightingByRange"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_BY_BEAT",
+
+            "queryBeatSightings",
+
+            [
+
+                "SIGHTING_BEAT",
+
+                "sightingBeat",
+
+                "sightingByBeat"
+
+            ],
+
+            "sightingByBeat"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_BY_COMPARTMENT",
+
+            "queryCompartmentSightings",
+
+            [
+
+                "SIGHTING_COMPARTMENT",
+
+                "sightingCompartment",
+
+                "sightingByCompartment"
+
+            ],
+
+            "sightingByCompartment"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_BY_VILLAGE",
+
+            "queryVillageSightings",
+
+            [
+
+                "SIGHTING_VILLAGE",
+
+                "sightingVillage",
+
+                "SIGHTING_NEAR_VILLAGE",
+
+                "sightingNearVillage",
+
+                "sightingByVillage"
+
+            ],
+
+            "sightingByVillage"
+
+        );
+
+
+        /*=====================================================
+          NEAREST / LOCATION
+        =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_NEAREST_VILLAGE",
+
+            "querySightingsNearVillage",
+
+            [
+
+                "sightingNearestVillage"
+
+            ],
+
+            "sightingNearestVillage"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_NEAREST_USER",
+
+            "querySightingsNearLocation",
+
+            [
+
+                "sightingNearestUser"
+
+            ],
+
+            "sightingNearestUser"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_LOCATION",
+
+            "querySightingLocation",
+
+            [
+
+                "SIGHTINGLOCATION",
+
+                "sightingLocation"
+
+            ],
+
+            "sightingLocation"
+
+        );
+
+
+        /*=====================================================
+          HERD
+        =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_HERD",
+
+            "queryHerdSightings",
+
+            [
+
+                "SIGHTINGHERD",
+
+                "sightingHerd",
+
+                "SIGHTING_SINGLE_ELEPHANT",
+
+                "sightingSingleElephant"
+
+            ],
+
+            "sightingHerd"
+
+        );
 
 
         SightingRouter.registerConstant(
 
             "SIGHTING_HERD_SIZE",
 
-            "querySightingHerdSize"
+            "querySightingHerdSize",
 
-        );
+            [
 
+                "SIGHTINGHERDSIZE",
 
-        SightingRouter.registerConstant(
+                "sightingHerdSize",
 
-            "SIGHTING_ELEPHANT_COUNT",
+                "SIGHTING_ELEPHANT_COUNT",
 
-            "queryElephantCount"
+                "sightingElephantCount"
 
-        );
+            ],
 
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_SINGLE_ELEPHANT",
-
-            "querySingleElephantSightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_HERD",
-
-            "queryHerdSightings"
+            "sightingHerdSize"
 
         );
 
@@ -638,438 +992,132 @@
           MOVEMENT
         =====================================================*/
 
-
         SightingRouter.registerConstant(
 
             "SIGHTING_MOVEMENT",
 
-            "querySightingMovement"
+            "querySightingMovement",
+
+            [
+
+                "SIGHTINGMOVEMENT",
+
+                "sightingMovement",
+
+                "SIGHTING_MOVEMENT_HISTORY",
+
+                "sightingMovementHistory",
+
+                "SIGHTING_MOVEMENT_SUMMARY",
+
+                "sightingMovementSummary"
+
+            ],
+
+            "sightingMovement"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_MOVEMENT_DIRECTION",
+            "SIGHTING_DIRECTION",
 
-            "querySightingMovementDirection"
+            "querySightingMovementDirection",
 
-        );
+            [
 
+                "sightingDirection",
 
-        SightingRouter.registerConstant(
+                "SIGHTING_DIRECTION",
 
-            "SIGHTING_MOVEMENT_HISTORY",
+                "SIGHTING_MOVEMENT_DIRECTION",
 
-            "querySightingMovementHistory"
+                "sightingMovementDirection"
 
-        );
+            ],
 
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_MOVEMENT_SUMMARY",
-
-            "querySightingMovementSummary"
-
-        );
-
-
-        /*=====================================================
-          GIS / LOCATION
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_LOCATION",
-
-            "querySightingLocation"
+            "sightingDirection"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_NEAR_LOCATION",
+            "SIGHTING_MOVED_LIST",
 
-            "querySightingsNearLocation"
+            "queryMovedSightings",
 
-        );
+            [
 
+                "sightingMovedList",
 
-        SightingRouter.registerConstant(
+                "SIGHTING_MOVED",
 
-            "SIGHTING_NEAR_VILLAGE",
+                "sightingMoved"
 
-            "querySightingsNearVillage"
+            ],
 
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_VILLAGE",
-
-            "queryVillageSightings"
+            "sightingMovedList"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_DIVISION",
+            "SIGHTING_LAST_LOCATION",
 
-            "queryDivisionSightings"
+            "querySightingLocation",
 
-        );
+            [
 
+                "sightingLastLocation"
 
-        SightingRouter.registerConstant(
+            ],
 
-            "SIGHTING_RANGE",
-
-            "queryRangeSightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_BEAT",
-
-            "queryBeatSightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_COMPARTMENT",
-
-            "queryCompartmentSightings"
+            "sightingLastLocation"
 
         );
 
 
         /*=====================================================
-          GIS ANALYTICS
+          DRIVING / DRIVEN
         =====================================================*/
 
-
         SightingRouter.registerConstant(
 
-            "SIGHTING_DIVISION_ANALYTICS",
+            "SIGHTING_DRIVING",
 
-            "querySightingDivisionAnalytics"
+            "querySightingMovement",
+
+            [
+
+                "sightingDriving"
+
+            ],
+
+            "sightingDriving"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_RANGE_ANALYTICS",
+            "SIGHTING_DRIVEN_LIST",
 
-            "querySightingRangeAnalytics"
+            "queryDrivenSightings",
 
-        );
+            [
 
+                "sightingDrivenList",
 
-        SightingRouter.registerConstant(
+                "SIGHTING_DRIVEN",
 
-            "SIGHTING_BEAT_ANALYTICS",
+                "sightingDriven"
 
-            "querySightingBeatAnalytics"
+            ],
 
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_COMPARTMENT_ANALYTICS",
-
-            "querySightingCompartmentAnalytics"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_VILLAGE_ANALYTICS",
-
-            "querySightingVillageAnalytics"
-
-        );
-
-
-        /*=====================================================
-          STAFF / USER / OPERATIONAL
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_BY_STAFF",
-
-            "querySightingsByStaff"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_MY",
-
-            "queryMySightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_MY_ACTIVE",
-
-            "queryMyActiveSightings"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_STAFF_ANALYTICS",
-
-            "querySightingStaffAnalytics"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_TEAM_ANALYTICS",
-
-            "querySightingTeamAnalytics"
-
-        );
-
-
-        /*=====================================================
-          TIME ANALYTICS
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_TODAY",
-
-            "querySightingsToday"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_YESTERDAY",
-
-            "querySightingsYesterday"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_WEEK",
-
-            "querySightingsThisWeek"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_MONTH",
-
-            "querySightingsThisMonth"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_FINANCIAL_YEAR",
-
-            "querySightingsFinancialYear"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_TIME_ANALYTICS",
-
-            "querySightingTimeAnalytics"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "SIGHTING_TREND",
-
-            "querySightingTrend"
-
-        );
-
-
-        /*=====================================================
-          HUMAN ELEPHANT CONFLICT
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_SUMMARY",
-
-            "queryHECSummary"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_RISK",
-
-            "queryHECRisk"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_RISK_ANALYSIS",
-
-            "queryHECRiskAnalysis"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_HOTSPOTS",
-
-            "queryHECHotspots"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_TREND",
-
-            "queryHECTrend"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_HISTORY",
-
-            "queryHECHistory"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_VILLAGE_RISK",
-
-            "queryHECVillageRisk"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_RANGE_RISK",
-
-            "queryHECRangeRisk"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_BEAT_RISK",
-
-            "queryHECBeatRisk"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_COMPARTMENT_RISK",
-
-            "queryHECCompartmentRisk"
-
-        );
-
-
-        /*=====================================================
-          HEC MITIGATION
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_MITIGATION",
-
-            "queryHECMitigation"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_MITIGATION_PRIORITY",
-
-            "queryHECMitigationPriority"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_PREVENTION",
-
-            "queryHECPrevention"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_RESPONSE",
-
-            "queryHECResponse"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_RESPONSE_PRIORITY",
-
-            "queryHECResponsePriority"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "HEC_OPERATIONAL_ADVICE",
-
-            "queryHECOperationalAdvice"
+            "sightingDrivenList"
 
         );
 
@@ -1078,89 +1126,274 @@
           DEPREDATION
         =====================================================*/
 
-
         SightingRouter.registerConstant(
 
-            "DEPREDATION_SUMMARY",
+            "SIGHTING_DEPREDATION",
 
-            "queryDepredationSummary"
+            "queryDepredationSummary",
+
+            [
+
+                "sightingDepredation",
+
+                "DEPREDATION_SUMMARY",
+
+                "hecDepredation"
+
+            ],
+
+            "sightingDepredation"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "DEPREDATION_ANALYTICS",
+            "SIGHTING_DEPREDATION_LIST",
 
-            "queryDepredationAnalytics"
+            "queryDepredationHistory",
 
-        );
+            [
 
+                "sightingDepredationList",
 
-        SightingRouter.registerConstant(
+                "DEPREDATION_HISTORY"
 
-            "DEPREDATION_HISTORY",
+            ],
 
-            "queryDepredationHistory"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "DEPREDATION_HOTSPOTS",
-
-            "queryDepredationHotspots"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "DEPREDATION_RISK",
-
-            "queryDepredationRisk"
-
-        );
-
-
-        SightingRouter.registerConstant(
-
-            "DEPREDATION_TREND",
-
-            "queryDepredationTrend"
+            "sightingDepredationList"
 
         );
 
 
         /*=====================================================
-          RESPONSE / FIELD OPERATIONS
+          RISK
         =====================================================*/
 
-
         SightingRouter.registerConstant(
 
-            "SIGHTING_RESPONSE_PRIORITY",
+            "SIGHTING_HIGH_RISK",
 
-            "querySightingResponsePriority"
+            "querySightingRiskAssessment",
+
+            [
+
+                "sightingHighRisk",
+
+                "HEC_RISK",
+
+                "HEC_RISK_ANALYSIS",
+
+                "sightingRisk"
+
+            ],
+
+            "sightingHighRisk"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_NEAREST_STAFF",
+            "SIGHTING_VILLAGE_RISK",
 
-            "querySightingNearestStaff"
+            "queryHECVillageRisk",
+
+            [
+
+                "sightingVillageRisk",
+
+                "HEC_VILLAGE_RISK"
+
+            ],
+
+            "sightingVillageRisk"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_RESPONSE_STAFF",
+            "SIGHTING_CONFLICT_HISTORY",
 
-            "querySightingResponseStaff"
+            "queryHECHistory",
+
+            [
+
+                "sightingConflictHistory",
+
+                "HEC_HISTORY"
+
+            ],
+
+            "sightingConflictHistory"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_PRIORITY",
+
+            "querySightingResponsePriority",
+
+            [
+
+                "sightingPriority",
+
+                "SIGHTING_RESPONSE_PRIORITY",
+
+                "SIGHTING_RISK_PRIORITY",
+
+                "HEC_RESPONSE_PRIORITY"
+
+            ],
+
+            "sightingPriority"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_THREATENED_VILLAGES",
+
+            "queryHECVillageRisk",
+
+            [
+
+                "sightingThreatenedVillages"
+
+            ],
+
+            "sightingThreatenedVillages"
+
+        );
+
+
+        /*=====================================================
+          RESOLVED / STATUS
+        =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_RESOLVED_LIST",
+
+            "queryResolvedSightings",
+
+            [
+
+                "sightingResolvedList",
+
+                "SIGHTING_RESOLVED",
+
+                "sightingResolved",
+
+                "SIGHTING_INACTIVE",
+
+                "sightingInactive"
+
+            ],
+
+            "sightingResolvedList"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_STATUS",
+
+            "querySightingStatus",
+
+            [
+
+                "SIGHTINGSTATUS",
+
+                "sightingStatus",
+
+                "SIGHTING_LIFECYCLE",
+
+                "sightingLifecycle"
+
+            ],
+
+            "sightingStatus"
+
+        );
+
+
+        /*=====================================================
+          REPORTING STAFF
+        =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_REPORTED_BY",
+
+            "querySightingsByStaff",
+
+            [
+
+                "sightingReportedBy",
+
+                "SIGHTING_BY_STAFF",
+
+                "sightingByStaff",
+
+                "SIGHTING_MY",
+
+                "sightingMy",
+
+                "SIGHTING_MY_ACTIVE",
+
+                "sightingMyActive"
+
+            ],
+
+            "sightingReportedBy"
+
+        );
+
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_UPDATED_BY",
+
+            "querySightingsByStaff",
+
+            [
+
+                "sightingUpdatedBy"
+
+            ],
+
+            "sightingUpdatedBy"
+
+        );
+
+
+        /*=====================================================
+          SUMMARY
+        =====================================================*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_SUMMARY",
+
+            "querySightingSummary",
+
+            [
+
+                "SIGHTINGSUMMARY",
+
+                "sightingSummary",
+
+                "HEC_SUMMARY"
+
+            ],
+
+            "sightingSummary"
 
         );
 
@@ -1169,100 +1402,503 @@
 
             "SIGHTING_OPERATIONAL_SUMMARY",
 
-            "querySightingOperationalSummary"
+            "querySightingOperationalSummary",
+
+            [
+
+                "SIGHTINGOPERATIONALSUMMARY",
+
+                "sightingOperationalSummary",
+
+                "HEC_OPERATIONAL_ADVICE",
+
+                "HEC_RESPONSE"
+
+            ],
+
+            "sightingOperationalSummary"
 
         );
 
 
         SightingRouter.registerConstant(
 
-            "SIGHTING_RISK_PRIORITY",
+            "SIGHTING_CONFLICT_SUMMARY",
 
-            "querySightingRiskPriority"
+            "queryHECSummary",
+
+            [
+
+                "sightingConflictSummary"
+
+            ],
+
+            "sightingConflictSummary"
 
         );
 
 
         /*=====================================================
-          ANALYTICS
+          LEGACY ANALYTICS COMPATIBILITY
         =====================================================*/
 
+        /*
+         * These are intentionally retained so older
+         * SightingIntent / AI cache / Gemini results
+         * do not suddenly fail after migration.
+         */
 
-        SightingRouter.registerConstant(
+
+        /*-----------------------------------------------------
+          GIS Analytics
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "SIGHTING_DIVISION_ANALYTICS",
+
+            "querySightingDivisionAnalytics",
+
+            "SIGHTING_DIVISION_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_RANGE_ANALYTICS",
+
+            "querySightingRangeAnalytics",
+
+            "SIGHTING_RANGE_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_BEAT_ANALYTICS",
+
+            "querySightingBeatAnalytics",
+
+            "SIGHTING_BEAT_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_COMPARTMENT_ANALYTICS",
+
+            "querySightingCompartmentAnalytics",
+
+            "SIGHTING_COMPARTMENT_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_VILLAGE_ANALYTICS",
+
+            "querySightingVillageAnalytics",
+
+            "SIGHTING_VILLAGE_ANALYTICS"
+
+        );
+
+
+        /*-----------------------------------------------------
+          Staff Analytics
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "SIGHTING_STAFF_ANALYTICS",
+
+            "querySightingStaffAnalytics",
+
+            "SIGHTING_STAFF_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_TEAM_ANALYTICS",
+
+            "querySightingTeamAnalytics",
+
+            "SIGHTING_TEAM_ANALYTICS"
+
+        );
+
+
+        /*-----------------------------------------------------
+          Time
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "SIGHTING_TODAY",
+
+            "querySightingsToday",
+
+            "SIGHTING_TODAY"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_YESTERDAY",
+
+            "querySightingsYesterday",
+
+            "SIGHTING_YESTERDAY"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_WEEK",
+
+            "querySightingsThisWeek",
+
+            "SIGHTING_WEEK"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_MONTH",
+
+            "querySightingsThisMonth",
+
+            "SIGHTING_MONTH"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_FINANCIAL_YEAR",
+
+            "querySightingsFinancialYear",
+
+            "SIGHTING_FINANCIAL_YEAR"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_TIME_ANALYTICS",
+
+            "querySightingTimeAnalytics",
+
+            "SIGHTING_TIME_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_TREND",
+
+            "querySightingTrend",
+
+            "SIGHTING_TREND"
+
+        );
+
+
+        /*-----------------------------------------------------
+          HEC
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "HEC_HOTSPOTS",
+
+            "queryHECHotspots",
+
+            "HEC_HOTSPOTS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_TREND",
+
+            "queryHECTrend",
+
+            "HEC_TREND"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_RANGE_RISK",
+
+            "queryHECRangeRisk",
+
+            "HEC_RANGE_RISK"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_BEAT_RISK",
+
+            "queryHECBeatRisk",
+
+            "HEC_BEAT_RISK"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_COMPARTMENT_RISK",
+
+            "queryHECCompartmentRisk",
+
+            "HEC_COMPARTMENT_RISK"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_MITIGATION",
+
+            "queryHECMitigation",
+
+            "HEC_MITIGATION"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_MITIGATION_PRIORITY",
+
+            "queryHECMitigationPriority",
+
+            "HEC_MITIGATION_PRIORITY"
+
+        );
+
+
+        SightingRouter.register(
+
+            "HEC_PREVENTION",
+
+            "queryHECPrevention",
+
+            "HEC_PREVENTION"
+
+        );
+
+
+        /*-----------------------------------------------------
+          Depredation Analytics
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "DEPREDATION_ANALYTICS",
+
+            "queryDepredationAnalytics",
+
+            "DEPREDATION_ANALYTICS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "DEPREDATION_HOTSPOTS",
+
+            "queryDepredationHotspots",
+
+            "DEPREDATION_HOTSPOTS"
+
+        );
+
+
+        SightingRouter.register(
+
+            "DEPREDATION_RISK",
+
+            "queryDepredationRisk",
+
+            "DEPREDATION_RISK"
+
+        );
+
+
+        SightingRouter.register(
+
+            "DEPREDATION_TREND",
+
+            "queryDepredationTrend",
+
+            "DEPREDATION_TREND"
+
+        );
+
+
+        /*-----------------------------------------------------
+          Operational
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
+
+            "SIGHTING_NEAREST_STAFF",
+
+            "querySightingNearestStaff",
+
+            "SIGHTING_NEAREST_STAFF"
+
+        );
+
+
+        SightingRouter.register(
+
+            "SIGHTING_RESPONSE_STAFF",
+
+            "querySightingResponseStaff",
+
+            "SIGHTING_RESPONSE_STAFF"
+
+        );
+
+
+        /*-----------------------------------------------------
+          General Analytics
+        -----------------------------------------------------*/
+
+        SightingRouter.register(
 
             "SIGHTING_ANALYTICS",
 
-            "querySightingAnalytics"
+            "querySightingAnalytics",
+
+            "SIGHTING_ANALYTICS"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_HOTSPOTS",
 
-            "querySightingHotspots"
+            "querySightingHotspots",
+
+            "SIGHTING_HOTSPOTS"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_FREQUENCY",
 
-            "querySightingFrequency"
+            "querySightingFrequency",
+
+            "SIGHTING_FREQUENCY"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_RISK_ANALYTICS",
 
-            "querySightingRiskAnalytics"
+            "querySightingRiskAnalytics",
+
+            "SIGHTING_RISK_ANALYTICS"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_CONFLICT_ANALYTICS",
 
-            "querySightingConflictAnalytics"
+            "querySightingConflictAnalytics",
+
+            "SIGHTING_CONFLICT_ANALYTICS"
 
         );
 
 
-        /*=====================================================
-          PREDICTIVE / DECISION SUPPORT
-        =====================================================*/
-
-
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_RISK_ASSESSMENT",
 
-            "querySightingRiskAssessment"
+            "querySightingRiskAssessment",
+
+            "SIGHTING_RISK_ASSESSMENT"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_PRIORITY_ANALYSIS",
 
-            "querySightingPriorityAnalysis"
+            "querySightingPriorityAnalysis",
+
+            "SIGHTING_PRIORITY_ANALYSIS"
 
         );
 
 
-        SightingRouter.registerConstant(
+        SightingRouter.register(
 
             "SIGHTING_DECISION_SUPPORT",
 
-            "querySightingDecisionSupport"
+            "querySightingDecisionSupport",
+
+            "SIGHTING_DECISION_SUPPORT"
 
         );
+
+
+        return SightingRouter.routes;
+
+    };
+
+
+    /*=========================================================
+      REGISTER ROUTES
+    =========================================================*/
+
+    /*
+     * AIDispatcher.dispatchSighting() may call this.
+     *
+     * Safe to call repeatedly.
+     */
+
+    SightingRouter.registerRoutes = function () {
+
+        SightingRouter.buildRoutes();
+
+        SightingRouter.initialized =
+
+            true;
+
+        SightingRouter.loaded =
+
+            true;
 
 
         return SightingRouter.routes;
@@ -1274,12 +1910,13 @@
       INITIALIZE
     =========================================================*/
 
-
     SightingRouter.init = function () {
 
         if (
 
-            SightingRouter.initialized
+            SightingRouter.initialized ===
+
+            true
 
         ) {
 
@@ -1292,6 +1929,11 @@
 
 
         SightingRouter.initialized =
+
+            true;
+
+
+        SightingRouter.loaded =
 
             true;
 
@@ -1310,7 +1952,7 @@
 
                 SightingRouter.routes.size,
 
-                "routes"
+                "route keys"
 
             );
 
@@ -1323,9 +1965,27 @@
 
 
     /*=========================================================
-      RESOLVE INTENT
+      INITIALIZE ALIAS
     =========================================================*/
 
+    /*
+     * Your AIDispatcher currently supports:
+     *
+     *     SightingRouter.initialize()
+     *
+     * Preserve that contract.
+     */
+
+    SightingRouter.initialize = function () {
+
+        return SightingRouter.init();
+
+    };
+
+
+    /*=========================================================
+      RESOLVE INTENT
+    =========================================================*/
 
     SightingRouter.resolveIntent = function (
 
@@ -1348,6 +2008,11 @@
         }
 
 
+        /*
+         * Prefer request.intent because AIDispatcher
+         * already normalizes detectedIntent into it.
+         */
+
         return (
 
             request.intent ||
@@ -1364,7 +2029,6 @@
     /*=========================================================
       RESOLVE ROUTE
     =========================================================*/
-
 
     SightingRouter.resolveRoute = function (
 
@@ -1415,7 +2079,6 @@
       RESOLVE HANDLER
     =========================================================*/
 
-
     SightingRouter.resolveHandler = function (
 
         route
@@ -1441,20 +2104,12 @@
 
 
         /*-----------------------------------------------------
-          Preferred Contract
+          CONTRACT 1
 
-          Existing StaffQuery architecture exposes business
-          handlers on GG:
+          Global GreenGuardAI query function:
 
-              GG.queryStaffCount()
-              GG.queryNearbyStaff()
-
-          SightingQuery follows the same pattern:
-
-              GG.queryActiveSightings()
-              GG.queryHECRisk()
+          GG.queryActiveSightings()
         -----------------------------------------------------*/
-
 
         if (
 
@@ -1492,16 +2147,12 @@
 
 
         /*-----------------------------------------------------
-          Module Method Fallback
+          CONTRACT 2
 
-          Also supports:
+          Module method:
 
-              GG.SightingQuery.queryActiveSightings()
-
-          if a future SightingQuery version exposes handlers
-          directly on the module.
+          GG.SightingQuery.queryActiveSightings()
         -----------------------------------------------------*/
-
 
         if (
 
@@ -1552,7 +2203,6 @@
     /*=========================================================
       CAN HANDLE
     =========================================================*/
-
 
     SightingRouter.canHandle = function (
 
@@ -1614,7 +2264,6 @@
       CREATE FAILURE RESPONSE
     =========================================================*/
 
-
     SightingRouter.createFailureResponse = function (
 
         request,
@@ -1631,9 +2280,17 @@
 
                 false,
 
+            local:
+
+                true,
+
             source:
 
                 "LOCAL",
+
+            provider:
+
+                "SightingRouter",
 
             module:
 
@@ -1661,6 +2318,10 @@
                 Number(
 
                     request?.confidence ||
+
+                    request
+                        ?.detectedIntent
+                        ?.confidence ||
 
                     0
 
@@ -1691,6 +2352,12 @@
                 request?.context ||
 
                 {},
+
+            detectedIntent:
+
+                request?.detectedIntent ||
+
+                null,
 
             data:
 
@@ -1734,9 +2401,301 @@
 
 
     /*=========================================================
-      ROUTE
+      NORMALIZE SUCCESS RESPONSE
     =========================================================*/
 
+    SightingRouter.normalizeResponse = function (
+
+        response,
+
+        request,
+
+        route,
+
+        handler,
+
+        started
+
+    ) {
+
+        /*
+         * Do not destroy formatter/query output.
+         *
+         * Add only missing canonical metadata.
+         */
+
+        if (
+
+            response === null ||
+
+            response === undefined
+
+        ) {
+
+            return response;
+
+        }
+
+
+        /*
+         * Some query handlers could theoretically
+         * return an array. Preserve it rather than
+         * mutating an Array as the final response.
+         */
+
+        if (
+
+            typeof response !==
+
+                "object" ||
+
+            Array.isArray(
+
+                response
+
+            )
+
+        ) {
+
+            return {
+
+                success:
+
+                    true,
+
+                local:
+
+                    true,
+
+                source:
+
+                    "LOCAL",
+
+                provider:
+
+                    "SightingRouter",
+
+                module:
+
+                    "SightingRouter",
+
+                domain:
+
+                    SightingRouter.DOMAIN,
+
+                intent:
+
+                    route.intent,
+
+                data:
+
+                    response,
+
+                request:
+
+                    request,
+
+                detectedIntent:
+
+                    request.detectedIntent ||
+
+                    null,
+
+                metadata: {
+
+                    version:
+
+                        SightingRouter.VERSION,
+
+                    router:
+
+                        "SightingRouter",
+
+                    handler:
+
+                        handler.name,
+
+                    handlerSource:
+
+                        handler.source,
+
+                    executionTime:
+
+                        Date.now() -
+
+                        started
+
+                }
+
+            };
+
+        }
+
+
+        response.success =
+
+            response.success !==
+
+            false;
+
+
+        response.local =
+
+            response.local !==
+
+            false;
+
+
+        response.source =
+
+            response.source ||
+
+            "LOCAL";
+
+
+        response.provider =
+
+            response.provider ||
+
+            "SightingRouter";
+
+
+        response.module =
+
+            response.module ||
+
+            "SightingRouter";
+
+
+        response.domain =
+
+            response.domain ||
+
+            SightingRouter.DOMAIN;
+
+
+        response.intent =
+
+            response.intent ||
+
+            route.intent;
+
+
+        response.query =
+
+            response.query ||
+
+            request.query ||
+
+            "";
+
+
+        response.entities =
+
+            response.entities ||
+
+            request.entities ||
+
+            {};
+
+
+        response.parameters =
+
+            response.parameters ||
+
+            request.parameters ||
+
+            {};
+
+
+        response.context =
+
+            response.context ||
+
+            request.context ||
+
+            {};
+
+
+        response.detectedIntent =
+
+            response.detectedIntent ||
+
+            request.detectedIntent ||
+
+            null;
+
+
+        response.request =
+
+            response.request ||
+
+            request;
+
+
+        response.metadata =
+
+            response.metadata ||
+
+            {};
+
+
+        response.metadata.version =
+
+            response.metadata.version ||
+
+            SightingRouter.VERSION;
+
+
+        response.metadata.router =
+
+            response.metadata.router ||
+
+            "SightingRouter";
+
+
+        response.metadata.handler =
+
+            response.metadata.handler ||
+
+            handler.name;
+
+
+        response.metadata.handlerSource =
+
+            response.metadata.handlerSource ||
+
+            handler.source;
+
+
+        response.metadata.canonicalIntent =
+
+            response.metadata.canonicalIntent ||
+
+            route.intent;
+
+
+        response.metadata.executionTime =
+
+            response.metadata.executionTime ??
+
+            (
+
+                Date.now() -
+
+                started
+
+            );
+
+
+        return response;
+
+    };
+
+
+    /*=========================================================
+      ROUTE
+    =========================================================*/
 
     SightingRouter.route = async function (
 
@@ -1762,7 +2721,6 @@
               VALIDATE REQUEST
             =================================================*/
 
-
             if (
 
                 !request ||
@@ -1783,11 +2741,42 @@
 
 
             /*=================================================
+              NORMALIZE REQUEST CONTAINERS
+            =================================================*/
+
+            request.entities =
+
+                request.entities ||
+
+                {};
+
+
+            request.parameters =
+
+                request.parameters ||
+
+                {};
+
+
+            request.context =
+
+                request.context ||
+
+                {};
+
+
+            request.domain =
+
+                request.domain ||
+
+                SightingRouter.DOMAIN;
+
+
+            /*=================================================
               RESOLVE INTENT
             =================================================*/
 
-
-            const intent =
+            const incomingIntent =
 
                 SightingRouter
                     .resolveIntent(
@@ -1799,7 +2788,7 @@
 
             if (
 
-                !intent
+                !incomingIntent
 
             ) {
 
@@ -1824,20 +2813,19 @@
 
             SightingRouter.lastIntent =
 
-                intent;
+                incomingIntent;
 
 
             /*=================================================
               RESOLVE ROUTE
             =================================================*/
 
-
             const route =
 
                 SightingRouter
                     .resolveRoute(
 
-                        intent
+                        incomingIntent
 
                     );
 
@@ -1860,7 +2848,7 @@
 
                         "Unsupported sighting intent: " +
 
-                            intent,
+                        incomingIntent,
 
                         "SIGHTING_INTENT_UNSUPPORTED"
 
@@ -1869,10 +2857,14 @@
             }
 
 
+            SightingRouter.lastCanonicalIntent =
+
+                route.intent;
+
+
             /*=================================================
               RESOLVE QUERY HANDLER
             =================================================*/
-
 
             const handler =
 
@@ -1902,7 +2894,7 @@
 
                         "Sighting query handler unavailable: " +
 
-                            route.handler,
+                        route.handler,
 
                         "SIGHTING_HANDLER_MISSING"
 
@@ -1914,16 +2906,20 @@
             /*=================================================
               CANONICAL REQUEST
 
-              Preserve the request produced by IntentManager.
+              Preserve all IntentManager data.
 
-              Do NOT throw away:
-              - entities
-              - parameters
-              - context
-              - confidence
-              - detectedIntent
+              IMPORTANT:
+
+              We canonicalize request.intent here.
+
+              Example:
+
+              incoming:
+                  sightingActive
+
+              canonical:
+                  sightingActiveList
             =================================================*/
-
 
             const routedRequest = {
 
@@ -1931,35 +2927,45 @@
 
                 domain:
 
-                    request.domain ||
-
                     SightingRouter.DOMAIN,
 
                 intent:
 
                     route.intent ||
 
-                    intent,
+                    incomingIntent,
 
-                entities:
+                entities: {
 
-                    request.entities ||
+                    ...(request.entities || {})
 
-                    {},
+                },
 
-                parameters:
+                parameters: {
 
-                    request.parameters ||
+                    ...(request.parameters || {})
 
-                    {},
+                },
 
-                context:
+                context: {
 
-                    request.context ||
+                    ...(request.context || {})
 
-                    {}
+                }
 
             };
+
+
+            /*
+             * Preserve original detector intent for
+             * diagnostics and backward compatibility.
+             */
+
+            routedRequest.originalIntent =
+
+                request.originalIntent ||
+
+                incomingIntent;
 
 
             SightingRouter.lastRequest =
@@ -1976,46 +2982,83 @@
               DEBUG
             =================================================*/
 
-
             if (
 
                 GG.Config?.DEBUG?.ENABLED
 
             ) {
 
-                console.log(
+                console.group(
 
-                    "🐘 SightingRouter",
-
-                    {
-
-                        intent:
-
-                            intent,
-
-                        canonicalIntent:
-
-                            route.intent,
-
-                        handler:
-
-                            handler.name,
-
-                        handlerSource:
-
-                            handler.source,
-
-                        entities:
-
-                            routedRequest.entities,
-
-                        parameters:
-
-                            routedRequest.parameters
-
-                    }
+                    "🐘 SIGHTING ROUTER"
 
                 );
+
+
+                console.log(
+
+                    "Incoming Intent:",
+
+                    incomingIntent
+
+                );
+
+
+                console.log(
+
+                    "Canonical Intent:",
+
+                    route.intent
+
+                );
+
+
+                console.log(
+
+                    "Handler:",
+
+                    handler.name
+
+                );
+
+
+                console.log(
+
+                    "Handler Source:",
+
+                    handler.source
+
+                );
+
+
+                console.log(
+
+                    "Entities:",
+
+                    routedRequest.entities
+
+                );
+
+
+                console.log(
+
+                    "Parameters:",
+
+                    routedRequest.parameters
+
+                );
+
+
+                console.log(
+
+                    "Context:",
+
+                    routedRequest.context
+
+                );
+
+
+                console.groupEnd();
 
             }
 
@@ -2024,8 +3067,7 @@
               EXECUTE QUERY
             =================================================*/
 
-
-            const response =
+            let response =
 
                 await handler.fn(
 
@@ -2037,7 +3079,6 @@
             /*=================================================
               VALIDATE RESPONSE
             =================================================*/
-
 
             if (
 
@@ -2054,12 +3095,61 @@
             }
 
 
+            /*=================================================
+              NORMALIZE RESPONSE METADATA
+
+              IMPORTANT:
+
+              This does NOT format the response again.
+
+              SightingQuery / SightingFormatter output is
+              preserved.
+            =================================================*/
+
+            response =
+
+                SightingRouter
+                    .normalizeResponse(
+
+                        response,
+
+                        routedRequest,
+
+                        route,
+
+                        handler,
+
+                        started
+
+                    );
+
+
             SightingRouter.lastResponse =
 
                 response;
 
 
-            SightingRouter.statistics.successes++;
+            if (
+
+                response?.success ===
+
+                true
+
+            ) {
+
+                SightingRouter
+                    .statistics
+                    .successes++;
+
+            }
+
+            else {
+
+                SightingRouter
+                    .statistics
+                    .failures++;
+
+            }
 
 
             return response;
@@ -2079,21 +3169,13 @@
                 .failures++;
 
 
-            if (
+            console.error(
 
-                GG.Config?.DEBUG?.ENABLED
+                "❌ SightingRouter Error:",
 
-            ) {
+                error
 
-                console.error(
-
-                    "❌ SightingRouter Error:",
-
-                    error
-
-                );
-
-            }
+            );
 
 
             return SightingRouter
@@ -2101,7 +3183,9 @@
 
                     request,
 
-                    error.message,
+                    error?.message ||
+
+                    "Sighting router execution failed.",
 
                     "SIGHTING_ROUTER_EXCEPTION"
 
@@ -2154,21 +3238,6 @@
       DISPATCH ALIAS
     =========================================================*/
 
-
-    /*
-     * Some GreenGuard routers may use:
-     *
-     *     router.route()
-     *
-     * while another dispatcher may expect:
-     *
-     *     router.dispatch()
-     *
-     * Supporting both is harmless and avoids coupling the
-     * Sighting domain to one dispatcher implementation.
-     */
-
-
     SightingRouter.dispatch = async function (
 
         request
@@ -2187,7 +3256,6 @@
     /*=========================================================
       HANDLE ALIAS
     =========================================================*/
-
 
     SightingRouter.handle = async function (
 
@@ -2208,7 +3276,6 @@
       GET ROUTE
     =========================================================*/
 
-
     SightingRouter.getRoute = function (
 
         intent
@@ -2228,7 +3295,6 @@
     /*=========================================================
       GET HANDLER NAME
     =========================================================*/
-
 
     SightingRouter.getHandlerName = function (
 
@@ -2258,9 +3324,39 @@
 
 
     /*=========================================================
-      GET REGISTERED INTENTS
+      GET CANONICAL INTENT FOR ALIAS
     =========================================================*/
 
+    SightingRouter.resolveCanonicalIntent = function (
+
+        intent
+
+    ) {
+
+        const route =
+
+            SightingRouter
+                .resolveRoute(
+
+                    intent
+
+                );
+
+
+        return (
+
+            route?.intent ||
+
+            null
+
+        );
+
+    };
+
+
+    /*=========================================================
+      GET REGISTERED INTENTS
+    =========================================================*/
 
     SightingRouter.getRegisteredIntents = function () {
 
@@ -2322,7 +3418,6 @@
       GET ROUTES
     =========================================================*/
 
-
     SightingRouter.getRoutes = function () {
 
         SightingRouter.init();
@@ -2352,6 +3447,10 @@
 
                             entry[1].intent,
 
+                        alias:
+
+                            entry[1].alias,
+
                         handler:
 
                             entry[1].handler
@@ -2368,21 +3467,6 @@
     /*=========================================================
       VALIDATE ROUTES
     =========================================================*/
-
-
-    /*
-     * Very useful during development.
-     *
-     * It checks whether every registered route has an
-     * actual SightingQuery handler.
-     *
-     * IMPORTANT:
-     *
-     * This does NOT execute any query.
-     * No Firestore writes.
-     * No sighting changes.
-     */
-
 
     SightingRouter.validateRoutes = function () {
 
@@ -2481,7 +3565,6 @@
       GET MISSING HANDLERS
     =========================================================*/
 
-
     SightingRouter.getMissingHandlers = function () {
 
         return SightingRouter
@@ -2511,9 +3594,146 @@
 
 
     /*=========================================================
-      GET STATUS
+      VALIDATE CURRENT CONSTANTS
     =========================================================*/
 
+    /*
+     * Shows whether every current
+     * SightingConstants.INTENTS value resolves.
+     */
+
+    SightingRouter.validateConstants = function () {
+
+        SightingRouter.init();
+
+
+        const intents =
+
+            SightingConstants.INTENTS ||
+
+            {};
+
+
+        return Object.entries(
+
+            intents
+
+        ).map(
+
+            function (
+
+                entry
+
+            ) {
+
+                const constantName =
+
+                    entry[0];
+
+
+                const intentValue =
+
+                    entry[1];
+
+
+                const route =
+
+                    SightingRouter
+                        .resolveRoute(
+
+                            intentValue
+
+                        );
+
+
+                const handler =
+
+                    route
+
+                        ? SightingRouter
+                            .resolveHandler(
+
+                                route
+
+                            )
+
+                        : null;
+
+
+                return {
+
+                    constant:
+
+                        constantName,
+
+                    intent:
+
+                        intentValue,
+
+                    registered:
+
+                        !!route,
+
+                    canonicalIntent:
+
+                        route?.intent ||
+
+                        null,
+
+                    handler:
+
+                        route?.handler ||
+
+                        null,
+
+                    handlerAvailable:
+
+                        !!handler
+
+                };
+
+            }
+
+        );
+
+    };
+
+
+    /*=========================================================
+      GET UNREGISTERED CONSTANTS
+    =========================================================*/
+
+    SightingRouter.getUnregisteredConstants = function () {
+
+        return SightingRouter
+            .validateConstants()
+
+            .filter(
+
+                function (
+
+                    item
+
+                ) {
+
+                    return (
+
+                        item.registered !==
+
+                        true
+
+                    );
+
+                }
+
+            );
+
+    };
+
+
+    /*=========================================================
+      GET STATUS
+    =========================================================*/
 
     SightingRouter.getStatus = function () {
 
@@ -2524,6 +3744,12 @@
 
             SightingRouter
                 .validateRoutes();
+
+
+        const constantsValidation =
+
+            SightingRouter
+                .validateConstants();
 
 
         const available =
@@ -2550,11 +3776,28 @@
             available;
 
 
+        const constantsRegistered =
+
+            constantsValidation.filter(
+
+                function (
+
+                    item
+
+                ) {
+
+                    return item.registered;
+
+                }
+
+            ).length;
+
+
         return {
 
             loaded:
 
-                true,
+                SightingRouter.loaded,
 
             initialized:
 
@@ -2584,9 +3827,28 @@
 
                 missing,
 
+            sightingConstants:
+
+                constantsValidation.length,
+
+            registeredConstants:
+
+                constantsRegistered,
+
+            unregisteredConstants:
+
+                constantsValidation.length -
+
+                constantsRegistered,
+
             lastIntent:
 
                 SightingRouter.lastIntent,
+
+            lastCanonicalIntent:
+
+                SightingRouter
+                    .lastCanonicalIntent,
 
             lastHandler:
 
@@ -2607,7 +3869,6 @@
       RESET
     =========================================================*/
 
-
     SightingRouter.reset = function () {
 
 
@@ -2615,6 +3876,11 @@
 
 
         SightingRouter.initialized =
+
+            false;
+
+
+        SightingRouter.loaded =
 
             false;
 
@@ -2630,6 +3896,11 @@
 
 
         SightingRouter.lastIntent =
+
+            null;
+
+
+        SightingRouter.lastCanonicalIntent =
 
             null;
 
@@ -2681,14 +3952,12 @@
       INITIALIZE
     =========================================================*/
 
-
     SightingRouter.init();
 
 
     /*=========================================================
       EXPORT
     =========================================================*/
-
 
     GG.SightingRouter =
 
@@ -2698,7 +3967,6 @@
     /*=========================================================
       MODULE LOADED
     =========================================================*/
-
 
     if (
 
