@@ -2259,7 +2259,130 @@ index = {
 
         };
 
+GISEntities.findCompartmentAtPoint =
+    function (
+        lat,
+        lon
+    ) {
 
+        lat =
+            Number(lat);
+
+        lon =
+            Number(lon);
+
+
+        if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon)
+        ) {
+
+            return null;
+
+        }
+
+
+        if (
+            !window.turf ||
+            typeof window.turf.booleanPointInPolygon !==
+                "function"
+        ) {
+
+            console.warn(
+                "⚠ Turf unavailable for compartment lookup"
+            );
+
+            return null;
+
+        }
+
+
+        const point =
+            window.turf.point([
+                lon,
+                lat
+            ]);
+
+
+        const features =
+            window.allCompartmentFeatures ||
+            [];
+
+
+        for (
+            const feature of features
+        ) {
+
+            if (
+                !feature ||
+                !feature.geometry
+            ) {
+
+                continue;
+
+            }
+
+
+            try {
+
+                if (
+                    window.turf.booleanPointInPolygon(
+                        point,
+                        feature
+                    )
+                ) {
+
+                    const p =
+                        feature.properties ||
+                        {};
+
+
+                    return {
+
+                        feature:
+                            feature,
+
+                        compartment:
+                            p.compartment ||
+                            p.name ||
+                            "",
+
+                        beat:
+                            p.beat ||
+                            "",
+
+                        range:
+                            p.range ||
+                            "",
+
+                        division:
+                            p.division ||
+                            "",
+
+                        properties:
+                            p
+
+                    };
+
+                }
+
+            }
+
+            catch (err) {
+
+                console.warn(
+                    "Compartment polygon test failed",
+                    err
+                );
+
+            }
+
+        }
+
+
+        return null;
+
+    };
     /*=====================================================
       RANGE NAMES
     =====================================================*/
