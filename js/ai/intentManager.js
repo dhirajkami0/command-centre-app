@@ -1540,6 +1540,10 @@ if (
  MERGE INTENT
 =========================================================*/
 
+/*=========================================================
+ MERGE INTENT
+=========================================================*/
+
 IntentManager.mergeIntent = function (
 
     localIntent,
@@ -1550,15 +1554,20 @@ IntentManager.mergeIntent = function (
 
     IntentManager.init();
 
-    /*----------------------------------
-      Invalid AI
-    ----------------------------------*/
+
+    /*=====================================================
+      INVALID AI RESULT
+
+      If AI returned nothing usable, preserve the complete
+      local detector result exactly as it is.
+    =====================================================*/
 
     if (
 
         !aiIntent ||
 
-        typeof aiIntent !== "object"
+        typeof aiIntent !==
+            "object"
 
     ) {
 
@@ -1566,28 +1575,40 @@ IntentManager.mergeIntent = function (
 
     }
 
-    /*----------------------------------
-      Normalize AI Intent Against
-      Business Registry
+
+    /*=====================================================
+      NORMALIZE AI INTENT AGAINST BUSINESS REGISTRY
 
       Examples:
-      STAFF_PROFILE   -> staffProfile
-      STAFF_CONTACT   -> staffContact
-      WHO_IS_ON_DUTY  -> whoIsOnDuty
 
-      Already canonical values remain
-      unchanged.
-    ----------------------------------*/
+      STAFF_PROFILE
+          ->
+      staffProfile
+
+      SIGHTING_ACTIVE
+          ->
+      sightingActive
+
+      WHO_IS_ON_DUTY
+          ->
+      whoIsOnDuty
+
+      Already canonical values remain unchanged.
+    =====================================================*/
 
     if (
 
-        typeof aiIntent.intent === "string"
+        typeof aiIntent.intent ===
+            "string"
 
     ) {
 
         const registry =
 
-            GG.BusinessRegistry || {};
+            GG.BusinessRegistry ||
+
+            {};
+
 
         const intents =
 
@@ -1601,15 +1622,27 @@ IntentManager.mergeIntent = function (
 
                 : [];
 
+
         const rawIntent =
 
-            aiIntent.intent.trim();
+            aiIntent.intent
+                .trim();
 
-        let canonicalIntent = null;
 
-        /*----------------------------------
-          1. Exact Canonical Match
-        ----------------------------------*/
+        let canonicalIntent =
+
+            null;
+
+
+        /*-------------------------------------------------
+          1. EXACT CANONICAL MATCH
+
+          Example:
+
+          staffProfile
+              ->
+          staffProfile
+        -------------------------------------------------*/
 
         canonicalIntent =
 
@@ -1623,17 +1656,27 @@ IntentManager.mergeIntent = function (
 
                     return (
 
-                        value === rawIntent
+                        value ===
+                        rawIntent
 
                     );
 
                 }
 
-            ) || null;
+            ) ||
 
-        /*----------------------------------
-          2. Case-Insensitive Match
-        ----------------------------------*/
+            null;
+
+
+        /*-------------------------------------------------
+          2. CASE-INSENSITIVE MATCH
+
+          Example:
+
+          STAFFPROFILE
+              ->
+          staffProfile
+        -------------------------------------------------*/
 
         if (
 
@@ -1657,35 +1700,54 @@ IntentManager.mergeIntent = function (
 
                                 value
 
-                            ).toLowerCase() ===
+                            )
+                                .toLowerCase() ===
 
-                            rawIntent.toLowerCase()
+                            rawIntent
+                                .toLowerCase()
 
                         );
 
                     }
 
-                ) || null;
+                ) ||
+
+                null;
 
         }
 
-        /*----------------------------------
+
+        /*-------------------------------------------------
           3. CONSTANT_STYLE -> camelCase
 
+          Examples:
+
           STAFF_PROFILE
-          ->
+              ->
           staffProfile
 
+          SIGHTING_ACTIVE
+              ->
+          sightingActive
+
           WHO_IS_ON_DUTY
-          ->
+              ->
           whoIsOnDuty
-        ----------------------------------*/
+
+          HEC_RISK_SUMMARY
+              ->
+          hecRiskSummary
+        -------------------------------------------------*/
 
         if (
 
             !canonicalIntent &&
 
-            rawIntent.includes("_")
+            rawIntent.includes(
+
+                "_"
+
+            )
 
         ) {
 
@@ -1695,9 +1757,17 @@ IntentManager.mergeIntent = function (
 
                     .toLowerCase()
 
-                    .split("_")
+                    .split(
 
-                    .filter(Boolean)
+                        "_"
+
+                    )
+
+                    .filter(
+
+                        Boolean
+
+                    )
 
                     .map(
 
@@ -1719,13 +1789,15 @@ IntentManager.mergeIntent = function (
 
                             }
 
+
                             return (
 
-                                part.charAt(0)
-
+                                part
+                                    .charAt(0)
                                     .toUpperCase() +
 
-                                part.slice(1)
+                                part
+                                    .slice(1)
 
                             );
 
@@ -1733,7 +1805,12 @@ IntentManager.mergeIntent = function (
 
                     )
 
-                    .join("");
+                    .join(
+
+                        ""
+
+                    );
+
 
             canonicalIntent =
 
@@ -1751,29 +1828,35 @@ IntentManager.mergeIntent = function (
 
                                 value
 
-                            ).toLowerCase() ===
+                            )
+                                .toLowerCase() ===
 
-                            converted.toLowerCase()
+                            converted
+                                .toLowerCase()
 
                         );
 
                     }
 
-                ) || null;
+                ) ||
+
+                null;
 
         }
 
-        /*----------------------------------
-          Apply Canonical Intent
+
+        /*-------------------------------------------------
+          4. APPLY CANONICAL INTENT
 
           IMPORTANT:
-          Only replace when the converted
-          intent actually exists in the
-          Business Registry.
 
-          This prevents breaking unknown
-          or future intents.
-        ----------------------------------*/
+          AI intent is changed ONLY when the resulting
+          intent actually exists inside BusinessRegistry.
+
+          This protects existing Staff, GIS, Wildlife,
+          Patrol, Legal, Analytics, Report and Sighting
+          pipelines from unknown AI-generated intents.
+        -------------------------------------------------*/
 
         if (
 
@@ -1793,13 +1876,16 @@ IntentManager.mergeIntent = function (
 
         }
 
-        /*----------------------------------
-          Debug
-        ----------------------------------*/
+
+        /*-------------------------------------------------
+          DEBUG
+        -------------------------------------------------*/
 
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            GG.Config
+                ?.DEBUG
+                ?.ENABLED
 
         ) {
 
@@ -1815,7 +1901,9 @@ IntentManager.mergeIntent = function (
 
                     canonical:
 
-                        canonicalIntent,
+                        canonicalIntent ||
+
+                        null,
 
                     final:
 
@@ -1829,15 +1917,23 @@ IntentManager.mergeIntent = function (
 
     }
 
-    /*----------------------------------
-      Invalid Local
-    ----------------------------------*/
+
+    /*=====================================================
+      INVALID LOCAL RESULT
+
+      If there was no valid local detector result,
+      return the AI result.
+
+      This supports queries where local detectors cannot
+      confidently determine an intent but Gemini can.
+    =====================================================*/
 
     if (
 
         !localIntent ||
 
-        typeof localIntent !== "object"
+        typeof localIntent !==
+            "object"
 
     ) {
 
@@ -1845,27 +1941,145 @@ IntentManager.mergeIntent = function (
 
     }
 
-    /*----------------------------------
-      Merge
-    ----------------------------------*/
+
+    /*=====================================================
+      MERGE LOCAL + AI
+    =====================================================*/
+
+
+    /*-----------------------------------------------------
+      ENTITIES
+
+      Local entities are preserved.
+
+      AI-extracted values override the same property only
+      when AI actually supplies that property.
+
+      Examples:
+
+      staff
+      sightingID
+      division
+      range
+      beat
+      compartment
+      village
+      status
+      risk
+      direction
+      species
+    -----------------------------------------------------*/
+
+    const mergedEntities = {
+
+        ...(localIntent.entities || {}),
+
+        ...(aiIntent.entities || {})
+
+    };
+
+
+    /*-----------------------------------------------------
+      PARAMETERS
+
+      Critical for business query execution.
+
+      Examples:
+
+      activeOnly
+      movedOnly
+      resolvedOnly
+      highRiskOnly
+      radiusKm
+      distanceKm
+      limit
+      status
+      risk
+      timeWindow
+      includeResolved
+      sort
+    -----------------------------------------------------*/
+
+    const mergedParameters = {
+
+        ...(localIntent.parameters || {}),
+
+        ...(aiIntent.parameters || {})
+
+    };
+
+
+    /*-----------------------------------------------------
+      CONTEXT
+
+      Critical for operational GreenGuard queries.
+
+      Examples:
+
+      current user
+      user jurisdiction
+      selected sighting
+      selected GIS area
+      HEC operational context
+      map selection
+      current duty
+      current GPS
+    -----------------------------------------------------*/
+
+    const mergedContext = {
+
+        ...(localIntent.context || {}),
+
+        ...(aiIntent.context || {})
+
+    };
+
+
+    /*=====================================================
+      FINAL CANONICAL INTENT
+    =====================================================*/
 
     const merged = {
 
+        /*-------------------------------------------------
+          SUCCESS
+        -------------------------------------------------*/
+
         success:
 
-            aiIntent.success !== false,
+            aiIntent.success !==
+            false,
+
+
+        /*-------------------------------------------------
+          SOURCE
+        -------------------------------------------------*/
 
         source:
 
             aiIntent.source ||
 
+            localIntent.source ||
+
             "ai",
+
+
+        /*-------------------------------------------------
+          PROVIDER
+        -------------------------------------------------*/
 
         provider:
 
             aiIntent.provider ||
 
+            localIntent.provider ||
+
             "AI",
+
+
+        /*-------------------------------------------------
+          QUERY
+        -------------------------------------------------*/
 
         query:
 
@@ -1875,6 +2089,25 @@ IntentManager.mergeIntent = function (
 
             "",
 
+
+        /*-------------------------------------------------
+          DOMAIN
+
+          AI wins when it provides a valid domain.
+
+          Examples:
+
+          staff
+          sighting
+          gis
+          wildlife
+          patrol
+          legal
+          analytics
+          report
+          fire
+        -------------------------------------------------*/
+
         domain:
 
             aiIntent.domain ||
@@ -1883,6 +2116,13 @@ IntentManager.mergeIntent = function (
 
             "unknown",
 
+
+        /*-------------------------------------------------
+          INTENT
+
+          AI wins after BusinessRegistry canonicalization.
+        -------------------------------------------------*/
+
         intent:
 
             aiIntent.intent ||
@@ -1890,6 +2130,11 @@ IntentManager.mergeIntent = function (
             localIntent.intent ||
 
             "unknown",
+
+
+        /*-------------------------------------------------
+          CONFIDENCE
+        -------------------------------------------------*/
 
         confidence:
 
@@ -1903,13 +2148,84 @@ IntentManager.mergeIntent = function (
 
             ),
 
-        entities: {
 
-            ...(localIntent.entities || {}),
+        /*-------------------------------------------------
+          ENTITIES
+        -------------------------------------------------*/
 
-            ...(aiIntent.entities || {})
+        entities:
 
-        },
+            mergedEntities,
+
+
+        /*-------------------------------------------------
+          PARAMETERS
+        -------------------------------------------------*/
+
+        parameters:
+
+            mergedParameters,
+
+
+        /*-------------------------------------------------
+          CONTEXT
+        -------------------------------------------------*/
+
+        context:
+
+            mergedContext,
+
+
+        /*-------------------------------------------------
+          WINNING DETECTOR
+        -------------------------------------------------*/
+
+        winningDetector:
+
+            aiIntent.winningDetector ||
+
+            localIntent.winningDetector ||
+
+            null,
+
+
+        /*-------------------------------------------------
+          LOCAL DETECTOR CONFIDENCE
+
+          Useful for diagnostics without changing routing.
+        -------------------------------------------------*/
+
+        localConfidence:
+
+            Number(
+
+                localIntent.confidence ??
+
+                0
+
+            ),
+
+
+        /*-------------------------------------------------
+          AI CONFIDENCE
+
+          Useful for debugging Gemini classification.
+        -------------------------------------------------*/
+
+        aiConfidence:
+
+            Number(
+
+                aiIntent.confidence ??
+
+                0
+
+            ),
+
+
+        /*-------------------------------------------------
+          RAW AI RESPONSE
+        -------------------------------------------------*/
 
         raw:
 
@@ -1918,6 +2234,96 @@ IntentManager.mergeIntent = function (
             null
 
     };
+
+
+    /*=====================================================
+      DEBUG
+    =====================================================*/
+
+    if (
+
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
+
+    ) {
+
+        console.log(
+
+            "🧠 INTENT MERGE RESULT:",
+
+            {
+
+                local: {
+
+                    domain:
+
+                        localIntent.domain,
+
+                    intent:
+
+                        localIntent.intent,
+
+                    confidence:
+
+                        localIntent.confidence
+
+                },
+
+                ai: {
+
+                    domain:
+
+                        aiIntent.domain,
+
+                    intent:
+
+                        aiIntent.intent,
+
+                    confidence:
+
+                        aiIntent.confidence
+
+                },
+
+                merged: {
+
+                    domain:
+
+                        merged.domain,
+
+                    intent:
+
+                        merged.intent,
+
+                    confidence:
+
+                        merged.confidence,
+
+                    entities:
+
+                        merged.entities,
+
+                    parameters:
+
+                        merged.parameters,
+
+                    context:
+
+                        merged.context
+
+                }
+
+            }
+
+        );
+
+    }
+
+
+    /*=====================================================
+      RETURN
+    =====================================================*/
 
     return merged;
 
