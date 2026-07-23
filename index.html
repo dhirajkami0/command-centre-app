@@ -32003,7 +32003,7 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
     btn.style.cursor = "pointer";
   }
 }
-function submitSightingForm(event){
+async function submitSightingForm(event){
 
   if(event){
     event.preventDefault();
@@ -32048,6 +32048,7 @@ function submitSightingForm(event){
 
     }
 
+
     // =====================================================
     // COUNTS
     // =====================================================
@@ -32062,6 +32063,7 @@ function submitSightingForm(event){
 
       ) || 0;
 
+
     const f =
 
       parseInt(
@@ -32071,6 +32073,7 @@ function submitSightingForm(event){
         ).value
 
       ) || 0;
+
 
     const uni =
 
@@ -32082,6 +32085,7 @@ function submitSightingForm(event){
 
       ) || 0;
 
+
     const calf =
 
       parseInt(
@@ -32092,12 +32096,14 @@ function submitSightingForm(event){
 
       ) || 0;
 
+
     const total =
 
       m +
       f +
       uni +
       calf;
+
 
     // =====================================================
     // GPS
@@ -32109,11 +32115,13 @@ function submitSightingForm(event){
         "f-lat"
       ).value;
 
+
     let lon =
 
       document.getElementById(
         "f-lon"
       ).value;
+
 
     try{
 
@@ -32137,12 +32145,14 @@ function submitSightingForm(event){
           )
           .toFixed(5);
 
+
         lon =
 
           Number(
             gps.lng
           )
           .toFixed(5);
+
 
         console.log(
           "📍 Using APK GPS:",
@@ -32163,8 +32173,10 @@ function submitSightingForm(event){
 
     }
 
+
     const location =
       lat + "," + lon;
+
 
     // =====================================================
     // TIME
@@ -32173,11 +32185,13 @@ function submitSightingForm(event){
     const now =
       new Date();
 
+
     const time =
 
       now.toLocaleTimeString(
         "en-IN"
       );
+
 
     // =====================================================
     // VALIDATION
@@ -32203,6 +32217,7 @@ function submitSightingForm(event){
 
     }
 
+
     const beat =
 
       String(
@@ -32212,6 +32227,7 @@ function submitSightingForm(event){
         ).value || ""
 
       ).trim();
+
 
     const forestBlock =
 
@@ -32223,6 +32239,7 @@ function submitSightingForm(event){
 
       ).trim();
 
+
     const compt =
 
       String(
@@ -32232,6 +32249,7 @@ function submitSightingForm(event){
         ).value || ""
 
       ).trim();
+
 
     if(
 
@@ -32252,6 +32270,7 @@ function submitSightingForm(event){
       return;
 
     }
+
 
     // =====================================================
     // SAVE NEW CUSTOM VILLAGE
@@ -32276,6 +32295,7 @@ function submitSightingForm(event){
 
           );
 
+
         if(
 
           compt &&
@@ -32290,6 +32310,7 @@ function submitSightingForm(event){
             compt
           );
 
+
           localStorage.setItem(
 
             "customVillages",
@@ -32299,6 +32320,7 @@ function submitSightingForm(event){
             )
 
           );
+
 
           console.log(
 
@@ -32323,6 +32345,7 @@ function submitSightingForm(event){
 
     }
 
+
     // =====================================================
     // TEAM LEADER
     // =====================================================
@@ -32333,11 +32356,13 @@ function submitSightingForm(event){
         "f-team"
       );
 
+
     let leaderValue =
 
       teamInput
       ? teamInput.value
       : "";
+
 
     if(
 
@@ -32354,6 +32379,7 @@ function submitSightingForm(event){
         "";
 
     }
+
 
     if(
 
@@ -32377,22 +32403,575 @@ function submitSightingForm(event){
 
     }
 
+
     leaderValue =
 
       String(
         leaderValue
       ).trim();
 
+
     console.log(
       "👤 FINAL LEADER:",
       leaderValue
     );
 
+
+    // =====================================================
+    // 🔥 NEW — RESOLVE SPATIAL CONTEXT
+    //
+    // Uses:
+    //
+    // 1. Existing compartment polygons
+    // 2. Existing Master GIS
+    // 3. Existing village_locations Firestore cache
+    //
+    // Failure of spatial resolution MUST NOT block
+    // sighting submission.
+    // =====================================================
+
+    let spatialCompartment =
+      null;
+
+    let nearestVillage =
+      null;
+
+    let masterGIS =
+      null;
+
+
+    // -----------------------------------------------------
+    // COMPARTMENT POLYGON
+    // -----------------------------------------------------
+
+    try{
+
+      if(
+
+        window.GreenGuardAI &&
+
+        window.GreenGuardAI.GISEntities &&
+
+        typeof window.GreenGuardAI
+          .GISEntities
+          .findCompartmentAtPoint ===
+          "function"
+
+      ){
+
+        spatialCompartment =
+
+          window.GreenGuardAI
+            .GISEntities
+            .findCompartmentAtPoint(
+
+              Number(lat),
+
+              Number(lon)
+
+            );
+
+
+        console.log(
+          "🗺️ Sighting compartment:",
+          spatialCompartment
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "⚠ Compartment resolution failed:",
+        err
+      );
+
+    }
+
+
+    // -----------------------------------------------------
+    // NEAREST NAMED VILLAGE LOCATION
+    // -----------------------------------------------------
+
+    try{
+
+      if(
+
+        typeof
+        window.findNearestVillageLocation ===
+        "function"
+
+      ){
+
+        nearestVillage =
+
+          await window
+            .findNearestVillageLocation(
+
+              Number(lat),
+
+              Number(lon)
+
+            );
+
+
+        console.log(
+          "🏘️ Nearest village location:",
+          nearestVillage
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "⚠ Nearest village resolution failed:",
+        err
+      );
+
+    }
+
+
+    // -----------------------------------------------------
+    // MASTER GIS
+    //
+    // Find the containing Master GIS feature.
+    //
+    // This gives us the canonical:
+    //
+    // SID
+    // DID
+    // RID
+    // BID
+    //
+    // No names or IDs are hard-coded.
+    // -----------------------------------------------------
+
+    try{
+
+      if(
+
+        window.turf &&
+
+        typeof window.turf
+          .booleanPointInPolygon ===
+          "function" &&
+
+        Array.isArray(
+          window.allGISFeatures
+        )
+
+      ){
+
+        const sightingPoint =
+
+          window.turf.point([
+
+            Number(lon),
+
+            Number(lat)
+
+          ]);
+
+
+        for(
+
+          const feature of
+          window.allGISFeatures
+
+        ){
+
+          if(
+
+            !feature ||
+
+            !feature.geometry
+
+          ){
+
+            continue;
+
+          }
+
+
+          try{
+
+            if(
+
+              window.turf
+                .booleanPointInPolygon(
+
+                  sightingPoint,
+
+                  feature
+
+                )
+
+            ){
+
+              masterGIS =
+                feature;
+
+              break;
+
+            }
+
+          }
+
+          catch(gisErr){
+
+            // Ignore malformed feature and continue.
+
+          }
+
+        }
+
+
+        console.log(
+          "🌐 Master GIS:",
+          masterGIS
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "⚠ Master GIS resolution failed:",
+        err
+      );
+
+    }
+
+
+    // =====================================================
+    // NORMALIZE SPATIAL VALUES
+    // =====================================================
+
+    const compartmentProperties =
+
+      spatialCompartment
+        ?.properties ||
+
+      spatialCompartment
+        ?.feature
+        ?.properties ||
+
+      {};
+
+
+    const masterProperties =
+
+      masterGIS
+        ?.properties ||
+
+      {};
+
+
+    // -----------------------------------------------------
+    // Canonical GIS hierarchy
+    //
+    // Prefer Master GIS.
+    // Fall back to compartment polygon.
+    // Finally preserve form Beat.
+    // -----------------------------------------------------
+
+    const resolvedDivision =
+
+      String(
+
+        masterProperties.division ||
+
+        spatialCompartment?.division ||
+
+        compartmentProperties.division ||
+
+        ""
+
+      ).trim();
+
+
+    const resolvedRange =
+
+      String(
+
+        masterProperties.range ||
+
+        spatialCompartment?.range ||
+
+        compartmentProperties.range ||
+
+        ""
+
+      ).trim();
+
+
+    const resolvedBeat =
+
+      String(
+
+        masterProperties.beat ||
+
+        spatialCompartment?.beat ||
+
+        compartmentProperties.beat ||
+
+        beat ||
+
+        ""
+
+      ).trim();
+
+
+    const resolvedCompartment =
+
+      String(
+
+        spatialCompartment?.compartment ||
+
+        compartmentProperties.compartment ||
+
+        compartmentProperties.name ||
+
+        ""
+
+      ).trim();
+
+
+    // -----------------------------------------------------
+    // Canonical GIS IDs
+    // -----------------------------------------------------
+
+    const resolvedSID =
+
+      String(
+        masterProperties.SID ||
+        ""
+      ).trim();
+
+
+    const resolvedDID =
+
+      String(
+        masterProperties.DID ||
+        ""
+      ).trim();
+
+
+    const resolvedRID =
+
+      String(
+        masterProperties.RID ||
+        ""
+      ).trim();
+
+
+    const resolvedBID =
+
+      String(
+        masterProperties.BID ||
+        ""
+      ).trim();
+
+
+    // -----------------------------------------------------
+    // Nearest named location
+    // -----------------------------------------------------
+
+    const nearestVillageName =
+
+      String(
+
+        nearestVillage?.village ||
+
+        nearestVillage?.name ||
+
+        ""
+
+      ).trim();
+
+
+    const nearestVillageDistance =
+
+      Number.isFinite(
+
+        Number(
+          nearestVillage?.distanceMeters
+        )
+
+      )
+
+        ? Number(
+            nearestVillage.distanceMeters
+          )
+
+        : null;
+
+
+    const nearestVillageDistanceKm =
+
+      Number.isFinite(
+
+        Number(
+          nearestVillage?.distanceKm
+        )
+
+      )
+
+        ? Number(
+            nearestVillage.distanceKm
+          )
+
+        : null;
+
+
+    const nearestVillageRisk =
+
+      String(
+
+        nearestVillage?.riskLevel ||
+
+        ""
+
+      ).trim();
+
+
+    const nearestVillageConflictHistory =
+
+      Number.isFinite(
+
+        Number(
+          nearestVillage?.conflictHistory
+        )
+
+      )
+
+        ? Number(
+            nearestVillage.conflictHistory
+          )
+
+        : 0;
+
+
+    const nearestVillageDocId =
+
+      String(
+
+        nearestVillage?.firestoreDocId ||
+
+        ""
+
+      ).trim();
+
+
+    // -----------------------------------------------------
+    // Human-readable popup location
+    // -----------------------------------------------------
+
+    let resolvedLocationText =
+      location;
+
+
+    if(
+      nearestVillageName
+    ){
+
+      resolvedLocationText +=
+
+        " near " +
+
+        nearestVillageName;
+
+
+      if(
+        nearestVillageDistance !==
+        null
+      ){
+
+        resolvedLocationText +=
+
+          " (" +
+
+          Math.round(
+            nearestVillageDistance
+          ) +
+
+          " m)";
+
+      }
+
+    }
+
+
+    console.table([
+
+      {
+
+        GPS:
+          location,
+
+        division:
+          resolvedDivision,
+
+        range:
+          resolvedRange,
+
+        beat:
+          resolvedBeat,
+
+        compartment:
+          resolvedCompartment,
+
+        SID:
+          resolvedSID,
+
+        DID:
+          resolvedDID,
+
+        RID:
+          resolvedRID,
+
+        BID:
+          resolvedBID,
+
+        nearestVillage:
+          nearestVillageName,
+
+        distanceMeters:
+          nearestVillageDistance,
+
+        risk:
+          nearestVillageRisk,
+
+        conflictHistory:
+          nearestVillageConflictHistory
+
+      }
+
+    ]);
+
+
     // =====================================================
     // PAYLOAD
+    //
+    // IMPORTANT:
+    //
+    // Existing fields are preserved.
+    //
+    // New spatial fields are ADDITIVE.
     // =====================================================
 
     const payload = {
+
+      // ---------------------------------------------------
+      // EXISTING
+      // ---------------------------------------------------
 
       sighting_id:
         sightingID,
@@ -32400,44 +32979,58 @@ function submitSightingForm(event){
       parent_id:
         "",
 
+
       beat:
         beat,
+
 
       forest_block:
         forestBlock,
 
+
       compt:
         compt,
+
 
       time:
         time,
 
+
       m:
         Number(m),
+
 
       f:
         Number(f),
 
+
       unidentified:
         Number(uni),
+
 
       calf:
         Number(calf),
 
+
       total_seen:
         total,
+
 
       anticipated:
         "",
 
+
       depredation:
         "",
+
 
       involved:
         "",
 
+
       driving:
         "",
+
 
       remarks:
 
@@ -32447,25 +33040,32 @@ function submitSightingForm(event){
         )
         .value,
 
+
       leader:
         leaderValue,
+
 
       phone:
 
         window.userProfile
         ?.phone || "",
 
+
       staff:
         "",
+
 
       lat:
         Number(lat),
 
+
       lon:
         Number(lon),
 
+
       location:
         location,
+
 
       direction:
 
@@ -32473,14 +33073,81 @@ function submitSightingForm(event){
         .getElementById(
           "f-dir"
         )
-        .value
+        .value,
+
+
+      // ===================================================
+      // 🔥 NEW — CANONICAL GIS CONTEXT
+      // ===================================================
+
+      gis_division:
+        resolvedDivision,
+
+      gis_range:
+        resolvedRange,
+
+      gis_beat:
+        resolvedBeat,
+
+      gis_compartment:
+        resolvedCompartment,
+
+
+      // ---------------------------------------------------
+      // GIS IDs
+      // ---------------------------------------------------
+
+      SID:
+        resolvedSID,
+
+      DID:
+        resolvedDID,
+
+      RID:
+        resolvedRID,
+
+      BID:
+        resolvedBID,
+
+
+      // ===================================================
+      // 🔥 NEW — NEAREST NAMED LOCATION
+      // ===================================================
+
+      nearest_village:
+        nearestVillageName,
+
+      nearest_village_distance_m:
+        nearestVillageDistance,
+
+      nearest_village_distance_km:
+        nearestVillageDistanceKm,
+
+      nearest_village_risk:
+        nearestVillageRisk,
+
+      nearest_village_conflict_history:
+        nearestVillageConflictHistory,
+
+      nearest_village_doc_id:
+        nearestVillageDocId,
+
+
+      // ---------------------------------------------------
+      // Popup-ready text
+      // ---------------------------------------------------
+
+      resolved_location:
+        resolvedLocationText
 
     };
+
 
     console.log(
       "📤 Payload:",
       payload
     );
+
 
     // =====================================================
     // FILE
@@ -32492,14 +33159,18 @@ function submitSightingForm(event){
         "f-photo"
       );
 
+
     const file =
 
       fileInput
       ? fileInput.files[0]
       : null;
 
+
     // =====================================================
     // SUBMIT
+    //
+    // EXISTING BACKEND FLOW PRESERVED
     // =====================================================
 
     function submitToServer(
@@ -32514,17 +33185,21 @@ function submitSightingForm(event){
           finalPayload
         );
 
+
         alert(
           "📴 Saved offline. Will sync automatically."
         );
+
 
         setSubmitLoading(
           false
         );
 
+
         return;
 
       }
+
 
       callBackend(
 
@@ -32540,9 +33215,11 @@ function submitSightingForm(event){
           "✅ Submitted to Command Centre"
         );
 
+
         setSubmitLoading(
           false
         );
+
 
         if(
           window.isEditingSighting
@@ -32560,13 +33237,14 @@ function submitSightingForm(event){
 
         }
 
+
         window.isEditingSighting =
           false;
+
 
         if(
 
           typeof closeSightingForm ===
-
           "function"
 
         ){
@@ -32575,11 +33253,13 @@ function submitSightingForm(event){
 
         }
 
+
         const form =
 
           document.getElementById(
             "elephantForm"
           );
+
 
         if(form){
 
@@ -32596,13 +33276,16 @@ function submitSightingForm(event){
           err
         );
 
+
         saveSightingOffline(
           finalPayload
         );
 
+
         alert(
           "⚠ Network issue → saved offline"
         );
+
 
         setSubmitLoading(
           false
@@ -32611,6 +33294,7 @@ function submitSightingForm(event){
       });
 
     }
+
 
     // =====================================================
     // PHOTO
@@ -32621,17 +33305,40 @@ function submitSightingForm(event){
       const reader =
         new FileReader();
 
+
       reader.onloadend =
       function(){
 
         payload.photo =
           reader.result;
 
+
         submitToServer(
           payload
         );
 
       };
+
+
+      reader.onerror =
+      function(err){
+
+        console.error(
+          "❌ Photo read failed:",
+          err
+        );
+
+
+        payload.photo =
+          "";
+
+
+        submitToServer(
+          payload
+        );
+
+      };
+
 
       reader.readAsDataURL(
         file
@@ -32641,7 +33348,9 @@ function submitSightingForm(event){
 
     else{
 
-      payload.photo = "";
+      payload.photo =
+        "";
+
 
       submitToServer(
         payload
@@ -32658,10 +33367,12 @@ function submitSightingForm(event){
       e
     );
 
+
     alert(
       "❌ Form error: " +
       e.message
     );
+
 
     setSubmitLoading(
       false
@@ -32669,7 +33380,7 @@ function submitSightingForm(event){
 
   }
 
-}    /* ============================================================
+}   /* ============================================================
    🔥 OFFLINE SAVE
 ============================================================ */
 function saveSightingOffline(data){
