@@ -653,412 +653,1146 @@ Core.init = async function () {
 
     };
 
-Core.callAI = async function (request) {
+Core.callAI = async function (
+
+    request
+
+) {
+
     busy = true;
 
     try {
+
+        /*=================================================
+          CACHE
+        =================================================*/
+
         const cached =
+
             await Core.getCachedResponse(
+
                 request
+
             );
 
-        if (cached) {
+
+        if (
+
+            cached
+
+        ) {
+
             console.group(
+
                 "⚡ CORE CACHE"
+
             );
 
+
             console.log(
+
                 "Cache Hit"
+
             );
 
+
             console.log(
+
                 "Cache Key:",
+
                 cacheKey(
+
                     request
+
                 )
+
             );
 
+
             console.log(
+
                 "Intent:",
-                request.detectedIntent?.intent ||
+
+                request.detectedIntent
+                    ?.intent ||
+
                 request.intent
+
             );
 
+
             console.log(
+
                 "Request:",
+
                 request
+
             );
 
+
             console.log(
+
                 "Cached Response:",
+
                 cached
+
             );
+
 
             console.groupEnd();
+
 
             lastResponse =
+
                 Config.clone(
+
                     cached
+
                 );
 
+
             return cached;
+
         }
 
-        /*------------------------------------------
-          LOCAL AI CONTROLLER
-        ------------------------------------------*/
+
+        /*=================================================
+          LOCAL CONTROLLER
+        =================================================*/
 
         const Controller =
-            window.GreenGuardAI.Controller;
+
+            window.GreenGuardAI
+                .Controller;
+
 
         if (
+
             !Controller ||
+
             typeof Controller.ask !==
-            "function"
+                "function"
+
         ) {
+
             throw new Error(
+
                 "Controller unavailable."
+
             );
+
         }
 
+
         const localResponse =
+
             await Controller.ask(
+
                 request
+
             );
 
-        console.log(
-            "Pipeline Selected:",
-            localResponse?.local
-                ? "LOCAL"
-                : "CLOUD"
-        );
+
+        /*=================================================
+          LOCAL PIPELINE DIAGNOSTICS
+        =================================================*/
 
         console.group(
+
             "🟢 LOCAL PIPELINE"
+
         );
+
+
         console.log(
+
             "Controller Response:",
+
             localResponse
+
         );
+
+
         console.log(
+
             "Success:",
-            localResponse?.success
+
+            localResponse
+                ?.success
+
         );
+
+
         console.log(
+
             "Local:",
-            localResponse?.local
+
+            localResponse
+                ?.local
+
         );
+
+
         console.log(
+
             "Intent:",
-            localResponse?.intent
+
+            localResponse
+                ?.intent
+
         );
+
+
         console.log(
+
             "Domain:",
-            localResponse?.domain
+
+            localResponse
+                ?.domain
+
         );
+
+
+        console.log(
+
+            "Detected Intent:",
+
+            request.detectedIntent
+
+        );
+
+
+        console.log(
+
+            "Detected Source:",
+
+            request.detectedIntent
+                ?.source
+
+        );
+
+
+        console.log(
+
+            "Detected Provider:",
+
+            request.detectedIntent
+                ?.provider
+
+        );
+
+
         console.groupEnd();
 
-        /*------------------------------------------
+
+        /*=================================================
+          DETERMINE WHETHER LOCAL PIPELINE SUCCEEDED
+        =================================================*/
+
+        const localSucceeded =
+
+            !!(
+
+                localResponse &&
+
+                localResponse.success ===
+                    true &&
+
+                localResponse.local !==
+                    false
+
+            );
+
+
+        console.log(
+
+            "Pipeline Selected:",
+
+            localSucceeded
+                ? "LOCAL"
+                : "CLOUD"
+
+        );
+
+
+        /*=================================================
           LOCAL SUCCESS
-        ------------------------------------------*/
+        =================================================*/
 
         if (
-            localResponse &&
-            localResponse.success &&
-            localResponse.local !== false
+
+            localSucceeded
+
         ) {
-            /*----------------------------------
-            /*----------------------------------
-  Normalize Local Response
-----------------------------------*/
 
-localResponse.answer =
+            /*---------------------------------------------
+              NORMALIZE LOCAL RESPONSE
+            ---------------------------------------------*/
 
-    localResponse.markdown ||
+            localResponse.answer =
 
-    localResponse.html ||
+                localResponse.markdown ||
 
-    localResponse.message ||
+                localResponse.html ||
 
-    "";
+                localResponse.answer ||
 
-localResponse.cached =
+                localResponse.message ||
 
-    false;
+                "";
 
-localResponse.timestamp =
 
-    Date.now();
+            localResponse.cached =
 
-localResponse.requestId =
+                false;
 
-    request.id;
 
-localResponse.raw =
+            localResponse.timestamp =
 
-    localResponse.raw ||
+                Date.now();
 
-    localResponse;
 
-localResponse.intent =
+            localResponse.requestId =
 
-    request.detectedIntent?.intent ||
+                request.id;
 
-    localResponse.intent;
 
-localResponse.domain =
+            /*---------------------------------------------
+              IMPORTANT
 
-    request.detectedIntent?.domain ||
+              Do NOT assign:
 
-    localResponse.domain;
+              localResponse.raw =
+                  localResponse;
 
-localResponse.detectedIntent =
+              That creates a self-reference:
 
-    request.detectedIntent;
+              response.raw === response
 
-            /*----------------------------------
-              Cache
-            ----------------------------------*/
+              which can break cloning, JSON.stringify(),
+              caching and structuredClone().
+
+              Preserve existing raw data only.
+            ---------------------------------------------*/
+
+            localResponse.raw =
+
+                localResponse.raw ??
+
+                null;
+
+
+            /*---------------------------------------------
+              CANONICAL INTENT
+            ---------------------------------------------*/
+
+            localResponse.intent =
+
+                request.detectedIntent
+                    ?.intent ||
+
+                localResponse.intent ||
+
+                request.intent ||
+
+                null;
+
+
+            localResponse.domain =
+
+                request.detectedIntent
+                    ?.domain ||
+
+                localResponse.domain ||
+
+                request.domain ||
+
+                null;
+
+
+            localResponse.confidence =
+
+                Number(
+
+                    request.detectedIntent
+                        ?.confidence ??
+
+                    localResponse.confidence ??
+
+                    request.confidence ??
+
+                    0
+
+                );
+
+
+            /*---------------------------------------------
+              DETECTION METADATA
+            ---------------------------------------------*/
+
+            localResponse.detectedIntent =
+
+                request.detectedIntent ||
+
+                localResponse.detectedIntent ||
+
+                null;
+
+
+            localResponse.source =
+
+                request.detectedIntent
+                    ?.source ||
+
+                localResponse.source ||
+
+                "local";
+
+
+            localResponse.provider =
+
+                request.detectedIntent
+                    ?.provider ||
+
+                localResponse.provider ||
+
+                "local";
+
+
+            /*---------------------------------------------
+              EXPLICIT LOCAL FLAG
+            ---------------------------------------------*/
+
+            localResponse.local =
+
+                true;
+
+
+            /*=================================================
+              CACHE LOCAL RESPONSE
+            =================================================*/
 
             await Core.setCachedResponse(
+
                 request,
+
                 localResponse
+
             );
+
+
+            /*=================================================
+              FINAL LOCAL RESPONSE DEBUG
+            =================================================*/
 
             console.group(
+
                 "🏁 FINAL LOCAL RESPONSE"
+
             );
+
+
             console.log(
+
                 "Intent:",
+
                 localResponse.intent
+
             );
+
+
             console.log(
+
                 "Domain:",
+
                 localResponse.domain
+
             );
+
+
             console.log(
+
+                "Source:",
+
+                localResponse.source
+
+            );
+
+
+            console.log(
+
+                "Provider:",
+
+                localResponse.provider
+
+            );
+
+
+            console.log(
+
+                "Confidence:",
+
+                localResponse.confidence
+
+            );
+
+
+            console.log(
+
                 "Cards:",
-                localResponse.cards?.length || 0
+
+                localResponse.cards
+                    ?.length ||
+
+                0
+
             );
+
+
             console.log(
+
                 "Sections:",
-                localResponse.sections?.length || 0
+
+                localResponse.sections
+                    ?.length ||
+
+                0
+
             );
-console.log(
-    "Markdown:",
-    !!localResponse.markdown
-);
 
-console.log(
-    "HTML:",
-    !!localResponse.html
-);
 
-console.log(
-    "Formatter:",
-    localResponse.module
-);
             console.log(
-                "Cached:",
-                localResponse.cached
+
+                "Markdown:",
+
+                !!localResponse.markdown
+
             );
+
+
+            console.log(
+
+                "HTML:",
+
+                !!localResponse.html
+
+            );
+
+
+            console.log(
+
+                "Formatter:",
+
+                localResponse.module
+
+            );
+
+
+            console.log(
+
+                "Cached:",
+
+                localResponse.cached
+
+            );
+
+
             console.groupEnd();
+
 
             responseCount++;
 
+
             lastResponse =
+
                 Config.clone(
+
                     localResponse
+
                 );
 
+
+            /*=================================================
+              PIPELINE SUMMARY
+            =================================================*/
+
             console.group(
+
                 "🏆 PIPELINE SUMMARY"
+
             );
+
+
             console.table({
+
                 Query:
+
                     request.query,
+
+
                 Intent:
+
                     localResponse.intent,
+
+
                 Domain:
+
                     localResponse.domain,
+
+
                 Source:
-                    "LOCAL",
+
+                    String(
+
+                        localResponse.source ||
+
+                        "local"
+
+                    ).toUpperCase(),
+
+
+                Provider:
+
+                    localResponse.provider,
+
+
+                Confidence:
+
+                    localResponse.confidence,
+
+
                 Module:
+
                     localResponse.module,
-                
-                
+
+
                 Cards:
-                    localResponse.cards?.length || 0,
+
+                    localResponse.cards
+                        ?.length ||
+
+                    0,
+
+
                 Sections:
-                    localResponse.sections?.length || 0,
+
+                    localResponse.sections
+                        ?.length ||
+
+                    0,
+
+
                 Formatter:
-    localResponse.module,
 
-Markdown:
-    !!localResponse.markdown,
+                    localResponse.module,
 
-HTML:
-    !!localResponse.html
+
+                Markdown:
+
+                    !!localResponse.markdown,
+
+
+                HTML:
+
+                    !!localResponse.html
+
             });
+
+
             console.groupEnd();
 
+
             return localResponse;
+
         }
 
-        /*------------------------------------------
-          CLOUD AI
-        ------------------------------------------*/
 
-        console.group(
-            "☁ CLOUD FALLBACK"
-        );
-        console.log(
-            "Detected Intent:",
-            request.detectedIntent
-        );
-        console.log(
-            "Request:",
-            request
-        );
-        console.groupEnd();
+        /*=================================================
+          WHY LOCAL PIPELINE WAS REJECTED
+        =================================================*/
 
-        let result =
-            await window.callAI({
-                query:
-                    request.query,
+        console.warn(
+
+            "⚠ LOCAL PIPELINE REJECTED",
+
+            {
+
+                responseExists:
+
+                    !!localResponse,
+
+                success:
+
+                    localResponse
+                        ?.success,
+
+                local:
+
+                    localResponse
+                        ?.local,
+
                 intent:
-                    request.detectedIntent ||
-                    request.intent,
-                toolResults: {}
-            });
 
-        if (
-            result.tool_calls &&
-            result.tool_calls.length
-        ) {
-            const toolResults = {};
+                    localResponse
+                        ?.intent,
 
-            for (
-                const tool of
-                result.tool_calls
-            ) {
-                try {
-                    toolResults[
-                        tool.name
-                    ] =
-                        await GreenGuardAI.Tools.execute(
-                            tool.name,
-                            tool.arguments || {}
-                        );
-                }
-                catch (e) {
-                    toolResults[
-                        tool.name
-                    ] = {
-                        error:
-                            e.message
-                    };
-                }
+                domain:
+
+                    localResponse
+                        ?.domain,
+
+                message:
+
+                    localResponse
+                        ?.message,
+
+                error:
+
+                    localResponse
+                        ?.error
+
             }
 
+        );
+
+
+        /*=================================================
+          CLOUD AI FALLBACK
+        =================================================*/
+
+        console.group(
+
+            "☁ CLOUD FALLBACK"
+
+        );
+
+
+        console.log(
+
+            "Detected Intent:",
+
+            request.detectedIntent
+
+        );
+
+
+        console.log(
+
+            "Detected Intent Source:",
+
+            request.detectedIntent
+                ?.source
+
+        );
+
+
+        console.log(
+
+            "Detected Intent Provider:",
+
+            request.detectedIntent
+                ?.provider
+
+        );
+
+
+        console.log(
+
+            "Request:",
+
+            request
+
+        );
+
+
+        console.groupEnd();
+
+
+        let result =
+
+            await window.callAI({
+
+                query:
+
+                    request.query,
+
+                intent:
+
+                    request.detectedIntent ||
+
+                    request.intent,
+
+                toolResults:
+
+                    {}
+
+            });
+
+
+        /*=================================================
+          TOOL CALLS
+        =================================================*/
+
+        if (
+
+            result
+                ?.tool_calls &&
+
+            result.tool_calls.length
+
+        ) {
+
+            const toolResults = {};
+
+
+            for (
+
+                const tool of
+                    result.tool_calls
+
+            ) {
+
+                try {
+
+                    toolResults[
+
+                        tool.name
+
+                    ] =
+
+                        await GreenGuardAI
+                            .Tools
+                            .execute(
+
+                                tool.name,
+
+                                tool.arguments ||
+                                {}
+
+                            );
+
+                }
+
+                catch (
+
+                    e
+
+                ) {
+
+                    toolResults[
+
+                        tool.name
+
+                    ] = {
+
+                        error:
+
+                            e.message
+
+                    };
+
+                }
+
+            }
+
+
             result =
+
                 await window.callAI({
+
                     query:
+
                         request.query,
+
                     intent:
+
                         request.detectedIntent ||
+
                         request.intent,
+
                     toolResults
+
                 });
+
         }
 
+
+        /*=================================================
+          CLOUD RESPONSE
+        =================================================*/
+
         const response = {
-            success: true,
+
+            success:
+
+                true,
+
+
             timestamp:
+
                 Date.now(),
+
+
             requestId:
+
                 request.id,
+
+
             intent:
-                request.detectedIntent?.intent ||
+
+                request.detectedIntent
+                    ?.intent ||
+
                 request.intent,
+
+
             domain:
-                request.detectedIntent?.domain ||
+
+                request.detectedIntent
+                    ?.domain ||
+
                 request.domain,
+
+
             confidence:
-                request.detectedIntent?.confidence ||
-                request.confidence ||
-                0,
-            detectedIntent:
-                request.detectedIntent ||
-                null,
-            answer:
-                result.reply ||
-                result.answer ||
-                result.content ||
-                result.message ||
-                (
-                    typeof result === "string"
-                        ? result
-                        : JSON.stringify(
-                            result,
-                            null,
-                            2
-                        )
+
+                Number(
+
+                    request.detectedIntent
+                        ?.confidence ??
+
+                    request.confidence ??
+
+                    0
+
                 ),
+
+
+            detectedIntent:
+
+                request.detectedIntent ||
+
+                null,
+
+
+            /*
+             * IMPORTANT:
+             *
+             * This is the RESPONSE execution source,
+             * not the intent-classification source.
+             *
+             * The intent may have been detected locally,
+             * while answer generation fell back to cloud.
+             */
+
+            source:
+
+                "cloud",
+
+
+            provider:
+
+                result
+                    ?.provider ||
+
+                "AI",
+
+
+            intentSource:
+
+                request.detectedIntent
+                    ?.source ||
+
+                null,
+
+
+            intentProvider:
+
+                request.detectedIntent
+                    ?.provider ||
+
+                null,
+
+
+            answer:
+
+                result
+                    ?.reply ||
+
+                result
+                    ?.answer ||
+
+                result
+                    ?.content ||
+
+                result
+                    ?.message ||
+
+                (
+
+                    typeof result ===
+                        "string"
+
+                        ? result
+
+                        : JSON.stringify(
+
+                            result,
+
+                            null,
+
+                            2
+
+                        )
+
+                ),
+
+
             raw:
+
                 result,
+
+
             cached:
+
                 false,
+
+
             local:
+
                 false
+
         };
 
+
+        /*=================================================
+          CACHE CLOUD RESPONSE
+        =================================================*/
+
         await Core.setCachedResponse(
+
             request,
+
             response
+
         );
+
 
         responseCount++;
 
+
         lastResponse =
+
             Config.clone(
+
                 response
+
             );
 
+
+        /*=================================================
+          CLOUD PIPELINE SUMMARY
+        =================================================*/
+
         console.group(
+
             "🏆 PIPELINE SUMMARY"
+
         );
+
+
         console.table({
+
             Query:
+
                 request.query,
+
+
             Intent:
+
                 response.intent,
+
+
             Domain:
+
                 response.domain,
+
+
             Source:
+
                 "CLOUD",
+
+
+            IntentSource:
+
+                String(
+
+                    response.intentSource ||
+
+                    "unknown"
+
+                ).toUpperCase(),
+
+
+            IntentProvider:
+
+                response.intentProvider,
+
+
             Confidence:
+
                 response.confidence
+
         });
+
+
         console.groupEnd();
 
+
         return response;
+
     }
-    catch (err) {
-        lastError = err;
+
+    catch (
+
+        err
+
+    ) {
+
+        lastError =
+
+            err;
+
+
         Config.error(
+
             "Core.callAI",
+
             err
+
         );
+
+
         return {
-            success: false,
+
+            success:
+
+                false,
+
             error:
+
                 err.message
+
         };
+
     }
+
     finally {
+
         busy = false;
+
     }
+
 };
 
 /*----------------------------------------------------------
