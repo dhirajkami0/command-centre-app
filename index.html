@@ -5245,22 +5245,26 @@ async function startApp(){   // 🔥 ASYNC
     window.pendingGridSync =
       window.pendingGridSync || {};
 
-    // ======================================================
-    // ⚡ PHASE 1 → IMMEDIATE UI
-    // ======================================================
+// ======================================================
+// ⚡ PHASE 1 → IMMEDIATE UI
+// ======================================================
 
-    requestAnimationFrame(() => {
+requestAnimationFrame(() => {
 
-      try {
+  /*
+   * IMPORTANT:
+   *
+   * Sightings are Firestore-backed.
+   *
+   * Do NOT call loadSightings() here.
+   * Firebase may not yet have created the
+   * default app / Firestore instance.
+   *
+   * Sighting loading is started below only
+   * after Firebase is confirmed ready.
+   */
 
-        loadSightings();
-
-      } catch(e){
-
-        console.warn(e);
-      }
-
-    });
+});
 
     // ======================================================
     // 🔥 DUTY INIT
@@ -5561,26 +5565,102 @@ async function startApp(){   // 🔥 ASYNC
     },1200);
 scheduleVillageDataLoad();
 
-    // ======================================================
-    // 🚀 FIREBASE WAIT LOOP
-    // ======================================================
+// ======================================================
+// 🚀 FIREBASE WAIT LOOP
+// ======================================================
 
-    setTimeout(() => {
+setTimeout(() => {
 
-      const dutyWait = setInterval(() => {
+  const firebaseWait = setInterval(async () => {
 
-        if(
+    /*--------------------------------------------------
+      FIREBASE MUST BE READY
+    --------------------------------------------------*/
 
-          !window.firebaseReady ||
+    if(
 
-          !window.fb ||
+      !window.firebaseReady ||
 
-          !window.db
+      !window.fb ||
 
-        ){
+      !window.db
 
-          return;
-        }
+    ){
+
+      return;
+    }
+
+
+    /*--------------------------------------------------
+      STOP FIREBASE WAIT LOOP
+
+      IMPORTANT:
+      Stop immediately so async work cannot cause
+      duplicate sighting loads.
+    --------------------------------------------------*/
+
+    clearInterval(
+      firebaseWait
+    );
+
+
+    console.log(
+      "🔥 Firebase ready"
+    );
+
+
+    /*--------------------------------------------------
+      LOAD FIRESTORE-BACKED SIGHTINGS
+
+      Firebase / Firestore now exists.
+
+      This replaces the old premature
+      loadSightings() call from Phase 1.
+    --------------------------------------------------*/
+
+    try {
+
+      if(
+
+        typeof loadSightings ===
+        "function"
+
+      ){
+
+        console.log(
+          "🐘 Loading sightings..."
+        );
+
+        await loadSightings();
+
+        console.log(
+          "✅ Sightings loaded"
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ loadSightings failed after Firebase ready:",
+        err
+      );
+
+    }
+
+
+    /*--------------------------------------------------
+      DUTY UI
+
+      User profile may initialize independently from
+      Firebase, so do not make sighting loading depend
+      on userProfile.
+    --------------------------------------------------*/
+
+    const dutyProfileWait =
+      setInterval(() => {
 
         if(
 
@@ -5593,23 +5673,63 @@ scheduleVillageDataLoad();
           return;
         }
 
-        clearInterval(dutyWait);
 
-        console.log(
-          "🔥 Firebase ready"
+        clearInterval(
+          dutyProfileWait
         );
+
+
+        /*----------------------------------------------
+          FIRST DUTY CHECK
+        ----------------------------------------------*/
 
         setTimeout(() => {
 
-          autoShowEndDuty();
+          try {
+
+            autoShowEndDuty();
+
+          }
+
+          catch(err){
+
+            console.warn(
+              "⚠ autoShowEndDuty failed:",
+              err
+            );
+
+          }
 
         },1000);
 
+
+        /*----------------------------------------------
+          SECOND DUTY CHECK
+        ----------------------------------------------*/
+
         setTimeout(() => {
 
-          autoShowEndDuty();
+          try {
+
+            autoShowEndDuty();
+
+          }
+
+          catch(err){
+
+            console.warn(
+              "⚠ autoShowEndDuty failed:",
+              err
+            );
+
+          }
 
         },3000);
+
+
+        /*----------------------------------------------
+          PERIODIC DUTY CHECK
+        ----------------------------------------------*/
 
         setInterval(() => {
 
@@ -5621,14 +5741,30 @@ scheduleVillageDataLoad();
 
           ){
 
-            autoShowEndDuty();
+            try {
+
+              autoShowEndDuty();
+
+            }
+
+            catch(err){
+
+              console.warn(
+                "⚠ autoShowEndDuty failed:",
+                err
+              );
+
+            }
+
           }
 
         },15000);
 
       },800);
 
-    },1000);
+  },300);
+
+},1000);
     // ======================================================
     // ✅ APP READY
     // ======================================================
