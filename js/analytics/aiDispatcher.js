@@ -370,7 +370,47 @@ AIDispatcher.dispatch = async function (
                 );
 
             break;
+        case "wildlife":
 
+            response =
+
+                await AIDispatcher.dispatchWildlife(
+
+                    request
+
+                );
+
+            break;
+
+
+        /*==================================
+          ELEPHANT SIGHTING / HEC
+        ==================================*/
+
+        case "sighting":
+
+            response =
+
+                await AIDispatcher.dispatchSighting(
+
+                    request
+
+                );
+
+            break;
+
+
+        case "fire":
+
+            response =
+
+                await AIDispatcher.dispatchFire(
+
+                    request
+
+                );
+
+            break;
         case "fire":
 
             response =
@@ -1235,7 +1275,640 @@ AIDispatcher.dispatchWildlife = async function (
 
     return response;
 
-};/*=========================================================
+};
+ 
+/*=========================================================
+ DISPATCH SIGHTING
+=========================================================*/
+
+/**
+ * Dispatch Elephant Sighting / HEC requests.
+ *
+ * Pipeline:
+ *
+ * AIDispatcher
+ *      ↓
+ * SightingRouter
+ *      ↓
+ * SightingQuery
+ *      ↓
+ * SightingFormatter
+ *
+ * IMPORTANT:
+ *
+ * SightingRouter owns:
+ *
+ * - intent → query-handler routing
+ * - query execution
+ * - formatter invocation
+ *
+ * Therefore AIDispatcher MUST NOT:
+ *
+ * - query sightings directly
+ * - read Firestore directly
+ * - calculate HEC analytics
+ * - calculate mitigation
+ * - format the response again
+ */
+
+AIDispatcher.dispatchSighting = async function (
+
+    request
+
+) {
+
+    /*----------------------------------
+      Validate
+    ----------------------------------*/
+
+    if (
+
+        !request ||
+
+        typeof request !==
+
+        "object"
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "sighting",
+
+            message:
+
+                "Invalid sighting request."
+
+        };
+
+    }
+
+
+    /*----------------------------------
+      Normalize Request Containers
+    ----------------------------------*/
+
+    request.entities =
+
+        request.entities ||
+
+        {};
+
+
+    request.parameters =
+
+        request.parameters ||
+
+        {};
+
+
+    request.context =
+
+        request.context ||
+
+        {};
+
+
+    /*----------------------------------
+      Preserve Domain
+    ----------------------------------*/
+
+    request.domain =
+
+        request.domain ||
+
+        "sighting";
+
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    if (
+
+        GG.Config?.DEBUG?.ENABLED
+
+    ) {
+
+        console.group(
+
+            "🐘 SIGHTING DISPATCH"
+
+        );
+
+        console.log(
+
+            "Request:",
+
+            request
+
+        );
+
+        console.log(
+
+            "Intent:",
+
+            request.intent
+
+        );
+
+        console.log(
+
+            "Entities:",
+
+            request.entities
+
+        );
+
+        console.log(
+
+            "Parameters:",
+
+            request.parameters
+
+        );
+
+        console.log(
+
+            "Context:",
+
+            request.context
+
+        );
+
+    }
+
+
+    /*----------------------------------
+      Resolve Router Lazily
+    ----------------------------------*/
+
+    const SightingRouter =
+
+        GG.SightingRouter;
+
+
+    if (
+
+        !SightingRouter ||
+
+        typeof SightingRouter.route !==
+
+        "function"
+
+    ) {
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.error(
+
+                "❌ SightingRouter unavailable."
+
+            );
+
+            console.groupEnd();
+
+        }
+
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "sighting",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                "SightingRouter unavailable."
+
+        };
+
+    }
+
+
+    /*----------------------------------
+      Ensure Router Initialized
+    ----------------------------------*/
+
+    if (
+
+        typeof SightingRouter.initialize ===
+
+        "function" &&
+
+        SightingRouter.loaded !==
+
+        true
+
+    ) {
+
+        try {
+
+            SightingRouter.initialize();
+
+        }
+
+        catch (
+
+            error
+
+        ) {
+
+            console.error(
+
+                "❌ SightingRouter initialization failed:",
+
+                error
+
+            );
+
+        }
+
+    }
+
+
+    /*----------------------------------
+      Optional Route Registration
+    ----------------------------------*/
+
+    if (
+
+        typeof SightingRouter.registerRoutes ===
+
+        "function"
+
+    ) {
+
+        try {
+
+            SightingRouter.registerRoutes();
+
+        }
+
+        catch (
+
+            error
+
+        ) {
+
+            console.error(
+
+                "❌ SightingRouter route registration failed:",
+
+                error
+
+            );
+
+        }
+
+    }
+
+
+    /*----------------------------------
+      Route
+    ----------------------------------*/
+
+    let response;
+
+
+    try {
+
+        response =
+
+            await SightingRouter.route(
+
+                request
+
+            );
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            "❌ SightingRouter Exception:",
+
+            error
+
+        );
+
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.groupEnd();
+
+        }
+
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "sighting",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                error?.message ||
+
+                "Sighting router execution failed.",
+
+            errors: [
+
+                error?.message ||
+
+                "Unknown sighting router error."
+
+            ]
+
+        };
+
+    }
+
+
+    /*----------------------------------
+      Validate Router Response
+    ----------------------------------*/
+
+    if (
+
+        !response ||
+
+        typeof response !==
+
+        "object"
+
+    ) {
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.error(
+
+                "❌ Invalid SightingRouter response:",
+
+                response
+
+            );
+
+            console.groupEnd();
+
+        }
+
+
+        return {
+
+            success:
+
+                false,
+
+            domain:
+
+                "sighting",
+
+            intent:
+
+                request.intent ||
+
+                null,
+
+            message:
+
+                "SightingRouter returned an invalid response."
+
+        };
+
+    }
+
+
+    /*----------------------------------
+      Router Failure
+    ----------------------------------*/
+
+    if (
+
+        response.success !==
+
+        true
+
+    ) {
+
+        console.error(
+
+            "❌ Sighting Router Failed",
+
+            response
+
+        );
+
+
+        if (
+
+            GG.Config?.DEBUG?.ENABLED
+
+        ) {
+
+            console.groupEnd();
+
+        }
+
+
+        return response;
+
+    }
+
+
+    /*----------------------------------
+      Preserve Canonical Request
+    ----------------------------------*/
+
+    response.request =
+
+        response.request ||
+
+        request;
+
+
+    response.domain =
+
+        response.domain ||
+
+        "sighting";
+
+
+    response.intent =
+
+        response.intent ||
+
+        request.intent ||
+
+        null;
+
+
+    response.entities =
+
+        response.entities ||
+
+        request.entities ||
+
+        {};
+
+
+    response.parameters =
+
+        response.parameters ||
+
+        request.parameters ||
+
+        {};
+
+
+    response.context =
+
+        response.context ||
+
+        request.context ||
+
+        {};
+
+
+    /*----------------------------------
+      Success Debug
+    ----------------------------------*/
+
+    if (
+
+        GG.Config?.DEBUG?.ENABLED
+
+    ) {
+
+        console.log(
+
+            "✅ Sighting Router Success"
+
+        );
+
+        console.log(
+
+            "Domain:",
+
+            response.domain
+
+        );
+
+        console.log(
+
+            "Intent:",
+
+            response.intent
+
+        );
+
+        console.log(
+
+            "Formatter:",
+
+            response.metadata
+                ?.formatter ||
+
+            null
+
+        );
+
+        console.log(
+
+            "Has Markdown:",
+
+            !!response.markdown
+
+        );
+
+        console.log(
+
+            "Data:",
+
+            response.data
+
+        );
+
+        console.log(
+
+            "Response:",
+
+            response
+
+        );
+
+        console.groupEnd();
+
+    }
+
+
+    /*----------------------------------
+      IMPORTANT
+
+      SightingRouter already owns the
+      formatter stage.
+
+      DO NOT call:
+
+      GG.SightingFormatter.format()
+
+      here again.
+
+      Otherwise the response would be
+      formatted twice.
+    ----------------------------------*/
+
+
+    return response;
+
+};
+ 
+ 
+ 
+ /*=========================================================
  DISPATCH FIRE
 =========================================================*/
 
