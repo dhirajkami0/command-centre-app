@@ -7907,7 +7907,2259 @@
 
         };
 
+    /*=========================================================
+      ROUTER / MODULE COMPATIBILITY BRIDGE
 
+      PURPOSE
+      ---------------------------------------------------------
+      1. Keep all existing SightingQuery implementations intact.
+      2. Add router-facing handlers that are currently missing.
+      3. Mirror every GG.query* function onto GG.SightingQuery.
+      4. Keep this module READ ONLY.
+      5. Provide router contract validation.
+    =========================================================*/
+
+
+    /*=========================================================
+      REQUEST CLONER
+    =========================================================*/
+
+    SightingQuery.cloneRequest =
+        function (
+            request = {},
+            parameterPatch = {},
+            entityPatch = {}
+        ) {
+
+            return {
+
+                ...request,
+
+                parameters: {
+
+                    ...(
+                        request.parameters ||
+                        {}
+                    ),
+
+                    ...parameterPatch
+
+                },
+
+                entities: {
+
+                    ...(
+                        request.entities ||
+                        {}
+                    ),
+
+                    ...entityPatch
+
+                }
+
+            };
+
+        };
+
+
+    /*=========================================================
+      STAFF / REPORTER RESOLVER
+    =========================================================*/
+
+    SightingQuery.getReportedBy =
+        function (
+            sighting
+        ) {
+
+            return String(
+
+                sighting?.reported_by ??
+
+                sighting?.reportedBy ??
+
+                sighting?.reporter ??
+
+                sighting?.staff_name ??
+
+                sighting?.staffName ??
+
+                sighting?.created_by ??
+
+                sighting?.createdBy ??
+
+                ""
+
+            ).trim();
+
+        };
+
+
+    /*=========================================================
+      REQUEST COORDINATE RESOLVER
+    =========================================================*/
+
+    SightingQuery.getRequestCoordinates =
+        function (
+            request = {}
+        ) {
+
+            const parameters =
+
+                request.parameters ||
+                {};
+
+
+            const entities =
+
+                request.entities ||
+                {};
+
+
+            const candidates = [
+
+                [
+
+                    parameters.lat ??
+                    parameters.latitude,
+
+                    parameters.lon ??
+                    parameters.lng ??
+                    parameters.longitude
+
+                ],
+
+                [
+
+                    entities.lat ??
+                    entities.latitude,
+
+                    entities.lon ??
+                    entities.lng ??
+                    entities.longitude
+
+                ],
+
+                [
+
+                    request.lat ??
+                    request.latitude,
+
+                    request.lon ??
+                    request.lng ??
+                    request.longitude
+
+                ],
+
+                [
+
+                    window.currentLatitude,
+
+                    window.currentLongitude
+
+                ],
+
+                [
+
+                    window.userLat,
+
+                    window.userLng
+
+                ],
+
+                [
+
+                    window.lastKnownLat,
+
+                    window.lastKnownLng
+
+                ]
+
+            ];
+
+
+            for (
+
+                const pair
+                of candidates
+
+            ) {
+
+                const lat =
+
+                    Number(
+                        pair[0]
+                    );
+
+
+                const lon =
+
+                    Number(
+                        pair[1]
+                    );
+
+
+                if (
+
+                    Number.isFinite(
+                        lat
+                    ) &&
+
+                    Number.isFinite(
+                        lon
+                    )
+
+                ) {
+
+                    return {
+
+                        lat,
+
+                        lon
+
+                    };
+
+                }
+
+            }
+
+
+            return null;
+
+        };
+
+
+    /*=========================================================
+      DISTANCE CALCULATOR
+    =========================================================*/
+
+    SightingQuery.distanceMeters =
+        function (
+
+            lat1,
+
+            lon1,
+
+            lat2,
+
+            lon2
+
+        ) {
+
+            const values = [
+
+                lat1,
+
+                lon1,
+
+                lat2,
+
+                lon2
+
+            ];
+
+
+            if (
+
+                !values.every(
+                    Number.isFinite
+                )
+
+            ) {
+
+                return Infinity;
+
+            }
+
+
+            const R =
+
+                6371000;
+
+
+            const toRad =
+
+                function (
+                    value
+                ) {
+
+                    return (
+
+                        value *
+
+                        Math.PI /
+
+                        180
+
+                    );
+
+                };
+
+
+            const dLat =
+
+                toRad(
+                    lat2 - lat1
+                );
+
+
+            const dLon =
+
+                toRad(
+                    lon2 - lon1
+                );
+
+
+            const a =
+
+                Math.sin(
+                    dLat / 2
+                ) ** 2 +
+
+                Math.cos(
+                    toRad(
+                        lat1
+                    )
+                ) *
+
+                Math.cos(
+                    toRad(
+                        lat2
+                    )
+                ) *
+
+                Math.sin(
+                    dLon / 2
+                ) ** 2;
+
+
+            return (
+
+                2 *
+
+                R *
+
+                Math.atan2(
+
+                    Math.sqrt(
+                        a
+                    ),
+
+                    Math.sqrt(
+                        1 - a
+                    )
+
+                )
+
+            );
+
+        };
+
+
+    /*=========================================================
+      PERIOD QUERY HELPER
+    =========================================================*/
+
+    SightingQuery.queryByPeriod =
+        async function (
+
+            request,
+
+            period
+
+        ) {
+
+            return GG.querySightingSearch(
+
+                SightingQuery.cloneRequest(
+
+                    request,
+
+                    {
+
+                        period
+
+                    }
+
+                )
+
+            );
+
+        };
+
+
+    /*=========================================================
+      GENERIC GROUPED ANALYTICS
+    =========================================================*/
+
+    SightingQuery.queryGroupedAnalytics =
+        async function (
+
+            request,
+
+            resolver,
+
+            type
+
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return {
+
+                        type,
+
+
+                        summary:
+
+                            SightingQuery
+                                .buildSummary(
+                                    sightings
+                                ),
+
+
+                        groups:
+
+                            SightingQuery
+                                .groupBy(
+
+                                    sightings,
+
+                                    resolver
+
+                                ),
+
+
+                        sightings,
+
+
+                        count:
+
+                            sightings.length
+
+                    };
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      LATEST SIGHTING
+    =========================================================*/
+
+    GG.queryLatestSighting =
+
+        GG.queryLatestSighting ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return (
+
+                        sightings[0] ||
+
+                        null
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      DIVISION SIGHTINGS
+    =========================================================*/
+
+    GG.queryDivisionSightings =
+
+        GG.queryDivisionSightings ||
+
+        async function (
+            request
+        ) {
+
+            return GG.querySightingSearch(
+                request
+            );
+
+        };
+
+
+    /*=========================================================
+      HERD ALIAS
+    =========================================================*/
+
+    GG.queryHerdSightings =
+
+        GG.queryHerdSightings ||
+
+        GG.querySightingHerd;
+
+
+    /*=========================================================
+      HERD SIZE
+    =========================================================*/
+
+    GG.querySightingHerdSize =
+
+        GG.querySightingHerdSize ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    const rows =
+
+                        sightings.map(
+
+                            function (
+                                sighting
+                            ) {
+
+                                return {
+
+                                    sightingId:
+
+                                        SightingQuery
+                                            .getSightingID(
+                                                sighting
+                                            ),
+
+
+                                    herdSize:
+
+                                        SightingQuery
+                                            .getHerdSize(
+                                                sighting
+                                            ),
+
+
+                                    status:
+
+                                        SightingQuery
+                                            .getStatus(
+                                                sighting
+                                            ),
+
+
+                                    village:
+
+                                        SightingQuery
+                                            .getNearestVillage(
+                                                sighting
+                                            ) ||
+
+                                        SightingQuery
+                                            .getVillage(
+                                                sighting
+                                            ),
+
+
+                                    sighting
+
+                                };
+
+                            }
+
+                        );
+
+
+                    return {
+
+                        sightings:
+                            rows,
+
+
+                        totalElephants:
+
+                            rows.reduce(
+
+                                function (
+
+                                    total,
+
+                                    row
+
+                                ) {
+
+                                    return (
+
+                                        total +
+
+                                        (
+                                            Number(
+                                                row.herdSize
+                                            ) ||
+                                            0
+                                        )
+
+                                    );
+
+                                },
+
+                                0
+
+                            ),
+
+
+                        count:
+
+                            rows.length
+
+                    };
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      SIGHTING LOCATION
+    =========================================================*/
+
+    GG.querySightingLocation =
+
+        GG.querySightingLocation ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    const sighting =
+
+                        sightings[0] ||
+
+                        null;
+
+
+                    if (
+                        !sighting
+                    ) {
+
+                        return null;
+
+                    }
+
+
+                    return {
+
+                        sightingId:
+
+                            SightingQuery
+                                .getSightingID(
+                                    sighting
+                                ),
+
+
+                        latitude:
+
+                            SightingQuery
+                                .getLatitude(
+                                    sighting
+                                ),
+
+
+                        longitude:
+
+                            SightingQuery
+                                .getLongitude(
+                                    sighting
+                                ),
+
+
+                        division:
+
+                            SightingQuery
+                                .getDivision(
+                                    sighting
+                                ),
+
+
+                        range:
+
+                            SightingQuery
+                                .getRange(
+                                    sighting
+                                ),
+
+
+                        beat:
+
+                            SightingQuery
+                                .getBeat(
+                                    sighting
+                                ),
+
+
+                        compartment:
+
+                            SightingQuery
+                                .getCompartment(
+                                    sighting
+                                ),
+
+
+                        village:
+
+                            SightingQuery
+                                .getVillage(
+                                    sighting
+                                ),
+
+
+                        nearestVillage:
+
+                            SightingQuery
+                                .getNearestVillage(
+                                    sighting
+                                ),
+
+
+                        status:
+
+                            SightingQuery
+                                .getStatus(
+                                    sighting
+                                ),
+
+
+                        sighting
+
+                    };
+
+                }
+
+            );
+
+        };
+
+
+    GG.querySightingLastLocation =
+
+        GG.querySightingLastLocation ||
+
+        GG.querySightingLocation;
+
+
+    /*=========================================================
+      MOVEMENT DIRECTION
+    =========================================================*/
+
+    GG.querySightingMovementDirection =
+
+        GG.querySightingMovementDirection ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return sightings.map(
+
+                        function (
+                            sighting
+                        ) {
+
+                            return {
+
+                                sightingId:
+
+                                    SightingQuery
+                                        .getSightingID(
+                                            sighting
+                                        ),
+
+
+                                direction:
+
+                                    SightingQuery
+                                        .getDirection(
+                                            sighting
+                                        ),
+
+
+                                status:
+
+                                    SightingQuery
+                                        .getStatus(
+                                            sighting
+                                        ),
+
+
+                                timestamp:
+
+                                    SightingQuery
+                                        .getSightingTimestamp(
+                                            sighting
+                                        ),
+
+
+                                sighting
+
+                            };
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      SIGHTINGS NEAR LOCATION
+    =========================================================*/
+
+    GG.querySightingsNearLocation =
+
+        GG.querySightingsNearLocation ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const origin =
+
+                        SightingQuery
+                            .getRequestCoordinates(
+                                request
+                            );
+
+
+                    if (
+                        !origin
+                    ) {
+
+                        return {
+
+                            origin:
+                                null,
+
+
+                            nearest:
+                                null,
+
+
+                            sightings:
+                                [],
+
+
+                            count:
+                                0,
+
+
+                            error:
+                                "LOCATION_UNAVAILABLE"
+
+                        };
+
+                    }
+
+
+                    const requestedRadius =
+
+                        Number(
+
+                            request
+                                ?.parameters
+                                ?.radiusMeters ??
+
+                            request
+                                ?.parameters
+                                ?.distanceMeters ??
+
+                            request
+                                ?.parameters
+                                ?.radius
+
+                        );
+
+
+                    const radiusMeters =
+
+                        Number.isFinite(
+                            requestedRadius
+                        )
+
+                            ? requestedRadius
+
+                            : 10000;
+
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    const rows =
+
+                        sightings
+
+                            .map(
+
+                                function (
+                                    sighting
+                                ) {
+
+                                    const lat =
+
+                                        SightingQuery
+                                            .getLatitude(
+                                                sighting
+                                            );
+
+
+                                    const lon =
+
+                                        SightingQuery
+                                            .getLongitude(
+                                                sighting
+                                            );
+
+
+                                    const distanceMeters =
+
+                                        SightingQuery
+                                            .distanceMeters(
+
+                                                origin.lat,
+
+                                                origin.lon,
+
+                                                lat,
+
+                                                lon
+
+                                            );
+
+
+                                    return {
+
+                                        sighting,
+
+                                        distanceMeters
+
+                                    };
+
+                                }
+
+                            )
+
+                            .filter(
+
+                                function (
+                                    row
+                                ) {
+
+                                    return (
+
+                                        Number.isFinite(
+                                            row.distanceMeters
+                                        ) &&
+
+                                        row.distanceMeters <=
+                                            radiusMeters
+
+                                    );
+
+                                }
+
+                            )
+
+                            .sort(
+
+                                function (
+
+                                    a,
+
+                                    b
+
+                                ) {
+
+                                    return (
+
+                                        a.distanceMeters -
+
+                                        b.distanceMeters
+
+                                    );
+
+                                }
+
+                            );
+
+
+                    return {
+
+                        origin,
+
+
+                        radiusMeters,
+
+
+                        nearest:
+
+                            rows[0] ||
+
+                            null,
+
+
+                        sightings:
+
+                            rows,
+
+
+                        count:
+
+                            rows.length
+
+                    };
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      SIGHTINGS NEAR VILLAGE
+    =========================================================*/
+
+    GG.querySightingsNearVillage =
+
+        GG.querySightingsNearVillage ||
+
+        async function (
+            request
+        ) {
+
+            return GG.queryVillageSightings(
+                request
+            );
+
+        };
+
+
+    /*=========================================================
+      DRIVEN SIGHTINGS
+    =========================================================*/
+
+    GG.queryDrivenSightings =
+
+        GG.queryDrivenSightings ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return sightings.filter(
+
+                        function (
+                            sighting
+                        ) {
+
+                            const status =
+
+                                SightingQuery
+                                    .getStatus(
+                                        sighting
+                                    );
+
+
+                            return (
+
+                                status.startsWith(
+                                    "DRIVEN"
+                                ) ||
+
+                                status ===
+                                    "DRIVING"
+
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      SIGHTING STATUS
+    =========================================================*/
+
+    GG.querySightingStatus =
+
+        GG.querySightingStatus ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return sightings.map(
+
+                        function (
+                            sighting
+                        ) {
+
+                            return {
+
+                                sightingId:
+
+                                    SightingQuery
+                                        .getSightingID(
+                                            sighting
+                                        ),
+
+
+                                status:
+
+                                    SightingQuery
+                                        .getStatus(
+                                            sighting
+                                        ),
+
+
+                                active:
+
+                                    SightingQuery
+                                        .isActive(
+                                            sighting
+                                        ),
+
+
+                                timestamp:
+
+                                    SightingQuery
+                                        .getSightingTimestamp(
+                                            sighting
+                                        ),
+
+
+                                sighting
+
+                            };
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      SIGHTINGS BY STAFF
+    =========================================================*/
+
+    GG.querySightingsByStaff =
+
+        GG.querySightingsByStaff ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const staff =
+
+                        SightingQuery
+                            .getFilterValue(
+
+                                request,
+
+                                [
+
+                                    "staff",
+
+                                    "staffName",
+
+                                    "reportedBy",
+
+                                    "name"
+
+                                ]
+
+                            );
+
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    if (
+                        !staff
+                    ) {
+
+                        return sightings;
+
+                    }
+
+
+                    return sightings.filter(
+
+                        function (
+                            sighting
+                        ) {
+
+                            return SightingQuery.matches(
+
+                                SightingQuery
+                                    .getReportedBy(
+                                        sighting
+                                    ),
+
+                                staff
+
+                            );
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        };
+
+
+    /*=========================================================
+      TIME PERIOD QUERIES
+    =========================================================*/
+
+    GG.querySightingsToday =
+
+        GG.querySightingsToday ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryByPeriod(
+
+                request,
+
+                "TODAY"
+
+            );
+
+        };
+
+
+    GG.querySightingsYesterday =
+
+        GG.querySightingsYesterday ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryByPeriod(
+
+                request,
+
+                "YESTERDAY"
+
+            );
+
+        };
+
+
+    GG.querySightingsThisWeek =
+
+        GG.querySightingsThisWeek ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryByPeriod(
+
+                request,
+
+                "WEEK"
+
+            );
+
+        };
+
+
+    GG.querySightingsThisMonth =
+
+        GG.querySightingsThisMonth ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryByPeriod(
+
+                request,
+
+                "MONTH"
+
+            );
+
+        };
+
+
+    GG.querySightingsFinancialYear =
+
+        GG.querySightingsFinancialYear ||
+
+        async function (
+            request
+        ) {
+
+            const now =
+
+                new Date();
+
+
+            const startYear =
+
+                now.getMonth() >= 3
+
+                    ? now.getFullYear()
+
+                    : now.getFullYear() - 1;
+
+
+            const startDate =
+
+                new Date(
+
+                    startYear,
+
+                    3,
+
+                    1,
+
+                    0,
+
+                    0,
+
+                    0,
+
+                    0
+
+                ).getTime();
+
+
+            const endDate =
+
+                new Date(
+
+                    startYear + 1,
+
+                    2,
+
+                    31,
+
+                    23,
+
+                    59,
+
+                    59,
+
+                    999
+
+                ).getTime();
+
+
+            return GG.querySightingSearch(
+
+                SightingQuery.cloneRequest(
+
+                    request,
+
+                    {
+
+                        startDate,
+
+                        endDate
+
+                    }
+
+                )
+
+            );
+
+        };
+
+
+    GG.querySightingTimeAnalytics =
+
+        GG.querySightingTimeAnalytics ||
+
+        GG.querySightingTemporalAnalytics;
+
+
+    /*=========================================================
+      DIVISION ANALYTICS
+    =========================================================*/
+
+    GG.querySightingDivisionAnalytics =
+
+        GG.querySightingDivisionAnalytics ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryGroupedAnalytics(
+
+                request,
+
+                SightingQuery.getDivision,
+
+                "division"
+
+            );
+
+        };
+
+
+    /*=========================================================
+      STAFF ANALYTICS
+    =========================================================*/
+
+    GG.querySightingStaffAnalytics =
+
+        GG.querySightingStaffAnalytics ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryGroupedAnalytics(
+
+                request,
+
+                SightingQuery.getReportedBy,
+
+                "staff"
+
+            );
+
+        };
+
+
+    /*=========================================================
+      TEAM ANALYTICS
+    =========================================================*/
+
+    GG.querySightingTeamAnalytics =
+
+        GG.querySightingTeamAnalytics ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.queryGroupedAnalytics(
+
+                request,
+
+                function (
+                    sighting
+                ) {
+
+                    return (
+
+                        sighting?.team ??
+
+                        sighting?.team_name ??
+
+                        sighting?.teamName ??
+
+                        "UNKNOWN"
+
+                    );
+
+                },
+
+                "team"
+
+            );
+
+        };
+
+
+    /*=========================================================
+      HEC COMPATIBILITY
+    =========================================================*/
+
+    GG.queryHECSummary =
+
+        GG.queryHECSummary ||
+
+        GG.querySightingAnalytics;
+
+
+    GG.queryHECHistory =
+
+        GG.queryHECHistory ||
+
+        GG.querySightingTemporalAnalytics;
+
+
+    GG.queryHECTrend =
+
+        GG.queryHECTrend ||
+
+        GG.querySightingTrend;
+
+
+    GG.queryHECVillageRisk =
+
+        GG.queryHECVillageRisk ||
+
+        GG.queryHECRisk;
+
+
+    GG.queryHECRangeRisk =
+
+        GG.queryHECRangeRisk ||
+
+        GG.queryHECRisk;
+
+
+    GG.queryHECBeatRisk =
+
+        GG.queryHECBeatRisk ||
+
+        GG.queryHECRisk;
+
+
+    GG.queryHECCompartmentRisk =
+
+        GG.queryHECCompartmentRisk ||
+
+        GG.queryHECRisk;
+
+
+    GG.queryHECMitigationPriority =
+
+        GG.queryHECMitigationPriority ||
+
+        GG.queryHECMitigation;
+
+
+    GG.queryHECPrevention =
+
+        GG.queryHECPrevention ||
+
+        GG.queryHECMitigation;
+
+
+    /*=========================================================
+      DEPREDATION COMPATIBILITY
+    =========================================================*/
+
+    GG.queryDepredationSummary =
+
+        GG.queryDepredationSummary ||
+
+        GG.queryDepredationAnalytics;
+
+
+    GG.queryDepredationHistory =
+
+        GG.queryDepredationHistory ||
+
+        GG.queryDepredationAnalytics;
+
+
+    GG.queryDepredationHotspots =
+
+        GG.queryDepredationHotspots ||
+
+        GG.queryDepredationAnalytics;
+
+
+    GG.queryDepredationRisk =
+
+        GG.queryDepredationRisk ||
+
+        GG.queryDepredationAnalytics;
+
+
+    GG.queryDepredationTrend =
+
+        GG.queryDepredationTrend ||
+
+        GG.queryDepredationAnalytics;
+
+
+    /*=========================================================
+      OPERATIONAL SUMMARY
+    =========================================================*/
+
+    GG.querySightingOperationalSummary =
+
+        GG.querySightingOperationalSummary ||
+
+        GG.querySightingSituation ||
+
+        GG.querySightingAnalytics;
+
+
+    /*=========================================================
+      NEAREST STAFF
+
+      NOTE:
+      True nearest-staff ranking requires StaffHydrator /
+      live_staff coordinates. We deliberately do not fabricate
+      spatial results here.
+    =========================================================*/
+
+    GG.querySightingNearestStaff =
+
+        GG.querySightingNearestStaff ||
+
+        async function (
+            request
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+                    request
+                ) {
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+                                request
+                            );
+
+
+                    return {
+
+                        sighting:
+
+                            sightings[0] ||
+
+                            null,
+
+
+                        currentUser:
+
+                            SightingQuery
+                                .getCurrentUser(),
+
+
+                        jurisdiction:
+
+                            SightingQuery
+                                .getCurrentJurisdiction(),
+
+
+                        staff:
+                            [],
+
+
+                        note:
+
+                            "Nearest staff requires live staff GPS data from the staff layer."
+
+                    };
+
+                }
+
+            );
+
+        };
+
+
+    GG.querySightingResponseStaff =
+
+        GG.querySightingResponseStaff ||
+
+        GG.querySightingNearestStaff;
+
+
+    /*=========================================================
+      DECISION SUPPORT COMPATIBILITY
+    =========================================================*/
+
+    GG.querySightingFrequency =
+
+        GG.querySightingFrequency ||
+
+        GG.querySightingTemporalAnalytics;
+
+
+    GG.querySightingRiskAnalytics =
+
+        GG.querySightingRiskAnalytics ||
+
+        GG.queryHECRisk;
+
+
+    GG.querySightingConflictAnalytics =
+
+        GG.querySightingConflictAnalytics ||
+
+        GG.querySightingAnalytics;
+
+
+    GG.querySightingRiskAssessment =
+
+        GG.querySightingRiskAssessment ||
+
+        GG.queryHECRisk;
+
+
+    GG.querySightingPriorityAnalysis =
+
+        GG.querySightingPriorityAnalysis ||
+
+        GG.queryHECPriority ||
+
+        GG.querySightingResponsePriority;
+
+
+    GG.querySightingDecisionSupport =
+
+        GG.querySightingDecisionSupport ||
+
+        GG.querySightingEarlyWarning ||
+
+        GG.querySightingSituation ||
+
+        GG.querySightingAnalytics;
+
+
+    /*=========================================================
+      ADDITIONAL CANONICAL ALIASES
+    =========================================================*/
+
+    GG.querySightingConflictSummary =
+
+        GG.querySightingConflictSummary ||
+
+        GG.queryHECSummary;
+
+
+    GG.querySightingHighRisk =
+
+        GG.querySightingHighRisk ||
+
+        GG.queryHECRisk;
+
+
+    GG.querySightingVillageRisk =
+
+        GG.querySightingVillageRisk ||
+
+        GG.queryHECVillageRisk;
+
+
+    GG.querySightingConflictHistory =
+
+        GG.querySightingConflictHistory ||
+
+        GG.queryHECHistory;
+
+
+    GG.querySightingThreatenedVillages =
+
+        GG.querySightingThreatenedVillages ||
+
+        GG.queryHECVillageRisk;
+
+
+    /*=========================================================
+      MIRROR PUBLIC QUERY HANDLERS INTO SightingQuery
+
+      BEFORE THIS BRIDGE:
+
+      GreenGuardAI.querySightingCount
+          -> function
+
+      GreenGuardAI.SightingQuery.querySightingCount
+          -> undefined
+
+
+      AFTER THIS BRIDGE:
+
+      BOTH point to a function.
+    =========================================================*/
+
+    Object.keys(
+        GG
+    )
+
+        .filter(
+
+            function (
+                key
+            ) {
+
+                return (
+
+                    key.startsWith(
+                        "query"
+                    ) &&
+
+                    typeof GG[key] ===
+                        "function"
+
+                );
+
+            }
+
+        )
+
+        .forEach(
+
+            function (
+                key
+            ) {
+
+                SightingQuery[key] =
+
+                    GG[key];
+
+            }
+
+        );
+
+
+    /*=========================================================
+      ROUTER CONTRACT
+    =========================================================*/
+
+    SightingQuery.ROUTER_HANDLERS = [
+
+        "querySightingDetails",
+
+        "queryLatestSighting",
+
+        "querySightingList",
+
+        "querySightingCount",
+
+        "queryActiveSightings",
+
+        "querySightingsNearLocation",
+
+        "queryDivisionSightings",
+
+        "queryRangeSightings",
+
+        "queryBeatSightings",
+
+        "queryCompartmentSightings",
+
+        "queryVillageSightings",
+
+        "querySightingsNearVillage",
+
+        "querySightingLocation",
+
+        "queryHerdSightings",
+
+        "querySightingHerdSize",
+
+        "querySightingMovement",
+
+        "querySightingMovementDirection",
+
+        "queryMovedSightings",
+
+        "queryDrivenSightings",
+
+        "queryResolvedSightings",
+
+        "querySightingStatus",
+
+        "querySightingsByStaff",
+
+        "querySightingSummary",
+
+        "querySightingOperationalSummary",
+
+        "querySightingDivisionAnalytics",
+
+        "querySightingRangeAnalytics",
+
+        "querySightingBeatAnalytics",
+
+        "querySightingCompartmentAnalytics",
+
+        "querySightingVillageAnalytics",
+
+        "querySightingStaffAnalytics",
+
+        "querySightingTeamAnalytics",
+
+        "querySightingsToday",
+
+        "querySightingsYesterday",
+
+        "querySightingsThisWeek",
+
+        "querySightingsThisMonth",
+
+        "querySightingsFinancialYear",
+
+        "querySightingTimeAnalytics",
+
+        "querySightingTrend",
+
+        "queryHECSummary",
+
+        "queryHECRisk",
+
+        "queryHECHotspots",
+
+        "queryHECTrend",
+
+        "queryHECHistory",
+
+        "queryHECVillageRisk",
+
+        "queryHECRangeRisk",
+
+        "queryHECBeatRisk",
+
+        "queryHECCompartmentRisk",
+
+        "queryHECMitigation",
+
+        "queryHECMitigationPriority",
+
+        "queryHECPrevention",
+
+        "queryDepredationSummary",
+
+        "queryDepredationAnalytics",
+
+        "queryDepredationHistory",
+
+        "queryDepredationHotspots",
+
+        "queryDepredationRisk",
+
+        "queryDepredationTrend",
+
+        "querySightingResponsePriority",
+
+        "querySightingNearestStaff",
+
+        "querySightingResponseStaff",
+
+        "querySightingAnalytics",
+
+        "querySightingHotspots",
+
+        "querySightingFrequency",
+
+        "querySightingRiskAnalytics",
+
+        "querySightingConflictAnalytics",
+
+        "querySightingRiskAssessment",
+
+        "querySightingPriorityAnalysis",
+
+        "querySightingDecisionSupport"
+
+    ];
+
+
+    /*=========================================================
+      ROUTER CONTRACT VALIDATOR
+    =========================================================*/
+
+    SightingQuery.validateRouterHandlers =
+        function () {
+
+            const rows =
+
+                SightingQuery
+                    .ROUTER_HANDLERS
+
+                    .map(
+
+                        function (
+                            handler
+                        ) {
+
+                            return {
+
+                                handler,
+
+
+                                existsGlobal:
+
+                                    typeof GG[
+                                        handler
+                                    ] ===
+                                        "function",
+
+
+                                existsModule:
+
+                                    typeof SightingQuery[
+                                        handler
+                                    ] ===
+                                        "function"
+
+                            };
+
+                        }
+
+                    );
+
+
+            const missing =
+
+                rows.filter(
+
+                    function (
+                        row
+                    ) {
+
+                        return (
+
+                            !row.existsGlobal ||
+
+                            !row.existsModule
+
+                        );
+
+                    }
+
+                );
+
+
+            return {
+
+                success:
+
+                    missing.length ===
+                        0,
+
+
+                total:
+
+                    rows.length,
+
+
+                available:
+
+                    rows.length -
+
+                    missing.length,
+
+
+                missing:
+
+                    missing.length,
+
+
+                rows
+
+            };
+
+        };
+
+
+    /*=========================================================
+      STARTUP CONTRACT CHECK
+    =========================================================*/
+
+    const routerValidation =
+
+        SightingQuery
+            .validateRouterHandlers();
+
+
+    if (
+        routerValidation.missing
+    ) {
+
+        console.warn(
+
+            "⚠ SightingQuery router contract incomplete:",
+
+            routerValidation
+
+        );
+
+    }
+
+    else {
+
+        console.log(
+
+            "✅ SightingQuery router contract ready:",
+
+            routerValidation.available +
+            "/" +
+            routerValidation.total
+
+        );
+
+    }
     /*=========================================================
       MODULE STATUS
     =========================================================*/
