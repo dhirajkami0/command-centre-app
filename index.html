@@ -31791,590 +31791,7 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
 //   Read only.
 // =========================================================
 
-async function findNearestVillageLocation(
-  lat,
-  lon
-){
 
-  // =======================================================
-  // NORMALIZE GPS
-  // =======================================================
-
-  lat =
-    Number(lat);
-
-  lon =
-    Number(lon);
-
-
-  if(
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon)
-  ){
-
-    console.warn(
-      "⚠ Invalid GPS for nearest village:",
-      lat,
-      lon
-    );
-
-    return null;
-
-  }
-
-
-  // =======================================================
-  // USE EXISTING CACHE
-  // =======================================================
-
-  let villages =
-    Array.isArray(
-      window.VILLAGE_LOCATION_CACHE
-    )
-      ? window.VILLAGE_LOCATION_CACHE
-      : [];
-
-
-  if(
-    villages.length
-  ){
-
-    console.log(
-      "⚡ Existing village cache:",
-      villages.length
-    );
-
-  }
-
-
-  // =======================================================
-  // LOAD FIRESTORE CACHE IF REQUIRED
-  // =======================================================
-
-  if(
-    !villages.length
-  ){
-
-    console.log(
-      "📥 Loading village_locations..."
-    );
-
-
-    try{
-
-      /*
-       * Your application already exposes Firestore through
-       * the Firebase module loader used elsewhere.
-       *
-       * Obtain the initialized Firestore database and the
-       * modular Firestore functions.
-       */
-
-      const firebaseModule =
-        await import(
-          "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
-        );
-
-
-      const {
-        collection,
-        getDocs
-      } = firebaseModule;
-
-
-      // ===================================================
-      // FIND EXISTING FIRESTORE INSTANCE
-      // ===================================================
-
-      let db =
-        window.db ||
-        window.firestore ||
-        window.firebaseDb ||
-        null;
-
-
-      /*
-       * Some versions of your application keep the database
-       * inside the existing Firebase module object.
-       */
-
-      if(
-        !db &&
-        window.firebaseModules?.db
-      ){
-
-        db =
-          window.firebaseModules.db;
-
-      }
-
-
-      if(
-        !db &&
-        window.Firebase?.db
-      ){
-
-        db =
-          window.Firebase.db;
-
-      }
-
-
-      if(
-        !db
-      ){
-
-        console.warn(
-          "⚠ Firestore DB instance unavailable"
-        );
-
-        return null;
-
-      }
-
-
-      // ===================================================
-      // READ COLLECTION
-      // ===================================================
-
-      const snapshot =
-        await getDocs(
-          collection(
-            db,
-            "village_locations"
-          )
-        );
-
-
-      villages =
-        [];
-
-
-      snapshot.forEach(
-        function(docSnap){
-
-          const data =
-            docSnap.data() || {};
-
-
-          // ===============================================
-          // NORMALIZE GPS
-          // ===============================================
-
-          const villageLat =
-            Number(
-              data.lat ??
-              data.location?.lat
-            );
-
-
-          const villageLon =
-            Number(
-              data.lon ??
-              data.lng ??
-              data.location?.lon ??
-              data.location?.lng
-            );
-
-
-          if(
-            !Number.isFinite(
-              villageLat
-            ) ||
-            !Number.isFinite(
-              villageLon
-            )
-          ){
-
-            return;
-
-          }
-
-
-          villages.push({
-
-            firestoreDocId:
-              docSnap.id,
-
-            ...data,
-
-            lat:
-              villageLat,
-
-            lon:
-              villageLon
-
-          });
-
-        }
-      );
-
-
-      // ===================================================
-      // CREATE MEMORY CACHE
-      // ===================================================
-
-      window.VILLAGE_LOCATION_CACHE =
-        villages;
-
-
-      const byName =
-        new Map();
-
-
-      const byDocId =
-        new Map();
-
-
-      villages.forEach(
-        function(village){
-
-          const cleanName =
-            String(
-              village.cleanName ||
-              village.village ||
-              ""
-            )
-            .trim()
-            .toUpperCase();
-
-
-          if(cleanName){
-
-            byName.set(
-              cleanName,
-              village
-            );
-
-          }
-
-
-          if(
-            village.firestoreDocId
-          ){
-
-            byDocId.set(
-              village.firestoreDocId,
-              village
-            );
-
-          }
-
-        }
-      );
-
-
-      window.VILLAGE_LOCATION_INDEX = {
-
-        all:
-          villages,
-
-        byName:
-          byName,
-
-        byDocId:
-          byDocId
-
-      };
-
-
-      console.log(
-        "✅ Village cache loaded:",
-        villages.length
-      );
-
-    }
-    catch(err){
-
-      console.error(
-        "❌ village_locations load failed:",
-        err
-      );
-
-      return null;
-
-    }
-
-  }
-
-
-  // =======================================================
-  // NO VILLAGES
-  // =======================================================
-
-  if(
-    !villages.length
-  ){
-
-    console.warn(
-      "⚠ No village locations available"
-    );
-
-    return null;
-
-  }
-
-
-  // =======================================================
-  // HAVERSINE DISTANCE
-  // =======================================================
-
-  const EARTH_RADIUS =
-    6371000;
-
-
-  const toRadians =
-    function(value){
-
-      return (
-        value *
-        Math.PI /
-        180
-      );
-
-    };
-
-
-  function distanceMeters(
-    lat1,
-    lon1,
-    lat2,
-    lon2
-  ){
-
-    const dLat =
-      toRadians(
-        lat2 - lat1
-      );
-
-
-    const dLon =
-      toRadians(
-        lon2 - lon1
-      );
-
-
-    const a =
-
-      Math.sin(
-        dLat / 2
-      ) ** 2 +
-
-      Math.cos(
-        toRadians(lat1)
-      ) *
-
-      Math.cos(
-        toRadians(lat2)
-      ) *
-
-      Math.sin(
-        dLon / 2
-      ) ** 2;
-
-
-    const c =
-      2 *
-      Math.atan2(
-        Math.sqrt(a),
-        Math.sqrt(1 - a)
-      );
-
-
-    return (
-      EARTH_RADIUS *
-      c
-    );
-
-  }
-
-
-  // =======================================================
-  // FIND NEAREST
-  // =======================================================
-
-  let nearest =
-    null;
-
-
-  let nearestDistance =
-    Infinity;
-
-
-  for(
-    const village of
-    villages
-  ){
-
-    if(
-      village.active === false
-    ){
-
-      continue;
-
-    }
-
-
-    const villageLat =
-      Number(
-        village.lat ??
-        village.location?.lat
-      );
-
-
-    const villageLon =
-      Number(
-        village.lon ??
-        village.lng ??
-        village.location?.lon ??
-        village.location?.lng
-      );
-
-
-    if(
-      !Number.isFinite(
-        villageLat
-      ) ||
-      !Number.isFinite(
-        villageLon
-      )
-    ){
-
-      continue;
-
-    }
-
-
-    const distance =
-      distanceMeters(
-        lat,
-        lon,
-        villageLat,
-        villageLon
-      );
-
-
-    if(
-      distance <
-      nearestDistance
-    ){
-
-      nearestDistance =
-        distance;
-
-
-      nearest =
-        village;
-
-    }
-
-  }
-
-
-  // =======================================================
-  // NOTHING FOUND
-  // =======================================================
-
-  if(
-    !nearest ||
-    !Number.isFinite(
-      nearestDistance
-    )
-  ){
-
-    console.warn(
-      "⚠ No nearest village found"
-    );
-
-    return null;
-
-  }
-
-
-  // =======================================================
-  // FINAL NORMALIZED RESULT
-  // =======================================================
-
-  const roundedMeters =
-    Math.round(
-      nearestDistance
-    );
-
-
-  const result = {
-
-    ...nearest,
-
-    firestoreDocId:
-      nearest.firestoreDocId ||
-      "",
-
-    village:
-      String(
-        nearest.village ||
-        nearest.name ||
-        nearest.cleanName ||
-        ""
-      ).trim(),
-
-    lat:
-      Number(
-        nearest.lat ??
-        nearest.location?.lat
-      ),
-
-    lon:
-      Number(
-        nearest.lon ??
-        nearest.lng ??
-        nearest.location?.lon ??
-        nearest.location?.lng
-      ),
-
-    distanceMeters:
-      roundedMeters,
-
-    distanceKm:
-      Number(
-        (
-          roundedMeters /
-          1000
-        ).toFixed(3)
-      ),
-
-    riskLevel:
-      String(
-        nearest.riskLevel ||
-        ""
-      ).trim(),
-
-    conflictHistory:
-      Number(
-        nearest.conflictHistory ||
-        0
-      )
-
-  };
-
-
-  console.log(
-    "🎯 Nearest village:",
-    result.village,
-    result.distanceMeters + "m"
-  );
-
-
-  return result;
-
-}
-
-
-// =========================================================
-// EXPOSE GLOBALLY
-// =========================================================
-
-window.findNearestVillageLocation =
-  findNearestVillageLocation;
     /* =========================
        🏡 VILLAGE SYSTEM (FINAL)
     ========================= */
@@ -34585,7 +34002,525 @@ async function submitSightingForm(event){
 
   }
 
-}  /* ============================================================
+} 
+   async function findNearestVillageLocation(
+  lat,
+  lon
+){
+
+  // =====================================================
+  // NORMALIZE GPS
+  // =====================================================
+
+  lat =
+    Number(lat);
+
+  lon =
+    Number(lon);
+
+
+  if(
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon)
+  ){
+
+    console.warn(
+      "⚠ Invalid GPS for nearest village:",
+      lat,
+      lon
+    );
+
+    return null;
+
+  }
+
+
+  // =====================================================
+  // GET EXISTING CACHE
+  // =====================================================
+
+  let villages =
+
+    Array.isArray(
+      window.VILLAGE_LOCATION_CACHE
+    )
+
+      ? window.VILLAGE_LOCATION_CACHE
+
+      : [];
+
+
+  // =====================================================
+  // CACHE MISSING
+  //
+  // IMPORTANT:
+  // Use the application's EXISTING village loader.
+  //
+  // Do NOT:
+  // - import Firebase again
+  // - create another Firestore instance
+  // - call collection() here
+  // =====================================================
+
+  if(
+    !villages.length
+  ){
+
+    console.log(
+      "🏘️ Village location cache not ready"
+    );
+
+
+    // ===================================================
+    // TRY EXISTING APPLICATION LOADER
+    // ===================================================
+
+    try{
+
+      if(
+        typeof window.loadVillageData ===
+        "function"
+      ){
+
+        console.log(
+          "📥 Calling existing loadVillageData()..."
+        );
+
+
+        await window.loadVillageData();
+
+      }
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ loadVillageData() failed:",
+        err
+      );
+
+    }
+
+
+    // ===================================================
+    // CHECK CACHE AGAIN
+    // ===================================================
+
+    villages =
+
+      Array.isArray(
+        window.VILLAGE_LOCATION_CACHE
+      )
+
+        ? window.VILLAGE_LOCATION_CACHE
+
+        : [];
+
+  }
+
+
+  // =====================================================
+  // SECOND FALLBACK
+  //
+  // Your previous console loader created:
+  //
+  // window.VILLAGE_LOCATION_INDEX.all
+  //
+  // Use it if available.
+  // =====================================================
+
+  if(
+    !villages.length &&
+    Array.isArray(
+      window.VILLAGE_LOCATION_INDEX?.all
+    )
+  ){
+
+    villages =
+      window.VILLAGE_LOCATION_INDEX.all;
+
+  }
+
+
+  // =====================================================
+  // STILL NOT AVAILABLE
+  // =====================================================
+
+  if(
+    !villages.length
+  ){
+
+    console.warn(
+      "⚠ Village location cache unavailable"
+    );
+
+    return null;
+
+  }
+
+
+  console.log(
+    "⚡ Existing village cache:",
+    villages.length
+  );
+
+
+  // =====================================================
+  // HAVERSINE DISTANCE
+  // =====================================================
+
+  const EARTH_RADIUS_METERS =
+    6371000;
+
+
+  function toRadians(
+    degrees
+  ){
+
+    return (
+      degrees *
+      Math.PI /
+      180
+    );
+
+  }
+
+
+  function getDistanceMeters(
+    lat1,
+    lon1,
+    lat2,
+    lon2
+  ){
+
+    const dLat =
+      toRadians(
+        lat2 - lat1
+      );
+
+
+    const dLon =
+      toRadians(
+        lon2 - lon1
+      );
+
+
+    const a =
+
+      Math.sin(
+        dLat / 2
+      ) ** 2 +
+
+      Math.cos(
+        toRadians(lat1)
+      ) *
+
+      Math.cos(
+        toRadians(lat2)
+      ) *
+
+      Math.sin(
+        dLon / 2
+      ) ** 2;
+
+
+    const c =
+
+      2 *
+
+      Math.atan2(
+
+        Math.sqrt(a),
+
+        Math.sqrt(
+          1 - a
+        )
+
+      );
+
+
+    return (
+      EARTH_RADIUS_METERS *
+      c
+    );
+
+  }
+
+
+  // =====================================================
+  // FIND NEAREST ACTIVE VILLAGE LOCATION
+  // =====================================================
+
+  let nearest =
+    null;
+
+
+  let nearestDistance =
+    Infinity;
+
+
+  for(
+    const village of villages
+  ){
+
+    if(
+      !village
+    ){
+
+      continue;
+
+    }
+
+
+    // ===================================================
+    // IGNORE EXPLICITLY DISABLED LOCATIONS
+    // ===================================================
+
+    if(
+      village.active === false
+    ){
+
+      continue;
+
+    }
+
+
+    // ===================================================
+    // NORMALIZE VILLAGE GPS
+    // ===================================================
+
+    const villageLat =
+
+      Number(
+
+        village.lat ??
+
+        village.location?.lat
+
+      );
+
+
+    const villageLon =
+
+      Number(
+
+        village.lon ??
+
+        village.lng ??
+
+        village.location?.lon ??
+
+        village.location?.lng
+
+      );
+
+
+    if(
+      !Number.isFinite(
+        villageLat
+      ) ||
+      !Number.isFinite(
+        villageLon
+      )
+    ){
+
+      continue;
+
+    }
+
+
+    // ===================================================
+    // DISTANCE
+    // ===================================================
+
+    const distance =
+
+      getDistanceMeters(
+
+        lat,
+        lon,
+
+        villageLat,
+        villageLon
+
+      );
+
+
+    if(
+      distance <
+      nearestDistance
+    ){
+
+      nearestDistance =
+        distance;
+
+
+      nearest =
+        village;
+
+    }
+
+  }
+
+
+  // =====================================================
+  // NO MATCH
+  // =====================================================
+
+  if(
+    !nearest ||
+    !Number.isFinite(
+      nearestDistance
+    )
+  ){
+
+    console.warn(
+      "⚠ No nearest village location found"
+    );
+
+    return null;
+
+  }
+
+
+  // =====================================================
+  // NORMALIZE RESULT
+  // =====================================================
+
+  const distanceMeters =
+
+    Math.round(
+      nearestDistance
+    );
+
+
+  const distanceKm =
+
+    Number(
+
+      (
+        distanceMeters /
+        1000
+      ).toFixed(3)
+
+    );
+
+
+  const result = {
+
+    ...nearest,
+
+
+    firestoreDocId:
+
+      String(
+
+        nearest.firestoreDocId ||
+
+        nearest.id ||
+
+        ""
+
+      ).trim(),
+
+
+    village:
+
+      String(
+
+        nearest.village ||
+
+        nearest.name ||
+
+        nearest.cleanName ||
+
+        ""
+
+      ).trim(),
+
+
+    lat:
+
+      Number(
+
+        nearest.lat ??
+
+        nearest.location?.lat
+
+      ),
+
+
+    lon:
+
+      Number(
+
+        nearest.lon ??
+
+        nearest.lng ??
+
+        nearest.location?.lon ??
+
+        nearest.location?.lng
+
+      ),
+
+
+    distanceMeters:
+      distanceMeters,
+
+
+    distanceKm:
+      distanceKm,
+
+
+    riskLevel:
+
+      String(
+
+        nearest.riskLevel ||
+
+        ""
+
+      ).trim(),
+
+
+    conflictHistory:
+
+      Number(
+
+        nearest.conflictHistory ||
+
+        0
+
+      )
+
+  };
+
+
+  // =====================================================
+  // RESULT
+  // =====================================================
+
+  console.log(
+    "🎯 Nearest village:",
+    result.village,
+    result.distanceMeters + " m"
+  );
+
+
+  return result;
+
+}
+
+
+// =========================================================
+// GLOBAL EXPOSURE
+// =========================================================
+
+window.findNearestVillageLocation =
+  findNearestVillageLocation; 
+    
+    /* ============================================================
    🔥 OFFLINE SAVE
 ============================================================ */
 function saveSightingOffline(data){
