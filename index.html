@@ -28687,212 +28687,867 @@ function populateMoveRemarks(){
     
     
     /* 🔥 STATUS UPDATE */
-    function submitMoveForm() {
+async function submitMoveForm(){
 
-  console.group("🚀 submitMoveForm START");
+  console.group(
+    "🚀 submitMoveForm START"
+  );
 
-  const id = document.getElementById("move-id").value;
 
-  const depredation = document.getElementById("move-depredation").value;
-  const involved = document.getElementById("move-involved").value;
-  const driving = document.getElementById("move-driving").value;
+  // =====================================================
+  // FORM VALUES
+  // =====================================================
 
-  const dirEl = document.getElementById("move-dir");
-  let direction = dirEl ? dirEl.value : "";
+  const id =
+    String(
+      document
+        .getElementById(
+          "move-id"
+        )
+        ?.value || ""
+    ).trim();
 
-  if (direction) direction = direction.trim().toUpperCase();
 
-  const remarks = document.getElementById("move-remarks").value;
+  const depredation =
+    document
+      .getElementById(
+        "move-depredation"
+      )
+      ?.value || "";
 
-  if (!remarks) {
-    alert("❌ Please select action");
-    console.groupEnd();
-    return;
+
+  const involved =
+    document
+      .getElementById(
+        "move-involved"
+      )
+      ?.value || "";
+
+
+  const driving =
+    document
+      .getElementById(
+        "move-driving"
+      )
+      ?.value || "";
+
+
+  const dirEl =
+    document.getElementById(
+      "move-dir"
+    );
+
+
+  let direction =
+    dirEl
+      ? dirEl.value
+      : "";
+
+
+  if(direction){
+
+    direction =
+      direction
+        .trim()
+        .toUpperCase();
+
   }
 
-  if (window.isUpdating) {
-    console.warn("⚠ Update already in progress");
+
+  const remarks =
+    document
+      .getElementById(
+        "move-remarks"
+      )
+      ?.value || "";
+
+
+  // =====================================================
+  // VALIDATION
+  // =====================================================
+
+  if(
+    !id
+  ){
+
+    alert(
+      "❌ Sighting ID missing"
+    );
+
     console.groupEnd();
+
     return;
+
   }
 
-  window.isUpdating = true;
 
-  setMoveLoading("loading");
+  if(
+    !remarks
+  ){
 
-  const normalize = v => String(v)
+    alert(
+      "❌ Please select action"
+    );
+
+    console.groupEnd();
+
+    return;
+
+  }
+
+
+  if(
+    window.isUpdating
+  ){
+
+    console.warn(
+      "⚠ Update already in progress"
+    );
+
+    console.groupEnd();
+
+    return;
+
+  }
+
+
+  window.isUpdating =
+    true;
+
+
+  setMoveLoading(
+    "loading"
+  );
+
+
+  // =====================================================
+  // STATUS
+  // =====================================================
+
+  const status =
+    String(
+      remarks
+    )
     .trim()
-    .replace(/\s+/g, "")
-    .replace(/[\n\r]/g, "")
-    .replace(/[‐-‒–—−]/g, "-")
     .toUpperCase();
 
-  const cleanId = normalize(id);
+
+  // =====================================================
+  // IMPORTANT
+  //
+  // Keep the canonical sighting ID exactly as stored.
+  //
+  // Example:
+  //
+  // BuxaTR_WEST-EastDamanpur-42/4252
+  //
+  // Do NOT uppercase or otherwise change the canonical ID.
+  // =====================================================
+
+  const canonicalId =
+    id;
+
+
+  // =====================================================
+  // LEGACY BACKEND ID
+  //
+  // Your old backend normalized IDs before sending them.
+  // Keep that behavior only for the existing backend.
+  // =====================================================
+
+  const normalize =
+    function(v){
+
+      return String(
+        v
+      )
+      .trim()
+      .replace(
+        /\s+/g,
+        ""
+      )
+      .replace(
+        /[\n\r]/g,
+        ""
+      )
+      .replace(
+        /[‐-‒–—−]/g,
+        "-"
+      )
+      .toUpperCase();
+
+    };
+
+
+  const backendId =
+    normalize(
+      canonicalId
+    );
+
+
+  // =====================================================
+  // UPDATED BY
+  // =====================================================
+
+  const updatedBy =
+
+    window.userProfile?.name ||
+
+    window.currentLeader ||
+
+    localStorage.getItem(
+      "userName"
+    ) ||
+
+    "UNKNOWN";
+
+
+  // =====================================================
+  // BACKEND PAYLOAD
+  //
+  // Preserve your existing backend field names.
+  // =====================================================
 
   const payload = {
-    id: cleanId,
-    newStatus: remarks,
-    depredation: depredation,
-    involved: involved,
-    driving: driving,
-    direction: direction,
-    updatedBy: (
-      window.userProfile?.name ||
-      window.currentLeader ||
-      localStorage.getItem("userName") ||
-      "UNKNOWN"
-    )
+
+    id:
+      backendId,
+
+    sighting_id:
+      canonicalId,
+
+    newStatus:
+      remarks,
+
+    depredation:
+      depredation,
+
+    involved:
+      involved,
+
+    driving:
+      driving,
+
+    direction:
+      direction,
+
+    updatedBy:
+      updatedBy
+
   };
 
-  console.log("📤 FINAL MOVE PAYLOAD →", payload);
 
-  /* ============================================================
-     🔥 OFFLINE
-  ============================================================ */
+  console.log(
+    "📤 FINAL MOVE PAYLOAD →",
+    payload
+  );
 
-  if (!navigator.onLine) {
 
-    saveMoveOffline(payload);
+  // =====================================================
+  // OFFLINE
+  // =====================================================
 
-    alert("📴 Saved offline. Will sync automatically.");
+  if(
+    !navigator.onLine
+  ){
 
-    setMoveLoading("reset");
-    window.isUpdating = false;
+    saveMoveOffline(
+      payload
+    );
+
+
+    alert(
+      "📴 Saved offline. Will sync automatically."
+    );
+
+
+    setMoveLoading(
+      "reset"
+    );
+
+
+    window.isUpdating =
+      false;
+
+
     console.groupEnd();
+
+
     return;
+
   }
 
-  /* ===============================
-     BACKEND CALL
-  =============================== */
 
-  callBackend("updateSightingStatus", payload)
+  // =====================================================
+  // FIRESTORE FIRST
+  // =====================================================
 
-  .then(function (res) {
+  try{
 
-    console.log("📥 Backend response:", res);
+    const {
 
-    if (res) {
+      getFirestore,
+      doc,
+      updateDoc,
+      serverTimestamp
 
-      setMoveLoading("success");
+    } = await import(
+      "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+    );
 
-      /* ============================================================
-         🔥 FIX 1: INSTANT UI UPDATE (CRITICAL)
-      ============================================================ */
 
-      const status = (remarks || "").trim().toUpperCase();
+    const db =
+      getFirestore();
 
-      if (window.sightingMarkers && window.sightingMarkers[cleanId]) {
 
-        const marker = window.sightingMarkers[cleanId];
+    // ===================================================
+    // FIRESTORE DOCUMENT ID
+    //
+    // Visible sighting ID:
+    //
+    // BuxaTR_WEST-EastDamanpur-42/4252
+    //
+    // Firestore document ID:
+    //
+    // BuxaTR_WEST-EastDamanpur-42__4252
+    // ===================================================
 
-       if (
-  status === "MOVED" ||
-  status.startsWith("DRIVEN")
-){
+    const firestoreDocumentID =
+      canonicalId
+        .replace(
+          /\//g,
+          "__"
+        );
 
-          // 🔥 FORCE STATIC GREY ICON (NO PULSE)
-          marker.setIcon(L.divIcon({
-            className: '',
-            html: `
-              <div class="markerWrap">
-                <div class="markerCore">
-                  <span style="
-                    font-size:22px;
-                    color:#9e9e9e;
-                    opacity:0.7;
-                    text-shadow:0 0 5px black;
-                  ">
+
+    const sightingRef =
+      doc(
+
+        db,
+
+        "elephant_sightings",
+
+        firestoreDocumentID
+
+      );
+
+
+    // ===================================================
+    // FIRESTORE UPDATE
+    // ===================================================
+
+    const firestoreUpdate = {
+
+      status:
+        status,
+
+      depredation:
+        depredation,
+
+      involved:
+        involved,
+
+      driving:
+        driving,
+
+      direction:
+        direction,
+
+      updated_by:
+        updatedBy,
+
+      updated_at:
+        serverTimestamp()
+
+    };
+
+
+    // ===================================================
+    // ACTIVE STATE
+    // ===================================================
+
+    if(
+      status ===
+      "RESOLVED"
+    ){
+
+      firestoreUpdate.active =
+        false;
+
+      firestoreUpdate.marker_visible =
+        false;
+
+      firestoreUpdate.resolved_at =
+        serverTimestamp();
+
+    }
+
+    else{
+
+      firestoreUpdate.active =
+        true;
+
+      firestoreUpdate.marker_visible =
+        true;
+
+    }
+
+
+    // ===================================================
+    // MOVED / DRIVEN STATE
+    // ===================================================
+
+    if(
+
+      status ===
+      "MOVED" ||
+
+      status.startsWith(
+        "DRIVEN"
+      )
+
+    ){
+
+      firestoreUpdate.marker_state =
+        "STATIC_GREY";
+
+    }
+
+    else if(
+      status ===
+      "ACTIVE"
+    ){
+
+      firestoreUpdate.marker_state =
+        "ACTIVE";
+
+    }
+
+
+    console.log(
+      "🔥 Updating Firestore:",
+      firestoreDocumentID,
+      firestoreUpdate
+    );
+
+
+    await updateDoc(
+
+      sightingRef,
+
+      firestoreUpdate
+
+    );
+
+
+    console.log(
+      "🔥 Firestore status updated:",
+      canonicalId
+    );
+
+
+  }
+
+  catch(
+    firestoreErr
+  ){
+
+    // ===================================================
+    // FIRESTORE FAILED
+    //
+    // Do not silently continue as if everything succeeded.
+    // Save the move for retry.
+    // ===================================================
+
+    console.error(
+      "❌ Firestore status update failed:",
+      firestoreErr
+    );
+
+
+    saveMoveOffline(
+      payload
+    );
+
+
+    alert(
+      "⚠ Status update queued for sync"
+    );
+
+
+    setMoveLoading(
+      "reset"
+    );
+
+
+    window.isUpdating =
+      false;
+
+
+    console.groupEnd();
+
+
+    return;
+
+  }
+
+
+  // =====================================================
+  // INSTANT UI UPDATE
+  //
+  // Firestore has succeeded.
+  // Do not wait for Google Sheet/backend.
+  // =====================================================
+
+  try{
+
+    if(
+      window.sightingMarkers &&
+      window.sightingMarkers[
+        canonicalId
+      ]
+    ){
+
+      const marker =
+        window.sightingMarkers[
+          canonicalId
+        ];
+
+
+      // =================================================
+      // MOVED / DRIVEN
+      // =================================================
+
+      if(
+
+        status ===
+        "MOVED" ||
+
+        status.startsWith(
+          "DRIVEN"
+        )
+
+      ){
+
+        marker.setIcon(
+
+          L.divIcon({
+
+            className:
+              "",
+
+            html:
+              `
+              <div
+                class="markerWrap"
+                style="
+                  opacity:0.7;
+                "
+              >
+
+                <div
+                  class="markerCore"
+                >
+
+                  <span
+                    style="
+                      font-size:22px;
+                      color:#9e9e9e;
+                      opacity:0.7;
+                      text-shadow:
+                        0 0 5px black;
+                    "
+                  >
                     🐘
                   </span>
+
                 </div>
+
               </div>
-            `,
-            iconSize:[30,30],
-            iconAnchor:[15,15]
-          }));
+              `,
 
-        }
+            iconSize:
+              [
+                30,
+                30
+              ],
 
-        if (status === "RESOLVED") {
+            iconAnchor:
+              [
+                15,
+                15
+              ]
 
-          elephantLayer.removeLayer(marker);
-          delete window.sightingMarkers[cleanId];
+          })
 
-          console.log("⚡ Marker removed (RESOLVED):", cleanId);
-        }
+        );
+
+
+        console.log(
+          "⚡ Marker changed to static grey:",
+          canonicalId
+        );
+
       }
 
-      /* ============================================================
-         🔥 ORIGINAL FLOW (UNCHANGED)
-      ============================================================ */
 
-      setTimeout(() => {
+      // =================================================
+      // RESOLVED
+      // =================================================
 
-        if (typeof closeMoveForm === "function") {
-          closeMoveForm();
-        }
+      if(
+        status ===
+        "RESOLVED"
+      ){
 
-        setMoveLoading("reset");
+        elephantLayer.removeLayer(
+          marker
+        );
 
-        if (status !== "RESOLVED") {
-          console.log("ℹ️ Marker retained for status:", status);
-        }
 
-      }, 800);
+        delete window
+          .sightingMarkers[
+            canonicalId
+          ];
 
-    } else {
 
-      alert("❌ Update failed (ID not matched)");
-      setMoveLoading("reset");
-      window.isUpdating = false;
-      console.groupEnd();
-      return;
+        console.log(
+          "⚡ Marker removed (RESOLVED):",
+          canonicalId
+        );
+
+      }
+
     }
 
-    window.isUpdating = false;
-    window.isPopupInteracting = false;
-    window.lastInteractionTime = 0;
+  }
 
-    // 🔥 FIX 2: use cleanId (IMPORTANT BUG FIX)
-    if (window.sightingMarkers && window.sightingMarkers[cleanId]) {
-      window.sightingMarkers[cleanId].closePopup();
+  catch(
+    markerErr
+  ){
+
+    console.warn(
+      "⚠ Instant marker update failed:",
+      markerErr
+    );
+
+  }
+
+
+  // =====================================================
+  // FIRESTORE SUCCESS
+  // =====================================================
+
+  setMoveLoading(
+    "success"
+  );
+
+
+  // =====================================================
+  // CLOSE POPUP IF STILL PRESENT
+  // =====================================================
+
+  try{
+
+    if(
+      window.sightingMarkers &&
+      window.sightingMarkers[
+        canonicalId
+      ]
+    ){
+
+      window
+        .sightingMarkers[
+          canonicalId
+        ]
+        .closePopup();
+
     }
 
-    /* ============================================================
-       🔥 FIX 3: PROPER REFRESH TIMING
-    ============================================================ */
+  }
 
-    setTimeout(() => {
-      console.log("🔄 Refreshing sightings (1)...");
-      loadSightings();
-    }, 1200);
+  catch(err){
 
-    setTimeout(() => {
-      console.log("🔄 Refreshing sightings (2)...");
-      loadSightings();
-    }, 2500);
+    console.warn(
+      "Popup close failed:",
+      err
+    );
 
-    setTimeout(() => {
-      callBackend("updateVillageRisk");
-    }, 1000);
+  }
 
-    console.groupEnd();
 
-  })
+  // =====================================================
+  // EXISTING BACKEND
+  //
+  // Google Sheet + Telegram + existing calculations.
+  //
+  // Firestore/UI do NOT wait for this.
+  // =====================================================
 
-  .catch(function (err) {
+  callBackend(
 
-    console.error("❌ Update failed:", err);
+    "updateSightingStatus",
 
-    saveMoveOffline(payload);
+    payload
 
-    alert("⚠ Network issue → saved offline");
+  )
 
-    setMoveLoading("reset");
-    window.isUpdating = false;
-    console.groupEnd();
-  });
+  .then(
+    function(res){
+
+      console.log(
+        "📥 Background backend response:",
+        res
+      );
+
+
+      if(
+        !res
+      ){
+
+        console.warn(
+          "⚠ Background backend returned no result"
+        );
+
+
+        saveMoveOffline(
+          payload
+        );
+
+      }
+
+    }
+  )
+
+  .catch(
+    function(err){
+
+      console.error(
+        "⚠ Background backend failed:",
+        err
+      );
+
+
+      // =================================================
+      // FIRESTORE IS ALREADY UPDATED.
+      //
+      // Queue only backend synchronization.
+      // =================================================
+
+      saveMoveOffline(
+        payload
+      );
+
+    }
+  );
+
+
+  // =====================================================
+  // CLOSE FORM
+  // =====================================================
+
+  setTimeout(
+    function(){
+
+      if(
+        typeof closeMoveForm ===
+        "function"
+      ){
+
+        closeMoveForm();
+
+      }
+
+
+      setMoveLoading(
+        "reset"
+      );
+
+    },
+    800
+  );
+
+
+  // =====================================================
+  // RESET INTERACTION FLAGS
+  // =====================================================
+
+  window.isUpdating =
+    false;
+
+
+  window.isPopupInteracting =
+    false;
+
+
+  window.lastInteractionTime =
+    0;
+
+
+  // =====================================================
+  // REFRESH FROM FIRESTORE
+  //
+  // Your new loadSightings() now reads Firestore.
+  // One refresh is sufficient.
+  // =====================================================
+
+  setTimeout(
+    function(){
+
+      console.log(
+        "🔄 Refreshing sightings from Firestore..."
+      );
+
+
+      if(
+        typeof loadSightings ===
+        "function"
+      ){
+
+        loadSightings();
+
+      }
+
+    },
+    500
+  );
+
+
+  // =====================================================
+  // EXISTING VILLAGE RISK UPDATE
+  // =====================================================
+
+  setTimeout(
+    function(){
+
+      callBackend(
+        "updateVillageRisk"
+      )
+      .catch(
+        function(err){
+
+          console.warn(
+            "⚠ Village risk update failed:",
+            err
+          );
+
+        }
+      );
+
+    },
+    1000
+  );
+
+
+  console.log(
+    "✅ Status update complete:",
+    canonicalId,
+    "→",
+    status
+  );
+
+
+  console.groupEnd();
 
 }function setMoveLoading(state){
 
