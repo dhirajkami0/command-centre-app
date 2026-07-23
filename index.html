@@ -117,7 +117,8 @@
 ======================================================= -->
 
 <script src="js/ai/config.js"></script>
-  <!-- HTTP / CLOUD AI TRANSPORT -->
+
+<!-- HTTP / CLOUD AI TRANSPORT -->
 <script src="js/ai.js"></script>
 
 <script src="js/ai/cache.js"></script>
@@ -141,9 +142,30 @@
 ======================================================= -->
 
 <script src="js/analytics/staffConstants.js"></script>
-  <script src="js/analytics/staffIntentDefinitions.js"></script>
+<script src="js/analytics/staffIntentDefinitions.js"></script>
 
 <script src="js/analytics/gisConstants.js"></script>
+
+
+<!-- =======================================================
+     SIGHTING / ELEPHANT / HEC CONSTANTS
+======================================================= -->
+
+<!--
+    Must load before:
+    - sightingEntities.js
+    - sightingIntent.js
+    - sightingQuery.js
+    - sightingFormatter.js
+    - sightingRouter.js
+    - intentManager.js
+
+    Provides:
+    GreenGuardAI.SightingConstants
+-->
+
+<script src="js/ai/sighting/sightingConstants.js"></script>
+
 
 <!-- =======================================================
      STAFF FOUNDATION
@@ -153,12 +175,45 @@
 <script src="js/analytics/staffHydrator.js"></script>
 <script src="js/analytics/gisEntities.js"></script>
 
+
+<!-- =======================================================
+     SIGHTING FOUNDATION / ENTITY LAYER
+======================================================= -->
+
+<!--
+    Canonical Elephant Sighting / HEC entity layer.
+
+    Provides:
+    GreenGuardAI.SightingEntities
+-->
+
+<script src="js/ai/sighting/sightingEntities.js"></script>
+
+
 <!-- =======================================================
      INTENT DETECTORS
 ======================================================= -->
 
 <script src="js/analytics/staffIntent.js"></script>
 <script src="js/analytics/gisIntent.js"></script>
+
+
+<!-- =======================================================
+     SIGHTING INTENT DETECTOR
+======================================================= -->
+
+<!--
+    Local Sighting / Elephant / HEC intent detector.
+
+    Provides:
+    GreenGuardAI.SightingIntent
+
+    Used by:
+    IntentManager.detectLocal()
+-->
+
+<script src="js/ai/sighting/sightingIntent.js"></script>
+
 
 <!-- =======================================================
      GIS BUSINESS LAYER
@@ -168,6 +223,7 @@
 <script src="js/analytics/staffGIS.js"></script>
 <script src="js/analytics/gisQuery.js"></script>
 <script src="js/analytics/gisRouter.js"></script>
+
 
 <!-- =======================================================
      STAFF BUSINESS LAYER
@@ -186,11 +242,13 @@
 
 <script src="js/analytics/StaffQuery.js"></script>
 
+
 <!-- =======================================================
      STAFF ROUTER
 ======================================================= -->
 
 <script src="js/analytics/staffRouter.js"></script>
+
 
 <!-- =======================================================
      FORMATTERS
@@ -198,6 +256,64 @@
 
 <script src="js/analytics/staffFormatter.js"></script>
 <script src="js/analytics/gisFormatter.js"></script>
+
+
+<!-- =======================================================
+     SIGHTING QUERY LAYER
+======================================================= -->
+
+<!--
+    Sighting / HEC business-query execution.
+
+    Provides:
+    GreenGuardAI.SightingQuery
+
+    Uses:
+    - SightingConstants
+    - SightingEntities
+-->
+
+<script src="js/ai/sighting/sightingQuery.js"></script>
+
+
+<!-- =======================================================
+     SIGHTING FORMATTER
+======================================================= -->
+
+<!--
+    Formats SightingQuery results for GreenGuard AI.
+
+    Provides:
+    GreenGuardAI.SightingFormatter
+-->
+
+<script src="js/ai/sighting/sightingFormatter.js"></script>
+
+
+<!-- =======================================================
+     SIGHTING ROUTER
+======================================================= -->
+
+<!--
+    Canonical Sighting pipeline:
+
+    SightingIntent
+          ↓
+    SightingRouter
+          ↓
+    SightingQuery
+          ↓
+    SightingFormatter
+
+    Provides:
+    GreenGuardAI.SightingRouter
+
+    IMPORTANT:
+    Must load before aiDispatcher.js.
+-->
+
+<script src="js/ai/sighting/sightingRouter.js"></script>
+
 
 <!-- =======================================================
      OTHER DOMAIN ROUTERS
@@ -209,6 +325,7 @@
 <script src="js/analytics/analyticsRouter.js"></script>
 <script src="js/analytics/reportRouter.js"></script>
 
+
 <!-- =======================================================
      AI INTENT PIPELINE
 ======================================================= -->
@@ -218,11 +335,27 @@
 <script src="js/ai/aiIntentValidator.js"></script>
 <script src="js/ai/aiIntentMerge.js"></script>
 
+
 <!-- =======================================================
      INTENT MANAGER
 ======================================================= -->
 
+<!--
+    SightingConstants and SightingIntent are already loaded.
+
+    Therefore IntentManager can safely register:
+
+    GG.SightingConstants.DOMAIN
+    GG.SightingConstants.INTENTS
+    GG.SightingConstants.ENTITY_TYPES
+
+    and execute:
+
+    GG.SightingIntent.detect()
+-->
+
 <script src="js/ai/intentManager.js"></script>
+
 
 <!-- =======================================================
      AI PROVIDER
@@ -230,11 +363,27 @@
 
 <script src="js/ai/aiProvider.js"></script>
 
+
 <!-- =======================================================
      AI DISPATCHER
 ======================================================= -->
 
+<!--
+    SightingRouter is already loaded.
+
+    Therefore:
+
+    domain: "sighting"
+
+    can safely dispatch to:
+
+    AIDispatcher.dispatchSighting()
+            ↓
+    GG.SightingRouter.route()
+-->
+
 <script src="js/analytics/aiDispatcher.js"></script>
+
 
 <!-- =======================================================
      AI CONTROLLER
@@ -242,17 +391,20 @@
 
 <script src="js/ai/controller.js"></script>
 
+
 <!-- =======================================================
      AI CORE
 ======================================================= -->
 
 <script src="js/ai/core.js"></script>
 
+
 <!-- =======================================================
      CLOUD AI
 ======================================================= -->
 
 <script src="js/ai/ai.js"></script>
+
 
 <!-- =======================================================
      ACTION ENGINE
@@ -261,11 +413,13 @@
 <script src="js/ai/actionEngine.js"></script>
 <script src="js/ai/actionHandlers.js"></script>
 
+
 <!-- =======================================================
      RENDER ENGINE
 ======================================================= -->
 
 <script src="js/ai/render.js"></script>
+
 
 <!-- =======================================================
      AI PANEL
@@ -274,9 +428,9 @@
 <script src="js/ai/panel.js"></script>
 
 
-  <!-- =====================================================
+<!-- =====================================================
      OFFENCE INTELLIGENCE MODULE
-     ===================================================== -->
+===================================================== -->
 
 <!-- 1. Constants / Configuration -->
 <script src="js/offence/offenceConstants.js"></script>
@@ -301,9 +455,9 @@
 <script src="js/offence/offenceHeatmapEngine.js"></script>
 <script src="js/offence/offenceSpatialEngine.js"></script>
 <script src="js/offence/offenceSpatialRenderer.js"></script>
-  <script src="js/offence/accusedAddressResolver.js"></script>
+<script src="js/offence/accusedAddressResolver.js"></script>
 
-  <!-- 8. Leaflet Map / Heatmap Renderer -->
+<!-- 8. Leaflet Map / Heatmap Renderer -->
 <script src="js/offence/offenceMapRenderer.js"></script>
 
 <!-- 9. Hotspot Click + Cascade State Controller -->
@@ -312,8 +466,8 @@
 <!-- 10. Cascade UI Renderer -->
 <script src="js/offence/offenceCascadeRenderer.js"></script>
 <script src="js/offence/offenceTargetRangeCascade.js"></script>
-  
-  <script src="js/offence/offenceUIController.js"></script>
+
+<script src="js/offence/offenceUIController.js"></script>
   <!-- ========================================= -->
 <!-- 🔥 FIXED IDB-KEYVAL -->
 <!-- ========================================= -->
