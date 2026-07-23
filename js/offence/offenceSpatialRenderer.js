@@ -4652,21 +4652,64 @@ Renderer.renderSource =
              use the selected Source style.
           ==================================================== */
 
-          style:
-            function () {
+style:
+  function () {
 
-              return Renderer
-                .getSourceStyle(
+    /*
+     * CHILD selected from panel
+     * → SHARP RED BOUNDARY
+     */
+    if (
+      role ===
+      "SELECTED_CHILD"
+    ) {
 
-                  source.offenceCount,
+      return {
 
-                  maxCount,
+        color:
+          "#FF0000",
 
-                  isSelected
+        weight:
+          6,
 
-                );
+        opacity:
+          1,
 
-            },
+        fillColor:
+          Renderer.getSourceHeatColor(
+            source.offenceCount || 0,
+            maxCount
+          ),
+
+        fillOpacity:
+          0.82,
+
+        lineCap:
+          "butt",
+
+        lineJoin:
+          "miter"
+
+      };
+
+    }
+
+
+    /*
+     * Parent / normal Source styling
+     */
+    return Renderer
+      .getSourceStyle(
+
+        source.offenceCount || 0,
+
+        maxCount,
+
+        isSelected
+
+      );
+
+  },
 
 
           onEachFeature:
