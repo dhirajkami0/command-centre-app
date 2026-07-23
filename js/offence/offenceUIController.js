@@ -7231,64 +7231,102 @@ function (
         }
 
 
+/* ===================================================
+   RELATIONSHIP CASE RESOLVER
 
-        /* ===================================================
-           RELATIONSHIP CASE RESOLVER
+   CHILD objects contain relationship metadata/counts,
+   but do not necessarily contain the actual case array.
 
-           If no cases are directly attached to CHILD:
+   Therefore resolve the authoritative SOURCE ↔ TARGET
+   relationship directly from SpatialEngine.
 
-               currentParent
-                     +
-               currentChild
-                     +
-               activeMode
+   SOURCE MODE:
+       parent = SOURCE
+       child  = TARGET
 
-           are passed to SpatialEngine.getCasesForPair().
+   TARGET MODE:
+       parent = TARGET
+       child  = SOURCE
+=================================================== */
 
-           IMPORTANT:
+if (
+    cases.length ===
+    0
+) {
 
-           getCasesForPair() must be DATA LOOKUP only.
+    const SpatialEngine =
+        UIController
+            .getSpatialEngine();
 
-           It must NOT:
 
-               select GIS polygons
-               clear selection layers
-               render parent
-               render child
-               change currentParent
-               change currentChild
-        =================================================== */
+    if (
+        SpatialEngine
+    ) {
+
+        /* ===========================================
+           SOURCE → TARGET
+        =========================================== */
 
         if (
-            cases.length ===
-            0
+            UIController.activeMode ===
+            "source"
         ) {
 
+            const sourceId =
 
-            const SpatialEngine =
                 UIController
-                    .getSpatialEngine();
+                    .currentParent
+                    ?.canonicalId
+
+                ||
+
+                UIController
+                    .currentParent
+                    ?.id
+
+                ||
+
+                null;
+
+
+            const targetName =
+
+                child?.name
+
+                ||
+
+                child?.cleanName
+
+                ||
+
+                child?.key
+
+                ||
+
+                child?.id
+
+                ||
+
+                null;
 
 
             if (
-                SpatialEngine &&
+                sourceId &&
+                targetName &&
                 typeof
-                SpatialEngine.getCasesForPair ===
-                "function"
+                    SpatialEngine
+                        .getCasesForSourceTarget ===
+                    "function"
             ) {
 
-
                 const result =
+
                     SpatialEngine
-                        .getCasesForPair(
+                        .getCasesForSourceTarget(
 
-                            UIController
-                                .currentParent,
+                            sourceId,
 
-                            child,
-
-                            UIController
-                                .activeMode
+                            targetName
 
                         );
 
@@ -7299,18 +7337,142 @@ function (
                     )
                 ) {
 
-
                     cases =
                         result;
-
 
                 }
 
 
+                console.log(
+
+                    "🔗 SOURCE → TARGET cases resolved",
+
+                    {
+                        sourceId:
+                            sourceId,
+
+                        targetName:
+                            targetName,
+
+                        cases:
+                            cases.length
+                    }
+
+                );
+
             }
 
+        }
+
+
+        /* ===========================================
+           TARGET → SOURCE
+        =========================================== */
+
+        else if (
+            UIController.activeMode ===
+            "target"
+        ) {
+
+            const sourceId =
+
+                child?.canonicalId
+
+                ||
+
+                child?.id
+
+                ||
+
+                null;
+
+
+            const targetName =
+
+                UIController
+                    .currentParent
+                    ?.name
+
+                ||
+
+                UIController
+                    .currentParent
+                    ?.cleanName
+
+                ||
+
+                UIController
+                    .currentParent
+                    ?.key
+
+                ||
+
+                UIController
+                    .currentParent
+                    ?.id
+
+                ||
+
+                null;
+
+
+            if (
+                sourceId &&
+                targetName &&
+                typeof
+                    SpatialEngine
+                        .getCasesForSourceTarget ===
+                    "function"
+            ) {
+
+                const result =
+
+                    SpatialEngine
+                        .getCasesForSourceTarget(
+
+                            sourceId,
+
+                            targetName
+
+                        );
+
+
+                if (
+                    Array.isArray(
+                        result
+                    )
+                ) {
+
+                    cases =
+                        result;
+
+                }
+
+
+                console.log(
+
+                    "🔗 TARGET → SOURCE cases resolved",
+
+                    {
+                        sourceId:
+                            sourceId,
+
+                        targetName:
+                            targetName,
+
+                        cases:
+                            cases.length
+                    }
+
+                );
+
+            }
 
         }
+
+    }
+
+}
 
 
 
