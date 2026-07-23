@@ -439,23 +439,25 @@ IntentManager.detectLocal = function (
       Local Intent Modules
     ----------------------------------*/
 
-    const detectors = [
+const detectors = [
 
-        GG.StaffIntent,
+    GG.StaffIntent,
 
-        GG.WildlifeIntent,
+    GG.SightingIntent,
 
-        GG.GISIntent,
+    GG.WildlifeIntent,
 
-        GG.PatrolIntent,
+    GG.GISIntent,
 
-        GG.LegalIntent,
+    GG.PatrolIntent,
 
-        GG.ReportIntent,
+    GG.LegalIntent,
 
-        GG.AnalyticsIntent
+    GG.ReportIntent,
 
-    ];
+    GG.AnalyticsIntent
+
+];
 
     let bestIntent =
 
