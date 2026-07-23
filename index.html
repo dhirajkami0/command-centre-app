@@ -32039,11 +32039,14 @@ async function saveSightingToFirestore(
   payload
 ){
 
+  // =====================================================
+  // FIRESTORE MODULES
+  // =====================================================
+
   const {
 
     getFirestore,
     doc,
-    collection,
     runTransaction,
     serverTimestamp
 
@@ -32056,9 +32059,28 @@ async function saveSightingToFirestore(
     getFirestore();
 
 
-  /* =====================================================
-     FINANCIAL YEAR
-  ===================================================== */
+  // =====================================================
+  // VALIDATE PAYLOAD
+  // =====================================================
+
+  if(
+    !payload ||
+    typeof payload !==
+    "object"
+  ){
+
+    throw new Error(
+      "Invalid sighting payload"
+    );
+
+  }
+
+
+  // =====================================================
+  // FINANCIAL YEAR
+  //
+  // 01 Apr 2026 → 31 Mar 2027 = 2026-27
+  // =====================================================
 
   const now =
     new Date();
@@ -32085,24 +32107,62 @@ async function saveSightingToFirestore(
   const financialYear =
     startYear +
     "-" +
-    String(endYear).slice(-2);
+    String(
+      endYear
+    ).slice(
+      -2
+    );
 
 
-  /* =====================================================
-     GIS VALUES
-  ===================================================== */
+  // =====================================================
+  // GIS VALUES
+  //
+  // IMPORTANT:
+  //
+  // Use the GIS values exactly as resolved.
+  //
+  // NO hard-coded:
+  //
+  // WDPO
+  // KMG
+  // BTR-W
+  // BTR-E
+  //
+  // Official abbreviations can be added later.
+  // =====================================================
 
   const division =
     String(
-      payload.gis_division || ""
+      payload.gis_division ||
+      ""
     ).trim();
 
 
   const range =
     String(
-      payload.gis_range || ""
+      payload.gis_range ||
+      ""
     ).trim();
 
+
+  const beat =
+    String(
+      payload.gis_beat ||
+      payload.beat ||
+      ""
+    ).trim();
+
+
+  const compartment =
+    String(
+      payload.gis_compartment ||
+      ""
+    ).trim();
+
+
+  // =====================================================
+  // GIS VALIDATION
+  // =====================================================
 
   if(
     !division ||
@@ -32116,90 +32176,66 @@ async function saveSightingToFirestore(
   }
 
 
-  /* =====================================================
-     CREATE SHORT CODES
+  // =====================================================
+  // CURRENT CODE VALUES
+  //
+  // For now these deliberately remain the actual GIS names.
+  //
+  // Example:
+  //
+  // divisionCode = BuxaTR_WEST
+  // rangeCode    = EastDamanpur
+  //
+  // =====================================================
 
-     No GIS hierarchy is hard-coded here.
-
-     First try existing GIS properties / IDs.
-     Otherwise normalize current GIS names.
-
-     We can later replace this with your official
-     short-code field if one already exists in GIS.
-  ===================================================== */
-
-/* =====================================================
-   GIS IDENTIFIERS
-
-   IMPORTANT:
-   Use GIS values exactly as resolved.
-
-   NO hard-coded abbreviations.
-   NO WDPO / KMG mapping.
-   NO division-name conversion.
-
-   Later official short-code fields can be added to GIS
-   without changing the counter architecture.
-===================================================== */
-
-const divisionCode =
-  String(
-    payload.gis_division || ""
-  ).trim();
+  const divisionCode =
+    division;
 
 
-const rangeCode =
-  String(
-    payload.gis_range || ""
-  ).trim();
+  const rangeCode =
+    range;
 
 
-if(
-  !divisionCode ||
-  !rangeCode
-){
-
-  throw new Error(
-    "GIS division/range missing"
-  );
-
-}
-
-
-  /* =====================================================
-     COUNTER DOCUMENT KEYS
-  ===================================================== */
+  // =====================================================
+  // SAFE FIRESTORE COUNTER KEYS
+  // =====================================================
 
   const safeFY =
-    financialYear.replace(
-      /[^A-Za-z0-9_-]/g,
-      "_"
-    );
+    financialYear
+      .replace(
+        /[^A-Za-z0-9_-]/g,
+        "_"
+      );
 
 
   const safeDivision =
-    divisionCode.replace(
-      /[^A-Za-z0-9_-]/g,
-      "_"
-    );
+    divisionCode
+      .replace(
+        /[^A-Za-z0-9_-]/g,
+        "_"
+      );
 
 
   const safeRange =
-    rangeCode.replace(
-      /[^A-Za-z0-9_-]/g,
-      "_"
-    );
+    rangeCode
+      .replace(
+        /[^A-Za-z0-9_-]/g,
+        "_"
+      );
 
 
-  /*
-   * Example:
-   *
-   * elephant_sighting_counters/
-   * 2026-27__BTR-W
-   *
-   * elephant_sighting_counters/
-   * 2026-27__BTR-W__WDPO
-   */
+  // =====================================================
+  // COUNTER REFERENCES
+  //
+  // Example:
+  //
+  // elephant_sighting_counters/
+  // 2026-27__BuxaTR_WEST
+  //
+  // elephant_sighting_counters/
+  // 2026-27__BuxaTR_WEST__EastDamanpur
+  //
+  // =====================================================
 
   const divisionCounterRef =
     doc(
@@ -32231,17 +32267,16 @@ if(
     );
 
 
-  /* =====================================================
-     TRANSACTION
-
-     Firestore serializes concurrent counter updates.
-
-     Therefore 200 simultaneous submissions cannot simply
-     read the same count and all receive the same number.
-  ===================================================== */
+  // =====================================================
+  // TRANSACTION
+  //
+  // BOTH counters are allocated inside ONE transaction.
+  //
+  // This is essential when many sightings are submitted
+  // simultaneously.
+  // =====================================================
 
   const result =
-
     await runTransaction(
 
       db,
@@ -32250,9 +32285,9 @@ if(
         transaction
       ){
 
-        /* -----------------------------------------------
-           ALL READS FIRST
-        ----------------------------------------------- */
+        // =================================================
+        // ALL TRANSACTION READS FIRST
+        // =================================================
 
         const divisionSnap =
           await transaction.get(
@@ -32266,29 +32301,45 @@ if(
           );
 
 
+        // =================================================
+        // CURRENT DIVISION COUNT
+        // =================================================
+
         const oldDivisionCount =
 
           divisionSnap.exists()
 
             ? Number(
-                divisionSnap.data()
-                  .count || 0
+                divisionSnap
+                  .data()
+                  ?.count ||
+                0
               )
 
             : 0;
 
+
+        // =================================================
+        // CURRENT RANGE COUNT
+        // =================================================
 
         const oldRangeCount =
 
           rangeSnap.exists()
 
             ? Number(
-                rangeSnap.data()
-                  .count || 0
+                rangeSnap
+                  .data()
+                  ?.count ||
+                0
               )
 
             : 0;
 
+
+        // =================================================
+        // NEXT COUNTERS
+        // =================================================
 
         const divisionCount =
           oldDivisionCount + 1;
@@ -32298,52 +32349,96 @@ if(
           oldRangeCount + 1;
 
 
-        /* -----------------------------------------------
-           FINAL SIGHTING ID
-        ----------------------------------------------- */
+        // =================================================
+        // VISIBLE SIGHTING ID COMPONENTS
+        // =================================================
 
-const idDivision =
-
-  divisionCode
-    .replace(/\s+/g, "");
-
-
-const idRange =
-
-  rangeCode
-    .replace(/\s+/g, "");
+        const idDivision =
+          divisionCode
+            .replace(
+              /\s+/g,
+              ""
+            );
 
 
-const finalSightingID =
-
-  idDivision +
-  "-" +
-  idRange +
-  "-" +
-  rangeCount +
-  "/" +
-  divisionCount;
+        const idRange =
+          rangeCode
+            .replace(
+              /\s+/g,
+              ""
+            );
 
 
-        /* -----------------------------------------------
-           SIGHTING DOCUMENT
-        ----------------------------------------------- */
+        // =================================================
+        // FINAL USER-FACING SIGHTING ID
+        //
+        // Example:
+        //
+        // BuxaTR_WEST-EastDamanpur-42/4252
+        //
+        // Later, when GIS contains official abbreviations,
+        // this can become:
+        //
+        // BTR-W-WDPO-42/4252
+        //
+        // without changing the counter architecture.
+        // =================================================
+
+        const finalSightingID =
+
+          idDivision +
+          "-" +
+          idRange +
+          "-" +
+          rangeCount +
+          "/" +
+          divisionCount;
+
+
+        // =================================================
+        // FIRESTORE DOCUMENT ID
+        //
+        // "/" cannot be inside a Firestore document ID
+        // because it is a path separator.
+        //
+        // Therefore:
+        //
+        // visible:
+        // BuxaTR_WEST-EastDamanpur-42/4252
+        //
+        // Firestore:
+        // BuxaTR_WEST-EastDamanpur-42__4252
+        //
+        // =================================================
+
+        const firestoreDocumentID =
+
+          finalSightingID
+            .replace(
+              /\//g,
+              "__"
+            );
+
+
+        // =================================================
+        // SIGHTING DOCUMENT REFERENCE
+        // =================================================
 
         const sightingRef =
-
           doc(
 
-            collection(
-              db,
-              "elephant_sightings"
-            )
+            db,
+
+            "elephant_sightings",
+
+            firestoreDocumentID
 
           );
 
 
-        /* -----------------------------------------------
-           COUNTER WRITES
-        ----------------------------------------------- */
+        // =================================================
+        // DIVISION COUNTER WRITE
+        // =================================================
 
         transaction.set(
 
@@ -32377,6 +32472,10 @@ const finalSightingID =
 
         );
 
+
+        // =================================================
+        // RANGE COUNTER WRITE
+        // =================================================
 
         transaction.set(
 
@@ -32417,9 +32516,9 @@ const finalSightingID =
         );
 
 
-        /* -----------------------------------------------
-           CREATE LIVE SIGHTING
-        ----------------------------------------------- */
+        // =================================================
+        // CREATE LIVE SIGHTING DOCUMENT
+        // =================================================
 
         transaction.set(
 
@@ -32427,31 +32526,64 @@ const finalSightingID =
 
           {
 
+            // =================================================
+            // ORIGINAL / ENRICHED PAYLOAD
+            // =================================================
+
             ...payload,
 
 
-            /* canonical ID */
+            // =================================================
+            // CANONICAL IDENTITY
+            // =================================================
 
             sighting_id:
               finalSightingID,
 
 
-            /* keep Firestore document ID separately */
-
             firestore_id:
-              sightingRef.id,
+              firestoreDocumentID,
 
 
-            /* counter metadata */
+            // =================================================
+            // FINANCIAL YEAR
+            // =================================================
 
             financial_year:
               financialYear,
+
+
+            // =================================================
+            // GIS
+            // =================================================
+
+            gis_division:
+              division,
+
+            gis_range:
+              range,
+
+            gis_beat:
+              beat,
+
+            gis_compartment:
+              compartment,
+
+
+            // =================================================
+            // CURRENT GIS CODE VALUES
+            // =================================================
 
             division_code:
               divisionCode,
 
             range_code:
               rangeCode,
+
+
+            // =================================================
+            // COUNTER VALUES
+            // =================================================
 
             range_sighting_no:
               rangeCount,
@@ -32460,7 +32592,9 @@ const finalSightingID =
               divisionCount,
 
 
-            /* live-state defaults */
+            // =================================================
+            // LIVE STATE
+            // =================================================
 
             status:
               "ACTIVE",
@@ -32469,7 +32603,20 @@ const finalSightingID =
               true,
 
 
-            /* timestamps */
+            // =================================================
+            // MARKER / UI STATE
+            //
+            // These defaults can be updated later by your
+            // existing sighting status logic.
+            // =================================================
+
+            marker_visible:
+              true,
+
+
+            // =================================================
+            // TIMESTAMPS
+            // =================================================
 
             sighting_datetime:
               serverTimestamp(),
@@ -32485,16 +32632,32 @@ const finalSightingID =
         );
 
 
+        // =================================================
+        // RETURN RESULT TO submitSightingForm()
+        // =================================================
+
         return {
 
           firestoreId:
-            sightingRef.id,
+            firestoreDocumentID,
 
           sightingId:
             finalSightingID,
 
           financialYear:
             financialYear,
+
+          division:
+            division,
+
+          range:
+            range,
+
+          beat:
+            beat,
+
+          compartment:
+            compartment,
 
           divisionCode:
             divisionCode,
@@ -32515,10 +32678,42 @@ const finalSightingID =
     );
 
 
+  // =====================================================
+  // SUCCESS
+  // =====================================================
+
   console.log(
     "🔥 Firestore sighting saved:",
     result
   );
+
+
+  console.table([
+    {
+
+      sightingId:
+        result.sightingId,
+
+      firestoreId:
+        result.firestoreId,
+
+      financialYear:
+        result.financialYear,
+
+      division:
+        result.division,
+
+      range:
+        result.range,
+
+      rangeNo:
+        result.rangeCount,
+
+      divisionNo:
+        result.divisionCount
+
+    }
+  ]);
 
 
   return result;
