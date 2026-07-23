@@ -32523,28 +32523,27 @@ async function submitSightingForm(event){
     let sightingID;
 
     if(
-
       window.isEditingSighting &&
-
       window.currentSightingId
-
     ){
 
       sightingID =
         window.currentSightingId;
 
     }
-
     else{
 
+      /*
+       * Temporary ID only.
+       *
+       * For NEW sightings this will later be replaced by the
+       * canonical Firestore-generated sighting ID.
+       */
+
       sightingID =
-
         "SIGHT-" +
-
         Date.now() +
-
         "-" +
-
         Math.floor(
           Math.random() * 10000
         );
@@ -32557,51 +32556,38 @@ async function submitSightingForm(event){
     // =====================================================
 
     const m =
-
       parseInt(
-
         document.getElementById(
           "f-m"
-        ).value
-
+        )?.value
       ) || 0;
 
 
     const f =
-
       parseInt(
-
         document.getElementById(
           "f-f"
-        ).value
-
+        )?.value
       ) || 0;
 
 
     const uni =
-
       parseInt(
-
         document.getElementById(
           "f-u"
-        ).value
-
+        )?.value
       ) || 0;
 
 
     const calf =
-
       parseInt(
-
         document.getElementById(
           "f-c"
-        ).value
-
+        )?.value
       ) || 0;
 
 
     const total =
-
       m +
       f +
       uni +
@@ -32613,18 +32599,20 @@ async function submitSightingForm(event){
     // =====================================================
 
     let lat =
-
       document.getElementById(
         "f-lat"
-      ).value;
+      )?.value || "";
 
 
     let lon =
-
       document.getElementById(
         "f-lon"
-      ).value;
+      )?.value || "";
 
+
+    /*
+     * Prefer APK/live GPS when available.
+     */
 
     try{
 
@@ -32632,29 +32620,21 @@ async function submitSightingForm(event){
         window.latestGps;
 
       if(
-
         gps &&
-
-        gps.lat &&
-
-        gps.lng
-
+        gps.lat != null &&
+        gps.lng != null
       ){
 
         lat =
-
           Number(
             gps.lat
-          )
-          .toFixed(5);
+          ).toFixed(5);
 
 
         lon =
-
           Number(
             gps.lng
-          )
-          .toFixed(5);
+          ).toFixed(5);
 
 
         console.log(
@@ -32666,7 +32646,6 @@ async function submitSightingForm(event){
       }
 
     }
-
     catch(gpsErr){
 
       console.warn(
@@ -32677,35 +32656,15 @@ async function submitSightingForm(event){
     }
 
 
-    const location =
-      lat + "," + lon;
-
-
     // =====================================================
-    // TIME
-    // =====================================================
-
-    const now =
-      new Date();
-
-
-    const time =
-
-      now.toLocaleTimeString(
-        "en-IN"
-      );
-
-
-    // =====================================================
-    // VALIDATION
+    // VALIDATE GPS
     // =====================================================
 
     if(
-
-      !lat ||
-
-      !lon
-
+      lat === "" ||
+      lon === "" ||
+      !Number.isFinite(Number(lat)) ||
+      !Number.isFinite(Number(lon))
     ){
 
       alert(
@@ -32721,45 +32680,67 @@ async function submitSightingForm(event){
     }
 
 
+    lat =
+      Number(lat);
+
+
+    lon =
+      Number(lon);
+
+
+    const location =
+      lat + "," + lon;
+
+
+    // =====================================================
+    // TIME
+    // =====================================================
+
+    const now =
+      new Date();
+
+
+    const time =
+      now.toLocaleTimeString(
+        "en-IN"
+      );
+
+
+    // =====================================================
+    // FORM VALUES
+    // =====================================================
+
     const beat =
-
       String(
-
         document.getElementById(
           "f-beat"
-        ).value || ""
-
+        )?.value || ""
       ).trim();
 
 
     const forestBlock =
-
       String(
-
         document.getElementById(
           "f-block"
-        ).value || ""
-
+        )?.value || ""
       ).trim();
 
 
     const compt =
-
       String(
-
         document.getElementById(
           "f-compt"
-        ).value || ""
-
+        )?.value || ""
       ).trim();
 
 
+    // =====================================================
+    // EXISTING VALIDATION
+    // =====================================================
+
     if(
-
       !beat ||
-
       !compt
-
     ){
 
       alert(
@@ -32780,33 +32761,25 @@ async function submitSightingForm(event){
     // =====================================================
 
     if(
-
       forestBlock ===
       "VILLAGE"
-
     ){
 
       try{
 
         const customVillages =
-
           JSON.parse(
-
             localStorage.getItem(
               "customVillages"
             ) || "[]"
-
           );
 
 
         if(
-
           compt &&
-
           !customVillages.includes(
             compt
           )
-
         ){
 
           customVillages.push(
@@ -32815,28 +32788,21 @@ async function submitSightingForm(event){
 
 
           localStorage.setItem(
-
             "customVillages",
-
             JSON.stringify(
               customVillages
             )
-
           );
 
 
           console.log(
-
             "🏡 New village saved:",
-
             compt
-
           );
 
         }
 
       }
-
       catch(err){
 
         console.warn(
@@ -32854,61 +32820,47 @@ async function submitSightingForm(event){
     // =====================================================
 
     const teamInput =
-
       document.getElementById(
         "f-team"
       );
 
 
     let leaderValue =
-
       teamInput
-      ? teamInput.value
-      : "";
+        ? teamInput.value
+        : "";
 
 
     if(
-
       !leaderValue ||
-
       leaderValue.trim() === ""
-
     ){
 
       leaderValue =
-
         window.userProfile?.name ||
-
         "";
 
     }
 
 
     if(
+      leaderValue ===
+        window.userProfile?.cleanName ||
 
       leaderValue ===
-
-      window.userProfile?.cleanName ||
-
-      leaderValue ===
-
-      window.userProfile
-      ?.cleanName
-      ?.toUpperCase()
-
+        window.userProfile
+          ?.cleanName
+          ?.toUpperCase()
     ){
 
       leaderValue =
-
         window.userProfile?.name ||
-
         leaderValue;
 
     }
 
 
     leaderValue =
-
       String(
         leaderValue
       ).trim();
@@ -32921,16 +32873,19 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // 🔥 NEW — RESOLVE SPATIAL CONTEXT
+    // SPATIAL CONTEXT
+    // =====================================================
     //
-    // Uses:
+    // IMPORTANT:
     //
-    // 1. Existing compartment polygons
-    // 2. Existing Master GIS
-    // 3. Existing village_locations Firestore cache
+    // Nothing here blocks sighting submission.
     //
-    // Failure of spatial resolution MUST NOT block
-    // sighting submission.
+    // We independently attempt:
+    //
+    // 1. Compartment polygon
+    // 2. Nearest named village/location
+    // 3. Master GIS polygon
+    //
     // =====================================================
 
     let spatialCompartment =
@@ -32943,35 +32898,27 @@ async function submitSightingForm(event){
       null;
 
 
-    // -----------------------------------------------------
-    // COMPARTMENT POLYGON
-    // -----------------------------------------------------
+    // =====================================================
+    // 1. COMPARTMENT POLYGON
+    // =====================================================
 
     try{
 
       if(
-
         window.GreenGuardAI &&
-
         window.GreenGuardAI.GISEntities &&
-
         typeof window.GreenGuardAI
           .GISEntities
           .findCompartmentAtPoint ===
           "function"
-
       ){
 
         spatialCompartment =
-
-          window.GreenGuardAI
+          await window.GreenGuardAI
             .GISEntities
             .findCompartmentAtPoint(
-
-              Number(lat),
-
-              Number(lon)
-
+              lat,
+              lon
             );
 
 
@@ -32983,7 +32930,6 @@ async function submitSightingForm(event){
       }
 
     }
-
     catch(err){
 
       console.warn(
@@ -32994,29 +32940,114 @@ async function submitSightingForm(event){
     }
 
 
-    // -----------------------------------------------------
-    // NEAREST NAMED VILLAGE LOCATION
-    // -----------------------------------------------------
+    // =====================================================
+    // COMPARTMENT FALLBACK
+    //
+    // Uses your already-loaded allCompartmentFeatures.
+    // No hard-coded compartment names.
+    // =====================================================
+
+    if(
+      !spatialCompartment &&
+      window.turf &&
+      typeof window.turf
+        .booleanPointInPolygon ===
+        "function" &&
+      Array.isArray(
+        window.allCompartmentFeatures
+      )
+    ){
+
+      try{
+
+        const point =
+          window.turf.point([
+            lon,
+            lat
+          ]);
+
+
+        for(
+          const feature of
+          window.allCompartmentFeatures
+        ){
+
+          if(
+            !feature ||
+            !feature.geometry
+          ){
+            continue;
+          }
+
+
+          try{
+
+            if(
+              window.turf
+                .booleanPointInPolygon(
+                  point,
+                  feature
+                )
+            ){
+
+              spatialCompartment =
+                feature;
+
+              break;
+
+            }
+
+          }
+          catch(innerErr){
+
+            // Ignore malformed polygon.
+
+          }
+
+        }
+
+
+        if(
+          spatialCompartment
+        ){
+
+          console.log(
+            "🗺️ Compartment fallback match:",
+            spatialCompartment
+          );
+
+        }
+
+      }
+      catch(err){
+
+        console.warn(
+          "⚠ Compartment fallback failed:",
+          err
+        );
+
+      }
+
+    }
+
+
+    // =====================================================
+    // 2. NEAREST NAMED VILLAGE / LOCATION
+    // =====================================================
 
     try{
 
       if(
-
         typeof
         window.findNearestVillageLocation ===
         "function"
-
       ){
 
         nearestVillage =
-
           await window
             .findNearestVillageLocation(
-
-              Number(lat),
-
-              Number(lon)
-
+              lat,
+              lon
             );
 
 
@@ -33026,9 +33057,15 @@ async function submitSightingForm(event){
         );
 
       }
+      else{
+
+        console.warn(
+          "⚠ findNearestVillageLocation() not loaded"
+        );
+
+      }
 
     }
-
     catch(err){
 
       console.warn(
@@ -33039,81 +33076,50 @@ async function submitSightingForm(event){
     }
 
 
-    // -----------------------------------------------------
-    // MASTER GIS
-    //
-    // Find the containing Master GIS feature.
-    //
-    // This gives us the canonical:
-    //
-    // SID
-    // DID
-    // RID
-    // BID
-    //
-    // No names or IDs are hard-coded.
-    // -----------------------------------------------------
+    // =====================================================
+    // 3. MASTER GIS
+    // =====================================================
 
     try{
 
       if(
-
         window.turf &&
-
         typeof window.turf
           .booleanPointInPolygon ===
           "function" &&
-
         Array.isArray(
           window.allGISFeatures
         )
-
       ){
 
         const sightingPoint =
-
           window.turf.point([
-
-            Number(lon),
-
-            Number(lat)
-
+            lon,
+            lat
           ]);
 
 
         for(
-
           const feature of
           window.allGISFeatures
-
         ){
 
           if(
-
             !feature ||
-
             !feature.geometry
-
           ){
-
             continue;
-
           }
 
 
           try{
 
             if(
-
               window.turf
                 .booleanPointInPolygon(
-
                   sightingPoint,
-
                   feature
-
                 )
-
             ){
 
               masterGIS =
@@ -33124,10 +33130,9 @@ async function submitSightingForm(event){
             }
 
           }
-
           catch(gisErr){
 
-            // Ignore malformed feature and continue.
+            // Ignore malformed feature.
 
           }
 
@@ -33142,7 +33147,6 @@ async function submitSightingForm(event){
       }
 
     }
-
     catch(err){
 
       console.warn(
@@ -33154,11 +33158,10 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // NORMALIZE SPATIAL VALUES
+    // NORMALIZE GIS PROPERTIES
     // =====================================================
 
     const compartmentProperties =
-
       spatialCompartment
         ?.properties ||
 
@@ -33170,89 +33173,57 @@ async function submitSightingForm(event){
 
 
     const masterProperties =
-
       masterGIS
         ?.properties ||
-
       {};
 
 
-    // -----------------------------------------------------
-    // Canonical GIS hierarchy
-    //
-    // Prefer Master GIS.
-    // Fall back to compartment polygon.
-    // Finally preserve form Beat.
-    // -----------------------------------------------------
+    // =====================================================
+    // GIS HIERARCHY
+    // =====================================================
 
     const resolvedDivision =
-
       String(
-
         masterProperties.division ||
-
         spatialCompartment?.division ||
-
         compartmentProperties.division ||
-
         ""
-
       ).trim();
 
 
     const resolvedRange =
-
       String(
-
         masterProperties.range ||
-
         spatialCompartment?.range ||
-
         compartmentProperties.range ||
-
         ""
-
       ).trim();
 
 
     const resolvedBeat =
-
       String(
-
         masterProperties.beat ||
-
         spatialCompartment?.beat ||
-
         compartmentProperties.beat ||
-
         beat ||
-
         ""
-
       ).trim();
 
 
     const resolvedCompartment =
-
       String(
-
         spatialCompartment?.compartment ||
-
         compartmentProperties.compartment ||
-
         compartmentProperties.name ||
-
         ""
-
       ).trim();
 
 
-    // -----------------------------------------------------
-    // Canonical GIS IDs
-    // -----------------------------------------------------
+    // =====================================================
+    // GIS IDS
+    // =====================================================
 
     const resolvedSID =
-
       String(
         masterProperties.SID ||
         ""
@@ -33260,7 +33231,6 @@ async function submitSightingForm(event){
 
 
     const resolvedDID =
-
       String(
         masterProperties.DID ||
         ""
@@ -33268,7 +33238,6 @@ async function submitSightingForm(event){
 
 
     const resolvedRID =
-
       String(
         masterProperties.RID ||
         ""
@@ -33276,106 +33245,77 @@ async function submitSightingForm(event){
 
 
     const resolvedBID =
-
       String(
         masterProperties.BID ||
         ""
       ).trim();
 
 
-    // -----------------------------------------------------
-    // Nearest named location
-    // -----------------------------------------------------
+    // =====================================================
+    // NEAREST VILLAGE
+    // =====================================================
 
     const nearestVillageName =
-
       String(
-
         nearestVillage?.village ||
-
         nearestVillage?.name ||
-
         ""
-
       ).trim();
 
 
     const nearestVillageDistance =
-
       Number.isFinite(
-
         Number(
           nearestVillage?.distanceMeters
         )
-
       )
-
         ? Number(
             nearestVillage.distanceMeters
           )
-
         : null;
 
 
     const nearestVillageDistanceKm =
-
       Number.isFinite(
-
         Number(
           nearestVillage?.distanceKm
         )
-
       )
-
         ? Number(
             nearestVillage.distanceKm
           )
-
         : null;
 
 
     const nearestVillageRisk =
-
       String(
-
         nearestVillage?.riskLevel ||
-
         ""
-
       ).trim();
 
 
     const nearestVillageConflictHistory =
-
       Number.isFinite(
-
         Number(
           nearestVillage?.conflictHistory
         )
-
       )
-
         ? Number(
             nearestVillage.conflictHistory
           )
-
         : 0;
 
 
     const nearestVillageDocId =
-
       String(
-
         nearestVillage?.firestoreDocId ||
-
         ""
-
       ).trim();
 
 
-    // -----------------------------------------------------
-    // Human-readable popup location
-    // -----------------------------------------------------
+    // =====================================================
+    // POPUP-READY LOCATION
+    // =====================================================
 
     let resolvedLocationText =
       location;
@@ -33386,9 +33326,7 @@ async function submitSightingForm(event){
     ){
 
       resolvedLocationText +=
-
         " near " +
-
         nearestVillageName;
 
 
@@ -33398,13 +33336,10 @@ async function submitSightingForm(event){
       ){
 
         resolvedLocationText +=
-
           " (" +
-
           Math.round(
             nearestVillageDistance
           ) +
-
           " m)";
 
       }
@@ -33412,10 +33347,12 @@ async function submitSightingForm(event){
     }
 
 
+    // =====================================================
+    // DEBUG SPATIAL RESULT
+    // =====================================================
+
     console.table([
-
       {
-
         GPS:
           location,
 
@@ -33454,27 +33391,19 @@ async function submitSightingForm(event){
 
         conflictHistory:
           nearestVillageConflictHistory
-
       }
-
     ]);
 
 
     // =====================================================
     // PAYLOAD
-    //
-    // IMPORTANT:
-    //
-    // Existing fields are preserved.
-    //
-    // New spatial fields are ADDITIVE.
     // =====================================================
 
     const payload = {
 
-      // ---------------------------------------------------
-      // EXISTING
-      // ---------------------------------------------------
+      // ===================================================
+      // EXISTING FIELDS
+      // ===================================================
 
       sighting_id:
         sightingID,
@@ -33482,105 +33411,81 @@ async function submitSightingForm(event){
       parent_id:
         "",
 
-
       beat:
         beat,
-
 
       forest_block:
         forestBlock,
 
-
       compt:
         compt,
-
 
       time:
         time,
 
-
       m:
         Number(m),
-
 
       f:
         Number(f),
 
-
       unidentified:
         Number(uni),
-
 
       calf:
         Number(calf),
 
-
       total_seen:
         total,
-
 
       anticipated:
         "",
 
-
       depredation:
         "",
-
 
       involved:
         "",
 
-
       driving:
         "",
 
-
       remarks:
-
         document
-        .getElementById(
-          "f-remarks"
-        )
-        .value,
-
+          .getElementById(
+            "f-remarks"
+          )
+          ?.value || "",
 
       leader:
         leaderValue,
 
-
       phone:
-
         window.userProfile
-        ?.phone || "",
-
+          ?.phone || "",
 
       staff:
         "",
 
-
       lat:
-        Number(lat),
-
+        lat,
 
       lon:
-        Number(lon),
-
+        lon,
 
       location:
         location,
 
-
       direction:
-
         document
-        .getElementById(
-          "f-dir"
-        )
-        .value,
+          .getElementById(
+            "f-dir"
+          )
+          ?.value || "",
 
 
       // ===================================================
-      // 🔥 NEW — CANONICAL GIS CONTEXT
+      // GIS CONTEXT
       // ===================================================
 
       gis_division:
@@ -33596,9 +33501,9 @@ async function submitSightingForm(event){
         resolvedCompartment,
 
 
-      // ---------------------------------------------------
-      // GIS IDs
-      // ---------------------------------------------------
+      // ===================================================
+      // GIS IDS
+      // ===================================================
 
       SID:
         resolvedSID,
@@ -33614,7 +33519,7 @@ async function submitSightingForm(event){
 
 
       // ===================================================
-      // 🔥 NEW — NEAREST NAMED LOCATION
+      // NEAREST NAMED LOCATION
       // ===================================================
 
       nearest_village:
@@ -33636,9 +33541,9 @@ async function submitSightingForm(event){
         nearestVillageDocId,
 
 
-      // ---------------------------------------------------
-      // Popup-ready text
-      // ---------------------------------------------------
+      // ===================================================
+      // POPUP LOCATION
+      // ===================================================
 
       resolved_location:
         resolvedLocationText
@@ -33657,28 +33562,28 @@ async function submitSightingForm(event){
     // =====================================================
 
     const fileInput =
-
       document.getElementById(
         "f-photo"
       );
 
 
     const file =
-
       fileInput
-      ? fileInput.files[0]
-      : null;
+        ? fileInput.files[0]
+        : null;
 
 
     // =====================================================
-    // SUBMIT
-    //
-    // EXISTING BACKEND FLOW PRESERVED
+    // SUBMIT TO SERVER
     // =====================================================
 
     async function submitToServer(
-  finalPayload
-){
+      finalPayload
+    ){
+
+      // ===================================================
+      // OFFLINE
+      // ===================================================
 
       if(
         !navigator.onLine
@@ -33704,282 +33609,279 @@ async function submitSightingForm(event){
       }
 
 
-// =====================================================
-// 🔥 FIRESTORE FIRST
-// =====================================================
-
-try{
-
-  /*
-   * NEW sighting:
-   * allocate atomic counter + create Firestore document.
-   *
-   * EDITING is intentionally excluded because editing an
-   * existing sighting must NEVER consume another number.
-   */
-
-  if(
-    !window.isEditingSighting
-  ){
-
-    const firestoreResult =
-
-      await saveSightingToFirestore(
-        finalPayload
-      );
-
-
-    /*
-     * Replace temporary SIGHT-* ID with canonical ID.
-     */
-
-    finalPayload.sighting_id =
-      firestoreResult.sightingId;
-
-
-    finalPayload.firestore_id =
-      firestoreResult.firestoreId;
-
-
-    finalPayload.financial_year =
-      firestoreResult.financialYear;
-
-
-    finalPayload.division_code =
-      firestoreResult.divisionCode;
-
-
-    finalPayload.range_code =
-      firestoreResult.rangeCode;
-
-
-    finalPayload.range_sighting_no =
-      firestoreResult.rangeCount;
-
-
-    finalPayload.division_sighting_no =
-      firestoreResult.divisionCount;
-
-
-    /*
-     * Keep outer variable synchronized because your
-     * existing success logic uses sightingID.
-     */
-
-    sightingID =
-      firestoreResult.sightingId;
-
-
-    console.log(
-      "🆔 FINAL SIGHTING ID:",
-      sightingID
-    );
-
-  }
-
-
-  // ===================================================
-  // EXISTING BACKEND
-  //
-  // Google Sheet / Telegram / existing processing.
-  // Firestore has already completed.
-  // ===================================================
-
-  callBackend(
-
-    "saveElephantSighting",
-
-    finalPayload
-
-  )
-
-  .then(function(){
-
-    alert(
-      "✅ Submitted to Command Centre"
-    );
-
-
-    setSubmitLoading(
-      false
-    );
-
-
-    if(
-      window.isEditingSighting
-    ){
-
-      window.currentSightingId =
-        sightingID;
-
-    }
-
-    else{
-
-      window.currentSightingId =
-        null;
-
-    }
-
-
-    window.isEditingSighting =
-      false;
-
-
-    if(
-
-      typeof closeSightingForm ===
-      "function"
-
-    ){
-
-      closeSightingForm();
-
-    }
-
-
-    const form =
-
-      document.getElementById(
-        "elephantForm"
-      );
-
-
-    if(form){
-
-      form.reset();
-
-    }
-
-  })
-
-  .catch(function(err){
-
-    /*
-     * IMPORTANT:
-     *
-     * Firestore may already contain the sighting.
-     * Therefore DO NOT create another Firestore sighting.
-     *
-     * Save the same canonical payload for backend retry.
-     */
-
-    console.error(
-      "❌ Background backend failed:",
-      err
-    );
-
-
-    saveSightingOffline(
-      finalPayload
-    );
-
-
-    alert(
-      "✅ Sighting saved. Background sync pending."
-    );
-
-
-    setSubmitLoading(
-      false
-    );
-
-  });
-
-}
-
-catch(firestoreErr){
-
-  console.error(
-    "❌ Firestore sighting save failed:",
-    firestoreErr
-  );
-
-
-  /*
-   * Preserve your existing offline mechanism.
-   */
-
-  saveSightingOffline(
-    finalPayload
-  );
-
-
-  alert(
-    "⚠ Sighting queued for sync"
-  );
-
-
-  setSubmitLoading(
-    false
-  );
-
-}
-        alert(
-          "✅ Submitted to Command Centre"
-        );
-
-
-        setSubmitLoading(
-          false
-        );
-
+      // ===================================================
+      // FIRESTORE FIRST
+      // ===================================================
+
+      try{
+
+        // =================================================
+        // NEW SIGHTING
+        // =================================================
 
         if(
-          window.isEditingSighting
+          !window.isEditingSighting
         ){
 
-          window.currentSightingId =
-            sightingID;
+          if(
+            typeof
+            window.saveSightingToFirestore !==
+            "function" &&
 
-        }
+            typeof
+            saveSightingToFirestore !==
+            "function"
+          ){
 
-        else{
+            throw new Error(
+              "saveSightingToFirestore() is not available"
+            );
 
-          window.currentSightingId =
+          }
+
+
+          const firestoreSaveFunction =
+            typeof
+            window.saveSightingToFirestore ===
+            "function"
+
+              ? window.saveSightingToFirestore
+
+              : saveSightingToFirestore;
+
+
+          const firestoreResult =
+            await firestoreSaveFunction(
+              finalPayload
+            );
+
+
+          if(
+            !firestoreResult ||
+            !firestoreResult.sightingId
+          ){
+
+            throw new Error(
+              "Firestore returned no sighting ID"
+            );
+
+          }
+
+
+          // ===============================================
+          // CANONICAL ID
+          // ===============================================
+
+          finalPayload.sighting_id =
+            firestoreResult.sightingId;
+
+
+          finalPayload.firestore_id =
+            firestoreResult.firestoreId ||
+            firestoreResult.sightingId;
+
+
+          finalPayload.financial_year =
+            firestoreResult.financialYear ||
+            "";
+
+
+          finalPayload.division_code =
+            firestoreResult.divisionCode ||
+            "";
+
+
+          finalPayload.range_code =
+            firestoreResult.rangeCode ||
+            "";
+
+
+          finalPayload.range_sighting_no =
+            firestoreResult.rangeCount ??
             null;
 
-        }
+
+          finalPayload.division_sighting_no =
+            firestoreResult.divisionCount ??
+            null;
 
 
-        window.isEditingSighting =
-          false;
+          sightingID =
+            firestoreResult.sightingId;
 
 
-        if(
-
-          typeof closeSightingForm ===
-          "function"
-
-        ){
-
-          closeSightingForm();
-
-        }
-
-
-        const form =
-
-          document.getElementById(
-            "elephantForm"
+          console.log(
+            "🆔 FINAL SIGHTING ID:",
+            sightingID
           );
 
 
-        if(form){
-
-          form.reset();
+          console.log(
+            "🔥 Firestore sighting saved:",
+            firestoreResult
+          );
 
         }
 
-      })
+        // =================================================
+        // EDIT EXISTING SIGHTING
+        // =================================================
+        else{
 
-      .catch(function(err){
+          /*
+           * Do not allocate another counter.
+           *
+           * Existing sighting ID is preserved.
+           *
+           * Existing update logic can continue through
+           * your backend.
+           */
+
+          finalPayload.sighting_id =
+            sightingID;
+
+
+          console.log(
+            "✏️ Editing existing sighting:",
+            sightingID
+          );
+
+        }
+
+
+        // =================================================
+        // BACKGROUND EXISTING BACKEND
+        //
+        // Google Sheet
+        // Telegram
+        // Risk villages
+        // Distance calculations
+        // Existing processing
+        //
+        // Firestore NEW sighting is already saved.
+        // =================================================
+
+        try{
+
+          await callBackend(
+            "saveElephantSighting",
+            finalPayload
+          );
+
+
+          console.log(
+            "✅ Existing backend completed:",
+            sightingID
+          );
+
+
+          // ===============================================
+          // SUCCESS
+          // ===============================================
+
+          alert(
+            "✅ Submitted to Command Centre"
+          );
+
+
+          setSubmitLoading(
+            false
+          );
+
+
+          if(
+            window.isEditingSighting
+          ){
+
+            window.currentSightingId =
+              sightingID;
+
+          }
+          else{
+
+            window.currentSightingId =
+              null;
+
+          }
+
+
+          window.isEditingSighting =
+            false;
+
+
+          if(
+            typeof closeSightingForm ===
+            "function"
+          ){
+
+            closeSightingForm();
+
+          }
+
+
+          const form =
+            document.getElementById(
+              "elephantForm"
+            );
+
+
+          if(form){
+
+            form.reset();
+
+          }
+
+        }
+        catch(backendErr){
+
+          // ===============================================
+          // FIRESTORE ALREADY SAVED
+          //
+          // Do NOT create another Firestore document.
+          // Queue same canonical payload for backend retry.
+          // ===============================================
+
+          console.error(
+            "❌ Background backend failed:",
+            backendErr
+          );
+
+
+          saveSightingOffline(
+            finalPayload
+          );
+
+
+          alert(
+            "✅ Sighting saved. Background sync pending."
+          );
+
+
+          setSubmitLoading(
+            false
+          );
+
+        }
+
+      }
+      catch(firestoreErr){
+
+        // =================================================
+        // FIRESTORE FAILURE
+        // =================================================
 
         console.error(
-          "❌ Error:",
-          err
+          "❌ Firestore sighting save failed:",
+          firestoreErr
         );
 
+
+        /*
+         * Preserve existing offline mechanism.
+         *
+         * The sighting can later be retried rather than
+         * blocking the field user.
+         */
 
         saveSightingOffline(
           finalPayload
@@ -33987,7 +33889,7 @@ catch(firestoreErr){
 
 
         alert(
-          "⚠ Network issue → saved offline"
+          "⚠ Sighting queued for sync"
         );
 
 
@@ -33995,7 +33897,7 @@ catch(firestoreErr){
           false
         );
 
-      });
+      }
 
     }
 
@@ -34049,7 +33951,6 @@ catch(firestoreErr){
       );
 
     }
-
     else{
 
       payload.photo =
@@ -34063,7 +33964,6 @@ catch(firestoreErr){
     }
 
   }
-
   catch(e){
 
     console.error(
@@ -34084,7 +33984,7 @@ catch(firestoreErr){
 
   }
 
-}   /* ============================================================
+}  /* ============================================================
    🔥 OFFLINE SAVE
 ============================================================ */
 function saveSightingOffline(data){
