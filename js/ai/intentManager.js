@@ -42,45 +42,271 @@ const IntentManager = {};
  BUSINESS REGISTRY (Startup)
 =========================================================*/
 
+/*=========================================================
+ BUSINESS REGISTRY
+=========================================================*/
+
+/*
+ * Central registry of domains, intents and entity types
+ * that Gemini is allowed to classify.
+ *
+ * IMPORTANT:
+ *
+ * This registry does NOT perform intent detection.
+ *
+ * It only tells the AI classifier which business
+ * concepts already exist in GreenGuard.
+ *
+ * Therefore:
+ *
+ * StaffIntent
+ * SightingIntent
+ * GISIntent
+ * WildlifeIntent
+ * PatrolIntent
+ * etc.
+ *
+ * remain independently responsible for LOCAL detection.
+ */
+
 GG.BusinessRegistry = Object.freeze({
+
+    /*-----------------------------------------------------
+      CONFIDENCE
+    -----------------------------------------------------*/
 
     confidenceThreshold:
 
-        GG.Config.INTENT.HIGH_CONFIDENCE,
+        GG.Config?.INTENT?.HIGH_CONFIDENCE ??
 
-    domains: Object.freeze([
+        0.90,
 
-        GG.StaffConstants.DOMAIN,
 
-        GG.GISConstants?.DOMAIN,
+    /*-----------------------------------------------------
+      DOMAINS
+    -----------------------------------------------------*/
 
-        "wildlife",
+    domains: Object.freeze(
 
-        "patrol",
+        [
 
-        "legal",
+            /* Staff */
 
-        "analytics",
+            GG.StaffConstants?.DOMAIN,
 
-        "report"
 
-    ].filter(Boolean)),
+            /* GIS */
 
-    intents: Object.freeze(
+            GG.GISConstants?.DOMAIN,
 
-        Object.values(
 
-            GG.StaffConstants.INTENTS
+            /* Elephant Sighting / HEC */
+
+            GG.SightingConstants?.DOMAIN,
+
+
+            /* Existing Domains */
+
+            "wildlife",
+
+            "patrol",
+
+            "legal",
+
+            "analytics",
+
+            "report",
+
+            "fire"
+
+        ]
+
+        .filter(Boolean)
+
+        .filter(
+
+            function (
+
+                value,
+
+                index,
+
+                array
+
+            ) {
+
+                return (
+
+                    array.indexOf(value) ===
+
+                    index
+
+                );
+
+            }
 
         )
 
     ),
 
+
+    /*-----------------------------------------------------
+      INTENTS
+    -----------------------------------------------------*/
+
+    intents: Object.freeze(
+
+        [
+
+            /*----------------------------------
+              STAFF
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.StaffConstants
+                    ?.INTENTS ||
+
+                {}
+
+            ),
+
+
+            /*----------------------------------
+              ELEPHANT SIGHTING / HEC
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.SightingConstants
+                    ?.INTENTS ||
+
+                {}
+
+            ),
+
+
+            /*----------------------------------
+              GIS
+
+              Include when GISConstants exposes
+              an INTENTS registry.
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.GISConstants
+                    ?.INTENTS ||
+
+                {}
+
+            )
+
+        ]
+
+        .filter(Boolean)
+
+        .filter(
+
+            function (
+
+                value,
+
+                index,
+
+                array
+
+            ) {
+
+                return (
+
+                    array.indexOf(value) ===
+
+                    index
+
+                );
+
+            }
+
+        )
+
+    ),
+
+
+    /*-----------------------------------------------------
+      ENTITY TYPES
+    -----------------------------------------------------*/
+
     entityTypes: Object.freeze(
 
-        Object.values(
+        [
 
-            GG.StaffConstants.ENTITY_TYPES
+            /*----------------------------------
+              STAFF
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.StaffConstants
+                    ?.ENTITY_TYPES ||
+
+                {}
+
+            ),
+
+
+            /*----------------------------------
+              ELEPHANT SIGHTING / HEC
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.SightingConstants
+                    ?.ENTITY_TYPES ||
+
+                {}
+
+            ),
+
+
+            /*----------------------------------
+              GIS
+            ----------------------------------*/
+
+            ...Object.values(
+
+                GG.GISConstants
+                    ?.ENTITY_TYPES ||
+
+                {}
+
+            )
+
+        ]
+
+        .filter(Boolean)
+
+        .filter(
+
+            function (
+
+                value,
+
+                index,
+
+                array
+
+            ) {
+
+                return (
+
+                    array.indexOf(value) ===
+
+                    index
+
+                );
+
+            }
 
         )
 
