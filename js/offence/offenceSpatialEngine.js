@@ -1775,36 +1775,130 @@
 
             accused => {
 
-              const address =
-                this
-                  .extractAccusedAddress(
-                    accused
-                  );
+const address =
+  this.extractAccusedAddress(
+    accused
+  );
 
 
-              if (
-                !address
-              ) {
+/*
+ * Prefer authoritative LGD mapping.
+ * Fall back to old address matching.
+ */
+const lgdNumber =
+  this.safeString(
+    accused?.lgdNumber
+  );
 
-                return;
-
-              }
-
-
-              const resolved =
-                this
-                  .resolveVillageFromAddress(
-                    address
-                  );
+const lgdVillageName =
+  this.safeString(
+    accused?.lgdVillageName
+  );
 
 
-              if (
-                !resolved
-              ) {
+let resolved =
+  null;
 
-                return;
 
-              }
+/* ----------------------------------------
+   1. AUTHORITATIVE LGD
+---------------------------------------- */
+
+if (
+  lgdNumber &&
+  lgdVillageName
+) {
+
+  const candidates =
+    this.villageCodeIndex.get(
+      this.normalizeText(
+        lgdNumber
+      )
+    ) || [];
+
+
+  const village =
+    candidates.find(
+      item =>
+        this.normalizeText(
+          item?.name ||
+          item?.cleanName
+        ) ===
+        this.normalizeText(
+          lgdVillageName
+        )
+    )
+    ||
+    candidates[0];
+
+
+  if (
+    village
+  ) {
+
+    resolved = {
+
+      village,
+
+      canonicalId:
+        this.safeString(
+          village.canonicalId ||
+          village.id
+        ),
+
+      villageCode:
+        this.safeString(
+          village.villageCode
+        ),
+
+      name:
+        this.safeString(
+          village.name
+        ),
+
+      cleanName:
+        this.safeString(
+          village.cleanName
+        ),
+
+      score:
+        20000,
+
+      address:
+        address ||
+        lgdVillageName
+
+    };
+
+  }
+
+}
+
+
+/* ----------------------------------------
+   2. OLD FALLBACK
+---------------------------------------- */
+
+if (
+  !resolved &&
+  address
+) {
+
+  resolved =
+    this.resolveVillageFromAddress(
+      address
+    );
+
+}
+
+
+if (
+  !resolved
+) {
+
+  return;
+
+}
 
 
               const canonicalId =
