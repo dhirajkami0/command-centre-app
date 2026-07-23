@@ -39,291 +39,505 @@ if (
 const IntentManager = {};
 
 /*=========================================================
- BUSINESS REGISTRY (Startup)
+ VERSION
 =========================================================*/
+
+IntentManager.VERSION =
+
+    "1.1.0";
+
+IntentManager.initialized =
+
+    false;
+
+/*=========================================================
+ INTERNAL HELPERS
+=========================================================*/
+
+/**
+ * Return unique non-empty values.
+ */
+
+IntentManager.uniqueValues = function (
+
+    values = []
+
+) {
+
+    return values
+
+        .filter(
+
+            function (
+
+                value
+
+            ) {
+
+                return (
+
+                    value !== undefined &&
+
+                    value !== null &&
+
+                    value !== ""
+
+                );
+
+            }
+
+        )
+
+        .filter(
+
+            function (
+
+                value,
+
+                index,
+
+                array
+
+            ) {
+
+                return (
+
+                    array.indexOf(
+
+                        value
+
+                    ) === index
+
+                );
+
+            }
+
+        );
+
+};
+
+/*=========================================================
+ GET CONSTANT VALUES
+=========================================================*/
+
+/**
+ * Safely reads values from a constants object.
+ *
+ * Example:
+ *
+ * getConstantValues(
+ *     GG.StaffConstants,
+ *     "INTENTS"
+ * )
+ */
+
+IntentManager.getConstantValues = function (
+
+    constants,
+
+    property
+
+) {
+
+    if (
+
+        !constants ||
+
+        typeof constants !==
+
+        "object"
+
+    ) {
+
+        return [];
+
+    }
+
+    const registry =
+
+        constants[
+
+            property
+
+        ];
+
+    if (
+
+        !registry ||
+
+        typeof registry !==
+
+        "object"
+
+    ) {
+
+        return [];
+
+    }
+
+    try {
+
+        return Object.values(
+
+            registry
+
+        );
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        return [];
+
+    }
+
+};
 
 /*=========================================================
  BUSINESS REGISTRY
 =========================================================*/
 
-/*
+/**
  * Central registry of domains, intents and entity types
  * that Gemini is allowed to classify.
  *
  * IMPORTANT:
  *
- * This registry does NOT perform intent detection.
+ * BusinessRegistry does NOT detect intents.
  *
- * It only tells the AI classifier which business
- * concepts already exist in GreenGuard.
- *
- * Therefore:
+ * Local detection remains owned by:
  *
  * StaffIntent
  * SightingIntent
- * GISIntent
  * WildlifeIntent
+ * GISIntent
  * PatrolIntent
- * etc.
+ * FireIntent
+ * LegalIntent
+ * ReportIntent
+ * AnalyticsIntent
  *
- * remain independently responsible for LOCAL detection.
+ * BusinessRegistry only constrains AI classification.
  */
 
-GG.BusinessRegistry = Object.freeze({
-
-    /*-----------------------------------------------------
-      CONFIDENCE
-    -----------------------------------------------------*/
-
-    confidenceThreshold:
-
-        GG.Config?.INTENT?.HIGH_CONFIDENCE ??
-
-        0.90,
-
+IntentManager.buildBusinessRegistry = function () {
 
     /*-----------------------------------------------------
       DOMAINS
     -----------------------------------------------------*/
 
-    domains: Object.freeze(
+    const domains =
 
-        [
+        IntentManager.uniqueValues(
 
-            /* Staff */
+            [
 
-            GG.StaffConstants?.DOMAIN,
+                GG.StaffConstants
+                    ?.DOMAIN ||
 
+                    "staff",
 
-            /* GIS */
+                GG.GISConstants
+                    ?.DOMAIN ||
 
-            GG.GISConstants?.DOMAIN,
+                    "gis",
 
+                GG.SightingConstants
+                    ?.DOMAIN ||
 
-            /* Elephant Sighting / HEC */
+                    "sighting",
 
-            GG.SightingConstants?.DOMAIN,
+                GG.WildlifeConstants
+                    ?.DOMAIN ||
 
+                    "wildlife",
 
-            /* Existing Domains */
+                GG.PatrolConstants
+                    ?.DOMAIN ||
 
-            "wildlife",
+                    "patrol",
 
-            "patrol",
+                GG.FireConstants
+                    ?.DOMAIN ||
 
-            "legal",
+                    "fire",
 
-            "analytics",
+                GG.LegalConstants
+                    ?.DOMAIN ||
 
-            "report",
+                    "legal",
 
-            "fire"
+                GG.AnalyticsConstants
+                    ?.DOMAIN ||
 
-        ]
+                    "analytics",
 
-        .filter(Boolean)
+                GG.ReportConstants
+                    ?.DOMAIN ||
 
-        .filter(
+                    "report"
 
-            function (
+            ]
 
-                value,
-
-                index,
-
-                array
-
-            ) {
-
-                return (
-
-                    array.indexOf(value) ===
-
-                    index
-
-                );
-
-            }
-
-        )
-
-    ),
-
+        );
 
     /*-----------------------------------------------------
       INTENTS
     -----------------------------------------------------*/
 
-    intents: Object.freeze(
+    const intents =
 
-        [
+        IntentManager.uniqueValues(
 
-            /*----------------------------------
-              STAFF
-            ----------------------------------*/
+            [
 
-            ...Object.values(
+                /*----------------------------------
+                  STAFF
+                ----------------------------------*/
 
-                GG.StaffConstants
-                    ?.INTENTS ||
+                ...IntentManager.getConstantValues(
 
-                {}
+                    GG.StaffConstants,
 
-            ),
+                    "INTENTS"
 
+                ),
 
-            /*----------------------------------
-              ELEPHANT SIGHTING / HEC
-            ----------------------------------*/
+                /*----------------------------------
+                  SIGHTING / HEC
+                ----------------------------------*/
 
-            ...Object.values(
+                ...IntentManager.getConstantValues(
 
-                GG.SightingConstants
-                    ?.INTENTS ||
+                    GG.SightingConstants,
 
-                {}
+                    "INTENTS"
 
-            ),
+                ),
 
+                /*----------------------------------
+                  GIS
+                ----------------------------------*/
 
-            /*----------------------------------
-              GIS
+                ...IntentManager.getConstantValues(
 
-              Include when GISConstants exposes
-              an INTENTS registry.
-            ----------------------------------*/
+                    GG.GISConstants,
 
-            ...Object.values(
+                    "INTENTS"
 
-                GG.GISConstants
-                    ?.INTENTS ||
+                ),
 
-                {}
+                /*----------------------------------
+                  WILDLIFE
+                ----------------------------------*/
 
-            )
+                ...IntentManager.getConstantValues(
 
-        ]
+                    GG.WildlifeConstants,
 
-        .filter(Boolean)
+                    "INTENTS"
 
-        .filter(
+                ),
 
-            function (
+                /*----------------------------------
+                  PATROL
+                ----------------------------------*/
 
-                value,
+                ...IntentManager.getConstantValues(
 
-                index,
+                    GG.PatrolConstants,
 
-                array
+                    "INTENTS"
 
-            ) {
+                ),
 
-                return (
+                /*----------------------------------
+                  FIRE
+                ----------------------------------*/
 
-                    array.indexOf(value) ===
+                ...IntentManager.getConstantValues(
 
-                    index
+                    GG.FireConstants,
 
-                );
+                    "INTENTS"
 
-            }
+                ),
 
-        )
+                /*----------------------------------
+                  LEGAL
+                ----------------------------------*/
 
-    ),
+                ...IntentManager.getConstantValues(
 
+                    GG.LegalConstants,
+
+                    "INTENTS"
+
+                ),
+
+                /*----------------------------------
+                  ANALYTICS
+                ----------------------------------*/
+
+                ...IntentManager.getConstantValues(
+
+                    GG.AnalyticsConstants,
+
+                    "INTENTS"
+
+                ),
+
+                /*----------------------------------
+                  REPORT
+                ----------------------------------*/
+
+                ...IntentManager.getConstantValues(
+
+                    GG.ReportConstants,
+
+                    "INTENTS"
+
+                )
+
+            ]
+
+        );
 
     /*-----------------------------------------------------
       ENTITY TYPES
     -----------------------------------------------------*/
 
-    entityTypes: Object.freeze(
+    const entityTypes =
 
-        [
+        IntentManager.uniqueValues(
 
-            /*----------------------------------
-              STAFF
-            ----------------------------------*/
+            [
 
-            ...Object.values(
+                ...IntentManager.getConstantValues(
 
-                GG.StaffConstants
-                    ?.ENTITY_TYPES ||
+                    GG.StaffConstants,
 
-                {}
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.SightingConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.GISConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.WildlifeConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.PatrolConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.FireConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.LegalConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.AnalyticsConstants,
+
+                    "ENTITY_TYPES"
+
+                ),
+
+                ...IntentManager.getConstantValues(
+
+                    GG.ReportConstants,
+
+                    "ENTITY_TYPES"
+
+                )
+
+            ]
+
+        );
+
+    return Object.freeze({
+
+        confidenceThreshold:
+
+            GG.Config
+                ?.INTENT
+                ?.HIGH_CONFIDENCE ??
+
+            0.90,
+
+        domains:
+
+            Object.freeze(
+
+                domains
 
             ),
 
+        intents:
 
-            /*----------------------------------
-              ELEPHANT SIGHTING / HEC
-            ----------------------------------*/
+            Object.freeze(
 
-            ...Object.values(
-
-                GG.SightingConstants
-                    ?.ENTITY_TYPES ||
-
-                {}
+                intents
 
             ),
 
+        entityTypes:
 
-            /*----------------------------------
-              GIS
-            ----------------------------------*/
+            Object.freeze(
 
-            ...Object.values(
-
-                GG.GISConstants
-                    ?.ENTITY_TYPES ||
-
-                {}
+                entityTypes
 
             )
 
-        ]
+    });
 
-        .filter(Boolean)
+};
 
-        .filter(
-
-            function (
-
-                value,
-
-                index,
-
-                array
-
-            ) {
-
-                return (
-
-                    array.indexOf(value) ===
-
-                    index
-
-                );
-
-            }
-
-        )
-
-    )
-
-});
 /*=========================================================
- INFO
+ CREATE BUSINESS REGISTRY
 =========================================================*/
 
-IntentManager.VERSION =
+GG.BusinessRegistry =
 
-    "1.0.0";
-
-IntentManager.initialized =
-
-    false;
+    IntentManager.buildBusinessRegistry();
 
 /*=========================================================
  INIT
@@ -353,7 +567,27 @@ IntentManager.init = function () {
 
     );
 
-};/*=========================================================
+    if (
+
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
+
+    ) {
+
+        console.log(
+
+            "Business Registry:",
+
+            GG.BusinessRegistry
+
+        );
+
+    }
+
+};
+
+/*=========================================================
  NORMALIZE QUERY
 =========================================================*/
 
@@ -382,7 +616,7 @@ IntentManager.normalize = function (
     }
 
     /*----------------------------------
-      Convert to String
+      Convert To String
     ----------------------------------*/
 
     query =
@@ -437,13 +671,11 @@ IntentManager.normalize = function (
 
         );
 
-    /*----------------------------------
-      Return
-    ----------------------------------*/
-
     return query;
 
-};/*=========================================================
+};
+
+/*=========================================================
  GET CACHED INTENT
 =========================================================*/
 
@@ -490,7 +722,7 @@ IntentManager.getCachedIntent = async function (
         );
 
     /*----------------------------------
-      Read Cache
+      Read
     ----------------------------------*/
 
     const intent =
@@ -507,7 +739,9 @@ IntentManager.getCachedIntent = async function (
 
     if (
 
-        GG.Config?.DEBUG?.ENABLED &&
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED &&
 
         intent
 
@@ -613,7 +847,9 @@ IntentManager.setCachedIntent = async function (
 
     if (
 
-        GG.Config?.DEBUG?.ENABLED
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
 
     ) {
 
@@ -627,7 +863,153 @@ IntentManager.setCachedIntent = async function (
 
     }
 
-};/*=========================================================
+};
+
+/*=========================================================
+ GET LOCAL DETECTORS
+=========================================================*/
+
+/**
+ * Detector order does NOT force a winner.
+ *
+ * Highest confidence wins.
+ *
+ * Order only matters when two detectors return
+ * exactly the same confidence because the first
+ * detected winner is preserved.
+ */
+
+IntentManager.getDetectors = function () {
+
+    return [
+
+        GG.StaffIntent,
+
+        GG.SightingIntent,
+
+        GG.WildlifeIntent,
+
+        GG.GISIntent,
+
+        GG.PatrolIntent,
+
+        GG.FireIntent,
+
+        GG.LegalIntent,
+
+        GG.ReportIntent,
+
+        GG.AnalyticsIntent
+
+    ];
+
+};
+
+/*=========================================================
+ GET DETECTOR NAME
+=========================================================*/
+
+IntentManager.getDetectorName = function (
+
+    detector
+
+) {
+
+    if (
+
+        !detector
+
+    ) {
+
+        return "UnknownDetector";
+
+    }
+
+    /*----------------------------------
+      Explicit Module Name
+    ----------------------------------*/
+
+    if (
+
+        typeof detector.NAME ===
+
+        "string" &&
+
+        detector.NAME
+
+    ) {
+
+        return detector.NAME;
+
+    }
+
+    /*----------------------------------
+      Domain
+    ----------------------------------*/
+
+    if (
+
+        typeof detector.DOMAIN ===
+
+        "string" &&
+
+        detector.DOMAIN
+
+    ) {
+
+        return (
+
+            detector.DOMAIN +
+
+            "Intent"
+
+        );
+
+    }
+
+    /*----------------------------------
+      Constructor
+    ----------------------------------*/
+
+    if (
+
+        detector.constructor?.name &&
+
+        detector.constructor.name !==
+
+        "Object"
+
+    ) {
+
+        return detector.constructor.name;
+
+    }
+
+    /*----------------------------------
+      Version Fallback
+    ----------------------------------*/
+
+    if (
+
+        detector.VERSION
+
+    ) {
+
+        return (
+
+            "Detector@" +
+
+            detector.VERSION
+
+        );
+
+    }
+
+    return "UnknownDetector";
+
+};
+
+/*=========================================================
  DETECT LOCAL INTENT
 =========================================================*/
 
@@ -662,28 +1044,12 @@ IntentManager.detectLocal = function (
         );
 
     /*----------------------------------
-      Local Intent Modules
+      Detectors
     ----------------------------------*/
 
-const detectors = [
+    const detectors =
 
-    GG.StaffIntent,
-
-    GG.SightingIntent,
-
-    GG.WildlifeIntent,
-
-    GG.GISIntent,
-
-    GG.PatrolIntent,
-
-    GG.LegalIntent,
-
-    GG.ReportIntent,
-
-    GG.AnalyticsIntent
-
-];
+        IntentManager.getDetectors();
 
     let bestIntent =
 
@@ -723,15 +1089,15 @@ const detectors = [
 
         const detectorName =
 
-            detector.constructor?.name ||
+            IntentManager.getDetectorName(
 
-            detector.VERSION ||
+                detector
 
-            "UnknownDetector";
+            );
 
         try {
 
-            const intent =
+            const detected =
 
                 detector.detect(
 
@@ -741,9 +1107,9 @@ const detectors = [
 
             if (
 
-                !intent ||
+                !detected ||
 
-                typeof intent !==
+                typeof detected !==
 
                 "object"
 
@@ -757,11 +1123,15 @@ const detectors = [
 
                 Number(
 
-                    intent.confidence ||
+                    detected.confidence ||
 
                     0
 
                 );
+
+            /*----------------------------------
+              Highest Confidence Wins
+            ----------------------------------*/
 
             if (
 
@@ -777,13 +1147,11 @@ const detectors = [
 
                 bestIntent =
 
-                    intent;
+                    detected;
 
                 bestDetector =
 
                     detectorName;
-
-                bestIntent.winningDetector = detectorName;
 
             }
 
@@ -791,7 +1159,7 @@ const detectors = [
 
         catch (
 
-            err
+            error
 
         ) {
 
@@ -799,7 +1167,9 @@ const detectors = [
 
                 "Detector Error:",
 
-                err
+                detectorName,
+
+                error
 
             );
 
@@ -821,9 +1191,13 @@ const detectors = [
 
         return {
 
-            success: false,
+            success:
 
-            source: "local",
+                false,
+
+            source:
+
+                "local",
 
             provider:
 
@@ -845,39 +1219,172 @@ const detectors = [
 
                 "unknown",
 
-            entities: {}
+            entities:
+
+                {},
+
+            parameters:
+
+                {},
+
+            context:
+
+                {},
+
+            winningDetector:
+
+                null,
+
+            executionTime:
+
+                Date.now() -
+
+                started
 
         };
 
     }
 
     /*----------------------------------
-      Final Metadata
+      Build Final Result
+
+      Do not unnecessarily mutate the
+      detector's original object.
     ----------------------------------*/
 
-    bestIntent.success = true;
+    const result = {
 
-    bestIntent.source = "local";
+        ...bestIntent,
 
-    bestIntent.provider = "IntentManager";
+        success:
 
-    bestIntent.query = query;
+            bestIntent.success !==
 
-    bestIntent.domain = bestIntent.domain || "unknown";
+            false,
 
-    bestIntent.intent = bestIntent.intent || "unknown";
+        source:
 
-    bestIntent.entities = bestIntent.entities || {};
+            bestIntent.source ||
 
-    bestIntent.confidence = Number(bestIntent.confidence || 0);
+            "local",
+
+        provider:
+
+            bestIntent.provider ||
+
+            "IntentManager",
+
+        query:
+
+            bestIntent.query ||
+
+            query,
+
+        domain:
+
+            bestIntent.domain ||
+
+            "unknown",
+
+        intent:
+
+            bestIntent.intent ||
+
+            "unknown",
+
+        confidence:
+
+            Number(
+
+                bestIntent.confidence ||
+
+                0
+
+            ),
+
+        entities:
+
+            bestIntent.entities ||
+
+            {},
+
+        parameters:
+
+            bestIntent.parameters ||
+
+            {},
+
+        context:
+
+            bestIntent.context ||
+
+            {},
+
+        winningDetector:
+
+            bestIntent.winningDetector ||
+
+            bestDetector ||
+
+            null,
+
+        executionTime:
+
+            Date.now() -
+
+            started
+
+    };
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    if (
+
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
+
+    ) {
+
+        console.log(
+
+            "🏆 Local Winner:",
+
+            {
+
+                detector:
+
+                    result.winningDetector,
+
+                domain:
+
+                    result.domain,
+
+                intent:
+
+                    result.intent,
+
+                confidence:
+
+                    result.confidence
+
+            }
+
+        );
+
+    }
 
     console.groupEnd();
 
-    return bestIntent;
+    return result;
 
 };
- 
- // Build Gemini Intent Request
+
+/*=========================================================
+ BUILD AI REQUEST
+=========================================================*/
 
 IntentManager.buildAIRequest = function (
 
@@ -887,17 +1394,36 @@ IntentManager.buildAIRequest = function (
 
 ) {
 
+    IntentManager.init();
+
     return {
 
-        query,
+        query:
+
+            query,
 
         normalizedQuery:
 
-            IntentManager.normalize(query),
+            IntentManager.normalize(
+
+                query
+
+            ),
 
         detector: {
-            winner: localIntent.winningDetector || "UNKNOWN",
-            provider: localIntent.provider || "UNKNOWN"
+
+            winner:
+
+                localIntent.winningDetector ||
+
+                "UNKNOWN",
+
+            provider:
+
+                localIntent.provider ||
+
+                "UNKNOWN"
+
         },
 
         localIntent: {
@@ -907,6 +1433,8 @@ IntentManager.buildAIRequest = function (
                 localIntent.success,
 
             source:
+
+                localIntent.source ||
 
                 "IntentManager",
 
@@ -924,9 +1452,13 @@ IntentManager.buildAIRequest = function (
 
             confidence:
 
-                localIntent.confidence ||
+                Number(
 
-                0,
+                    localIntent.confidence ||
+
+                    0
+
+                ),
 
             entities:
 
@@ -950,9 +1482,13 @@ IntentManager.buildAIRequest = function (
 
         extractedEntities:
 
-            localIntent.entities || {},
+            localIntent.entities ||
 
-        business: GG.BusinessRegistry,
+            {},
+
+        business:
+
+            GG.BusinessRegistry,
 
         rules: {
 
@@ -981,9 +1517,8 @@ IntentManager.buildAIRequest = function (
     };
 
 };
- 
- 
- /*=========================================================
+
+/*=========================================================
  SHOULD USE AI
 =========================================================*/
 
@@ -995,10 +1530,6 @@ IntentManager.shouldUseAI = function (
 
     IntentManager.init();
 
-    const Config =
-
-        GG.Config;
-
     /*----------------------------------
       Invalid Intent
     ----------------------------------*/
@@ -1007,7 +1538,9 @@ IntentManager.shouldUseAI = function (
 
         !intent ||
 
-        typeof intent !== "object"
+        typeof intent !==
+
+        "object"
 
     ) {
 
@@ -1016,31 +1549,40 @@ IntentManager.shouldUseAI = function (
     }
 
     /*----------------------------------
-      Read Confidence
+      Confidence
     ----------------------------------*/
 
     const confidence =
 
         Number(
 
-            intent.confidence || 0
+            intent.confidence ||
+
+            0
 
         );
 
     /*----------------------------------
-      Config Threshold
+      Threshold
     ----------------------------------*/
 
     const threshold =
 
-        Config?.INTENT?.HIGH_CONFIDENCE ||
+        Number(
 
-        0.80;
+            GG.Config
+                ?.INTENT
+                ?.HIGH_CONFIDENCE ??
+
+            GG.BusinessRegistry
+                ?.confidenceThreshold ??
+
+            0.80
+
+        );
 
     /*----------------------------------
-      High Confidence
-
-      Stay Local
+      High Confidence Local Result
     ----------------------------------*/
 
     if (
@@ -1053,7 +1595,9 @@ IntentManager.shouldUseAI = function (
 
         if (
 
-            GG.Config?.DEBUG?.ENABLED
+            GG.Config
+                ?.DEBUG
+                ?.ENABLED
 
         ) {
 
@@ -1061,7 +1605,25 @@ IntentManager.shouldUseAI = function (
 
                 "🟢 Local Intent Accepted",
 
-                confidence
+                {
+
+                    confidence:
+
+                        confidence,
+
+                    threshold:
+
+                        threshold,
+
+                    domain:
+
+                        intent.domain,
+
+                    intent:
+
+                        intent.intent
+
+                }
 
             );
 
@@ -1071,207 +1633,206 @@ IntentManager.shouldUseAI = function (
 
     }
 
-    /*----------------------------------
-      Low Confidence
-
-      AI Required
-    ----------------------------------*/
-
     return true;
 
-};/*=========================================================
- DETECT INTENT
+};
+
+/*=========================================================
+ NORMALIZE AI DOMAIN
 =========================================================*/
 
-IntentManager.detect = async function (
+/**
+ * AI is only allowed to select a domain already
+ * registered in BusinessRegistry.
+ *
+ * Unknown AI domains return null and therefore cannot
+ * replace a valid local domain.
+ */
 
-    query
+IntentManager.normalizeAIDomain = function (
+
+    domain
 
 ) {
 
-    IntentManager.init();
-
-    /*----------------------------------
-      Normalize Query
-    ----------------------------------*/
-
-    query =
-
-        IntentManager.normalize(
-
-            query
-
-        );
-
-    /*----------------------------------
-      Intent Cache
-    ----------------------------------*/
-
-    let intent =
-
-        await IntentManager.getCachedIntent(
-
-            query
-
-        );
-
     if (
 
-        intent
+        typeof domain !==
+
+        "string"
 
     ) {
 
-        return intent;
+        return null;
 
     }
 
-    /*----------------------------------
-      Local Intent Detection
-    ----------------------------------*/
+    const rawDomain =
 
-    intent =
-
-        IntentManager.detectLocal(
-
-            query
-
-        );
-console.log("LOCAL:", intent);
-
-console.log(
-    "USE AI:",
-    IntentManager.shouldUseAI(intent)
-);
-    /*----------------------------------
-      High Confidence
-
-      Stay Local
-  ----------------------------------*/
+        domain
+            .trim();
 
     if (
 
-        !IntentManager.shouldUseAI(
+        !rawDomain
 
-            intent
+    ) {
+
+        return null;
+
+    }
+
+    const domains =
+
+        Array.isArray(
+
+            GG.BusinessRegistry
+                ?.domains
 
         )
 
-    ) {
+            ? GG.BusinessRegistry.domains
 
-        await IntentManager.setCachedIntent(
-
-            query,
-
-            intent
-
-        );
-
-        return intent;
-
-    }
+            : [];
 
     /*----------------------------------
-      AI Intent Detection
-  ----------------------------------*/
+      Exact
+    ----------------------------------*/
 
-    const AI =
+    let canonicalDomain =
 
-        GG.AI;
+        domains.find(
+
+            function (
+
+                value
+
+            ) {
+
+                return (
+
+                    value ===
+
+                    rawDomain
+
+                );
+
+            }
+
+        ) ||
+
+        null;
+
+    /*----------------------------------
+      Case Insensitive
+    ----------------------------------*/
 
     if (
 
-        !AI ||
-
-        typeof AI.detectIntent !==
-
-        "function"
+        !canonicalDomain
 
     ) {
 
-        await IntentManager.setCachedIntent(
+        canonicalDomain =
 
-            query,
+            domains.find(
 
-            intent
+                function (
 
-        );
+                    value
 
-        return intent;
+                ) {
+
+                    return (
+
+                        String(
+
+                            value
+
+                        ).toLowerCase() ===
+
+                        rawDomain.toLowerCase()
+
+                    );
+
+                }
+
+            ) ||
+
+            null;
 
     }
 
-    try {
+    return canonicalDomain;
 
-const request =
-
-    IntentManager.buildAIRequest(
-
-        query,
-
-        intent
-
-    );
-
-const aiIntent =
-
-    await AI.detectIntent(
-
-        request
-
-    );
+};
 
 /*=========================================================
- NORMALIZE AI INTENT TO BUSINESS REGISTRY
-
- IMPORTANT:
- This affects ONLY the AI result.
-
- Local intent detection is NOT modified.
-
- Examples:
- STAFF_PROFILE     -> staffProfile
- STAFF_CONTACT     -> staffContact
- WHO_IS_ON_DUTY    -> whoIsOnDuty
-
- If Gemini already returns:
- staffProfile
-
- it remains:
- staffProfile
+ NORMALIZE AI INTENT
 =========================================================*/
 
-if (
+/**
+ * Convert AI intent into an actual canonical intent
+ * registered in GreenGuard.
+ *
+ * Supports:
+ *
+ * staffProfile
+ * STAFFPROFILE
+ * STAFF_PROFILE
+ *
+ * All resolve to the canonical registry value
+ * when that value exists.
+ */
 
-    aiIntent &&
+IntentManager.normalizeAIIntent = function (
 
-    typeof aiIntent.intent === "string"
+    intent
 
 ) {
 
-    const registry =
+    if (
 
-        GG.BusinessRegistry || {};
+        typeof intent !==
+
+        "string"
+
+    ) {
+
+        return null;
+
+    }
+
+    const rawIntent =
+
+        intent
+            .trim();
+
+    if (
+
+        !rawIntent
+
+    ) {
+
+        return null;
+
+    }
 
     const intents =
 
         Array.isArray(
 
-            registry.intents
+            GG.BusinessRegistry
+                ?.intents
 
         )
 
-            ? registry.intents
+            ? GG.BusinessRegistry.intents
 
             : [];
 
-    const rawIntent =
-
-        aiIntent.intent.trim();
-
     /*----------------------------------
       1. Exact Canonical Match
-
-      staffProfile -> staffProfile
     ----------------------------------*/
 
     let canonicalIntent =
@@ -1294,12 +1855,12 @@ if (
 
             }
 
-        );
+        ) ||
+
+        null;
 
     /*----------------------------------
       2. Case-Insensitive Match
-
-      STAFFPROFILE -> staffProfile
     ----------------------------------*/
 
     if (
@@ -1332,7 +1893,9 @@ if (
 
                 }
 
-            );
+            ) ||
+
+            null;
 
     }
 
@@ -1340,18 +1903,27 @@ if (
       3. CONSTANT_STYLE -> camelCase
 
       STAFF_PROFILE
-          -> staffProfile
+          ->
+      staffProfile
 
-      STAFF_CONTACT
-          -> staffContact
+      SIGHTING_ACTIVE
+          ->
+      sightingActive
 
       WHO_IS_ON_DUTY
-          -> whoIsOnDuty
+          ->
+      whoIsOnDuty
     ----------------------------------*/
 
     if (
 
-        !canonicalIntent
+        !canonicalIntent &&
+
+        rawIntent.includes(
+
+            "_"
+
+        )
 
     ) {
 
@@ -1361,7 +1933,11 @@ if (
 
                 .toLowerCase()
 
-                .split("_")
+                .split(
+
+                    "_"
+
+                )
 
                 .filter(
 
@@ -1391,11 +1967,12 @@ if (
 
                         return (
 
-                            part.charAt(0)
-
+                            part
+                                .charAt(0)
                                 .toUpperCase() +
 
-                            part.slice(1)
+                            part
+                                .slice(1)
 
                         );
 
@@ -1403,7 +1980,11 @@ if (
 
                 )
 
-                .join("");
+                .join(
+
+                    ""
+
+                );
 
         canonicalIntent =
 
@@ -1429,15 +2010,94 @@ if (
 
                 }
 
-            );
+            ) ||
+
+            null;
+
+    }
+
+    return canonicalIntent;
+
+};
+
+/*=========================================================
+ NORMALIZE AI RESULT
+=========================================================*/
+
+/**
+ * Normalize only the AI classification.
+ *
+ * Local detector results are never modified here.
+ */
+
+IntentManager.normalizeAIResult = function (
+
+    aiIntent
+
+) {
+
+    if (
+
+        !aiIntent ||
+
+        typeof aiIntent !==
+
+        "object"
+
+    ) {
+
+        return aiIntent;
+
+    }
+
+    const rawDomain =
+
+        aiIntent.domain;
+
+    const rawIntent =
+
+        aiIntent.intent;
+
+    const canonicalDomain =
+
+        IntentManager.normalizeAIDomain(
+
+            rawDomain
+
+        );
+
+    const canonicalIntent =
+
+        IntentManager.normalizeAIIntent(
+
+            rawIntent
+
+        );
+
+    const normalized = {
+
+        ...aiIntent
+
+    };
+
+    /*----------------------------------
+      Apply Domain Only When Valid
+    ----------------------------------*/
+
+    if (
+
+        canonicalDomain
+
+    ) {
+
+        normalized.domain =
+
+            canonicalDomain;
 
     }
 
     /*----------------------------------
-      4. Apply Canonical Intent
-
-      ONLY modify when a real registry
-      intent was found.
+      Apply Intent Only When Valid
     ----------------------------------*/
 
     if (
@@ -1446,99 +2106,119 @@ if (
 
     ) {
 
-        aiIntent.intent =
+        normalized.intent =
 
             canonicalIntent;
 
     }
 
     /*----------------------------------
-      Temporary Debug
+      Debug
     ----------------------------------*/
 
-    console.log(
+    if (
 
-        "🧠 AI INTENT CANONICALIZATION",
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
 
-        {
+    ) {
 
-            raw:
+        console.log(
 
-                rawIntent,
+            "🧠 AI CLASSIFICATION NORMALIZED:",
 
-            canonical:
+            {
 
-                canonicalIntent ||
+                domain: {
 
-                "NOT_FOUND",
+                    raw:
 
-            final:
+                        rawDomain,
 
-                aiIntent.intent
+                    canonical:
 
-        }
+                        canonicalDomain
 
-    );
+                },
 
-}
+                intent: {
 
-/*----------------------------------
-  Merge AI With Local Result
-----------------------------------*/
+                    raw:
 
-if (
+                        rawIntent,
 
-    aiIntent &&
+                    canonical:
 
-    aiIntent.success !== false
+                        canonicalIntent
+
+                },
+
+                final: {
+
+                    domain:
+
+                        normalized.domain,
+
+                    intent:
+
+                        normalized.intent
+
+                }
+
+            }
+
+        );
+
+    }
+
+    return normalized;
+
+};
+
+/*=========================================================
+ IS REGISTERED DOMAIN
+=========================================================*/
+
+IntentManager.isRegisteredDomain = function (
+
+    domain
 
 ) {
 
-    intent =
+    return (
 
-        IntentManager.mergeIntent(
+        IntentManager.normalizeAIDomain(
 
-            intent,
+            domain
 
-            aiIntent
-
-        );
-
-}
-
-    }
-
-    catch (err) {
-
-        console.error(
-
-            err
-
-        );
-
-    }
-
-    /*----------------------------------
-      Cache Final Intent
-  ----------------------------------*/
-
-    await IntentManager.setCachedIntent(
-
-        query,
-
-        intent
+        ) !== null
 
     );
 
-    return intent;
-
-};/*=========================================================
- MERGE INTENT
-=========================================================*/
+};
 
 /*=========================================================
- MERGE INTENT
+ IS REGISTERED INTENT
 =========================================================*/
+
+IntentManager.isRegisteredIntent = function (
+
+    intent
+
+) {
+
+    return (
+
+        IntentManager.normalizeAIIntent(
+
+            intent
+
+        ) !== null
+
+    );
+
+};
 
 /*=========================================================
  MERGE INTENT
@@ -1554,12 +2234,10 @@ IntentManager.mergeIntent = function (
 
     IntentManager.init();
 
-
     /*=====================================================
-      INVALID AI RESULT
+      INVALID AI
 
-      If AI returned nothing usable, preserve the complete
-      local detector result exactly as it is.
+      Preserve complete local result.
     =====================================================*/
 
     if (
@@ -1567,7 +2245,8 @@ IntentManager.mergeIntent = function (
         !aiIntent ||
 
         typeof aiIntent !==
-            "object"
+
+        "object"
 
     ) {
 
@@ -1575,357 +2254,23 @@ IntentManager.mergeIntent = function (
 
     }
 
-
     /*=====================================================
-      NORMALIZE AI INTENT AGAINST BUSINESS REGISTRY
-
-      Examples:
-
-      STAFF_PROFILE
-          ->
-      staffProfile
-
-      SIGHTING_ACTIVE
-          ->
-      sightingActive
-
-      WHO_IS_ON_DUTY
-          ->
-      whoIsOnDuty
-
-      Already canonical values remain unchanged.
+      NORMALIZE AI
     =====================================================*/
 
-    if (
+    aiIntent =
 
-        typeof aiIntent.intent ===
-            "string"
+        IntentManager.normalizeAIResult(
 
-    ) {
+            aiIntent
 
-        const registry =
-
-            GG.BusinessRegistry ||
-
-            {};
-
-
-        const intents =
-
-            Array.isArray(
-
-                registry.intents
-
-            )
-
-                ? registry.intents
-
-                : [];
-
-
-        const rawIntent =
-
-            aiIntent.intent
-                .trim();
-
-
-        let canonicalIntent =
-
-            null;
-
-
-        /*-------------------------------------------------
-          1. EXACT CANONICAL MATCH
-
-          Example:
-
-          staffProfile
-              ->
-          staffProfile
-        -------------------------------------------------*/
-
-        canonicalIntent =
-
-            intents.find(
-
-                function (
-
-                    value
-
-                ) {
-
-                    return (
-
-                        value ===
-                        rawIntent
-
-                    );
-
-                }
-
-            ) ||
-
-            null;
-
-
-        /*-------------------------------------------------
-          2. CASE-INSENSITIVE MATCH
-
-          Example:
-
-          STAFFPROFILE
-              ->
-          staffProfile
-        -------------------------------------------------*/
-
-        if (
-
-            !canonicalIntent
-
-        ) {
-
-            canonicalIntent =
-
-                intents.find(
-
-                    function (
-
-                        value
-
-                    ) {
-
-                        return (
-
-                            String(
-
-                                value
-
-                            )
-                                .toLowerCase() ===
-
-                            rawIntent
-                                .toLowerCase()
-
-                        );
-
-                    }
-
-                ) ||
-
-                null;
-
-        }
-
-
-        /*-------------------------------------------------
-          3. CONSTANT_STYLE -> camelCase
-
-          Examples:
-
-          STAFF_PROFILE
-              ->
-          staffProfile
-
-          SIGHTING_ACTIVE
-              ->
-          sightingActive
-
-          WHO_IS_ON_DUTY
-              ->
-          whoIsOnDuty
-
-          HEC_RISK_SUMMARY
-              ->
-          hecRiskSummary
-        -------------------------------------------------*/
-
-        if (
-
-            !canonicalIntent &&
-
-            rawIntent.includes(
-
-                "_"
-
-            )
-
-        ) {
-
-            const converted =
-
-                rawIntent
-
-                    .toLowerCase()
-
-                    .split(
-
-                        "_"
-
-                    )
-
-                    .filter(
-
-                        Boolean
-
-                    )
-
-                    .map(
-
-                        function (
-
-                            part,
-
-                            index
-
-                        ) {
-
-                            if (
-
-                                index === 0
-
-                            ) {
-
-                                return part;
-
-                            }
-
-
-                            return (
-
-                                part
-                                    .charAt(0)
-                                    .toUpperCase() +
-
-                                part
-                                    .slice(1)
-
-                            );
-
-                        }
-
-                    )
-
-                    .join(
-
-                        ""
-
-                    );
-
-
-            canonicalIntent =
-
-                intents.find(
-
-                    function (
-
-                        value
-
-                    ) {
-
-                        return (
-
-                            String(
-
-                                value
-
-                            )
-                                .toLowerCase() ===
-
-                            converted
-                                .toLowerCase()
-
-                        );
-
-                    }
-
-                ) ||
-
-                null;
-
-        }
-
-
-        /*-------------------------------------------------
-          4. APPLY CANONICAL INTENT
-
-          IMPORTANT:
-
-          AI intent is changed ONLY when the resulting
-          intent actually exists inside BusinessRegistry.
-
-          This protects existing Staff, GIS, Wildlife,
-          Patrol, Legal, Analytics, Report and Sighting
-          pipelines from unknown AI-generated intents.
-        -------------------------------------------------*/
-
-        if (
-
-            canonicalIntent
-
-        ) {
-
-            aiIntent = {
-
-                ...aiIntent,
-
-                intent:
-
-                    canonicalIntent
-
-            };
-
-        }
-
-
-        /*-------------------------------------------------
-          DEBUG
-        -------------------------------------------------*/
-
-        if (
-
-            GG.Config
-                ?.DEBUG
-                ?.ENABLED
-
-        ) {
-
-            console.log(
-
-                "🧠 AI INTENT NORMALIZED:",
-
-                {
-
-                    raw:
-
-                        rawIntent,
-
-                    canonical:
-
-                        canonicalIntent ||
-
-                        null,
-
-                    final:
-
-                        aiIntent.intent
-
-                }
-
-            );
-
-        }
-
-    }
-
+        );
 
     /*=====================================================
-      INVALID LOCAL RESULT
+      INVALID LOCAL
 
-      If there was no valid local detector result,
-      return the AI result.
-
-      This supports queries where local detectors cannot
-      confidently determine an intent but Gemini can.
+      AI can be returned directly when there is no local
+      result, but only after normalization.
     =====================================================*/
 
     if (
@@ -1933,42 +2278,141 @@ IntentManager.mergeIntent = function (
         !localIntent ||
 
         typeof localIntent !==
-            "object"
+
+        "object"
 
     ) {
 
-        return aiIntent;
+        return {
+
+            ...aiIntent,
+
+            entities:
+
+                aiIntent.entities ||
+
+                {},
+
+            parameters:
+
+                aiIntent.parameters ||
+
+                {},
+
+            context:
+
+                aiIntent.context ||
+
+                {}
+
+        };
 
     }
 
-
     /*=====================================================
-      MERGE LOCAL + AI
+      VALID AI DOMAIN
     =====================================================*/
 
+    const aiDomain =
 
-    /*-----------------------------------------------------
+        IntentManager.normalizeAIDomain(
+
+            aiIntent.domain
+
+        );
+
+    /*=====================================================
+      VALID AI INTENT
+    =====================================================*/
+
+    const aiCanonicalIntent =
+
+        IntentManager.normalizeAIIntent(
+
+            aiIntent.intent
+
+        );
+
+    /*=====================================================
+      LOCAL DOMAIN
+    =====================================================*/
+
+    const localDomain =
+
+        localIntent.domain &&
+
+        localIntent.domain !==
+
+        "unknown"
+
+            ? localIntent.domain
+
+            : null;
+
+    /*=====================================================
+      LOCAL INTENT
+    =====================================================*/
+
+    const localCanonicalIntent =
+
+        localIntent.intent &&
+
+        localIntent.intent !==
+
+        "unknown"
+
+            ? localIntent.intent
+
+            : null;
+
+    /*=====================================================
+      FINAL DOMAIN
+
+      Valid registered AI domain may override local.
+
+      Invalid/unknown AI domain cannot destroy a valid
+      local domain.
+    =====================================================*/
+
+    const finalDomain =
+
+        aiDomain ||
+
+        localDomain ||
+
+        aiIntent.domain ||
+
+        localIntent.domain ||
+
+        "unknown";
+
+    /*=====================================================
+      FINAL INTENT
+
+      Valid registered AI intent may override local.
+
+      Invalid/unknown AI intent cannot destroy a valid
+      local intent.
+    =====================================================*/
+
+    const finalIntent =
+
+        aiCanonicalIntent ||
+
+        localCanonicalIntent ||
+
+        aiIntent.intent ||
+
+        localIntent.intent ||
+
+        "unknown";
+
+    /*=====================================================
       ENTITIES
 
-      Local entities are preserved.
-
-      AI-extracted values override the same property only
-      when AI actually supplies that property.
-
-      Examples:
-
-      staff
-      sightingID
-      division
-      range
-      beat
-      compartment
-      village
-      status
-      risk
-      direction
-      species
-    -----------------------------------------------------*/
+      AI values override the same entity property only
+      when AI supplies that property.
+    =====================================================*/
 
     const mergedEntities = {
 
@@ -1978,27 +2422,9 @@ IntentManager.mergeIntent = function (
 
     };
 
-
-    /*-----------------------------------------------------
+    /*=====================================================
       PARAMETERS
-
-      Critical for business query execution.
-
-      Examples:
-
-      activeOnly
-      movedOnly
-      resolvedOnly
-      highRiskOnly
-      radiusKm
-      distanceKm
-      limit
-      status
-      risk
-      timeWindow
-      includeResolved
-      sort
-    -----------------------------------------------------*/
+    =====================================================*/
 
     const mergedParameters = {
 
@@ -2008,23 +2434,9 @@ IntentManager.mergeIntent = function (
 
     };
 
-
-    /*-----------------------------------------------------
+    /*=====================================================
       CONTEXT
-
-      Critical for operational GreenGuard queries.
-
-      Examples:
-
-      current user
-      user jurisdiction
-      selected sighting
-      selected GIS area
-      HEC operational context
-      map selection
-      current duty
-      current GPS
-    -----------------------------------------------------*/
+    =====================================================*/
 
     const mergedContext = {
 
@@ -2034,26 +2446,25 @@ IntentManager.mergeIntent = function (
 
     };
 
-
     /*=====================================================
-      FINAL CANONICAL INTENT
+      FINAL MERGED RESULT
     =====================================================*/
 
     const merged = {
 
-        /*-------------------------------------------------
-          SUCCESS
-        -------------------------------------------------*/
+        /*----------------------------------
+          Success
+        ----------------------------------*/
 
         success:
 
             aiIntent.success !==
+
             false,
 
-
-        /*-------------------------------------------------
-          SOURCE
-        -------------------------------------------------*/
+        /*----------------------------------
+          Source
+        ----------------------------------*/
 
         source:
 
@@ -2063,10 +2474,9 @@ IntentManager.mergeIntent = function (
 
             "ai",
 
-
-        /*-------------------------------------------------
-          PROVIDER
-        -------------------------------------------------*/
+        /*----------------------------------
+          Provider
+        ----------------------------------*/
 
         provider:
 
@@ -2076,10 +2486,9 @@ IntentManager.mergeIntent = function (
 
             "AI",
 
-
-        /*-------------------------------------------------
-          QUERY
-        -------------------------------------------------*/
+        /*----------------------------------
+          Query
+        ----------------------------------*/
 
         query:
 
@@ -2089,52 +2498,25 @@ IntentManager.mergeIntent = function (
 
             "",
 
-
-        /*-------------------------------------------------
-          DOMAIN
-
-          AI wins when it provides a valid domain.
-
-          Examples:
-
-          staff
-          sighting
-          gis
-          wildlife
-          patrol
-          legal
-          analytics
-          report
-          fire
-        -------------------------------------------------*/
+        /*----------------------------------
+          Domain
+        ----------------------------------*/
 
         domain:
 
-            aiIntent.domain ||
+            finalDomain,
 
-            localIntent.domain ||
-
-            "unknown",
-
-
-        /*-------------------------------------------------
-          INTENT
-
-          AI wins after BusinessRegistry canonicalization.
-        -------------------------------------------------*/
+        /*----------------------------------
+          Intent
+        ----------------------------------*/
 
         intent:
 
-            aiIntent.intent ||
+            finalIntent,
 
-            localIntent.intent ||
-
-            "unknown",
-
-
-        /*-------------------------------------------------
-          CONFIDENCE
-        -------------------------------------------------*/
+        /*----------------------------------
+          Confidence
+        ----------------------------------*/
 
         confidence:
 
@@ -2148,37 +2530,36 @@ IntentManager.mergeIntent = function (
 
             ),
 
-
-        /*-------------------------------------------------
-          ENTITIES
-        -------------------------------------------------*/
+        /*----------------------------------
+          Entities
+        ----------------------------------*/
 
         entities:
 
             mergedEntities,
 
-
-        /*-------------------------------------------------
-          PARAMETERS
-        -------------------------------------------------*/
+        /*----------------------------------
+          Parameters
+        ----------------------------------*/
 
         parameters:
 
             mergedParameters,
 
-
-        /*-------------------------------------------------
-          CONTEXT
-        -------------------------------------------------*/
+        /*----------------------------------
+          Context
+        ----------------------------------*/
 
         context:
 
             mergedContext,
 
+        /*----------------------------------
+          Winning Detector
 
-        /*-------------------------------------------------
-          WINNING DETECTOR
-        -------------------------------------------------*/
+          Preserve the actual local detector
+          unless AI explicitly provides one.
+        ----------------------------------*/
 
         winningDetector:
 
@@ -2188,12 +2569,9 @@ IntentManager.mergeIntent = function (
 
             null,
 
-
-        /*-------------------------------------------------
-          LOCAL DETECTOR CONFIDENCE
-
-          Useful for diagnostics without changing routing.
-        -------------------------------------------------*/
+        /*----------------------------------
+          Diagnostic Confidence
+        ----------------------------------*/
 
         localConfidence:
 
@@ -2205,13 +2583,6 @@ IntentManager.mergeIntent = function (
 
             ),
 
-
-        /*-------------------------------------------------
-          AI CONFIDENCE
-
-          Useful for debugging Gemini classification.
-        -------------------------------------------------*/
-
         aiConfidence:
 
             Number(
@@ -2222,10 +2593,9 @@ IntentManager.mergeIntent = function (
 
             ),
 
-
-        /*-------------------------------------------------
-          RAW AI RESPONSE
-        -------------------------------------------------*/
+        /*----------------------------------
+          Raw AI Result
+        ----------------------------------*/
 
         raw:
 
@@ -2234,7 +2604,6 @@ IntentManager.mergeIntent = function (
             null
 
     };
-
 
     /*=====================================================
       DEBUG
@@ -2320,14 +2689,345 @@ IntentManager.mergeIntent = function (
 
     }
 
-
-    /*=====================================================
-      RETURN
-    =====================================================*/
-
     return merged;
 
 };
+
+/*=========================================================
+ DETECT INTENT
+=========================================================*/
+
+IntentManager.detect = async function (
+
+    query
+
+) {
+
+    IntentManager.init();
+
+    /*----------------------------------
+      Normalize Query
+    ----------------------------------*/
+
+    query =
+
+        IntentManager.normalize(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Empty Query Protection
+    ----------------------------------*/
+
+    if (
+
+        !query
+
+    ) {
+
+        return {
+
+            success:
+
+                false,
+
+            source:
+
+                "local",
+
+            provider:
+
+                "IntentManager",
+
+            query:
+
+                "",
+
+            domain:
+
+                "unknown",
+
+            intent:
+
+                "unknown",
+
+            confidence:
+
+                0,
+
+            entities:
+
+                {},
+
+            parameters:
+
+                {},
+
+            context:
+
+                {}
+
+        };
+
+    }
+
+    /*----------------------------------
+      Intent Cache
+    ----------------------------------*/
+
+    let intent =
+
+        await IntentManager.getCachedIntent(
+
+            query
+
+        );
+
+    if (
+
+        intent
+
+    ) {
+
+        return intent;
+
+    }
+
+    /*----------------------------------
+      Local Detection
+    ----------------------------------*/
+
+    intent =
+
+        IntentManager.detectLocal(
+
+            query
+
+        );
+
+    /*----------------------------------
+      Debug
+    ----------------------------------*/
+
+    if (
+
+        GG.Config
+            ?.DEBUG
+            ?.ENABLED
+
+    ) {
+
+        console.log(
+
+            "LOCAL:",
+
+            intent
+
+        );
+
+        console.log(
+
+            "USE AI:",
+
+            IntentManager.shouldUseAI(
+
+                intent
+
+            )
+
+        );
+
+    }
+
+    /*----------------------------------
+      High Confidence Local Result
+    ----------------------------------*/
+
+    if (
+
+        !IntentManager.shouldUseAI(
+
+            intent
+
+        )
+
+    ) {
+
+        await IntentManager.setCachedIntent(
+
+            query,
+
+            intent
+
+        );
+
+        return intent;
+
+    }
+
+    /*----------------------------------
+      AI Provider
+    ----------------------------------*/
+
+    const AI =
+
+        GG.AI;
+
+    /*----------------------------------
+      AI Unavailable
+
+      Preserve Local Result
+    ----------------------------------*/
+
+    if (
+
+        !AI ||
+
+        typeof AI.detectIntent !==
+
+        "function"
+
+    ) {
+
+        await IntentManager.setCachedIntent(
+
+            query,
+
+            intent
+
+        );
+
+        return intent;
+
+    }
+
+    /*----------------------------------
+      AI Classification
+    ----------------------------------*/
+
+    try {
+
+        const request =
+
+            IntentManager.buildAIRequest(
+
+                query,
+
+                intent
+
+            );
+
+        let aiIntent =
+
+            await AI.detectIntent(
+
+                request
+
+            );
+
+        /*----------------------------------
+          Normalize AI Classification
+        ----------------------------------*/
+
+        aiIntent =
+
+            IntentManager.normalizeAIResult(
+
+                aiIntent
+
+            );
+
+        /*----------------------------------
+          Merge AI With Local
+        ----------------------------------*/
+
+        if (
+
+            aiIntent &&
+
+            aiIntent.success !==
+
+            false
+
+        ) {
+
+            intent =
+
+                IntentManager.mergeIntent(
+
+                    intent,
+
+                    aiIntent
+
+                );
+
+        }
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            "Intent AI Detection Error:",
+
+            error
+
+        );
+
+        /*
+         * IMPORTANT:
+         *
+         * AI failure must never destroy the
+         * existing local detector result.
+         */
+
+    }
+
+    /*----------------------------------
+      Ensure Canonical Containers
+    ----------------------------------*/
+
+    intent.entities =
+
+        intent.entities ||
+
+        {};
+
+    intent.parameters =
+
+        intent.parameters ||
+
+        {};
+
+    intent.context =
+
+        intent.context ||
+
+        {};
+
+    /*----------------------------------
+      Cache Final Intent
+    ----------------------------------*/
+
+    await IntentManager.setCachedIntent(
+
+        query,
+
+        intent
+
+    );
+
+    return intent;
+
+};
+
 /*=========================================================
  CLEAR CACHE
 =========================================================*/
@@ -2340,11 +3040,7 @@ IntentManager.clearCache = async function () {
 
     if (
 
-        !Cache ||
-
-        typeof Cache.clearIntent !==
-
-        "function"
+        !Cache
 
     ) {
 
@@ -2352,7 +3048,117 @@ IntentManager.clearCache = async function () {
 
     }
 
-    await Cache.clearIntent();
+    /*----------------------------------
+      Existing API
+    ----------------------------------*/
+
+    if (
+
+        typeof Cache.clearIntent ===
+
+        "function"
+
+    ) {
+
+        await Cache.clearIntent();
+
+        return;
+
+    }
+
+    /*
+     * Do not call another cache-clearing API here.
+     *
+     * Existing GreenGuard behavior is preserved.
+     */
+
+};
+
+/*=========================================================
+ GET STATUS
+=========================================================*/
+
+IntentManager.getStatus = function () {
+
+    return {
+
+        initialized:
+
+            IntentManager.initialized,
+
+        version:
+
+            IntentManager.VERSION,
+
+        confidenceThreshold:
+
+            GG.BusinessRegistry
+                ?.confidenceThreshold ??
+
+            null,
+
+        domains:
+
+            GG.BusinessRegistry
+                ?.domains ||
+
+            [],
+
+        intents:
+
+            GG.BusinessRegistry
+                ?.intents ||
+
+            [],
+
+        entityTypes:
+
+            GG.BusinessRegistry
+                ?.entityTypes ||
+
+            [],
+
+        detectors: {
+
+            staff:
+
+                !!GG.StaffIntent,
+
+            sighting:
+
+                !!GG.SightingIntent,
+
+            wildlife:
+
+                !!GG.WildlifeIntent,
+
+            gis:
+
+                !!GG.GISIntent,
+
+            patrol:
+
+                !!GG.PatrolIntent,
+
+            fire:
+
+                !!GG.FireIntent,
+
+            legal:
+
+                !!GG.LegalIntent,
+
+            report:
+
+                !!GG.ReportIntent,
+
+            analytics:
+
+                !!GG.AnalyticsIntent
+
+        }
+
+    };
 
 };
 
@@ -2361,7 +3167,12 @@ IntentManager.clearCache = async function () {
 =========================================================*/
 
 GG.IntentManager =
+
     IntentManager;
+
+/*=========================================================
+ LOADED
+=========================================================*/
 
 console.log(
 
@@ -2370,5 +3181,9 @@ console.log(
     "color:#008000;font-weight:bold;"
 
 );
+
+/*=========================================================
+ END MODULE
+=========================================================*/
 
 })(window);
