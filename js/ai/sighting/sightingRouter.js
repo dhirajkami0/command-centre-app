@@ -3076,52 +3076,303 @@
                 );
 
 
-            /*=================================================
-              VALIDATE RESPONSE
-            =================================================*/
+/*=================================================
+  VALIDATE QUERY RESPONSE
+=================================================*/
+
+if (
+
+    response === undefined
+
+) {
+
+    throw new Error(
+
+        "Sighting query handler returned undefined."
+
+    );
+
+}
+
+
+/*=================================================
+  FORMAT QUERY RESPONSE
+
+  Pipeline:
+
+  SightingQuery
+      ↓
+  SightingFormatter
+      ↓
+  SightingRouter.normalizeResponse()
+
+  IMPORTANT:
+
+  Query handlers own data retrieval and analytics.
+
+  SightingFormatter owns presentation:
+
+  - markdown
+  - html
+  - cards
+  - sections
+  - message
+  - display-ready output
+
+  The original query response is preserved if the
+  formatter is unavailable or cannot format the
+  current intent.
+=================================================*/
+
+const SightingFormatter =
+
+    GG.SightingFormatter;
+
+
+if (
+
+    response &&
+
+    response.success === true &&
+
+    SightingFormatter
+
+) {
+
+    try {
+
+        /*-----------------------------------------
+          Determine Whether Formatter Supports
+          This Intent
+        -----------------------------------------*/
+
+        let canFormat =
+
+            true;
+
+
+        if (
+
+            typeof SightingFormatter.canFormat ===
+                "function"
+
+        ) {
+
+            canFormat =
+
+                SightingFormatter.canFormat(
+
+                    routedRequest.intent
+
+                );
+
+        }
+
+
+        /*-----------------------------------------
+          Format Response
+        -----------------------------------------*/
+
+        if (
+
+            canFormat !== false
+
+        ) {
+
+            let formattedResponse =
+
+                null;
+
+
+            /*-------------------------------------
+              Preferred Public Formatter API
+            -------------------------------------*/
 
             if (
 
-                response === undefined
+                typeof SightingFormatter
+                    .formatResponse ===
+                    "function"
 
             ) {
 
-                throw new Error(
+                formattedResponse =
 
-                    "Sighting query handler returned undefined."
+                    await SightingFormatter
+                        .formatResponse(
 
-                );
+                            response,
+
+                            routedRequest
+
+                        );
 
             }
 
 
-            /*=================================================
-              NORMALIZE RESPONSE METADATA
+            /*-------------------------------------
+              Fallback Public Formatter API
+            -------------------------------------*/
 
-              IMPORTANT:
+            else if (
 
-              This does NOT format the response again.
+                typeof SightingFormatter.format ===
+                    "function"
 
-              SightingQuery / SightingFormatter output is
-              preserved.
-            =================================================*/
+            ) {
 
-            response =
+                formattedResponse =
 
-                SightingRouter
-                    .normalizeResponse(
+                    await SightingFormatter
+                        .format(
 
-                        response,
+                            response,
 
-                        routedRequest,
+                            routedRequest
 
-                        route,
+                        );
 
-                        handler,
+            }
 
-                        started
 
-                    );
+            /*-------------------------------------
+              Accept Valid Formatted Response
+            -------------------------------------*/
+
+            if (
+
+                formattedResponse &&
+
+                typeof formattedResponse ===
+                    "object"
+
+            ) {
+
+                /*
+                 * Preserve query data if the
+                 * formatter does not explicitly
+                 * return it.
+                 */
+
+                if (
+
+                    formattedResponse.data ===
+                        undefined &&
+
+                    response.data !==
+                        undefined
+
+                ) {
+
+                    formattedResponse.data =
+
+                        response.data;
+
+                }
+
+
+                /*
+                 * Preserve successful query state.
+                 */
+
+                if (
+
+                    formattedResponse.success ===
+                        undefined
+
+                ) {
+
+                    formattedResponse.success =
+
+                        response.success;
+
+                }
+
+
+                /*
+                 * Preserve query metadata while
+                 * allowing formatter metadata to
+                 * add presentation information.
+                 */
+
+                formattedResponse.metadata = {
+
+                    ...(response.metadata || {}),
+
+                    ...(formattedResponse.metadata || {})
+
+                };
+
+
+                response =
+
+                    formattedResponse;
+
+            }
+
+        }
+
+    }
+
+    catch (
+
+        formatterError
+
+    ) {
+
+        /*
+         * NON-BREAKING FALLBACK
+         *
+         * Formatting failure must never destroy a
+         * successful business/query response.
+         */
+
+        console.error(
+
+            "❌ SightingFormatter Error:",
+
+            formatterError
+
+        );
+
+
+        response.metadata = {
+
+            ...(response.metadata || {}),
+
+            formatterError:
+
+                formatterError?.message ||
+
+                "Sighting formatting failed."
+
+        };
+
+    }
+
+}
+
+
+/*=================================================
+  NORMALIZE RESPONSE METADATA
+=================================================*/
+
+response =
+
+    SightingRouter
+        .normalizeResponse(
+
+            response,
+
+            routedRequest,
+
+            route,
+
+            handler,
+
+            started
+
+        );
 
 
             SightingRouter.lastResponse =
