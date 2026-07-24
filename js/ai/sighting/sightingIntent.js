@@ -132,6 +132,9 @@
         SIGHTING_LIST:
 
             "sightingList",
+SIGHTING_COUNT:
+
+    "sightingCount",
 
         SIGHTING_LATEST:
 
