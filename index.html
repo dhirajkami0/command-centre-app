@@ -30458,89 +30458,140 @@ window.staffUnsubscribe = onSnapshot(
       docSnap.data();
 
     if(!s) return;
-
 // ==============================================
 // 🔥 ROLE BASED VISIBILITY
-// HARDENED + EMERGENCY GLOBAL VISIBILITY
+// + GLOBAL EMERGENCY TARGET VISIBILITY
+// ==============================================
+//
+// RULE:
+//
+// 1. ADMIN
+//    → existing global visibility.
+//
+// 2. DEPREDATION / RESCUE TARGET STAFF
+//    → visible to ANY logged-in GreenGuard user.
+//
+// 3. DFO / ADFO
+//    → existing division visibility.
+//
+// 4. ALL OTHER USERS
+//    → existing SELF + SAME RANGE visibility.
+//
+// IMPORTANT:
+//
+// The logged-in viewer's:
+//
+// dutyActive
+// dutyType
+// status
+// sessionId
+//
+// are NOT checked here.
+//
+// Being logged into GreenGuard is enough to SEE
+// an emergency-operation target.
+//
+// ==============================================
+
+
+// ==============================================
+// 👤 VIEWER ROLE
 // ==============================================
 
 const role =
-  String(
-    window.userProfile?.role || ""
-  )
-  .toUpperCase()
-  .trim();
+    String(
+        window.userProfile?.role || ""
+    )
+    .toUpperCase()
+    .trim();
 
 
 // ==============================================
-// 🔥 NORMALIZED MY DIVISION
+// 🗺 VIEWER DIVISION
 // ==============================================
 
 const myDivision =
-  normalizeDivision(
-    String(
-      window.userProfile?.division || ""
-    )
-  );
+    normalizeDivision(
+        String(
+            window.userProfile?.division || ""
+        )
+    );
 
 
 // ==============================================
-// 🔥 NORMALIZED MY RANGE
+// 🗺 VIEWER RANGE
 // ==============================================
 
 const myRange =
-  String(
-    window.userProfile?.range || ""
-  )
-  .trim()
-  .toUpperCase();
+    String(
+        window.userProfile?.range || ""
+    )
+    .trim()
+    .toUpperCase();
 
 
 // ==============================================
-// 🔥 NORMALIZED STAFF DIVISION
+// 🗺 TARGET STAFF DIVISION
 // ==============================================
 
 const staffDivision =
-  normalizeDivision(
-    String(
-      s.division || ""
-    )
-  );
+    normalizeDivision(
+        String(
+            s.division || ""
+        )
+    );
 
 
 // ==============================================
-// 🔥 NORMALIZED STAFF RANGE
+// 🗺 TARGET STAFF RANGE
 // ==============================================
 
 const staffRange =
-  String(
-    s.range || ""
-  )
-  .trim()
-  .toUpperCase();
+    String(
+        s.range || ""
+    )
+    .trim()
+    .toUpperCase();
 
 
 // ==============================================
-// 🚨 EMERGENCY OPERATION VISIBILITY
-//
-// These staff are globally visible to ANY
-// logged-in user.
-//
-// IMPORTANT:
-// This affects MARKER VISIBILITY only.
-// Track visibility will be handled separately.
+// 🚨 TARGET STAFF DUTY TYPE
 // ==============================================
 
-const dutyType =
-  String(
-    s.dutyType || ""
-  )
-  .trim()
-  .toUpperCase();
+const targetDutyType =
+    String(
+        s.dutyType || ""
+    )
+    .trim()
+    .toUpperCase();
 
-const isEmergencyOperation =
-  dutyType.includes("DEPREDATION") ||
-  dutyType.includes("RESCUE");
+
+// ==============================================
+// 🚨 GLOBAL EMERGENCY TARGET
+// ------------------------------------------------
+//
+// ONLY TARGET DUTY TYPE IS CHECKED.
+//
+// Examples accepted:
+//
+// "DEPREDATION DUTY"
+// "Depredation Duty"
+// "DEPREDATION"
+//
+// "RESCUE OPERATION"
+// "Rescue Operation"
+// "RESCUE DUTY"
+// "RESCUE"
+//
+// ==============================================
+
+const targetEmergency =
+    targetDutyType.includes(
+        "DEPREDATION"
+    ) ||
+    targetDutyType.includes(
+        "RESCUE"
+    );
 
 
 // ==============================================
@@ -30548,33 +30599,58 @@ const isEmergencyOperation =
 // ==============================================
 
 if(
-  role === "ADMIN"
+    role === "ADMIN"
 ){
 
-  // ADMIN already sees all staff.
-  // No filtering required.
+    /*
+     * EXISTING BEHAVIOR.
+     *
+     * ADMIN sees all staff that continue
+     * through the remaining loadStaff()
+     * validation.
+     *
+     * No geographic filtering here.
+     */
 
 }
 
 
 // ==============================================
-// 🚨 EMERGENCY OPERATION STAFF
+// 🚨 GLOBAL EMERGENCY TARGET
 // ==============================================
 
 else if(
-  isEmergencyOperation
+    targetEmergency
 ){
 
-  // Globally visible.
-  //
-  // Do NOT apply division/range restriction.
-  //
-  // Examples:
-  // DEPREDATION DUTY
-  // DEPREDATION
-  // RESCUE OPERATION
-  // RESCUE DUTY
-  // RESCUE
+    /*
+     * THIS TARGET STAFF IS:
+     *
+     * DEPREDATION
+     *       OR
+     * RESCUE
+     *
+     * Therefore bypass normal viewer
+     * division/range restrictions.
+     *
+     * The VIEWER does NOT need:
+     *
+     * dutyActive = true
+     * dutyType
+     * sessionId
+     * active patrol
+     * live_staff record
+     *
+     * Viewer only needs to already be
+     * authenticated/logged into GreenGuard.
+     *
+     * IMPORTANT:
+     *
+     * Do NOT return here.
+     *
+     * Let this target continue through the
+     * existing downstream loadStaff() logic.
+     */
 
 }
 
@@ -30584,74 +30660,86 @@ else if(
 // ==============================================
 
 else if(
-  role === "DFO" ||
-  role === "ADFO"
+    role === "DFO" ||
+    role === "ADFO"
 ){
 
-  // Normal staff remain division scoped.
+    /*
+     * EXISTING BEHAVIOR.
+     *
+     * NORMAL staff remain division scoped.
+     *
+     * Emergency staff never reach here because
+     * they were already allowed above.
+     */
 
-  if(
-    staffDivision !== myDivision
-  ){
+    if(
+        staffDivision !==
+        myDivision
+    ){
 
-    return;
+        return;
 
-  }
+    }
 
 }
 
 
 // ==============================================
-// 👮 STAFF / FR / FG / TEAM
+// 👮 STAFF / FR / FG / TEAM LEADER / OTHERS
 // ==============================================
 
 else {
 
-  // ============================================
-  // 🔥 SELF ALWAYS VISIBLE
-  // ============================================
+    // ==========================================
+    // 👤 SELF
+    // ==========================================
 
-  const isSelf =
-    cleanName(
-      s.cleanName ||
-      s.name ||
-      ""
-    )
-    ===
-    cleanName(
-      window.userProfile?.cleanName ||
-      window.userProfile?.name ||
-      ""
-    );
-
-
-  // ============================================
-  // ✅ SAME RANGE
-  // ============================================
-
-  const sameRange =
-    staffRange === myRange;
+    const isSelf =
+        cleanName(
+            s.cleanName ||
+            s.name ||
+            ""
+        )
+        ===
+        cleanName(
+            window.userProfile?.cleanName ||
+            window.userProfile?.name ||
+            ""
+        );
 
 
-  // ============================================
-  // ❌ NORMAL STAFF VISIBILITY
-  //
-  // Keep only:
-  //   SELF
-  //      OR
-  //   SAME RANGE
-  //
-  // Emergency staff already bypassed above.
-  // ============================================
+    // ==========================================
+    // 🗺 SAME RANGE
+    // ==========================================
 
-  if(
-    !isSelf &&
-    !sameRange
-  ){
+    const sameRange =
+        staffRange ===
+        myRange;
 
-    return;
 
-  }
+    // ==========================================
+    // 🔒 EXISTING NORMAL STAFF RESTRICTION
+    // ==========================================
+    //
+    // NORMAL target staff:
+    //
+    // SELF       → visible
+    // SAME RANGE → visible
+    //
+    // Otherwise  → hidden
+    //
+    // Emergency targets never reach this block.
+    // ==========================================
+
+    if(
+        !isSelf &&
+        !sameRange
+    ){
+
+        return;
+
+    }
 
 }
 
