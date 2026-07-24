@@ -1351,23 +1351,134 @@
     };
 
 
-    SightingFormatter.getStatus = function (
+// ================================================
+// ONE SIGHTING'S STATUS
+// ================================================
 
-        sighting
+SightingFormatter.getStatus = function (
+
+    sighting
+
+) {
+
+    const status =
+
+        sighting?.status ??
+
+        sighting?.lifecycle?.status ??
+
+        "";
+
+
+    if (
+
+        status === null ||
+
+        status === undefined
 
     ) {
 
-        return (
+        return "";
 
-            sighting?.status ||
+    }
 
-            sighting?.lifecycle?.status ||
 
-            ""
+    if (
 
-        );
+        typeof status ===
+        "object"
+
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(
+
+        status
+
+    )
+
+        .trim()
+
+        .toUpperCase();
+
+};
+
+
+// ================================================
+// FORMATTER MODULE STATUS
+// ================================================
+
+SightingFormatter.getModuleStatus = function () {
+
+    SightingFormatter.init();
+
+
+    const validation =
+
+        SightingFormatter
+            .validateRegistry();
+
+
+    const available =
+
+        validation.filter(
+
+            function (
+
+                item
+
+            ) {
+
+                return item.available;
+
+            }
+
+        ).length;
+
+
+    return {
+
+        loaded:
+
+            true,
+
+        initialized:
+
+            SightingFormatter.initialized,
+
+        version:
+
+            SightingFormatter.VERSION,
+
+        registeredIntents:
+
+            SightingFormatter
+                .formatters
+                .size,
+
+        availableFormatters:
+
+            available,
+
+        missingFormatters:
+
+            validation.length -
+
+            available,
+
+        statistics: {
+
+            ...SightingFormatter.statistics
+
+        }
 
     };
+
+};
 
 
     SightingFormatter.getDivision = function (
@@ -6223,73 +6334,7 @@
     =========================================================*/
 
 
-    SightingFormatter.getStatus = function () {
 
-        SightingFormatter.init();
-
-
-        const validation =
-
-            SightingFormatter
-                .validateRegistry();
-
-
-        const available =
-
-            validation.filter(
-
-                function (
-
-                    item
-
-                ) {
-
-                    return item.available;
-
-                }
-
-            ).length;
-
-
-        return {
-
-            loaded:
-
-                true,
-
-            initialized:
-
-                SightingFormatter.initialized,
-
-            version:
-
-                SightingFormatter.VERSION,
-
-            registeredIntents:
-
-                SightingFormatter
-                    .formatters
-                    .size,
-
-            availableFormatters:
-
-                available,
-
-            missingFormatters:
-
-                validation.length -
-
-                available,
-
-            statistics: {
-
-                ...SightingFormatter.statistics
-
-            }
-
-        };
-
-    };
 
 
     /*=========================================================
