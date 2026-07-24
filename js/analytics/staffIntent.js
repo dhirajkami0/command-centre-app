@@ -8625,30 +8625,108 @@ StaffIntent.detectCountIntent = function (
     }
 
 
-    /*----------------------------------
-      7. Generic Staff Count
+/*----------------------------------
+  7. Generic Staff Count
 
-      No designation.
-      No jurisdiction.
-      No status filter.
+  IMPORTANT:
 
-      Example:
+  Generic count language alone does
+  NOT establish the STAFF domain.
 
-      How many staff are there?
-    ----------------------------------*/
+  Examples that MUST match:
 
-    result.intent =
+  How many staff are there?
+  Staff count
+  Total staff
+  Number of staff
+  How many employees are there?
+  How many personnel are there?
 
-        INTENTS
-            .STAFF_COUNT;
+  Examples that MUST NOT match:
+
+  How many elephant sightings are there?
+  How many elephants were seen?
+  How many offences are there?
+  How many patrols are there?
+  How many villages are there?
+----------------------------------*/
 
 
-    result.confidence =
+/*----------------------------------
+  Explicit Staff Domain Evidence
+----------------------------------*/
 
-        0.99;
+const hasStaffDomain =
 
+    [
+
+        "STAFF",
+
+        "EMPLOYEE",
+
+        "EMPLOYEES",
+
+        "PERSONNEL",
+
+        "OFFICER",
+
+        "OFFICERS"
+
+    ].some(
+
+        function (
+
+            word
+
+        ) {
+
+            return hasWord(
+
+                word
+
+            );
+
+        }
+
+    );
+
+
+/*----------------------------------
+  No Staff Evidence
+
+  Do NOT claim this count query.
+
+  Leave intent null so another
+  domain detector can claim it.
+----------------------------------*/
+
+if (
+
+    !hasStaffDomain
+
+) {
 
     return result;
+
+}
+
+
+/*----------------------------------
+  Canonical Generic Staff Count
+----------------------------------*/
+
+result.intent =
+
+    INTENTS
+        .STAFF_COUNT;
+
+
+result.confidence =
+
+    0.99;
+
+
+return result;
 
 };
 /*=========================================================
