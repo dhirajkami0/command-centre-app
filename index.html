@@ -2772,14 +2772,14 @@ width:56px;
 </button>
 <!-- 🛰 PLANET BUTTON -->
 <button
+  id="verifyLatestPlanetBtn"
   class="btn-center btn-blue"
   onclick="verifyLatestPlanet()"
-  style="margin-top:6px;">
+  style="margin-top:6px; display:none;">
 
   🛰 VERIFY LATEST PLANET
 
 </button>
-    </div>
     <!-- ========================================= -->
 <!-- 🌍 GIS FILTER PANEL -->
 <!-- ========================================= -->
@@ -29972,7 +29972,41 @@ async function submitMoveForm(){
 
   console.groupEnd();
 
-}function setMoveLoading(state){
+}
+    // ============================================================
+// 🔐 VERIFY LATEST PLANET — ADMIN ONLY
+// ============================================================
+
+function updateVerifyLatestPlanetVisibility(){
+
+    const button =
+        document.getElementById(
+            "verifyLatestPlanetBtn"
+        );
+
+    if(!button){
+        return;
+    }
+
+
+    const role =
+        String(
+            window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    button.style.display =
+        role === "ADMIN"
+            ? ""
+            : "none";
+
+}
+    
+    
+    
+    function setMoveLoading(state){
 
   const btn = document.getElementById("moveConfirmBtn");
   if(!btn) return;
@@ -41909,62 +41943,209 @@ async function loadVillageBoundaryLayer() {
 }
 
 /* ============================================================
-   🎛 LAYER CONTROL (CLEAN VERSION)
+   🎛 LAYER CONTROL
+   ------------------------------------------------------------
+   VISIBILITY:
+
+   ALL USERS:
+   - 👮 Staff
+   - 🐘 Elephants
+
+   ADMIN ONLY:
+   - 🚨 Alerts
+   - 📡 Prediction
+   - 📍 Village Locations
+   - 🏡 Village Boundaries
+   - 🌱 Plantation
+   - 🟩 Coverage Grid
+
+   IMPORTANT:
+   This controls Layer Control visibility only.
+   Existing layer logic remains unchanged.
 ============================================================ */
-    var layerControl = L.control.layers(
 
-  // =====================================================
-  // 🛰 BASE MAPS
-  // =====================================================
-  {
-    "🛰 Satellite": esriSat,
 
-    "🗺 Google Hybrid": googleHybrid
-  },
+/* ============================================================
+   👤 CURRENT USER ROLE
+============================================================ */
 
-  // =====================================================
-  // 📍 OVERLAYS
-  // =====================================================
-  {
+const layerControlUserRole =
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+
+const layerControlIsAdmin =
+    layerControlUserRole ===
+    "ADMIN";
+
+
+/* ============================================================
+   📍 OVERLAYS AVAILABLE TO EVERY LOGGED-IN USER
+============================================================ */
+
+const layerControlOverlays = {
 
     // 👮 STAFF
-    "👮 Staff": staffLayer,
+    "👮 Staff":
+        staffLayer,
 
     // 🐘 ELEPHANTS
-    "🐘 Elephants": elephantLayer,
+    "🐘 Elephants":
+        elephantLayer
 
-    // 🚨 INCIDENTS / ALERTS
-    "🚨 Alerts": incidentLayer,
-
-    // 📡 PREDICTION
-    "📡 Prediction": predictionLayer,
-
-// 📍 EXISTING VILLAGE GPS POINTS
-"📍 Village Locations": villageLayer,
-
-// 🏡 NEW 313 VILLAGE POLYGONS
-"🏡 Village Boundaries": villageBoundaryLayer,
-
-    // 🌱 PLANTATION
-    "🌱 Plantation": plantationLayer,
-
-    // 🟩 COVERAGE GRID
-    "🟩 Coverage Grid": window.gridRootLayer
-
-     },
-
-  // =====================================================
-  // ⚙ CONTROL OPTIONS
-  // =====================================================
-  {
-    collapsed: true
-  }
-
-).addTo(map);
+};
 
 
-// 🔥 GLOBAL VISIBILITY FLAG (CRITICAL FIX)
-window.gridVisible = false;
+/* ============================================================
+   👑 ADMIN-ONLY OVERLAYS
+============================================================ */
+
+if(
+    layerControlIsAdmin
+){
+
+    /* --------------------------------------------------------
+       🚨 INCIDENTS / ALERTS
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "🚨 Alerts"
+    ] =
+        incidentLayer;
+
+
+    /* --------------------------------------------------------
+       📡 PREDICTION
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "📡 Prediction"
+    ] =
+        predictionLayer;
+
+
+    /* --------------------------------------------------------
+       📍 VILLAGE GPS POINTS
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "📍 Village Locations"
+    ] =
+        villageLayer;
+
+
+    /* --------------------------------------------------------
+       🏡 VILLAGE POLYGONS
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "🏡 Village Boundaries"
+    ] =
+        villageBoundaryLayer;
+
+
+    /* --------------------------------------------------------
+       🌱 PLANTATION
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "🌱 Plantation"
+    ] =
+        plantationLayer;
+
+
+    /* --------------------------------------------------------
+       🟩 COVERAGE GRID
+    -------------------------------------------------------- */
+
+    layerControlOverlays[
+        "🟩 Coverage Grid"
+    ] =
+        window.gridRootLayer;
+
+}
+
+
+/* ============================================================
+   🎛 CREATE LEAFLET LAYER CONTROL
+============================================================ */
+
+var layerControl =
+    L.control.layers(
+
+        /* =====================================================
+           🛰 BASE MAPS
+           -----------------------------------------------------
+           Available to everyone.
+        ===================================================== */
+
+        {
+
+            "🛰 Satellite":
+                esriSat,
+
+            "🗺 Google Hybrid":
+                googleHybrid
+
+        },
+
+
+        /* =====================================================
+           📍 ROLE-FILTERED OVERLAYS
+        ===================================================== */
+
+        layerControlOverlays,
+
+
+        /* =====================================================
+           ⚙ CONTROL OPTIONS
+        ===================================================== */
+
+        {
+
+            collapsed:
+                true
+
+        }
+
+    )
+    .addTo(
+        map
+    );
+
+
+/* ============================================================
+   🔥 GLOBAL GRID VISIBILITY FLAG
+============================================================ */
+
+window.gridVisible =
+    false;
+
+
+/* ============================================================
+   🔐 DEBUG
+============================================================ */
+
+console.log(
+    "🎛 Layer Control Initialized",
+    {
+
+        role:
+            layerControlUserRole,
+
+        admin:
+            layerControlIsAdmin,
+
+        overlays:
+            Object.keys(
+                layerControlOverlays
+            )
+
+    }
+);
 
 
 /* ============================================================
