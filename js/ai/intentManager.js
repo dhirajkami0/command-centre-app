@@ -49,7 +49,18 @@ IntentManager.VERSION =
 IntentManager.initialized =
 
     false;
+/*=========================================================
+  INTENT CACHE POLICY
 
+  DEVELOPMENT:
+      false = always run current intent detectors.
+
+  PRODUCTION:
+      may later be changed to true after the
+      intent architecture is stable.
+=========================================================*/
+
+IntentManager.ENABLE_INTENT_CACHE = false;
 /*=========================================================
  INTERNAL HELPERS
 =========================================================*/
@@ -679,7 +690,8 @@ IntentManager.normalize = function (
  GET CACHED INTENT
 =========================================================*/
 
-IntentManager.getCachedIntent = async function (
+IntentManager.getCachedIntent =
+async function (
 
     query
 
@@ -687,9 +699,33 @@ IntentManager.getCachedIntent = async function (
 
     IntentManager.init();
 
+
+    /*----------------------------------
+      Development Mode
+
+      Intent caching is deliberately
+      disabled while detectors, constants,
+      priorities and routing are under
+      active development.
+    ----------------------------------*/
+
+    if (
+
+        IntentManager
+            .ENABLE_INTENT_CACHE !==
+        true
+
+    ) {
+
+        return null;
+
+    }
+
+
     const Cache =
 
         GG.Cache;
+
 
     /*----------------------------------
       Cache Not Available
@@ -700,7 +736,6 @@ IntentManager.getCachedIntent = async function (
         !Cache ||
 
         typeof Cache.getIntent !==
-
         "function"
 
     ) {
@@ -708,6 +743,7 @@ IntentManager.getCachedIntent = async function (
         return null;
 
     }
+
 
     /*----------------------------------
       Normalize
@@ -721,6 +757,7 @@ IntentManager.getCachedIntent = async function (
 
         );
 
+
     /*----------------------------------
       Read
     ----------------------------------*/
@@ -732,6 +769,7 @@ IntentManager.getCachedIntent = async function (
             query
 
         );
+
 
     /*----------------------------------
       Debug
@@ -759,6 +797,7 @@ IntentManager.getCachedIntent = async function (
 
     }
 
+
     return intent;
 
 };
@@ -767,7 +806,8 @@ IntentManager.getCachedIntent = async function (
  SET CACHED INTENT
 =========================================================*/
 
-IntentManager.setCachedIntent = async function (
+IntentManager.setCachedIntent =
+async function (
 
     query,
 
@@ -777,9 +817,32 @@ IntentManager.setCachedIntent = async function (
 
     IntentManager.init();
 
+
+    /*----------------------------------
+      Development Mode
+
+      Do not persist intent decisions
+      while intent detection is under
+      active development.
+    ----------------------------------*/
+
+    if (
+
+        IntentManager
+            .ENABLE_INTENT_CACHE !==
+        true
+
+    ) {
+
+        return;
+
+    }
+
+
     const Cache =
 
         GG.Cache;
+
 
     /*----------------------------------
       Cache Not Available
@@ -790,7 +853,6 @@ IntentManager.setCachedIntent = async function (
         !Cache ||
 
         typeof Cache.setIntent !==
-
         "function"
 
     ) {
@@ -798,6 +860,7 @@ IntentManager.setCachedIntent = async function (
         return;
 
     }
+
 
     /*----------------------------------
       Validate
@@ -808,7 +871,6 @@ IntentManager.setCachedIntent = async function (
         !intent ||
 
         typeof intent !==
-
         "object"
 
     ) {
@@ -816,6 +878,7 @@ IntentManager.setCachedIntent = async function (
         return;
 
     }
+
 
     /*----------------------------------
       Normalize Query
@@ -829,6 +892,7 @@ IntentManager.setCachedIntent = async function (
 
         );
 
+
     /*----------------------------------
       Store
     ----------------------------------*/
@@ -840,6 +904,7 @@ IntentManager.setCachedIntent = async function (
         intent
 
     );
+
 
     /*----------------------------------
       Debug
@@ -3032,11 +3097,13 @@ IntentManager.detect = async function (
  CLEAR CACHE
 =========================================================*/
 
-IntentManager.clearCache = async function () {
+IntentManager.clearCache =
+async function () {
 
     const Cache =
 
         GG.Cache;
+
 
     if (
 
@@ -3044,33 +3111,30 @@ IntentManager.clearCache = async function () {
 
     ) {
 
-        return;
+        return false;
 
     }
 
+
     /*----------------------------------
-      Existing API
+      Intent Cache API
     ----------------------------------*/
 
     if (
 
         typeof Cache.clearIntent ===
-
         "function"
 
     ) {
 
         await Cache.clearIntent();
 
-        return;
+        return true;
 
     }
 
-    /*
-     * Do not call another cache-clearing API here.
-     *
-     * Existing GreenGuard behavior is preserved.
-     */
+
+    return false;
 
 };
 
