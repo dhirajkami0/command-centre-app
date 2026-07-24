@@ -30459,111 +30459,149 @@ window.staffUnsubscribe = onSnapshot(
 
     if(!s) return;
 
-    // ==============================================
-    // 🔥 ROLE BASED VISIBILITY
-    // HARDENED ENTERPRISE VERSION
-    // ==============================================
+// ==============================================
+// 🔥 ROLE BASED VISIBILITY
+// HARDENED + EMERGENCY GLOBAL VISIBILITY
+// ==============================================
 
-    const role =
+const role =
+  String(
+    window.userProfile?.role || ""
+  )
+  .toUpperCase()
+  .trim();
 
-      String(
-        window.userProfile?.role || ""
-      )
-      .toUpperCase()
-      .trim();
 
-    // ==============================================
-    // 🔥 NORMALIZED MY DIVISION
-    // ==============================================
+// ==============================================
+// 🔥 NORMALIZED MY DIVISION
+// ==============================================
 
-    const myDivision =
+const myDivision =
+  normalizeDivision(
+    String(
+      window.userProfile?.division || ""
+    )
+  );
 
-      normalizeDivision(
 
-        String(
-          window.userProfile?.division || ""
-        )
+// ==============================================
+// 🔥 NORMALIZED MY RANGE
+// ==============================================
 
-      );
+const myRange =
+  String(
+    window.userProfile?.range || ""
+  )
+  .trim()
+  .toUpperCase();
 
-    // ==============================================
-    // 🔥 NORMALIZED MY RANGE
-    // ==============================================
 
-    const myRange =
+// ==============================================
+// 🔥 NORMALIZED STAFF DIVISION
+// ==============================================
 
-      String(
-        window.userProfile?.range || ""
-      )
-      .trim()
-      .toUpperCase();
+const staffDivision =
+  normalizeDivision(
+    String(
+      s.division || ""
+    )
+  );
 
-    // ==============================================
-    // 🔥 NORMALIZED STAFF DIVISION
-    // ==============================================
 
-    const staffDivision =
-
-      normalizeDivision(
-
-        String(
-          s.division || ""
-        )
-
-      );
-
-   // ==============================================
+// ==============================================
 // 🔥 NORMALIZED STAFF RANGE
-// FROM staff_profiles
 // ==============================================
 
 const staffRange =
-
   String(
     s.range || ""
   )
   .trim()
   .toUpperCase();
-    // ==============================================
-    // 👑 ADMIN
-    // ==============================================
 
-    if(role === "ADMIN"){
 
-      // ============================================
-      // ✅ SHOW ALL STAFF
-      // ============================================
+// ==============================================
+// 🚨 EMERGENCY OPERATION VISIBILITY
+//
+// These staff are globally visible to ANY
+// logged-in user.
+//
+// IMPORTANT:
+// This affects MARKER VISIBILITY only.
+// Track visibility will be handled separately.
+// ==============================================
 
-    }
+const dutyType =
+  String(
+    s.dutyType || ""
+  )
+  .trim()
+  .toUpperCase();
 
-    // ==============================================
-    // 🟩 DFO / ADFO
-    // ==============================================
+const isEmergencyOperation =
+  dutyType.includes("DEPREDATION") ||
+  dutyType.includes("RESCUE");
 
-    else if(
 
-      role === "DFO"
+// ==============================================
+// 👑 ADMIN
+// ==============================================
 
-      ||
+if(
+  role === "ADMIN"
+){
 
-      role === "ADFO"
+  // ADMIN already sees all staff.
+  // No filtering required.
 
-    ){
+}
 
-      // ============================================
-      // ❌ OUTSIDE DIVISION
-      // ============================================
 
-      if(
-        staffDivision !== myDivision
-      ){
+// ==============================================
+// 🚨 EMERGENCY OPERATION STAFF
+// ==============================================
 
-        return;
-      }
+else if(
+  isEmergencyOperation
+){
 
-    }
+  // Globally visible.
+  //
+  // Do NOT apply division/range restriction.
+  //
+  // Examples:
+  // DEPREDATION DUTY
+  // DEPREDATION
+  // RESCUE OPERATION
+  // RESCUE DUTY
+  // RESCUE
 
-   // ==============================================
+}
+
+
+// ==============================================
+// 🟩 DFO / ADFO
+// ==============================================
+
+else if(
+  role === "DFO" ||
+  role === "ADFO"
+){
+
+  // Normal staff remain division scoped.
+
+  if(
+    staffDivision !== myDivision
+  ){
+
+    return;
+
+  }
+
+}
+
+
+// ==============================================
 // 👮 STAFF / FR / FG / TEAM
 // ==============================================
 
@@ -30571,94 +30609,48 @@ else {
 
   // ============================================
   // 🔥 SELF ALWAYS VISIBLE
-  // VERY IMPORTANT
   // ============================================
 
   const isSelf =
-
     cleanName(
       s.cleanName ||
-
       s.name ||
-
       ""
     )
-
     ===
-
     cleanName(
-
-      window.userProfile
-        ?.cleanName ||
-
-      window.userProfile
-        ?.name ||
-
+      window.userProfile?.cleanName ||
+      window.userProfile?.name ||
       ""
-
     );
+
 
   // ============================================
   // ✅ SAME RANGE
   // ============================================
 
   const sameRange =
-
     staffRange === myRange;
 
+
   // ============================================
-  // ❌ HIDE ONLY IF:
-  // not self AND not same range
+  // ❌ NORMAL STAFF VISIBILITY
+  //
+  // Keep only:
+  //   SELF
+  //      OR
+  //   SAME RANGE
+  //
+  // Emergency staff already bypassed above.
   // ============================================
-console.log(
-  "🔍 RANGE CHECK",
-  {
-    viewer:
-      window.userProfile?.cleanName,
 
-    myRange,
-
-    staff:
-      s.cleanName,
-
-    staffRange,
-
-    sameRange,
-
-    isSelf
-  }
-);
   if(
-
-    !isSelf
-
-    &&
-
+    !isSelf &&
     !sameRange
-
   ){
 
-    console.warn(
-
-      "🚫 RANGE BLOCKED",
-
-      {
-
-        viewer:
-          window.userProfile?.cleanName,
-
-        myRange,
-
-        staff:
-          s.cleanName,
-
-        staffRange
-
-      }
-
-    );
-
     return;
+
   }
 
 }
