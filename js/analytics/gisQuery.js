@@ -60,7 +60,271 @@ GISQuery.findContainingCompartment = function (
     );
 
 };
+/*=====================================================
+  RESOLVE CURRENT GIS LOCATION
+  -----------------------------------------------------
 
+  PURPOSE:
+
+  GPS
+   ↓
+  GISEntities
+   ↓
+  COMPARTMENT
+  + VILLAGE POLYGON
+  + NEAREST RECORDED VILLAGE POINT
+
+  IMPORTANT:
+
+  - No Firestore read
+  - No new listener
+  - No map rendering
+  - Village layers do NOT need to be visible
+  - Safe for lazy marker-popup use
+
+=====================================================*/
+
+GISQuery.resolveCurrentLocation =
+function (
+
+    lat,
+
+    lng
+
+) {
+
+    /*---------------------------------------------
+      VALIDATE
+    ---------------------------------------------*/
+
+    lat =
+        Number(
+            lat
+        );
+
+    lng =
+        Number(
+            lng
+        );
+
+
+    if (
+
+        !Number.isFinite(
+            lat
+        ) ||
+
+        !Number.isFinite(
+            lng
+        )
+
+    ) {
+
+        return {
+
+            compartment:
+                "",
+
+            beat:
+                "",
+
+            range:
+                "",
+
+            division:
+                "",
+
+            village:
+                "",
+
+            villageCode:
+                "",
+
+            block:
+                "",
+
+            nearestPoint:
+                "",
+
+            distanceMeters:
+                null,
+
+            text:
+                ""
+
+        };
+
+    }
+
+
+    /*---------------------------------------------
+      EXISTING GIS ENTITY RESOLVER
+    ---------------------------------------------*/
+
+    const resolver =
+
+        GreenGuardAI
+            .GISEntities
+            ?.resolveCurrentLocation;
+
+
+    if (
+
+        typeof resolver !==
+        "function"
+
+    ) {
+
+        console.warn(
+
+            "⚠ GIS current-location resolver unavailable"
+
+        );
+
+
+        return {
+
+            compartment:
+                "",
+
+            beat:
+                "",
+
+            range:
+                "",
+
+            division:
+                "",
+
+            village:
+                "",
+
+            villageCode:
+                "",
+
+            block:
+                "",
+
+            nearestPoint:
+                "",
+
+            distanceMeters:
+                null,
+
+            text:
+                ""
+
+        };
+
+    }
+
+
+    /*---------------------------------------------
+      RESOLVE
+    ---------------------------------------------*/
+
+    try {
+
+        return (
+
+            resolver(
+
+                lat,
+
+                lng
+
+            ) ||
+
+            {
+
+                compartment:
+                    "",
+
+                beat:
+                    "",
+
+                range:
+                    "",
+
+                division:
+                    "",
+
+                village:
+                    "",
+
+                villageCode:
+                    "",
+
+                block:
+                    "",
+
+                nearestPoint:
+                    "",
+
+                distanceMeters:
+                    null,
+
+                text:
+                    ""
+
+            }
+
+        );
+
+    }
+
+    catch (
+
+        error
+
+    ) {
+
+        console.error(
+
+            "🔥 GIS current-location resolution failed:",
+
+            error
+
+        );
+
+
+        return {
+
+            compartment:
+                "",
+
+            beat:
+                "",
+
+            range:
+                "",
+
+            division:
+                "",
+
+            village:
+                "",
+
+            villageCode:
+                "",
+
+            block:
+                "",
+
+            nearestPoint:
+                "",
+
+            distanceMeters:
+                null,
+
+            text:
+                ""
+
+        };
+
+    }
+
+};
   /*--------------------------------------------------
   Nearest Compartment
 --------------------------------------------------*/
