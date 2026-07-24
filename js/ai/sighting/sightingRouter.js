@@ -942,6 +942,36 @@
           HERD
         =====================================================*/
 
+        /*=====================================================
+          HERD / ELEPHANT COUNT
+        =====================================================*/
+
+        /*
+         * IMPORTANT:
+         *
+         * These are three separate concepts:
+         *
+         * 1. SIGHTING_HERD
+         *      → sightingHerd
+         *      → queryHerdSightings
+         *
+         * 2. SIGHTING_HERD_SIZE
+         *      → sightingHerdSize
+         *      → querySightingHerdSize
+         *
+         * 3. SIGHTING_ELEPHANT_COUNT
+         *      → sightingElephantCount
+         *      → querySightingElephantCount
+         *
+         * Do NOT alias SIGHTING_ELEPHANT_COUNT to
+         * SIGHTING_HERD_SIZE.
+         */
+
+
+        /*-----------------------------------------------------
+          HERD SIGHTINGS
+        -----------------------------------------------------*/
+
         SightingRouter.registerConstant(
 
             "SIGHTING_HERD",
@@ -965,6 +995,10 @@
         );
 
 
+        /*-----------------------------------------------------
+          HERD SIZE
+        -----------------------------------------------------*/
+
         SightingRouter.registerConstant(
 
             "SIGHTING_HERD_SIZE",
@@ -975,15 +1009,51 @@
 
                 "SIGHTINGHERDSIZE",
 
-                "sightingHerdSize",
-
-                "SIGHTING_ELEPHANT_COUNT",
-
-                "sightingElephantCount"
+                "sightingHerdSize"
 
             ],
 
             "sightingHerdSize"
+
+        );
+
+
+        /*-----------------------------------------------------
+          TOTAL ELEPHANT COUNT
+
+          Example:
+
+          3 sighting records
+
+              herdSize = 2
+              herdSize = 2
+              herdSize = 2
+
+          Result:
+
+              sightingCount        = 3
+              sightingElephantCount = 6
+        -----------------------------------------------------*/
+
+        SightingRouter.registerConstant(
+
+            "SIGHTING_ELEPHANT_COUNT",
+
+            "querySightingElephantCount",
+
+            [
+
+                "SIGHTINGELEPHANTCOUNT",
+
+                "sightingElephantCount",
+
+                "ELEPHANT_COUNT",
+
+                "elephantCount"
+
+            ],
+
+            "sightingElephantCount"
 
         );
 
