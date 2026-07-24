@@ -2597,264 +2597,694 @@
       DETERMINE INTENT
     =====================================================*/
 
-    function determineIntent(
+function determineIntent(
 
-        query,
+    query,
 
-        entities,
+    entities,
 
-        context
+    context
 
-    ) {
+) {
 
-        const has =
+    const has =
 
-            function (
+        function (
+
+            group
+
+        ) {
+
+            return containsAny(
+
+                query,
 
                 group
 
-            ) {
-
-                return containsAny(
-
-                    query,
-
-                    group
-
-                );
-
-            };
-
-
-        const elephant =
-
-            has(
-
-                WORDS.ELEPHANT
-
             );
 
+        };
 
-        const sighting =
 
-            has(
+    const elephant =
 
-                WORDS.SIGHTING
+        has(
 
-            );
+            WORDS.ELEPHANT
 
+        );
 
-        const hec =
 
-            has(
+    const sighting =
 
-                WORDS.HEC
+        has(
 
-            );
+            WORDS.SIGHTING
 
+        );
 
-        const analytics =
 
-            has(
+    const hec =
 
-                WORDS.ANALYTICS
+        has(
 
-            );
+            WORDS.HEC
 
+        );
 
-        const trend =
 
-            has(
+    const analytics =
 
-                WORDS.TREND
+        has(
 
-            );
+            WORDS.ANALYTICS
 
+        );
 
-        const hotspot =
 
-            has(
+    const trend =
 
-                WORDS.HOTSPOT
+        has(
 
-            );
+            WORDS.TREND
 
+        );
 
-        const ranking =
 
-            has(
+    const hotspot =
 
-                WORDS.RANKING
+        has(
 
-            );
+            WORDS.HOTSPOT
 
+        );
 
-        const risk =
 
-            has(
+    const ranking =
 
-                WORDS.RISK
+        has(
 
-            );
+            WORDS.RANKING
 
+        );
 
-        const mitigation =
 
-            has(
+    const risk =
 
-                WORDS.MITIGATION
+        has(
 
-            );
+            WORDS.RISK
 
+        );
 
-        const prevention =
 
-            has(
+    const mitigation =
 
-                WORDS.PREVENTION
+        has(
 
-            );
+            WORDS.MITIGATION
 
+        );
 
-        const priority =
 
-            has(
+    const prevention =
 
-                WORDS.PRIORITY
+        has(
 
-            );
+            WORDS.PREVENTION
 
+        );
 
-        const depredation =
 
-            has(
+    const priority =
 
-                WORDS.DEPREDATION
+        has(
 
-            );
+            WORDS.PRIORITY
 
+        );
 
-        const driving =
 
-            has(
+    const depredation =
 
-                WORDS.DRIVING
+        has(
 
-            );
+            WORDS.DEPREDATION
 
+        );
 
-        const movement =
 
-            has(
+    const driving =
 
-                WORDS.MOVEMENT
+        has(
 
-            );
+            WORDS.DRIVING
 
+        );
 
-        const direction =
 
-            has(
+    const movement =
 
-                WORDS.DIRECTION
+        has(
 
-            );
+            WORDS.MOVEMENT
 
+        );
 
-        const history =
 
-            has(
+    const direction =
 
-                WORDS.HISTORY
+        has(
 
-            );
+            WORDS.DIRECTION
 
+        );
 
-        const frequency =
 
-            has(
+    const history =
 
-                WORDS.FREQUENCY
+        has(
 
-            );
+            WORDS.HISTORY
 
+        );
 
-        const summary =
 
-            has(
+    const frequency =
 
-                WORDS.SUMMARY
+        has(
 
-            );
+            WORDS.FREQUENCY
 
+        );
 
-        const count =
 
-            has(
+    const summary =
 
-                WORDS.COUNT
+        has(
 
-            );
+            WORDS.SUMMARY
 
+        );
 
-        const effectiveness =
 
-            has(
+    const count =
 
-                WORDS.EFFECTIVENESS
+        has(
 
-            );
+            WORDS.COUNT
 
+        );
 
-        /*=================================================
-          MITIGATION / DECISION SUPPORT
 
-          Highest specificity.
-        =================================================*/
+    const effectiveness =
+
+        has(
+
+            WORDS.EFFECTIVENESS
+
+        );
+
+
+    /*=================================================
+      MITIGATION / DECISION SUPPORT
+
+      Highest specificity.
+    =================================================*/
+
+    if (
+
+        mitigation &&
+
+        effectiveness
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION_EFFECTIVENESS,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        driving &&
+
+        effectiveness
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DRIVING_EFFECTIVENESS,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        mitigation &&
+
+        entities.village
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION_VILLAGE,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        mitigation &&
+
+        entities.range
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION_RANGE,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        mitigation &&
+
+        (
+
+            entities.beat ||
+
+            entities.compartment
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION_LOCATION,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        mitigation &&
+
+        priority
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION_PRIORITY,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        mitigation
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_MITIGATION,
+
+            0.95
+
+        ];
+
+    }
+
+
+    if (
+
+        prevention
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_PREVENTION,
+
+            0.94
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.EARLY_WARNING
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_EARLY_WARNING,
+
+            0.95
+
+        ];
+
+    }
+
+
+    /*=================================================
+      OPERATIONAL PRIORITY
+    =================================================*/
+
+    if (
+
+        priority &&
+
+        has(
+
+            WORDS.PATROL
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_PATROL_PRIORITY,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        priority &&
+
+        has(
+
+            WORDS.RESOURCE
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RESOURCE_PRIORITY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        priority &&
+
+        has(
+
+            WORDS.RESPONSE
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RESPONSE_PRIORITY,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        priority &&
+
+        has(
+
+            WORDS.EARLY_WARNING
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_ALERT_PRIORITY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.DUTY
+
+        ) &&
+
+        (
+
+            elephant ||
+
+            sighting ||
+
+            hec ||
+
+            depredation
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DUTY_SUPPORT,
+
+            0.94
+
+        ];
+
+    }
+
+
+    /*=================================================
+      DEPREDATION
+    =================================================*/
+
+    if (
+
+        depredation &&
+
+        hotspot
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DEPREDATION_HOTSPOT,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        depredation &&
+
+        trend
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DEPREDATION_TREND,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        depredation &&
+
+        history
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DEPREDATION_HISTORY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        depredation &&
+
+        count
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DEPREDATION_COUNT,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        depredation
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DEPREDATION,
+
+            0.95
+
+        ];
+
+    }
+
+
+    /*=================================================
+      DRIVING
+    =================================================*/
+
+    if (
+
+        driving &&
+
+        history
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DRIVING_HISTORY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        driving
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_DRIVING,
+
+            0.94
+
+        ];
+
+    }
+
+
+    /*=================================================
+      HOTSPOTS
+    =================================================*/
+
+    if (
+
+        hotspot
+
+    ) {
 
         if (
-
-            mitigation &&
-
-            effectiveness
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_MITIGATION_EFFECTIVENESS,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            driving &&
-
-            effectiveness
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DRIVING_EFFECTIVENESS,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            mitigation &&
 
             entities.village
 
@@ -2863,1393 +3293,9 @@
             return [
 
                 INTENTS
-                    .HEC_MITIGATION_VILLAGE,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            mitigation &&
-
-            entities.range
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_MITIGATION_RANGE,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            mitigation &&
-
-            (
-
-                entities.beat ||
-
-                entities.compartment
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_MITIGATION_LOCATION,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            mitigation &&
-
-            priority
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_MITIGATION_PRIORITY,
+                    .HEC_VILLAGE_HOTSPOT,
 
                 0.98
-
-            ];
-
-        }
-
-
-        if (mitigation) {
-
-            return [
-
-                INTENTS.HEC_MITIGATION,
-
-                0.95
-
-            ];
-
-        }
-
-
-        if (prevention) {
-
-            return [
-
-                INTENTS.HEC_PREVENTION,
-
-                0.94
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.EARLY_WARNING
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS.HEC_EARLY_WARNING,
-
-                0.95
-
-            ];
-
-        }
-
-
-        /*=================================================
-          OPERATIONAL PRIORITY
-        =================================================*/
-
-        if (
-
-            priority &&
-
-            has(
-
-                WORDS.PATROL
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_PATROL_PRIORITY,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            priority &&
-
-            has(
-
-                WORDS.RESOURCE
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_RESOURCE_PRIORITY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            priority &&
-
-            has(
-
-                WORDS.RESPONSE
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_RESPONSE_PRIORITY,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            priority &&
-
-            has(
-
-                WORDS.EARLY_WARNING
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_ALERT_PRIORITY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.DUTY
-
-            ) &&
-
-            (
-
-                elephant ||
-
-                sighting ||
-
-                hec ||
-
-                depredation
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DUTY_SUPPORT,
-
-                0.94
-
-            ];
-
-        }
-
-
-        /*=================================================
-          DEPREDATION
-        =================================================*/
-
-        if (
-
-            depredation &&
-
-            hotspot
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DEPREDATION_HOTSPOT,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            depredation &&
-
-            trend
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DEPREDATION_TREND,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            depredation &&
-
-            history
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DEPREDATION_HISTORY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            depredation &&
-
-            count
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DEPREDATION_COUNT,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (depredation) {
-
-            return [
-
-                INTENTS.HEC_DEPREDATION,
-
-                0.95
-
-            ];
-
-        }
-
-
-        /*=================================================
-          DRIVING
-        =================================================*/
-
-        if (
-
-            driving &&
-
-            history
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_DRIVING_HISTORY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (driving) {
-
-            return [
-
-                INTENTS.HEC_DRIVING,
-
-                0.94
-
-            ];
-
-        }
-
-
-        /*=================================================
-          HOTSPOTS
-        =================================================*/
-
-        if (hotspot) {
-
-            if (
-
-                entities.village
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .HEC_VILLAGE_HOTSPOT,
-
-                    0.98
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.compartment
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .HEC_COMPARTMENT_HOTSPOT,
-
-                    0.98
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.beat
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .HEC_BEAT_HOTSPOT,
-
-                    0.98
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.range
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .HEC_RANGE_HOTSPOT,
-
-                    0.98
-
-                ];
-
-            }
-
-
-            return [
-
-                INTENTS.HEC_HOTSPOT,
-
-                0.96
-
-            ];
-
-        }
-
-
-        /*=================================================
-          VILLAGE / RISK
-        =================================================*/
-
-        if (
-
-            has(
-
-                WORDS.HIGH_RISK
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS.HEC_HIGH_RISK,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            risk &&
-
-            ranking
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_RISK_RANKING,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            risk &&
-
-            trend
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_RISK_TREND,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            risk &&
-
-            summary
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_RISK_SUMMARY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            entities.village &&
-
-            risk
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_VILLAGE_RISK,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            entities.village &&
-
-            history
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_VILLAGE_CONFLICT_HISTORY,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.VILLAGE
-
-            ) &&
-
-            ranking
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_VILLAGE_RANKING,
-
-                0.95
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.VILLAGE
-
-            ) &&
-
-            has(
-
-                WORDS.NEAREST
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_NEAREST_VILLAGE,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.VILLAGE
-
-            ) &&
-
-            containsPhrase(
-
-                query,
-
-                "EXPOSURE"
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .HEC_VILLAGE_EXPOSURE,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (risk) {
-
-            return [
-
-                INTENTS.HEC_RISK,
-
-                0.91
-
-            ];
-
-        }
-
-
-        /*=================================================
-          MOVEMENT
-        =================================================*/
-
-        if (
-
-            movement &&
-
-            history
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_MOVEMENT_HISTORY,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            movement &&
-
-            trend
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_MOVEMENT_TREND,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (direction) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_DIRECTION,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (movement) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_MOVEMENT,
-
-                0.94
-
-            ];
-
-        }
-
-
-        /*=================================================
-          TEMPORAL / SPATIAL ANALYTICS
-        =================================================*/
-
-        if (
-
-            analytics ||
-
-            trend ||
-
-            frequency ||
-
-            hec
-
-        ) {
-
-            if (
-
-                has(
-
-                    WORDS.DAILY
-
-                ) &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_DAILY_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                has(
-
-                    WORDS.WEEKLY
-
-                ) &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_WEEKLY_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                has(
-
-                    WORDS.MONTHLY
-
-                ) &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_MONTHLY_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                has(
-
-                    WORDS.YEARLY
-
-                ) &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_YEARLY_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.range &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_RANGE_ANALYSIS,
-
-                    0.97
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.beat &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_BEAT_ANALYSIS,
-
-                    0.97
-
-                ];
-
-            }
-
-
-            if (
-
-                entities.village &&
-
-                analytics
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_VILLAGE_ANALYSIS,
-
-                    0.97
-
-                ];
-
-            }
-
-
-            if (frequency) {
-
-                return [
-
-                    hec
-
-                        ? INTENTS
-                            .HEC_FREQUENCY
-
-                        : INTENTS
-                            .SIGHTING_FREQUENCY,
-
-                    0.94
-
-                ];
-
-            }
-
-
-            if (trend) {
-
-                return [
-
-                    hec
-
-                        ? INTENTS
-                            .HEC_TREND
-
-                        : INTENTS
-                            .SIGHTING_TREND,
-
-                    0.95
-
-                ];
-
-            }
-
-
-            if (
-
-                containsPhrase(
-
-                    query,
-
-                    "SPATIAL"
-
-                )
-
-            ) {
-
-                return [
-
-                    hec
-
-                        ? INTENTS
-                            .HEC_SPATIAL_ANALYSIS
-
-                        : INTENTS
-                            .SIGHTING_SPATIAL_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                containsPhrase(
-
-                    query,
-
-                    "TEMPORAL"
-
-                )
-
-            ) {
-
-                return [
-
-                    hec
-
-                        ? INTENTS
-                            .HEC_TEMPORAL_ANALYSIS
-
-                        : INTENTS
-                            .SIGHTING_TEMPORAL_ANALYSIS,
-
-                    0.96
-
-                ];
-
-            }
-
-
-            if (
-
-                hec &&
-
-                summary
-
-            ) {
-
-                return [
-
-                    INTENTS.HEC_SUMMARY,
-
-                    0.95
-
-                ];
-
-            }
-
-
-            if (hec) {
-
-                return [
-
-                    INTENTS.HEC_ANALYTICS,
-
-                    0.90
-
-                ];
-
-            }
-
-
-            if (analytics) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_ANALYTICS,
-
-                    0.92
-
-                ];
-
-            }
-
-        }
-
-
-        /*=================================================
-          BASIC SIGHTING
-        =================================================*/
-
-        if (
-
-            entities.sightingId
-
-        ) {
-
-            if (
-
-                has(
-
-                    WORDS.LOCATION
-
-                )
-
-            ) {
-
-                return [
-
-                    INTENTS
-                        .SIGHTING_LOCATION,
-
-                    0.99
-
-                ];
-
-            }
-
-
-            return [
-
-                INTENTS
-                    .SIGHTING_PROFILE,
-
-                0.99
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.NEARBY
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_NEARBY,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.NEAREST
-
-            ) &&
-
-            (
-
-                elephant ||
-
-                sighting
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_NEAREST,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.LATEST
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_LATEST,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.RESOLVED
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_RESOLVED,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            containsPhrase(
-
-                query,
-
-                "MOVED"
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_MOVED,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            containsPhrase(
-
-                query,
-
-                "DRIVEN"
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_DRIVEN,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.ACTIVE
-
-            ) &&
-
-            count
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_ACTIVE_COUNT,
-
-                0.98
-
-            ];
-
-        }
-
-
-        if (
-
-            has(
-
-                WORDS.ACTIVE
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_ACTIVE,
-
-                0.96
-
-            ];
-
-        }
-
-
-        if (
-
-            containsPhrase(
-
-                query,
-
-                "HOW MANY ELEPHANTS"
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_ELEPHANT_COUNT,
-
-                0.97
-
-            ];
-
-        }
-
-
-        if (
-
-            count &&
-
-            has(
-
-                WORDS.ELEPHANT
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_ELEPHANT_COUNT,
-
-                0.94
-
-            ];
-
-        }
-
-
-        if (
-
-            containsPhrase(
-
-                query,
-
-                "HERD SIZE"
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_HERD,
-
-                0.96
 
             ];
 
@@ -4265,9 +3311,9 @@
             return [
 
                 INTENTS
-                    .SIGHTING_COMPARTMENT,
+                    .HEC_COMPARTMENT_HOTSPOT,
 
-                0.92
+                0.98
 
             ];
 
@@ -4283,9 +3329,9 @@
             return [
 
                 INTENTS
-                    .SIGHTING_BEAT,
+                    .HEC_BEAT_HOTSPOT,
 
-                0.92
+                0.98
 
             ];
 
@@ -4301,109 +3347,9 @@
             return [
 
                 INTENTS
-                    .SIGHTING_RANGE,
+                    .HEC_RANGE_HOTSPOT,
 
-                0.92
-
-            ];
-
-        }
-
-
-        if (
-
-            entities.division
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_DIVISION,
-
-                0.92
-
-            ];
-
-        }
-
-
-        if (
-
-            entities.village
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_VILLAGE,
-
-                0.92
-
-            ];
-
-        }
-
-
-        if (
-
-            summary &&
-
-            (
-
-                elephant ||
-
-                sighting
-
-            )
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_SUMMARY,
-
-                0.92
-
-            ];
-
-        }
-
-
-        if (
-
-            elephant ||
-
-            sighting
-
-        ) {
-
-            return [
-
-                INTENTS
-                    .SIGHTING_LIST,
-
-                0.86
-
-            ];
-
-        }
-
-
-        /*
-         * HEC alone is meaningful but deliberately below
-         * HIGH_CONFIDENCE so Gemini may refine it.
-         */
-
-        if (hec) {
-
-            return [
-
-                INTENTS.HEC_SUMMARY,
-
-                0.82
+                0.98
 
             ];
 
@@ -4412,13 +3358,1221 @@
 
         return [
 
-            null,
+            INTENTS
+                .HEC_HOTSPOT,
 
-            0
+            0.96
 
         ];
 
     }
+
+
+    /*=================================================
+      VILLAGE / RISK
+    =================================================*/
+
+    if (
+
+        has(
+
+            WORDS.HIGH_RISK
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_HIGH_RISK,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        risk &&
+
+        ranking
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RISK_RANKING,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        risk &&
+
+        trend
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RISK_TREND,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        risk &&
+
+        summary
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RISK_SUMMARY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.village &&
+
+        risk
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_VILLAGE_RISK,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.village &&
+
+        history
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_VILLAGE_CONFLICT_HISTORY,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.VILLAGE
+
+        ) &&
+
+        ranking
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_VILLAGE_RANKING,
+
+            0.95
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.VILLAGE
+
+        ) &&
+
+        has(
+
+            WORDS.NEAREST
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_NEAREST_VILLAGE,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.VILLAGE
+
+        ) &&
+
+        containsPhrase(
+
+            query,
+
+            "EXPOSURE"
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_VILLAGE_EXPOSURE,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        risk
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_RISK,
+
+            0.91
+
+        ];
+
+    }
+
+
+    /*=================================================
+      MOVEMENT
+    =================================================*/
+
+    if (
+
+        movement &&
+
+        history
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_MOVEMENT_HISTORY,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        movement &&
+
+        trend
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_MOVEMENT_TREND,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        direction
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_DIRECTION,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        movement
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_MOVEMENT,
+
+            0.94
+
+        ];
+
+    }
+
+
+    /*=================================================
+      TEMPORAL / SPATIAL ANALYTICS
+    =================================================*/
+
+    if (
+
+        analytics ||
+
+        trend ||
+
+        frequency ||
+
+        hec
+
+    ) {
+
+        if (
+
+            has(
+
+                WORDS.DAILY
+
+            ) &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_DAILY_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            has(
+
+                WORDS.WEEKLY
+
+            ) &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_WEEKLY_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            has(
+
+                WORDS.MONTHLY
+
+            ) &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_MONTHLY_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            has(
+
+                WORDS.YEARLY
+
+            ) &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_YEARLY_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            entities.range &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_RANGE_ANALYSIS,
+
+                0.97
+
+            ];
+
+        }
+
+
+        if (
+
+            entities.beat &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_BEAT_ANALYSIS,
+
+                0.97
+
+            ];
+
+        }
+
+
+        if (
+
+            entities.village &&
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_VILLAGE_ANALYSIS,
+
+                0.97
+
+            ];
+
+        }
+
+
+        if (
+
+            frequency
+
+        ) {
+
+            return [
+
+                hec
+
+                    ? INTENTS
+                        .HEC_FREQUENCY
+
+                    : INTENTS
+                        .SIGHTING_FREQUENCY,
+
+                0.94
+
+            ];
+
+        }
+
+
+        if (
+
+            trend
+
+        ) {
+
+            return [
+
+                hec
+
+                    ? INTENTS
+                        .HEC_TREND
+
+                    : INTENTS
+                        .SIGHTING_TREND,
+
+                0.95
+
+            ];
+
+        }
+
+
+        if (
+
+            containsPhrase(
+
+                query,
+
+                "SPATIAL"
+
+            )
+
+        ) {
+
+            return [
+
+                hec
+
+                    ? INTENTS
+                        .HEC_SPATIAL_ANALYSIS
+
+                    : INTENTS
+                        .SIGHTING_SPATIAL_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            containsPhrase(
+
+                query,
+
+                "TEMPORAL"
+
+            )
+
+        ) {
+
+            return [
+
+                hec
+
+                    ? INTENTS
+                        .HEC_TEMPORAL_ANALYSIS
+
+                    : INTENTS
+                        .SIGHTING_TEMPORAL_ANALYSIS,
+
+                0.96
+
+            ];
+
+        }
+
+
+        if (
+
+            hec &&
+
+            summary
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .HEC_SUMMARY,
+
+                0.95
+
+            ];
+
+        }
+
+
+        if (
+
+            hec
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .HEC_ANALYTICS,
+
+                0.90
+
+            ];
+
+        }
+
+
+        if (
+
+            analytics
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_ANALYTICS,
+
+                0.92
+
+            ];
+
+        }
+
+    }
+
+
+    /*=================================================
+      BASIC SIGHTING
+    =================================================*/
+
+    if (
+
+        entities.sightingId
+
+    ) {
+
+        if (
+
+            has(
+
+                WORDS.LOCATION
+
+            )
+
+        ) {
+
+            return [
+
+                INTENTS
+                    .SIGHTING_LOCATION,
+
+                0.99
+
+            ];
+
+        }
+
+
+        return [
+
+            INTENTS
+                .SIGHTING_PROFILE,
+
+            0.99
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.NEARBY
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_NEARBY,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.NEAREST
+
+        ) &&
+
+        (
+
+            elephant ||
+
+            sighting
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_NEAREST,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.LATEST
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_LATEST,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.RESOLVED
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_RESOLVED,
+
+            0.96
+
+        ];
+
+    }
+
+
+    if (
+
+        containsPhrase(
+
+            query,
+
+            "MOVED"
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_MOVED,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        containsPhrase(
+
+            query,
+
+            "DRIVEN"
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_DRIVEN,
+
+            0.97
+
+        ];
+
+    }
+
+
+    /*=================================================
+      ACTIVE SIGHTING COUNT
+
+      Example:
+      "How many active elephant sightings are there?"
+
+      This means number of ACTIVE sighting records,
+      not number of elephants.
+    =================================================*/
+
+    if (
+
+        has(
+
+            WORDS.ACTIVE
+
+        ) &&
+
+        count
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ACTIVE_COUNT,
+
+            0.98
+
+        ];
+
+    }
+
+
+    if (
+
+        has(
+
+            WORDS.ACTIVE
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ACTIVE,
+
+            0.96
+
+        ];
+
+    }
+
+
+    /*=================================================
+      SIGHTING RECORD COUNT
+
+      IMPORTANT:
+      This MUST come before elephant-count detection.
+
+      Examples:
+
+      "How many elephant sightings are there?"
+          -> sightingCount
+
+      "How many sightings are there?"
+          -> sightingCount
+
+      "Sighting count"
+          -> sightingCount
+
+      "Total sightings"
+          -> sightingCount
+
+      ELEPHANT is only the subject/species here.
+      The noun being counted is SIGHTING.
+    =================================================*/
+
+    if (
+
+        count &&
+
+        sighting
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_COUNT,
+
+            0.98
+
+        ];
+
+    }
+
+
+    /*=================================================
+      ELEPHANT COUNT
+
+      These queries ask for the NUMBER OF ELEPHANTS,
+      not the number of sighting records.
+
+      Examples:
+
+      "How many elephants were seen?"
+          -> sightingElephantCount
+
+      "How many elephants are there?"
+          -> sightingElephantCount
+
+      "Elephant count"
+          -> sightingElephantCount
+
+      "Total elephants seen"
+          -> sightingElephantCount
+    =================================================*/
+
+    if (
+
+        containsPhrase(
+
+            query,
+
+            "HOW MANY ELEPHANTS"
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ELEPHANT_COUNT,
+
+            0.97
+
+        ];
+
+    }
+
+
+    if (
+
+        count &&
+
+        elephant
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ELEPHANT_COUNT,
+
+            0.94
+
+        ];
+
+    }
+
+
+    /*=================================================
+      HERD SIZE
+    =================================================*/
+
+    if (
+
+        containsPhrase(
+
+            query,
+
+            "HERD SIZE"
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_HERD,
+
+            0.96
+
+        ];
+
+    }
+
+
+    /*=================================================
+      LOCATION-SCOPED SIGHTINGS
+    =================================================*/
+
+    if (
+
+        entities.compartment
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_COMPARTMENT,
+
+            0.92
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.beat
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_BEAT,
+
+            0.92
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.range
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_RANGE,
+
+            0.92
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.division
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_DIVISION,
+
+            0.92
+
+        ];
+
+    }
+
+
+    if (
+
+        entities.village
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_VILLAGE,
+
+            0.92
+
+        ];
+
+    }
+
+
+    /*=================================================
+      SUMMARY
+    =================================================*/
+
+    if (
+
+        summary &&
+
+        (
+
+            elephant ||
+
+            sighting
+
+        )
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_SUMMARY,
+
+            0.92
+
+        ];
+
+    }
+
+
+    /*=================================================
+      GENERIC SIGHTING LIST
+    =================================================*/
+
+    if (
+
+        elephant ||
+
+        sighting
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_LIST,
+
+            0.86
+
+        ];
+
+    }
+
+
+    /*
+     * HEC alone is meaningful but deliberately below
+     * HIGH_CONFIDENCE so Gemini may refine it.
+     */
+
+    if (
+
+        hec
+
+    ) {
+
+        return [
+
+            INTENTS
+                .HEC_SUMMARY,
+
+            0.82
+
+        ];
+
+    }
+
+
+    /*=================================================
+      NO SIGHTING INTENT
+    =================================================*/
+
+    return [
+
+        null,
+
+        0
+
+    ];
+
+}
 
 
     /*=====================================================
