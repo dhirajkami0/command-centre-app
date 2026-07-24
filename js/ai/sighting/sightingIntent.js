@@ -4279,11 +4279,81 @@ function determineIntent(
       The noun being counted is SIGHTING.
     =================================================*/
 
+    /*=================================================
+      COUNT SEMANTIC DISAMBIGUATION
+
+      Distinguish:
+
+      SIGHTING_COUNT
+          = number of sighting records/events
+
+      SIGHTING_ELEPHANT_COUNT
+          = number of elephants observed
+    =================================================*/
+
+    const explicitSightingRecord =
+
+        containsPhrase(
+
+            query,
+
+            "SIGHTING"
+
+        ) ||
+
+        containsPhrase(
+
+            query,
+
+            "SIGHTINGS"
+
+        );
+
+
+    const explicitElephantCount =
+
+        containsPhrase(
+
+            query,
+
+            "HOW MANY ELEPHANTS"
+
+        ) ||
+
+        containsPhrase(
+
+            query,
+
+            "TOTAL ELEPHANTS"
+
+        ) ||
+
+        containsPhrase(
+
+            query,
+
+            "ELEPHANT COUNT"
+
+        ) ||
+
+        containsPhrase(
+
+            query,
+
+            "NUMBER OF ELEPHANTS"
+
+        );
+
+
+    /*---------------------------------------------
+      SIGHTING RECORD COUNT
+    ---------------------------------------------*/
+
     if (
 
         count &&
 
-        sighting
+        explicitSightingRecord
 
     ) {
 
@@ -4293,6 +4363,54 @@ function determineIntent(
                 .SIGHTING_COUNT,
 
             0.98
+
+        ];
+
+    }
+
+
+    /*---------------------------------------------
+      ELEPHANT COUNT
+    ---------------------------------------------*/
+
+    if (
+
+        explicitElephantCount
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ELEPHANT_COUNT,
+
+            0.97
+
+        ];
+
+    }
+
+
+    /*---------------------------------------------
+      ELEPHANT COUNT FALLBACK
+    ---------------------------------------------*/
+
+    if (
+
+        count &&
+
+        elephant &&
+
+        !explicitSightingRecord
+
+    ) {
+
+        return [
+
+            INTENTS
+                .SIGHTING_ELEPHANT_COUNT,
+
+            0.94
 
         ];
 
