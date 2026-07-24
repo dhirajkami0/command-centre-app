@@ -5565,6 +5565,7 @@ requestAnimationFrame(() => {
     },1200);
 scheduleVillageDataLoad();
 
+
 // ======================================================
 // 🚀 FIREBASE WAIT LOOP
 // ======================================================
@@ -5588,6 +5589,7 @@ setTimeout(() => {
     ){
 
       return;
+
     }
 
 
@@ -5623,7 +5625,7 @@ setTimeout(() => {
       if(
 
         typeof loadSightings ===
-        "function"
+          "function"
 
       ){
 
@@ -5631,10 +5633,139 @@ setTimeout(() => {
           "🐘 Loading sightings..."
         );
 
+
         await loadSightings();
+
 
         console.log(
           "✅ Sightings loaded"
+        );
+
+
+        /*==============================================
+          SIGHTING INTELLIGENCE STORE
+
+          IMPORTANT:
+
+          loadSightings()
+              → existing map/UI sighting system
+
+          SightingEntities
+              → canonical AI/query sighting system
+
+          The AI sighting pipeline requires
+          SightingEntities to be initialized before
+          SightingQuery executes.
+        ==============================================*/
+
+        try {
+
+          const GG =
+
+            window.GreenGuardAI;
+
+
+          /*------------------------------------------
+            VERIFY MODULE
+          ------------------------------------------*/
+
+          if(
+
+            GG &&
+
+            GG.SightingEntities &&
+
+            typeof GG.SightingEntities.ensureReady ===
+              "function"
+
+          ){
+
+            console.log(
+              "🐘 Initializing Sighting Intelligence..."
+            );
+
+
+            /*----------------------------------------
+              LOAD CANONICAL SIGHTING STORE
+            ----------------------------------------*/
+
+            await GG.SightingEntities
+              .ensureReady();
+
+
+            console.log(
+              "✅ Sighting Intelligence Ready"
+            );
+
+
+            /*----------------------------------------
+              ENTITY STORE DIAGNOSTIC
+            ----------------------------------------*/
+
+            if(
+
+              typeof GG.SightingEntities.count ===
+                "function"
+
+            ){
+
+              console.log(
+                "🐘 SightingEntities Count:",
+                GG.SightingEntities.count()
+              );
+
+            }
+
+
+            /*----------------------------------------
+              QUERY LAYER DIAGNOSTIC
+            ----------------------------------------*/
+
+            if(
+
+              GG.SightingQuery &&
+
+              typeof GG.SightingQuery.getEntityArray ===
+                "function"
+
+            ){
+
+              console.log(
+                "🧠 SightingQuery Entity Count:",
+                GG.SightingQuery
+                  .getEntityArray()
+                  .length
+              );
+
+            }
+
+          }
+
+          else {
+
+            console.warn(
+              "⚠ SightingEntities unavailable"
+            );
+
+          }
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Sighting Intelligence initialization failed:",
+            err
+          );
+
+        }
+
+      }
+
+      else {
+
+        console.warn(
+          "⚠ loadSightings() unavailable"
         );
 
       }
@@ -5660,6 +5791,7 @@ setTimeout(() => {
     --------------------------------------------------*/
 
     const dutyProfileWait =
+
       setInterval(() => {
 
         if(
@@ -5671,6 +5803,7 @@ setTimeout(() => {
         ){
 
           return;
+
         }
 
 
