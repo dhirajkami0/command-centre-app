@@ -364,22 +364,46 @@ CONFIG: {
 
 
 
-                    /* ========================================
-                       CREATE NEW MAIN OFFENCE BUTTON
-                    ======================================== */
+/* ========================================
+   🔐 OFFENCE UI — ADMIN ONLY
+======================================== */
 
-                    UIController
-                        .createMainButton();
+const offenceUserRole =
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
 
 
+if(
+    offenceUserRole === "ADMIN"
+){
 
-                    /* ========================================
-                       CREATE NEW ANALYSIS PANEL
-                    ======================================== */
+    /* ------------------------------------
+       CREATE OFFENCE BUTTON
+    ------------------------------------ */
 
-                    UIController
-                        .createPanel();
+    UIController
+        .createMainButton();
 
+
+    /* ------------------------------------
+       CREATE OFFENCE PANEL
+    ------------------------------------ */
+
+    UIController
+        .createPanel();
+
+}
+else {
+
+    console.log(
+        "🔒 Offence UI hidden — ADMIN only",
+        offenceUserRole
+    );
+
+}
 
 
                     /* ========================================
