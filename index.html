@@ -30459,51 +30459,90 @@ window.staffUnsubscribe = onSnapshot(
 
     if(!s) return;
 // ==============================================
-// 🔥 ROLE BASED VISIBILITY
+// 🔥 ROLE BASED STAFF VISIBILITY
 // + GLOBAL EMERGENCY TARGET VISIBILITY
 // ==============================================
 //
-// RULE:
+// FINAL RULE:
 //
-// 1. ADMIN
-//    → existing global visibility.
+// ADMIN
+//   → ALL STAFF
 //
-// 2. DEPREDATION / RESCUE TARGET STAFF
-//    → visible to ANY logged-in GreenGuard user.
+// DFO / ADFO
+//   → NORMAL STAFF: SAME DIVISION ONLY
+//   → EMERGENCY: GLOBAL
 //
-// 3. DFO / ADFO
-//    → existing division visibility.
+// TEAM LEADER / FR / FG / OTHER STAFF
+//   → SELF: ALWAYS
+//   → NORMAL STAFF: SAME RANGE ONLY
+//   → EMERGENCY: GLOBAL
 //
-// 4. ALL OTHER USERS
-//    → existing SELF + SAME RANGE visibility.
+// EMERGENCY TARGET =
+//   DEPREDATION DUTY
+//   OR
+//   RESCUE OPERATION
 //
 // IMPORTANT:
 //
-// The logged-in viewer's:
-//
-// dutyActive
-// dutyType
-// status
-// sessionId
-//
-// are NOT checked here.
-//
-// Being logged into GreenGuard is enough to SEE
-// an emergency-operation target.
+// Viewer dutyActive / dutyType / status / sessionId
+// are NOT used.
 //
 // ==============================================
 
 
 // ==============================================
-// 👤 VIEWER ROLE
+// 🔧 LOCAL NORMALIZER
+// ==============================================
+//
+// Used only for visibility comparison.
+//
+// Examples:
+//
+// "EastDamanpur"
+// "East Damanpur"
+// "east-damanpur"
+// "EAST_DAMANPUR"
+//
+// all become:
+//
+// "EASTDAMANPUR"
+//
+// ==============================================
+
+const normalizeStaffScopeValue =
+    function(value){
+
+        return String(
+            value || ""
+        )
+        .trim()
+        .toUpperCase()
+        .replace(
+            /[^A-Z0-9]/g,
+            ""
+        );
+
+    };
+
+
+// ==============================================
+// 👤 VIEWER
 // ==============================================
 
 const role =
     String(
         window.userProfile?.role || ""
     )
-    .toUpperCase()
-    .trim();
+    .trim()
+    .toUpperCase();
+
+
+const viewerName =
+    cleanName(
+        window.userProfile?.cleanName ||
+        window.userProfile?.name ||
+        ""
+    );
 
 
 // ==============================================
@@ -30511,10 +30550,8 @@ const role =
 // ==============================================
 
 const myDivision =
-    normalizeDivision(
-        String(
-            window.userProfile?.division || ""
-        )
+    normalizeStaffScopeValue(
+        window.userProfile?.division || ""
     );
 
 
@@ -30523,39 +30560,45 @@ const myDivision =
 // ==============================================
 
 const myRange =
-    String(
+    normalizeStaffScopeValue(
         window.userProfile?.range || ""
-    )
-    .trim()
-    .toUpperCase();
-
-
-// ==============================================
-// 🗺 TARGET STAFF DIVISION
-// ==============================================
-
-const staffDivision =
-    normalizeDivision(
-        String(
-            s.division || ""
-        )
     );
 
 
 // ==============================================
-// 🗺 TARGET STAFF RANGE
+// 👮 TARGET STAFF
+// ==============================================
+
+const targetName =
+    cleanName(
+        s.cleanName ||
+        s.name ||
+        ""
+    );
+
+
+// ==============================================
+// 🗺 TARGET DIVISION
+// ==============================================
+
+const staffDivision =
+    normalizeStaffScopeValue(
+        s.division || ""
+    );
+
+
+// ==============================================
+// 🗺 TARGET RANGE
 // ==============================================
 
 const staffRange =
-    String(
+    normalizeStaffScopeValue(
         s.range || ""
-    )
-    .trim()
-    .toUpperCase();
+    );
 
 
 // ==============================================
-// 🚨 TARGET STAFF DUTY TYPE
+// 🚨 TARGET DUTY TYPE
 // ==============================================
 
 const targetDutyType =
@@ -30567,21 +30610,17 @@ const targetDutyType =
 
 
 // ==============================================
-// 🚨 GLOBAL EMERGENCY TARGET
-// ------------------------------------------------
+// 🚨 EMERGENCY TARGET
+// ==============================================
 //
-// ONLY TARGET DUTY TYPE IS CHECKED.
+// ONLY TARGET dutyType matters.
 //
-// Examples accepted:
+// Viewer does NOT need to be:
+// - on duty
+// - emergency duty
+// - present in live_staff
 //
-// "DEPREDATION DUTY"
-// "Depredation Duty"
-// "DEPREDATION"
-//
-// "RESCUE OPERATION"
-// "Rescue Operation"
-// "RESCUE DUTY"
-// "RESCUE"
+// Viewer only needs to already be logged in.
 //
 // ==============================================
 
@@ -30595,68 +30634,119 @@ const targetEmergency =
 
 
 // ==============================================
-// 👑 ADMIN
+// 👤 SELF
+// ==============================================
+
+const isSelf =
+    !!viewerName &&
+    !!targetName &&
+    targetName ===
+    viewerName;
+
+
+// ==============================================
+// 🗺 SAME DIVISION
+// ==============================================
+
+const sameDivision =
+    !!myDivision &&
+    !!staffDivision &&
+    staffDivision ===
+    myDivision;
+
+
+// ==============================================
+// 🗺 SAME RANGE
+// ==============================================
+
+const sameRange =
+    !!myRange &&
+    !!staffRange &&
+    staffRange ===
+    myRange;
+
+
+// ==============================================
+// 🔐 VISIBILITY DECISION
+// ==============================================
+
+let staffVisible =
+    false;
+
+let visibilityReason =
+    "";
+
+
+// ==============================================
+// 👑 1. ADMIN
 // ==============================================
 
 if(
     role === "ADMIN"
 ){
 
-    /*
-     * EXISTING BEHAVIOR.
-     *
-     * ADMIN sees all staff that continue
-     * through the remaining loadStaff()
-     * validation.
-     *
-     * No geographic filtering here.
-     */
+    staffVisible =
+        true;
+
+    visibilityReason =
+        "ADMIN";
 
 }
 
 
 // ==============================================
-// 🚨 GLOBAL EMERGENCY TARGET
+// 🚨 2. EMERGENCY TARGET
+// ==============================================
+//
+// This is deliberately BEFORE geographic checks.
+//
+// Therefore:
+//
+// EastDamanpur viewer
+//     +
+// WestDamanpur Depredation staff
+//
+// → VISIBLE
+//
 // ==============================================
 
 else if(
     targetEmergency
 ){
 
-    /*
-     * THIS TARGET STAFF IS:
-     *
-     * DEPREDATION
-     *       OR
-     * RESCUE
-     *
-     * Therefore bypass normal viewer
-     * division/range restrictions.
-     *
-     * The VIEWER does NOT need:
-     *
-     * dutyActive = true
-     * dutyType
-     * sessionId
-     * active patrol
-     * live_staff record
-     *
-     * Viewer only needs to already be
-     * authenticated/logged into GreenGuard.
-     *
-     * IMPORTANT:
-     *
-     * Do NOT return here.
-     *
-     * Let this target continue through the
-     * existing downstream loadStaff() logic.
-     */
+    staffVisible =
+        true;
+
+    visibilityReason =
+        "GLOBAL EMERGENCY TARGET";
 
 }
 
 
 // ==============================================
-// 🟩 DFO / ADFO
+// 👤 3. SELF
+// ==============================================
+//
+// Keep own marker available regardless of a
+// missing/mismatched range field.
+//
+// ==============================================
+
+else if(
+    isSelf
+){
+
+    staffVisible =
+        true;
+
+    visibilityReason =
+        "SELF";
+
+}
+
+
+// ==============================================
+// 🟩 4. DFO / ADFO
 // ==============================================
 
 else if(
@@ -30664,85 +30754,165 @@ else if(
     role === "ADFO"
 ){
 
-    /*
-     * EXISTING BEHAVIOR.
-     *
-     * NORMAL staff remain division scoped.
-     *
-     * Emergency staff never reach here because
-     * they were already allowed above.
-     */
+    staffVisible =
+        sameDivision;
 
-    if(
-        staffDivision !==
-        myDivision
-    ){
-
-        return;
-
-    }
+    visibilityReason =
+        sameDivision
+            ? "SAME DIVISION"
+            : "BLOCKED OTHER DIVISION";
 
 }
 
 
 // ==============================================
-// 👮 STAFF / FR / FG / TEAM LEADER / OTHERS
+// 👮 5. TEAM LEADER / FR / FG / OTHER STAFF
+// ==============================================
+//
+// STRICT RULE:
+//
+// NORMAL STAFF MUST BE SAME RANGE.
+//
+// Example:
+//
+// Viewer:
+//     EastDamanpur
+//
+// Target:
+//     WestDamanpur
+//     Foot Patrolling
+//
+// Result:
+//     FALSE
+//
 // ==============================================
 
 else {
 
-    // ==========================================
-    // 👤 SELF
-    // ==========================================
+    staffVisible =
+        sameRange;
 
-    const isSelf =
-        cleanName(
-            s.cleanName ||
-            s.name ||
-            ""
-        )
-        ===
-        cleanName(
-            window.userProfile?.cleanName ||
-            window.userProfile?.name ||
-            ""
-        );
-
-
-    // ==========================================
-    // 🗺 SAME RANGE
-    // ==========================================
-
-    const sameRange =
-        staffRange ===
-        myRange;
-
-
-    // ==========================================
-    // 🔒 EXISTING NORMAL STAFF RESTRICTION
-    // ==========================================
-    //
-    // NORMAL target staff:
-    //
-    // SELF       → visible
-    // SAME RANGE → visible
-    //
-    // Otherwise  → hidden
-    //
-    // Emergency targets never reach this block.
-    // ==========================================
-
-    if(
-        !isSelf &&
-        !sameRange
-    ){
-
-        return;
-
-    }
+    visibilityReason =
+        sameRange
+            ? "SAME RANGE"
+            : "BLOCKED OTHER RANGE";
 
 }
 
+
+// ==============================================
+// 🔒 REJECT TARGET
+// ==============================================
+
+if(
+    !staffVisible
+){
+
+    if(
+        window.STAFF_VISIBILITY_DEBUG ===
+        true
+    ){
+
+        console.log(
+            "🔒 STAFF HIDDEN",
+            {
+                viewer:
+                    viewerName,
+
+                viewerRole:
+                    role,
+
+                viewerDivision:
+                    myDivision,
+
+                viewerRange:
+                    myRange,
+
+                target:
+                    targetName,
+
+                targetDivision:
+                    staffDivision,
+
+                targetRange:
+                    staffRange,
+
+                dutyType:
+                    targetDutyType,
+
+                emergency:
+                    targetEmergency,
+
+                sameDivision:
+                    sameDivision,
+
+                sameRange:
+                    sameRange,
+
+                reason:
+                    visibilityReason
+            }
+        );
+
+    }
+
+
+    return;
+
+}
+
+
+// ==============================================
+// 👁 TARGET ALLOWED
+// ==============================================
+
+if(
+    window.STAFF_VISIBILITY_DEBUG ===
+    true
+){
+
+    console.log(
+        "👁 STAFF VISIBLE",
+        {
+            viewer:
+                viewerName,
+
+            viewerRole:
+                role,
+
+            viewerDivision:
+                myDivision,
+
+            viewerRange:
+                myRange,
+
+            target:
+                targetName,
+
+            targetDivision:
+                staffDivision,
+
+            targetRange:
+                staffRange,
+
+            dutyType:
+                targetDutyType,
+
+            emergency:
+                targetEmergency,
+
+            sameDivision:
+                sameDivision,
+
+            sameRange:
+                sameRange,
+
+            reason:
+                visibilityReason
+        }
+    );
+
+}
     // ==============================================
     // 🔴 HIDE OFF DUTY
     // ==============================================
