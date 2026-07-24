@@ -3181,44 +3181,135 @@ SightingFormatter.getModuleStatus = function () {
     =========================================================*/
 
 
-    SightingFormatter.formatCount = function (
+/*=========================================================
+  FORMAT COUNT
+=========================================================*/
 
-        response,
+SightingFormatter.formatCount = function (
 
-        request
+    response,
+
+    request
+
+) {
+
+    /*---------------------------------------------
+      DATA
+    ---------------------------------------------*/
+
+    const data =
+
+        SightingFormatter
+            .getData(
+
+                response
+
+            );
+
+
+    /*---------------------------------------------
+      INTENT
+    ---------------------------------------------*/
+
+    const intent =
+
+        SightingFormatter
+            .getIntent(
+
+                response,
+
+                request
+
+            );
+
+
+    const intentKey =
+
+        SightingFormatter
+            .normalizeIntentKey(
+
+                intent
+
+            );
+
+
+    /*---------------------------------------------
+      COUNT
+    ---------------------------------------------*/
+
+    let count =
+
+        response?.count;
+
+
+    if (
+
+        data &&
+
+        typeof data ===
+        "object" &&
+
+        !Array.isArray(
+
+            data
+
+        )
 
     ) {
 
-        const data =
-
-            SightingFormatter
-                .getData(
-
-                    response
-
-                );
-
-
-        let count =
-
-            response?.count;
-
+        /*
+         * Prefer intent-specific canonical fields.
+         *
+         * This prevents elephant totals and
+         * sighting-record totals from being
+         * confused at presentation level.
+         */
 
         if (
 
-            data &&
-
-            typeof data ===
-
-            "object" &&
-
-            !Array.isArray(
-
-                data
-
-            )
+            intentKey ===
+            "SIGHTING_ELEPHANT_COUNT"
 
         ) {
+
+            count =
+
+                data.elephantCount ??
+
+                data.totalElephants ??
+
+                data.totalSeen ??
+
+                data.count ??
+
+                data.total ??
+
+                count;
+
+        }
+
+        else if (
+
+            intentKey ===
+            "SIGHTING_COUNT"
+
+        ) {
+
+            count =
+
+                data.totalSightings ??
+
+                data.sightingCount ??
+
+                data.count ??
+
+                data.total ??
+
+                count;
+
+        }
+
+        else {
 
             count =
 
@@ -3234,76 +3325,205 @@ SightingFormatter.getModuleStatus = function () {
 
         }
 
+    }
 
-        if (
 
-            Array.isArray(
+    /*
+     * Array data represents records.
+     *
+     * Only use array length when the query layer
+     * has not already supplied a canonical count.
+     */
 
-                data
+    if (
 
-            )
+        Array.isArray(
 
-        ) {
+            data
 
-            count =
+        ) &&
 
-                data.length;
+        (
 
-        }
+            count === undefined ||
 
+            count === null
+
+        )
+
+    ) {
 
         count =
 
-            SightingFormatter
-                .safeNumber(
+            data.length;
 
-                    count,
-
-                    0
-
-                );
+    }
 
 
-        const title =
+    count =
+
+        SightingFormatter
+            .safeNumber(
+
+                count,
+
+                0
+
+            );
+
+
+    /*---------------------------------------------
+      PRESENTATION
+    ---------------------------------------------*/
+
+    let title =
+
+        "Elephant Sightings";
+
+
+    let label =
+
+        "Total Sightings";
+
+
+    let messageLabel =
+
+        "elephant sightings";
+
+
+    /*
+     * Total number of elephant individuals.
+     */
+
+    if (
+
+        intentKey ===
+        "SIGHTING_ELEPHANT_COUNT"
+
+    ) {
+
+        title =
+
+            "Elephants Sighted";
+
+
+        label =
+
+            "Total Elephants";
+
+
+        messageLabel =
+
+            "elephants sighted";
+
+    }
+
+
+    /*
+     * Total number of sighting records/events.
+     */
+
+    else if (
+
+        intentKey ===
+        "SIGHTING_COUNT"
+
+    ) {
+
+        title =
+
+            "Elephant Sightings";
+
+
+        label =
+
+            "Total Sightings";
+
+
+        messageLabel =
+
+            "elephant sightings";
+
+    }
+
+
+    /*
+     * Other count-type intents such as frequency.
+     */
+
+    else {
+
+        title =
 
             SightingFormatter
                 .getTitle(
 
-                    SightingFormatter
-                        .getIntent(
-
-                            response,
-
-                            request
-
-                        )
+                    intent
 
                 );
 
 
-        return {
+        label =
 
-            markdown:
+            "Count";
 
-                "### " +
 
-                title +
+        messageLabel =
 
-                "\n\n**Count:** " +
+            "records";
 
-                count,
+    }
 
-            message:
 
-                String(
+    /*---------------------------------------------
+      MARKDOWN
+    ---------------------------------------------*/
 
-                    count
+    const markdown =
 
-                )
+        "### " +
 
-        };
+        title +
+
+        "\n\n**" +
+
+        label +
+
+        ":** " +
+
+        count;
+
+
+    /*---------------------------------------------
+      MESSAGE
+    ---------------------------------------------*/
+
+    const message =
+
+        count +
+
+        " " +
+
+        messageLabel;
+
+
+    /*---------------------------------------------
+      RESULT
+    ---------------------------------------------*/
+
+    return {
+
+        markdown:
+
+            markdown,
+
+        message:
+
+            message
 
     };
+
+};
 
 
     /*=========================================================
