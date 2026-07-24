@@ -2114,11 +2114,119 @@
               HERD
             ---------------------------------------------*/
 
-            const herd =
+            /*---------------------------------------------
+              ELEPHANT / HERD COUNT
+
+              Firestore source fields:
+                  total_seen
+                  m
+                  f
+                  calf
+                  unidentified
+
+              total_seen is authoritative when available.
+
+              If total_seen is absent or zero, derive the
+              herd size from composition.
+
+              Existing legacy herd fields are retained as
+              fallbacks for backward compatibility.
+            ---------------------------------------------*/
+
+            const maleCount =
 
                 toInteger(
 
                     firstDefined(
+
+                        data.m,
+
+                        data.male,
+
+                        data.males
+
+                    ),
+
+                    0
+
+                );
+
+
+            const femaleCount =
+
+                toInteger(
+
+                    firstDefined(
+
+                        data.f,
+
+                        data.female,
+
+                        data.females
+
+                    ),
+
+                    0
+
+                );
+
+
+            const calfCount =
+
+                toInteger(
+
+                    firstDefined(
+
+                        data.calf,
+
+                        data.calves
+
+                    ),
+
+                    0
+
+                );
+
+
+            const unidentifiedCount =
+
+                toInteger(
+
+                    firstDefined(
+
+                        data.unidentified,
+
+                        data.unknown,
+
+                        data.unknown_count
+
+                    ),
+
+                    0
+
+                );
+
+
+            const compositionTotal =
+
+                maleCount +
+
+                femaleCount +
+
+                calfCount +
+
+                unidentifiedCount;
+
+
+            const explicitHerd =
+
+                toInteger(
+
+                    firstDefined(
+
+                        data.total_seen,
+
+                        data.totalSeen,
 
                         data.herd,
 
@@ -2137,6 +2245,15 @@
                     0
 
                 );
+
+
+            const herd =
+
+                explicitHerd > 0
+
+                    ? explicitHerd
+
+                    : compositionTotal;
 
 
             /*---------------------------------------------
@@ -2894,6 +3011,52 @@
                 herdSize:
 
                     herd,
+
+                elephantCount:
+
+                    herd,
+
+                maleCount:
+
+                    maleCount,
+
+                femaleCount:
+
+                    femaleCount,
+
+                calfCount:
+
+                    calfCount,
+
+                unidentifiedCount:
+
+                    unidentifiedCount,
+
+                elephantComposition:
+
+                    Object.freeze({
+
+                        male:
+
+                            maleCount,
+
+                        female:
+
+                            femaleCount,
+
+                        calf:
+
+                            calfCount,
+
+                        unidentified:
+
+                            unidentifiedCount,
+
+                        total:
+
+                            herd
+
+                    }),
 
 
                 /*-----------------------------------------
