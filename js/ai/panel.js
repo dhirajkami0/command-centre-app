@@ -366,32 +366,103 @@ let minimizeButton = null;
       INITIALIZE
     ----------------------------------------------------------*/
 
-    Panel.init = function () {
+Panel.init = function () {
 
-        if (ready)
-            return true;
+    /* ==========================================
+       🔐 GREENGUARD AI — ADMIN ONLY
+    ========================================== */
 
-        createUI();
+    const role =
+        String(
+            window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
 
-        bindEvents();
 
-        root.style.display =
+    /* ==========================================
+       🚫 NON-ADMIN
+    ========================================== */
 
-            "none";
+    if (
+        role !== "ADMIN"
+    ) {
 
-        ready = true;
+        /*
+         * Remove panel if an old instance
+         * somehow already exists.
+         */
 
-        Config.log(
+        const existingPanel =
+            document.getElementById(
+                "gg-ai-panel"
+            );
 
-            "Panel",
+        if (
+            existingPanel
+        ) {
 
-            "Initialized"
+            existingPanel.remove();
 
+        }
+
+
+        ready =
+            false;
+
+        opened =
+            false;
+
+        root =
+            null;
+
+
+        console.log(
+            "🔒 GreenGuard AI hidden — ADMIN only",
+            role || "UNKNOWN"
         );
+
+
+        return false;
+
+    }
+
+
+    /* ==========================================
+       👑 ADMIN — EXISTING FLOW
+    ========================================== */
+
+    if (
+        ready
+    ) {
 
         return true;
 
-    };
+    }
+
+
+    createUI();
+
+    bindEvents();
+
+
+    root.style.display =
+        "none";
+
+
+    ready =
+        true;
+
+
+    Config.log(
+        "Panel",
+        "Initialized"
+    );
+
+
+    return true;
+
+};
 
 
 
@@ -399,27 +470,83 @@ let minimizeButton = null;
       OPEN
     ----------------------------------------------------------*/
 
-    Panel.open = function () {
+Panel.open = function () {
 
-        if (!ready)
+    /* ==========================================
+       🔐 ADMIN ONLY
+    ========================================== */
+
+    const role =
+        String(
+            window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    if (
+        role !== "ADMIN"
+    ) {
+
+        console.log(
+            "🔒 GreenGuard AI access denied:",
+            role || "UNKNOWN"
+        );
+
+        return false;
+
+    }
+
+
+    /* ==========================================
+       EXISTING FLOW
+    ========================================== */
+
+    if (
+        !ready
+    ) {
+
+        const initialized =
             Panel.init();
 
-        root.style.display =
 
-            "flex";
+        if (
+            !initialized ||
+            !root
+        ) {
 
-        opened = true;
+            return false;
 
-       Render.autoScroll();
+        }
 
-requestAnimationFrame(
+    }
 
-    () => input.focus()
 
-);
+    root.style.display =
+        "flex";
 
-    };
 
+    opened =
+        true;
+
+
+    Render.autoScroll();
+
+
+    requestAnimationFrame(
+
+        () => {
+
+            input?.focus();
+
+        }
+
+    );
+
+
+    return true;
+
+};
 
 
     /*----------------------------------------------------------
