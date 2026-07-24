@@ -2386,7 +2386,465 @@ GISEntities.findCompartmentAtPoint =
     /*=====================================================
       RANGE NAMES
     =====================================================*/
+/* ============================================================
+   🏡 FIND VILLAGE POLYGON AT GPS
+   ------------------------------------------------------------
+   Uses already-loaded Village Boundary GeoJSON.
 
+   NO Firestore read.
+   NO layer rendering.
+   NO listener.
+============================================================ */
+
+GISEntities.findVillageAtPoint =
+function(
+    lat,
+    lon
+){
+
+    lat = Number(lat);
+    lon = Number(lon);
+
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+        return null;
+    }
+
+
+    if(
+        !window.turf ||
+        typeof window.turf.booleanPointInPolygon !== "function"
+    ){
+        return null;
+    }
+
+
+    const point =
+        window.turf.point([
+            lon,
+            lat
+        ]);
+
+
+    const rootLayer =
+        window.villageBoundaryLayer;
+
+
+    if(
+        !rootLayer ||
+        typeof rootLayer.eachLayer !== "function"
+    ){
+        return null;
+    }
+
+
+    let found =
+        null;
+
+
+    rootLayer.eachLayer(
+        function(layer){
+
+            if(found){
+                return;
+            }
+
+
+            const feature =
+                layer?.feature;
+
+
+            if(
+                !feature ||
+                !feature.geometry
+            ){
+                return;
+            }
+
+
+            try{
+
+                if(
+                    window.turf.booleanPointInPolygon(
+                        point,
+                        feature
+                    )
+                ){
+
+                    const p =
+                        feature.properties ||
+                        {};
+
+
+                    found = {
+
+                        feature:
+                            feature,
+
+                        village:
+                            p.villageNameEnglish ||
+                            p.village ||
+                            p.Village ||
+                            p.VILLAGE ||
+                            p.name ||
+                            p.NAME ||
+                            "",
+
+                        villageCode:
+                            p.villageCode ||
+                            p.Vill_LGD ||
+                            p.VILL_LGD ||
+                            p.lgdCode ||
+                            "",
+
+                        block:
+                            p.block ||
+                            p.Block ||
+                            p.BLOCK ||
+                            p.subdistrictNameEnglish ||
+                            "",
+
+                        properties:
+                            p
+
+                    };
+
+                }
+
+            }
+            catch(err){
+
+                console.warn(
+                    "Village polygon test failed",
+                    err
+                );
+
+            }
+
+        }
+    );
+
+
+    return found;
+
+};
+
+
+/* ============================================================
+   📍 FIND NEAREST RECORDED VILLAGE GPS POINT
+   ------------------------------------------------------------
+   Searches existing Village Locations layer.
+
+   Example:
+
+   staff GPS
+       ↓
+   nearest recorded point
+       ↓
+   "Joler Tank"
+
+   PERFORMANCE:
+   Executed only when requested.
+============================================================ */
+
+GISEntities.findNearestVillagePoint =
+function(
+    lat,
+    lon
+){
+
+    lat = Number(lat);
+    lon = Number(lon);
+
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+        return null;
+    }
+
+
+    const rootLayer =
+        window.villageLayer;
+
+
+    if(
+        !rootLayer ||
+        typeof rootLayer.eachLayer !== "function"
+    ){
+        return null;
+    }
+
+
+    let nearest =
+        null;
+
+    let nearestDistance =
+        Infinity;
+
+
+    const origin =
+        L.latLng(
+            lat,
+            lon
+        );
+
+
+    rootLayer.eachLayer(
+        function(layer){
+
+            if(
+                !layer ||
+                typeof layer.getLatLng !== "function"
+            ){
+                return;
+            }
+
+
+            const ll =
+                layer.getLatLng();
+
+
+            if(
+                !ll ||
+                !Number.isFinite(Number(ll.lat)) ||
+                !Number.isFinite(Number(ll.lng))
+            ){
+                return;
+            }
+
+
+            const distance =
+                origin.distanceTo(ll);
+
+
+            if(
+                distance >= nearestDistance
+            ){
+                return;
+            }
+
+
+            const feature =
+                layer.feature ||
+                {};
+
+
+            const p =
+                feature.properties ||
+                layer.options?.properties ||
+                {};
+
+
+            nearestDistance =
+                distance;
+
+
+            nearest = {
+
+                name:
+                    p.locationName ||
+                    p.pointName ||
+                    p.placeName ||
+                    p.villageName ||
+                    p.name ||
+                    p.Name ||
+                    p.NAME ||
+                    layer.options?.title ||
+                    "",
+
+                village:
+                    p.village ||
+                    p.Village ||
+                    p.VILLAGE ||
+                    "",
+
+                latitude:
+                    Number(ll.lat),
+
+                longitude:
+                    Number(ll.lng),
+
+                distanceMeters:
+                    Math.round(
+                        distance
+                    ),
+
+                properties:
+                    p
+
+            };
+
+        }
+    );
+
+
+    return nearest;
+
+};
+
+
+/* ============================================================
+   🧭 RESOLVE COMPLETE CURRENT LOCATION
+   ------------------------------------------------------------
+
+   GPS
+    │
+    ├── Forest compartment
+    │
+    ├── Village polygon
+    │
+    └── Nearest recorded Village GPS point
+
+============================================================ */
+
+GISEntities.resolveCurrentLocation =
+function(
+    lat,
+    lon
+){
+
+    lat = Number(lat);
+    lon = Number(lon);
+
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+        return null;
+    }
+
+
+    const compartment =
+        GISEntities
+            .findCompartmentAtPoint(
+                lat,
+                lon
+            );
+
+
+    const village =
+        GISEntities
+            .findVillageAtPoint(
+                lat,
+                lon
+            );
+
+
+    const nearest =
+        GISEntities
+            .findNearestVillagePoint(
+                lat,
+                lon
+            );
+
+
+    /* ========================================================
+       DISPLAY LOCATION
+    ======================================================== */
+
+    let locationText =
+        "";
+
+
+    if(
+        village?.village
+    ){
+
+        locationText =
+            village.village;
+
+    }
+
+
+    if(
+        nearest?.name
+    ){
+
+        locationText +=
+            (
+                locationText
+                    ? " — "
+                    : ""
+            ) +
+            "Near " +
+            nearest.name;
+
+    }
+
+
+    return {
+
+        /* FOREST GIS */
+
+        compartment:
+            compartment?.compartment ||
+            "",
+
+        beat:
+            compartment?.beat ||
+            "",
+
+        range:
+            compartment?.range ||
+            "",
+
+        division:
+            compartment?.division ||
+            "",
+
+
+        /* VILLAGE POLYGON */
+
+        village:
+            village?.village ||
+            "",
+
+        villageCode:
+            village?.villageCode ||
+            "",
+
+        block:
+            village?.block ||
+            "",
+
+
+        /* NEAREST RECORDED POINT */
+
+        nearestPoint:
+            nearest?.name ||
+            "",
+
+        distanceMeters:
+            nearest?.distanceMeters ??
+            null,
+
+
+        /* READY FOR POPUP */
+
+        text:
+            locationText,
+
+
+        /* OPTIONAL RAW OBJECTS */
+
+        compartmentResult:
+            compartment,
+
+        villageResult:
+            village,
+
+        nearestPointResult:
+            nearest
+
+    };
+
+};
 
     /*
      * Returns all canonical range keys currently indexed.
