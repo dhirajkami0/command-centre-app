@@ -4716,7 +4716,289 @@
 
         };
 
+    /*=========================================================
+      ELEPHANT COUNT
 
+      PURPOSE
+      ---------------------------------------------------------
+      Aggregate number of elephants represented by the
+      filtered sighting records.
+
+      IMPORTANT
+      ---------------------------------------------------------
+      This is NOT the number of sighting records.
+
+      Example:
+
+          Sighting 1 -> herd 2
+          Sighting 2 -> herd 2
+          Sighting 3 -> herd 2
+
+          sightingCount  = 3
+          elephantCount  = 6
+
+      The same canonical filtering pipeline used by all
+      sighting queries is preserved here.
+    =========================================================*/
+
+    GG.querySightingElephantCount =
+        async function (
+
+            request
+
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+
+                    request
+
+                ) {
+
+                    /*-----------------------------------------
+                      FILTER THROUGH CANONICAL PIPELINE
+                    -----------------------------------------*/
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+
+                                request
+
+                            );
+
+
+                    /*-----------------------------------------
+                      BUILD CANONICAL SUMMARY
+                    -----------------------------------------*/
+
+                    const summary =
+
+                        SightingQuery
+                            .buildSummary(
+
+                                sightings
+
+                            );
+
+
+                    /*-----------------------------------------
+                      TOTAL ELEPHANTS
+
+                      buildSummary() already calculates this
+                      using getHerdSize() for every sighting.
+                    -----------------------------------------*/
+
+                    const totalElephants =
+
+                        SightingQuery
+                            .toNumber(
+
+                                summary
+                                    ?.totalElephants,
+
+                                0
+
+                            );
+
+
+                    /*-----------------------------------------
+                      RETURN
+
+                      count intentionally contains the
+                      elephant total.
+
+                      This allows the existing formatCount()
+                      formatter contract to work without
+                      special-case formatter logic.
+
+                      sightingCount remains available
+                      separately.
+                    -----------------------------------------*/
+
+                    return {
+
+                        count:
+
+                            totalElephants,
+
+
+                        totalElephants:
+
+                            totalElephants,
+
+
+                        elephantCount:
+
+                            totalElephants,
+
+
+                        sightingCount:
+
+                            sightings.length,
+
+
+                        summary:
+
+                            summary,
+
+
+                        sightings:
+
+                            sightings
+
+                    };
+
+                }
+
+            );
+
+        };    /*=========================================================
+      ELEPHANT COUNT
+
+      PURPOSE
+      ---------------------------------------------------------
+      Aggregate number of elephants represented by the
+      filtered sighting records.
+
+      IMPORTANT
+      ---------------------------------------------------------
+      This is NOT the number of sighting records.
+
+      Example:
+
+          Sighting 1 -> herd 2
+          Sighting 2 -> herd 2
+          Sighting 3 -> herd 2
+
+          sightingCount  = 3
+          elephantCount  = 6
+
+      The same canonical filtering pipeline used by all
+      sighting queries is preserved here.
+    =========================================================*/
+
+    GG.querySightingElephantCount =
+        async function (
+
+            request
+
+        ) {
+
+            return SightingQuery.execute(
+
+                request,
+
+                async function (
+
+                    request
+
+                ) {
+
+                    /*-----------------------------------------
+                      FILTER THROUGH CANONICAL PIPELINE
+                    -----------------------------------------*/
+
+                    const sightings =
+
+                        await SightingQuery
+                            .filterSightings(
+
+                                request
+
+                            );
+
+
+                    /*-----------------------------------------
+                      BUILD CANONICAL SUMMARY
+                    -----------------------------------------*/
+
+                    const summary =
+
+                        SightingQuery
+                            .buildSummary(
+
+                                sightings
+
+                            );
+
+
+                    /*-----------------------------------------
+                      TOTAL ELEPHANTS
+
+                      buildSummary() already calculates this
+                      using getHerdSize() for every sighting.
+                    -----------------------------------------*/
+
+                    const totalElephants =
+
+                        SightingQuery
+                            .toNumber(
+
+                                summary
+                                    ?.totalElephants,
+
+                                0
+
+                            );
+
+
+                    /*-----------------------------------------
+                      RETURN
+
+                      count intentionally contains the
+                      elephant total.
+
+                      This allows the existing formatCount()
+                      formatter contract to work without
+                      special-case formatter logic.
+
+                      sightingCount remains available
+                      separately.
+                    -----------------------------------------*/
+
+                    return {
+
+                        count:
+
+                            totalElephants,
+
+
+                        totalElephants:
+
+                            totalElephants,
+
+
+                        elephantCount:
+
+                            totalElephants,
+
+
+                        sightingCount:
+
+                            sightings.length,
+
+
+                        summary:
+
+                            summary,
+
+
+                        sightings:
+
+                            sightings
+
+                    };
+
+                }
+
+            );
+
+        };
     /*=========================================================
       SIGHTING SUMMARY
     =========================================================*/
@@ -9867,6 +10149,10 @@
       ROUTER CONTRACT
     =========================================================*/
 
+    /*=========================================================
+      ROUTER CONTRACT
+    =========================================================*/
+
     SightingQuery.ROUTER_HANDLERS = [
 
         "querySightingDetails",
@@ -9876,6 +10162,8 @@
         "querySightingList",
 
         "querySightingCount",
+
+        "querySightingElephantCount",
 
         "queryActiveSightings",
 
