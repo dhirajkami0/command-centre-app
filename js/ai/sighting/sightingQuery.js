@@ -977,26 +977,7 @@
         };
 
 
-    SightingQuery.getStatus =
-        function (
 
-            sighting
-
-        ) {
-
-            return String(
-
-                sighting?.status ??
-
-                "ACTIVE"
-
-            )
-
-                .trim()
-
-                .toUpperCase();
-
-        };
 
 
     SightingQuery.isActive =
@@ -10164,42 +10145,95 @@
       MODULE STATUS
     =========================================================*/
 
-    SightingQuery.getStatus =
-        function () {
+/*=========================================================
+ GET SIGHTING STATUS
+=========================================================*/
 
-            return {
+/*
+ * Returns the canonical operational status
+ * of a single sighting.
+ *
+ * Examples:
+ *
+ * ACTIVE
+ * RESOLVED
+ * MOVED
+ * DRIVEN
+ */
 
-                loaded:
+SightingQuery.getStatus =
+    function (
 
-                    SightingQuery.loaded,
+        sighting
 
-                loading:
+    ) {
 
-                    SightingQuery.loading,
+        return String(
 
-                version:
+            sighting?.status ??
 
-                    SightingQuery.VERSION,
+            "ACTIVE"
 
-                cacheSize:
+        )
 
-                    SightingQuery.cache.size,
+            .trim()
 
-                entityCount:
+            .toUpperCase();
 
-                    SightingQuery
-                        .getEntityArray()
-                        .length,
+    };
 
-                statistics: {
 
-                    ...SightingQuery.statistics
+/*=========================================================
+ GET MODULE STATUS
+=========================================================*/
 
-                }
+/*
+ * Returns diagnostic/runtime information
+ * about the SightingQuery module.
+ *
+ * IMPORTANT:
+ *
+ * This MUST NOT be named getStatus because
+ * getStatus(sighting) is already used by the
+ * sighting business/query pipeline.
+ */
 
-            };
+SightingQuery.getModuleStatus =
+    function () {
+
+        return {
+
+            loaded:
+
+                SightingQuery.loaded,
+
+            loading:
+
+                SightingQuery.loading,
+
+            version:
+
+                SightingQuery.VERSION,
+
+            cacheSize:
+
+                SightingQuery.cache.size,
+
+            entityCount:
+
+                SightingQuery
+                    .getEntityArray()
+                    .length,
+
+            statistics: {
+
+                ...SightingQuery.statistics
+
+            }
 
         };
+
+    };
 
 
     /*=========================================================
