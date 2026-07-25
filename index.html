@@ -558,6 +558,558 @@ window.staffTrackState ??= {
 
 };
 
+
+    // ============================================================
+// 🧠 PATROL SESSION TRACK MEMORY CACHE
+// ------------------------------------------------------------
+// PURPOSE:
+//
+// One app/page session only.
+//
+// KEY:
+//   Firestore patrol sessionId
+//
+// USED LATER BY:
+//   - bulk staff tracks
+//   - individual staff tracks
+//   - automatic own track if desired
+//
+// IMPORTANT:
+//   - does NOT touch patrolTrackCache
+//   - does NOT touch staffTrackCache
+//   - does NOT create/remove Leaflet layers
+//   - does NOT create/remove Firestore listeners
+//   - cache never determines authorization
+//   - visibleStaffCache still determines WHO may render
+// ============================================================
+
+window.sessionTrackCache ??=
+    Object.create(null);
+
+
+// ============================================================
+// 🔧 NORMALIZE A TRACK POINT
+// ============================================================
+
+window.normalizeSessionTrackPoint =
+function(point){
+
+    if(
+        !point
+    ){
+        return null;
+    }
+
+
+    const lat =
+        Number(
+            point.lat ??
+            point[0]
+        );
+
+    const lon =
+        Number(
+            point.lon ??
+            point.lng ??
+            point[1]
+        );
+
+    const time =
+        Number(
+            point.time ??
+            point.ts ??
+            0
+        );
+
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+        return null;
+    }
+
+
+    return {
+
+        lat:
+            lat,
+
+        lon:
+            lon,
+
+        time:
+            Number.isFinite(time)
+                ? time
+                : 0,
+
+        breakTrack:
+            point.breakTrack === true
+
+    };
+
+};
+
+
+// ============================================================
+// 📦 GET / CREATE SESSION CACHE ENTRY
+// ============================================================
+
+window.getSessionTrackCache =
+function(sessionId){
+
+    const id =
+        String(
+            sessionId || ""
+        ).trim();
+
+
+    if(
+        !id
+    ){
+        return null;
+    }
+
+
+    let entry =
+        window.sessionTrackCache[
+            id
+        ];
+
+
+    // --------------------------------------------------------
+    // Backward compatibility:
+    //
+    // Existing code already created:
+    //
+    // sessionTrackCache[sessionId] = []
+    //
+    // Convert that safely into our new structure.
+    // --------------------------------------------------------
+
+    if(
+        Array.isArray(entry)
+    ){
+
+        const oldPoints =
+            entry
+                .map(
+                    window.normalizeSessionTrackPoint
+                )
+                .filter(Boolean);
+
+
+        let lastTime = 0;
+
+
+        for(
+            const point of oldPoints
+        ){
+
+            if(
+                point.time > lastTime
+            ){
+                lastTime =
+                    point.time;
+            }
+
+        }
+
+
+        entry = {
+
+            points:
+                oldPoints,
+
+            lastTime:
+                lastTime,
+
+            updatedAt:
+                0
+
+        };
+
+
+        window.sessionTrackCache[
+            id
+        ] =
+            entry;
+
+    }
+
+
+    if(
+        !entry ||
+        typeof entry !== "object"
+    ){
+
+        entry = {
+
+            points:
+                [],
+
+            lastTime:
+                0,
+
+            updatedAt:
+                0
+
+        };
+
+
+        window.sessionTrackCache[
+            id
+        ] =
+            entry;
+
+    }
+
+
+    if(
+        !Array.isArray(
+            entry.points
+        )
+    ){
+
+        entry.points =
+            [];
+
+    }
+
+
+    entry.lastTime =
+        Number(
+            entry.lastTime || 0
+        );
+
+
+    return entry;
+
+};
+
+
+// ============================================================
+// 🔑 TRACK POINT DEDUPLICATION KEY
+// ------------------------------------------------------------
+// We include:
+//   time + lat + lon
+//
+// Therefore:
+// - same Firestore boundary point is not duplicated
+// - different points sharing a timestamp can still survive
+// ============================================================
+
+window.getSessionTrackPointKey =
+function(point){
+
+    return [
+
+        Number(
+            point.time || 0
+        ),
+
+        Number(
+            point.lat
+        ).toFixed(7),
+
+        Number(
+            point.lon
+        ).toFixed(7)
+
+    ].join("|");
+
+};
+
+
+// ============================================================
+// 🔀 MERGE POINTS INTO SESSION CACHE
+// ------------------------------------------------------------
+// Existing cached points remain.
+//
+// New Firestore/live points are:
+//   normalized
+//   deduplicated
+//   merged
+//   sorted by time
+//
+// Returns the COMPLETE locally-known session route.
+// ============================================================
+
+window.mergeSessionTrackCache =
+function(
+    sessionId,
+    incomingPoints
+){
+
+    const entry =
+        window.getSessionTrackCache(
+            sessionId
+        );
+
+
+    if(
+        !entry
+    ){
+        return [];
+    }
+
+
+    const existing =
+        Array.isArray(
+            entry.points
+        )
+            ? entry.points
+            : [];
+
+
+    const incoming =
+        Array.isArray(
+            incomingPoints
+        )
+            ? incomingPoints
+            : [];
+
+
+    const merged =
+        [];
+
+
+    const seen =
+        new Set();
+
+
+    // ========================================================
+    // EXISTING CACHE FIRST
+    // ========================================================
+
+    for(
+        const rawPoint of existing
+    ){
+
+        const point =
+            window.normalizeSessionTrackPoint(
+                rawPoint
+            );
+
+
+        if(
+            !point
+        ){
+            continue;
+        }
+
+
+        const key =
+            window.getSessionTrackPointKey(
+                point
+            );
+
+
+        if(
+            seen.has(key)
+        ){
+            continue;
+        }
+
+
+        seen.add(key);
+
+        merged.push(
+            point
+        );
+
+    }
+
+
+    // ========================================================
+    // NEW POINTS
+    // ========================================================
+
+    for(
+        const rawPoint of incoming
+    ){
+
+        const point =
+            window.normalizeSessionTrackPoint(
+                rawPoint
+            );
+
+
+        if(
+            !point
+        ){
+            continue;
+        }
+
+
+        const key =
+            window.getSessionTrackPointKey(
+                point
+            );
+
+
+        if(
+            seen.has(key)
+        ){
+            continue;
+        }
+
+
+        seen.add(key);
+
+        merged.push(
+            point
+        );
+
+    }
+
+
+    // ========================================================
+    // SORT CHRONOLOGICALLY
+    // ========================================================
+
+    merged.sort(
+        function(a, b){
+
+            return (
+                Number(a.time || 0) -
+                Number(b.time || 0)
+            );
+
+        }
+    );
+
+
+    // ========================================================
+    // CALCULATE LATEST KNOWN FIRESTORE TIME
+    // ========================================================
+
+    let lastTime = 0;
+
+
+    for(
+        const point of merged
+    ){
+
+        const pointTime =
+            Number(
+                point.time || 0
+            );
+
+
+        if(
+            pointTime > lastTime
+        ){
+
+            lastTime =
+                pointTime;
+
+        }
+
+    }
+
+
+    // ========================================================
+    // SAVE
+    // ========================================================
+
+    entry.points =
+        merged;
+
+    entry.lastTime =
+        lastTime;
+
+    entry.updatedAt =
+        Date.now();
+
+
+    return entry.points;
+
+};
+
+
+// ============================================================
+// 👀 READ CACHE WITHOUT MUTATING IT
+// ============================================================
+
+window.peekSessionTrackCache =
+function(sessionId){
+
+    const id =
+        String(
+            sessionId || ""
+        ).trim();
+
+
+    if(
+        !id
+    ){
+        return null;
+    }
+
+
+    const entry =
+        window.sessionTrackCache?.[
+            id
+        ];
+
+
+    if(
+        !entry
+    ){
+        return null;
+    }
+
+
+    // Existing old array format.
+    if(
+        Array.isArray(entry)
+    ){
+
+        return {
+
+            points:
+                entry,
+
+            lastTime:
+                0,
+
+            updatedAt:
+                0
+
+        };
+
+    }
+
+
+    return entry;
+
+};
+
+
+// ============================================================
+// 🧹 OPTIONAL FULL CACHE RESET
+// ------------------------------------------------------------
+// NOT called when:
+//   Staff Tracks OFF
+//   individual track closed
+//
+// Only use when intentionally clearing the whole app-session
+// track cache.
+// ============================================================
+
+window.clearSessionTrackCache =
+function(){
+
+    window.sessionTrackCache =
+        Object.create(null);
+
+
+    console.log(
+        "🧹 Session track memory cache cleared"
+    );
+
+};
     // ============================================================
 // 🛣 BULK STAFF TRACK SYSTEM
 // ------------------------------------------------------------
