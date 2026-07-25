@@ -1173,24 +1173,40 @@ function(){
 
 };
 
-    // ============================================================
-// 🛰 LOAD ONE BULK STAFF TRACK
+// ============================================================
+// 🛣 LOAD ONE BULK STAFF TRACK
 // ------------------------------------------------------------
-// PURPOSE:
+// CACHE-FIRST + INCREMENTAL FIRESTORE REFRESH
 //
-// Loads ONE authorized staff track into:
+// BEHAVIOUR:
 //
-//     bulkStaffTrackLayer
-//     bulkStaffTracks
+// FIRST LOAD:
+//   Firestore full current session
+//        ↓
+//   sessionTrackCache
+//        ↓
+//   render
+//
+// LATER LOAD:
+//   cached route renders immediately
+//        ↓
+//   Firestore fetches only points newer than lastTime
+//        ↓
+//   merge + deduplicate
+//        ↓
+//   update cache + polyline
+//
+// NEW STAFF / NEW SESSION:
+//   no cache exists
+//        ↓
+//   normal initial Firestore fetch
 //
 // IMPORTANT:
-//
-// - Does NOT use staffTracks
-// - Does NOT use trackListeners
-// - Does NOT change selectedStaff
-// - Does NOT create realtime listener
-// - Skips current user's automatic track
-// - Respects visibleStaffCache authorization
+// - visibleStaffCache remains authorization authority
+// - current user's automatic track is never duplicated
+// - no live listener is created for bulk tracks
+// - staffTracks / trackListeners remain untouched
+// - patrolTrackCache remains untouched
 // ============================================================
 
 window.loadBulkStaffTrack =
@@ -1202,7 +1218,7 @@ async function(
     try {
 
         // ====================================================
-        // 🔧 NORMALIZE
+        // 🔧 NORMALIZE STAFF NAME
         // ====================================================
 
         const name =
@@ -1214,30 +1230,27 @@ async function(
         if(
             !name
         ){
-
             return;
-
         }
 
 
         // ====================================================
-        // 🛑 BULK REQUEST STILL VALID?
+        // 🛑 REQUEST VALIDATION
         // ====================================================
 
         if(
             window.staffTrackState
                 ?.bulkEnabled !== true ||
+
             window.staffTrackState
                 ?.requestId !== requestId
         ){
-
             return;
-
         }
 
 
         // ====================================================
-        // 🔐 AUTHORIZED STAFF ONLY
+        // 🔐 CURRENT AUTHORIZED / VISIBLE STAFF
         // ====================================================
 
         const staff =
@@ -1249,14 +1262,12 @@ async function(
         if(
             !staff
         ){
-
             return;
-
         }
 
 
         // ====================================================
-        // 👤 CURRENT USER
+        // 👤 CURRENT LOGGED-IN USER
         // ----------------------------------------------------
         // Own automatic track already exists.
         // Never duplicate it in bulk layer.
@@ -1271,17 +1282,14 @@ async function(
 
 
         if(
-            name ===
-            currentUserName
+            name === currentUserName
         ){
-
             return;
-
         }
 
 
         // ====================================================
-        // 🔥 SESSION
+        // 🔥 CURRENT DUTY SESSION
         // ====================================================
 
         const sessionId =
@@ -1294,9 +1302,255 @@ async function(
         if(
             !sessionId
         ){
-
             return;
+        }
 
+
+        // ====================================================
+        // 🧠 SESSION CACHE ENTRY
+        // ====================================================
+
+        const cache =
+            window.getSessionTrackCache(
+                sessionId
+            );
+
+
+        if(
+            !cache
+        ){
+            return;
+        }
+
+
+        // ====================================================
+        // 🛰 RENDER HELPER
+        // ----------------------------------------------------
+        // Renders a complete locally-known route into the
+        // BULK layer only.
+        //
+        // Does NOT:
+        // - touch staffTracks
+        // - touch trackListeners
+        // - touch current user's automatic track
+        // ====================================================
+
+        const renderBulkTrack =
+        function(points){
+
+            // -----------------------------------------------
+            // Request may have become stale
+            // -----------------------------------------------
+
+            if(
+                window.staffTrackState
+                    ?.bulkEnabled !== true ||
+
+                window.staffTrackState
+                    ?.requestId !== requestId
+            ){
+                return false;
+            }
+
+
+            // -----------------------------------------------
+            // Authorization may also have changed while
+            // Firestore work was happening.
+            // -----------------------------------------------
+
+            const currentStaff =
+                window.visibleStaffCache?.[
+                    name
+                ];
+
+
+            if(
+                !currentStaff
+            ){
+                return false;
+            }
+
+
+            // -----------------------------------------------
+            // Same session still current?
+            //
+            // Prevent an old session response from replacing
+            // a newly-started duty session.
+            // -----------------------------------------------
+
+            const currentSessionId =
+                String(
+                    currentStaff.sessionId || ""
+                )
+                .trim();
+
+
+            if(
+                currentSessionId !==
+                sessionId
+            ){
+                return false;
+            }
+
+
+            if(
+                !Array.isArray(points) ||
+                points.length === 0
+            ){
+                return false;
+            }
+
+
+            // -----------------------------------------------
+            // Existing track cleaner remains unchanged.
+            // -----------------------------------------------
+
+            const cleaned =
+                cleanTrackPoints(
+
+                    points.map(
+                        function(p){
+
+                            return [
+                                p.lat,
+                                p.lon
+                            ];
+
+                        }
+                    )
+
+                );
+
+
+            if(
+                !Array.isArray(cleaned) ||
+                cleaned.length === 0
+            ){
+                return false;
+            }
+
+
+            // -----------------------------------------------
+            // CREATE / UPDATE BULK POLYLINE
+            // -----------------------------------------------
+
+            let polyline =
+                window.bulkStaffTracks?.[
+                    name
+                ];
+
+
+            if(
+                !polyline
+            ){
+
+                polyline =
+                    L.polyline(
+
+                        cleaned,
+
+                        {
+                            color:
+                                getUserColor(
+                                    name
+                                ),
+
+                            weight:
+                                2.5,
+
+                            opacity:
+                                0.80,
+
+                            smoothFactor:
+                                0,
+
+                            lineCap:
+                                "round",
+
+                            lineJoin:
+                                "round"
+                        }
+
+                    )
+                    .addTo(
+                        window.bulkStaffTrackLayer
+                    );
+
+
+                window.bulkStaffTracks[
+                    name
+                ] =
+                    polyline;
+
+            }
+
+            else {
+
+                polyline.setLatLngs(
+                    cleaned
+                );
+
+            }
+
+
+            return true;
+
+        };
+
+
+        // ====================================================
+        // ⚡ PHASE 1 — CACHE-FIRST RENDER
+        // ----------------------------------------------------
+        // This is what makes second/subsequent Staff Tracks
+        // toggles feel immediate.
+        // ====================================================
+
+        const cachedPoints =
+            Array.isArray(
+                cache.points
+            )
+                ? cache.points
+                : [];
+
+
+        if(
+            cachedPoints.length > 0
+        ){
+
+            const rendered =
+                renderBulkTrack(
+                    cachedPoints
+                );
+
+
+            if(
+                rendered
+            ){
+
+                console.log(
+                    "⚡ BULK CACHE:",
+                    name,
+                    cachedPoints.length,
+                    "points"
+                );
+
+            }
+
+        }
+
+
+        // ====================================================
+        // 🛑 CHECK AGAIN BEFORE NETWORK REQUEST
+        // ====================================================
+
+        if(
+            window.staffTrackState
+                ?.bulkEnabled !== true ||
+
+            window.staffTrackState
+                ?.requestId !== requestId
+        ){
+            return;
         }
 
 
@@ -1308,14 +1562,14 @@ async function(
             collection,
             query,
             orderBy,
+            where,
             getDocs
         } =
             window.fb;
 
 
         if(
-            typeof getDocs !==
-            "function"
+            typeof getDocs !== "function"
         ){
 
             console.warn(
@@ -1328,28 +1582,97 @@ async function(
 
 
         // ====================================================
-        // 📍 POINT QUERY
+        // 📍 POINT COLLECTION
         // ====================================================
 
-        const pointsRef =
-            query(
-
-                collection(
-                    window.db,
-                    "patrol_tracks",
-                    sessionId,
-                    "points"
-                ),
-
-                orderBy(
-                    "time"
-                )
-
+        const collectionRef =
+            collection(
+                window.db,
+                "patrol_tracks",
+                sessionId,
+                "points"
             );
 
 
         // ====================================================
-        // 📥 ONE-TIME READ
+        // 🔎 INITIAL VS INCREMENTAL QUERY
+        // ====================================================
+
+        const lastTime =
+            Number(
+                cache.lastTime || 0
+            );
+
+
+        let pointsRef;
+
+
+        if(
+            lastTime > 0 &&
+            typeof where === "function"
+        ){
+
+            // -----------------------------------------------
+            // CACHE EXISTS:
+            // fetch only points newer than latest cached time
+            // -----------------------------------------------
+
+            pointsRef =
+                query(
+
+                    collectionRef,
+
+                    where(
+                        "time",
+                        ">",
+                        lastTime
+                    ),
+
+                    orderBy(
+                        "time"
+                    )
+
+                );
+
+
+            console.log(
+                "🔄 BULK REFRESH:",
+                name,
+                "after",
+                lastTime
+            );
+
+        }
+
+        else {
+
+            // -----------------------------------------------
+            // FIRST LOAD:
+            // fetch complete current session
+            // -----------------------------------------------
+
+            pointsRef =
+                query(
+
+                    collectionRef,
+
+                    orderBy(
+                        "time"
+                    )
+
+                );
+
+
+            console.log(
+                "📥 BULK INITIAL:",
+                name
+            );
+
+        }
+
+
+        // ====================================================
+        // 📥 FIRESTORE READ
         // ====================================================
 
         const pointSnap =
@@ -1365,9 +1688,53 @@ async function(
         if(
             window.staffTrackState
                 ?.bulkEnabled !== true ||
+
             window.staffTrackState
                 ?.requestId !== requestId
         ){
+            return;
+        }
+
+
+        // ====================================================
+        // 🔐 RECHECK CURRENT STAFF + SESSION
+        // ----------------------------------------------------
+        // Handles:
+        // - staff disappearing
+        // - authorization change
+        // - duty ending
+        // - new session starting during fetch
+        // ====================================================
+
+        const currentStaff =
+            window.visibleStaffCache?.[
+                name
+            ];
+
+
+        if(
+            !currentStaff
+        ){
+            return;
+        }
+
+
+        const currentSessionId =
+            String(
+                currentStaff.sessionId || ""
+            )
+            .trim();
+
+
+        if(
+            currentSessionId !==
+            sessionId
+        ){
+
+            console.log(
+                "⛔ BULK SESSION CHANGED:",
+                name
+            );
 
             return;
 
@@ -1375,10 +1742,10 @@ async function(
 
 
         // ====================================================
-        // 📍 COLLECT POINTS
+        // 📍 COLLECT NEW FIRESTORE POINTS
         // ====================================================
 
-        const points =
+        const incomingPoints =
             [];
 
 
@@ -1392,174 +1759,114 @@ async function(
                 if(
                     !p
                 ){
-
                     return;
-
                 }
 
 
-                const lat =
-                    Number(
-                        p.lat
-                    );
-
-                const lon =
-                    Number(
-                        p.lon
+                const normalized =
+                    window.normalizeSessionTrackPoint(
+                        p
                     );
 
 
                 if(
-                    !Number.isFinite(lat) ||
-                    !Number.isFinite(lon)
+                    !normalized
                 ){
-
                     return;
-
                 }
 
 
-                points.push({
-
-                    lat:
-                        lat,
-
-                    lon:
-                        lon,
-
-                    time:
-                        Number(
-                            p.time || 0
-                        ),
-
-                    breakTrack:
-                        p.breakTrack ===
-                        true
-
-                });
+                incomingPoints.push(
+                    normalized
+                );
 
             }
         );
 
 
-        if(
-            points.length ===
-            0
-        ){
-
-            return;
-
-        }
-
-
         // ====================================================
-        // 🧹 SAME CLEANING AS INDIVIDUAL TRACK
+        // 🧠 MERGE INTO SESSION CACHE
+        // ----------------------------------------------------
+        // Handles duplicate boundary points safely.
         // ====================================================
 
-        const cleaned =
-            cleanTrackPoints(
-
-                points.map(
-                    function(p){
-
-                        return [
-                            p.lat,
-                            p.lon
-                        ];
-
-                    }
-                )
-
-            );
+        let completePoints =
+            cachedPoints;
 
 
         if(
-            !Array.isArray(
-                cleaned
-            ) ||
-            cleaned.length ===
-            0
+            incomingPoints.length > 0
         ){
 
-            return;
-
-        }
-
-
-        // ====================================================
-        // 🛑 FINAL CANCELLATION CHECK
-        // ====================================================
-
-        if(
-            window.staffTrackState
-                ?.bulkEnabled !== true ||
-            window.staffTrackState
-                ?.requestId !== requestId
-        ){
-
-            return;
-
-        }
-
-
-        // ====================================================
-        // 🛰 CREATE BULK POLYLINE
-        // ====================================================
-
-        let polyline =
-            window.bulkStaffTracks?.[
-                name
-            ];
-
-
-        if(
-            !polyline
-        ){
-
-            polyline =
-                L.polyline(
-
-                    cleaned,
-
-                    {
-                        color:
-                            getUserColor(
-                                name
-                            ),
-
-                        weight:
-                            2.5,
-
-                        opacity:
-                            0.80,
-
-                        smoothFactor:
-                            0,
-
-                        lineCap:
-                            "round",
-
-                        lineJoin:
-                            "round"
-                    }
-
-                )
-                .addTo(
-                    window.bulkStaffTrackLayer
+            completePoints =
+                window.mergeSessionTrackCache(
+                    sessionId,
+                    incomingPoints
                 );
 
 
-            window.bulkStaffTracks[
-                name
-            ] =
-                polyline;
+            console.log(
+                lastTime > 0
+                    ? "➕ BULK NEW POINTS:"
+                    : "💾 BULK CACHE CREATED:",
+
+                name,
+
+                incomingPoints.length,
+
+                "new |",
+
+                completePoints.length,
+
+                "total"
+            );
 
         }
 
         else {
 
-            polyline.setLatLngs(
-                cleaned
+            // Cache already exists and Firestore had nothing
+            // newer. Keep existing complete route.
+
+            completePoints =
+                window.getSessionTrackCache(
+                    sessionId
+                )?.points || [];
+
+
+            if(
+                lastTime > 0
+            ){
+
+                console.log(
+                    "✅ BULK CACHE CURRENT:",
+                    name,
+                    completePoints.length,
+                    "points"
+                );
+
+            }
+
+        }
+
+
+        // ====================================================
+        // 🛰 FINAL RENDER / UPDATE
+        // ----------------------------------------------------
+        // FIRST LOAD:
+        //   creates track after Firestore fetch.
+        //
+        // CACHE LOAD:
+        //   updates existing immediately-rendered polyline only
+        //   if newer points were found.
+        // ====================================================
+
+        if(
+            completePoints.length > 0
+        ){
+
+            renderBulkTrack(
+                completePoints
             );
 
         }
@@ -1568,7 +1875,7 @@ async function(
         console.log(
             "🛣 BULK TRACK:",
             name,
-            cleaned.length,
+            completePoints.length,
             "points"
         );
 
