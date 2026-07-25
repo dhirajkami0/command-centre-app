@@ -31976,6 +31976,50 @@ staff.push(s);
 }
 
 });
+
+    // ==================================================
+// ⚡ TRACK RENDER AUTHORIZATION
+// --------------------------------------------------
+// staff[] already contains ONLY staff who passed:
+//
+// 1. role / GIS visibility
+// 2. global emergency visibility
+// 3. dutyActive === true
+// 4. valid live GPS
+//
+// Therefore this becomes the SINGLE authorized
+// staff source for lazy/bulk track rendering.
+//
+// NO additional dutyActive check is required later.
+// ==================================================
+
+window.visibleStaffCache ??=
+    Object.create(null);
+
+
+// Rebuild authorization cache from this snapshot
+window.visibleStaffCache =
+    Object.create(null);
+
+
+for(
+    const visibleStaff of staff
+){
+
+    if(
+        !visibleStaff ||
+        !visibleStaff.cleanName
+    ){
+        continue;
+    }
+
+
+    window.visibleStaffCache[
+        visibleStaff.cleanName
+    ] =
+        visibleStaff;
+
+}
         // ==================================================
 // 🔥 LIVE SESSION STREAM
 // ==================================================
@@ -31992,7 +32036,29 @@ for(const s of staff){
 
       continue;
     }
+// ==============================================
+// ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
+// ==============================================
+const currentUserName =
+  String(
+    window.currentUserProfile?.cleanName ||
+    window.currentUserProfile?.name ||
+    ""
+  ).trim()
+   .toUpperCase();
 
+const staffName =
+  String(
+    s.cleanName || ""
+  ).trim()
+   .toUpperCase();
+
+if(
+  !currentUserName ||
+  staffName !== currentUserName
+){
+  continue;
+}
     // ==============================================
     // 🔥 SAME SESSION
     // ==============================================
