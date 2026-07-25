@@ -2550,21 +2550,41 @@ function(
    Executed only when requested.
 ============================================================ */
 
+/* ============================================================
+   📍 FIND NEAREST RECORDED VILLAGE GPS POINT
+   ------------------------------------------------------------
+   Uses existing Village Locations marker layer.
+
+   Existing marker structure:
+   - GPS       → layer.getLatLng()
+   - Name      → marker popup HTML
+   - Distance  → Leaflet distanceTo()
+
+   NO Firestore read.
+   NO new listener.
+   Called lazily from staff marker click.
+============================================================ */
+
 GISEntities.findNearestVillagePoint =
 function(
     lat,
     lon
 ){
 
-    lat = Number(lat);
-    lon = Number(lon);
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
 
 
     if(
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
     ){
+
         return null;
+
     }
 
 
@@ -2574,17 +2594,13 @@ function(
 
     if(
         !rootLayer ||
-        typeof rootLayer.eachLayer !== "function"
+        typeof rootLayer.eachLayer !==
+            "function"
     ){
+
         return null;
+
     }
-
-
-    let nearest =
-        null;
-
-    let nearestDistance =
-        Infinity;
 
 
     const origin =
@@ -2594,14 +2610,28 @@ function(
         );
 
 
+    let nearest =
+        null;
+
+    let nearestDistance =
+        Infinity;
+
+
     rootLayer.eachLayer(
         function(layer){
 
+            /* ================================================
+               VALID MARKER
+            ================================================ */
+
             if(
                 !layer ||
-                typeof layer.getLatLng !== "function"
+                typeof layer.getLatLng !==
+                    "function"
             ){
+
                 return;
+
             }
 
 
@@ -2611,34 +2641,95 @@ function(
 
             if(
                 !ll ||
-                !Number.isFinite(Number(ll.lat)) ||
-                !Number.isFinite(Number(ll.lng))
+                !Number.isFinite(
+                    Number(ll.lat)
+                ) ||
+                !Number.isFinite(
+                    Number(ll.lng)
+                )
             ){
+
                 return;
+
             }
 
 
+            /* ================================================
+               DISTANCE
+            ================================================ */
+
             const distance =
-                origin.distanceTo(ll);
+                origin.distanceTo(
+                    ll
+                );
 
 
             if(
-                distance >= nearestDistance
+                distance >=
+                nearestDistance
             ){
+
                 return;
+
             }
 
 
-            const feature =
-                layer.feature ||
-                {};
+            /* ================================================
+               EXISTING POPUP HTML
+            ================================================ */
+
+            const popupContent =
+                layer
+                    ?.getPopup?.()
+                    ?.getContent?.();
 
 
-            const p =
-                feature.properties ||
-                layer.options?.properties ||
-                {};
+            let pointName =
+                "";
 
+
+            /* ================================================
+               EXTRACT NAME FROM FIRST <b>
+               
+               Existing popup:
+               
+               <b>🏡 Burir Dokan</b>
+            ================================================ */
+
+            if(
+                typeof popupContent ===
+                    "string" &&
+                popupContent
+            ){
+
+                const match =
+                    popupContent.match(
+                        /<b[^>]*>\s*(?:🏡\s*)?([^<]+)<\/b>/i
+                    );
+
+
+                if(
+                    match?.[1]
+                ){
+
+                    pointName =
+                        String(
+                            match[1]
+                        )
+                        .replace(
+                            /^🏡\s*/,
+                            ""
+                        )
+                        .trim();
+
+                }
+
+            }
+
+
+            /* ================================================
+               THIS IS CURRENT NEAREST POINT
+            ================================================ */
 
             nearestDistance =
                 distance;
@@ -2647,35 +2738,25 @@ function(
             nearest = {
 
                 name:
-                    p.locationName ||
-                    p.pointName ||
-                    p.placeName ||
-                    p.villageName ||
-                    p.name ||
-                    p.Name ||
-                    p.NAME ||
-                    layer.options?.title ||
-                    "",
-
-                village:
-                    p.village ||
-                    p.Village ||
-                    p.VILLAGE ||
-                    "",
+                    pointName,
 
                 latitude:
-                    Number(ll.lat),
+                    Number(
+                        ll.lat
+                    ),
 
                 longitude:
-                    Number(ll.lng),
+                    Number(
+                        ll.lng
+                    ),
 
                 distanceMeters:
                     Math.round(
                         distance
                     ),
 
-                properties:
-                    p
+                layer:
+                    layer
 
             };
 
