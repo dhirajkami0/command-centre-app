@@ -559,6 +559,68 @@ window.staffTrackState ??= {
 };
 
     // ============================================================
+// 🛣 BULK STAFF TRACK SYSTEM
+// ------------------------------------------------------------
+// Completely separate from:
+//
+// window.staffTracks
+// window.trackListeners
+//
+// Those remain responsible for:
+//   1. current user's automatic track
+//   2. selected individual staff track
+//
+// This layer is ONLY for bulk-mode tracks.
+// ============================================================
+
+window.bulkStaffTrackLayer ??=
+    L.layerGroup();
+
+window.bulkStaffTracks ??=
+    Object.create(null);
+
+
+// ============================================================
+// 🧹 CLEAR BULK STAFF TRACKS
+// ------------------------------------------------------------
+// IMPORTANT:
+// Does NOT touch:
+//
+// staffTracks
+// trackListeners
+// current user's automatic track
+// staff markers
+// ============================================================
+
+window.clearBulkStaffTracks =
+function(){
+
+    try{
+
+        window.bulkStaffTrackLayer
+            ?.clearLayers?.();
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Bulk track layer cleanup failed:",
+            err
+        );
+
+    }
+
+
+    window.bulkStaffTracks =
+        Object.create(null);
+
+
+    console.log(
+        "🧹 Bulk staff tracks cleared"
+    );
+
+};
+    // ============================================================
 // 🧹 CLEAR SELECTED INDIVIDUAL STAFF TRACK
 // ------------------------------------------------------------
 // PURPOSE:
