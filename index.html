@@ -1034,6 +1034,289 @@ async function(
     }
 
 };
+
+    // ============================================================
+// 🛣 LOAD ALL VISIBLE STAFF TRACKS — BULK MODE
+// ------------------------------------------------------------
+// SOURCE OF AUTHORIZATION:
+//
+//     visibleStaffCache
+//
+// Therefore this function DOES NOT perform another
+// dutyActive / role / division / range visibility check.
+//
+// If a staff marker is authorized/visible, that staff can
+// participate in bulk track loading.
+//
+// CURRENT USER:
+//     skipped because own automatic track already exists.
+//
+// PERFORMANCE:
+//     tracks are loaded in small batches.
+//
+// CANCELLATION:
+//     requestId invalidates pending work immediately.
+// ============================================================
+
+window.loadBulkVisibleStaffTracks =
+async function(){
+
+    const state =
+        window.staffTrackState;
+
+
+    if(
+        !state
+    ){
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // 🛑 MUST ACTUALLY BE BULK MODE
+    // ========================================================
+
+    if(
+        state.bulkEnabled !== true
+    ){
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // 🔢 THIS BULK GENERATION
+    // ========================================================
+
+    const requestId =
+        state.requestId;
+
+
+    state.loading =
+        true;
+
+
+    try {
+
+        // ====================================================
+        // 👤 CURRENT USER
+        // ====================================================
+
+        const currentUserName =
+            cleanName(
+                window.userProfile?.cleanName ||
+                window.userProfile?.name ||
+                ""
+            );
+
+
+        // ====================================================
+        // 👮 AUTHORIZED / VISIBLE STAFF
+        // ----------------------------------------------------
+        // visibleStaffCache is authoritative.
+        // ====================================================
+
+        const names =
+            Object.keys(
+                window.visibleStaffCache ||
+                {}
+            )
+            .map(
+                function(name){
+
+                    return cleanName(
+                        name
+                    );
+
+                }
+            )
+            .filter(
+                function(name){
+
+                    if(
+                        !name
+                    ){
+
+                        return false;
+
+                    }
+
+
+                    // ----------------------------------------
+                    // Own automatic track already rendered
+                    // ----------------------------------------
+
+                    if(
+                        name ===
+                        currentUserName
+                    ){
+
+                        return false;
+
+                    }
+
+
+                    return true;
+
+                }
+            );
+
+
+        console.log(
+            "🛣 BULK TRACK QUEUE:",
+            names.length,
+            names
+        );
+
+
+        // ====================================================
+        // ⚡ CONTROLLED BATCH SIZE
+        // ----------------------------------------------------
+        // Do not hit Firestore for every staff simultaneously.
+        // ====================================================
+
+        const BATCH_SIZE =
+            4;
+
+
+        for(
+            let i = 0;
+            i < names.length;
+            i += BATCH_SIZE
+        ){
+
+            // =================================================
+            // 🛑 BULK MAY HAVE BEEN TURNED OFF
+            // =================================================
+
+            if(
+                state.bulkEnabled !== true ||
+                state.requestId !== requestId
+            ){
+
+                console.log(
+                    "⛔ Bulk track loading cancelled"
+                );
+
+                return;
+
+            }
+
+
+            // =================================================
+            // 📦 CURRENT BATCH
+            // =================================================
+
+            const batch =
+                names.slice(
+                    i,
+                    i + BATCH_SIZE
+                );
+
+
+            // =================================================
+            // 🛰 LOAD THIS BATCH
+            // =================================================
+
+            await Promise.all(
+
+                batch.map(
+                    function(name){
+
+                        return window
+                            .loadBulkStaffTrack(
+                                name,
+                                requestId
+                            );
+
+                    }
+                )
+
+            );
+
+
+            // =================================================
+            // 🛑 CHECK AGAIN AFTER ASYNC FIRESTORE READS
+            // =================================================
+
+            if(
+                state.bulkEnabled !== true ||
+                state.requestId !== requestId
+            ){
+
+                console.log(
+                    "⛔ Bulk track loading cancelled after batch"
+                );
+
+                return;
+
+            }
+
+
+            // =================================================
+            // ⚡ YIELD TO UI
+            // -------------------------------------------------
+            // Allows map/markers/browser to render between
+            // batches instead of blocking the UI.
+            // =================================================
+
+            await new Promise(
+                function(resolve){
+
+                    setTimeout(
+                        resolve,
+                        25
+                    );
+
+                }
+            );
+
+        }
+
+
+        console.log(
+            "✅ BULK TRACK LOAD COMPLETE:",
+            Object.keys(
+                window.bulkStaffTracks ||
+                {}
+            ).length
+        );
+
+    }
+
+
+    catch(err){
+
+        console.error(
+            "❌ Bulk visible staff track load failed:",
+            err
+        );
+
+    }
+
+
+    finally {
+
+        // ====================================================
+        // ⚠ ONLY CURRENT GENERATION MAY CHANGE LOADING STATE
+        // ====================================================
+
+        if(
+            state.requestId ===
+            requestId
+        ){
+
+            state.loading =
+                false;
+
+        }
+
+    }
+
+};
     // ============================================================
 // 🧹 CLEAR SELECTED INDIVIDUAL STAFF TRACK
 // ------------------------------------------------------------
