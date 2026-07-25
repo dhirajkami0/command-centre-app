@@ -34246,7 +34246,184 @@ if(
     popup
   );
 }
+// ============================================================
+// 🖱 STAFF MARKER → INDIVIDUAL TRACK CONTROL
+// ------------------------------------------------------------
+// Leaflet bindPopup() remains responsible for popup toggle.
+//
+// This handler ONLY controls track selection.
+//
+// IMPORTANT:
+// - attached only ONCE per marker
+// - current user's automatic track is never removed
+// - BULK ON does not create individual tracks
+// - BULK OFF lazily loads one selected staff track
+// ============================================================
 
+const staffMarker =
+    window.staffMarkers?.[
+        s.cleanName
+    ];
+
+
+if(
+    staffMarker &&
+    staffMarker.__staffTrackClickBound !== true
+){
+
+    staffMarker.__staffTrackClickBound =
+        true;
+
+
+    staffMarker.on(
+        "click",
+
+        function(){
+
+            try {
+
+                const clickedName =
+                    cleanName(
+                        s.cleanName ||
+                        s.name ||
+                        ""
+                    );
+
+
+                if(
+                    !clickedName
+                ){
+
+                    return;
+
+                }
+
+
+                // ============================================
+                // 👤 CURRENT LOGGED-IN USER
+                // ============================================
+
+                const currentUserName =
+                    cleanName(
+                        window.userProfile?.cleanName ||
+                        window.userProfile?.name ||
+                        ""
+                    );
+
+
+                // ============================================
+                // 👤 OWN MARKER
+                // ------------------------------------------------
+                // Leaflet handles popup open/close.
+                //
+                // Own automatic track ALWAYS remains.
+                // ============================================
+
+                if(
+                    clickedName ===
+                    currentUserName
+                ){
+
+                    return;
+
+                }
+
+
+                // ============================================
+                // 🛣 BULK MODE ON
+                // ------------------------------------------------
+                // Bulk tracks already control track rendering.
+                //
+                // Therefore marker click controls POPUP ONLY
+                // through existing Leaflet bindPopup().
+                // ============================================
+
+                if(
+                    window.staffTrackState
+                        ?.bulkEnabled === true
+                ){
+
+                    return;
+
+                }
+
+
+                // ============================================
+                // 🎯 CURRENTLY SELECTED STAFF
+                // ============================================
+
+                const selectedName =
+                    cleanName(
+                        window.staffTrackState
+                            ?.selectedStaff ||
+                        ""
+                    );
+
+
+                // ============================================
+                // 🔁 SAME MARKER CLICKED AGAIN
+                // ------------------------------------------------
+                // Leaflet closes popup automatically.
+                // We remove only that individual track.
+                // ============================================
+
+                if(
+                    selectedName ===
+                    clickedName
+                ){
+
+                    window
+                        .clearSelectedStaffTrack?.();
+
+
+                    return;
+
+                }
+
+
+                // ============================================
+                // 🔄 DIFFERENT STAFF SELECTED
+                // ------------------------------------------------
+                // Remove previous individual track/listener.
+                // Leaflet handles popup navigation separately.
+                // ============================================
+
+                if(
+                    selectedName
+                ){
+
+                    window
+                        .clearSelectedStaffTrack?.();
+
+                }
+
+
+                // ============================================
+                // 🛰 LAZY LOAD CLICKED STAFF TRACK
+                // ============================================
+
+                window
+                    .loadIndividualStaffTrack?.(
+                        clickedName
+                    );
+
+            }
+
+            catch(err){
+
+                console.error(
+                    "❌ Staff marker track click failed:",
+                    s.cleanName,
+                    err
+                );
+
+            }
+
+        }
+
+    );
+
+}
 // ==================================================
 // 🔥 SNAPSHOT CONTROLS DUTY BUTTON
 // ONLY CURRENT USER
