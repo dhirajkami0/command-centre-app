@@ -5487,28 +5487,30 @@ width:56px;
   </style>
 </head>
 <body>
-  <!--=========================================================
+<!--=========================================================
   GREENGUARD AI CHAT
+  ADMIN ONLY
 ==========================================================-->
 
-<div id="ggAiOverlay" class="gg-ai-overlay" hidden>
+<div
+    id="ggAiOverlay"
+    class="gg-ai-overlay"
+    hidden
+    style="display:none;"
+>
 
     <div class="gg-ai-window">
 
         <div class="gg-ai-header">
 
             <div class="gg-ai-title">
-
                 🤖 GreenGuard AI
-
             </div>
 
             <button
                 id="ggAiClose"
                 class="gg-ai-close">
-
                 ✕
-
             </button>
 
         </div>
@@ -5516,16 +5518,13 @@ width:56px;
         <div
             id="ggAiMessages"
             class="gg-ai-messages">
-
         </div>
 
         <div
             id="ggAiThinking"
             class="gg-ai-thinking"
             hidden>
-
             GreenGuard AI is thinking...
-
         </div>
 
         <div class="gg-ai-input">
@@ -5539,9 +5538,7 @@ width:56px;
             <button
                 id="ggAiSend"
                 class="gg-ai-send">
-
                 ➤
-
             </button>
 
         </div>
@@ -5550,13 +5547,16 @@ width:56px;
 
 </div>
 
+
+<!-- ADMIN ONLY AI BUTTON -->
+
 <button
     id="ggAiOpen"
     class="gg-ai-fab"
-    title="GreenGuard AI">
-
+    title="GreenGuard AI"
+    style="display:none;"
+>
     🤖
-
 </button>
     <!-- 🔥 SPLASH SCREEN (PUT HERE — FIRST ELEMENT) -->
  <!-- 🔥 SPLASH SCREEN (FIRST ELEMENT IN BODY) -->
@@ -11733,7 +11733,71 @@ async function buildAndStoreMasterGrid() {
     console.groupEnd();
   }
 }
+function applyGreenGuardAiAccess(profile) {
 
+    const aiButton =
+        document.getElementById("ggAiOpen");
+
+    const aiOverlay =
+        document.getElementById("ggAiOverlay");
+
+    if (!aiButton) {
+        return;
+    }
+
+    const role = String(
+        profile?.role || ""
+    )
+        .trim()
+        .toUpperCase();
+
+    const isAdmin =
+        role === "ADMIN";
+
+
+    // =========================================
+    // ADMIN
+    // =========================================
+
+    if (isAdmin) {
+
+        aiButton.hidden = false;
+
+        aiButton.style.setProperty(
+            "display",
+            "flex",
+            "important"
+        );
+
+        return;
+    }
+
+
+    // =========================================
+    // EVERYONE ELSE
+    // =========================================
+
+    aiButton.hidden = true;
+
+    aiButton.style.setProperty(
+        "display",
+        "none",
+        "important"
+    );
+
+
+    // Safety: close AI if somehow already open
+    if (aiOverlay) {
+
+        aiOverlay.hidden = true;
+
+        aiOverlay.style.setProperty(
+            "display",
+            "none",
+            "important"
+        );
+    }
+}
 async function loadMasterGrid(){
 
   console.count(
