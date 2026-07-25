@@ -30425,6 +30425,730 @@ async function buildCellToGridLookup(){
 
   return `${row}_${col}`;
 }
+
+
+    /* ============================================================
+   📍 LAZY STAFF CURRENT LOCATION RESOLVER
+   ============================================================
+
+   PURPOSE
+   ------------------------------------------------------------
+
+   Resolve GIS information for ONE staff member when required.
+
+   IMPORTANT PERFORMANCE DESIGN:
+
+   - DO NOT call this while rendering 500+ staff markers.
+   - Call only when a staff marker popup is opened/clicked.
+   - NO Firestore reads.
+   - NO new Firestore listeners.
+   - Existing GIS data is reused.
+   - Village boundaries are lazy-loaded once.
+   - Results are cached by GPS + emergency state.
+
+
+   ============================================================
+   FINAL DISPLAY RULE
+   ============================================================
+
+   ALL DUTY TYPES:
+
+       GPS
+           → ALWAYS AVAILABLE
+
+       Village polygon
+           → SHOW if found
+
+       Compartment
+           → SHOW if found
+
+       Beat
+           → SHOW if found
+
+       Range
+           → SHOW if found
+
+       Division
+           → SHOW if found
+
+
+   DEPREDATION DUTY / RESCUE OPERATION ONLY:
+
+       Nearest recorded village point
+           → SHOW
+
+       Distance to nearest point
+           → SHOW
+
+
+   ALL OTHER DUTY TYPES:
+
+       Nearest recorded village point
+           → HIDE
+
+       Distance to nearest point
+           → HIDE
+
+============================================================ */
+
+
+/* ============================================================
+   🧠 STAFF LOCATION CACHE
+============================================================ */
+
+window.staffLocationCache =
+    window.staffLocationCache ||
+    new Map();
+
+
+/* ============================================================
+   📍 RESOLVE STAFF CURRENT LOCATION
+============================================================ */
+
+window.resolveStaffCurrentLocation =
+async function(
+    lat,
+    lng,
+    dutyType = ""
+){
+
+    /* ========================================================
+       1. NORMALIZE GPS
+    ======================================================== */
+
+    lat =
+        Number(
+            lat
+        );
+
+    lng =
+        Number(
+            lng
+        );
+
+
+    /* ========================================================
+       2. VALIDATE GPS
+    ======================================================== */
+
+    if(
+        !Number.isFinite(
+            lat
+        ) ||
+        !Number.isFinite(
+            lng
+        )
+    ){
+
+        return null;
+
+    }
+
+
+    /* ========================================================
+       3. NORMALIZE DUTY TYPE
+    ======================================================== */
+
+    const normalizedDutyType =
+        String(
+            dutyType || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    /* ========================================================
+       4. EMERGENCY DUTY CHECK
+       --------------------------------------------------------
+
+       ONLY target staff duty type matters here.
+
+       DEPREDATION
+           OR
+       RESCUE
+
+       Viewer role / viewer duty is irrelevant.
+
+    ======================================================== */
+
+    const emergencyDuty =
+        normalizedDutyType.includes(
+            "DEPREDATION"
+        ) ||
+        normalizedDutyType.includes(
+            "RESCUE"
+        );
+
+
+    /* ========================================================
+       5. CACHE KEY
+       --------------------------------------------------------
+
+       Emergency state MUST be part of cache key.
+
+       Example:
+
+       Same GPS + Foot Patrolling
+           → nearest point hidden
+
+       Same GPS + Depredation Duty
+           → nearest point shown
+
+    ======================================================== */
+
+    const cacheKey =
+        lat.toFixed(5) +
+        "," +
+        lng.toFixed(5) +
+        "|" +
+        (
+            emergencyDuty
+                ? "EMERGENCY"
+                : "NORMAL"
+        );
+
+
+    /* ========================================================
+       6. RETURN CACHED RESULT
+    ======================================================== */
+
+    const cachedResult =
+        window.staffLocationCache.get(
+            cacheKey
+        );
+
+
+    if(
+        cachedResult
+    ){
+
+        return cachedResult;
+
+    }
+
+
+    /* ========================================================
+       7. LAZY LOAD VILLAGE BOUNDARIES
+       --------------------------------------------------------
+
+       Current architecture:
+
+       App load
+           → Village Boundary layer may contain 0 polygons.
+
+       First staff popup requiring GIS:
+           → loadVillageBoundaryLayer()
+
+       Subsequent popup:
+           → existing 2067 polygons reused.
+
+       IMPORTANT:
+
+       This is NOT executed for every staff during loadStaff().
+
+    ======================================================== */
+
+    const villageBoundaryCount =
+        window.villageBoundaryLayer
+            ?.getLayers?.()
+            ?.length ||
+        0;
+
+
+    if(
+        villageBoundaryCount === 0 &&
+        typeof window.loadVillageBoundaryLayer ===
+            "function"
+    ){
+
+        try{
+
+            await window
+                .loadVillageBoundaryLayer();
+
+        }
+
+        catch(err){
+
+            /*
+             * Village lookup failure must NOT prevent
+             * GPS / compartment information from working.
+             */
+
+            console.warn(
+                "⚠ Village boundary lazy load failed:",
+                err
+            );
+
+        }
+
+    }
+
+
+    /* ========================================================
+       8. RESOLVE COMPLETE GIS LOCATION
+       --------------------------------------------------------
+
+       Existing resolver combines:
+
+       - findCompartmentAtPoint()
+       - findVillageAtPoint()
+       - findNearestVillagePoint()
+
+    ======================================================== */
+
+    let result =
+        null;
+
+
+    try{
+
+        result =
+            window.GreenGuardAI
+                ?.GISEntities
+                ?.resolveCurrentLocation?.(
+                    lat,
+                    lng
+                ) ||
+            null;
+
+    }
+
+    catch(err){
+
+        console.warn(
+            "⚠ Staff GIS location resolution failed:",
+            err
+        );
+
+    }
+
+
+    /* ========================================================
+       9. GIS FALLBACK OBJECT
+       --------------------------------------------------------
+
+       GPS must remain available even if GIS lookup fails.
+
+    ======================================================== */
+
+    if(
+        !result
+    ){
+
+        result = {
+
+            compartment:
+                "",
+
+            beat:
+                "",
+
+            range:
+                "",
+
+            division:
+                "",
+
+            village:
+                "",
+
+            villageCode:
+                "",
+
+            block:
+                "",
+
+            nearestPoint:
+                "",
+
+            distanceMeters:
+                null
+
+        };
+
+    }
+
+
+    /* ========================================================
+       10. CLONE RESULT
+       --------------------------------------------------------
+
+       We modify the popup-specific result below.
+
+       Do not mutate any object returned by the underlying
+       GIS resolver.
+
+    ======================================================== */
+
+    result = {
+
+        ...result
+
+    };
+
+
+    /* ========================================================
+       11. ALWAYS PRESERVE ORIGINAL STAFF GPS
+       --------------------------------------------------------
+
+       GPS DOES NOT depend on:
+
+       - duty type
+       - village polygon
+       - compartment
+       - emergency state
+       - viewer role
+
+       GPS should therefore always be available to the popup.
+
+    ======================================================== */
+
+    result.latitude =
+        lat;
+
+
+    result.longitude =
+        lng;
+
+
+    result.gpsText =
+        lat.toFixed(6) +
+        ", " +
+        lng.toFixed(6);
+
+
+    /* ========================================================
+       12. STORE DUTY INFORMATION
+    ======================================================== */
+
+    result.dutyType =
+        dutyType || "";
+
+
+    result.normalizedDutyType =
+        normalizedDutyType;
+
+
+    result.emergencyDuty =
+        emergencyDuty;
+
+
+    /* ========================================================
+       13. NEAREST VILLAGE POINT PRIVACY / DISPLAY RULE
+       --------------------------------------------------------
+
+       FINAL REQUIREMENT:
+
+       DEPREDATION DUTY
+           → KEEP nearestPoint
+           → KEEP distanceMeters
+
+       RESCUE OPERATION
+           → KEEP nearestPoint
+           → KEEP distanceMeters
+
+       ANY OTHER DUTY
+           → REMOVE nearestPoint
+           → REMOVE distanceMeters
+
+
+       IMPORTANT:
+
+       This DOES NOT remove GPS.
+
+       GPS remains available for EVERY duty type.
+
+    ======================================================== */
+
+    if(
+        !emergencyDuty
+    ){
+
+        result.nearestPoint =
+            "";
+
+        result.distanceMeters =
+            null;
+
+    }
+
+
+    /* ========================================================
+       14. BUILD HUMAN-READABLE CURRENT LOCATION
+    ======================================================== */
+
+    const locationParts =
+        [];
+
+
+    /* ========================================================
+       🏡 VILLAGE POLYGON
+       --------------------------------------------------------
+
+       Available to every duty type if staff GPS actually falls
+       inside a loaded village polygon.
+
+    ======================================================== */
+
+    if(
+        result.village
+    ){
+
+        locationParts.push(
+            result.village
+        );
+
+    }
+
+
+    /* ========================================================
+       📌 NEAREST RECORDED VILLAGE POINT
+       --------------------------------------------------------
+
+       At this stage nearestPoint can exist ONLY for:
+
+       - Depredation Duty
+       - Rescue Operation
+
+       because normal-duty nearestPoint was removed above.
+
+    ======================================================== */
+
+    if(
+        result.nearestPoint
+    ){
+
+        let nearestPointText =
+            "Near " +
+            result.nearestPoint;
+
+
+        /* ----------------------------------------------------
+           Add distance when available
+        ---------------------------------------------------- */
+
+        if(
+            result.distanceMeters !==
+                null &&
+            result.distanceMeters !==
+                undefined &&
+            Number.isFinite(
+                Number(
+                    result.distanceMeters
+                )
+            )
+        ){
+
+            nearestPointText +=
+                " (" +
+                Math.round(
+                    Number(
+                        result.distanceMeters
+                    )
+                ) +
+                " m)";
+
+        }
+
+
+        locationParts.push(
+            nearestPointText
+        );
+
+    }
+
+
+    /* ========================================================
+       🌲 COMPARTMENT FALLBACK
+       --------------------------------------------------------
+
+       Example:
+
+       Staff is inside Damanpur BL8 but outside village polygon.
+
+       Normal duty:
+
+           Current Location:
+           Damanpur BL8
+
+       Emergency duty with nearest point:
+
+           Current Location:
+           Near Burir Dokan (464 m)
+
+       Compartment is still separately available in result.
+
+    ======================================================== */
+
+    if(
+        locationParts.length === 0 &&
+        result.compartment
+    ){
+
+        locationParts.push(
+            result.compartment
+        );
+
+    }
+
+
+    /* ========================================================
+       🌿 BEAT FALLBACK
+    ======================================================== */
+
+    if(
+        locationParts.length === 0 &&
+        result.beat
+    ){
+
+        locationParts.push(
+            result.beat +
+            " Beat"
+        );
+
+    }
+
+
+    /* ========================================================
+       🗺 RANGE FALLBACK
+    ======================================================== */
+
+    if(
+        locationParts.length === 0 &&
+        result.range
+    ){
+
+        locationParts.push(
+            result.range +
+            " Range"
+        );
+
+    }
+
+
+    /* ========================================================
+       🗺 DIVISION FALLBACK
+    ======================================================== */
+
+    if(
+        locationParts.length === 0 &&
+        result.division
+    ){
+
+        locationParts.push(
+            result.division
+        );
+
+    }
+
+
+    /* ========================================================
+       15. FINAL CURRENT LOCATION TEXT
+    ======================================================== */
+
+    result.displayText =
+        locationParts.join(
+            " — "
+        );
+
+
+    /* ========================================================
+       16. POPUP-READY INDIVIDUAL VALUES
+       --------------------------------------------------------
+
+       These make popup integration simple.
+
+    ======================================================== */
+
+    result.popupGPS =
+        result.gpsText;
+
+
+    result.popupCurrentLocation =
+        result.displayText ||
+        "";
+
+
+    result.popupVillage =
+        result.village ||
+        "";
+
+
+    result.popupVillageCode =
+        result.villageCode ||
+        "";
+
+
+    result.popupBlock =
+        result.block ||
+        "";
+
+
+    result.popupCompartment =
+        result.compartment ||
+        "";
+
+
+    result.popupBeat =
+        result.beat ||
+        "";
+
+
+    result.popupRange =
+        result.range ||
+        "";
+
+
+    result.popupDivision =
+        result.division ||
+        "";
+
+
+    /* ========================================================
+       17. EMERGENCY-ONLY POPUP VALUES
+    ======================================================== */
+
+    result.popupNearestPoint =
+        emergencyDuty
+            ? (
+                result.nearestPoint ||
+                ""
+            )
+            : "";
+
+
+    result.popupNearestDistance =
+        emergencyDuty &&
+        result.distanceMeters !==
+            null &&
+        result.distanceMeters !==
+            undefined
+            ? Math.round(
+                Number(
+                    result.distanceMeters
+                )
+            )
+            : null;
+
+
+    /* ========================================================
+       18. CACHE FINAL RESULT
+    ======================================================== */
+
+    window.staffLocationCache.set(
+        cacheKey,
+        result
+    );
+
+
+    /* ========================================================
+       19. RETURN
+    ======================================================== */
+
+    return result;
+
+};
   // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
