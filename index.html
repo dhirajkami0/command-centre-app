@@ -3904,8 +3904,8 @@ FOR FULLSCREEN ADMIN UI
 
   position:relative;
 
-  width:30px;
-  height:30px;
+  width:26px;
+  height:26px;
 
   display:flex;
 
@@ -3945,74 +3945,119 @@ FOR FULLSCREEN ADMIN UI
    🚀 LIGHTWEIGHT RADAR PULSE (SMOOTH + LOW GPU)
 ============================================================ */
 
+/* =========================================================
+   GREENGUARD MAP MARKERS
+   Optimized small radar pulse
+   Used by STAFF + ELEPHANT markers
+========================================================= */
+
 .radarPulse {
+    position: absolute;
 
-  position: absolute;
+    top: 50%;
+    left: 50%;
 
-  top: 50%;
-  left: 50%;
+    /* Smaller ring: old 14px */
+    width: 10px;
+    height: 10px;
+    margin: -5px;
 
-  width: 14px;
-  height: 14px;
+    border-radius: 50%;
 
-  margin: -7px;
+    pointer-events: none;
+    z-index: 1;
 
-  border-radius: 50%;
+    /* Thinner ring: old 2.5px */
+    border: 1.5px solid #ffcc00;
 
-  pointer-events: none;
+    /* Reduced glow for better rendering performance */
+    box-shadow:
+        0 0 4px #ff9500,
+        0 0 7px rgba(255,149,0,0.45);
 
-  z-index: 1;
+    /* Slightly slower / calmer pulse */
+    animation:
+        radarPulseWave 2.4s ease-out infinite;
 
-  border: 2.5px solid #ffcc00;
-
-  box-shadow:
-    0 0 10px #ff9500,
-    0 0 20px rgba(255,149,0,0.7),
-    0 0 30px rgba(255,179,0,0.5);
-
-  animation:
-    radarPulseWave 2.2s infinite ease-out;
+    will-change:
+        transform,
+        opacity;
 }
-.radarPulse.delay1 { animation-delay: 0.6s; }
-.radarPulse.delay2 { animation-delay: 1.2s; }
+
+
+/* ---------------------------------------------------------
+   Additional elephant radar rings
+--------------------------------------------------------- */
+
+.radarPulse.delay1 {
+    animation-delay: 0.8s;
+}
+
+.radarPulse.delay2 {
+    animation-delay: 1.6s;
+}
+
+
+/* ---------------------------------------------------------
+   SMALL RADAR ANIMATION
+
+   OLD:
+       scale 0.3 -> 4
+
+   NEW:
+       scale 0.4 -> 2
+
+   Approximately half the previous expansion.
+--------------------------------------------------------- */
 
 @keyframes radarPulseWave {
 
-  0% {
+    0% {
+        transform:
+            translate(-50%, -50%)
+            scale(0.4);
 
-    transform:
-      translate(-50%, -50%)
-      scale(0.3);
-
-    opacity: 1;
-
-    border-width: 2.5px;
-  }
-
-  50% {
-
-    opacity: 0.6;
-  }
-
-  100% {
-
-    transform:
-      translate(-50%, -50%)
-      scale(4);
-
-    opacity: 0;
-
-    border-width: 1px;
-  }
-}    .riskPulseRed {
-      border: 2px solid #ff3b30;
-      box-shadow: 0 0 6px #ff3b30, 0 0 12px rgba(255, 59, 48, 0.5);
+        opacity: 0.8;
     }
 
-    .riskPulseOrange {
-      border: 2px solid #ff9500;
-      box-shadow: 0 0 6px #ff9500, 0 0 12px rgba(255, 149, 0, 0.5);
+    70% {
+        opacity: 0.25;
     }
+
+    100% {
+        transform:
+            translate(-50%, -50%)
+            scale(2);
+
+        opacity: 0;
+    }
+}
+
+
+/* ---------------------------------------------------------
+   ELEPHANT HIGH-RISK RADAR
+--------------------------------------------------------- */
+
+.riskPulseRed {
+    border-color: #ff3b30;
+
+    box-shadow:
+        0 0 4px #ff3b30,
+        0 0 7px rgba(255,59,48,0.40);
+}
+
+
+/* ---------------------------------------------------------
+   ELEPHANT WARNING RADAR
+--------------------------------------------------------- */
+
+.riskPulseOrange {
+    border-color: #ff9500;
+
+    box-shadow:
+        0 0 4px #ff9500,
+        0 0 7px rgba(255,149,0,0.40);
+}
 
     /* ============================================================
    📡 SHARP RENDERING & GRID FIXES
@@ -30886,7 +30931,7 @@ async function loadSightings(){
 
                     <span
                       style="
-                        font-size:22px;
+                        font-size:17px;
                         color:${color};
                         text-shadow:0 0 5px black;
                       "
@@ -35849,7 +35894,7 @@ const icon = L.divIcon({
       <i class="fa-solid fa-person-military-pointing"
         style="
           color:#00ff00;
-          font-size:20px;
+          font-size:17px;
         ">
       </i>
 
