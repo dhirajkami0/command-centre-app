@@ -44585,7 +44585,44 @@ var layerControl =
         map
     );
 
+// ============================================================
+// 🛣 REGISTER STAFF TRACKS OVERLAY
+// ------------------------------------------------------------
+// Uses the EXISTING role-filtered layer control.
+//
+// IMPORTANT:
+// - Does NOT create another Leaflet control.
+// - Does NOT automatically add tracks to map.
+// - Staff Tracks therefore starts OFF.
+// - Registration is protected against duplication.
+// ============================================================
 
+if(
+    layerControl &&
+    window.bulkStaffTrackLayer &&
+    window.bulkStaffTrackLayer
+        .__staffTracksControlRegistered !== true
+){
+
+    layerControl.addOverlay(
+
+        window.bulkStaffTrackLayer,
+
+        "🛣 Staff Tracks"
+
+    );
+
+
+    window.bulkStaffTrackLayer
+        .__staffTracksControlRegistered =
+        true;
+
+
+    console.log(
+        "✅ Staff Tracks layer control registered"
+    );
+
+}
 /* ============================================================
    🔥 GLOBAL GRID VISIBILITY FLAG
 ============================================================ */
