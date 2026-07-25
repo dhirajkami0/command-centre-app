@@ -32599,6 +32599,42 @@ async function(
     return result;
 
 };
+
+    // ============================================================
+// 🛣 REGISTER STAFF TRACKS IN EXISTING LAYER CONTROL
+// ------------------------------------------------------------
+// IMPORTANT:
+// - Reuses existing layerControl
+// - Does NOT create another Leaflet control
+// - Adds only once
+// ============================================================
+
+if(
+    window.layerControl &&
+    window.bulkStaffTrackLayer &&
+    window.bulkStaffTrackLayer
+        .__staffTracksControlRegistered !== true
+){
+
+    window.layerControl.addOverlay(
+
+        window.bulkStaffTrackLayer,
+
+        "🛣 Staff Tracks"
+
+    );
+
+
+    window.bulkStaffTrackLayer
+        .__staffTracksControlRegistered =
+        true;
+
+
+    console.log(
+        "✅ Staff Tracks layer control registered"
+    );
+
+}
   // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
@@ -44604,6 +44640,27 @@ console.log(
    - Staff remains untouched
 ============================================================ */
 
+/* ============================================================
+   🧭 OVERLAY ADD
+   ------------------------------------------------------------
+   Handles Leaflet overlays when user enables them.
+
+   STAFF TRACKS:
+   - Starts BULK mode.
+   - Invalidates older bulk requests.
+   - Clears any selected individual OTHER-staff track.
+   - Closes staff popup.
+   - Loads tracks only from visibleStaffCache.
+   - Current user's automatic track remains untouched.
+
+   VILLAGE BOUNDARIES:
+   - Lazy loads polygons.
+   - Switches interaction ownership to village canvas.
+
+   STAFF / PLANTATION:
+   - Existing behavior preserved.
+============================================================ */
+
 map.on(
   "overlayadd",
 
@@ -44672,6 +44729,162 @@ map.on(
 
 
       /* ========================================================
+         🛣 STAFF TRACKS ON
+         --------------------------------------------------------
+
+         DESIGN:
+
+         visibleStaffCache
+                │
+                ▼
+         authorized markers
+                │
+                ▼
+         bulk/lazy track loading
+
+         IMPORTANT:
+
+         - Marker visibility rule is already resolved upstream.
+         - NO additional dutyActive check here.
+         - Current user's automatic track is NOT duplicated.
+         - Existing individual track is removed.
+         - Existing popup is closed.
+         - Bulk mode starts with TRACKS ONLY.
+      ======================================================== */
+
+      if(
+        layerName ===
+        "🛣 Staff Tracks"
+      ){
+
+        const state =
+          window.staffTrackState;
+
+
+        if(
+          !state
+        ){
+
+          console.warn(
+            "⚠ staffTrackState unavailable"
+          );
+
+
+          return;
+
+        }
+
+
+        /* ------------------------------------------------------
+           INVALIDATE ANY PREVIOUS BULK GENERATION
+        ------------------------------------------------------ */
+
+        state.requestId +=
+          1;
+
+
+        /* ------------------------------------------------------
+           ENABLE BULK MODE
+        ------------------------------------------------------ */
+
+        state.bulkEnabled =
+          true;
+
+
+        state.loading =
+          false;
+
+
+        state.bulkScopeKey =
+          null;
+
+
+        /* ------------------------------------------------------
+           CLEAR PREVIOUS INDIVIDUAL SELECTION
+
+           clearSelectedStaffTrack() already protects the
+           logged-in user's automatic track.
+        ------------------------------------------------------ */
+
+        window
+          .clearSelectedStaffTrack?.();
+
+
+        /* ------------------------------------------------------
+           CLOSE CURRENT STAFF POPUP
+
+           Bulk mode must start with tracks only.
+        ------------------------------------------------------ */
+
+        Object.values(
+          window.staffMarkers ||
+          {}
+        )
+        .forEach(
+
+          function(
+            marker
+          ){
+
+            try {
+
+              if(
+                marker
+                  ?.isPopupOpen?.()
+              ){
+
+                marker
+                  .closePopup();
+
+              }
+
+            }
+            catch(
+              err
+            ){}
+
+          }
+
+        );
+
+
+        state.selectedStaff =
+          null;
+
+
+        console.log(
+
+          "🛣 STAFF TRACKS ON — request:",
+
+          state.requestId
+
+        );
+
+
+        /* ------------------------------------------------------
+           IMPORTANT:
+
+           Leaflet has already added bulkStaffTrackLayer
+           to the map before overlayadd fires.
+
+           loadBulkVisibleStaffTracks() uses:
+
+             visibleStaffCache
+
+           and therefore follows the SAME authorization
+           rule already used for marker visibility.
+        ------------------------------------------------------ */
+
+        await window
+          .loadBulkVisibleStaffTracks?.();
+
+
+        return;
+
+      }
+
+
+      /* ========================================================
          🏡 VILLAGE BOUNDARIES ON
          --------------------------------------------------------
 
@@ -44679,7 +44892,7 @@ map.on(
          1. Leaflet adds empty villageBoundaryLayer.
          2. overlayadd fires.
          3. GeoJSON lazy loads.
-         4. 313 polygons are added.
+         4. Polygons are added.
          5. Village Canvas becomes interaction owner.
 
          NEXT TIME:
@@ -44780,6 +44993,14 @@ map.on(
    ------------------------------------------------------------
    Handles Leaflet overlays when user disables them.
 
+   STAFF TRACKS:
+   - Invalidates pending bulk work.
+   - Stops bulk mode.
+   - Clears ALL bulk tracks.
+   - Clears selected individual OTHER-staff track.
+   - Closes selected/current staff popup.
+   - Keeps current user's automatic track.
+
    VILLAGE BOUNDARIES:
    - Leaflet automatically hides villageBoundaryLayer.
    - BTR Canvas interaction is restored.
@@ -44831,6 +45052,161 @@ map.on(
           layerName
 
         );
+
+      }
+
+
+      /* ========================================================
+         🛣 STAFF TRACKS OFF
+         --------------------------------------------------------
+
+         DESIGN:
+
+         BULK ON
+             │
+             ▼
+         checkbox OFF
+             │
+             ├── invalidate pending requests
+             ├── stop pending batch ownership
+             ├── clear ALL bulk tracks
+             ├── clear selected individual track
+             ├── close staff popup
+             ├── clear selectedStaff
+             │
+             └── KEEP logged-in user's automatic track
+
+         IMPORTANT:
+
+         Leaflet itself removes bulkStaffTrackLayer from map.
+         We clear its child layers/storage here.
+      ======================================================== */
+
+      if(
+        layerName ===
+        "🛣 Staff Tracks"
+      ){
+
+        const state =
+          window.staffTrackState;
+
+
+        /* ------------------------------------------------------
+           INVALIDATE PENDING BULK REQUESTS
+
+           Every loadBulkStaffTrack() checks requestId.
+           Any Firestore read still completing becomes stale
+           and will therefore not render.
+        ------------------------------------------------------ */
+
+        if(
+          state
+        ){
+
+          state.requestId +=
+            1;
+
+
+          state.bulkEnabled =
+            false;
+
+
+          state.loading =
+            false;
+
+
+          state.bulkScopeKey =
+            null;
+
+        }
+
+
+        /* ------------------------------------------------------
+           REMOVE ALL BULK-OWNED TRACKS
+
+           DOES NOT touch:
+             window.staffTracks
+             window.trackListeners
+             current user's automatic track
+        ------------------------------------------------------ */
+
+        window
+          .clearBulkStaffTracks?.();
+
+
+        /* ------------------------------------------------------
+           REMOVE SELECTED INDIVIDUAL OTHER-STAFF TRACK
+
+           Current user's automatic track is protected inside
+           clearSelectedStaffTrack().
+        ------------------------------------------------------ */
+
+        window
+          .clearSelectedStaffTrack?.();
+
+
+        /* ------------------------------------------------------
+           CLOSE ALL STAFF POPUPS
+
+           After BULK OFF we return to clean individual mode.
+        ------------------------------------------------------ */
+
+        Object.values(
+          window.staffMarkers ||
+          {}
+        )
+        .forEach(
+
+          function(
+            marker
+          ){
+
+            try {
+
+              if(
+                marker
+                  ?.isPopupOpen?.()
+              ){
+
+                marker
+                  .closePopup();
+
+              }
+
+            }
+            catch(
+              err
+            ){}
+
+          }
+
+        );
+
+
+        /* ------------------------------------------------------
+           CLEAR UI SELECTION
+        ------------------------------------------------------ */
+
+        if(
+          state
+        ){
+
+          state.selectedStaff =
+            null;
+
+        }
+
+
+        console.log(
+
+          "🛣 STAFF TRACKS OFF — request:",
+
+          state?.requestId
+
+        );
+
+
+        return;
 
       }
 
