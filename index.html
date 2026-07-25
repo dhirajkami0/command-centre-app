@@ -591,6 +591,19 @@ window.sessionTrackCache ??=
 // 🔧 NORMALIZE A TRACK POINT
 // ============================================================
 
+// ============================================================
+// 🔧 NORMALIZE SESSION TRACK POINT
+// ------------------------------------------------------------
+// Firestore stores:
+//
+// time = "2026-07-25T03:55:37.475Z"
+//
+// Therefore time remains an ISO STRING.
+//
+// This is important because Firestore comparisons must use
+// the same field type as the stored data.
+// ============================================================
+
 window.normalizeSessionTrackPoint =
 function(point){
 
@@ -607,18 +620,12 @@ function(point){
             point[0]
         );
 
+
     const lon =
         Number(
             point.lon ??
             point.lng ??
             point[1]
-        );
-
-    const time =
-        Number(
-            point.time ??
-            point.ts ??
-            0
         );
 
 
@@ -627,6 +634,78 @@ function(point){
         !Number.isFinite(lon)
     ){
         return null;
+    }
+
+
+    // ========================================================
+    // 🕒 TIME
+    // ========================================================
+
+    let time = "";
+
+
+    const rawTime =
+        point.time ??
+        point.ts ??
+        "";
+
+
+    if(
+        typeof rawTime === "string"
+    ){
+
+        time =
+            rawTime.trim();
+
+    }
+
+    else if(
+        typeof rawTime?.toDate ===
+        "function"
+    ){
+
+        // Future-safe Firestore Timestamp support
+
+        try {
+
+            time =
+                rawTime
+                    .toDate()
+                    .toISOString();
+
+        }
+        catch(err){
+
+            time = "";
+
+        }
+
+    }
+
+    else if(
+        Number.isFinite(
+            Number(rawTime)
+        ) &&
+        Number(rawTime) > 0
+    ){
+
+        // Future-safe numeric timestamp support
+
+        try {
+
+            time =
+                new Date(
+                    Number(rawTime)
+                )
+                .toISOString();
+
+        }
+        catch(err){
+
+            time = "";
+
+        }
+
     }
 
 
@@ -639,9 +718,7 @@ function(point){
             lon,
 
         time:
-            Number.isFinite(time)
-                ? time
-                : 0,
+            time,
 
         breakTrack:
             point.breakTrack === true
@@ -655,8 +732,43 @@ function(point){
 // 📦 GET / CREATE SESSION CACHE ENTRY
 // ============================================================
 
+// ============================================================
+// 📦 GET / CREATE SESSION TRACK CACHE ENTRY
+// ------------------------------------------------------------
+// CACHE KEY:
+//   sessionId
+//
+// CACHE STRUCTURE:
+//
+// {
+//     points: [],
+//     lastTime: "",
+//     updatedAt: 0
+// }
+//
+// IMPORTANT:
+//
+// Firestore patrol_tracks points store:
+//
+// time = "2026-07-25T03:55:37.475Z"
+//
+// Therefore lastTime MUST remain an ISO STRING.
+//
+// DO NOT convert lastTime to Number.
+//
+// Also supports older runtime cache format:
+//
+// sessionTrackCache[sessionId] = []
+//
+// and safely upgrades it to the new object structure.
+// ============================================================
+
 window.getSessionTrackCache =
 function(sessionId){
+
+    // ========================================================
+    // 🔧 NORMALIZE SESSION ID
+    // ========================================================
 
     const id =
         String(
@@ -667,9 +779,15 @@ function(sessionId){
     if(
         !id
     ){
+
         return null;
+
     }
 
+
+    // ========================================================
+    // 📦 EXISTING CACHE ENTRY
+    // ========================================================
 
     let entry =
         window.sessionTrackCache[
@@ -677,15 +795,21 @@ function(sessionId){
         ];
 
 
+    // ========================================================
+    // 🔄 BACKWARD COMPATIBILITY
     // --------------------------------------------------------
-    // Backward compatibility:
-    //
-    // Existing code already created:
+    // Older code may already have:
     //
     // sessionTrackCache[sessionId] = []
     //
-    // Convert that safely into our new structure.
-    // --------------------------------------------------------
+    // Convert that array into:
+    //
+    // {
+    //     points: [...],
+    //     lastTime: "ISO TIME",
+    //     updatedAt: 0
+    // }
+    // ========================================================
 
     if(
         Array.isArray(entry)
@@ -699,22 +823,44 @@ function(sessionId){
                 .filter(Boolean);
 
 
-        let lastTime = 0;
+        // ====================================================
+        // 🕒 FIND LATEST ISO TIME
+        // ====================================================
+
+        let lastTime =
+            "";
 
 
         for(
             const point of oldPoints
         ){
 
+            const pointTime =
+                String(
+                    point?.time || ""
+                )
+                .trim();
+
+
             if(
-                point.time > lastTime
+                pointTime &&
+                (
+                    !lastTime ||
+                    pointTime > lastTime
+                )
             ){
+
                 lastTime =
-                    point.time;
+                    pointTime;
+
             }
 
         }
 
+
+        // ====================================================
+        // 📦 CONVERT OLD CACHE FORMAT
+        // ====================================================
 
         entry = {
 
@@ -738,6 +884,12 @@ function(sessionId){
     }
 
 
+    // ========================================================
+    // 🆕 CREATE CACHE ENTRY
+    // --------------------------------------------------------
+    // No existing cache for this session.
+    // ========================================================
+
     if(
         !entry ||
         typeof entry !== "object"
@@ -749,7 +901,7 @@ function(sessionId){
                 [],
 
             lastTime:
-                0,
+                "",
 
             updatedAt:
                 0
@@ -765,6 +917,10 @@ function(sessionId){
     }
 
 
+    // ========================================================
+    // 🛡 POINT ARRAY SAFETY
+    // ========================================================
+
     if(
         !Array.isArray(
             entry.points
@@ -777,11 +933,57 @@ function(sessionId){
     }
 
 
+    // ========================================================
+    // 🕒 LAST TIME SAFETY
+    // --------------------------------------------------------
+    // Firestore stores point.time as ISO string.
+    //
+    // Example:
+    //
+    // "2026-07-25T03:55:37.475Z"
+    //
+    // Preserve the same type so Firestore incremental query:
+    //
+    // where("time", ">", lastTime)
+    //
+    // compares STRING → STRING.
+    // ========================================================
+
     entry.lastTime =
+        String(
+            entry.lastTime || ""
+        )
+        .trim();
+
+
+    // ========================================================
+    // 🕒 UPDATED-AT SAFETY
+    // --------------------------------------------------------
+    // updatedAt is LOCAL cache metadata, therefore numeric
+    // Date.now() is appropriate here.
+    // ========================================================
+
+    entry.updatedAt =
         Number(
-            entry.lastTime || 0
+            entry.updatedAt || 0
         );
 
+
+    if(
+        !Number.isFinite(
+            entry.updatedAt
+        )
+    ){
+
+        entry.updatedAt =
+            0;
+
+    }
+
+
+    // ========================================================
+    // ✅ RETURN CACHE ENTRY
+    // ========================================================
 
     return entry;
 
@@ -799,13 +1001,17 @@ function(sessionId){
 // - different points sharing a timestamp can still survive
 // ============================================================
 
+// ============================================================
+// 🔑 SESSION TRACK POINT DEDUPLICATION KEY
+// ============================================================
+
 window.getSessionTrackPointKey =
 function(point){
 
     return [
 
-        Number(
-            point.time || 0
+        String(
+            point.time || ""
         ),
 
         Number(
@@ -833,6 +1039,18 @@ function(point){
 //   sorted by time
 //
 // Returns the COMPLETE locally-known session route.
+// ============================================================
+
+// ============================================================
+// 🔀 MERGE POINTS INTO SESSION CACHE
+// ------------------------------------------------------------
+// ISO timestamps are preserved.
+//
+// ISO-8601 UTC timestamps such as:
+//
+// 2026-07-25T03:55:37.475Z
+//
+// sort correctly in chronological order.
 // ============================================================
 
 window.mergeSessionTrackCache =
@@ -873,13 +1091,12 @@ function(
     const merged =
         [];
 
-
     const seen =
         new Set();
 
 
     // ========================================================
-    // EXISTING CACHE FIRST
+    // 📦 EXISTING CACHE
     // ========================================================
 
     for(
@@ -922,7 +1139,7 @@ function(
 
 
     // ========================================================
-    // NEW POINTS
+    // ➕ INCOMING POINTS
     // ========================================================
 
     for(
@@ -965,26 +1182,48 @@ function(
 
 
     // ========================================================
-    // SORT CHRONOLOGICALLY
+    // 🕒 CHRONOLOGICAL SORT
     // ========================================================
 
     merged.sort(
         function(a, b){
 
-            return (
-                Number(a.time || 0) -
-                Number(b.time || 0)
-            );
+            const ta =
+                String(
+                    a.time || ""
+                );
+
+            const tb =
+                String(
+                    b.time || ""
+                );
+
+
+            if(
+                ta < tb
+            ){
+                return -1;
+            }
+
+
+            if(
+                ta > tb
+            ){
+                return 1;
+            }
+
+
+            return 0;
 
         }
     );
 
 
     // ========================================================
-    // CALCULATE LATEST KNOWN FIRESTORE TIME
+    // 🕒 LATEST VALID TIME
     // ========================================================
 
-    let lastTime = 0;
+    let lastTime = "";
 
 
     for(
@@ -992,13 +1231,17 @@ function(
     ){
 
         const pointTime =
-            Number(
-                point.time || 0
+            String(
+                point.time || ""
             );
 
 
         if(
-            pointTime > lastTime
+            pointTime &&
+            (
+                !lastTime ||
+                pointTime > lastTime
+            )
         ){
 
             lastTime =
@@ -1010,7 +1253,7 @@ function(
 
 
     // ========================================================
-    // SAVE
+    // 💾 SAVE CACHE
     // ========================================================
 
     entry.points =
@@ -1209,6 +1452,68 @@ function(){
 // - patrolTrackCache remains untouched
 // ============================================================
 
+// ============================================================
+// 🛣 LOAD ONE BULK STAFF TRACK
+// ------------------------------------------------------------
+// CACHE-FIRST + INCREMENTAL FIRESTORE REFRESH
+//
+// FIRESTORE POINT TIME FORMAT:
+//
+//   time = "2026-07-25T03:55:37.475Z"
+//
+// Therefore:
+//
+//   cache.lastTime = ISO STRING
+//
+// and incremental Firestore query is:
+//
+//   where("time", ">", lastTime)
+//
+// ------------------------------------------------------------
+// FIRST LOAD:
+//
+//   Firestore full current session
+//        ↓
+//   sessionTrackCache
+//        ↓
+//   render
+//
+// ------------------------------------------------------------
+// LATER LOAD:
+//
+//   cached route renders immediately
+//        ↓
+//   Firestore fetches only points newer than lastTime
+//        ↓
+//   merge + deduplicate
+//        ↓
+//   update cache
+//        ↓
+//   update polyline
+//
+// ------------------------------------------------------------
+// NEW STAFF / NEW SESSION:
+//
+//   no cache exists
+//        ↓
+//   complete initial Firestore fetch
+//        ↓
+//   cache
+//        ↓
+//   render
+//
+// ------------------------------------------------------------
+// OWNERSHIP SAFETY:
+//
+// - visibleStaffCache remains authorization authority
+// - current user's automatic track is never duplicated
+// - no live listener is created for bulk tracks
+// - staffTracks remains untouched
+// - trackListeners remains untouched
+// - patrolTrackCache remains untouched
+// - bulkStaffTracks owns only bulk polylines
+// ============================================================
+
 window.loadBulkStaffTrack =
 async function(
     staffName,
@@ -1230,12 +1535,17 @@ async function(
         if(
             !name
         ){
+
             return;
+
         }
 
 
         // ====================================================
         // 🛑 REQUEST VALIDATION
+        // ----------------------------------------------------
+        // Bulk may have been switched OFF or another bulk
+        // generation may already have started.
         // ====================================================
 
         if(
@@ -1245,12 +1555,18 @@ async function(
             window.staffTrackState
                 ?.requestId !== requestId
         ){
+
             return;
+
         }
 
 
         // ====================================================
         // 🔐 CURRENT AUTHORIZED / VISIBLE STAFF
+        // ----------------------------------------------------
+        // Cache NEVER determines authorization.
+        //
+        // visibleStaffCache remains authoritative.
         // ====================================================
 
         const staff =
@@ -1262,34 +1578,52 @@ async function(
         if(
             !staff
         ){
+
             return;
+
         }
 
 
         // ====================================================
         // 👤 CURRENT LOGGED-IN USER
         // ----------------------------------------------------
-        // Own automatic track already exists.
-        // Never duplicate it in bulk layer.
+        // Own automatic track already exists in staffTracks.
+        //
+        // Never duplicate current user's track inside the
+        // bulkStaffTrackLayer.
         // ====================================================
 
         const currentUserName =
             cleanName(
-                window.userProfile?.cleanName ||
-                window.userProfile?.name ||
+
+                window.userProfile
+                    ?.cleanName ||
+
+                window.userProfile
+                    ?.name ||
+
                 ""
+
             );
 
 
         if(
-            name === currentUserName
+            name ===
+            currentUserName
         ){
+
             return;
+
         }
 
 
         // ====================================================
         // 🔥 CURRENT DUTY SESSION
+        // ----------------------------------------------------
+        // CACHE IS SESSION-BASED — NOT STAFF-NAME-BASED.
+        //
+        // Therefore a new duty automatically receives a
+        // different cache entry.
         // ====================================================
 
         const sessionId =
@@ -1302,12 +1636,14 @@ async function(
         if(
             !sessionId
         ){
+
             return;
+
         }
 
 
         // ====================================================
-        // 🧠 SESSION CACHE ENTRY
+        // 🧠 GET / CREATE SESSION CACHE
         // ====================================================
 
         const cache =
@@ -1319,28 +1655,35 @@ async function(
         if(
             !cache
         ){
+
             return;
+
         }
 
 
         // ====================================================
-        // 🛰 RENDER HELPER
+        // 🛰 INTERNAL BULK RENDER HELPER
         // ----------------------------------------------------
-        // Renders a complete locally-known route into the
-        // BULK layer only.
+        // Receives COMPLETE locally-known route.
         //
-        // Does NOT:
-        // - touch staffTracks
-        // - touch trackListeners
-        // - touch current user's automatic track
+        // It only creates/updates:
+        //
+        //   window.bulkStaffTracks[name]
+        //
+        // It does NOT touch:
+        //
+        //   staffTracks
+        //   trackListeners
+        //   own automatic track
+        //   individual track ownership
         // ====================================================
 
         const renderBulkTrack =
         function(points){
 
-            // -----------------------------------------------
-            // Request may have become stale
-            // -----------------------------------------------
+            // =================================================
+            // 🛑 REQUEST STILL CURRENT?
+            // =================================================
 
             if(
                 window.staffTrackState
@@ -1349,14 +1692,15 @@ async function(
                 window.staffTrackState
                     ?.requestId !== requestId
             ){
+
                 return false;
+
             }
 
 
-            // -----------------------------------------------
-            // Authorization may also have changed while
-            // Firestore work was happening.
-            // -----------------------------------------------
+            // =================================================
+            // 🔐 STAFF STILL CURRENTLY VISIBLE/AUTHORIZED?
+            // =================================================
 
             const currentStaff =
                 window.visibleStaffCache?.[
@@ -1367,16 +1711,21 @@ async function(
             if(
                 !currentStaff
             ){
+
                 return false;
+
             }
 
 
-            // -----------------------------------------------
-            // Same session still current?
+            // =================================================
+            // 🔥 SAME SESSION STILL ACTIVE?
+            // -------------------------------------------------
+            // Important race-condition protection:
             //
-            // Prevent an old session response from replacing
-            // a newly-started duty session.
-            // -----------------------------------------------
+            // If old Firestore request finishes after staff
+            // starts another duty session, old route must NOT
+            // overwrite the new route.
+            // =================================================
 
             const currentSessionId =
                 String(
@@ -1389,21 +1738,34 @@ async function(
                 currentSessionId !==
                 sessionId
             ){
+
                 return false;
+
             }
 
+
+            // =================================================
+            // 📍 POINT SAFETY
+            // =================================================
 
             if(
-                !Array.isArray(points) ||
+                !Array.isArray(
+                    points
+                ) ||
+
                 points.length === 0
             ){
+
                 return false;
+
             }
 
 
-            // -----------------------------------------------
-            // Existing track cleaner remains unchanged.
-            // -----------------------------------------------
+            // =================================================
+            // 🧹 EXISTING TRACK CLEANER
+            // -------------------------------------------------
+            // Keep existing cleaner behavior unchanged.
+            // =================================================
 
             const cleaned =
                 cleanTrackPoints(
@@ -1412,8 +1774,11 @@ async function(
                         function(p){
 
                             return [
+
                                 p.lat,
+
                                 p.lon
+
                             ];
 
                         }
@@ -1423,22 +1788,31 @@ async function(
 
 
             if(
-                !Array.isArray(cleaned) ||
+                !Array.isArray(
+                    cleaned
+                ) ||
+
                 cleaned.length === 0
             ){
+
                 return false;
+
             }
 
 
-            // -----------------------------------------------
-            // CREATE / UPDATE BULK POLYLINE
-            // -----------------------------------------------
+            // =================================================
+            // 🛰 EXISTING BULK POLYLINE
+            // =================================================
 
             let polyline =
                 window.bulkStaffTracks?.[
                     name
                 ];
 
+
+            // =================================================
+            // 🆕 CREATE POLYLINE
+            // =================================================
 
             if(
                 !polyline
@@ -1450,6 +1824,7 @@ async function(
                         cleaned,
 
                         {
+
                             color:
                                 getUserColor(
                                     name
@@ -1469,6 +1844,7 @@ async function(
 
                             lineJoin:
                                 "round"
+
                         }
 
                     )
@@ -1483,6 +1859,11 @@ async function(
                     polyline;
 
             }
+
+
+            // =================================================
+            // 🔄 UPDATE EXISTING POLYLINE
+            // =================================================
 
             else {
 
@@ -1501,8 +1882,17 @@ async function(
         // ====================================================
         // ⚡ PHASE 1 — CACHE-FIRST RENDER
         // ----------------------------------------------------
-        // This is what makes second/subsequent Staff Tracks
-        // toggles feel immediate.
+        // THIS gives fast second/subsequent Staff Tracks ON.
+        //
+        // Example:
+        //
+        // Cache contains UPEN 346 points
+        //
+        // Staff Tracks ON
+        //       ↓
+        // 346 points render immediately
+        //       ↓
+        // Firestore refresh happens afterward
         // ====================================================
 
         const cachedPoints =
@@ -1528,10 +1918,15 @@ async function(
             ){
 
                 console.log(
+
                     "⚡ BULK CACHE:",
+
                     name,
+
                     cachedPoints.length,
+
                     "points"
+
                 );
 
             }
@@ -1540,7 +1935,7 @@ async function(
 
 
         // ====================================================
-        // 🛑 CHECK AGAIN BEFORE NETWORK REQUEST
+        // 🛑 CHECK AGAIN BEFORE FIRESTORE
         // ====================================================
 
         if(
@@ -1550,7 +1945,9 @@ async function(
             window.staffTrackState
                 ?.requestId !== requestId
         ){
+
             return;
+
         }
 
 
@@ -1559,22 +1956,30 @@ async function(
         // ====================================================
 
         const {
+
             collection,
+
             query,
+
             orderBy,
+
             where,
+
             getDocs
+
         } =
             window.fb;
 
 
         if(
-            typeof getDocs !== "function"
+            typeof getDocs !==
+            "function"
         ){
 
             console.warn(
                 "⚠ Firestore getDocs unavailable"
             );
+
 
             return;
 
@@ -1582,40 +1987,62 @@ async function(
 
 
         // ====================================================
-        // 📍 POINT COLLECTION
+        // 📍 FIRESTORE POINT COLLECTION
         // ====================================================
 
         const collectionRef =
             collection(
+
                 window.db,
+
                 "patrol_tracks",
+
                 sessionId,
+
                 "points"
+
             );
+
+
+        // ====================================================
+        // 🕒 LAST CACHED FIRESTORE TIME
+        // ----------------------------------------------------
+        // IMPORTANT:
+        //
+        // Firestore stores:
+        //
+        // time = ISO STRING
+        //
+        // Example:
+        //
+        // "2026-07-25T03:55:37.475Z"
+        //
+        // Therefore DO NOT use Number().
+        // ====================================================
+
+        const lastTime =
+            String(
+                cache.lastTime || ""
+            )
+            .trim();
 
 
         // ====================================================
         // 🔎 INITIAL VS INCREMENTAL QUERY
         // ====================================================
 
-        const lastTime =
-            Number(
-                cache.lastTime || 0
-            );
-
-
         let pointsRef;
 
 
-        if(
-            lastTime > 0 &&
-            typeof where === "function"
-        ){
+        // ====================================================
+        // 🔄 CACHE EXISTS → ONLY FETCH NEWER POINTS
+        // ====================================================
 
-            // -----------------------------------------------
-            // CACHE EXISTS:
-            // fetch only points newer than latest cached time
-            // -----------------------------------------------
+        if(
+            lastTime &&
+            typeof where ===
+                "function"
+        ){
 
             pointsRef =
                 query(
@@ -1623,9 +2050,13 @@ async function(
                     collectionRef,
 
                     where(
+
                         "time",
+
                         ">",
+
                         lastTime
+
                     ),
 
                     orderBy(
@@ -1636,20 +2067,25 @@ async function(
 
 
             console.log(
+
                 "🔄 BULK REFRESH:",
+
                 name,
+
                 "after",
+
                 lastTime
+
             );
 
         }
 
-        else {
 
-            // -----------------------------------------------
-            // FIRST LOAD:
-            // fetch complete current session
-            // -----------------------------------------------
+        // ====================================================
+        // 📥 NO CACHE TIME → INITIAL FULL SESSION FETCH
+        // ====================================================
+
+        else {
 
             pointsRef =
                 query(
@@ -1664,8 +2100,11 @@ async function(
 
 
             console.log(
+
                 "📥 BULK INITIAL:",
+
                 name
+
             );
 
         }
@@ -1692,18 +2131,21 @@ async function(
             window.staffTrackState
                 ?.requestId !== requestId
         ){
+
             return;
+
         }
 
 
         // ====================================================
-        // 🔐 RECHECK CURRENT STAFF + SESSION
+        // 🔐 RECHECK STAFF AFTER ASYNC READ
         // ----------------------------------------------------
         // Handles:
+        //
         // - staff disappearing
         // - authorization change
         // - duty ending
-        // - new session starting during fetch
+        // - new duty starting
         // ====================================================
 
         const currentStaff =
@@ -1715,9 +2157,15 @@ async function(
         if(
             !currentStaff
         ){
+
             return;
+
         }
 
+
+        // ====================================================
+        // 🔥 RECHECK SESSION
+        // ====================================================
 
         const currentSessionId =
             String(
@@ -1732,9 +2180,19 @@ async function(
         ){
 
             console.log(
+
                 "⛔ BULK SESSION CHANGED:",
-                name
+
+                name,
+
+                sessionId,
+
+                "→",
+
+                currentSessionId
+
             );
+
 
             return;
 
@@ -1742,7 +2200,7 @@ async function(
 
 
         // ====================================================
-        // 📍 COLLECT NEW FIRESTORE POINTS
+        // 📍 COLLECT FIRESTORE POINTS
         // ====================================================
 
         const incomingPoints =
@@ -1759,20 +2217,33 @@ async function(
                 if(
                     !p
                 ){
+
                     return;
+
                 }
 
 
+                // =============================================
+                // 🔧 NORMALIZE
+                // ---------------------------------------------
+                // normalizeSessionTrackPoint preserves:
+                //
+                // time = ISO string
+                // =============================================
+
                 const normalized =
-                    window.normalizeSessionTrackPoint(
-                        p
-                    );
+                    window
+                        .normalizeSessionTrackPoint(
+                            p
+                        );
 
 
                 if(
                     !normalized
                 ){
+
                     return;
+
                 }
 
 
@@ -1785,30 +2256,59 @@ async function(
 
 
         // ====================================================
-        // 🧠 MERGE INTO SESSION CACHE
-        // ----------------------------------------------------
-        // Handles duplicate boundary points safely.
+        // 🧠 COMPLETE LOCALLY-KNOWN ROUTE
         // ====================================================
 
         let completePoints =
             cachedPoints;
 
 
+        // ====================================================
+        // ➕ FIRESTORE RETURNED POINTS
+        // ----------------------------------------------------
+        // FIRST LOAD:
+        //
+        // incomingPoints = complete session
+        //
+        // SUBSEQUENT LOAD:
+        //
+        // incomingPoints = only newer points
+        //
+        // mergeSessionTrackCache:
+        //
+        // - preserves existing cache
+        // - adds new points
+        // - deduplicates
+        // - sorts chronologically
+        // - updates ISO lastTime
+        // ====================================================
+
         if(
             incomingPoints.length > 0
         ){
 
             completePoints =
-                window.mergeSessionTrackCache(
-                    sessionId,
-                    incomingPoints
-                );
+                window
+                    .mergeSessionTrackCache(
 
+                        sessionId,
+
+                        incomingPoints
+
+                    );
+
+
+            // =================================================
+            // 📋 DEBUG
+            // =================================================
 
             console.log(
-                lastTime > 0
-                    ? "➕ BULK NEW POINTS:"
-                    : "💾 BULK CACHE CREATED:",
+
+                lastTime
+                    ?
+                    "➕ BULK NEW POINTS:"
+                    :
+                    "💾 BULK CACHE CREATED:",
 
                 name,
 
@@ -1819,30 +2319,44 @@ async function(
                 completePoints.length,
 
                 "total"
+
             );
 
         }
 
+
+        // ====================================================
+        // ✅ NO NEW FIRESTORE POINTS
+        // ----------------------------------------------------
+        // Existing cache remains authoritative locally.
+        // ====================================================
+
         else {
 
-            // Cache already exists and Firestore had nothing
-            // newer. Keep existing complete route.
-
             completePoints =
-                window.getSessionTrackCache(
-                    sessionId
-                )?.points || [];
+                window
+                    .getSessionTrackCache(
+                        sessionId
+                    )
+                    ?.points ||
+
+                [];
 
 
             if(
-                lastTime > 0
+                lastTime
             ){
 
                 console.log(
+
                     "✅ BULK CACHE CURRENT:",
+
                     name,
+
                     completePoints.length,
+
                     "points"
+
                 );
 
             }
@@ -1853,12 +2367,14 @@ async function(
         // ====================================================
         // 🛰 FINAL RENDER / UPDATE
         // ----------------------------------------------------
-        // FIRST LOAD:
-        //   creates track after Firestore fetch.
+        // INITIAL:
         //
-        // CACHE LOAD:
-        //   updates existing immediately-rendered polyline only
-        //   if newer points were found.
+        // Firestore → cache → create polyline
+        //
+        // CACHE HIT:
+        //
+        // cached polyline already appeared immediately;
+        // this updates it if new points arrived.
         // ====================================================
 
         if(
@@ -1872,22 +2388,47 @@ async function(
         }
 
 
+        // ====================================================
+        // 📋 FINAL DEBUG
+        // ====================================================
+
+        const finalCache =
+            window.peekSessionTrackCache?.(
+                sessionId
+            );
+
+
         console.log(
+
             "🛣 BULK TRACK:",
+
             name,
+
             completePoints.length,
-            "points"
+
+            "points | lastTime:",
+
+            finalCache?.lastTime || ""
+
         );
 
     }
 
 
+    // ========================================================
+    // ❌ ERROR SAFETY
+    // ========================================================
+
     catch(err){
 
         console.error(
+
             "❌ loadBulkStaffTrack failed:",
+
             staffName,
+
             err
+
         );
 
     }
