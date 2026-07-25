@@ -2479,38 +2479,62 @@ function(
                         {};
 
 
-                    found = {
+found = {
 
-                        feature:
-                            feature,
+    feature:
+        feature,
 
-                        village:
-                            p.villageNameEnglish ||
-                            p.village ||
-                            p.Village ||
-                            p.VILLAGE ||
-                            p.name ||
-                            p.NAME ||
-                            "",
 
-                        villageCode:
-                            p.villageCode ||
-                            p.Vill_LGD ||
-                            p.VILL_LGD ||
-                            p.lgdCode ||
-                            "",
+    /* ==========================================
+       🏡 VILLAGE NAME
+       Official Village Boundary GeoJSON:
+       Vill_name
+    ========================================== */
 
-                        block:
-                            p.block ||
-                            p.Block ||
-                            p.BLOCK ||
-                            p.subdistrictNameEnglish ||
-                            "",
+    village:
+        p.Vill_name ||
+        p.villageNameEnglish ||
+        p.village ||
+        p.Village ||
+        p.VILLAGE ||
+        p.name ||
+        p.NAME ||
+        "",
 
-                        properties:
-                            p
 
-                    };
+    /* ==========================================
+       🔢 LGD VILLAGE CODE
+    ========================================== */
+
+    villageCode:
+        p.Vill_LGD ||
+        p.villageCode ||
+        p.VILL_LGD ||
+        p.lgdCode ||
+        "",
+
+
+    /* ==========================================
+       🗺 BLOCK / SUB-DISTRICT
+    ========================================== */
+
+    block:
+        p.Sub_dist ||
+        p.block ||
+        p.Block ||
+        p.BLOCK ||
+        p.subdistrictNameEnglish ||
+        "",
+
+
+    /* ==========================================
+       RAW PROPERTIES
+    ========================================== */
+
+    properties:
+        p
+
+};
 
                 }
 
