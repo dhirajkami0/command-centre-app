@@ -620,6 +620,420 @@ function(){
     );
 
 };
+
+    // ============================================================
+// 🛰 LOAD ONE BULK STAFF TRACK
+// ------------------------------------------------------------
+// PURPOSE:
+//
+// Loads ONE authorized staff track into:
+//
+//     bulkStaffTrackLayer
+//     bulkStaffTracks
+//
+// IMPORTANT:
+//
+// - Does NOT use staffTracks
+// - Does NOT use trackListeners
+// - Does NOT change selectedStaff
+// - Does NOT create realtime listener
+// - Skips current user's automatic track
+// - Respects visibleStaffCache authorization
+// ============================================================
+
+window.loadBulkStaffTrack =
+async function(
+    staffName,
+    requestId
+){
+
+    try {
+
+        // ====================================================
+        // 🔧 NORMALIZE
+        // ====================================================
+
+        const name =
+            cleanName(
+                staffName || ""
+            );
+
+
+        if(
+            !name
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🛑 BULK REQUEST STILL VALID?
+        // ====================================================
+
+        if(
+            window.staffTrackState
+                ?.bulkEnabled !== true ||
+            window.staffTrackState
+                ?.requestId !== requestId
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🔐 AUTHORIZED STAFF ONLY
+        // ====================================================
+
+        const staff =
+            window.visibleStaffCache?.[
+                name
+            ];
+
+
+        if(
+            !staff
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 👤 CURRENT USER
+        // ----------------------------------------------------
+        // Own automatic track already exists.
+        // Never duplicate it in bulk layer.
+        // ====================================================
+
+        const currentUserName =
+            cleanName(
+                window.userProfile?.cleanName ||
+                window.userProfile?.name ||
+                ""
+            );
+
+
+        if(
+            name ===
+            currentUserName
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🔥 SESSION
+        // ====================================================
+
+        const sessionId =
+            String(
+                staff.sessionId || ""
+            )
+            .trim();
+
+
+        if(
+            !sessionId
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🔥 FIRESTORE FUNCTIONS
+        // ====================================================
+
+        const {
+            collection,
+            query,
+            orderBy,
+            getDocs
+        } =
+            window.fb;
+
+
+        if(
+            typeof getDocs !==
+            "function"
+        ){
+
+            console.warn(
+                "⚠ Firestore getDocs unavailable"
+            );
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 📍 POINT QUERY
+        // ====================================================
+
+        const pointsRef =
+            query(
+
+                collection(
+                    window.db,
+                    "patrol_tracks",
+                    sessionId,
+                    "points"
+                ),
+
+                orderBy(
+                    "time"
+                )
+
+            );
+
+
+        // ====================================================
+        // 📥 ONE-TIME READ
+        // ====================================================
+
+        const pointSnap =
+            await getDocs(
+                pointsRef
+            );
+
+
+        // ====================================================
+        // 🛑 REQUEST MAY HAVE BEEN CANCELLED WHILE AWAITING
+        // ====================================================
+
+        if(
+            window.staffTrackState
+                ?.bulkEnabled !== true ||
+            window.staffTrackState
+                ?.requestId !== requestId
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 📍 COLLECT POINTS
+        // ====================================================
+
+        const points =
+            [];
+
+
+        pointSnap.forEach(
+            function(doc){
+
+                const p =
+                    doc.data();
+
+
+                if(
+                    !p
+                ){
+
+                    return;
+
+                }
+
+
+                const lat =
+                    Number(
+                        p.lat
+                    );
+
+                const lon =
+                    Number(
+                        p.lon
+                    );
+
+
+                if(
+                    !Number.isFinite(lat) ||
+                    !Number.isFinite(lon)
+                ){
+
+                    return;
+
+                }
+
+
+                points.push({
+
+                    lat:
+                        lat,
+
+                    lon:
+                        lon,
+
+                    time:
+                        Number(
+                            p.time || 0
+                        ),
+
+                    breakTrack:
+                        p.breakTrack ===
+                        true
+
+                });
+
+            }
+        );
+
+
+        if(
+            points.length ===
+            0
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🧹 SAME CLEANING AS INDIVIDUAL TRACK
+        // ====================================================
+
+        const cleaned =
+            cleanTrackPoints(
+
+                points.map(
+                    function(p){
+
+                        return [
+                            p.lat,
+                            p.lon
+                        ];
+
+                    }
+                )
+
+            );
+
+
+        if(
+            !Array.isArray(
+                cleaned
+            ) ||
+            cleaned.length ===
+            0
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🛑 FINAL CANCELLATION CHECK
+        // ====================================================
+
+        if(
+            window.staffTrackState
+                ?.bulkEnabled !== true ||
+            window.staffTrackState
+                ?.requestId !== requestId
+        ){
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🛰 CREATE BULK POLYLINE
+        // ====================================================
+
+        let polyline =
+            window.bulkStaffTracks?.[
+                name
+            ];
+
+
+        if(
+            !polyline
+        ){
+
+            polyline =
+                L.polyline(
+
+                    cleaned,
+
+                    {
+                        color:
+                            getUserColor(
+                                name
+                            ),
+
+                        weight:
+                            2.5,
+
+                        opacity:
+                            0.80,
+
+                        smoothFactor:
+                            0,
+
+                        lineCap:
+                            "round",
+
+                        lineJoin:
+                            "round"
+                    }
+
+                )
+                .addTo(
+                    window.bulkStaffTrackLayer
+                );
+
+
+            window.bulkStaffTracks[
+                name
+            ] =
+                polyline;
+
+        }
+
+        else {
+
+            polyline.setLatLngs(
+                cleaned
+            );
+
+        }
+
+
+        console.log(
+            "🛣 BULK TRACK:",
+            name,
+            cleaned.length,
+            "points"
+        );
+
+    }
+
+
+    catch(err){
+
+        console.error(
+            "❌ loadBulkStaffTrack failed:",
+            staffName,
+            err
+        );
+
+    }
+
+};
     // ============================================================
 // 🧹 CLEAR SELECTED INDIVIDUAL STAFF TRACK
 // ------------------------------------------------------------
