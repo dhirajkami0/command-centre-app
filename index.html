@@ -32037,27 +32037,43 @@ for(const s of staff){
       continue;
     }
 // ==============================================
-// ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
 // ==============================================
+// ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
+// --------------------------------------------------
+// loadStaff() has already decided:
+// - dutyActive
+// - visibility
+// - emergency/global access
+// - valid GPS
+//
+// Therefore here we ONLY decide whether this staff
+// is the logged-in user whose track auto-loads.
+// ==============================================
+
 const currentUserName =
-  String(
-    window.currentUserProfile?.cleanName ||
-    window.currentUserProfile?.name ||
-    ""
-  ).trim()
-   .toUpperCase();
+    cleanName(
+        window.userProfile?.cleanName ||
+        window.userProfile?.name ||
+        ""
+    );
+
 
 const staffName =
-  String(
-    s.cleanName || ""
-  ).trim()
-   .toUpperCase();
+    cleanName(
+        s.cleanName ||
+        s.name ||
+        ""
+    );
+
 
 if(
-  !currentUserName ||
-  staffName !== currentUserName
+    !currentUserName ||
+    !staffName ||
+    staffName !== currentUserName
 ){
-  continue;
+
+    continue;
+
 }
     // ==============================================
     // 🔥 SAME SESSION
