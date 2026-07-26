@@ -300,174 +300,243 @@ CONFIG: {
            that was already proven to work.
         ==================================================== */
 
+        /* ====================================================
+           INITIALIZE UI CONTROLLER
+
+           ADMIN-ONLY OFFENCE UI
+
+           IMPORTANT:
+           - Safe to call repeatedly.
+           - Does not permanently initialize before profile
+             availability.
+           - Repairs missing DOM automatically.
+           - Does not rebuild SpatialEngine here.
+        ==================================================== */
+
         init:
             function () {
 
-
-                /* ============================================
-                   ALREADY INITIALIZED
-                ============================================ */
-
-                if (
-                    UIController.initialized ===
-                    true
-                ) {
-
-
-                    UIController
-                        .refreshElementReferences();
-
-
-                    return true;
-
-
-                }
-
-
-
-                /* ============================================
-                   MARK INITIALIZED
-                ============================================ */
-
-                UIController.initialized =
-                    true;
-
-
-
                 try {
 
+                    // =========================================
+                    // RESOLVE CURRENT ROLE
+                    // =========================================
 
-                    /* ========================================
-                       INJECT CONTROLLER CSS
-                    ======================================== */
+                    const offenceUserRole =
+                        String(
+                            window.userProfile?.role ||
+                            window.currentRole ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    // =========================================
+                    // NON-ADMIN
+                    //
+                    // Do NOT lock initialized=true here.
+                    // Profile may still be loading.
+                    // =========================================
+
+                    if (
+                        offenceUserRole !==
+                        "ADMIN"
+                    ) {
+
+                        UIController
+                            .refreshElementReferences?.();
+
+
+                        console.log(
+                            "🔒 Offence UI waiting/hidden — ADMIN only",
+                            offenceUserRole ||
+                            "ROLE NOT READY"
+                        );
+
+
+                        return false;
+
+                    }
+
+
+                    // =========================================
+                    // ADMIN CONFIRMED
+                    // =========================================
+
+                    console.log(
+                        "🔓 Offence UI ADMIN confirmed"
+                    );
+
+
+                    // =========================================
+                    // INJECT CSS
+                    // =========================================
 
                     UIController
                         .injectStyles();
 
 
+                    // =========================================
+                    // CHECK CURRENT DOM
+                    // =========================================
 
-                    /* ========================================
-                       REMOVE OLD / DUPLICATE OFFENCE UI
-
-                       This removes UI elements only.
-
-                       It does NOT remove:
-
-                       - Store
-                       - SpatialEngine
-                       - SpatialRenderer
-                       - spatial indexes
-                    ======================================== */
-
-                    UIController
-                        .removeLegacyUI();
+                    let mainButton =
+                        document.getElementById(
+                            UIController
+                                .CONFIG
+                                .BUTTON_ID
+                        );
 
 
-
-/* ========================================
-   🔐 OFFENCE UI — ADMIN ONLY
-======================================== */
-
-const offenceUserRole =
-    String(
-        window.userProfile?.role || ""
-    )
-    .trim()
-    .toUpperCase();
+                    let panel =
+                        document.getElementById(
+                            UIController
+                                .CONFIG
+                                .PANEL_ID
+                        );
 
 
-if(
-    offenceUserRole === "ADMIN"
-){
+                    // =========================================
+                    // REPAIR / CREATE UI WHEN MISSING
+                    // =========================================
 
-    /* ------------------------------------
-       CREATE OFFENCE BUTTON
-    ------------------------------------ */
+                    if (
+                        !mainButton ||
+                        !panel
+                    ) {
 
-    UIController
-        .createMainButton();
-
-
-    /* ------------------------------------
-       CREATE OFFENCE PANEL
-    ------------------------------------ */
-
-    UIController
-        .createPanel();
-
-}
-else {
-
-    console.log(
-        "🔒 Offence UI hidden — ADMIN only",
-        offenceUserRole
-    );
-
-}
+                        console.log(
+                            "🛠 Creating/repairing Offence UI"
+                        );
 
 
-                    /* ========================================
-                       GET DOM REFERENCES
-                    ======================================== */
+                        // -------------------------------------
+                        // REMOVE OLD DUPLICATE UI
+                        // -------------------------------------
+
+                        UIController
+                            .removeLegacyUI();
+
+
+                        // -------------------------------------
+                        // CREATE MAIN BUTTON
+                        // -------------------------------------
+
+                        UIController
+                            .createMainButton();
+
+
+                        // -------------------------------------
+                        // CREATE PANEL
+                        // -------------------------------------
+
+                        UIController
+                            .createPanel();
+
+
+                        // -------------------------------------
+                        // RECHECK DOM
+                        // -------------------------------------
+
+                        mainButton =
+                            document.getElementById(
+                                UIController
+                                    .CONFIG
+                                    .BUTTON_ID
+                            );
+
+
+                        panel =
+                            document.getElementById(
+                                UIController
+                                    .CONFIG
+                                    .PANEL_ID
+                            );
+
+                    }
+
+
+                    // =========================================
+                    // VERIFY CREATION
+                    // =========================================
+
+                    if (
+                        !mainButton ||
+                        !panel
+                    ) {
+
+                        throw new Error(
+                            "Offence UI DOM creation failed"
+                        );
+
+                    }
+
+
+                    // =========================================
+                    // REFRESH REFERENCES
+                    // =========================================
 
                     UIController
                         .refreshElementReferences();
 
 
-
-                    /* ========================================
-                       BIND BUTTON EVENTS
-                    ======================================== */
+                    // =========================================
+                    // BIND EVENTS
+                    // =========================================
 
                     UIController
                         .bindEvents();
 
 
-
-                    /* ========================================
-                       INITIAL STATUS
-                    ======================================== */
+                    // =========================================
+                    // INITIAL STATUS
+                    // =========================================
 
                     UIController
                         .updateStatus(
-
                             "Offence spatial analysis ready.",
-
                             "ready"
-
                         );
 
 
+                    // =========================================
+                    // ONLY NOW MARK INITIALIZED + READY
+                    // =========================================
 
-                    /* ========================================
-                       READY
-                    ======================================== */
+                    UIController.initialized =
+                        true;
+
 
                     UIController.ready =
                         true;
 
 
+                    UIController.lastError =
+                        null;
+
 
                     console.log(
-
                         "🚨 OffenceUIController Ready",
-
                         UIController
                             .getStats?.()
-
                     );
-
 
 
                     return true;
 
-
                 }
-
 
                 catch (
                     error
                 ) {
+
+                    // =========================================
+                    // FAILURE MUST REMAIN RETRYABLE
+                    // =========================================
+
+                    UIController.initialized =
+                        false;
 
 
                     UIController.ready =
@@ -478,22 +547,15 @@ else {
                         error;
 
 
-
                     console.error(
-
                         "❌ OffenceUIController initialization failed:",
-
                         error
-
                     );
-
 
 
                     return false;
 
-
                 }
-
 
             },
 
