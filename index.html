@@ -39748,309 +39748,732 @@ async function submitSightingForm(event){
       {};
 
 
+       // =====================================================
+    // GIS HIERARCHY — ROBUST RESOLUTION
     // =====================================================
-    // GIS HIERARCHY
-    // =====================================================
-
-    const resolvedDivision =
-      String(
-        masterProperties.division ||
-        spatialCompartment?.division ||
-        compartmentProperties.division ||
-        ""
-      ).trim();
-
-
-    const resolvedRange =
-      String(
-        masterProperties.range ||
-        spatialCompartment?.range ||
-        compartmentProperties.range ||
-        ""
-      ).trim();
-
-
-    const resolvedBeat =
-      String(
-        masterProperties.beat ||
-        spatialCompartment?.beat ||
-        compartmentProperties.beat ||
-        beat ||
-        ""
-      ).trim();
-
-
-    const resolvedCompartment =
-      String(
-        spatialCompartment?.compartment ||
-        compartmentProperties.compartment ||
-        compartmentProperties.name ||
-        ""
-      ).trim();
-
-
-    // =====================================================
-    // GIS IDS
+    //
+    // DO NOT change the rest of submitSightingForm().
+    //
+    // Resolution priority:
+    //
+    // 1. GPS matched master GIS
+    // 2. GPS matched compartment
+    // 3. Selected compartment -> allCompartmentFeatures
+    // 4. Selected beat -> allGISFeatures
+    // 5. Existing form beat / compartment
+    //
+    // This prevents Firestore submission from receiving
+    // blank division/range when the GIS data is already
+    // available elsewhere in the loaded GIS datasets.
     // =====================================================
 
-    const resolvedSID =
-      String(
-        masterProperties.SID ||
-        compartmentProperties.SID ||
-        ""
-      ).trim();
+
+    const cleanGISValue =
+      value =>
+        String(
+          value ?? ""
+        ).trim();
 
 
-    const resolvedDID =
-      String(
-        masterProperties.DID ||
-        compartmentProperties.DID ||
-        ""
-      ).trim();
-
-
-    const resolvedRID =
-      String(
-        masterProperties.RID ||
-        compartmentProperties.RID ||
-        ""
-      ).trim();
-
-
-    const resolvedBID =
-      String(
-        masterProperties.BID ||
-        compartmentProperties.BID ||
-        ""
-      ).trim();
-
-
-    // =====================================================
-    // OFFICIAL VILLAGE PROPERTIES
-    // =====================================================
-
-    const officialVillageProperties =
-      officialVillageFeature
-        ?.properties ||
-      {};
-
-
-    const officialVillageName =
-      String(
-
-        officialVillageProperties
-          .Village_Name ||
-
-        officialVillageProperties
-          .Vill_name ||
-
-        officialVillageProperties
-          .Vill_Name ||
-
-        officialVillageProperties
-          .villageName ||
-
-        officialVillageProperties
-          .village_name ||
-
-        officialVillageProperties
-          .NAME ||
-
-        officialVillageProperties
-          .Name ||
-
-        officialVillageProperties
-          .name ||
-
-        ""
-
-      ).trim();
-
-
-    const officialVillageCode =
-      String(
-
-        officialVillageProperties
-          .Vill_LGD ||
-
-        officialVillageProperties
-          .Village_Code ||
-
-        officialVillageProperties
-          .VillageCode ||
-
-        officialVillageProperties
-          .villageCode ||
-
-        officialVillageProperties
-          .village_code ||
-
-        officialVillageProperties
-          .LGD_CODE ||
-
-        officialVillageProperties
-          .lgd_code ||
-
-        ""
-
-      ).trim();
-
-
-    const officialVillageDistrict =
-      String(
-
-        officialVillageProperties
-          .districtNameEnglish ||
-
-        officialVillageProperties
-          .district ||
-
-        officialVillageProperties
-          .District ||
-
-        ""
-
-      ).trim();
-
-
-    const officialVillageSubdistrict =
-      String(
-
-        officialVillageProperties
-          .subdistrictNameEnglish ||
-
-        officialVillageProperties
-          .subdistrict ||
-
-        officialVillageProperties
-          .Subdistrict ||
-
-        officialVillageProperties
-          .block ||
-
-        officialVillageProperties
-          .Block ||
-
-        ""
-
-      ).trim();
-
-
-    const officialVillagePincode =
-      String(
-
-        officialVillageProperties
-          .pincode ||
-
-        officialVillageProperties
-          .PINCODE ||
-
-        officialVillageProperties
-          .Pincode ||
-
-        ""
-
-      ).trim();
-
-
-    // =====================================================
-    // NEAREST NAMED LOCATION
-    // =====================================================
-
-    const nearestVillageName =
-      String(
-        nearestVillage?.village ||
-        nearestVillage?.name ||
-        nearestVillage?.cleanName ||
-        ""
-      ).trim();
-
-
-    const nearestVillageDistance =
-      Number.isFinite(
-        Number(
-          nearestVillage?.distanceMeters
+    const normalizeGISKey =
+      value =>
+        cleanGISValue(
+          value
         )
-      )
-        ? Number(
-            nearestVillage.distanceMeters
-          )
-        : null;
-
-
-    const nearestVillageDistanceKm =
-      Number.isFinite(
-        Number(
-          nearestVillage?.distanceKm
-        )
-      )
-        ? Number(
-            nearestVillage.distanceKm
-          )
-        : null;
-
-
-    const nearestVillageRisk =
-      String(
-        nearestVillage?.riskLevel ||
-        ""
-      ).trim();
-
-
-    const nearestVillageConflictHistory =
-      Number.isFinite(
-        Number(
-          nearestVillage?.conflictHistory
-        )
-      )
-        ? Number(
-            nearestVillage.conflictHistory
-          )
-        : 0;
-
-
-    const nearestVillagePhone =
-      String(
-        nearestVillage?.phone ||
-        ""
-      ).trim();
-
-
-    const nearestVillageWhatsapp =
-      String(
-        nearestVillage?.whatsappLink ||
-        ""
-      ).trim();
+          .toUpperCase()
+          .replace(
+            /[^A-Z0-9]/g,
+            ""
+          );
 
 
     // =====================================================
-    // POPUP-READY LOCATION
+    // SAFE PROPERTY READER
     // =====================================================
 
-    let resolvedLocationText =
-      location;
+    function getGISValue(
+      properties,
+      ...keys
+    ){
+
+      if(
+        !properties ||
+        typeof properties !==
+          "object"
+      ){
+
+        return "";
+
+      }
+
+
+      // -----------------------------------------------
+      // Exact property-name match first
+      // -----------------------------------------------
+
+      for(
+        const key of keys
+      ){
+
+        const value =
+          properties[key];
+
+
+        if(
+          value !== undefined &&
+          value !== null &&
+          cleanGISValue(
+            value
+          ) !== ""
+        ){
+
+          return cleanGISValue(
+            value
+          );
+
+        }
+
+      }
+
+
+      // -----------------------------------------------
+      // Case-insensitive property-name match
+      // -----------------------------------------------
+
+      const actualKeys =
+        Object.keys(
+          properties
+        );
+
+
+      for(
+        const wantedKey of keys
+      ){
+
+        const wanted =
+          String(
+            wantedKey
+          ).toLowerCase();
+
+
+        const actualKey =
+          actualKeys.find(
+            key =>
+              String(
+                key
+              ).toLowerCase() ===
+              wanted
+          );
+
+
+        if(
+          actualKey
+        ){
+
+          const value =
+            properties[
+              actualKey
+            ];
+
+
+          if(
+            value !== undefined &&
+            value !== null &&
+            cleanGISValue(
+              value
+            ) !== ""
+          ){
+
+            return cleanGISValue(
+              value
+            );
+
+          }
+
+        }
+
+      }
+
+
+      return "";
+
+    }
+
+
+    // =====================================================
+    // NORMALIZE FEATURE PROPERTIES
+    // =====================================================
+
+    function getGISProperties(
+      feature
+    ){
+
+      return (
+
+        feature
+          ?.properties ||
+
+        feature
+          ?.feature
+          ?.properties ||
+
+        {}
+
+      );
+
+    }
+
+
+    // =====================================================
+    // INITIAL VALUES FROM GPS RESOLUTION
+    // =====================================================
+
+    let resolvedDivision =
+      cleanGISValue(
+
+        getGISValue(
+          masterProperties,
+          "division",
+          "Division",
+          "DIVISION",
+          "division_name",
+          "divisionName"
+        ) ||
+
+        spatialCompartment
+          ?.division ||
+
+        getGISValue(
+          compartmentProperties,
+          "division",
+          "Division",
+          "DIVISION",
+          "division_name",
+          "divisionName"
+        )
+
+      );
+
+
+    let resolvedRange =
+      cleanGISValue(
+
+        getGISValue(
+          masterProperties,
+          "range",
+          "Range",
+          "RANGE",
+          "range_name",
+          "rangeName"
+        ) ||
+
+        spatialCompartment
+          ?.range ||
+
+        getGISValue(
+          compartmentProperties,
+          "range",
+          "Range",
+          "RANGE",
+          "range_name",
+          "rangeName"
+        )
+
+      );
+
+
+    let resolvedBeat =
+      cleanGISValue(
+
+        getGISValue(
+          masterProperties,
+          "beat",
+          "Beat",
+          "BEAT",
+          "beat_name",
+          "beatName"
+        ) ||
+
+        spatialCompartment
+          ?.beat ||
+
+        getGISValue(
+          compartmentProperties,
+          "beat",
+          "Beat",
+          "BEAT",
+          "beat_name",
+          "beatName"
+        ) ||
+
+        beat
+
+      );
+
+
+    let resolvedCompartment =
+      cleanGISValue(
+
+        spatialCompartment
+          ?.compartment ||
+
+        getGISValue(
+          compartmentProperties,
+          "compartment",
+          "Compartment",
+          "COMPARTMENT",
+          "compt",
+          "name",
+          "Name",
+          "NAME"
+        ) ||
+
+        compt
+
+      );
+
+
+    // =====================================================
+    // SELECTED COMPARTMENT FALLBACK
+    //
+    // GPS polygon lookup can occasionally miss because of:
+    //
+    // - polygon boundaries
+    // - coordinate precision
+    // - incomplete parent properties
+    // - GIS loading timing
+    //
+    // The user already selected a valid compartment.
+    // Find that compartment in the authoritative loaded
+    // compartment dataset and recover its hierarchy.
+    // =====================================================
+
+    let selectedCompartmentFeature =
+      null;
 
 
     if(
-      nearestVillageName
+      Array.isArray(
+        window.allCompartmentFeatures
+      ) &&
+      compt
     ){
 
-      resolvedLocationText +=
-        " near " +
-        nearestVillageName;
+      const wantedCompartment =
+        normalizeGISKey(
+          compt
+        );
+
+
+      selectedCompartmentFeature =
+        window.allCompartmentFeatures
+          .find(
+            feature => {
+
+              const p =
+                getGISProperties(
+                  feature
+                );
+
+
+              const candidate =
+                getGISValue(
+                  p,
+                  "compartment",
+                  "Compartment",
+                  "COMPARTMENT",
+                  "compt",
+                  "name",
+                  "Name",
+                  "NAME"
+                );
+
+
+              return (
+                candidate &&
+                normalizeGISKey(
+                  candidate
+                ) ===
+                wantedCompartment
+              );
+
+            }
+          ) ||
+        null;
+
+    }
+
+
+    const selectedCompartmentProperties =
+      getGISProperties(
+        selectedCompartmentFeature
+      );
+
+
+    // =====================================================
+    // RECOVER FROM SELECTED COMPARTMENT
+    // =====================================================
+
+    if(
+      !resolvedDivision
+    ){
+
+      resolvedDivision =
+        getGISValue(
+          selectedCompartmentProperties,
+          "division",
+          "Division",
+          "DIVISION",
+          "division_name",
+          "divisionName"
+        );
+
+    }
+
+
+    if(
+      !resolvedRange
+    ){
+
+      resolvedRange =
+        getGISValue(
+          selectedCompartmentProperties,
+          "range",
+          "Range",
+          "RANGE",
+          "range_name",
+          "rangeName"
+        );
+
+    }
+
+
+    if(
+      !resolvedBeat
+    ){
+
+      resolvedBeat =
+        getGISValue(
+          selectedCompartmentProperties,
+          "beat",
+          "Beat",
+          "BEAT",
+          "beat_name",
+          "beatName"
+        );
+
+    }
+
+
+    if(
+      !resolvedCompartment
+    ){
+
+      resolvedCompartment =
+        getGISValue(
+          selectedCompartmentProperties,
+          "compartment",
+          "Compartment",
+          "COMPARTMENT",
+          "compt",
+          "name",
+          "Name",
+          "NAME"
+        ) ||
+        compt;
+
+    }
+
+
+    // =====================================================
+    // SELECTED BEAT FALLBACK
+    //
+    // If division/range are still missing, use the selected
+    // beat to locate its authoritative parent hierarchy in
+    // window.allGISFeatures.
+    // =====================================================
+
+    let selectedBeatFeature =
+      null;
+
+
+    if(
+      Array.isArray(
+        window.allGISFeatures
+      ) &&
+      resolvedBeat
+    ){
+
+      const wantedBeat =
+        normalizeGISKey(
+          resolvedBeat
+        );
+
+
+      selectedBeatFeature =
+        window.allGISFeatures
+          .find(
+            feature => {
+
+              const p =
+                getGISProperties(
+                  feature
+                );
+
+
+              const candidateBeat =
+                getGISValue(
+                  p,
+                  "beat",
+                  "Beat",
+                  "BEAT",
+                  "beat_name",
+                  "beatName"
+                );
+
+
+              return (
+                candidateBeat &&
+                normalizeGISKey(
+                  candidateBeat
+                ) ===
+                wantedBeat
+              );
+
+            }
+          ) ||
+        null;
+
+    }
+
+
+    const selectedBeatProperties =
+      getGISProperties(
+        selectedBeatFeature
+      );
+
+
+    // =====================================================
+    // RECOVER DIVISION / RANGE FROM BEAT
+    // =====================================================
+
+    if(
+      !resolvedDivision
+    ){
+
+      resolvedDivision =
+        getGISValue(
+          selectedBeatProperties,
+          "division",
+          "Division",
+          "DIVISION",
+          "division_name",
+          "divisionName"
+        );
+
+    }
+
+
+    if(
+      !resolvedRange
+    ){
+
+      resolvedRange =
+        getGISValue(
+          selectedBeatProperties,
+          "range",
+          "Range",
+          "RANGE",
+          "range_name",
+          "rangeName"
+        );
+
+    }
+
+
+    if(
+      !resolvedBeat
+    ){
+
+      resolvedBeat =
+        getGISValue(
+          selectedBeatProperties,
+          "beat",
+          "Beat",
+          "BEAT",
+          "beat_name",
+          "beatName"
+        ) ||
+        beat;
+
+    }
+
+
+    // =====================================================
+    // SECONDARY COMPARTMENT SEARCH USING BEAT + COMPARTMENT
+    //
+    // Handles duplicate compartment names in different beats.
+    // =====================================================
+
+    if(
+      (
+        !resolvedDivision ||
+        !resolvedRange
+      ) &&
+      Array.isArray(
+        window.allCompartmentFeatures
+      ) &&
+      compt
+    ){
+
+      const wantedCompartment =
+        normalizeGISKey(
+          compt
+        );
+
+
+      const wantedBeat =
+        normalizeGISKey(
+          resolvedBeat ||
+          beat
+        );
+
+
+      const hierarchyCompartment =
+        window.allCompartmentFeatures
+          .find(
+            feature => {
+
+              const p =
+                getGISProperties(
+                  feature
+                );
+
+
+              const candidateCompartment =
+                getGISValue(
+                  p,
+                  "compartment",
+                  "Compartment",
+                  "COMPARTMENT",
+                  "compt",
+                  "name",
+                  "Name",
+                  "NAME"
+                );
+
+
+              const candidateBeat =
+                getGISValue(
+                  p,
+                  "beat",
+                  "Beat",
+                  "BEAT",
+                  "beat_name",
+                  "beatName"
+                );
+
+
+              const compartmentMatches =
+                candidateCompartment &&
+                normalizeGISKey(
+                  candidateCompartment
+                ) ===
+                wantedCompartment;
+
+
+              const beatMatches =
+                !wantedBeat ||
+                !candidateBeat ||
+                normalizeGISKey(
+                  candidateBeat
+                ) ===
+                wantedBeat;
+
+
+              return (
+                compartmentMatches &&
+                beatMatches
+              );
+
+            }
+          );
+
+
+      const hierarchyProperties =
+        getGISProperties(
+          hierarchyCompartment
+        );
 
 
       if(
-        nearestVillageDistance !==
-        null
+        !resolvedDivision
       ){
 
-        resolvedLocationText +=
-          " (" +
-          Math.round(
-            nearestVillageDistance
-          ) +
-          " m)";
+        resolvedDivision =
+          getGISValue(
+            hierarchyProperties,
+            "division",
+            "Division",
+            "DIVISION",
+            "division_name",
+            "divisionName"
+          );
+
+      }
+
+
+      if(
+        !resolvedRange
+      ){
+
+        resolvedRange =
+          getGISValue(
+            hierarchyProperties,
+            "range",
+            "Range",
+            "RANGE",
+            "range_name",
+            "rangeName"
+          );
+
+      }
+
+
+      if(
+        !resolvedBeat
+      ){
+
+        resolvedBeat =
+          getGISValue(
+            hierarchyProperties,
+            "beat",
+            "Beat",
+            "BEAT",
+            "beat_name",
+            "beatName"
+          ) ||
+          beat;
+
+      }
+
+
+      if(
+        !resolvedCompartment
+      ){
+
+        resolvedCompartment =
+          getGISValue(
+            hierarchyProperties,
+            "compartment",
+            "Compartment",
+            "COMPARTMENT",
+            "compt",
+            "name",
+            "Name",
+            "NAME"
+          ) ||
+          compt;
 
       }
 
@@ -40058,15 +40481,42 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // SPATIAL DEBUG
+    // FINAL FORM VALUE PRESERVATION
     // =====================================================
 
-    console.table([
+    resolvedBeat =
+      cleanGISValue(
+        resolvedBeat ||
+        beat
+      );
+
+
+    resolvedCompartment =
+      cleanGISValue(
+        resolvedCompartment ||
+        compt
+      );
+
+
+    resolvedDivision =
+      cleanGISValue(
+        resolvedDivision
+      );
+
+
+    resolvedRange =
+      cleanGISValue(
+        resolvedRange
+      );
+
+
+    // =====================================================
+    // FINAL GIS RESULT
+    // =====================================================
+
+    console.log(
+      "🌲 FINAL SIGHTING GIS:",
       {
-
-        GPS:
-          location,
-
         division:
           resolvedDivision,
 
@@ -40079,146 +40529,21 @@ async function submitSightingForm(event){
         compartment:
           resolvedCompartment,
 
-        SID:
-          resolvedSID,
+        source: {
+          gpsMaster:
+            !!masterGIS,
 
-        DID:
-          resolvedDID,
+          gpsCompartment:
+            !!spatialCompartment,
 
-        RID:
-          resolvedRID,
+          selectedCompartment:
+            !!selectedCompartmentFeature,
 
-        BID:
-          resolvedBID,
-
-        officialVillage:
-          officialVillageName,
-
-        villageLGD:
-          officialVillageCode,
-
-        nearestLocation:
-          nearestVillageName,
-
-        distanceMeters:
-          nearestVillageDistance,
-
-        risk:
-          nearestVillageRisk,
-
-        conflictHistory:
-          nearestVillageConflictHistory
-
+          selectedBeat:
+            !!selectedBeatFeature
+        }
       }
-    ]);
-
-
-    // =====================================================
-    // PAYLOAD
-    // =====================================================
-
-    const payload = {
-
-      // ===================================================
-      // EXISTING FIELDS
-      // ===================================================
-
-      sighting_id:
-        sightingID,
-
-      parent_id:
-        "",
-
-      beat:
-        beat,
-
-      forest_block:
-        forestBlock,
-
-      compt:
-        compt,
-
-      time:
-        time,
-
-      m:
-        Number(m),
-
-      f:
-        Number(f),
-
-      unidentified:
-        Number(uni),
-
-      calf:
-        Number(calf),
-
-      total_seen:
-        total,
-
-      anticipated:
-        "",
-
-      depredation:
-        "",
-
-      involved:
-        "",
-
-      driving:
-        "",
-
-      remarks:
-        document
-          .getElementById(
-            "f-remarks"
-          )
-          ?.value || "",
-
-      leader:
-        leaderValue,
-
-      phone:
-        window.userProfile
-          ?.phone || "",
-
-      staff:
-        "",
-
-      lat:
-        lat,
-
-      lon:
-        lon,
-
-      location:
-        location,
-
-      direction:
-        document
-          .getElementById(
-            "f-dir"
-          )
-          ?.value || "",
-
-
-      // ===================================================
-      // GIS CONTEXT
-      // ===================================================
-
-      gis_division:
-        resolvedDivision,
-
-      gis_range:
-        resolvedRange,
-
-      gis_beat:
-        resolvedBeat,
-
-      gis_compartment:
-        resolvedCompartment,
-
-
+    );
       // ===================================================
       // GIS IDS
       // ===================================================
