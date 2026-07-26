@@ -53907,11 +53907,98 @@ OPEN
 
 openBtn.onclick = () => {
 
-    overlay.removeAttribute("hidden");
+    // ====================================================
+    // ADMIN SECURITY CHECK
+    // ====================================================
 
-    openBtn.hidden = true;      // Hide floating button
+    const role =
+        String(
+            window.userProfile?.role ||
+            window.currentRole ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
 
-    prompt.focus();
+
+    if (
+        role !== "ADMIN"
+    ) {
+
+        console.warn(
+            "🔒 GreenGuard AI access denied:",
+            role || "UNKNOWN"
+        );
+
+
+        applyGreenGuardAiAccess(
+            window.userProfile
+        );
+
+
+        return;
+
+    }
+
+
+    // ====================================================
+    // OPEN AI
+    // ====================================================
+
+    if (
+        !overlay
+    ) {
+
+        console.error(
+            "❌ GreenGuard AI overlay unavailable"
+        );
+
+        return;
+
+    }
+
+
+    overlay.hidden =
+        false;
+
+
+    overlay.removeAttribute(
+        "hidden"
+    );
+
+
+    overlay.style.removeProperty(
+        "display"
+    );
+
+
+    openBtn.hidden =
+        true;
+
+
+    openBtn.style.setProperty(
+        "display",
+        "none",
+        "important"
+    );
+
+
+    // ====================================================
+    // FOCUS INPUT
+    // ====================================================
+
+    try {
+
+        prompt?.focus?.();
+
+    }
+    catch (
+        error
+    ) {
+
+        // Focus failure must never prevent opening AI.
+
+    }
 
 };
 /*--------------------------------------------------
@@ -53920,10 +54007,36 @@ CLOSE
 
 closeBtn.onclick = () => {
 
-    overlay.setAttribute(
-        "hidden",
-        ""
-    );
+    // ====================================================
+    // CLOSE AI
+    // ====================================================
+
+    if (
+        overlay
+    ) {
+
+        overlay.hidden =
+            true;
+
+
+        overlay.setAttribute(
+            "hidden",
+            ""
+        );
+
+
+        overlay.style.setProperty(
+            "display",
+            "none",
+            "important"
+        );
+
+    }
+
+
+    // ====================================================
+    // RESTORE BUTTON ONLY IF USER IS ADMIN
+    // ====================================================
 
     applyGreenGuardAiAccess(
         window.userProfile
