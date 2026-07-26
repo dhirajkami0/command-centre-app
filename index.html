@@ -40570,33 +40570,28 @@ async function submitSightingForm(event){
         }
 
       }
-      catch(firestoreErr){
+catch(firestoreErr){
 
-        // =================================================
-        // FIRESTORE FAILURE
-        // =================================================
+    // =================================================
+    // FIRESTORE DIRECT SUBMISSION FAILED
+    // NO OFFLINE QUEUE
+    // =================================================
 
-        console.error(
-          "❌ Firestore sighting save failed:",
-          firestoreErr
-        );
+    console.error(
+        "❌ Firestore sighting save failed:",
+        firestoreErr
+    );
 
+    alert(
+        "❌ Sighting submission failed.\n" +
+        "Please try again."
+    );
 
-        saveSightingOffline(
-          finalPayload
-        );
+    setSubmitLoading(
+        false
+    );
 
-
-        alert(
-          "⚠ Sighting queued for sync"
-        );
-
-
-        setSubmitLoading(
-          false
-        );
-
-      }
+}
 
     }
 
