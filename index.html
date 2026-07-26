@@ -38224,687 +38224,725 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
 ========================================================= */
 
 async function saveSightingToFirestore(
-  payload
-){
+    payload
+) {
 
-  // =====================================================
-  // FIRESTORE MODULES
-  // =====================================================
+    // =====================================================
+    // 1. WAIT FOR THE SAME FIREBASE INSTANCE USED BY APP
+    // =====================================================
 
-  const {
+    if (
+        !window.db ||
+        !window.fb
+    ) {
 
-    getFirestore,
-    doc,
-    runTransaction,
-    serverTimestamp
+        if (
+            typeof waitForFirebaseReady ===
+            "function"
+        ) {
 
-  } = await import(
-    "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-  );
+            await waitForFirebaseReady();
 
+        }
 
-  const db =
-    getFirestore();
+    }
 
 
-  // =====================================================
-  // VALIDATE PAYLOAD
-  // =====================================================
+    // =====================================================
+    // 2. FINAL FIREBASE VALIDATION
+    // =====================================================
 
-  if(
-    !payload ||
-    typeof payload !==
-    "object"
-  ){
+    if (
+        !window.db ||
+        !window.fb
+    ) {
 
-    throw new Error(
-      "Invalid sighting payload"
-    );
+        throw new Error(
+            "Firebase is not initialized"
+        );
 
-  }
+    }
 
 
-  // =====================================================
-  // FINANCIAL YEAR
-  //
-  // 01 Apr 2026 → 31 Mar 2027 = 2026-27
-  // =====================================================
+    // =====================================================
+    // 3. USE EXISTING FIRESTORE INSTANCE
+    // =====================================================
 
-  const now =
-    new Date();
+    const db =
+        window.db;
 
+    const {
+        doc,
+        runTransaction,
+        serverTimestamp
+    } = window.fb;
 
-  const year =
-    now.getFullYear();
 
+    if (
+        typeof doc !== "function" ||
+        typeof runTransaction !== "function" ||
+        typeof serverTimestamp !== "function"
+    ) {
 
-  const month =
-    now.getMonth();
+        throw new Error(
+            "Required Firestore modules are unavailable"
+        );
 
+    }
 
-  const startYear =
-    month >= 3
-      ? year
-      : year - 1;
 
+    // =====================================================
+    // 4. VALIDATE PAYLOAD
+    // =====================================================
 
-  const endYear =
-    startYear + 1;
+    if (
+        !payload ||
+        typeof payload !== "object"
+    ) {
 
+        throw new Error(
+            "Invalid sighting payload"
+        );
 
-  const financialYear =
-    startYear +
-    "-" +
-    String(
-      endYear
-    ).slice(
-      -2
-    );
+    }
 
 
-  // =====================================================
-  // GIS VALUES
-  //
-  // IMPORTANT:
-  //
-  // Use the GIS values exactly as resolved.
-  //
-  // NO hard-coded:
-  //
-  // WDPO
-  // KMG
-  // BTR-W
-  // BTR-E
-  //
-  // Official abbreviations can be added later.
-  // =====================================================
+    // =====================================================
+    // 5. FINANCIAL YEAR
+    //
+    // Example:
+    // 01 Apr 2026 → 31 Mar 2027 = 2026-27
+    // =====================================================
 
-  const division =
-    String(
-      payload.gis_division ||
-      ""
-    ).trim();
+    const now =
+        new Date();
 
+    const year =
+        now.getFullYear();
 
-  const range =
-    String(
-      payload.gis_range ||
-      ""
-    ).trim();
+    const month =
+        now.getMonth();
 
-
-  const beat =
-    String(
-      payload.gis_beat ||
-      payload.beat ||
-      ""
-    ).trim();
-
-
-  const compartment =
-    String(
-      payload.gis_compartment ||
-      ""
-    ).trim();
-
-
-  // =====================================================
-  // GIS VALIDATION
-  // =====================================================
-
-  if(
-    !division ||
-    !range
-  ){
-
-    throw new Error(
-      "GIS division/range missing"
-    );
-
-  }
-
-
-  // =====================================================
-  // CURRENT CODE VALUES
-  //
-  // For now these deliberately remain the actual GIS names.
-  //
-  // Example:
-  //
-  // divisionCode = BuxaTR_WEST
-  // rangeCode    = EastDamanpur
-  //
-  // =====================================================
-
-  const divisionCode =
-    division;
-
-
-  const rangeCode =
-    range;
-
-
-  // =====================================================
-  // SAFE FIRESTORE COUNTER KEYS
-  // =====================================================
-
-  const safeFY =
-    financialYear
-      .replace(
-        /[^A-Za-z0-9_-]/g,
-        "_"
-      );
-
-
-  const safeDivision =
-    divisionCode
-      .replace(
-        /[^A-Za-z0-9_-]/g,
-        "_"
-      );
-
-
-  const safeRange =
-    rangeCode
-      .replace(
-        /[^A-Za-z0-9_-]/g,
-        "_"
-      );
-
-
-  // =====================================================
-  // COUNTER REFERENCES
-  //
-  // Example:
-  //
-  // elephant_sighting_counters/
-  // 2026-27__BuxaTR_WEST
-  //
-  // elephant_sighting_counters/
-  // 2026-27__BuxaTR_WEST__EastDamanpur
-  //
-  // =====================================================
-
-  const divisionCounterRef =
-    doc(
-
-      db,
-
-      "elephant_sighting_counters",
-
-      safeFY +
-      "__" +
-      safeDivision
-
-    );
-
-
-  const rangeCounterRef =
-    doc(
-
-      db,
-
-      "elephant_sighting_counters",
-
-      safeFY +
-      "__" +
-      safeDivision +
-      "__" +
-      safeRange
-
-    );
-
-
-  // =====================================================
-  // TRANSACTION
-  //
-  // BOTH counters are allocated inside ONE transaction.
-  //
-  // This is essential when many sightings are submitted
-  // simultaneously.
-  // =====================================================
-
-  const result =
-    await runTransaction(
-
-      db,
-
-      async function(
-        transaction
-      ){
-
-        // =================================================
-        // ALL TRANSACTION READS FIRST
-        // =================================================
-
-        const divisionSnap =
-          await transaction.get(
-            divisionCounterRef
-          );
-
-
-        const rangeSnap =
-          await transaction.get(
-            rangeCounterRef
-          );
-
-
-        // =================================================
-        // CURRENT DIVISION COUNT
-        // =================================================
-
-        const oldDivisionCount =
-
-          divisionSnap.exists()
-
-            ? Number(
-                divisionSnap
-                  .data()
-                  ?.count ||
-                0
-              )
-
-            : 0;
-
-
-        // =================================================
-        // CURRENT RANGE COUNT
-        // =================================================
-
-        const oldRangeCount =
-
-          rangeSnap.exists()
-
-            ? Number(
-                rangeSnap
-                  .data()
-                  ?.count ||
-                0
-              )
-
-            : 0;
-
-
-        // =================================================
-        // NEXT COUNTERS
-        // =================================================
-
-        const divisionCount =
-          oldDivisionCount + 1;
-
-
-        const rangeCount =
-          oldRangeCount + 1;
-
-
-        // =================================================
-        // VISIBLE SIGHTING ID COMPONENTS
-        // =================================================
-
-        const idDivision =
-          divisionCode
-            .replace(
-              /\s+/g,
-              ""
-            );
-
-
-        const idRange =
-          rangeCode
-            .replace(
-              /\s+/g,
-              ""
-            );
-
-
-        // =================================================
-        // FINAL USER-FACING SIGHTING ID
-        //
-        // Example:
-        //
-        // BuxaTR_WEST-EastDamanpur-42/4252
-        //
-        // Later, when GIS contains official abbreviations,
-        // this can become:
-        //
-        // BTR-W-WDPO-42/4252
-        //
-        // without changing the counter architecture.
-        // =================================================
-
-        const finalSightingID =
-
-          idDivision +
-          "-" +
-          idRange +
-          "-" +
-          rangeCount +
-          "/" +
-          divisionCount;
-
-
-        // =================================================
-        // FIRESTORE DOCUMENT ID
-        //
-        // "/" cannot be inside a Firestore document ID
-        // because it is a path separator.
-        //
-        // Therefore:
-        //
-        // visible:
-        // BuxaTR_WEST-EastDamanpur-42/4252
-        //
-        // Firestore:
-        // BuxaTR_WEST-EastDamanpur-42__4252
-        //
-        // =================================================
-
-        const firestoreDocumentID =
-
-          finalSightingID
-            .replace(
-              /\//g,
-              "__"
-            );
-
-
-        // =================================================
-        // SIGHTING DOCUMENT REFERENCE
-        // =================================================
-
-        const sightingRef =
-          doc(
+    const startYear =
+        month >= 3
+            ? year
+            : year - 1;
+
+    const endYear =
+        startYear + 1;
+
+    const financialYear =
+        startYear +
+        "-" +
+        String(
+            endYear
+        ).slice(
+            -2
+        );
+
+
+    // =====================================================
+    // 6. GIS VALUES
+    //
+    // Keep exactly the GIS values resolved by the app.
+    // =====================================================
+
+    const division =
+        String(
+            payload.gis_division ||
+            ""
+        ).trim();
+
+    const range =
+        String(
+            payload.gis_range ||
+            ""
+        ).trim();
+
+    const beat =
+        String(
+            payload.gis_beat ||
+            payload.beat ||
+            ""
+        ).trim();
+
+    const compartment =
+        String(
+            payload.gis_compartment ||
+            ""
+        ).trim();
+
+
+    // =====================================================
+    // 7. GIS VALIDATION
+    // =====================================================
+
+    if (
+        !division ||
+        !range
+    ) {
+
+        throw new Error(
+            "GIS division/range missing"
+        );
+
+    }
+
+
+    // =====================================================
+    // 8. CURRENT CODE VALUES
+    //
+    // Example:
+    // divisionCode = BuxaTR_WEST
+    // rangeCode    = EastDamanpur
+    // =====================================================
+
+    const divisionCode =
+        division;
+
+    const rangeCode =
+        range;
+
+
+    // =====================================================
+    // 9. SAFE FIRESTORE COUNTER KEYS
+    // =====================================================
+
+    const safeFY =
+        financialYear.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
+        );
+
+    const safeDivision =
+        divisionCode.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
+        );
+
+    const safeRange =
+        rangeCode.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
+        );
+
+
+    // =====================================================
+    // 10. COUNTER REFERENCES
+    //
+    // Example:
+    //
+    // elephant_sighting_counters/
+    // 2026-27__BuxaTR_WEST
+    //
+    // elephant_sighting_counters/
+    // 2026-27__BuxaTR_WEST__EastDamanpur
+    // =====================================================
+
+    const divisionCounterRef =
+        doc(
+            db,
+            "elephant_sighting_counters",
+            safeFY +
+            "__" +
+            safeDivision
+        );
+
+
+    const rangeCounterRef =
+        doc(
+            db,
+            "elephant_sighting_counters",
+            safeFY +
+            "__" +
+            safeDivision +
+            "__" +
+            safeRange
+        );
+
+
+    // =====================================================
+    // 11. TRANSACTION
+    //
+    // IMPORTANT:
+    //
+    // BOTH counters and the actual sighting are committed
+    // atomically.
+    //
+    // This prevents duplicate sequence numbers when
+    // multiple staff submit simultaneously.
+    // =====================================================
+
+    const result =
+        await runTransaction(
 
             db,
 
-            "elephant_sightings",
+            async function (
+                transaction
+            ) {
 
-            firestoreDocumentID
+                // =============================================
+                // ALL TRANSACTION READS MUST OCCUR FIRST
+                // =============================================
 
-          );
+                const divisionSnap =
+                    await transaction.get(
+                        divisionCounterRef
+                    );
+
+                const rangeSnap =
+                    await transaction.get(
+                        rangeCounterRef
+                    );
 
 
-        // =================================================
-        // DIVISION COUNTER WRITE
-        // =================================================
+                // =============================================
+                // CURRENT DIVISION COUNT
+                // =============================================
 
-        transaction.set(
+                const oldDivisionCount =
 
-          divisionCounterRef,
+                    divisionSnap.exists()
 
-          {
+                        ? Number(
+                            divisionSnap
+                                .data()
+                                ?.count ||
+                            0
+                        )
 
-            type:
-              "division",
+                        : 0;
 
-            financialYear:
-              financialYear,
 
-            division:
-              division,
+                // =============================================
+                // CURRENT RANGE COUNT
+                // =============================================
 
-            divisionCode:
-              divisionCode,
+                const oldRangeCount =
 
-            count:
-              divisionCount,
+                    rangeSnap.exists()
 
-            updatedAt:
-              serverTimestamp()
+                        ? Number(
+                            rangeSnap
+                                .data()
+                                ?.count ||
+                            0
+                        )
 
-          },
+                        : 0;
 
-          {
-            merge: true
-          }
+
+                // =============================================
+                // VALIDATE EXISTING COUNTERS
+                // =============================================
+
+                if (
+                    !Number.isFinite(
+                        oldDivisionCount
+                    ) ||
+                    oldDivisionCount < 0
+                ) {
+
+                    throw new Error(
+                        "Invalid division sighting counter"
+                    );
+
+                }
+
+
+                if (
+                    !Number.isFinite(
+                        oldRangeCount
+                    ) ||
+                    oldRangeCount < 0
+                ) {
+
+                    throw new Error(
+                        "Invalid range sighting counter"
+                    );
+
+                }
+
+
+                // =============================================
+                // NEXT COUNTERS
+                // =============================================
+
+                const divisionCount =
+                    oldDivisionCount + 1;
+
+                const rangeCount =
+                    oldRangeCount + 1;
+
+
+                // =============================================
+                // VISIBLE SIGHTING ID COMPONENTS
+                // =============================================
+
+                const idDivision =
+                    divisionCode.replace(
+                        /\s+/g,
+                        ""
+                    );
+
+                const idRange =
+                    rangeCode.replace(
+                        /\s+/g,
+                        ""
+                    );
+
+
+                // =============================================
+                // FINAL USER-FACING SIGHTING ID
+                //
+                // Example:
+                //
+                // BuxaTR_WEST-EastDamanpur-7/7
+                // =============================================
+
+                const finalSightingID =
+
+                    idDivision +
+                    "-" +
+                    idRange +
+                    "-" +
+                    rangeCount +
+                    "/" +
+                    divisionCount;
+
+
+                // =============================================
+                // FIRESTORE DOCUMENT ID
+                //
+                // "/" cannot be used inside a document ID
+                // path segment.
+                //
+                // Visible:
+                // BuxaTR_WEST-EastDamanpur-7/7
+                //
+                // Firestore:
+                // BuxaTR_WEST-EastDamanpur-7__7
+                // =============================================
+
+                const firestoreDocumentID =
+
+                    finalSightingID.replace(
+                        /\//g,
+                        "__"
+                    );
+
+
+                // =============================================
+                // SIGHTING DOCUMENT REFERENCE
+                // =============================================
+
+                const sightingRef =
+                    doc(
+                        db,
+                        "elephant_sightings",
+                        firestoreDocumentID
+                    );
+
+
+                // =============================================
+                // DIVISION COUNTER WRITE
+                // =============================================
+
+                transaction.set(
+
+                    divisionCounterRef,
+
+                    {
+
+                        type:
+                            "division",
+
+                        financialYear:
+                            financialYear,
+
+                        division:
+                            division,
+
+                        divisionCode:
+                            divisionCode,
+
+                        count:
+                            divisionCount,
+
+                        updatedAt:
+                            serverTimestamp()
+
+                    },
+
+                    {
+                        merge: true
+                    }
+
+                );
+
+
+                // =============================================
+                // RANGE COUNTER WRITE
+                // =============================================
+
+                transaction.set(
+
+                    rangeCounterRef,
+
+                    {
+
+                        type:
+                            "range",
+
+                        financialYear:
+                            financialYear,
+
+                        division:
+                            division,
+
+                        divisionCode:
+                            divisionCode,
+
+                        range:
+                            range,
+
+                        rangeCode:
+                            rangeCode,
+
+                        count:
+                            rangeCount,
+
+                        updatedAt:
+                            serverTimestamp()
+
+                    },
+
+                    {
+                        merge: true
+                    }
+
+                );
+
+
+                // =============================================
+                // LIVE ELEPHANT SIGHTING WRITE
+                // =============================================
+
+                transaction.set(
+
+                    sightingRef,
+
+                    {
+
+                        // =====================================
+                        // ORIGINAL / ENRICHED PAYLOAD
+                        // =====================================
+
+                        ...payload,
+
+
+                        // =====================================
+                        // CANONICAL IDENTITY
+                        // =====================================
+
+                        sighting_id:
+                            finalSightingID,
+
+                        firestore_id:
+                            firestoreDocumentID,
+
+
+                        // =====================================
+                        // FINANCIAL YEAR
+                        // =====================================
+
+                        financial_year:
+                            financialYear,
+
+
+                        // =====================================
+                        // GIS
+                        // =====================================
+
+                        gis_division:
+                            division,
+
+                        gis_range:
+                            range,
+
+                        gis_beat:
+                            beat,
+
+                        gis_compartment:
+                            compartment,
+
+
+                        // =====================================
+                        // CURRENT GIS CODE VALUES
+                        // =====================================
+
+                        division_code:
+                            divisionCode,
+
+                        range_code:
+                            rangeCode,
+
+
+                        // =====================================
+                        // COUNTER VALUES
+                        // =====================================
+
+                        range_sighting_no:
+                            rangeCount,
+
+                        division_sighting_no:
+                            divisionCount,
+
+
+                        // =====================================
+                        // LIVE STATE
+                        // =====================================
+
+                        status:
+                            "ACTIVE",
+
+                        active:
+                            true,
+
+
+                        // =====================================
+                        // MARKER / UI STATE
+                        // =====================================
+
+                        marker_visible:
+                            true,
+
+
+                        // =====================================
+                        // TIMESTAMPS
+                        // =====================================
+
+                        sighting_datetime:
+                            serverTimestamp(),
+
+                        created_at:
+                            serverTimestamp(),
+
+                        updated_at:
+                            serverTimestamp()
+
+                    }
+
+                );
+
+
+                // =============================================
+                // RESULT
+                // =============================================
+
+                return {
+
+                    firestoreId:
+                        firestoreDocumentID,
+
+                    sightingId:
+                        finalSightingID,
+
+                    financialYear:
+                        financialYear,
+
+                    division:
+                        division,
+
+                    range:
+                        range,
+
+                    beat:
+                        beat,
+
+                    compartment:
+                        compartment,
+
+                    divisionCode:
+                        divisionCode,
+
+                    rangeCode:
+                        rangeCode,
+
+                    rangeCount:
+                        rangeCount,
+
+                    divisionCount:
+                        divisionCount
+
+                };
+
+            }
 
         );
 
 
-        // =================================================
-        // RANGE COUNTER WRITE
-        // =================================================
+    // =====================================================
+    // 12. VERIFY TRANSACTION RESULT
+    // =====================================================
 
-        transaction.set(
+    if (
+        !result ||
+        !result.sightingId ||
+        !result.firestoreId
+    ) {
 
-          rangeCounterRef,
-
-          {
-
-            type:
-              "range",
-
-            financialYear:
-              financialYear,
-
-            division:
-              division,
-
-            divisionCode:
-              divisionCode,
-
-            range:
-              range,
-
-            rangeCode:
-              rangeCode,
-
-            count:
-              rangeCount,
-
-            updatedAt:
-              serverTimestamp()
-
-          },
-
-          {
-            merge: true
-          }
-
+        throw new Error(
+            "Firestore transaction completed without a valid sighting ID"
         );
 
-
-        // =================================================
-        // CREATE LIVE SIGHTING DOCUMENT
-        // =================================================
-
-        transaction.set(
-
-          sightingRef,
-
-          {
-
-            // =================================================
-            // ORIGINAL / ENRICHED PAYLOAD
-            // =================================================
-
-            ...payload,
+    }
 
 
-            // =================================================
-            // CANONICAL IDENTITY
-            // =================================================
+    // =====================================================
+    // 13. SUCCESS
+    // =====================================================
 
-            sighting_id:
-              finalSightingID,
-
-
-            firestore_id:
-              firestoreDocumentID,
-
-
-            // =================================================
-            // FINANCIAL YEAR
-            // =================================================
-
-            financial_year:
-              financialYear,
-
-
-            // =================================================
-            // GIS
-            // =================================================
-
-            gis_division:
-              division,
-
-            gis_range:
-              range,
-
-            gis_beat:
-              beat,
-
-            gis_compartment:
-              compartment,
-
-
-            // =================================================
-            // CURRENT GIS CODE VALUES
-            // =================================================
-
-            division_code:
-              divisionCode,
-
-            range_code:
-              rangeCode,
-
-
-            // =================================================
-            // COUNTER VALUES
-            // =================================================
-
-            range_sighting_no:
-              rangeCount,
-
-            division_sighting_no:
-              divisionCount,
-
-
-            // =================================================
-            // LIVE STATE
-            // =================================================
-
-            status:
-              "ACTIVE",
-
-            active:
-              true,
-
-
-            // =================================================
-            // MARKER / UI STATE
-            //
-            // These defaults can be updated later by your
-            // existing sighting status logic.
-            // =================================================
-
-            marker_visible:
-              true,
-
-
-            // =================================================
-            // TIMESTAMPS
-            // =================================================
-
-            sighting_datetime:
-              serverTimestamp(),
-
-            created_at:
-              serverTimestamp(),
-
-            updated_at:
-              serverTimestamp()
-
-          }
-
-        );
-
-
-        // =================================================
-        // RETURN RESULT TO submitSightingForm()
-        // =================================================
-
-        return {
-
-          firestoreId:
-            firestoreDocumentID,
-
-          sightingId:
-            finalSightingID,
-
-          financialYear:
-            financialYear,
-
-          division:
-            division,
-
-          range:
-            range,
-
-          beat:
-            beat,
-
-          compartment:
-            compartment,
-
-          divisionCode:
-            divisionCode,
-
-          rangeCode:
-            rangeCode,
-
-          rangeCount:
-            rangeCount,
-
-          divisionCount:
-            divisionCount
-
-        };
-
-      }
-
+    console.log(
+        "🔥 Firestore sighting saved:",
+        result
     );
 
 
-  // =====================================================
-  // SUCCESS
-  // =====================================================
+    console.table([
+        {
 
-  console.log(
-    "🔥 Firestore sighting saved:",
-    result
-  );
+            sightingId:
+                result.sightingId,
 
+            firestoreId:
+                result.firestoreId,
 
-  console.table([
-    {
+            financialYear:
+                result.financialYear,
 
-      sightingId:
-        result.sightingId,
+            division:
+                result.division,
 
-      firestoreId:
-        result.firestoreId,
+            range:
+                result.range,
 
-      financialYear:
-        result.financialYear,
+            rangeNo:
+                result.rangeCount,
 
-      division:
-        result.division,
+            divisionNo:
+                result.divisionCount
 
-      range:
-        result.range,
-
-      rangeNo:
-        result.rangeCount,
-
-      divisionNo:
-        result.divisionCount
-
-    }
-  ]);
+        }
+    ]);
 
 
-  return result;
+    // =====================================================
+    // 14. RETURN TO submitSightingForm()
+    // =====================================================
+
+    return result;
 
 }
 async function submitSightingForm(event){
