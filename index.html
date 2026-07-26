@@ -34921,6 +34921,221 @@ if(
     );
 
 }
+
+    /* ============================================================
+   🏡 REGISTER VILLAGE BOUNDARIES — ADMIN ONLY
+   ------------------------------------------------------------
+
+   DESIGN:
+
+   ADMIN
+   ✓ Village Boundaries visible in EXISTING Layer Control.
+   ✓ Starts OFF.
+   ✓ Clicking ON triggers existing overlayadd handler.
+   ✓ Existing loadVillageBoundaryLayer() lazy-loads polygons.
+   ✓ Clicking OFF triggers existing overlayremove handler.
+   ✓ No second Leaflet control is created.
+
+   NON-ADMIN
+   ✓ Village Boundaries is NOT registered.
+   ✓ Option therefore does NOT appear in Layer Control.
+   ✓ Existing Staff / Elephant / Staff Tracks untouched.
+
+   IMPORTANT:
+   This block ONLY registers the existing layer.
+   It does NOT load village polygons.
+   It does NOT add villageBoundaryLayer to the map.
+============================================================ */
+
+try {
+
+    // ========================================================
+    // CURRENT ROLE
+    // ========================================================
+
+    const villageBoundaryControlRole =
+        String(
+            window.userProfile?.role ||
+            window.currentRole ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    // ========================================================
+    // ADMIN ONLY
+    // ========================================================
+
+    if (
+        villageBoundaryControlRole ===
+        "ADMIN"
+    ) {
+
+        // ====================================================
+        // REQUIRED OBJECTS
+        // ====================================================
+
+        if (
+            !layerControl
+        ) {
+
+            console.warn(
+                "⏳ Village Boundary registration waiting — layerControl unavailable"
+            );
+
+        }
+
+        else if (
+            !window.villageBoundaryLayer
+        ) {
+
+            console.warn(
+                "⏳ Village Boundary registration waiting — villageBoundaryLayer unavailable"
+            );
+
+        }
+
+        else {
+
+            // =================================================
+            // PREVENT DUPLICATE REGISTRATION
+            // =================================================
+
+            const alreadyRegistered =
+                Array.isArray(
+                    layerControl._layers
+                ) &&
+                layerControl._layers.some(
+                    function (
+                        item
+                    ) {
+
+                        return (
+                            item &&
+                            item.overlay === true &&
+                            (
+                                item.layer ===
+                                    window.villageBoundaryLayer ||
+
+                                item.name ===
+                                    "🏡 Village Boundaries"
+                            )
+                        );
+
+                    }
+                );
+
+
+            // =================================================
+            // REGISTER IN EXISTING LEAFLET CONTROL
+            // =================================================
+
+            if (
+                !alreadyRegistered
+            ) {
+
+                layerControl.addOverlay(
+
+                    window.villageBoundaryLayer,
+
+                    "🏡 Village Boundaries"
+
+                );
+
+
+                console.log(
+                    "🏡 Village Boundaries registered in existing Layer Control"
+                );
+
+            }
+
+            else {
+
+                console.log(
+                    "🏡 Village Boundaries already registered"
+                );
+
+            }
+
+
+            // =================================================
+            // INTERNAL REGISTRATION FLAG
+            // =================================================
+
+            window.villageBoundaryLayer
+                .__villageBoundaryControlRegistered =
+                true;
+
+
+            console.log(
+                "🔓 ADMIN — Village Boundary Layer Control ready"
+            );
+
+        }
+
+    }
+
+
+    // ========================================================
+    // NON-ADMIN
+    // ========================================================
+
+    else {
+
+        /*
+         * Do NOT call layerControl.addOverlay().
+         *
+         * Therefore Village Boundaries never appears
+         * in the Layer Control for non-admin users.
+         */
+
+        window.villageBoundaryLayer &&
+        (
+            window.villageBoundaryLayer
+                .__villageBoundaryControlRegistered =
+                false
+        );
+
+
+        // ----------------------------------------------------
+        // Defensive removal from map only.
+        // Other map layers are untouched.
+        // ----------------------------------------------------
+
+        if (
+            window.villageBoundaryLayer &&
+            map.hasLayer(
+                window.villageBoundaryLayer
+            )
+        ) {
+
+            map.removeLayer(
+                window.villageBoundaryLayer
+            );
+
+        }
+
+
+        console.log(
+            "🔒 Village Boundaries unavailable — ADMIN only",
+            villageBoundaryControlRole ||
+            "UNKNOWN"
+        );
+
+    }
+
+}
+catch (
+    error
+) {
+
+    console.error(
+        "❌ Village Boundary Layer Control registration failed:",
+        error
+    );
+
+}
   // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
