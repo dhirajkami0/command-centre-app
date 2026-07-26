@@ -38981,13 +38981,6 @@ async function submitSightingForm(event){
     }
     else{
 
-      /*
-       * Temporary ID.
-       *
-       * Firestore will replace this with the canonical
-       * sighting ID for a NEW sighting.
-       */
-
       sightingID =
         "SIGHT-" +
         Date.now() +
@@ -39124,11 +39117,9 @@ async function submitSightingForm(event){
         "❌ Location missing"
       );
 
-
       setSubmitLoading(
         false
       );
-
 
       return;
 
@@ -39189,10 +39180,6 @@ async function submitSightingForm(event){
       ).trim();
 
 
-    // =====================================================
-    // EXISTING VALIDATION
-    // =====================================================
-
     if(
       !beat ||
       !compt
@@ -39202,11 +39189,9 @@ async function submitSightingForm(event){
         "❌ Select Beat & Compartment"
       );
 
-
       setSubmitLoading(
         false
       );
-
 
       return;
 
@@ -39249,12 +39234,6 @@ async function submitSightingForm(event){
             JSON.stringify(
               customVillages
             )
-          );
-
-
-          console.log(
-            "🏡 New village saved:",
-            compt
           );
 
         }
@@ -39323,48 +39302,25 @@ async function submitSightingForm(event){
       ).trim();
 
 
-    console.log(
-      "👤 FINAL LEADER:",
-      leaderValue
-    );
-
-
     // =====================================================
     // SPATIAL CONTEXT
     // =====================================================
-    //
-    // IMPORTANT:
-    //
-    // Spatial enrichment NEVER blocks sighting submission.
-    //
-    // Resolve:
-    //
-    // 1. Compartment polygon
-    // 2. Master GIS hierarchy
-    // 3. Official containing village polygon
-    // 4. Nearest named location / risk point
-    //
-    // =====================================================
-
 
     let spatialCompartment =
       null;
 
-
     let masterGIS =
       null;
 
-
     let officialVillageFeature =
       null;
-
 
     let nearestVillage =
       null;
 
 
     // =====================================================
-    // 1. COMPARTMENT — EXISTING GIS ENTITY RESOLVER
+    // 1. COMPARTMENT RESOLVER
     // =====================================================
 
     try{
@@ -39391,12 +39347,6 @@ async function submitSightingForm(event){
             lon
           );
 
-
-        console.log(
-          "🗺️ Sighting compartment:",
-          spatialCompartment
-        );
-
       }
 
     }
@@ -39411,11 +39361,7 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // COMPARTMENT FALLBACK
-    // =====================================================
-    //
-    // Uses existing allCompartmentFeatures.
-    //
+    // COMPARTMENT POLYGON FALLBACK
     // =====================================================
 
     if(
@@ -39447,9 +39393,7 @@ async function submitSightingForm(event){
             !feature ||
             !feature.geometry
           ){
-
             continue;
-
           }
 
 
@@ -39466,29 +39410,13 @@ async function submitSightingForm(event){
               spatialCompartment =
                 feature;
 
-
               break;
 
             }
 
           }
           catch(innerErr){
-
-            // Ignore malformed polygon.
-
           }
-
-        }
-
-
-        if(
-          spatialCompartment
-        ){
-
-          console.log(
-            "🗺️ Compartment fallback match:",
-            spatialCompartment
-          );
 
         }
 
@@ -39537,9 +39465,7 @@ async function submitSightingForm(event){
             !feature ||
             !feature.geometry
           ){
-
             continue;
-
           }
 
 
@@ -39556,25 +39482,15 @@ async function submitSightingForm(event){
               masterGIS =
                 feature;
 
-
               break;
 
             }
 
           }
           catch(gisErr){
-
-            // Ignore malformed GIS polygon.
-
           }
 
         }
-
-
-        console.log(
-          "🌐 Master GIS:",
-          masterGIS
-        );
 
       }
 
@@ -39590,7 +39506,7 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // 3. OFFICIAL CONTAINING VILLAGE POLYGON
+    // 3. OFFICIAL VILLAGE
     // =====================================================
 
     try{
@@ -39626,9 +39542,7 @@ async function submitSightingForm(event){
             !feature ||
             !feature.geometry
           ){
-
             continue;
-
           }
 
 
@@ -39645,25 +39559,15 @@ async function submitSightingForm(event){
               officialVillageFeature =
                 feature;
 
-
               break;
 
             }
 
           }
           catch(villagePolygonErr){
-
-            // Ignore malformed village polygon.
-
           }
 
         }
-
-
-        console.log(
-          "🏘️ Official village polygon:",
-          officialVillageFeature
-        );
 
       }
 
@@ -39697,19 +39601,6 @@ async function submitSightingForm(event){
               lon
             );
 
-
-        console.log(
-          "📍 Nearest named location:",
-          nearestVillage
-        );
-
-      }
-      else{
-
-        console.warn(
-          "⚠ findNearestVillageLocation() not loaded"
-        );
-
       }
 
     }
@@ -39724,7 +39615,7 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // NORMALIZE COMPARTMENT
+    // NORMALIZE GIS OBJECTS
     // =====================================================
 
     const compartmentProperties =
@@ -39738,35 +39629,15 @@ async function submitSightingForm(event){
       {};
 
 
-    // =====================================================
-    // NORMALIZE MASTER GIS
-    // =====================================================
-
     const masterProperties =
       masterGIS
         ?.properties ||
       {};
 
 
-       // =====================================================
-    // GIS HIERARCHY — ROBUST RESOLUTION
     // =====================================================
-    //
-    // DO NOT change the rest of submitSightingForm().
-    //
-    // Resolution priority:
-    //
-    // 1. GPS matched master GIS
-    // 2. GPS matched compartment
-    // 3. Selected compartment -> allCompartmentFeatures
-    // 4. Selected beat -> allGISFeatures
-    // 5. Existing form beat / compartment
-    //
-    // This prevents Firestore submission from receiving
-    // blank division/range when the GIS data is already
-    // available elsewhere in the loaded GIS datasets.
+    // ROBUST GIS VALUE HELPERS
     // =====================================================
-
 
     const cleanGISValue =
       value =>
@@ -39787,93 +39658,42 @@ async function submitSightingForm(event){
           );
 
 
-    // =====================================================
-    // SAFE PROPERTY READER
-    // =====================================================
+    const getGISProperties =
+      feature =>
 
-    function getGISValue(
-      properties,
-      ...keys
-    ){
+        feature
+          ?.properties ||
 
-      if(
-        !properties ||
-        typeof properties !==
-          "object"
-      ){
+        feature
+          ?.feature
+          ?.properties ||
 
-        return "";
-
-      }
+        {};
 
 
-      // -----------------------------------------------
-      // Exact property-name match first
-      // -----------------------------------------------
-
-      for(
-        const key of keys
-      ){
-
-        const value =
-          properties[key];
-
+    const getGISValue =
+      (
+        properties,
+        ...keys
+      ) => {
 
         if(
-          value !== undefined &&
-          value !== null &&
-          cleanGISValue(
-            value
-          ) !== ""
+          !properties ||
+          typeof properties !==
+          "object"
         ){
 
-          return cleanGISValue(
-            value
-          );
+          return "";
 
         }
 
-      }
 
-
-      // -----------------------------------------------
-      // Case-insensitive property-name match
-      // -----------------------------------------------
-
-      const actualKeys =
-        Object.keys(
-          properties
-        );
-
-
-      for(
-        const wantedKey of keys
-      ){
-
-        const wanted =
-          String(
-            wantedKey
-          ).toLowerCase();
-
-
-        const actualKey =
-          actualKeys.find(
-            key =>
-              String(
-                key
-              ).toLowerCase() ===
-              wanted
-          );
-
-
-        if(
-          actualKey
+        for(
+          const key of keys
         ){
 
           const value =
-            properties[
-              actualKey
-            ];
+            properties[key];
 
 
           if(
@@ -39892,40 +39712,67 @@ async function submitSightingForm(event){
 
         }
 
-      }
+
+        const propertyKeys =
+          Object.keys(
+            properties
+          );
 
 
-      return "";
+        for(
+          const wantedKey of keys
+        ){
 
-    }
+          const wanted =
+            String(
+              wantedKey
+            ).toLowerCase();
+
+
+          const actualKey =
+            propertyKeys.find(
+              key =>
+                String(
+                  key
+                ).toLowerCase() ===
+                wanted
+            );
+
+
+          if(actualKey){
+
+            const value =
+              properties[
+                actualKey
+              ];
+
+
+            if(
+              value !== undefined &&
+              value !== null &&
+              cleanGISValue(
+                value
+              ) !== ""
+            ){
+
+              return cleanGISValue(
+                value
+              );
+
+            }
+
+          }
+
+        }
+
+
+        return "";
+
+      };
 
 
     // =====================================================
-    // NORMALIZE FEATURE PROPERTIES
-    // =====================================================
-
-    function getGISProperties(
-      feature
-    ){
-
-      return (
-
-        feature
-          ?.properties ||
-
-        feature
-          ?.feature
-          ?.properties ||
-
-        {}
-
-      );
-
-    }
-
-
-    // =====================================================
-    // INITIAL VALUES FROM GPS RESOLUTION
+    // PRIMARY GIS HIERARCHY
     // =====================================================
 
     let resolvedDivision =
@@ -40035,17 +39882,6 @@ async function submitSightingForm(event){
 
     // =====================================================
     // SELECTED COMPARTMENT FALLBACK
-    //
-    // GPS polygon lookup can occasionally miss because of:
-    //
-    // - polygon boundaries
-    // - coordinate precision
-    // - incomplete parent properties
-    // - GIS loading timing
-    //
-    // The user already selected a valid compartment.
-    // Find that compartment in the authoritative loaded
-    // compartment dataset and recover its hierarchy.
     // =====================================================
 
     let selectedCompartmentFeature =
@@ -40065,6 +39901,12 @@ async function submitSightingForm(event){
         );
 
 
+      const wantedBeat =
+        normalizeGISKey(
+          beat
+        );
+
+
       selectedCompartmentFeature =
         window.allCompartmentFeatures
           .find(
@@ -40076,7 +39918,7 @@ async function submitSightingForm(event){
                 );
 
 
-              const candidate =
+              const candidateCompartment =
                 getGISValue(
                   p,
                   "compartment",
@@ -40089,13 +39931,46 @@ async function submitSightingForm(event){
                 );
 
 
-              return (
-                candidate &&
+              if(
+                !candidateCompartment ||
                 normalizeGISKey(
-                  candidate
-                ) ===
+                  candidateCompartment
+                ) !==
                 wantedCompartment
-              );
+              ){
+
+                return false;
+
+              }
+
+
+              const candidateBeat =
+                getGISValue(
+                  p,
+                  "beat",
+                  "Beat",
+                  "BEAT",
+                  "beat_name",
+                  "beatName"
+                );
+
+
+              if(
+                wantedBeat &&
+                candidateBeat
+              ){
+
+                return (
+                  normalizeGISKey(
+                    candidateBeat
+                  ) ===
+                  wantedBeat
+                );
+
+              }
+
+
+              return true;
 
             }
           ) ||
@@ -40109,10 +39984,6 @@ async function submitSightingForm(event){
         selectedCompartmentFeature
       );
 
-
-    // =====================================================
-    // RECOVER FROM SELECTED COMPARTMENT
-    // =====================================================
 
     if(
       !resolvedDivision
@@ -40160,7 +40031,8 @@ async function submitSightingForm(event){
           "BEAT",
           "beat_name",
           "beatName"
-        );
+        ) ||
+        beat;
 
     }
 
@@ -40187,10 +40059,6 @@ async function submitSightingForm(event){
 
     // =====================================================
     // SELECTED BEAT FALLBACK
-    //
-    // If division/range are still missing, use the selected
-    // beat to locate its authoritative parent hierarchy in
-    // window.allGISFeatures.
     // =====================================================
 
     let selectedBeatFeature =
@@ -40201,12 +40069,16 @@ async function submitSightingForm(event){
       Array.isArray(
         window.allGISFeatures
       ) &&
-      resolvedBeat
+      (
+        resolvedBeat ||
+        beat
+      )
     ){
 
       const wantedBeat =
         normalizeGISKey(
-          resolvedBeat
+          resolvedBeat ||
+          beat
         );
 
 
@@ -40252,10 +40124,6 @@ async function submitSightingForm(event){
         selectedBeatFeature
       );
 
-
-    // =====================================================
-    // RECOVER DIVISION / RANGE FROM BEAT
-    // =====================================================
 
     if(
       !resolvedDivision
@@ -40309,180 +40177,17 @@ async function submitSightingForm(event){
     }
 
 
-    // =====================================================
-    // SECONDARY COMPARTMENT SEARCH USING BEAT + COMPARTMENT
-    //
-    // Handles duplicate compartment names in different beats.
-    // =====================================================
-
-    if(
-      (
-        !resolvedDivision ||
-        !resolvedRange
-      ) &&
-      Array.isArray(
-        window.allCompartmentFeatures
-      ) &&
-      compt
-    ){
-
-      const wantedCompartment =
-        normalizeGISKey(
-          compt
-        );
+    resolvedDivision =
+      cleanGISValue(
+        resolvedDivision
+      );
 
 
-      const wantedBeat =
-        normalizeGISKey(
-          resolvedBeat ||
-          beat
-        );
+    resolvedRange =
+      cleanGISValue(
+        resolvedRange
+      );
 
-
-      const hierarchyCompartment =
-        window.allCompartmentFeatures
-          .find(
-            feature => {
-
-              const p =
-                getGISProperties(
-                  feature
-                );
-
-
-              const candidateCompartment =
-                getGISValue(
-                  p,
-                  "compartment",
-                  "Compartment",
-                  "COMPARTMENT",
-                  "compt",
-                  "name",
-                  "Name",
-                  "NAME"
-                );
-
-
-              const candidateBeat =
-                getGISValue(
-                  p,
-                  "beat",
-                  "Beat",
-                  "BEAT",
-                  "beat_name",
-                  "beatName"
-                );
-
-
-              const compartmentMatches =
-                candidateCompartment &&
-                normalizeGISKey(
-                  candidateCompartment
-                ) ===
-                wantedCompartment;
-
-
-              const beatMatches =
-                !wantedBeat ||
-                !candidateBeat ||
-                normalizeGISKey(
-                  candidateBeat
-                ) ===
-                wantedBeat;
-
-
-              return (
-                compartmentMatches &&
-                beatMatches
-              );
-
-            }
-          );
-
-
-      const hierarchyProperties =
-        getGISProperties(
-          hierarchyCompartment
-        );
-
-
-      if(
-        !resolvedDivision
-      ){
-
-        resolvedDivision =
-          getGISValue(
-            hierarchyProperties,
-            "division",
-            "Division",
-            "DIVISION",
-            "division_name",
-            "divisionName"
-          );
-
-      }
-
-
-      if(
-        !resolvedRange
-      ){
-
-        resolvedRange =
-          getGISValue(
-            hierarchyProperties,
-            "range",
-            "Range",
-            "RANGE",
-            "range_name",
-            "rangeName"
-          );
-
-      }
-
-
-      if(
-        !resolvedBeat
-      ){
-
-        resolvedBeat =
-          getGISValue(
-            hierarchyProperties,
-            "beat",
-            "Beat",
-            "BEAT",
-            "beat_name",
-            "beatName"
-          ) ||
-          beat;
-
-      }
-
-
-      if(
-        !resolvedCompartment
-      ){
-
-        resolvedCompartment =
-          getGISValue(
-            hierarchyProperties,
-            "compartment",
-            "Compartment",
-            "COMPARTMENT",
-            "compt",
-            "name",
-            "Name",
-            "NAME"
-          ) ||
-          compt;
-
-      }
-
-    }
-
-
-    // =====================================================
-    // FINAL FORM VALUE PRESERVATION
-    // =====================================================
 
     resolvedBeat =
       cleanGISValue(
@@ -40498,25 +40203,292 @@ async function submitSightingForm(event){
       );
 
 
-    resolvedDivision =
-      cleanGISValue(
-        resolvedDivision
-      );
+    // =====================================================
+    // GIS IDS
+    // =====================================================
+
+    const resolvedSID =
+      String(
+        masterProperties.SID ||
+        compartmentProperties.SID ||
+        selectedCompartmentProperties.SID ||
+        selectedBeatProperties.SID ||
+        ""
+      ).trim();
 
 
-    resolvedRange =
-      cleanGISValue(
-        resolvedRange
-      );
+    const resolvedDID =
+      String(
+        masterProperties.DID ||
+        compartmentProperties.DID ||
+        selectedCompartmentProperties.DID ||
+        selectedBeatProperties.DID ||
+        ""
+      ).trim();
+
+
+    const resolvedRID =
+      String(
+        masterProperties.RID ||
+        compartmentProperties.RID ||
+        selectedCompartmentProperties.RID ||
+        selectedBeatProperties.RID ||
+        ""
+      ).trim();
+
+
+    const resolvedBID =
+      String(
+        masterProperties.BID ||
+        compartmentProperties.BID ||
+        selectedCompartmentProperties.BID ||
+        selectedBeatProperties.BID ||
+        ""
+      ).trim();
 
 
     // =====================================================
-    // FINAL GIS RESULT
+    // OFFICIAL VILLAGE PROPERTIES
     // =====================================================
 
-    console.log(
-      "🌲 FINAL SIGHTING GIS:",
+    const officialVillageProperties =
+      officialVillageFeature
+        ?.properties ||
+      {};
+
+
+    const officialVillageName =
+      String(
+
+        officialVillageProperties
+          .Village_Name ||
+
+        officialVillageProperties
+          .Vill_name ||
+
+        officialVillageProperties
+          .Vill_Name ||
+
+        officialVillageProperties
+          .villageName ||
+
+        officialVillageProperties
+          .village_name ||
+
+        officialVillageProperties
+          .NAME ||
+
+        officialVillageProperties
+          .Name ||
+
+        officialVillageProperties
+          .name ||
+
+        ""
+
+      ).trim();
+
+
+    const officialVillageCode =
+      String(
+
+        officialVillageProperties
+          .Vill_LGD ||
+
+        officialVillageProperties
+          .Village_Code ||
+
+        officialVillageProperties
+          .VillageCode ||
+
+        officialVillageProperties
+          .villageCode ||
+
+        officialVillageProperties
+          .village_code ||
+
+        officialVillageProperties
+          .LGD_CODE ||
+
+        officialVillageProperties
+          .lgd_code ||
+
+        ""
+
+      ).trim();
+
+
+    const officialVillageDistrict =
+      String(
+
+        officialVillageProperties
+          .districtNameEnglish ||
+
+        officialVillageProperties
+          .district ||
+
+        officialVillageProperties
+          .District ||
+
+        ""
+
+      ).trim();
+
+
+    const officialVillageSubdistrict =
+      String(
+
+        officialVillageProperties
+          .subdistrictNameEnglish ||
+
+        officialVillageProperties
+          .subdistrict ||
+
+        officialVillageProperties
+          .Subdistrict ||
+
+        officialVillageProperties
+          .block ||
+
+        officialVillageProperties
+          .Block ||
+
+        ""
+
+      ).trim();
+
+
+    const officialVillagePincode =
+      String(
+
+        officialVillageProperties
+          .pincode ||
+
+        officialVillageProperties
+          .PINCODE ||
+
+        officialVillageProperties
+          .Pincode ||
+
+        ""
+
+      ).trim();
+
+
+    // =====================================================
+    // NEAREST NAMED LOCATION
+    // =====================================================
+
+    const nearestVillageName =
+      String(
+        nearestVillage?.village ||
+        nearestVillage?.name ||
+        nearestVillage?.cleanName ||
+        ""
+      ).trim();
+
+
+    const nearestVillageDistance =
+      Number.isFinite(
+        Number(
+          nearestVillage?.distanceMeters
+        )
+      )
+        ? Number(
+            nearestVillage.distanceMeters
+          )
+        : null;
+
+
+    const nearestVillageDistanceKm =
+      Number.isFinite(
+        Number(
+          nearestVillage?.distanceKm
+        )
+      )
+        ? Number(
+            nearestVillage.distanceKm
+          )
+        : null;
+
+
+    const nearestVillageRisk =
+      String(
+        nearestVillage?.riskLevel ||
+        ""
+      ).trim();
+
+
+    const nearestVillageConflictHistory =
+      Number.isFinite(
+        Number(
+          nearestVillage?.conflictHistory
+        )
+      )
+        ? Number(
+            nearestVillage.conflictHistory
+          )
+        : 0;
+
+
+    const nearestVillagePhone =
+      String(
+        nearestVillage?.phone ||
+        ""
+      ).trim();
+
+
+    const nearestVillageWhatsapp =
+      String(
+        nearestVillage?.whatsappLink ||
+        ""
+      ).trim();
+
+
+    // =====================================================
+    // POPUP LOCATION
+    // =====================================================
+
+    let resolvedLocationText =
+      location;
+
+
+    if(
+      nearestVillageName
+    ){
+
+      resolvedLocationText +=
+        " near " +
+        nearestVillageName;
+
+
+      if(
+        nearestVillageDistance !==
+        null
+      ){
+
+        resolvedLocationText +=
+          " (" +
+          Math.round(
+            nearestVillageDistance
+          ) +
+          " m)";
+
+      }
+
+    }
+
+
+    // =====================================================
+    // FINAL GIS DEBUG
+    // =====================================================
+
+    console.table([
       {
+
+        GPS:
+          location,
+
         division:
           resolvedDivision,
 
@@ -40529,21 +40501,142 @@ async function submitSightingForm(event){
         compartment:
           resolvedCompartment,
 
-        source: {
-          gpsMaster:
-            !!masterGIS,
+        SID:
+          resolvedSID,
 
-          gpsCompartment:
-            !!spatialCompartment,
+        DID:
+          resolvedDID,
 
-          selectedCompartment:
-            !!selectedCompartmentFeature,
+        RID:
+          resolvedRID,
 
-          selectedBeat:
-            !!selectedBeatFeature
-        }
+        BID:
+          resolvedBID,
+
+        officialVillage:
+          officialVillageName,
+
+        villageLGD:
+          officialVillageCode,
+
+        nearestLocation:
+          nearestVillageName,
+
+        distanceMeters:
+          nearestVillageDistance,
+
+        risk:
+          nearestVillageRisk,
+
+        conflictHistory:
+          nearestVillageConflictHistory
+
       }
-    );
+    ]);
+
+
+    // =====================================================
+    // PAYLOAD
+    // =====================================================
+
+    const payload = {
+
+      sighting_id:
+        sightingID,
+
+      parent_id:
+        "",
+
+      beat:
+        beat,
+
+      forest_block:
+        forestBlock,
+
+      compt:
+        compt,
+
+      time:
+        time,
+
+      m:
+        Number(m),
+
+      f:
+        Number(f),
+
+      unidentified:
+        Number(uni),
+
+      calf:
+        Number(calf),
+
+      total_seen:
+        total,
+
+      anticipated:
+        "",
+
+      depredation:
+        "",
+
+      involved:
+        "",
+
+      driving:
+        "",
+
+      remarks:
+        document
+          .getElementById(
+            "f-remarks"
+          )
+          ?.value || "",
+
+      leader:
+        leaderValue,
+
+      phone:
+        window.userProfile
+          ?.phone || "",
+
+      staff:
+        "",
+
+      lat:
+        lat,
+
+      lon:
+        lon,
+
+      location:
+        location,
+
+      direction:
+        document
+          .getElementById(
+            "f-dir"
+          )
+          ?.value || "",
+
+
+      // ===================================================
+      // GIS CONTEXT
+      // ===================================================
+
+      gis_division:
+        resolvedDivision,
+
+      gis_range:
+        resolvedRange,
+
+      gis_beat:
+        resolvedBeat,
+
+      gis_compartment:
+        resolvedCompartment,
+
+
       // ===================================================
       // GIS IDS
       // ===================================================
@@ -40562,7 +40655,7 @@ async function submitSightingForm(event){
 
 
       // ===================================================
-      // OFFICIAL CONTAINING VILLAGE
+      // OFFICIAL VILLAGE
       // ===================================================
 
       village:
@@ -40585,7 +40678,7 @@ async function submitSightingForm(event){
 
 
       // ===================================================
-      // NEAREST NAMED LOCATION / RISK POINT
+      // NEAREST LOCATION
       // ===================================================
 
       nearest_village:
@@ -40622,20 +40715,10 @@ async function submitSightingForm(event){
         nearestVillageWhatsapp,
 
 
-      // ===================================================
-      // POPUP LOCATION
-      // ===================================================
-
       resolved_location:
         resolvedLocationText
 
     };
-
-
-    console.log(
-      "📤 FINAL SIGHTING PAYLOAD:",
-      payload
-    );
 
 
     // =====================================================
@@ -40696,10 +40779,6 @@ async function submitSightingForm(event){
 
       try{
 
-        // =================================================
-        // NEW SIGHTING
-        // =================================================
-
         if(
           !window.isEditingSighting
         ){
@@ -40750,10 +40829,6 @@ async function submitSightingForm(event){
           }
 
 
-          // ===============================================
-          // CANONICAL ID
-          // ===============================================
-
           finalPayload.sighting_id =
             firestoreResult.sightingId;
 
@@ -40793,38 +40868,15 @@ async function submitSightingForm(event){
 
 
           console.log(
-            "🆔 FINAL SIGHTING ID:",
-            sightingID
-          );
-
-
-          console.log(
             "🔥 Firestore sighting saved:",
             firestoreResult
           );
 
         }
-
-        // =================================================
-        // EDIT EXISTING SIGHTING
-        // =================================================
-
         else{
-
-          /*
-           * Preserve the existing sighting ID.
-           *
-           * Do NOT allocate another counter.
-           */
 
           finalPayload.sighting_id =
             sightingID;
-
-
-          console.log(
-            "✏️ Editing existing sighting:",
-            sightingID
-          );
 
         }
 
@@ -40832,28 +40884,12 @@ async function submitSightingForm(event){
         // =================================================
         // EXISTING BACKEND
         // =================================================
-        //
-        // Keep your existing:
-        //
-        // Google Sheet
-        // Telegram
-        // Risk villages
-        // Distance calculations
-        // Existing processing
-        //
-        // =================================================
 
         try{
 
           await callBackend(
             "saveElephantSighting",
             finalPayload
-          );
-
-
-          console.log(
-            "✅ Existing backend completed:",
-            sightingID
           );
 
 
@@ -40913,10 +40949,9 @@ async function submitSightingForm(event){
         catch(backendErr){
 
           /*
-           * Firestore already contains the sighting.
-           *
-           * Do NOT create another Firestore document.
-           * Queue the canonical payload for backend retry.
+           * FIRESTORE HAS ALREADY SAVED.
+           * Backend failure must NOT be treated as
+           * Firestore failure.
            */
 
           console.error(
@@ -40942,28 +40977,25 @@ async function submitSightingForm(event){
         }
 
       }
-catch(firestoreErr){
+      catch(firestoreErr){
 
-    // =================================================
-    // FIRESTORE DIRECT SUBMISSION FAILED
-    // NO OFFLINE QUEUE
-    // =================================================
+        console.error(
+          "❌ Firestore sighting save failed:",
+          firestoreErr
+        );
 
-    console.error(
-        "❌ Firestore sighting save failed:",
-        firestoreErr
-    );
 
-    alert(
-        "❌ Sighting submission failed.\n" +
-        "Please try again."
-    );
+        alert(
+          "❌ Sighting submission failed.\n" +
+          "Please try again."
+        );
 
-    setSubmitLoading(
-        false
-    );
 
-}
+        setSubmitLoading(
+          false
+        );
+
+      }
 
     }
 
@@ -41051,7 +41083,7 @@ catch(firestoreErr){
   }
 
 }
-// ============================================================
+    // ============================================================
 // 📍 FIND NEAREST NAMED VILLAGE / LOCATION
 // Uses existing window.__villageCache
 // NO FIRESTORE READ HERE
