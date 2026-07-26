@@ -53608,9 +53608,14 @@ CLOSE
 
 closeBtn.onclick = () => {
 
-    overlay.setAttribute("hidden","");
+    overlay.setAttribute(
+        "hidden",
+        ""
+    );
 
-    openBtn.hidden = false;     // Show floating button again
+    applyGreenGuardAiAccess(
+        window.userProfile
+    );
 
 };
 /*--------------------------------------------------
