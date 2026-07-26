@@ -48874,6 +48874,114 @@ function applyVillageBoundaryAccess(
     }
 
 };
+
+    // ============================================================
+// 🏡 START VILLAGE BOUNDARY ACCESS WHEN APP IS READY
+// ============================================================
+
+(function startVillageBoundaryAccess() {
+
+    let attempt = 0;
+
+    const MAX_ATTEMPTS = 30;
+
+    const timer =
+        setInterval(
+            function () {
+
+                attempt++;
+
+
+                const role =
+                    String(
+                        window.userProfile?.role || ""
+                    )
+                    .trim()
+                    .toUpperCase();
+
+
+                const controlReady =
+                    typeof layerControl !==
+                        "undefined" &&
+                    !!layerControl;
+
+
+                const layerReady =
+                    !!window.villageBoundaryLayer;
+
+
+                const functionReady =
+                    typeof window
+                        .applyVillageBoundaryAccess ===
+                    "function";
+
+
+                // --------------------------------------------
+                // Everything required is now available
+                // --------------------------------------------
+
+                if (
+                    role &&
+                    controlReady &&
+                    layerReady &&
+                    functionReady
+                ) {
+
+                    clearInterval(
+                        timer
+                    );
+
+
+                    window
+                        .applyVillageBoundaryAccess(
+                            window.userProfile
+                        );
+
+
+                    console.log(
+                        "🏡 Village Boundary startup access applied",
+                        {
+                            role,
+                            attempt
+                        }
+                    );
+
+
+                    return;
+                }
+
+
+                // --------------------------------------------
+                // Stop retrying
+                // --------------------------------------------
+
+                if (
+                    attempt >=
+                    MAX_ATTEMPTS
+                ) {
+
+                    clearInterval(
+                        timer
+                    );
+
+
+                    console.error(
+                        "❌ Village Boundary startup access timed out",
+                        {
+                            role,
+                            controlReady,
+                            layerReady,
+                            functionReady
+                        }
+                    );
+
+                }
+
+            },
+            500
+        );
+
+})();
     /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
