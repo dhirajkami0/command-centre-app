@@ -38348,31 +38348,40 @@ async function saveSightingToFirestore(
     // =====================================================
 
     const division =
-        String(
-            payload.gis_division ||
-            ""
-        ).trim();
+    String(
+        payload.gis_division ||
+        payload.division ||
+        payload.divisionCode ||
+        payload.division_code ||
+        ""
+    ).trim();
 
-    const range =
-        String(
-            payload.gis_range ||
-            ""
-        ).trim();
+const range =
+    String(
+        payload.gis_range ||
+        payload.range ||
+        payload.rangeCode ||
+        payload.range_code ||
+        ""
+    ).trim();
 
-    const beat =
-        String(
-            payload.gis_beat ||
-            payload.beat ||
-            ""
-        ).trim();
+const beat =
+    String(
+        payload.gis_beat ||
+        payload.beat ||
+        payload.beatName ||
+        payload.beat_name ||
+        ""
+    ).trim();
 
-    const compartment =
-        String(
-            payload.gis_compartment ||
-            ""
-        ).trim();
-
-
+const compartment =
+    String(
+        payload.gis_compartment ||
+        payload.compartment ||
+        payload.compartmentName ||
+        payload.compartment_name ||
+        ""
+    ).trim();
     // =====================================================
     // 7. GIS VALIDATION
     // =====================================================
