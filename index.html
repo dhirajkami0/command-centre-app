@@ -47480,6 +47480,148 @@ if(
 
 /* ============================================================
    🎛 CREATE LEAFLET LAYER CONTROL
+   ------------------------------------------------------------
+   DESIGN
+
+   BASE MAPS
+   ✓ Available to everyone.
+
+   EXISTING OVERLAYS
+   ✓ Preserved exactly through layerControlOverlays.
+
+   VILLAGE BOUNDARIES
+   ✓ ADMIN only in Layer Control.
+   ✓ Starts OFF.
+   ✓ Lazy loads only when ADMIN enables it.
+   ✓ Existing overlayadd / overlayremove behavior preserved.
+   ✓ Non-admin cannot see Village Boundaries option.
+   ✓ Does NOT create another Leaflet Layer Control.
+============================================================ */
+
+
+/* ============================================================
+   🏡 REGISTER ADMIN-ONLY VILLAGE BOUNDARY OVERLAY
+   ------------------------------------------------------------
+   IMPORTANT:
+
+   This modifies ONLY layerControlOverlays BEFORE the existing
+   Leaflet control is created.
+
+   It does NOT:
+   - remove Staff
+   - remove Elephants
+   - remove Plantation
+   - remove any existing overlay
+   - change Staff Tracks
+   - add Village Boundaries to the map automatically
+   - load Village GeoJSON at startup
+============================================================ */
+
+try {
+
+    const villageBoundaryRole =
+        String(
+            window.userProfile?.role ||
+            window.currentRole ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    const villageBoundaryIsAdmin =
+        villageBoundaryRole ===
+        "ADMIN";
+
+
+    if (
+        villageBoundaryIsAdmin &&
+        window.villageBoundaryLayer
+    ) {
+
+        layerControlOverlays[
+            "🏡 Village Boundaries"
+        ] =
+            window.villageBoundaryLayer;
+
+
+        console.log(
+            "🔓 ADMIN — Village Boundaries registered in Layer Control"
+        );
+
+    }
+
+    else {
+
+        /*
+         * Defensive cleanup only for Village Boundaries.
+         *
+         * No other layerControlOverlays entry is touched.
+         */
+
+        if (
+            Object.prototype
+                .hasOwnProperty
+                .call(
+                    layerControlOverlays,
+                    "🏡 Village Boundaries"
+                )
+        ) {
+
+            delete layerControlOverlays[
+                "🏡 Village Boundaries"
+            ];
+
+        }
+
+
+        /*
+         * If a previous ADMIN session left the layer attached
+         * to the same running map instance, remove ONLY the
+         * village boundary layer.
+         */
+
+        if (
+            window.map &&
+            window.villageBoundaryLayer &&
+            typeof window.map.hasLayer ===
+                "function" &&
+            window.map.hasLayer(
+                window.villageBoundaryLayer
+            )
+        ) {
+
+            window.map.removeLayer(
+                window.villageBoundaryLayer
+            );
+
+        }
+
+
+        console.log(
+            "🔒 Village Boundaries hidden from Layer Control —",
+            villageBoundaryRole ||
+            "ROLE NOT AVAILABLE"
+        );
+
+    }
+
+}
+catch (
+    error
+) {
+
+    console.error(
+        "❌ Village Boundary role registration failed:",
+        error
+    );
+
+}
+
+
+
+/* ============================================================
+   🎛 CREATE LEAFLET LAYER CONTROL
 ============================================================ */
 
 var layerControl =
@@ -47504,6 +47646,11 @@ var layerControl =
 
         /* =====================================================
            📍 ROLE-FILTERED OVERLAYS
+
+           Existing overlays remain unchanged.
+
+           ADMIN additionally receives:
+           🏡 Village Boundaries
         ===================================================== */
 
         layerControlOverlays,
@@ -47525,17 +47672,19 @@ var layerControl =
         map
     );
 
-// ============================================================
-// 🛣 REGISTER STAFF TRACKS OVERLAY
-// ------------------------------------------------------------
-// Uses the EXISTING role-filtered layer control.
-//
-// IMPORTANT:
-// - Does NOT create another Leaflet control.
-// - Does NOT automatically add tracks to map.
-// - Staff Tracks therefore starts OFF.
-// - Registration is protected against duplication.
-// ============================================================
+
+
+/* ============================================================
+   🛣 REGISTER STAFF TRACKS OVERLAY
+   ------------------------------------------------------------
+   Uses the EXISTING role-filtered layer control.
+
+   IMPORTANT:
+   - Does NOT create another Leaflet control.
+   - Does NOT automatically add tracks to map.
+   - Staff Tracks therefore starts OFF.
+   - Registration is protected against duplication.
+============================================================ */
 
 if(
     layerControl &&
@@ -47563,6 +47712,8 @@ if(
     );
 
 }
+
+
 /* ============================================================
    🔥 GLOBAL GRID VISIBILITY FLAG
 ============================================================ */
@@ -47594,6 +47745,7 @@ console.log(
 );
 
 
+
 /* ============================================================
    ⚡ OVERLAY ADD (CLEANED)
 ============================================================ */
@@ -47609,12 +47761,13 @@ console.log(
    Handles Leaflet overlay layers when user enables them.
 
    VILLAGE BOUNDARIES:
-   - Lazy loads GeoJSON on first use
-   - Village polygons remain visible
-   - BTR polygons remain visible
-   - Village Canvas becomes interactive
-   - BTR Canvas becomes non-interactive
-   - Staff remains untouched
+   - ADMIN only.
+   - Lazy loads GeoJSON on first use.
+   - Village polygons remain visible.
+   - BTR polygons remain visible.
+   - Village Canvas becomes interactive.
+   - BTR Canvas becomes non-interactive.
+   - Staff remains untouched.
 ============================================================ */
 
 /* ============================================================
@@ -47631,6 +47784,7 @@ console.log(
    - Current user's automatic track remains untouched.
 
    VILLAGE BOUNDARIES:
+   - ADMIN only.
    - Lazy loads polygons.
    - Switches interaction ownership to village canvas.
 
@@ -47712,11 +47866,11 @@ map.on(
          DESIGN:
 
          visibleStaffCache
-                │
-                ▼
+               │
+               ▼
          authorized markers
-                │
-                ▼
+               │
+               ▼
          bulk/lazy track loading
 
          IMPORTANT:
@@ -47862,15 +48016,16 @@ map.on(
 
 
       /* ========================================================
-         🏡 VILLAGE BOUNDARIES ON
+         🏡 VILLAGE BOUNDARIES ON — ADMIN ONLY
          --------------------------------------------------------
 
          FIRST TIME:
          1. Leaflet adds empty villageBoundaryLayer.
          2. overlayadd fires.
-         3. GeoJSON lazy loads.
-         4. Polygons are added.
-         5. Village Canvas becomes interaction owner.
+         3. ADMIN role is verified again.
+         4. GeoJSON lazy loads.
+         5. Polygons are added.
+         6. Village Canvas becomes interaction owner.
 
          NEXT TIME:
          1. Existing polygons are reused.
@@ -47878,6 +48033,7 @@ map.on(
          3. Village Canvas becomes interaction owner.
 
          IMPORTANT:
+         - Non-admin access is rejected.
          - BTR stays visible.
          - BTR Canvas becomes non-interactive.
          - Village Canvas becomes interactive.
@@ -47888,6 +48044,56 @@ map.on(
         layerName ===
         "🏡 Village Boundaries"
       ){
+
+        /* ------------------------------------------------------
+           ADMIN ACCESS RECHECK
+        ------------------------------------------------------ */
+
+        const currentVillageRole =
+          String(
+            window.userProfile?.role ||
+            window.currentRole ||
+            ""
+          )
+          .trim()
+          .toUpperCase();
+
+
+        if(
+          currentVillageRole !==
+          "ADMIN"
+        ){
+
+          console.warn(
+            "🔒 Village Boundary access denied:",
+            currentVillageRole ||
+            "UNKNOWN"
+          );
+
+
+          /*
+           * Remove ONLY the unauthorized village layer.
+           * No other map layer is touched.
+           */
+
+          if(
+            window.villageBoundaryLayer &&
+            map.hasLayer(
+              window.villageBoundaryLayer
+            )
+          ){
+
+            map.removeLayer(
+              window.villageBoundaryLayer
+            );
+
+          }
+
+
+          return;
+
+        }
+
 
         /* ------------------------------------------------------
            Lazy load village polygons
@@ -47911,7 +48117,7 @@ map.on(
 
         console.log(
 
-          "🏡 Village Boundaries Enabled"
+          "🏡 Village Boundaries Enabled — ADMIN"
 
         );
 
@@ -47963,6 +48169,7 @@ map.on(
   }
 
 );
+
 
 
 /* ============================================================
@@ -48040,17 +48247,17 @@ map.on(
          DESIGN:
 
          BULK ON
-             │
-             ▼
+            │
+            ▼
          checkbox OFF
-             │
+            │
              ├── invalidate pending requests
              ├── stop pending batch ownership
              ├── clear ALL bulk tracks
              ├── clear selected individual track
              ├── close staff popup
              ├── clear selectedStaff
-             │
+            │
              └── KEEP logged-in user's automatic track
 
          IMPORTANT:
