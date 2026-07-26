@@ -12024,171 +12024,160 @@ function applyGreenGuardAiAccess(
         );
 
 
-        // ====================================================
-        // 9. MOBILE SAFE AREA
-        //
-        // CSS env() allows iPhone/PWA safe-area handling.
-        // ====================================================
-
+ // ====================================================
+// 9. AI FLOATING BUTTON POSITION
+//
+// Stable BODY-based positioning.
+// Does NOT depend on Offence UI initialization.
+//
+// AI button:
+//   🤖
+//   ↓
+// 🚨 OFFENCE
 // ====================================================
-// 9. POSITION AI BUTTON ABOVE OFFENCE BUTTON
-// ====================================================
 
-const offenceBtn =
-    document.getElementById(
-        "gg-offence-main-button"
-    );
-
-
-if (
-    offenceBtn
-) {
-
-    const offenceRect =
-        offenceBtn.getBoundingClientRect();
+openBtn.style.setProperty(
+    "position",
+    "fixed",
+    "important"
+);
 
 
-    const gap =
-        10;
+openBtn.style.setProperty(
+    "right",
+    "16px",
+    "important"
+);
 
 
-    const aiWidth =
-        50;
+openBtn.style.setProperty(
+    "bottom",
+    "78px",
+    "important"
+);
 
 
-    const aiHeight =
-        50;
+openBtn.style.setProperty(
+    "left",
+    "auto",
+    "important"
+);
 
 
-    // ------------------------------------------------
-    // RIGHT ALIGN AI WITH OFFENCE BUTTON
-    // ------------------------------------------------
-
-    const aiLeft =
-        offenceRect.right -
-        aiWidth;
-
-
-    // ------------------------------------------------
-    // PLACE AI DIRECTLY ABOVE OFFENCE BUTTON
-    // ------------------------------------------------
-
-    const aiTop =
-        offenceRect.top -
-        aiHeight -
-        gap;
-
-
-    openBtn.style.setProperty(
-        "position",
-        "fixed",
-        "important"
-    );
-
-
-    openBtn.style.setProperty(
-        "left",
-        `${Math.max(8, aiLeft)}px`,
-        "important"
-    );
-
-
-    openBtn.style.setProperty(
-        "top",
-        `${Math.max(8, aiTop)}px`,
-        "important"
-    );
-
-
-    openBtn.style.setProperty(
-        "right",
-        "auto",
-        "important"
-    );
-
-
-    openBtn.style.setProperty(
-        "bottom",
-        "auto",
-        "important"
-    );
-
-
-    console.log(
-        "🤖 AI positioned above OFFENCE",
-        {
-            offenceLeft:
-                Math.round(
-                    offenceRect.left
-                ),
-
-            offenceTop:
-                Math.round(
-                    offenceRect.top
-                ),
-
-            aiLeft:
-                Math.round(
-                    aiLeft
-                ),
-
-            aiTop:
-                Math.round(
-                    aiTop
-                )
-        }
-    );
-
-}
+openBtn.style.setProperty(
+    "top",
+    "auto",
+    "important"
+);
 
 
 // ====================================================
-// OFFENCE BUTTON NOT READY
-// SAFE FALLBACK POSITION
+// FORCE ADMIN BUTTON VISIBLE
 // ====================================================
 
-else {
-
-    openBtn.style.setProperty(
-        "position",
-        "fixed",
-        "important"
-    );
+openBtn.style.setProperty(
+    "display",
+    "flex",
+    "important"
+);
 
 
-    openBtn.style.setProperty(
-        "right",
-        "16px",
-        "important"
-    );
+openBtn.style.setProperty(
+    "visibility",
+    "visible",
+    "important"
+);
 
 
-    openBtn.style.setProperty(
-        "bottom",
-        "80px",
-        "important"
-    );
+openBtn.style.setProperty(
+    "opacity",
+    "1",
+    "important"
+);
 
 
-    openBtn.style.setProperty(
-        "left",
-        "auto",
-        "important"
-    );
+openBtn.style.setProperty(
+    "pointer-events",
+    "auto",
+    "important"
+);
 
 
-    openBtn.style.setProperty(
-        "top",
-        "auto",
-        "important"
-    );
+// ====================================================
+// BUTTON SIZE
+// ====================================================
+
+openBtn.style.setProperty(
+    "width",
+    "50px",
+    "important"
+);
 
 
-    console.log(
-        "⏳ OFFENCE button not ready — AI fallback position"
-    );
+openBtn.style.setProperty(
+    "height",
+    "50px",
+    "important"
+);
 
-}
+
+openBtn.style.setProperty(
+    "min-width",
+    "50px",
+    "important"
+);
+
+
+openBtn.style.setProperty(
+    "min-height",
+    "50px",
+    "important"
+);
+
+
+// ====================================================
+// KEEP ABOVE MAP / PANELS
+// ====================================================
+
+openBtn.style.setProperty(
+    "z-index",
+    "2147483647",
+    "important"
+);
+
+
+// ====================================================
+// CENTER ROBOT ICON
+// ====================================================
+
+openBtn.style.setProperty(
+    "align-items",
+    "center",
+    "important"
+);
+
+
+openBtn.style.setProperty(
+    "justify-content",
+    "center",
+    "important"
+);
+
+
+// ====================================================
+// PREVENT PARENT / TRANSFORM INTERFERENCE
+// ====================================================
+
+openBtn.style.setProperty(
+    "transform",
+    "none",
+    "important"
+);
+
+
+console.log(
+    "🤖 AI floating button positioned"
+);
 
         // ====================================================
         // 10. FINAL CHECK
