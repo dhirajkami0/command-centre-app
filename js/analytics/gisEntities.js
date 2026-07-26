@@ -2383,17 +2383,23 @@ GISEntities.findCompartmentAtPoint =
         return null;
 
     };
-    /*=====================================================
-      RANGE NAMES
-    =====================================================*/
-/* ============================================================
-   🏡 FIND VILLAGE POLYGON AT GPS
+   /* ============================================================
+   🏡 FIND VILLAGE AT GPS POINT
    ------------------------------------------------------------
-   Uses already-loaded Village Boundary GeoJSON.
+   AUTHORITATIVE SOURCE:
+   window.__villageBoundaryGeoJSON
 
+   Uses actual Polygon / MultiPolygon geometry.
+
+   Returns:
+   - village
+   - block
+   - district
+   - villageCode
+   - feature
+
+   NO nearest-village guessing.
    NO Firestore read.
-   NO layer rendering.
-   NO listener.
 ============================================================ */
 
 GISEntities.findVillageAtPoint =
@@ -2402,161 +2408,233 @@ function(
     lon
 ){
 
-    lat = Number(lat);
-    lon = Number(lon);
+    lat =
+        Number(lat);
 
+    lon =
+        Number(lon);
+
+
+    // ========================================================
+    // VALIDATE GPS
+    // ========================================================
 
     if(
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
     ){
+
         return null;
+
     }
 
+
+    // ========================================================
+    // TURF
+    // ========================================================
 
     if(
         !window.turf ||
-        typeof window.turf.booleanPointInPolygon !== "function"
+        typeof turf.booleanPointInPolygon !==
+            "function"
     ){
+
         return null;
+
     }
 
 
+    // ========================================================
+    // RAW AUTHORITATIVE VILLAGE POLYGONS
+    // ========================================================
+
+    const geojson =
+        window.__villageBoundaryGeoJSON;
+
+    const features =
+        Array.isArray(
+            geojson?.features
+        )
+        ? geojson.features
+        : [];
+
+
+    if(
+        !features.length
+    ){
+
+        return null;
+
+    }
+
+
+    // ========================================================
+    // GPS → TURF POINT
+    //
+    // GeoJSON order MUST be:
+    // longitude, latitude
+    // ========================================================
+
     const point =
-        window.turf.point([
+        turf.point([
             lon,
             lat
         ]);
 
 
-    const rootLayer =
-        window.villageBoundaryLayer;
+    // ========================================================
+    // POINT-IN-POLYGON
+    // ========================================================
 
-
-    if(
-        !rootLayer ||
-        typeof rootLayer.eachLayer !== "function"
+    for(
+        const feature
+        of features
     ){
-        return null;
+
+        if(
+            !feature ||
+            !feature.geometry
+        ){
+
+            continue;
+
+        }
+
+
+        const geometryType =
+            feature.geometry.type;
+
+
+        if(
+            geometryType !== "Polygon" &&
+            geometryType !== "MultiPolygon"
+        ){
+
+            continue;
+
+        }
+
+
+        let inside =
+            false;
+
+
+        try{
+
+            inside =
+                turf.booleanPointInPolygon(
+                    point,
+                    feature
+                );
+
+        }
+        catch(err){
+
+            continue;
+
+        }
+
+
+        if(
+            !inside
+        ){
+
+            continue;
+
+        }
+
+
+        // ====================================================
+        // FOUND ACTUAL CONTAINING VILLAGE
+        // ====================================================
+
+        const p =
+            feature.properties ||
+            {};
+
+
+        const village =
+            String(
+                p.Vill_name ||
+                p.Vill_Name ||
+                p.Village_Name ||
+                p.villageName ||
+                p.village_name ||
+                p.name ||
+                ""
+            ).trim();
+
+
+        const block =
+            String(
+                p.Sub_dist ||
+                p.Block ||
+                p.block ||
+                p.blockName ||
+                p.block_name ||
+                ""
+            ).trim();
+
+
+        const district =
+            String(
+                p.District ||
+                p.district ||
+                p.districtName ||
+                ""
+            ).trim();
+
+
+        const villageCode =
+            String(
+                p.Vill_LGD ||
+                p.villageCode ||
+                p.village_code ||
+                p.LGD_CODE ||
+                ""
+            ).trim();
+
+
+        return {
+
+            type:
+                "VILLAGE",
+
+            village,
+
+            name:
+                village,
+
+            block,
+
+            district,
+
+            villageCode,
+
+            latitude:
+                lat,
+
+            longitude:
+                lon,
+
+            properties:
+                p,
+
+            feature:
+                feature
+
+        };
+
     }
 
 
-    let found =
-        null;
+    // ========================================================
+    // NOT INSIDE ANY VILLAGE POLYGON
+    // ========================================================
 
-
-    rootLayer.eachLayer(
-        function(layer){
-
-            if(found){
-                return;
-            }
-
-
-            const feature =
-                layer?.feature;
-
-
-            if(
-                !feature ||
-                !feature.geometry
-            ){
-                return;
-            }
-
-
-            try{
-
-                if(
-                    window.turf.booleanPointInPolygon(
-                        point,
-                        feature
-                    )
-                ){
-
-                    const p =
-                        feature.properties ||
-                        {};
-
-
-found = {
-
-    feature:
-        feature,
-
-
-    /* ==========================================
-       🏡 VILLAGE NAME
-       Official Village Boundary GeoJSON:
-       Vill_name
-    ========================================== */
-
-    village:
-        p.Vill_name ||
-        p.villageNameEnglish ||
-        p.village ||
-        p.Village ||
-        p.VILLAGE ||
-        p.name ||
-        p.NAME ||
-        "",
-
-
-    /* ==========================================
-       🔢 LGD VILLAGE CODE
-    ========================================== */
-
-    villageCode:
-        p.Vill_LGD ||
-        p.villageCode ||
-        p.VILL_LGD ||
-        p.lgdCode ||
-        "",
-
-
-    /* ==========================================
-       🗺 BLOCK / SUB-DISTRICT
-    ========================================== */
-
-    block:
-        p.Sub_dist ||
-        p.block ||
-        p.Block ||
-        p.BLOCK ||
-        p.subdistrictNameEnglish ||
-        "",
-
-
-    /* ==========================================
-       RAW PROPERTIES
-    ========================================== */
-
-    properties:
-        p
+    return null;
 
 };
-
-                }
-
-            }
-            catch(err){
-
-                console.warn(
-                    "Village polygon test failed",
-                    err
-                );
-
-            }
-
-        }
-    );
-
-
-    return found;
-
-};
-
-
 /* ============================================================
    📍 FIND NEAREST RECORDED VILLAGE GPS POINT
    ------------------------------------------------------------
