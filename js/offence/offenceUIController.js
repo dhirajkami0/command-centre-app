@@ -277,287 +277,530 @@ CONFIG: {
 
 
 
-        /* ====================================================
-           INITIALIZE UI CONTROLLER
+/* ===========================================================
+   INITIALIZE OFFENCE UI CONTROLLER
 
-           IMPORTANT:
+   ADMIN ONLY
 
-           This initializes only the UI.
+   STARTUP-SAFE:
+   - Handles hard reload
+   - Waits for user profile
+   - Retries automatically
+   - Safe to call repeatedly
+   - Repairs missing button/panel
+=========================================================== */
 
-           It does NOT force the SpatialEngine to build here.
+init:
+function () {
 
-           Spatial preparation happens when:
+    try {
 
-           1. User opens OFFENCE panel
-              OR
+        // ==================================================
+        // 1. RESOLVE CURRENT ROLE
+        // ==================================================
 
-           2. User clicks SOURCE
-              OR
-
-           3. User clicks TARGET
-
-           This reproduces the timing of the manual sequence
-           that was already proven to work.
-        ==================================================== */
-
-        /* ====================================================
-           INITIALIZE UI CONTROLLER
-
-           ADMIN-ONLY OFFENCE UI
-
-           IMPORTANT:
-           - Safe to call repeatedly.
-           - Does not permanently initialize before profile
-             availability.
-           - Repairs missing DOM automatically.
-           - Does not rebuild SpatialEngine here.
-        ==================================================== */
-
-        init:
-            function () {
-
-                try {
-
-                    // =========================================
-                    // RESOLVE CURRENT ROLE
-                    // =========================================
-
-                    const offenceUserRole =
-                        String(
-                            window.userProfile?.role ||
-                            window.currentRole ||
-                            ""
-                        )
-                        .trim()
-                        .toUpperCase();
+        const offenceUserRole =
+            String(
+                window.userProfile?.role ||
+                window.currentRole ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
 
 
-                    // =========================================
-                    // NON-ADMIN
-                    //
-                    // Do NOT lock initialized=true here.
-                    // Profile may still be loading.
-                    // =========================================
+        // ==================================================
+        // 2. PROFILE / ROLE NOT READY YET
+        //
+        // On hard reload the offence module may initialize
+        // before loadStaff / user profile hydration finishes.
+        //
+        // Do NOT mark initialized.
+        // Schedule another attempt.
+        // ==================================================
 
-                    if (
-                        offenceUserRole !==
-                        "ADMIN"
-                    ) {
+        if (
+            !offenceUserRole
+        ) {
 
-                        UIController
-                            .refreshElementReferences?.();
+            UIController.initialized =
+                false;
 
-
-                        console.log(
-                            "🔒 Offence UI waiting/hidden — ADMIN only",
-                            offenceUserRole ||
-                            "ROLE NOT READY"
-                        );
+            UIController.ready =
+                false;
 
 
-                        return false;
+            if (
+                !UIController
+                    .__profileRetryTimer
+            ) {
 
-                    }
-
-
-                    // =========================================
-                    // ADMIN CONFIRMED
-                    // =========================================
-
-                    console.log(
-                        "🔓 Offence UI ADMIN confirmed"
-                    );
+                console.log(
+                    "⏳ Offence UI waiting for user profile..."
+                );
 
 
-                    // =========================================
-                    // INJECT CSS
-                    // =========================================
+                UIController
+                    .__profileRetryTimer =
+                    setTimeout(
+                        function () {
 
-                    UIController
-                        .injectStyles();
-
-
-                    // =========================================
-                    // CHECK CURRENT DOM
-                    // =========================================
-
-                    let mainButton =
-                        document.getElementById(
                             UIController
-                                .CONFIG
-                                .BUTTON_ID
-                        );
+                                .__profileRetryTimer =
+                                null;
 
 
-                    let panel =
-                        document.getElementById(
                             UIController
-                                .CONFIG
-                                .PANEL_ID
-                        );
+                                .init();
 
-
-                    // =========================================
-                    // REPAIR / CREATE UI WHEN MISSING
-                    // =========================================
-
-                    if (
-                        !mainButton ||
-                        !panel
-                    ) {
-
-                        console.log(
-                            "🛠 Creating/repairing Offence UI"
-                        );
-
-
-                        // -------------------------------------
-                        // REMOVE OLD DUPLICATE UI
-                        // -------------------------------------
-
-                        UIController
-                            .removeLegacyUI();
-
-
-                        // -------------------------------------
-                        // CREATE MAIN BUTTON
-                        // -------------------------------------
-
-                        UIController
-                            .createMainButton();
-
-
-                        // -------------------------------------
-                        // CREATE PANEL
-                        // -------------------------------------
-
-                        UIController
-                            .createPanel();
-
-
-                        // -------------------------------------
-                        // RECHECK DOM
-                        // -------------------------------------
-
-                        mainButton =
-                            document.getElementById(
-                                UIController
-                                    .CONFIG
-                                    .BUTTON_ID
-                            );
-
-
-                        panel =
-                            document.getElementById(
-                                UIController
-                                    .CONFIG
-                                    .PANEL_ID
-                            );
-
-                    }
-
-
-                    // =========================================
-                    // VERIFY CREATION
-                    // =========================================
-
-                    if (
-                        !mainButton ||
-                        !panel
-                    ) {
-
-                        throw new Error(
-                            "Offence UI DOM creation failed"
-                        );
-
-                    }
-
-
-                    // =========================================
-                    // REFRESH REFERENCES
-                    // =========================================
-
-                    UIController
-                        .refreshElementReferences();
-
-
-                    // =========================================
-                    // BIND EVENTS
-                    // =========================================
-
-                    UIController
-                        .bindEvents();
-
-
-                    // =========================================
-                    // INITIAL STATUS
-                    // =========================================
-
-                    UIController
-                        .updateStatus(
-                            "Offence spatial analysis ready.",
-                            "ready"
-                        );
-
-
-                    // =========================================
-                    // ONLY NOW MARK INITIALIZED + READY
-                    // =========================================
-
-                    UIController.initialized =
-                        true;
-
-
-                    UIController.ready =
-                        true;
-
-
-                    UIController.lastError =
-                        null;
-
-
-                    console.log(
-                        "🚨 OffenceUIController Ready",
-                        UIController
-                            .getStats?.()
+                        },
+                        1000
                     );
 
-
-                    return true;
-
-                }
-
-                catch (
-                    error
-                ) {
-
-                    // =========================================
-                    // FAILURE MUST REMAIN RETRYABLE
-                    // =========================================
-
-                    UIController.initialized =
-                        false;
+            }
 
 
-                    UIController.ready =
-                        false;
+            return false;
+
+        }
 
 
-                    UIController.lastError =
-                        error;
+        // ==================================================
+        // 3. NON-ADMIN USER
+        // ==================================================
+
+        if (
+            offenceUserRole !==
+            "ADMIN"
+        ) {
+
+            // ----------------------------------------------
+            // Remove ADMIN-only UI if somehow present
+            // ----------------------------------------------
+
+            const existingButton =
+                document.getElementById(
+                    UIController
+                        .CONFIG
+                        .BUTTON_ID
+                );
 
 
-                    console.error(
-                        "❌ OffenceUIController initialization failed:",
-                        error
-                    );
+            const existingPanel =
+                document.getElementById(
+                    UIController
+                        .CONFIG
+                        .PANEL_ID
+                );
 
 
-                    return false;
+            if (
+                existingButton
+            ) {
 
-                }
+                existingButton.remove();
 
-            },
+            }
+
+
+            if (
+                existingPanel
+            ) {
+
+                existingPanel.remove();
+
+            }
+
+
+            UIController.initialized =
+                false;
+
+            UIController.ready =
+                false;
+
+
+            console.log(
+                "🔒 Offence UI hidden — ADMIN only",
+                offenceUserRole
+            );
+
+
+            return false;
+
+        }
+
+
+        // ==================================================
+        // 4. ADMIN CONFIRMED
+        // ==================================================
+
+        console.log(
+            "🔓 Offence UI ADMIN confirmed"
+        );
+
+
+        // ==================================================
+        // 5. CANCEL ANY PENDING PROFILE RETRY
+        // ==================================================
+
+        if (
+            UIController
+                .__profileRetryTimer
+        ) {
+
+            clearTimeout(
+                UIController
+                    .__profileRetryTimer
+            );
+
+
+            UIController
+                .__profileRetryTimer =
+                null;
+
+        }
+
+
+        // ==================================================
+        // 6. INJECT OFFENCE CSS
+        // ==================================================
+
+        if (
+            typeof UIController
+                .injectStyles ===
+                "function"
+        ) {
+
+            UIController
+                .injectStyles();
+
+        }
+
+
+        // ==================================================
+        // 7. FIND EXISTING UI
+        // ==================================================
+
+        let mainButton =
+            document.getElementById(
+                UIController
+                    .CONFIG
+                    .BUTTON_ID
+            );
+
+
+        let panel =
+            document.getElementById(
+                UIController
+                    .CONFIG
+                    .PANEL_ID
+            );
+
+
+        // ==================================================
+        // 8. CREATE / REPAIR UI
+        // ==================================================
+
+        if (
+            !mainButton ||
+            !panel
+        ) {
+
+            console.log(
+                "🛠 Creating/repairing Offence UI"
+            );
+
+
+            // ----------------------------------------------
+            // Remove incomplete/legacy offence UI
+            // ----------------------------------------------
+
+            if (
+                typeof UIController
+                    .removeLegacyUI ===
+                    "function"
+            ) {
+
+                UIController
+                    .removeLegacyUI();
+
+            }
+
+
+            // ----------------------------------------------
+            // CREATE MAIN BUTTON
+            // ----------------------------------------------
+
+            if (
+                typeof UIController
+                    .createMainButton !==
+                    "function"
+            ) {
+
+                throw new Error(
+                    "createMainButton() unavailable"
+                );
+
+            }
+
+
+            UIController
+                .createMainButton();
+
+
+            // ----------------------------------------------
+            // CREATE PANEL
+            // ----------------------------------------------
+
+            if (
+                typeof UIController
+                    .createPanel !==
+                    "function"
+            ) {
+
+                throw new Error(
+                    "createPanel() unavailable"
+                );
+
+            }
+
+
+            UIController
+                .createPanel();
+
+
+            // ----------------------------------------------
+            // RE-READ CREATED DOM
+            // ----------------------------------------------
+
+            mainButton =
+                document.getElementById(
+                    UIController
+                        .CONFIG
+                        .BUTTON_ID
+                );
+
+
+            panel =
+                document.getElementById(
+                    UIController
+                        .CONFIG
+                        .PANEL_ID
+                );
+
+        }
+
+
+        // ==================================================
+        // 9. VERIFY BUTTON
+        // ==================================================
+
+        if (
+            !mainButton
+        ) {
+
+            throw new Error(
+                "Offence main button creation failed"
+            );
+
+        }
+
+
+        // ==================================================
+        // 10. VERIFY PANEL
+        // ==================================================
+
+        if (
+            !panel
+        ) {
+
+            throw new Error(
+                "Offence analysis panel creation failed"
+            );
+
+        }
+
+
+        // ==================================================
+        // 11. REFRESH ELEMENT REFERENCES
+        // ==================================================
+
+        if (
+            typeof UIController
+                .refreshElementReferences ===
+                "function"
+        ) {
+
+            UIController
+                .refreshElementReferences();
+
+        }
+
+
+        // ==================================================
+        // 12. BIND EVENTS
+        // ==================================================
+
+        if (
+            typeof UIController
+                .bindEvents ===
+                "function"
+        ) {
+
+            UIController
+                .bindEvents();
+
+        }
+
+
+        // ==================================================
+        // 13. INITIAL STATUS
+        // ==================================================
+
+        if (
+            typeof UIController
+                .updateStatus ===
+                "function"
+        ) {
+
+            UIController
+                .updateStatus(
+                    "Offence spatial analysis ready.",
+                    "ready"
+                );
+
+        }
+
+        else if (
+            typeof UIController
+                .setStatus ===
+                "function"
+        ) {
+
+            UIController
+                .setStatus(
+                    "Offence spatial analysis ready.",
+                    "ready"
+                );
+
+        }
+
+
+        // ==================================================
+        // 14. ONLY NOW MARK CONTROLLER READY
+        // ==================================================
+
+        UIController.initialized =
+            true;
+
+
+        UIController.ready =
+            true;
+
+
+        UIController.lastError =
+            null;
+
+
+        // ==================================================
+        // 15. FINAL DOM VERIFICATION
+        // ==================================================
+
+        console.log(
+            "🚨 OffenceUIController Ready",
+            {
+                role:
+                    offenceUserRole,
+
+                initialized:
+                    UIController.initialized,
+
+                ready:
+                    UIController.ready,
+
+                button:
+                    !!document.getElementById(
+                        UIController
+                            .CONFIG
+                            .BUTTON_ID
+                    ),
+
+                panel:
+                    !!document.getElementById(
+                        UIController
+                            .CONFIG
+                            .PANEL_ID
+                    )
+            }
+        );
+
+
+        return true;
+
+    }
+
+    catch (
+        error
+    ) {
+
+        // ==================================================
+        // FAILURE — KEEP CONTROLLER RETRYABLE
+        // ==================================================
+
+        UIController.initialized =
+            false;
+
+
+        UIController.ready =
+            false;
+
+
+        UIController.lastError =
+            error;
+
+
+        console.error(
+            "❌ OffenceUIController initialization failed:",
+            error
+        );
+
+
+        // ==================================================
+        // AUTOMATIC RECOVERY
+        //
+        // Important for hard reload / startup race.
+        // ==================================================
+
+        if (
+            !UIController
+                .__initRetryTimer
+        ) {
+
+            UIController
+                .__initRetryTimer =
+                setTimeout(
+                    function () {
+
+                        UIController
+                            .__initRetryTimer =
+                            null;
+
+
+                        UIController
+                            .init();
+
+                    },
+                    1500
+                );
+
+        }
+
+
+        return false;
+
+    }
+
+},
 
 
                /* ====================================================
