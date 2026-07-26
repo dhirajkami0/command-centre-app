@@ -36213,7 +36213,225 @@ try {
     "⚠ Time parse failed"
   );
 }
+// ==================================================
+// 📍 CURRENT ACTUAL GIS LOCATION
+// ==================================================
 
+let currentLocation =
+{
+  type: "GPS",
+  gps: `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+  compartment: "",
+  beat: "",
+  range: "",
+  division: "",
+  village: "",
+  block: "",
+  nearestPoint: "",
+  distanceMeters: null
+};
+
+try {
+
+  const gis =
+    window.GreenGuardAI
+      ?.GISEntities;
+
+  if(
+    gis &&
+    typeof gis.resolveCurrentLocation ===
+      "function"
+  ){
+
+    const resolved =
+      gis.resolveCurrentLocation(
+        lat,
+        lon
+      );
+
+    if(resolved){
+
+      currentLocation =
+      {
+        ...currentLocation,
+
+        compartment:
+          resolved.compartment || "",
+
+        beat:
+          resolved.beat || "",
+
+        range:
+          resolved.range || "",
+
+        division:
+          resolved.division || "",
+
+        village:
+          resolved.village || "",
+
+        block:
+          resolved.block || "",
+
+        nearestPoint:
+          resolved.nearestPoint || "",
+
+        distanceMeters:
+          resolved.distanceMeters ?? null
+      };
+
+
+      // ------------------------------------------
+      // LOCATION TYPE
+      // Forest gets priority when point falls
+      // inside a compartment polygon.
+      // ------------------------------------------
+
+      if(
+        currentLocation.compartment ||
+        currentLocation.beat ||
+        currentLocation.range
+      ){
+
+        currentLocation.type =
+          "FOREST";
+
+      }
+
+      else if(
+        currentLocation.village
+      ){
+
+        currentLocation.type =
+          "VILLAGE";
+
+      }
+
+    }
+
+  }
+
+}
+catch(err){
+
+  console.warn(
+    "⚠ Current GIS location resolution failed:",
+    err
+  );
+
+}
+
+
+// ==================================================
+// 📍 BUILD CURRENT LOCATION POPUP HTML
+// ==================================================
+
+let currentLocationHtml = "";
+
+
+// --------------------------------------------------
+// FOREST LOCATION
+// --------------------------------------------------
+
+if(
+  currentLocation.type ===
+  "FOREST"
+){
+
+  currentLocationHtml = `
+
+    <div>
+      🌲 Compartment:
+      <b>
+        ${currentLocation.compartment || "N/A"}
+      </b>
+    </div>
+
+    <div>
+      🧭 Beat:
+      <b>
+        ${currentLocation.beat || "N/A"}
+      </b>
+    </div>
+
+    <div>
+      🏢 Range:
+      <b>
+        ${currentLocation.range || "N/A"}
+      </b>
+    </div>
+
+  `;
+
+}
+
+
+// --------------------------------------------------
+// VILLAGE LOCATION
+// --------------------------------------------------
+
+else if(
+  currentLocation.type ===
+  "VILLAGE"
+){
+
+  currentLocationHtml = `
+
+    <div>
+      🏡 Village:
+      <b>
+        ${currentLocation.village || "N/A"}
+      </b>
+    </div>
+
+    ${
+      currentLocation.block
+      ? `
+        <div>
+          🗺 Block:
+          <b>${currentLocation.block}</b>
+        </div>
+      `
+      : ""
+    }
+
+    ${
+      currentLocation.nearestPoint
+      ? `
+        <div>
+          📌 Near:
+          <b>${currentLocation.nearestPoint}</b>
+          ${
+            currentLocation.distanceMeters != null
+            ? ` (${currentLocation.distanceMeters} m)`
+            : ""
+          }
+        </div>
+      `
+      : ""
+    }
+
+  `;
+
+}
+
+
+// --------------------------------------------------
+// GPS ONLY / OUTSIDE KNOWN POLYGONS
+// --------------------------------------------------
+
+else {
+
+  currentLocationHtml = `
+
+    <div>
+      📌 GIS:
+      <b>Outside mapped forest/village boundary</b>
+    </div>
+
+  `;
+
+}
 // ==============================================
 // 🔥 POPUP
 // ==============================================
@@ -36388,7 +36606,44 @@ const popup = `
     </div>
 
   </div>
+  <!-- ===================================== -->
+  <!-- 📍 CURRENT LOCATION -->
+  <!-- ===================================== -->
 
+  <div style="
+    margin-bottom:8px;
+    font-size:11px;
+    line-height:1.6;
+    background:#f7fbf7;
+    border:1px solid #d7e9d8;
+    border-radius:7px;
+    padding:6px;
+  ">
+
+    <div style="
+      font-weight:700;
+      color:#1b5e20;
+      margin-bottom:4px;
+      font-size:12px;
+    ">
+      📍 Current Location
+    </div>
+
+    ${currentLocationHtml}
+
+    <div style="
+      margin-top:3px;
+      color:#555;
+      font-size:10px;
+    ">
+      🛰 GPS:
+      <b>
+        ${lat.toFixed(6)},
+        ${lon.toFixed(6)}
+      </b>
+    </div>
+
+  </div>
   <!-- ===================================== -->
   <!-- 🔥 TEAM -->
   <!-- ===================================== -->
