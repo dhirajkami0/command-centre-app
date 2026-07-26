@@ -9296,54 +9296,204 @@ try {
 }
 
 
-  // ================= PROFILE FLOW =================
-  const savedProfile = localStorage.getItem("userProfile");
+// ================= PROFILE FLOW =================
+const savedProfile =
+    localStorage.getItem(
+        "userProfile"
+    );
 
-  if (savedProfile) {
+
+if (
+    savedProfile
+) {
 
     try {
 
-      const profile = JSON.parse(savedProfile);
-      window.userProfile = normalizeUserProfile(profile);
+        const profile =
+            JSON.parse(
+                savedProfile
+            );
 
-      console.log("📴 OFFLINE MODE → APP STARTED");
 
-      applyRoleControl?.();
+        window.userProfile =
+            normalizeUserProfile(
+                profile
+            );
 
-      if (!window.__appBootRequested) {
-        window.__appBootRequested = true;
-        startApp?.();
-      }
 
-      initDutyControl?.();
-      
-      
+        console.log(
+            "📴 OFFLINE MODE → APP STARTED"
+        );
 
-      if (navigator.onLine) {
-        try {
-          syncOfflineMoves?.();
-          syncOfflineSightings?.();
-        } catch (e) {
-          console.warn("⚠ Sync error:", e);
+
+        // ==========================================
+        // NORMAL ROLE CONTROL
+        // ==========================================
+
+        applyRoleControl?.();
+
+
+        // ==========================================
+        // 🤖 GREENGUARD AI — ADMIN ACCESS
+        //
+        // Profile is NOW available.
+        // This must run AFTER window.userProfile
+        // has been populated.
+        // ==========================================
+
+        if (
+            typeof applyGreenGuardAiAccess ===
+            "function"
+        ) {
+
+            console.log(
+                "🤖 Applying GreenGuard AI access..."
+            );
+
+
+            applyGreenGuardAiAccess(
+                window.userProfile
+            );
+
         }
-      }
 
-      setTimeout(refreshOnlineProfile, 2000);
+        else {
 
-    } catch (e) {
+            console.warn(
+                "⏳ applyGreenGuardAiAccess not ready"
+            );
 
-      console.error("❌ Corrupt profile");
 
-      localStorage.removeItem("userProfile");
-      startOnlineLoginFlow();
+            // --------------------------------------
+            // AI code may load slightly later.
+            // Retry after app initialization.
+            // --------------------------------------
+
+            setTimeout(
+                function () {
+
+                    if (
+                        typeof applyGreenGuardAiAccess ===
+                        "function"
+                    ) {
+
+                        console.log(
+                            "🤖 Applying delayed GreenGuard AI access..."
+                        );
+
+
+                        applyGreenGuardAiAccess(
+                            window.userProfile
+                        );
+
+                    }
+
+                    else {
+
+                        console.error(
+                            "❌ applyGreenGuardAiAccess still unavailable"
+                        );
+
+                    }
+
+                },
+                1500
+            );
+
+        }
+
+
+        // ==========================================
+        // APP START
+        // ==========================================
+
+        if (
+            !window.__appBootRequested
+        ) {
+
+            window.__appBootRequested =
+                true;
+
+
+            startApp?.();
+
+        }
+
+
+        // ==========================================
+        // DUTY CONTROL
+        // ==========================================
+
+        initDutyControl?.();
+
+
+        // ==========================================
+        // OFFLINE SYNC
+        // ==========================================
+
+        if (
+            navigator.onLine
+        ) {
+
+            try {
+
+                syncOfflineMoves?.();
+
+                syncOfflineSightings?.();
+
+            }
+
+            catch (
+                e
+            ) {
+
+                console.warn(
+                    "⚠ Sync error:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        // ==========================================
+        // REFRESH PROFILE FROM SERVER
+        // ==========================================
+
+        setTimeout(
+            refreshOnlineProfile,
+            2000
+        );
 
     }
 
-  } else {
+    catch (
+        e
+    ) {
+
+        console.error(
+            "❌ Corrupt profile",
+            e
+        );
+
+
+        localStorage.removeItem(
+            "userProfile"
+        );
+
+
+        startOnlineLoginFlow();
+
+    }
+
+}
+
+else {
 
     startOnlineLoginFlow();
 
-  }
+}
 
 // ======================================================
 // 🔥 GPS WATCHDOG SYSTEM (PRODUCTION GRADE - FINAL)
