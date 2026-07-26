@@ -19367,6 +19367,28 @@ function () {
    ✓ Update status
 =========================================================== */
 
+/* ===========================================================
+   CLEAR ANALYSIS
+
+   Responsibilities
+
+   ✓ Clear offence spatial map layers
+   ✓ Reset controller state
+   ✓ Reset active mode
+   ✓ Collapse case results
+   ✓ Clear case results
+   ✓ Clear selected case
+   ✓ Reset case details
+   ✓ Reset field details
+   ✓ Restore status
+
+   IMPORTANT:
+   - Does NOT rebuild Store
+   - Does NOT reset SpatialEngine
+   - Does NOT clear base GIS
+   - Does NOT affect staff / elephants / patrol tracks
+=========================================================== */
+
 clearAnalysis:
 function () {
 
@@ -19376,27 +19398,25 @@ function () {
             UIController
                 .getSpatialRenderer();
 
-        /* ========================================
-           CLEAR MAP
-        ======================================== */
+
+        // ==================================================
+        // 1. CLEAR OFFENCE MAP LAYERS
+        // ==================================================
 
         if (
-
             SpatialRenderer &&
-
-            typeof
-            SpatialRenderer.clear ===
-            "function"
-
+            typeof SpatialRenderer.clear ===
+                "function"
         ) {
 
             SpatialRenderer.clear();
 
         }
 
-        /* ========================================
-           RESET INTERNAL STATE
-        ======================================== */
+
+        // ==================================================
+        // 2. RESET INTERNAL CONTROLLER STATE
+        // ==================================================
 
         UIController.activeMode =
             null;
@@ -19416,35 +19436,68 @@ function () {
         UIController.currentCase =
             null;
 
-        /* ========================================
-           RESET ACTIVE MODE BUTTONS
-        ======================================== */
 
-        UIController.updateActiveModeUI(
-            null
-        );
-
-        /* ========================================
-           COLLAPSE CASE RESULTS PANEL
-        ======================================== */
-
-        UIController.updateCaseResultsPanel(
-            false
-        );
-
-        /* ========================================
-           RESET CASE RESULTS
-        ======================================== */
+        // ==================================================
+        // 3. RESET ACTIVE SOURCE / TARGET BUTTON STATE
+        // ==================================================
 
         if (
-            UIController.elements
-                ?.caseResultList
+            typeof UIController.updateActiveModeUI ===
+                "function"
         ) {
 
-            UIController.elements
-                .caseResultList
-                .innerHTML =
+            UIController.updateActiveModeUI(
+                null
+            );
 
+        }
+
+
+        // ==================================================
+        // 4. COLLAPSE CASE RESULTS SECTION
+        //
+        // OLD:
+        // UIController.updateCaseResultsPanel(false)
+        //
+        // That method no longer exists.
+        // Use the actual current DOM instead.
+        // ==================================================
+
+        const caseSection =
+            UIController.elements
+                ?.caseSection ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CASE_SECTION_ID ||
+                "gg-offence-case-section"
+            );
+
+
+        if (caseSection) {
+
+            caseSection.style.display =
+                "none";
+
+        }
+
+
+        // ==================================================
+        // 5. RESET CASE RESULTS LIST
+        // ==================================================
+
+        const caseResultList =
+            UIController.elements
+                ?.caseResultList ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CASE_RESULT_LIST_ID ||
+                "gg-case-result-list"
+            );
+
+
+        if (caseResultList) {
+
+            caseResultList.innerHTML =
                 `
                 <div class="gg-offence-empty">
 
@@ -19459,17 +19512,36 @@ function () {
 
         }
 
-        /* ========================================
-           CLEAR CASE SELECTION
-        ======================================== */
+
+        // ==================================================
+        // 6. RESET CASE COUNT
+        // ==================================================
+
+        const caseCount =
+            UIController.elements
+                ?.caseCount ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CASE_COUNT_ID ||
+                "gg-offence-case-count"
+            );
+
+
+        if (caseCount) {
+
+            caseCount.textContent =
+                "0";
+
+        }
+
+
+        // ==================================================
+        // 7. CLEAR CURRENT CASE SELECTION
+        // ==================================================
 
         if (
-
-            typeof
-            UIController
-                .clearCaseSelection ===
-            "function"
-
+            typeof UIController.clearCaseSelection ===
+                "function"
         ) {
 
             UIController
@@ -19477,23 +19549,191 @@ function () {
 
         }
 
-        /* ========================================
-           UPDATE STATUS
-        ======================================== */
 
-        UIController.setStatus(
+        // ==================================================
+        // 8. COLLAPSE CASE DETAILS SECTION
+        // ==================================================
 
-            "Offence spatial layers cleared.",
+        const caseDetailsSection =
+            UIController.elements
+                ?.caseDetailsSection ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CASE_DETAILS_SECTION_ID ||
+                "gg-offence-case-details-section"
+            );
 
-            "ready"
 
-        );
+        if (caseDetailsSection) {
+
+            caseDetailsSection.style.display =
+                "none";
+
+        }
+
+
+        // ==================================================
+        // 9. RESET CASE DETAILS CONTENT
+        // ==================================================
+
+        const caseDetails =
+            UIController.elements
+                ?.caseDetails ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CASE_DETAILS_ID ||
+                "gg-offence-case-details"
+            );
+
+
+        if (caseDetails) {
+
+            caseDetails.innerHTML =
+                `
+                <div class="gg-offence-empty">
+
+                    Select an offence case
+                    to view case details.
+
+                </div>
+                `;
+
+        }
+
+
+        // ==================================================
+        // 10. COLLAPSE FIELD DETAILS SECTION
+        // ==================================================
+
+        const fieldDetailsSection =
+            UIController.elements
+                ?.fieldDetailsSection ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.FIELD_DETAILS_SECTION_ID ||
+                "gg-offence-field-details-section"
+            );
+
+
+        if (fieldDetailsSection) {
+
+            fieldDetailsSection.style.display =
+                "none";
+
+        }
+
+
+        // ==================================================
+        // 11. RESET FIELD DETAILS CONTENT
+        // ==================================================
+
+        const fieldDetails =
+            UIController.elements
+                ?.fieldDetails ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.FIELD_DETAILS_ID ||
+                "gg-offence-field-details"
+            );
+
+
+        if (fieldDetails) {
+
+            fieldDetails.innerHTML =
+                `
+                <div class="gg-offence-empty">
+
+                    Select a case field
+                    to view details.
+
+                </div>
+                `;
+
+        }
+
+
+        // ==================================================
+        // 12. RESTORE PARENT / CHILD AREA
+        //
+        // Do not destroy the panel itself.
+        // ==================================================
+
+        const parentSection =
+            UIController.elements
+                ?.parentSection ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.PARENT_SECTION_ID ||
+                "gg-offence-parent-section"
+            );
+
+
+        const childSection =
+            UIController.elements
+                ?.childSection ||
+            document.getElementById(
+                UIController.CONFIG
+                    ?.CHILD_SECTION_ID ||
+                "gg-offence-child-section"
+            );
+
+
+        if (parentSection) {
+
+            parentSection.style.display =
+                "none";
+
+        }
+
+
+        if (childSection) {
+
+            childSection.style.display =
+                "none";
+
+        }
+
+
+        // ==================================================
+        // 13. STATUS
+        //
+        // Current controller has updateStatus().
+        // Keep setStatus fallback for compatibility.
+        // ==================================================
+
+        if (
+            typeof UIController.updateStatus ===
+                "function"
+        ) {
+
+            UIController.updateStatus(
+                "Offence spatial layers cleared.",
+                "ready"
+            );
+
+        }
+
+        else if (
+            typeof UIController.setStatus ===
+                "function"
+        ) {
+
+            UIController.setStatus(
+                "Offence spatial layers cleared.",
+                "ready"
+            );
+
+        }
+
+
+        // ==================================================
+        // 14. COMPLETE
+        // ==================================================
 
         console.log(
-
             "🧹 Offence spatial analysis cleared"
-
         );
+
 
         return true;
 
@@ -19506,21 +19746,41 @@ function () {
         UIController.lastError =
             error;
 
-        UIController.setStatus(
 
-            "Unable to clear offence spatial layers.",
+        // ==================================================
+        // SAFE ERROR STATUS
+        // ==================================================
 
-            "error"
+        if (
+            typeof UIController.updateStatus ===
+                "function"
+        ) {
 
-        );
+            UIController.updateStatus(
+                "Unable to clear offence spatial layers.",
+                "error"
+            );
+
+        }
+
+        else if (
+            typeof UIController.setStatus ===
+                "function"
+        ) {
+
+            UIController.setStatus(
+                "Unable to clear offence spatial layers.",
+                "error"
+            );
+
+        }
+
 
         console.error(
-
             "❌ Offence spatial clear failed:",
-
             error
-
         );
+
 
         return false;
 
