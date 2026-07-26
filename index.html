@@ -48695,6 +48695,185 @@ map.on(
   }
 
 );
+
+
+
+    // ============================================================
+// 🏡 ADMIN-ONLY VILLAGE BOUNDARY ACCESS
+// ============================================================
+
+window.applyVillageBoundaryAccess =
+function applyVillageBoundaryAccess(
+    profile = window.userProfile
+) {
+
+    try {
+
+        const role =
+            String(
+                profile?.role ||
+                window.userProfile?.role ||
+                window.currentRole ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        // ====================================================
+        // REQUIRED OBJECTS
+        // ====================================================
+
+        if (
+            typeof layerControl === "undefined" ||
+            !layerControl
+        ) {
+
+            console.warn(
+                "⏳ Village Boundary waiting for layerControl"
+            );
+
+            return false;
+        }
+
+
+        if (
+            !window.villageBoundaryLayer
+        ) {
+
+            console.warn(
+                "⏳ Village Boundary waiting for villageBoundaryLayer"
+            );
+
+            return false;
+        }
+
+
+        // ====================================================
+        // FIND EXISTING REGISTRATION
+        // ====================================================
+
+        const existing =
+            Array.isArray(
+                layerControl._layers
+            )
+                ? layerControl._layers.find(
+                    item =>
+                        item?.layer ===
+                            window.villageBoundaryLayer ||
+                        item?.name ===
+                            "🏡 Village Boundaries"
+                )
+                : null;
+
+
+        // ====================================================
+        // ADMIN
+        // ====================================================
+
+        if (
+            role === "ADMIN"
+        ) {
+
+            if (
+                !existing
+            ) {
+
+                layerControl.addOverlay(
+                    window.villageBoundaryLayer,
+                    "🏡 Village Boundaries"
+                );
+
+
+                console.log(
+                    "🏡 Village Boundaries added to Layer Control"
+                );
+
+            }
+            else {
+
+                console.log(
+                    "🏡 Village Boundaries already registered"
+                );
+
+            }
+
+
+            window.villageBoundaryLayer
+                .__villageBoundaryControlRegistered =
+                true;
+
+
+            console.log(
+                "🔓 ADMIN — Village Boundary access enabled"
+            );
+
+
+            return true;
+        }
+
+
+        // ====================================================
+        // NON-ADMIN
+        // Remove ONLY Village Boundaries.
+        // Other layers remain untouched.
+        // ====================================================
+
+        if (
+            existing &&
+            typeof layerControl.removeLayer ===
+                "function"
+        ) {
+
+            layerControl.removeLayer(
+                window.villageBoundaryLayer
+            );
+
+        }
+
+
+        if (
+            window.map &&
+            window.map.hasLayer(
+                window.villageBoundaryLayer
+            )
+        ) {
+
+            window.map.removeLayer(
+                window.villageBoundaryLayer
+            );
+
+        }
+
+
+        window.villageBoundaryLayer
+            .__villageBoundaryControlRegistered =
+                false;
+
+
+        console.log(
+            "🔒 Village Boundaries hidden — ADMIN only"
+        );
+
+
+        return false;
+
+    }
+
+    catch (
+        error
+    ) {
+
+        console.error(
+            "❌ Village Boundary access error:",
+            error
+        );
+
+
+        return false;
+    }
+
+};
     /* ============================================================
              🐘 SIGHTING FORM SYSTEM (FINAL SAFE VERSION)
           ============================================================ */
