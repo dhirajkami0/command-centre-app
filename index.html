@@ -12174,159 +12174,182 @@ function applyGreenGuardAiAccess(
         );
 
 
- // ====================================================
-// 9. AI FLOATING BUTTON POSITION
-//
-// Stable BODY-based positioning.
-// Does NOT depend on Offence UI initialization.
-//
-// AI button:
-//   🤖
-//   ↓
-// 🚨 OFFENCE
+// ====================================================
+// 9. POSITION AI DIRECTLY ABOVE OFFENCE BUTTON
 // ====================================================
 
-openBtn.style.setProperty(
-    "position",
-    "fixed",
-    "important"
-);
+function positionAiAboveOffence() {
+
+    const offenceBtn =
+        document.getElementById(
+            "gg-offence-main-button"
+        );
 
 
-openBtn.style.setProperty(
-    "right",
-    "16px",
-    "important"
-);
+    // =================================================
+    // OFFENCE BUTTON NOT READY
+    // Keep AI visible at safe temporary position
+    // =================================================
+
+    if (
+        !offenceBtn
+    ) {
+
+        openBtn.style.setProperty(
+            "position",
+            "fixed",
+            "important"
+        );
+
+        openBtn.style.setProperty(
+            "right",
+            "16px",
+            "important"
+        );
+
+        openBtn.style.setProperty(
+            "bottom",
+            "80px",
+            "important"
+        );
+
+        openBtn.style.setProperty(
+            "left",
+            "auto",
+            "important"
+        );
+
+        openBtn.style.setProperty(
+            "top",
+            "auto",
+            "important"
+        );
+
+        return false;
+
+    }
 
 
-openBtn.style.setProperty(
-    "bottom",
-    "78px",
-    "important"
-);
+    // =================================================
+    // GET OFFENCE BUTTON POSITION
+    // =================================================
+
+    const offenceRect =
+        offenceBtn.getBoundingClientRect();
 
 
-openBtn.style.setProperty(
-    "left",
-    "auto",
-    "important"
-);
+    const aiWidth =
+        openBtn.offsetWidth || 50;
 
 
-openBtn.style.setProperty(
-    "top",
-    "auto",
-    "important"
-);
+    const aiHeight =
+        openBtn.offsetHeight || 50;
+
+
+    const gap =
+        10;
+
+
+    // =================================================
+    // CENTER AI ABOVE OFFENCE
+    // =================================================
+
+    const left =
+        offenceRect.left +
+        (
+            offenceRect.width -
+            aiWidth
+        ) / 2;
+
+
+    const top =
+        offenceRect.top -
+        aiHeight -
+        gap;
+
+
+    // =================================================
+    // APPLY POSITION
+    // =================================================
+
+    openBtn.style.setProperty(
+        "position",
+        "fixed",
+        "important"
+    );
+
+
+    openBtn.style.setProperty(
+        "left",
+        `${left}px`,
+        "important"
+    );
+
+
+    openBtn.style.setProperty(
+        "top",
+        `${top}px`,
+        "important"
+    );
+
+
+    openBtn.style.setProperty(
+        "right",
+        "auto",
+        "important"
+    );
+
+
+    openBtn.style.setProperty(
+        "bottom",
+        "auto",
+        "important"
+    );
+
+
+    console.log(
+        "🤖 AI positioned above OFFENCE",
+        {
+            left:
+                Math.round(left),
+
+            top:
+                Math.round(top)
+        }
+    );
+
+
+    return true;
+
+}
 
 
 // ====================================================
-// FORCE ADMIN BUTTON VISIBLE
+// POSITION NOW
 // ====================================================
 
-openBtn.style.setProperty(
-    "display",
-    "flex",
-    "important"
-);
-
-
-openBtn.style.setProperty(
-    "visibility",
-    "visible",
-    "important"
-);
-
-
-openBtn.style.setProperty(
-    "opacity",
-    "1",
-    "important"
-);
-
-
-openBtn.style.setProperty(
-    "pointer-events",
-    "auto",
-    "important"
-);
+positionAiAboveOffence();
 
 
 // ====================================================
-// BUTTON SIZE
+// REPOSITION AFTER OFFENCE UI FINISHES STARTING
 // ====================================================
 
-openBtn.style.setProperty(
-    "width",
-    "50px",
-    "important"
+setTimeout(
+    positionAiAboveOffence,
+    500
 );
 
 
-openBtn.style.setProperty(
-    "height",
-    "50px",
-    "important"
+setTimeout(
+    positionAiAboveOffence,
+    1500
 );
 
 
-openBtn.style.setProperty(
-    "min-width",
-    "50px",
-    "important"
-);
-
-
-openBtn.style.setProperty(
-    "min-height",
-    "50px",
-    "important"
-);
-
-
-// ====================================================
-// KEEP ABOVE MAP / PANELS
-// ====================================================
-
-openBtn.style.setProperty(
-    "z-index",
-    "2147483647",
-    "important"
-);
-
-
-// ====================================================
-// CENTER ROBOT ICON
-// ====================================================
-
-openBtn.style.setProperty(
-    "align-items",
-    "center",
-    "important"
-);
-
-
-openBtn.style.setProperty(
-    "justify-content",
-    "center",
-    "important"
-);
-
-
-// ====================================================
-// PREVENT PARENT / TRANSFORM INTERFERENCE
-// ====================================================
-
-openBtn.style.setProperty(
-    "transform",
-    "none",
-    "important"
-);
-
-
-console.log(
-    "🤖 AI floating button positioned"
+setTimeout(
+    positionAiAboveOffence,
+    3000
 );
 
         // ====================================================
