@@ -36050,9 +36050,13 @@ if(s.dutyActive !== true){
   delete window.trackDistanceMap[
     s.cleanName
   ];
-delete window.trackDistanceSessionMap?.[
-    s.cleanName
-];
+if(
+    window.trackDistanceSessionMap
+){
+    delete window.trackDistanceSessionMap[
+        s.cleanName
+    ];
+}
   if(window.staffMarkers[s.cleanName]){
 
     try{
@@ -36469,9 +36473,13 @@ delete window.trackDistanceMap[
     s.cleanName
 ];
 
-delete window.trackDistanceSessionMap?.[
-    s.cleanName
-];
+if(
+    window.trackDistanceSessionMap
+){
+    delete window.trackDistanceSessionMap[
+        s.cleanName
+    ];
+}
 
 // ==============================================
 // 🔥 SAVE ACTIVE SESSION
@@ -38694,9 +38702,14 @@ delete window.trackDistanceMap[
 // ==================================================
 // 📏 REMOVE DISTANCE SESSION CACHE
 // ==================================================
-delete window.trackDistanceSessionMap?.[
-    name
-];
+
+if(
+    window.trackDistanceSessionMap
+){
+    delete window.trackDistanceSessionMap[
+        name
+    ];
+}
 
 // ==============================================
 // 🔥 REMOVE SESSION CACHE
