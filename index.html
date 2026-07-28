@@ -37486,7 +37486,24 @@ const postingDetails =
         }
     )
     .join(", ");
+// ==================================================
+// 📍 DUTY AREA
+// --------------------------------------------------
+// This is the ASSIGNED duty area.
+// It is separate from the staff's current GPS/GIS
+// location shown later in the popup.
+// ==================================================
 
+const dutyArea =
+    String(
+        s.dutyArea ||
+        s.duty_area ||
+        s.DutyArea ||
+        s["Duty Area"] ||
+        s.compartment ||
+        s.Compartment ||
+        ""
+    ).trim() || "N/A";
 // ==============================================
 // 🔥 FIX SPEED
 // ==============================================
