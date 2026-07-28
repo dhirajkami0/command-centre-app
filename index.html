@@ -3075,9 +3075,11 @@ function(points){
             }
 
             // Absolute segment protection.
-            if(meters > 3000){
-                acceptSegment = false;
-            }
+// Absolute segment protection.
+// Keep identical to validTrack teleport protection.
+if(meters > 500){
+    acceptSegment = false;
+}
 
             if(acceptSegment){
                 totalMeters += meters;
@@ -3400,9 +3402,8 @@ function(
 // ====================================================
 // 📏 PERMANENT SESSION DISTANCE CALCULATION
 // ----------------------------------------------------
-// IMPORTANT:
-// Calculate from RAW Firestore points,
-// NOT cleanTrackPoints().
+// Calculate from RAW Firestore points.
+// DO NOT calculate from cleanTrackPoints().
 // ====================================================
 
 window.trackDistanceMap ??=
@@ -3411,28 +3412,106 @@ window.trackDistanceMap ??=
 window.trackDistanceSessionMap ??=
     Object.create(null);
 
+
+// ====================================================
+// 🔑 CANONICAL STAFF DISTANCE KEY
+// ----------------------------------------------------
+// IMPORTANT:
+// Same key must be used by:
+// • loadIndividualStaffTrack()
+// • staff popup
+// • cleanup
+// ====================================================
+
+const distanceKey =
+    cleanName(
+        name || ""
+    );
+
+
+// ====================================================
+// 📏 CALCULATE CURRENT SESSION DISTANCE
+// ====================================================
+
 const distanceKm =
     window.calculatePatrolDistanceKm(
         points
     );
 
+
+// ====================================================
+// 📏 SAVE DISTANCE
+// ====================================================
+
 window.trackDistanceMap[
-    name
+    distanceKey
 ] =
     Number.isFinite(distanceKm)
         ? distanceKm
         : 0;
 
+
+// ====================================================
+// 🔐 REMEMBER WHICH SESSION THIS DISTANCE BELONGS TO
+// ====================================================
+
 window.trackDistanceSessionMap[
-    name
+    distanceKey
 ] =
     sessionId;
 
+
+// ====================================================
+// 📏 LIVE UPDATE OPEN/EXISTING STAFF POPUP DISTANCE
+// ----------------------------------------------------
+// If popup is currently open, update its displayed
+// distance immediately after Firestore points arrive.
+// ====================================================
+
+try {
+
+    const distanceElement =
+        document.getElementById(
+            "staffDistance_" +
+            encodeURIComponent(
+                distanceKey
+            )
+        );
+
+    if(
+        distanceElement
+    ){
+
+        distanceElement.textContent =
+            window.trackDistanceMap[
+                distanceKey
+            ].toFixed(2) +
+            " km";
+
+    }
+
+}
+catch(err){
+
+    console.warn(
+        "⚠ Distance popup update failed:",
+        distanceKey,
+        err
+    );
+
+}
+
+
+// ====================================================
+// 🔎 DIAGNOSTIC
+// ====================================================
+
 console.log(
     "📏 PATROL DISTANCE:",
-    name,
-    window.trackDistanceMap[name]
-        .toFixed(3),
+    distanceKey,
+    window.trackDistanceMap[
+        distanceKey
+    ].toFixed(3),
     "km",
     "session:",
     sessionId,
@@ -35971,7 +36050,9 @@ if(s.dutyActive !== true){
   delete window.trackDistanceMap[
     s.cleanName
   ];
-
+delete window.trackDistanceSessionMap?.[
+    s.cleanName
+];
   if(window.staffMarkers[s.cleanName]){
 
     try{
@@ -36376,7 +36457,29 @@ delete window.trackPointCount[
 delete window.trackDistanceMap[
   s.cleanName
 ];
+// ==============================================
+// 🔥 CLEAR OLD SESSION CACHE
+// ==============================================
 
+delete window.trackPointCount[
+    s.cleanName
+];
+
+delete window.trackDistanceMap[
+    s.cleanName
+];
+
+delete window.trackDistanceSessionMap?.[
+    s.cleanName
+];
+
+// ==============================================
+// 🔥 SAVE ACTIVE SESSION
+// ==============================================
+
+window.activeSessionMap[
+    s.cleanName
+] = currentSessionId;
 // ==============================================
 // 🔥 SAVE ACTIVE SESSION
 // ==============================================
@@ -36474,42 +36577,78 @@ pointSnap.forEach(doc=>{
 // ======================================
 // 🔥 SESSION DISTANCE
 // ======================================
-let totalDistance = 0;
+// ==================================================
+// 📏 CANONICAL CURRENT-USER SESSION DISTANCE
+// --------------------------------------------------
+// SAME engine used by loadIndividualStaffTrack().
+// RAW Firestore points only.
+// ==================================================
 
-for(
-  let i = 1;
-  i < points.length;
-  i++
-){
+window.trackDistanceMap ??=
+    Object.create(null);
 
-  const prev =
-    points[i - 1];
+window.trackDistanceSessionMap ??=
+    Object.create(null);
 
-  const curr =
-    points[i];
+const distanceKey =
+    cleanName(
+        s.cleanName ||
+        s.name ||
+        ""
+    );
 
-  // ====================================
-  // 🔥 BREAK TRACK
-  // ====================================
-  if(curr.breakTrack){
+const distanceKm =
+    window.calculatePatrolDistanceKm(
+        points
+    );
 
-    continue;
-  }
-
-  totalDistance += getDistance(
-
-    [prev.lat, prev.lon],
-
-    [curr.lat, curr.lon]
-  );
-}
-
-// ======================================
-// 🔥 SAVE DISTANCE
-// ======================================
 window.trackDistanceMap[
-  s.cleanName
-] = totalDistance;// ======================================
+    distanceKey
+] =
+    Number.isFinite(distanceKm)
+        ? distanceKm
+        : 0;
+
+window.trackDistanceSessionMap[
+    distanceKey
+] =
+    currentSessionId;
+
+
+// ==================================================
+// 📏 UPDATE OPEN POPUP
+// ==================================================
+
+try {
+
+    const distanceElement =
+        document.getElementById(
+            "staffDistance_" +
+            encodeURIComponent(
+                distanceKey
+            )
+        );
+
+    if(distanceElement){
+
+        distanceElement.textContent =
+            window.trackDistanceMap[
+                distanceKey
+            ].toFixed(2) +
+            " km";
+    }
+
+}
+catch(err){
+
+    console.warn(
+        "⚠ Current-user distance popup update failed:",
+        distanceKey,
+        err
+    );
+}
+            
+    // ======================================
 // 🔥 CONTINUOUS SINGLE POLYLINE SYSTEM
 // ======================================
 
@@ -37256,14 +37395,89 @@ const dutyType =
   ? s.dutyType
   : "Patrolling";
 
-// ==============================================
-// 🔥 DUTY AREA / COMPARTMENT
-// ==============================================
-const dutyArea =
-  (s.compartment &&
-   String(s.compartment).trim())
-  ? s.compartment
-  : "Not Assigned";
+// ==================================================
+// 🏢 POSTING DETAILS
+// --------------------------------------------------
+// Examples:
+// Adma, Pana, BTR(W)
+// Range HQ, Pana, BTR(W)
+// Madarihat, Madarihat, Jaldapara
+//
+// NO division is hardcoded here.
+// ==================================================
+
+const postingBeat =
+    String(
+        s.beat ||
+        s.Beat ||
+        ""
+    ).trim();
+
+const postingRange =
+    String(
+        s.range ||
+        s.Range ||
+        ""
+    ).trim();
+
+const postingDivision =
+    String(
+        s.division ||
+        s.Division ||
+        ""
+    ).trim();
+
+
+// ==================================================
+// 🏢 POSTING PLACE
+// Beat available  → Beat name
+// No beat         → Range HQ
+// ==================================================
+
+const postingPlace =
+    postingBeat ||
+    (
+        postingRange
+            ? "Range HQ"
+            : ""
+    );
+
+
+// ==================================================
+// 🏢 FINAL POSTING TEXT
+// ==================================================
+
+const postingDetails =
+    [
+        postingPlace,
+        postingRange,
+        postingDivision
+    ]
+    .filter(
+        (value, index, array) => {
+
+            const v =
+                String(
+                    value || ""
+                ).trim();
+
+            if(!v){
+                return false;
+            }
+
+            // prevent duplicate labels
+            return (
+                array.findIndex(
+                    item =>
+                        String(item || "")
+                            .trim()
+                            .toLowerCase() ===
+                        v.toLowerCase()
+                ) === index
+            );
+        }
+    )
+    .join(", ");
 
 // ==============================================
 // 🔥 FIX SPEED
@@ -37661,6 +37875,17 @@ else {
   `;
 
 }
+            // ==================================================
+// 🔑 CANONICAL STAFF KEY
+// Used by distance cache + popup
+// ==================================================
+
+const staffDistanceKey =
+    cleanName(
+        s.cleanName ||
+        s.name ||
+        ""
+    );
 // ==============================================
 // 🔥 POPUP
 // ==============================================
@@ -37819,20 +38044,20 @@ const popup = `
 
     </div>
 
-    <div style="
-      margin-bottom:4px;
-      color:#111;
-    ">
-      🧭 Beat:
-      <b>${s.beat || "N/A"}</b>
-    </div>
+<div style="
+    margin-bottom:4px;
+    color:#111;
+">
+    🏢 Posting:
+    <b>${postingDetails || "N/A"}</b>
+</div>
 
-    <div style="
-      color:#111;
-    ">
-      📍 Duty Area:
-      <b>${dutyArea}</b>
-    </div>
+<div style="
+    color:#111;
+">
+    📍 Duty Area:
+    <b>${dutyArea}</b>
+</div>
 
   </div>
   <!-- ===================================== -->
@@ -37944,22 +38169,19 @@ const popup = `
 </div>
 
 <div style="
-  margin-bottom:3px;
+    margin-bottom:3px;
 ">
-  📏 Distance Travelled:
+    📏 Distance Travelled:
 
-  <b
-    id="staffDistance_${encodeURIComponent(s.cleanName)}"
-  >
-    ${
-      Number(
-        window.trackDistanceMap?.[
-          s.cleanName
-        ] || 0
-      ).toFixed(2)
-    } km
-  </b>
-
+    <b id="staffDistance_${encodeURIComponent(staffDistanceKey)}">
+        ${
+            Number(
+                window.trackDistanceMap?.[
+                    staffDistanceKey
+                ] || 0
+            ).toFixed(2)
+        } km
+    </b>
 </div>
 
     <div style="
@@ -38462,16 +38684,26 @@ Object.keys(
       delete window.trackListeners[name];
     }
 delete window.trackPointCount[
-  name
+    name
 ];
 
 delete window.trackDistanceMap[
-  name
+    name
 ];
-    // ==============================================
-    // 🔥 REMOVE SESSION CACHE
-    // ==============================================
-    delete window.activeSessionMap[name];
+
+// ==================================================
+// 📏 REMOVE DISTANCE SESSION CACHE
+// ==================================================
+delete window.trackDistanceSessionMap?.[
+    name
+];
+
+// ==============================================
+// 🔥 REMOVE SESSION CACHE
+// ==============================================
+delete window.activeSessionMap[
+    name
+];
 
   } catch(e){
 
