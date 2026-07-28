@@ -7333,6 +7333,136 @@ function loadProfile(){
   )
 
   .then(async profile => {
+    // ============================================================
+    // 🔐 HARD ACCESS REVOCATION
+    // ------------------------------------------------------------
+    // IMPORTANT:
+    //
+    // null profile
+    //     = backend / Firestore unavailable
+    //     = OFFLINE FALLBACK MAY BE USED
+    //
+    // ACCESS_BLOCKED
+    //     = staff exists but access revoked
+    //     = NEVER use cached profile
+    //
+    // PROFILE_NOT_FOUND / NOT_AUTHORIZED
+    //     = staff_profiles document missing
+    //     = NEVER use cached profile
+    // ============================================================
+
+    if(
+        profile &&
+        profile.status === "error" &&
+        (
+            profile.code === "ACCESS_BLOCKED" ||
+            profile.code === "PROFILE_NOT_FOUND" ||
+            profile.code === "NOT_AUTHORIZED" ||
+            profile.error === "NOT_AUTHORIZED"
+        )
+    ){
+
+        console.warn(
+            "⛔ APP ACCESS REVOKED:",
+            phone,
+            profile.code ||
+            profile.error
+        );
+
+        // ========================================================
+        // 🔥 REMOVE AUTHENTICATION CACHE ONLY
+        // ========================================================
+
+        localStorage.removeItem(
+            "userPhone"
+        );
+
+        localStorage.removeItem(
+            "userProfile"
+        );
+
+        window.userProfile = null;
+
+        // ========================================================
+        // ⚠ DO NOT DELETE PATROL SESSION DATA HERE
+        // --------------------------------------------------------
+        // Preserve:
+        // • dutyActive
+        // • sessionId
+        // • offlineGPS
+        // • patrol history
+        // ========================================================
+
+        // ========================================================
+        // 🔒 PREVENT APP BOOT
+        // ========================================================
+
+        window.__appBootRequested = false;
+
+        // ========================================================
+        // 📱 CLEAR APK CACHED PROFILE IF BRIDGE SUPPORTS IT
+        // ========================================================
+
+        try{
+
+            const bridgeReady =
+                await waitForAndroidBridge();
+
+            if(
+                bridgeReady &&
+                window.Android
+            ){
+
+                if(
+                    typeof Android.clearUserProfile ===
+                    "function"
+                ){
+
+                    Android.clearUserProfile();
+
+                    console.log(
+                        "📱 APK PROFILE CLEARED"
+                    );
+                }
+
+                if(
+                    typeof Android.clearPhone ===
+                    "function"
+                ){
+
+                    Android.clearPhone();
+
+                    console.log(
+                        "📱 APK PHONE CLEARED"
+                    );
+                }
+            }
+
+        } catch(err){
+
+            console.warn(
+                "⚠ APK revoke cleanup skipped:",
+                err
+            );
+        }
+
+        // ========================================================
+        // 🔐 RETURN USER TO LOGIN
+        // ========================================================
+
+        loginShownOnce = false;
+
+        if(
+            !loginModalLocked
+        ){
+
+            loginShownOnce = true;
+
+            showLogin();
+        }
+
+        return;
+    }
 
     // ============================================================
     // 🔥 OFFLINE FALLBACK
