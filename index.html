@@ -54507,6 +54507,7 @@ function startOnlineLoginFlow(){
   // ============================================================
   // 🔒 HARD AUTH FLOW LOCK
   // ============================================================
+
   if(authFlowRunning){
 
     console.warn(
@@ -54522,9 +54523,11 @@ function startOnlineLoginFlow(){
     "🚀 startOnlineLoginFlow()"
   );
 
+
   // ============================================================
   // 🔥 BLOCK IMMEDIATE POST-LOGIN REFRESH
   // ============================================================
+
   const justLoggedIn =
 
     Date.now() -
@@ -54542,18 +54545,22 @@ function startOnlineLoginFlow(){
     return;
   }
 
+
   // ============================================================
-  // 🔥 LOCAL PHONE
+  // 📱 LOCAL PHONE
   // ============================================================
+
   const phone =
 
     localStorage.getItem(
       "userPhone"
     ) || "";
 
+
   // ============================================================
   // 🔴 NO PHONE
   // ============================================================
+
   if(!phone){
 
     console.warn(
@@ -54561,13 +54568,9 @@ function startOnlineLoginFlow(){
     );
 
     if(
-
       !loginModalLocked &&
-
       !loginShownOnce &&
-
       !window.userProfile
-
     ){
 
       loginShownOnce = true;
@@ -54580,10 +54583,17 @@ function startOnlineLoginFlow(){
     return;
   }
 
+
   // ============================================================
-  // 🔥 GET PROFILE
+  // 🔐 AUTHORITATIVE PROFILE CHECK
+  // ------------------------------------------------------------
+  // ACTIVE  → profile returned
+  // BLOCKED → ACCESS_BLOCKED
+  // MISSING → PROFILE_NOT_FOUND / NOT_AUTHORIZED
+  // offline → null
   // ============================================================
-  callBackend(
+
+  safeBackend(
 
     "GET_PROFILE",
 
@@ -54595,19 +54605,106 @@ function startOnlineLoginFlow(){
 
   .then(function(profile){
 
+
     // ==========================================================
-    // 🔴 INVALID PROFILE
+    // 📴 BACKEND / NETWORK UNAVAILABLE
+    // ----------------------------------------------------------
+    // IMPORTANT:
+    // Do NOT revoke cached authentication merely because
+    // the device temporarily has no network.
     // ==========================================================
+
+    if(!profile){
+
+      console.warn(
+        "📴 Online profile check unavailable"
+      );
+
+      updateNetworkStatus(
+        "offline"
+      );
+
+      return false;
+    }
+
+
+    // ==========================================================
+    // ⛔ BLOCKED STAFF
+    // ==========================================================
+
     if(
-
-      !profile ||
-
-      profile.error
-
+      profile.status === "error" &&
+      profile.code === "ACCESS_BLOCKED"
     ){
 
       console.warn(
-        "⚠ Invalid profile"
+        "⛔ STAFF ACCESS REVOKED:",
+        phone
+      );
+
+
+      // ========================================================
+      // 🔥 REMOVE AUTHENTICATION CACHE ONLY
+      // ========================================================
+
+      localStorage.removeItem(
+        "userPhone"
+      );
+
+      localStorage.removeItem(
+        "userProfile"
+      );
+
+      window.userProfile = null;
+
+      loginCompleted = false;
+
+
+      // ========================================================
+      // ⚠ DO NOT DELETE PATROL SESSION DATA
+      // --------------------------------------------------------
+      // Preserve:
+      // dutyActive
+      // sessionId
+      // offlineGPS
+      // ========================================================
+
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+      }
+
+
+      alert(
+        "⛔ Access to GreenGuard has been revoked."
+      );
+
+      return false;
+    }
+
+
+    // ==========================================================
+    // ⛔ PROFILE MISSING / NOT AUTHORIZED
+    // ==========================================================
+
+    if(
+      profile.status === "error" &&
+      (
+        profile.code === "PROFILE_NOT_FOUND" ||
+        profile.code === "NOT_AUTHORIZED" ||
+        profile.error === "NOT_AUTHORIZED"
+      )
+    ){
+
+      console.warn(
+        "⛔ STAFF PROFILE NOT AUTHORIZED:",
+        phone
       );
 
       localStorage.removeItem(
@@ -54620,12 +54717,12 @@ function startOnlineLoginFlow(){
 
       window.userProfile = null;
 
+      loginCompleted = false;
+
+
       if(
-
         !loginModalLocked &&
-
         !loginShownOnce
-
       ){
 
         loginShownOnce = true;
@@ -54633,25 +54730,100 @@ function startOnlineLoginFlow(){
         showLogin();
       }
 
-      authFlowRunning = false;
 
-      return Promise.reject(
-        "Invalid profile"
+      alert(
+        "⛔ This mobile number is not authorized to use GreenGuard."
       );
+
+      return false;
     }
+
+
+    // ==========================================================
+    // 🔴 OTHER INVALID PROFILE
+    // ==========================================================
+
+    if(profile.error){
+
+      console.warn(
+        "⚠ Invalid profile:",
+        profile
+      );
+
+      localStorage.removeItem(
+        "userPhone"
+      );
+
+      localStorage.removeItem(
+        "userProfile"
+      );
+
+      window.userProfile = null;
+
+      loginCompleted = false;
+
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+      }
+
+      return false;
+    }
+
+
+    // ==========================================================
+    // 🔐 EXPLICIT SUCCESS REQUIRED
+    // ==========================================================
+
+    if(profile.status !== "ok"){
+
+      console.warn(
+        "⛔ Invalid authorization response:",
+        profile
+      );
+
+      return false;
+    }
+
 
     // ==========================================================
     // 🔥 NORMALIZE PROFILE
     // ==========================================================
+
     const fixedProfile =
 
       normalizeUserProfile(
         profile
       );
 
+
+    // ==========================================================
+    // 🔐 NORMALIZED PROFILE VALIDATION
+    // ==========================================================
+
+    if(
+      !fixedProfile ||
+      !fixedProfile.phone
+    ){
+
+      console.warn(
+        "⛔ Invalid normalized profile"
+      );
+
+      return false;
+    }
+
+
     // ==========================================================
     // 🔥 SAVE GLOBAL PROFILE
     // ==========================================================
+
     window.userProfile =
       fixedProfile;
 
@@ -54664,26 +54836,33 @@ function startOnlineLoginFlow(){
       )
     );
 
+
     // ==========================================================
     // 🔥 LOGIN COMPLETE
     // ==========================================================
+
     loginCompleted = true;
 
+
     // ==========================================================
-    // 🔥 NETWORK
+    // 🌐 NETWORK
     // ==========================================================
+
     updateNetworkStatus(
       "online"
     );
 
+
     // ==========================================================
-    // 🔥 ROLE CONTROL
+    // 🔐 ROLE CONTROL
     // ==========================================================
+
     try{
 
       applyRoleControl?.();
 
-    }catch(e){
+    }
+    catch(e){
 
       console.warn(
         "⚠ applyRoleControl failed",
@@ -54691,22 +54870,31 @@ function startOnlineLoginFlow(){
       );
     }
 
+
     console.log(
       "✅ Profile refresh completed"
     );
 
-    // ==========================================================
-    // 🔥 DO NOT RESTART APP
-    // ==========================================================
     return true;
   })
+
 
   // ============================================================
   // 🔥 SAFE UI REFRESH ONLY
   // ============================================================
-  .then(function(){
 
+  .then(function(authorized){
+
+    // Do not refresh after failed/offline authorization check.
+    if(authorized !== true){
+      return;
+    }
+
+
+    // ==========================================================
     // 🔥 NEVER RUN DURING LOGIN WINDOW
+    // ==========================================================
+
     const stillInLoginWindow =
 
       Date.now() -
@@ -54722,14 +54910,17 @@ function startOnlineLoginFlow(){
       return;
     }
 
+
     // ==========================================================
     // 🔥 LIGHT REFRESH ONLY
     // ==========================================================
+
     try{
 
       refreshAll?.();
 
-    }catch(e){
+    }
+    catch(e){
 
       console.warn(
         "⚠ refreshAll failed",
@@ -54739,9 +54930,11 @@ function startOnlineLoginFlow(){
 
   })
 
+
   // ============================================================
   // 🔴 FAILURE
   // ============================================================
+
   .catch(function(err){
 
     console.warn(
@@ -54753,17 +54946,15 @@ function startOnlineLoginFlow(){
       "offline"
     );
 
+
     // ==========================================================
     // 🔥 SHOW LOGIN SAFELY
     // ==========================================================
+
     if(
-
       !window.userProfile &&
-
       !loginModalLocked &&
-
       !loginShownOnce
-
     ){
 
       loginShownOnce = true;
@@ -54773,9 +54964,11 @@ function startOnlineLoginFlow(){
 
   })
 
+
   // ============================================================
   // 🔓 FINALLY
   // ============================================================
+
   .finally(() => {
 
     authFlowRunning = false;
@@ -54783,6 +54976,7 @@ function startOnlineLoginFlow(){
     console.log(
       "✅ Auth flow complete"
     );
+
   });
 }
     function hideSplash(){
