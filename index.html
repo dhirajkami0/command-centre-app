@@ -2897,7 +2897,202 @@ function(){
     );
 
 };
+// ============================================================
+// 📏 GREENGUARD CANONICAL PATROL DISTANCE ENGINE
+// ------------------------------------------------------------
+// Input:
+// [
+//   { lat, lon, time, breakTrack },
+//   ...
+// ]
+//
+// Rules:
+// • calculates from RAW valid patrol points
+// • respects breakTrack
+// • rejects impossible GPS jumps
+// • rejects invalid coordinates
+// • does NOT depend on rendered Leaflet polyline
+// • result is kilometres
+// ============================================================
 
+window.calculatePatrolDistanceKm =
+function(points){
+
+    if(
+        !Array.isArray(points) ||
+        points.length < 2
+    ){
+        return 0;
+    }
+
+    let totalMeters = 0;
+
+    let previous = null;
+
+    for(const p of points){
+
+        if(!p){
+            continue;
+        }
+
+        const lat = Number(p.lat);
+        const lon = Number(p.lon);
+
+        if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon) ||
+            lat < -90 ||
+            lat > 90 ||
+            lon < -180 ||
+            lon > 180
+        ){
+            continue;
+        }
+
+        // breakTrack means:
+        // DON'T connect previous segment to this point.
+        if(p.breakTrack === true){
+
+            previous = {
+                lat,
+                lon,
+                time: Number(p.time || 0)
+            };
+
+            continue;
+        }
+
+        if(!previous){
+
+            previous = {
+                lat,
+                lon,
+                time: Number(p.time || 0)
+            };
+
+            continue;
+        }
+
+        let meters = 0;
+
+        try {
+
+            // Leaflet's geodesic distance
+            if(
+                window.map &&
+                typeof window.map.distance === "function"
+            ){
+
+                meters =
+                    window.map.distance(
+                        [previous.lat, previous.lon],
+                        [lat, lon]
+                    );
+
+            } else {
+
+                // ==========================================
+                // FALLBACK HAVERSINE
+                // ==========================================
+
+                const R = 6371000;
+
+                const toRad =
+                    deg => deg * Math.PI / 180;
+
+                const dLat =
+                    toRad(lat - previous.lat);
+
+                const dLon =
+                    toRad(lon - previous.lon);
+
+                const lat1 =
+                    toRad(previous.lat);
+
+                const lat2 =
+                    toRad(lat);
+
+                const a =
+                    Math.sin(dLat / 2) ** 2 +
+                    Math.cos(lat1) *
+                    Math.cos(lat2) *
+                    Math.sin(dLon / 2) ** 2;
+
+                meters =
+                    2 *
+                    R *
+                    Math.atan2(
+                        Math.sqrt(a),
+                        Math.sqrt(1 - a)
+                    );
+            }
+
+        } catch(err){
+
+            meters = 0;
+        }
+
+        // ==========================================
+        // GPS JUMP PROTECTION
+        // ==========================================
+
+        if(
+            Number.isFinite(meters) &&
+            meters >= 0
+        ){
+
+            const previousTime =
+                Number(previous.time || 0);
+
+            const currentTime =
+                Number(p.time || 0);
+
+            let acceptSegment = true;
+
+            // --------------------------------------
+            // If timestamps available, reject
+            // physically impossible jumps.
+            // --------------------------------------
+            if(
+                previousTime > 0 &&
+                currentTime > previousTime
+            ){
+
+                const seconds =
+                    (currentTime - previousTime) / 1000;
+
+                if(seconds > 0){
+
+                    const speedKmh =
+                        (meters / seconds) * 3.6;
+
+                    // Forest patrol safety threshold.
+                    // Prevent GPS spikes from adding km.
+                    if(speedKmh > 120){
+                        acceptSegment = false;
+                    }
+                }
+            }
+
+            // Absolute segment protection.
+            if(meters > 3000){
+                acceptSegment = false;
+            }
+
+            if(acceptSegment){
+                totalMeters += meters;
+            }
+        }
+
+        previous = {
+            lat,
+            lon,
+            time: Number(p.time || 0)
+        };
+    }
+
+    return totalMeters / 1000;
+};
     // ============================================================
 // 🛰 LOAD ONE INDIVIDUAL STAFF TRACK
 // ------------------------------------------------------------
@@ -3202,7 +3397,48 @@ function(
                             }
                         );
 
+// ====================================================
+// 📏 PERMANENT SESSION DISTANCE CALCULATION
+// ----------------------------------------------------
+// IMPORTANT:
+// Calculate from RAW Firestore points,
+// NOT cleanTrackPoints().
+// ====================================================
 
+window.trackDistanceMap ??=
+    Object.create(null);
+
+window.trackDistanceSessionMap ??=
+    Object.create(null);
+
+const distanceKm =
+    window.calculatePatrolDistanceKm(
+        points
+    );
+
+window.trackDistanceMap[
+    name
+] =
+    Number.isFinite(distanceKm)
+        ? distanceKm
+        : 0;
+
+window.trackDistanceSessionMap[
+    name
+] =
+    sessionId;
+
+console.log(
+    "📏 PATROL DISTANCE:",
+    name,
+    window.trackDistanceMap[name]
+        .toFixed(3),
+    "km",
+    "session:",
+    sessionId,
+    "raw points:",
+    points.length
+);
                         // ====================================
                         // 📍 NOTHING TO DRAW
                         // ====================================
@@ -37694,35 +37930,37 @@ const popup = `
     color:#111;
   ">
 
-    <div style="
-      margin-bottom:3px;
-    ">
-      📊 Speed:
-      <b>
+<div style="
+  margin-bottom:3px;
+">
+  📊 Speed:
+  <b>
+    ${
+      liveSpeed < 1
+        ? "Stationary"
+        : `${liveSpeed.toFixed(1)} km/h`
+    }
+  </b>
+</div>
 
-${
-  liveSpeed < 1
-  ? "Stationary"
-  : `${liveSpeed.toFixed(1)} km/h`
-}
+<div style="
+  margin-bottom:3px;
+">
+  📏 Distance Travelled:
 
-</b>
-    </div>
+  <b
+    id="staffDistance_${encodeURIComponent(s.cleanName)}"
+  >
+    ${
+      Number(
+        window.trackDistanceMap?.[
+          s.cleanName
+        ] || 0
+      ).toFixed(2)
+    } km
+  </b>
 
-    <div style="
-      margin-bottom:3px;
-    ">
-      📏 Distance Travelled:
-      <b>
-        ${
-          Number(
-            window.trackDistanceMap?.[
-              s.cleanName
-            ] || 0
-          ).toFixed(2)
-        } km
-      </b>
-    </div>
+</div>
 
     <div style="
       margin-bottom:3px;
