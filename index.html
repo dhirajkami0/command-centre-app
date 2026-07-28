@@ -55011,25 +55011,293 @@ function startOnlineLoginFlow(){
 // ================= REFRESH PROFILE =================
 function refreshOnlineProfile(){
 
-  const phone = localStorage.getItem("userPhone") || "";
-  if (!phone) return;
+  // ============================================================
+  // 📱 GET SAVED PHONE
+  // ============================================================
 
-  callBackend("GET_PROFILE", { phone: phone })
+  const phone =
+    localStorage.getItem(
+      "userPhone"
+    ) || "";
 
-    .then(function (profile) {
+  if(!phone){
+    return;
+  }
 
-      if (!profile || profile.error) return;
 
-      const fixedProfile = normalizeUserProfile(profile);
+  // ============================================================
+  // 🔐 AUTHORITATIVE STAFF AUTHORIZATION CHECK
+  // ------------------------------------------------------------
+  // Uses staff_profiles through safeBackend().
+  //
+  // ACTIVE  → refresh profile
+  // BLOCKED → revoke authentication
+  // MISSING → revoke authentication
+  // null    → network/backend unavailable; preserve cache
+  // ============================================================
 
-      window.userProfile = fixedProfile;
-      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+  safeBackend(
+    "GET_PROFILE",
+    {
+      phone: phone
+    }
+  )
 
-      updateNetworkStatus("online");
+  .then(function(profile){
 
-    })
-    .catch(() => updateNetworkStatus("offline"));
-}    
+
+    // ==========================================================
+    // 📴 ONLINE CHECK UNAVAILABLE
+    // ----------------------------------------------------------
+    // Do NOT revoke the user merely because the network/backend
+    // could not be reached.
+    // ==========================================================
+
+    if(!profile){
+
+      updateNetworkStatus(
+        "offline"
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // ⛔ ACCESS BLOCKED
+    // ==========================================================
+
+    if(
+      profile.status === "error" &&
+      profile.code === "ACCESS_BLOCKED"
+    ){
+
+      console.warn(
+        "⛔ PROFILE REFRESH BLOCKED:",
+        phone
+      );
+
+
+      // ========================================================
+      // 🔥 REMOVE AUTHENTICATION CACHE ONLY
+      // ========================================================
+
+      localStorage.removeItem(
+        "userPhone"
+      );
+
+      localStorage.removeItem(
+        "userProfile"
+      );
+
+      window.userProfile = null;
+
+      loginCompleted = false;
+
+
+      // ========================================================
+      // ⚠ PRESERVE PATROL SESSION
+      // --------------------------------------------------------
+      // Do NOT remove:
+      //
+      // dutyActive
+      // sessionId
+      // offlineGPS
+      // ========================================================
+
+
+      // ========================================================
+      // 🔐 SHOW LOGIN
+      // ========================================================
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+      }
+
+
+      alert(
+        "⛔ Access to GreenGuard has been revoked."
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // ⛔ PROFILE MISSING / NOT AUTHORIZED
+    // ==========================================================
+
+    if(
+      profile.status === "error" &&
+      (
+        profile.code === "PROFILE_NOT_FOUND" ||
+        profile.code === "NOT_AUTHORIZED" ||
+        profile.error === "NOT_AUTHORIZED"
+      )
+    ){
+
+      console.warn(
+        "⛔ PROFILE REFRESH NOT AUTHORIZED:",
+        phone
+      );
+
+
+      // ========================================================
+      // 🔥 REMOVE AUTHENTICATION CACHE
+      // ========================================================
+
+      localStorage.removeItem(
+        "userPhone"
+      );
+
+      localStorage.removeItem(
+        "userProfile"
+      );
+
+      window.userProfile = null;
+
+      loginCompleted = false;
+
+
+      // ========================================================
+      // 🔐 SHOW LOGIN
+      // ========================================================
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+      }
+
+
+      alert(
+        "⛔ This mobile number is not authorized to use GreenGuard."
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // ❌ OTHER PROFILE ERROR
+    // ==========================================================
+
+    if(profile.error){
+
+      console.warn(
+        "⚠ PROFILE REFRESH ERROR:",
+        profile
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 🔐 EXPLICIT SUCCESS REQUIRED
+    // ==========================================================
+
+    if(
+      profile.status !== "ok"
+    ){
+
+      console.warn(
+        "⚠ Invalid profile refresh response:",
+        profile
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 🔥 NORMALIZE PROFILE
+    // ==========================================================
+
+    const fixedProfile =
+      normalizeUserProfile(
+        profile
+      );
+
+
+    // ==========================================================
+    // 🔐 PROFILE VALIDATION
+    // ==========================================================
+
+    if(
+      !fixedProfile ||
+      !fixedProfile.phone
+    ){
+
+      console.warn(
+        "⚠ Invalid normalized profile"
+      );
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 💾 UPDATE AUTHENTICATED PROFILE
+    // ==========================================================
+
+    window.userProfile =
+      fixedProfile;
+
+    localStorage.setItem(
+      "userProfile",
+      JSON.stringify(
+        fixedProfile
+      )
+    );
+
+
+    // ==========================================================
+    // 🌐 ONLINE
+    // ==========================================================
+
+    updateNetworkStatus(
+      "online"
+    );
+
+
+    console.log(
+      "✅ Online profile refreshed:",
+      fixedProfile.cleanName ||
+      fixedProfile.rawName ||
+      phone
+    );
+
+  })
+
+
+  // ============================================================
+  // 📴 NETWORK / UNEXPECTED FAILURE
+  // ============================================================
+
+  .catch(function(err){
+
+    console.warn(
+      "⚠ refreshOnlineProfile failed:",
+      err
+    );
+
+    updateNetworkStatus(
+      "offline"
+    );
+
+  });
+}  
     /* ============================================================
    🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
 ============================================================ */
