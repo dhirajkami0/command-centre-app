@@ -6592,16 +6592,24 @@ async function safeBackend(
     // ============================================================
     // ❌ USER NOT FOUND
     // ============================================================
-    if(snap.empty){
+if(snap.empty){
 
-      console.warn(
-        "❌ User not found"
-      );
+  console.warn(
+    "⛔ STAFF PROFILE NOT FOUND:",
+    phone
+  );
 
-      return {
-        error: true
-      };
-    }
+  return {
+
+    error: true,
+
+    status: "error",
+
+    code: "PROFILE_NOT_FOUND",
+
+    accessStatus: "MISSING"
+  };
+}
 
 // ============================================================
 // 🔥 PROFILE
