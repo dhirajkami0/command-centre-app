@@ -6603,59 +6603,140 @@ async function safeBackend(
       };
     }
 
-    // ============================================================
-    // 🔥 PROFILE
-    // ============================================================
-    const data =
+// ============================================================
+// 🔥 PROFILE
+// ============================================================
 
-      snap.docs[0].data();
+const profileDoc =
+  snap.docs[0];
 
-    if(DEBUG){
+const data =
+  profileDoc.data();
 
-      console.log(
-        "✅ Firestore profile:",
-        data
-      );
-    }
 
-    // ============================================================
-    // 🔥 RETURN SAME STRUCTURE
-    // IMPORTANT:
-    // KEEP EXISTING FLOW SAME
-    // ============================================================
-    return {
+// ============================================================
+// 🔐 ACCESS STATUS
+// ------------------------------------------------------------
+// staff_profiles is the authority.
+//
+// ACTIVE  → allow
+// BLOCKED → deny
+// Missing/blank/other value → deny
+// ============================================================
 
-      name:
-        data.name || "",
+const accessStatus =
+  String(
+    data.accessStatus || ""
+  )
+  .trim()
+  .toUpperCase();
 
-      cleanName:
-        data.cleanName ||
 
-        cleanName(
-          data.name
-        ),
+// ============================================================
+// 🔍 AUTH DIAGNOSTIC
+// ============================================================
 
-      role:
-        data.role || "STAFF",
+console.log(
+  "🔐 STAFF AUTH:",
+  {
+    documentId: profileDoc.id,
+    phone: phone,
+    name: data.name || "",
+    accessStatus: accessStatus
+  }
+);
 
-      beat:
-        data.beat || "",
 
-      phone:
-        data.phone || "",
+// ============================================================
+// ⛔ ACCESS NOT ACTIVE
+// ============================================================
 
-      // ============================================================
-      // 🌍 GIS HIERARCHY
-      // ============================================================
-      circle:
-        data.circle || "",
+if(
+  accessStatus !== "ACTIVE"
+){
 
-      division:
-        data.division || "",
+  console.warn(
+    "⛔ STAFF ACCESS DENIED:",
+    profileDoc.id,
+    accessStatus || "STATUS_MISSING"
+  );
 
-      range:
-        data.range || ""
-    };
+  return {
+
+    error: true,
+
+    status: "error",
+
+    code:
+      accessStatus === "BLOCKED"
+        ? "ACCESS_BLOCKED"
+        : "ACCESS_NOT_ACTIVE",
+
+    accessStatus:
+      accessStatus || "MISSING"
+  };
+}
+
+
+// ============================================================
+// ✅ ACCESS ACTIVE
+// ============================================================
+
+if(DEBUG){
+
+  console.log(
+    "✅ Firestore profile authorized:",
+    data
+  );
+}
+
+
+// ============================================================
+// 🔥 RETURN SAME PROFILE STRUCTURE
+// IMPORTANT:
+// Existing app flow remains unchanged.
+// ============================================================
+
+return {
+
+  status:
+    "ok",
+
+  name:
+    data.name || "",
+
+  cleanName:
+    data.cleanName ||
+
+    cleanName(
+      data.name
+    ),
+
+  role:
+    data.role || "STAFF",
+
+  beat:
+    data.beat || "",
+
+  phone:
+    data.phone || phone,
+
+  accessStatus:
+    accessStatus,
+
+  // ============================================================
+  // 🌍 GIS HIERARCHY
+  // ============================================================
+
+  circle:
+    data.circle || "",
+
+  division:
+    data.division || "",
+
+  range:
+    data.range || ""
+};
 
   }
 
