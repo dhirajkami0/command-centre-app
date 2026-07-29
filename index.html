@@ -20678,7 +20678,88 @@ async function autoShowEndDuty(){
       // 🔥 UPDATE BUTTON
       // =================================================
       updateDutyButton();
+// =================================================
+// 🔥 RESTORE REALTIME ANALYTICS
+//
+// IMPORTANT:
+// startDuty() normally starts realtime analytics,
+// but after page reload autoShowEndDuty() restores
+// the active Firestore duty without calling startDuty().
+//
+// Therefore make sure the listener for THIS SAME
+// session is attached.
+// =================================================
+try {
 
+  const realtimeSessionId =
+    String(
+      window.realtimeAnalyticsState
+        ?.sessionId || ""
+    ).trim();
+
+  const realtimeListenerActive =
+    typeof window.realtimeAnalyticsState
+      ?.unsubscribe === "function";
+
+  // Start only when the correct listener is missing.
+  // This prevents autoShowEndDuty(), which runs
+  // repeatedly, from creating duplicate listeners.
+  if(
+    realtimeSessionId !== firestoreSessionId ||
+    !realtimeListenerActive
+  ){
+
+    console.warn(
+      "🔄 RESTORING REALTIME ANALYTICS",
+      {
+        firestoreSessionId,
+        realtimeSessionId:
+          realtimeSessionId || "NONE",
+        listenerActive:
+          realtimeListenerActive
+      }
+    );
+
+    if(
+      typeof window.startRealtimeAnalytics ===
+        "function"
+    ){
+
+      const analyticsStarted =
+        await window.startRealtimeAnalytics();
+
+      console.log(
+        "✅ REALTIME ANALYTICS RESTORE RESULT",
+        analyticsStarted
+      );
+
+    } else {
+
+      console.error(
+        "❌ startRealtimeAnalytics unavailable"
+      );
+    }
+
+  } else {
+
+    console.log(
+      "✅ REALTIME ANALYTICS ALREADY ACTIVE",
+      firestoreSessionId
+    );
+  }
+
+} catch(e){
+
+  console.error(
+    "❌ Realtime analytics restore failed:",
+    e
+  );
+}
+
+// =================================================
+// 🔥 ONLY ON OFF → ON
+// =================================================
+if(!wasActive){
       // =================================================
       // 🔥 ONLY ON OFF → ON
       // =================================================
@@ -55878,23 +55959,143 @@ window.newMonthlyGridsCaptured =
     // DECODE AUTHORITATIVE TRACK
     // =====================================
 
-    const encoded =
-      String(
-        historyData
-          ?.rawTrackEncoded || ""
+// =====================================
+// DECODE AUTHORITATIVE TRACK
+// =====================================
+
+const encoded =
+  String(
+    historyData
+      ?.rawTrackEncoded || ""
+  );
+
+let decoded = [];
+
+// -----------------------------------------------------
+// 1. Completed / historical session
+//    Encoded history remains authoritative.
+// -----------------------------------------------------
+
+if (encoded) {
+
+  try {
+
+    decoded =
+      polyline.decode(
+        encoded
       );
 
-    const decoded =
-      encoded
-      ? polyline.decode(
-          encoded
-        )
-      : [];
+  } catch (err) {
 
-    console.log(
-      "📍 DECODED TRACK POINTS",
-      decoded.length
+    console.error(
+      "❌ rawTrackEncoded decode failed",
+      err
     );
+
+    decoded = [];
+  }
+}
+
+
+// -----------------------------------------------------
+// 2. Active-session fallback
+//
+// buildDutyPerformanceReport already receives
+// trackPoints. During an active session the encoded
+// historical track may not exist yet.
+//
+// Normalize the live schema:
+//
+//     { lat, lng, ts }
+//
+// into the same [lat, lng] representation returned
+// by polyline.decode().
+// -----------------------------------------------------
+
+if (
+  decoded.length === 0 &&
+  Array.isArray(trackPoints) &&
+  trackPoints.length > 0
+) {
+
+  decoded =
+    trackPoints
+      .map(point => {
+
+        // Already [lat, lng]
+        if (Array.isArray(point)) {
+
+          const lat =
+            Number(point[0]);
+
+          const lng =
+            Number(point[1]);
+
+          if (
+            Number.isFinite(lat) &&
+            Number.isFinite(lng)
+          ) {
+            return [
+              lat,
+              lng
+            ];
+          }
+
+          return null;
+        }
+
+
+        // Runtime object:
+        // { lat, lng, ts }
+
+        const lat =
+          Number(
+            point?.lat ??
+            point?.latitude
+          );
+
+        const lng =
+          Number(
+            point?.lng ??
+            point?.lon ??
+            point?.longitude
+          );
+
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lng)
+        ) {
+          return null;
+        }
+
+        return [
+          lat,
+          lng
+        ];
+
+      })
+      .filter(Boolean);
+
+
+  console.log(
+    "📍 LIVE TRACK FALLBACK",
+    {
+      inputPoints:
+        trackPoints.length,
+
+      decodedPoints:
+        decoded.length
+    }
+  );
+}
+
+
+console.log(
+  "📍 DECODED TRACK POINTS",
+  decoded.length
+);
+
+
 
     // =====================================
     // DISTANCE FROM ENCODED TRACK
