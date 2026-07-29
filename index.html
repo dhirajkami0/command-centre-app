@@ -14820,20 +14820,22 @@ function getTouchedCells(
   // ============================================================
   // 🎯 EXACT AUTHORITATIVE CELL TRAVERSAL
   //
-  // RULE:
-  // A mathematical 50m cell is accepted ONLY when that exact
-  // cell exists in the authoritative grid_master lookup.
+  // CANONICAL ORIENTATION:
+  //      COL_ROW
   //
-  // NO nearest-cell snapping.
-  // NO neighboring-compartment assignment.
-  // NO invented cells.
+  // RULES:
+  // 1. Generate the mathematical cell from GPS.
+  // 2. Resolve it through resolveAnalyticsCell().
+  // 3. Accept ONLY an authoritative resolved cell.
+  // 4. Never invent / snap / nearest-match cells.
+  // 5. Legacy ROW_COL may only be normalized by the resolver.
   // ============================================================
 
   const STEP =
     0.00045;
 
   const SAMPLE_STEP_KM =
-    0.025; // 25m sampling
+    0.025; // 25 metres
 
   const touchedCells =
     new Set();
@@ -14843,10 +14845,210 @@ function getTouchedCells(
   let pointCandidates = 0;
   let segmentCandidates = 0;
   let rejectedCandidates = 0;
+  let acceptedCandidates = 0;
 
 
   // ============================================================
-  // 🔥 AUTHORITATIVE RESOLVER
+  // 🔥 NORMALIZE RESOLVER RESULT
+  // ============================================================
+
+  function normalizeResolvedCell(
+    resolved,
+    rawCellId
+  ){
+
+    if(
+      !resolved
+    ){
+      return null;
+    }
+
+
+    // ==========================================================
+    // RESOLVER RETURNS OBJECT
+    // ==========================================================
+
+    if(
+      typeof resolved === "object"
+    ){
+
+      const cellId =
+        String(
+          resolved.cellId ||
+          resolved.canonicalCellId ||
+          rawCellId ||
+          ""
+        ).trim();
+
+
+      const gridId =
+        String(
+          resolved.gridId ||
+          resolved.owner ||
+          resolved.compartmentId ||
+          ""
+        ).trim();
+
+
+      if(
+        cellId &&
+        gridId
+      ){
+
+        return {
+          cellId,
+          gridId,
+          reversed:
+            resolved.reversed === true
+        };
+      }
+
+
+      return null;
+    }
+
+
+    // ==========================================================
+    // RESOLVER RETURNS STRING GRID ID
+    // ==========================================================
+
+    if(
+      typeof resolved === "string"
+    ){
+
+      const gridId =
+        resolved.trim();
+
+      if(
+        gridId &&
+        rawCellId
+      ){
+
+        return {
+          cellId:
+            String(rawCellId),
+
+          gridId,
+
+          reversed:
+            false
+        };
+      }
+    }
+
+
+    return null;
+  }
+
+
+  // ============================================================
+  // 🔥 DIRECT AUTHORITATIVE LOOKUP
+  // ============================================================
+
+  function directResolveCell(
+    rawCellId
+  ){
+
+    if(
+      !rawCellId
+    ){
+      return null;
+    }
+
+
+    const canonicalId =
+      String(
+        rawCellId
+      ).trim();
+
+
+    if(
+      !canonicalId
+    ){
+      return null;
+    }
+
+
+    // ==========================================================
+    // CANONICAL COL_ROW
+    // ==========================================================
+
+    const directGrid =
+      window.cellToGridId?.[
+        canonicalId
+      ];
+
+
+    if(
+      directGrid
+    ){
+
+      return {
+        cellId:
+          canonicalId,
+
+        gridId:
+          String(
+            directGrid
+          ),
+
+        reversed:
+          false
+      };
+    }
+
+
+    // ==========================================================
+    // LEGACY ROW_COL NORMALIZATION
+    //
+    // Compatibility only.
+    // The returned ID becomes the authoritative stored ID.
+    // ==========================================================
+
+    const parts =
+      canonicalId.split("_");
+
+
+    if(
+      parts.length === 2
+    ){
+
+      const reversedId =
+        `${parts[1]}_${parts[0]}`;
+
+
+      const reverseGrid =
+        window.cellToGridId?.[
+          reversedId
+        ];
+
+
+      if(
+        reverseGrid
+      ){
+
+        return {
+          cellId:
+            reversedId,
+
+          gridId:
+            String(
+              reverseGrid
+            ),
+
+          reversed:
+            true
+        };
+      }
+    }
+
+
+    return null;
+  }
+
+
+  // ============================================================
+  // 🔥 AUTHORITATIVE CELL RESOLVER
   // ============================================================
 
   function addAuthoritativeCell(
@@ -14855,8 +15057,16 @@ function getTouchedCells(
     source = "point"
   ){
 
-    lat = Number(lat);
-    lng = Number(lng);
+    lat =
+      Number(lat);
+
+    lng =
+      Number(lng);
+
+
+    // ==========================================================
+    // COORDINATE VALIDATION
+    // ==========================================================
 
     if(
       !Number.isFinite(lat) ||
@@ -14867,10 +15077,39 @@ function getTouchedCells(
 
 
     // ==========================================================
-    // GENERATE CELL USING SAME PRODUCTION CELL-ID ENGINE
+    // BASIC GEOGRAPHIC VALIDATION
+    // ==========================================================
+
+    if(
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ){
+      return null;
+    }
+
+
+    // ==========================================================
+    // COUNT CANDIDATE
+    // ==========================================================
+
+    if(
+      source === "point"
+    ){
+      pointCandidates++;
+    }
+    else {
+      segmentCandidates++;
+    }
+
+
+    // ==========================================================
+    // GENERATE CANONICAL CELL ID
     // ==========================================================
 
     let rawCellId = null;
+
 
     try {
 
@@ -14889,20 +15128,24 @@ function getTouchedCells(
 
       else {
 
-        // ------------------------------------------------------
-        // FALLBACK ONLY
-        // Same mathematical grid convention.
-        // ------------------------------------------------------
+        // ======================================================
+        // MATHEMATICAL FALLBACK
+        //
+        // IMPORTANT:
+        // Canonical orientation = COL_ROW
+        // ======================================================
 
         const row =
           Math.floor(
             lat / STEP
           );
 
+
         const col =
           Math.floor(
             lng / STEP
           );
+
 
         rawCellId =
           `${col}_${row}`;
@@ -14911,144 +15154,103 @@ function getTouchedCells(
     }
     catch(err){
 
+      console.error(
+        "❌ Cell ID generation failed",
+        err
+      );
+
+      rejectedCandidates++;
+
       return null;
     }
+
+
+    rawCellId =
+      String(
+        rawCellId || ""
+      ).trim();
 
 
     if(
       !rawCellId
     ){
+
+      rejectedCandidates++;
+
       return null;
     }
 
 
+    // ==========================================================
+    // AUTHORITATIVE RESOLUTION
+    // ==========================================================
+
+    let authoritative =
+      null;
+
+
+    // ==========================================================
+    // PRIMARY:
+    // resolveAnalyticsCell()
+    // ==========================================================
+
     if(
-      source === "point"
+      typeof resolveAnalyticsCell ===
+      "function"
     ){
-      pointCandidates++;
-    }
-    else {
-      segmentCandidates++;
-    }
 
+      try {
 
-    // ==========================================================
-    // 🔥 RESOLVE AGAINST AUTHORITATIVE MASTER
-    // ==========================================================
-
-    let resolved = null;
-
-    try {
-
-      if(
-        typeof resolveAnalyticsCell ===
-        "function"
-      ){
-
-        resolved =
+        const resolved =
           resolveAnalyticsCell(
             rawCellId
           );
 
-      }
 
-      else {
-
-        // ------------------------------------------------------
-        // DIRECT LOOKUP FALLBACK
-        // ------------------------------------------------------
-
-        const directGrid =
-          window.cellToGridId?.[
+        authoritative =
+          normalizeResolvedCell(
+            resolved,
             rawCellId
-          ];
+          );
 
-        if(
-          directGrid
-        ){
-
-          resolved = {
-            cellId:
-              rawCellId,
-
-            gridId:
-              directGrid,
-
-            reversed:
-              false
-          };
-
-        }
-
-        else {
-
-          const reversedId =
-            String(rawCellId)
-              .split("_")
-              .reverse()
-              .join("_");
-
-          const reverseGrid =
-            window.cellToGridId?.[
-              reversedId
-            ];
-
-          if(
-            reverseGrid
-          ){
-
-            resolved = {
-              cellId:
-                reversedId,
-
-              gridId:
-                reverseGrid,
-
-              reversed:
-                true
-            };
-          }
-        }
       }
+      catch(err){
 
-    }
-    catch(err){
-
-      resolved = null;
-    }
-
-
-    // ==========================================================
-    // ❌ NOT AN AUTHORITATIVE CELL
-    // ==========================================================
-
-    if(
-      !resolved ||
-      !resolved.cellId ||
-      !resolved.gridId
-    ){
-
-      rejectedCandidates++;
-
-      return null;
+        console.warn(
+          "⚠ resolveAnalyticsCell failed",
+          rawCellId,
+          err
+        );
+      }
     }
 
 
     // ==========================================================
-    // FINAL SAFETY
+    // FALLBACK:
+    // DIRECT AUTHORITATIVE LOOKUP
     //
-    // The resolved canonical cell MUST exist in the authoritative
-    // lookup before it is accepted.
+    // This is also useful if resolver exists but returns null.
     // ==========================================================
 
-    const authoritativeGridId =
-      window.cellToGridId?.[
-        resolved.cellId
-      ];
+    if(
+      !authoritative
+    ){
 
+      authoritative =
+        directResolveCell(
+          rawCellId
+        );
+    }
+
+
+    // ==========================================================
+    // ❌ NOT AUTHORITATIVE
+    // ==========================================================
 
     if(
-      !authoritativeGridId
+      !authoritative ||
+      !authoritative.cellId ||
+      !authoritative.gridId
     ){
 
       rejectedCandidates++;
@@ -15056,21 +15258,75 @@ function getTouchedCells(
       return null;
     }
 
+
+    // ==========================================================
+    // CANONICAL ACCEPTANCE
+    //
+    // IMPORTANT FIX:
+    //
+    // Do NOT perform another mandatory:
+    //
+    // window.cellToGridId[resolved.cellId]
+    //
+    // check here.
+    //
+    // resolveAnalyticsCell() has already returned the
+    // authoritative cell + owner.
+    //
+    // Requiring a second differently-shaped runtime lookup was
+    // capable of rejecting a valid resolver result.
+    // ==========================================================
+
+    const canonicalCellId =
+      String(
+        authoritative.cellId
+      ).trim();
+
+
+    const gridId =
+      String(
+        authoritative.gridId
+      ).trim();
+
+
+    if(
+      !canonicalCellId ||
+      !gridId
+    ){
+
+      rejectedCandidates++;
+
+      return null;
+    }
+
+
+    // ==========================================================
+    // ACCEPT
+    // ==========================================================
 
     touchedCells.add(
-      resolved.cellId
+      canonicalCellId
     );
+
+
+    acceptedCandidates++;
 
 
     return {
       cellId:
-        resolved.cellId,
+        canonicalCellId,
 
-      gridId:
-        authoritativeGridId
+      gridId,
+
+      reversed:
+        authoritative.reversed === true
     };
   }
 
+
+  // ============================================================
+  // 🔥 MAIN TRAVERSAL
+  // ============================================================
 
   try {
 
@@ -15093,16 +15349,68 @@ function getTouchedCells(
 
       // ========================================================
       // CLEAN COORDINATES
+      //
+      // Expected:
+      //      [lat, lng]
       // ========================================================
 
       const seg =
         rawSeg
-          .map(c => [
 
-            Number(c?.[0]), // lat
-            Number(c?.[1])  // lon
+          .map(c => {
 
-          ])
+            // ==================================================
+            // ARRAY INPUT
+            // ==================================================
+
+            if(
+              Array.isArray(c)
+            ){
+
+              return [
+                Number(c[0]),
+                Number(c[1])
+              ];
+            }
+
+
+            // ==================================================
+            // OBJECT INPUT SUPPORT
+            //
+            // Allows:
+            // { lat, lng }
+            // { latitude, longitude }
+            // ==================================================
+
+            if(
+              c &&
+              typeof c === "object"
+            ){
+
+              return [
+
+                Number(
+                  c.lat ??
+                  c.latitude
+                ),
+
+                Number(
+                  c.lng ??
+                  c.lon ??
+                  c.longitude
+                )
+
+              ];
+            }
+
+
+            return [
+              NaN,
+              NaN
+            ];
+
+          })
+
           .filter(c =>
 
             Number.isFinite(
@@ -15114,6 +15422,22 @@ function getTouchedCells(
             Number.isFinite(
               c[1]
             )
+
+            &&
+
+            c[0] >= -90
+
+            &&
+
+            c[0] <= 90
+
+            &&
+
+            c[1] >= -180
+
+            &&
+
+            c[1] <= 180
 
           );
 
@@ -15154,7 +15478,7 @@ function getTouchedCells(
 
 
       // ========================================================
-      // 🧭 EVERY CONSECUTIVE MOVEMENT SEGMENT
+      // 🧭 CONSECUTIVE MOVEMENT SEGMENTS
       // ========================================================
 
       for(
@@ -15166,11 +15490,20 @@ function getTouchedCells(
         const prev =
           seg[i - 1];
 
+
         const curr =
           seg[i];
 
 
+        // ======================================================
+        // BUILD TURF LINE
+        //
+        // Turf requires:
+        //      [lng, lat]
+        // ======================================================
+
         let line = null;
+
 
         try {
 
@@ -15192,6 +15525,12 @@ function getTouchedCells(
         }
         catch(err){
 
+          console.warn(
+            "⚠ Invalid movement segment",
+            prev,
+            curr
+          );
+
           continue;
         }
 
@@ -15201,6 +15540,7 @@ function getTouchedCells(
         // ======================================================
 
         let lengthKm = 0;
+
 
         try {
 
@@ -15216,6 +15556,11 @@ function getTouchedCells(
         }
         catch(err){
 
+          console.warn(
+            "⚠ Segment distance failed",
+            err
+          );
+
           continue;
         }
 
@@ -15223,7 +15568,8 @@ function getTouchedCells(
         if(
           !Number.isFinite(
             lengthKm
-          )
+          ) ||
+          lengthKm < 0
         ){
           continue;
         }
@@ -15234,20 +15580,33 @@ function getTouchedCells(
 
 
         // ======================================================
-        // 🔥 DENSIFIED SEGMENT TRAVERSAL
+        // ZERO-LENGTH SEGMENT
+        // ======================================================
+
+        if(
+          lengthKm === 0
+        ){
+
+          addAuthoritativeCell(
+            curr[0],
+            curr[1],
+            "segment"
+          );
+
+          continue;
+        }
+
+
+        // ======================================================
+        // 🔥 DENSIFIED TRAVERSAL
         //
-        // 25m is below the ~50m cell size, allowing cells crossed
-        // between GPS observations to be recovered.
+        // Sampling every 25m.
         // ======================================================
 
         for(
-
           let d = 0;
-
-          d <= lengthKm;
-
+          d < lengthKm;
           d += SAMPLE_STEP_KM
-
         ){
 
           try {
@@ -15263,19 +15622,31 @@ function getTouchedCells(
               );
 
 
+            const coordinates =
+              sample
+                ?.geometry
+                ?.coordinates;
+
+
+            if(
+              !Array.isArray(
+                coordinates
+              ) ||
+              coordinates.length < 2
+            ){
+              continue;
+            }
+
+
             const lng =
               Number(
-                sample
-                  ?.geometry
-                  ?.coordinates?.[0]
+                coordinates[0]
               );
 
 
             const lat =
               Number(
-                sample
-                  ?.geometry
-                  ?.coordinates?.[1]
+                coordinates[1]
               );
 
 
@@ -15286,19 +15657,20 @@ function getTouchedCells(
             );
 
           }
-          catch(err){}
+          catch(err){
+
+            // One bad interpolated point must not stop
+            // the complete patrol traversal.
+          }
         }
 
 
         // ======================================================
-        // GUARANTEE SEGMENT ENDPOINTS
+        // GUARANTEE ENDPOINT
+        //
+        // The start point was already processed either as an
+        // actual GPS point or d=0 sample.
         // ======================================================
-
-        addAuthoritativeCell(
-          prev[0],
-          prev[1],
-          "segment"
-        );
 
         addAuthoritativeCell(
           curr[0],
@@ -15319,12 +15691,13 @@ function getTouchedCells(
 
 
   // ============================================================
-  // DEBUG
+  // DEBUG SUMMARY
   // ============================================================
 
   console.log(
     "🎯 EXACT AUTHORITATIVE getTouchedCells",
     {
+
       touchedCells:
         touchedCells.size,
 
@@ -15332,18 +15705,23 @@ function getTouchedCells(
 
       segmentCandidates,
 
+      acceptedCandidates,
+
       rejectedCandidates,
 
       distanceMeters:
         Math.round(
           distanceMeters
         )
+
     }
   );
 
 
   // ============================================================
-  // RETURN SHAPE REMAINS BACKWARD COMPATIBLE
+  // RETURN
+  //
+  // Existing callers remain compatible.
   // ============================================================
 
   return {
@@ -15354,6 +15732,7 @@ function getTouchedCells(
       Math.round(
         distanceMeters
       )
+
   };
 }
 async function updateMonthlyAnalyticsRebuild(
