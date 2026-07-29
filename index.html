@@ -14737,7 +14737,7 @@ function getTouchedCells(
 ){
 
   const STEP =
-    0.00045; // ~50m
+    0.00045; // existing ~50m grid
 
   const SAMPLE_STEP_KM =
     0.025; // 25m
@@ -14747,232 +14747,269 @@ function getTouchedCells(
 
   let distanceMeters = 0;
 
-  try{
+
+  // ============================================================
+  // CELL HELPER
+  // ============================================================
+
+  function addPointCell(
+    lat,
+    lng
+  ){
+
+    lat = Number(lat);
+    lng = Number(lng);
+
+    if(
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ){
+      return;
+    }
+
+    const row =
+      Math.floor(
+        lat / STEP
+      );
+
+    const col =
+      Math.floor(
+        lng / STEP
+      );
+
+    touchedCells.add(
+      `${col}_${row}`
+    );
+  }
+
+
+  try {
 
     for(
-      const seg of localCoordsArray
+      const rawSeg
+      of localCoordsArray || []
     ){
 
       if(
-        !Array.isArray(seg) ||
+        !Array.isArray(rawSeg) ||
+        rawSeg.length === 0
+      ){
+        continue;
+      }
+
+
+      // ========================================================
+      // CLEAN VALID COORDINATES
+      // ========================================================
+
+      const seg =
+        rawSeg
+        .map(c => [
+
+          Number(c?.[0]), // lat
+          Number(c?.[1])  // lon
+
+        ])
+        .filter(c =>
+
+          Number.isFinite(c[0]) &&
+          Number.isFinite(c[1])
+
+        );
+
+
+      if(
         seg.length === 0
       ){
         continue;
       }
 
-      // ==================================================
-      // 🔥 ALWAYS COUNT EVERY ACTUAL GPS POINT
-      // --------------------------------------------------
-      // A single valid GPS point is enough to establish
-      // that its cell was physically visited.
-      // ==================================================
+
+      // ========================================================
+      // 🔥 POINT-BASED DETECTION
+      //
+      // Every actual GPS point is sufficient evidence that
+      // its cell was visited.
+      // ========================================================
 
       for(
-        const point of seg
+        const point
+        of seg
       ){
 
-        if(
-          !Array.isArray(point) ||
-          point.length < 2
-        ){
-          continue;
-        }
-
-        const lat =
-          Number(point[0]);
-
-        const lng =
-          Number(point[1]);
-
-        if(
-          !Number.isFinite(lat) ||
-          !Number.isFinite(lng)
-        ){
-          continue;
-        }
-
-        const row =
-          Math.floor(
-            lat / STEP
-          );
-
-        const col =
-          Math.floor(
-            lng / STEP
-          );
-
-        touchedCells.add(
-          `${col}_${row}`
+        addPointCell(
+          point[0],
+          point[1]
         );
       }
 
-      // ==================================================
-      // 🔥 SINGLE POINT SEGMENT
-      // --------------------------------------------------
-      // Point already counted above.
-      // There is no line/distance to calculate.
-      // ==================================================
+
+      // ========================================================
+      // 🔥 SINGLE POINT
+      //
+      // Point cell has already been added above.
+      // No line is required.
+      // ========================================================
 
       if(
-        seg.length < 2
+        seg.length === 1
       ){
         continue;
       }
 
-      // ==================================================
-      // 🔥 LINE FOR MULTI-POINT SEGMENT
-      // ==================================================
 
-      const line =
-        turf.lineString(
-
-          seg.map(c => [
-
-            Number(c[1]), // lng
-            Number(c[0])  // lat
-
-          ])
-
-        );
-
-      // ==================================================
-      // DISTANCE
-      // ==================================================
-
-      let lengthKm = 0;
-
-      try{
-
-        lengthKm =
-          turf.length(
-            line,
-            {
-              units:
-                "kilometers"
-            }
-          );
-
-        distanceMeters +=
-          lengthKm * 1000;
-
-      }
-      catch(e){
-
-        console.warn(
-          "⚠ Segment distance failed",
-          e
-        );
-
-        continue;
-      }
-
-      // ==================================================
-      // 🔥 DENSIFIED SEGMENT SAMPLING
-      // --------------------------------------------------
-      // Detect cells crossed between actual GPS points.
-      // ==================================================
+      // ========================================================
+      // 🔥 SEGMENT-BASED DETECTION
+      //
+      // Process EVERY consecutive pair separately.
+      // This is safer than treating the whole array as one
+      // continuous line if future segmentation changes.
+      // ========================================================
 
       for(
-
-        let d = 0;
-
-        d <= lengthKm;
-
-        d += SAMPLE_STEP_KM
-
+        let i = 1;
+        i < seg.length;
+        i++
       ){
 
-        try{
+        const prev =
+          seg[i - 1];
 
-          const sample =
-            turf.along(
+        const curr =
+          seg[i];
+
+
+        // ======================================================
+        // BUILD SEGMENT
+        // ======================================================
+
+        let line;
+
+        try {
+
+          line =
+            turf.lineString([
+
+              [
+                prev[1],
+                prev[0]
+              ],
+
+              [
+                curr[1],
+                curr[0]
+              ]
+
+            ]);
+
+        }
+        catch(e){
+
+          continue;
+        }
+
+
+        // ======================================================
+        // DISTANCE
+        // ======================================================
+
+        let lengthKm = 0;
+
+        try {
+
+          lengthKm =
+            turf.length(
               line,
-              d,
               {
                 units:
                   "kilometers"
               }
             );
 
-          const lng =
-            Number(
-              sample.geometry
-                .coordinates[0]
-            );
-
-          const lat =
-            Number(
-              sample.geometry
-                .coordinates[1]
-            );
-
-          if(
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lng)
-          ){
-            continue;
-          }
-
-          const row =
-            Math.floor(
-              lat / STEP
-            );
-
-          const col =
-            Math.floor(
-              lng / STEP
-            );
-
-          touchedCells.add(
-            `${col}_${row}`
-          );
-
         }
-        catch(e){}
+        catch(e){
 
-      }
+          continue;
+        }
 
-      // ==================================================
-      // 🔥 GUARANTEE LAST POINT
-      // ==================================================
-
-      try{
-
-        const last =
-          seg[
-            seg.length - 1
-          ];
-
-        const lat =
-          Number(last[0]);
-
-        const lng =
-          Number(last[1]);
 
         if(
-          Number.isFinite(lat) &&
-          Number.isFinite(lng)
+          !Number.isFinite(lengthKm)
         ){
-
-          const row =
-            Math.floor(
-              lat / STEP
-            );
-
-          const col =
-            Math.floor(
-              lng / STEP
-            );
-
-          touchedCells.add(
-            `${col}_${row}`
-          );
-
+          continue;
         }
 
-      }
-      catch(e){}
 
+        distanceMeters +=
+          lengthKm * 1000;
+
+
+        // ======================================================
+        // 🔥 DENSIFIED LINE SAMPLING
+        //
+        // Detect cells between GPS observations.
+        // ======================================================
+
+        for(
+
+          let d = 0;
+
+          d <= lengthKm;
+
+          d += SAMPLE_STEP_KM
+
+        ){
+
+          try {
+
+            const sample =
+              turf.along(
+                line,
+                d,
+                {
+                  units:
+                    "kilometers"
+                }
+              );
+
+            const lng =
+              Number(
+                sample
+                  ?.geometry
+                  ?.coordinates?.[0]
+              );
+
+            const lat =
+              Number(
+                sample
+                  ?.geometry
+                  ?.coordinates?.[1]
+              );
+
+            addPointCell(
+              lat,
+              lng
+            );
+
+          }
+          catch(e){}
+        }
+
+
+        // ======================================================
+        // GUARANTEE BOTH ENDPOINTS
+        // ======================================================
+
+        addPointCell(
+          prev[0],
+          prev[1]
+        );
+
+        addPointCell(
+          curr[0],
+          curr[1]
+        );
+      }
     }
 
   }
@@ -14982,8 +15019,8 @@ function getTouchedCells(
       "❌ getTouchedCells failed",
       err
     );
-
   }
+
 
   return {
 
@@ -14993,9 +15030,7 @@ function getTouchedCells(
       Math.round(
         distanceMeters
       )
-
   };
-
 }
 async function updateMonthlyAnalyticsRebuild(
   gridId,
@@ -37643,62 +37678,594 @@ if(
 const newPoints =
   points.slice(oldCount);
 
-// ======================================
-// 🔥 ANALYTICS COUNTER
-// ======================================
+// ============================================================
+// 🔥 SESSION-AWARE TOUCHED CELL ANALYTICS
+//
+// PURPOSE:
+// 1. Every real GPS point counts its own cell.
+// 2. Previous → current GPS point forms a movement segment.
+// 3. Cells crossed between GPS points are also detected.
+// 4. Different staff are NEVER connected.
+// 5. Different sessions are NEVER intentionally connected.
+// 6. Existing analyticsBuffer / collector / flush architecture
+//    remains in use.
+// ============================================================
+
 window.analyticsPointCounter ??= 0;
 
-// ======================================
-// 🔥 PROCESS NEW POINTS
-// ======================================
-for(const p of newPoints){
+window.analyticsLastPoint ??= {};
 
-  // =========================
-  // ANALYTICS
-  // =========================
-  const cellId =
 
-    getAnalyticsCellId(
+// ============================================================
+// 🔥 STAFF IDENTITY
+// ============================================================
 
-      p.lat,
+const analyticsStaffName =
 
-      p.lon
+  String(
+    s.cleanName || ""
+  )
+  .trim()
+  .toUpperCase();
 
+
+// ============================================================
+// 🔥 SESSION ID
+//
+// Prefer session ID already present on the staff/session object.
+// ============================================================
+
+const analyticsSessionId =
+
+  String(
+
+    s.sessionId ||
+
+    s.dutySessionId ||
+
+    s.currentSessionId ||
+
+    s.activeSessionId ||
+
+    ""
+
+  )
+  .trim();
+
+
+// ============================================================
+// 🔥 STAFF + SESSION STREAM KEY
+//
+// This is critical for 500+ staff.
+//
+// Example:
+//
+// DHIRAJ KAMI|DHIRAJ KAMI_1785235974085
+// STAFF B|STAFF B_1785236000000
+//
+// Their tracks can never share previousAnalyticsPoint.
+// ============================================================
+
+const analyticsStreamKey =
+
+  `${analyticsStaffName}|${analyticsSessionId || "CURRENT"}`;
+
+localStorage.setItem(
+  "analyticsLastStreamKey",
+  analyticsStreamKey
+);
+
+
+// ============================================================
+// 🔥 GET PREVIOUS ANALYTICS POINT
+// FOR THIS STAFF + SESSION ONLY
+// ============================================================
+
+let previousAnalyticsPoint =
+
+  window.analyticsLastPoint[
+    analyticsStreamKey
+  ] || null;
+
+
+// ============================================================
+// 🔥 PROCESS ONLY NEW GPS POINTS
+// ============================================================
+
+for(
+  const p
+  of newPoints
+){
+
+  // ==========================================================
+  // NORMALIZE GPS
+  // ==========================================================
+
+  const lat =
+    Number(
+      p?.lat
     );
 
-  const gridId =
+  const lon =
+    Number(
+      p?.lon
+    );
 
-    window.cellToGridId?.[
-      cellId
-    ];
 
-  if(!gridId){
+  if(
+
+    !Number.isFinite(lat)
+
+    ||
+
+    !Number.isFinite(lon)
+
+  ){
 
     continue;
   }
 
-  collectAnalyticsHit(
 
-    gridId,
+  // ==========================================================
+  // 1. 🔥 POINT-BASED VISIT DETECTION
+  //
+  // ONE valid GPS point inside a cell is enough to establish
+  // that the cell was visited.
+  // ==========================================================
 
-    cellId,
+  const pointCellId =
 
-    p.lat,
+    getAnalyticsCellId(
 
-    p.lon
+      lat,
 
-  );
+      lon
+
+    );
+
+
+  const pointGridId =
+
+    window.cellToGridId?.[
+      pointCellId
+    ];
+
+
+  if(
+    pointGridId
+  ){
+
+    collectAnalyticsHit(
+
+      pointGridId,
+
+      pointCellId,
+
+      lat,
+
+      lon
+
+    );
+
+  }
+
+
+  // ==========================================================
+  // 2. 🔥 SEGMENT-BASED VISIT DETECTION
+  //
+  // Previous GPS:
+  //
+  //       P1
+  //       ●
+  //
+  // Current GPS:
+  //
+  //                         ● P2
+  //
+  // The line P1 → P2 can cross cells that contain no actual
+  // GPS observation.
+  // ==========================================================
+
+  if(
+    previousAnalyticsPoint
+  ){
+
+    try {
+
+      const prevLat =
+
+        Number(
+          previousAnalyticsPoint.lat
+        );
+
+
+      const prevLon =
+
+        Number(
+          previousAnalyticsPoint.lon
+        );
+
+
+      if(
+
+        Number.isFinite(
+          prevLat
+        )
+
+        &&
+
+        Number.isFinite(
+          prevLon
+        )
+
+      ){
+
+        // ======================================================
+        // DISTANCE BETWEEN PREVIOUS AND CURRENT GPS
+        // ======================================================
+
+        const segmentDistance =
+
+          map.distance(
+
+            [
+              prevLat,
+              prevLon
+            ],
+
+            [
+              lat,
+              lon
+            ]
+
+          );
+
+
+        // ======================================================
+        // TIME DIFFERENCE
+        // ======================================================
+
+        let timeDiffSec = 1;
+
+
+        const previousTime =
+
+          Number(
+
+            previousAnalyticsPoint.time ||
+
+            previousAnalyticsPoint.timestamp ||
+
+            0
+
+          );
+
+
+        const currentTime =
+
+          Number(
+
+            p.time ||
+
+            p.timestamp ||
+
+            0
+
+          );
+
+
+        if(
+
+          previousTime > 0
+
+          &&
+
+          currentTime > previousTime
+
+        ){
+
+          timeDiffSec =
+
+            Math.max(
+
+              1,
+
+              (
+                currentTime -
+                previousTime
+              )
+              / 1000
+
+            );
+
+        }
+
+
+        // ======================================================
+        // SPEED KM/H
+        // ======================================================
+
+        const speedKmh =
+
+          (
+            segmentDistance /
+            timeDiffSec
+          )
+
+          * 3.6;
+
+
+        // ======================================================
+        // 🔥 SAME TELEPORT SAFETY PRINCIPLE
+        //
+        // Do NOT create analytics cells from an impossible jump.
+        // ======================================================
+
+        const validMovement =
+
+          Number.isFinite(
+            segmentDistance
+          )
+
+          &&
+
+          Number.isFinite(
+            speedKmh
+          )
+
+          &&
+
+          segmentDistance <= 500
+
+          &&
+
+          speedKmh <= 120;
+
+
+        if(
+          validMovement
+        ){
+
+          // ====================================================
+          // 🔥 DETECT CELLS CROSSED BY P1 → P2
+          //
+          // getTouchedCells expects:
+          //
+          // [
+          //   [
+          //     [lat,lon],
+          //     [lat,lon]
+          //   ]
+          // ]
+          // ====================================================
+
+          const segmentResult =
+
+            getTouchedCells([
+
+              [
+
+                [
+                  prevLat,
+                  prevLon
+                ],
+
+                [
+                  lat,
+                  lon
+                ]
+
+              ]
+
+            ]);
+
+
+          // ====================================================
+          // 🔥 ASSIGN EVERY TOUCHED CELL TO ITS TRUE GRID
+          //
+          // This is important when one movement segment crosses
+          // a compartment/grid boundary.
+          // ====================================================
+
+          for(
+            const touchedCellId
+            of segmentResult.touchedCells
+          ){
+
+            const touchedGridId =
+
+              window.cellToGridId?.[
+                touchedCellId
+              ];
+
+
+            if(
+              !touchedGridId
+            ){
+
+              continue;
+            }
+
+
+            collectAnalyticsHit(
+
+              touchedGridId,
+
+              touchedCellId,
+
+              lat,
+
+              lon
+
+            );
+
+          }
+
+
+          console.log(
+
+            "🧭 ANALYTICS SEGMENT",
+
+            {
+
+              staff:
+                analyticsStaffName,
+
+              session:
+                analyticsSessionId ||
+                "CURRENT",
+
+              from:
+                [
+                  prevLat,
+                  prevLon
+                ],
+
+              to:
+                [
+                  lat,
+                  lon
+                ],
+
+              distanceMeters:
+                Math.round(
+                  segmentDistance
+                ),
+
+              speedKmh:
+                Number(
+                  speedKmh.toFixed(1)
+                ),
+
+              touchedCells:
+                segmentResult
+                  .touchedCells
+                  .size
+
+            }
+
+          );
+
+        }
+
+        else {
+
+          // ====================================================
+          // IMPORTANT:
+          //
+          // Current GPS point itself was already counted above.
+          //
+          // We are ONLY rejecting the artificial line between
+          // previous and current points.
+          // ====================================================
+
+          console.warn(
+
+            "⚠ ANALYTICS SEGMENT BLOCKED",
+
+            {
+
+              staff:
+                analyticsStaffName,
+
+              session:
+                analyticsSessionId ||
+                "CURRENT",
+
+              distanceMeters:
+                Math.round(
+                  segmentDistance || 0
+                ),
+
+              speedKmh:
+                Math.round(
+                  speedKmh || 0
+                ),
+
+              from:
+                [
+                  prevLat,
+                  prevLon
+                ],
+
+              to:
+                [
+                  lat,
+                  lon
+                ]
+
+            }
+
+          );
+
+        }
+
+      }
+
+    }
+
+    catch(err){
+
+      console.error(
+
+        "❌ ANALYTICS SEGMENT ERROR",
+
+        analyticsStaffName,
+
+        err
+
+      );
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // 🔥 CURRENT POINT BECOMES PREVIOUS POINT
+  // FOR THIS STAFF + SESSION ONLY
+  // ==========================================================
+
+  previousAnalyticsPoint = {
+
+    lat,
+
+    lon,
+
+    time:
+
+      p.time ||
+
+      p.timestamp ||
+
+      Date.now()
+
+  };
+
+
+  window.analyticsLastPoint[
+    analyticsStreamKey
+  ] =
+    previousAnalyticsPoint;
+
 }
 
-// ======================================
+
+// ============================================================
 // 🔥 COUNT NEW GPS POINTS
-// ======================================
+//
+// This remains the FLUSH trigger counter.
+// It is NOT the visited-cell count.
+// ============================================================
+
 window.analyticsPointCounter +=
   newPoints.length;
 
-// ======================================
-// 🔥 AUTO FLUSH EVERY 50 POINTS
-// ======================================
+
+// ============================================================
+// 🔥 AUTO FLUSH EVERY 5 NEW GPS POINTS
+// ============================================================
+
 if(
 
   window.analyticsPointCounter >= 5
@@ -37715,7 +38282,9 @@ if(
 
   );
 
+
   window.analyticsPointCounter = 0;
+
 
   flushAnalyticsBuffer()
 
@@ -37730,6 +38299,7 @@ if(
       );
 
     });
+
 }
 // ======================================
 // 🔥 GET POLYLINE
@@ -39958,7 +40528,7 @@ function collectAnalyticsHit(
   }
 
 }
-  async function flushAnalyticsBuffer(){
+async function flushAnalyticsBuffer(){
 
   if(
     window.analyticsFlushRunning
@@ -39966,22 +40536,24 @@ function collectAnalyticsHit(
     return;
   }
 
+
   window.analyticsFlushRunning =
     true;
 
-  try{
+
+  try {
 
     const monthKey =
 
       `${new Date().getFullYear()}_${
         String(
-          new Date()
-            .getMonth() + 1
+          new Date().getMonth() + 1
         ).padStart(
           2,
           "0"
         )
       }`;
+
 
     const entries =
 
@@ -39989,9 +40561,10 @@ function collectAnalyticsHit(
         window.analyticsBuffer || {}
       );
 
-    // ====================================
-    // GRID ANALYTICS FLUSH
-    // ====================================
+
+    // ==========================================================
+    // GRID ANALYTICS
+    // ==========================================================
 
     if(
       entries.length === 0
@@ -40002,7 +40575,7 @@ function collectAnalyticsHit(
       );
 
     }
-    else{
+    else {
 
       console.log(
         "📤 FLUSHING",
@@ -40010,90 +40583,166 @@ function collectAnalyticsHit(
         "GRIDS"
       );
 
+
+      // ========================================================
+      // IMPORTANT
+      // Do NOT destroy failed buffers.
+      // ========================================================
+
+      const remainingBuffer = {};
+
+
       for(
-
         const [gridId,data]
-
         of entries
-
       ){
 
-        try{
+        try {
 
           const segment =
 
             data
             ?.localCoordsArray?.[0];
 
+
+          const bufferedCells =
+
+            data
+            ?.touchedCells;
+
+
+          // ====================================================
+          // NOTHING USEFUL
+          // ====================================================
+
           if(
 
-            !Array.isArray(
-              segment
+            (
+              !Array.isArray(segment) ||
+              segment.length === 0
             )
 
-            ||
+            &&
 
-            segment.length < 1
+            !(
+              bufferedCells instanceof Set &&
+              bufferedCells.size > 0
+            )
 
           ){
 
             console.warn(
-
-              "⚠ Skip grid (insufficient points)",
-
-              gridId,
-
-              segment?.length || 0
-
+              "⚠ Empty analytics grid",
+              gridId
             );
 
             continue;
           }
-console.log("CALLING updateMonthlyAnalyticsRebuild", {
-  gridId,
-  monthKey,
-  points: data.localCoordsArray?.[0]?.length
-});
+
+
+          // ====================================================
+          // 🔥 SINGLE POINT IS VALID
+          // ====================================================
+
+          let coords =
+            Array.isArray(segment)
+              ? segment
+              : [];
+
+
+          // ====================================================
+          // If cells exist but coordinate somehow doesn't,
+          // retain buffer rather than silently losing analytics.
+          // ====================================================
+
+          if(
+            coords.length === 0
+          ){
+
+            console.warn(
+              "⚠ Touched cells exist but coordinates missing",
+              gridId
+            );
+
+            remainingBuffer[
+              gridId
+            ] = data;
+
+            continue;
+          }
+
+
+          console.log(
+            "🔥 ANALYTICS WRITE",
+            {
+              gridId,
+
+              monthKey,
+
+              points:
+                coords.length,
+
+              bufferedCells:
+                bufferedCells instanceof Set
+                  ? bufferedCells.size
+                  : 0
+            }
+          );
+
+
           await updateMonthlyAnalyticsRebuild(
 
             gridId,
 
-            data.localCoordsArray,
+            [
+              coords
+            ],
 
             monthKey
 
           );
-console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
+
+
           console.log(
             "✅ Flushed",
             gridId
           );
 
         }
-
         catch(err){
 
+          // ====================================================
+          // 🔥 DO NOT LOSE FAILED ANALYTICS
+          // ====================================================
+
+          remainingBuffer[
+            gridId
+          ] = data;
+
+
           console.error(
-
             "❌ Grid flush failed",
-
             gridId,
-
             err
-
           );
-
         }
-
       }
 
+
+      // ========================================================
+      // ONLY FAILED ITEMS REMAIN
+      // ========================================================
+
+      window.analyticsBuffer =
+        remainingBuffer;
     }
 
-    // ====================================
-    // 🔥 GLOBAL DISTANCE UPDATE (ONCE)
-    // ====================================
 
-    try{
+    // ==========================================================
+    // GLOBAL DISTANCE
+    // ==========================================================
+
+    try {
 
       if(
 
@@ -40115,82 +40764,81 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
 
         );
 
+
         console.log(
-
           "📏 Monthly Distance Updated",
-
           window.distanceBuffer.length
-
         );
 
-        window.distanceBuffer = [];
 
+        window.distanceBuffer = [];
       }
 
     }
-
     catch(distanceErr){
 
       console.error(
-
         "❌ Distance Update Failed",
-
         distanceErr
-
       );
-
     }
 
-    // ====================================
-    // CLEAR BUFFER ONLY AFTER SUCCESS
-    // ====================================
-
-    window.analyticsBuffer = {};
 
     console.log(
-      "✅ ANALYTICS FLUSH COMPLETE"
+      "✅ ANALYTICS FLUSH COMPLETE",
+      {
+        remaining:
+          Object.keys(
+            window.analyticsBuffer || {}
+          ).length
+      }
     );
 
-    // ====================================
-    // REFRESH MONTHLY STATUS CARD
-    // ====================================
 
-    try{
+    // ==========================================================
+    // 🔥 INVALIDATE MONTHLY CARD CACHE
+    //
+    // Otherwise the card can continue showing the old result
+    // for up to 30 seconds.
+    // ==========================================================
+
+    window.monthlyStatusCache = {};
+
+
+    // ==========================================================
+    // REFRESH MONTHLY CARD
+    // ==========================================================
+
+    try {
 
       if(
-
         typeof updateMonthlyStatusCard
         === "function"
-
       ){
 
         await updateMonthlyStatusCard();
 
+
         console.log(
           "📊 Monthly Status Updated"
         );
-
       }
 
     }
-
     catch(cardErr){
 
       console.error(
-
         "❌ Monthly Status Refresh Failed",
-
         cardErr
-
       );
-
     }
 
-    // ====================================
-    // OPTIONAL HEATMAP REFRESH
-    // ====================================
 
-    try{
+    // ==========================================================
+    // OPTIONAL HEATMAP
+    // ==========================================================
+
+    try {
 
       if(
 
@@ -40204,25 +40852,18 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
       ){
 
         await showMonthlyHeatmap();
-
       }
 
     }
-
     catch(heatErr){
 
       console.warn(
-
         "⚠ Heatmap refresh skipped",
-
         heatErr
-
       );
-
     }
 
   }
-
   catch(err){
 
     console.error(
@@ -40231,14 +40872,11 @@ console.log("RETURNED updateMonthlyAnalyticsRebuild", gridId);
     );
 
   }
-
-  finally{
+  finally {
 
     window.analyticsFlushRunning =
       false;
-
   }
-
 }
 
   async function updateMonthlyDistanceTotal(
