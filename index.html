@@ -14732,71 +14732,147 @@ function finalizeSessionLifecycle() {
   }
 
 }
-function getTouchedCells(localCoordsArray) {
+function getTouchedCells(
+  localCoordsArray
+){
 
   const STEP =
-    0.00045; // 50m
+    0.00045; // ~50m
 
   const SAMPLE_STEP_KM =
-    0.025; // 25m sampling
+    0.025; // 25m
 
   const touchedCells =
     new Set();
 
   let distanceMeters = 0;
 
-  try {
+  try{
 
-    for (const seg of localCoordsArray) {
+    for(
+      const seg of localCoordsArray
+    ){
 
-      if (
+      if(
         !Array.isArray(seg) ||
-        seg.length < 2
-      ) {
+        seg.length === 0
+      ){
         continue;
       }
 
-      // =====================================
-      // LINE
-      // =====================================
+      // ==================================================
+      // 🔥 ALWAYS COUNT EVERY ACTUAL GPS POINT
+      // --------------------------------------------------
+      // A single valid GPS point is enough to establish
+      // that its cell was physically visited.
+      // ==================================================
+
+      for(
+        const point of seg
+      ){
+
+        if(
+          !Array.isArray(point) ||
+          point.length < 2
+        ){
+          continue;
+        }
+
+        const lat =
+          Number(point[0]);
+
+        const lng =
+          Number(point[1]);
+
+        if(
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lng)
+        ){
+          continue;
+        }
+
+        const row =
+          Math.floor(
+            lat / STEP
+          );
+
+        const col =
+          Math.floor(
+            lng / STEP
+          );
+
+        touchedCells.add(
+          `${col}_${row}`
+        );
+      }
+
+      // ==================================================
+      // 🔥 SINGLE POINT SEGMENT
+      // --------------------------------------------------
+      // Point already counted above.
+      // There is no line/distance to calculate.
+      // ==================================================
+
+      if(
+        seg.length < 2
+      ){
+        continue;
+      }
+
+      // ==================================================
+      // 🔥 LINE FOR MULTI-POINT SEGMENT
+      // ==================================================
 
       const line =
         turf.lineString(
+
           seg.map(c => [
+
             Number(c[1]), // lng
             Number(c[0])  // lat
+
           ])
+
         );
 
-      // =====================================
+      // ==================================================
       // DISTANCE
-      // =====================================
+      // ==================================================
 
       let lengthKm = 0;
 
-      try {
+      try{
 
         lengthKm =
           turf.length(
             line,
             {
-              units: "kilometers"
+              units:
+                "kilometers"
             }
           );
 
         distanceMeters +=
           lengthKm * 1000;
 
-      } catch (e) {
+      }
+      catch(e){
+
+        console.warn(
+          "⚠ Segment distance failed",
+          e
+        );
 
         continue;
       }
 
-      // =====================================
-      // DENSIFIED CELL SAMPLING
-      // =====================================
+      // ==================================================
+      // 🔥 DENSIFIED SEGMENT SAMPLING
+      // --------------------------------------------------
+      // Detect cells crossed between actual GPS points.
+      // ==================================================
 
-      for (
+      for(
 
         let d = 0;
 
@@ -14804,9 +14880,9 @@ function getTouchedCells(localCoordsArray) {
 
         d += SAMPLE_STEP_KM
 
-      ) {
+      ){
 
-        try {
+        try{
 
           const sample =
             turf.along(
@@ -14830,10 +14906,10 @@ function getTouchedCells(localCoordsArray) {
                 .coordinates[1]
             );
 
-          if (
+          if(
             !Number.isFinite(lat) ||
             !Number.isFinite(lng)
-          ) {
+          ){
             continue;
           }
 
@@ -14847,23 +14923,20 @@ function getTouchedCells(localCoordsArray) {
               lng / STEP
             );
 
-          // =====================================
-          // CANONICAL CELL FORMAT
-          // col_row
-          // =====================================
-
           touchedCells.add(
             `${col}_${row}`
           );
 
-        } catch (e) {}
+        }
+        catch(e){}
+
       }
 
-      // =====================================
-      // GUARANTEE LAST POINT
-      // =====================================
+      // ==================================================
+      // 🔥 GUARANTEE LAST POINT
+      // ==================================================
 
-      try {
+      try{
 
         const last =
           seg[
@@ -14876,10 +14949,10 @@ function getTouchedCells(localCoordsArray) {
         const lng =
           Number(last[1]);
 
-        if (
+        if(
           Number.isFinite(lat) &&
           Number.isFinite(lng)
-        ) {
+        ){
 
           const row =
             Math.floor(
@@ -14894,17 +14967,22 @@ function getTouchedCells(localCoordsArray) {
           touchedCells.add(
             `${col}_${row}`
           );
+
         }
 
-      } catch (e) {}
+      }
+      catch(e){}
+
     }
 
-  } catch (err) {
+  }
+  catch(err){
 
     console.error(
       "❌ getTouchedCells failed",
       err
     );
+
   }
 
   return {
@@ -14915,7 +14993,9 @@ function getTouchedCells(localCoordsArray) {
       Math.round(
         distanceMeters
       )
+
   };
+
 }
 async function updateMonthlyAnalyticsRebuild(
   gridId,
