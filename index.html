@@ -39675,27 +39675,77 @@ for(const s of staff){
 
       continue;
     }
-// ==============================================
-// ==============================================
-// ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
-// --------------------------------------------------
-// loadStaff() has already decided:
-// - dutyActive
-// - visibility
-// - emergency/global access
-// - valid GPS
+// ==========================================================
+// 🔥 ACTIVE STAFF SESSION ANALYTICS STREAM
+// ----------------------------------------------------------
 //
-// Therefore here we ONLY decide whether this staff
-// is the logged-in user whose track auto-loads.
-// ==============================================
-
-const currentUserName =
-    cleanName(
-        window.userProfile?.cleanName ||
-        window.userProfile?.name ||
-        ""
-    );
-
+// IMPORTANT:
+//
+// staff[] already contains ONLY staff that passed:
+//
+// 1. Staff visibility authorization
+// 2. Emergency/global visibility rules
+// 3. dutyActive === true
+// 4. Valid live GPS
+//
+// Every staff member reaching this point therefore has an
+// authorized ACTIVE live session.
+//
+// OLD BEHAVIOUR:
+// ----------------------------------------------------------
+// Only the logged-in user's patrol_tracks listener was opened.
+//
+// Result:
+//
+// OTHER ACTIVE STAFF
+//      ↓
+// live_staff GPS visible
+//      ↓
+// patrol_tracks listener NOT created
+//      ↓
+// points unavailable
+//      ↓
+// newPoints unavailable
+//      ↓
+// analytics never executed
+//
+// NEW BEHAVIOUR:
+// ----------------------------------------------------------
+// Every authorized ACTIVE staff/session gets its own
+// patrol_tracks listener.
+//
+// This allows:
+//
+// ACTIVE STAFF GPS
+//      ↓
+// loadStaff()
+//      ↓
+// patrol_tracks/{sessionId}/points
+//      ↓
+// points
+//      ↓
+// newPoints
+//      ↓
+// getAnalyticsCellId()
+//      ↓
+// resolveAnalyticsCell()
+//      ↓
+// collectAnalyticsHit()
+//      ↓
+// analyticsBuffer
+//      ↓
+// flushAnalyticsBuffer()
+//      ↓
+// updateMonthlyAnalyticsRebuild()
+//      ↓
+// analytics_rebuild
+//
+// Staff/session isolation remains protected by:
+//      s.cleanName
+//      currentSessionId
+//      analyticsStreamKey
+//
+// ==========================================================
 
 const staffName =
     cleanName(
@@ -39705,15 +39755,66 @@ const staffName =
     );
 
 
+// ==========================================================
+// 🔒 REQUIRE VALID STAFF IDENTITY
+// ==========================================================
+
 if(
-    !currentUserName ||
-    !staffName ||
-    staffName !== currentUserName
+    !staffName
 ){
 
-    continue;
+    console.warn(
+        "⚠ TRACK STREAM SKIPPED — STAFF NAME MISSING",
+        s
+    );
 
+    continue;
 }
+
+
+// ==========================================================
+// 🔒 REQUIRE ACTIVE SESSION
+//
+// currentSessionId was already extracted above:
+//
+// const currentSessionId =
+//     String(
+//         s.sessionId || ""
+//     ).trim();
+//
+// Never create a synthetic session here.
+// ==========================================================
+
+if(
+    !currentSessionId
+){
+
+    console.warn(
+        "⚠ TRACK STREAM SKIPPED — SESSION MISSING",
+        staffName
+    );
+
+    continue;
+}
+
+
+// ==========================================================
+// 🔍 OPTIONAL DEVELOPMENT LOG
+// ==========================================================
+
+console.log(
+    "🛰 ACTIVE STAFF SESSION ELIGIBLE",
+    {
+        staff:
+            staffName,
+
+        session:
+            currentSessionId,
+
+        dutyActive:
+            s.dutyActive === true
+    }
+);
     // ==============================================
     // 🔥 SAME SESSION
     // ==============================================
