@@ -37115,27 +37115,87 @@ async function buildCellToGridLookup(){
   }
 
 }
-    function getAnalyticsCellId(
+function getAnalyticsCellId(
   lat,
   lon
 ){
 
+  // ============================================================
+  // 🎯 CANONICAL ANALYTICS CELL ID
+  //
+  // AUTHORITATIVE FORMAT:
+  //
+  //     col_row
+  //
+  // Example:
+  //
+  //     59055_198768
+  //
+  // This orientation matches:
+  //
+  //     window.cellToGridId
+  //     grid_master
+  //     getTouchedCells()
+  //     analytics_rebuild
+  //
+  // ============================================================
+
   const STEP =
     0.00045;
+
+
+  lat =
+    Number(lat);
+
+  lon =
+    Number(lon);
+
+
+  // ============================================================
+  // VALIDATE
+  // ============================================================
+
+  if(
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon)
+  ){
+
+    return null;
+  }
+
+
+  // ============================================================
+  // CALCULATE GRID POSITION
+  // ============================================================
 
   const row =
 
     Math.floor(
-      Number(lat) / STEP
+      lat / STEP
     );
+
 
   const col =
 
     Math.floor(
-      Number(lon) / STEP
+      lon / STEP
     );
 
-  return `${row}_${col}`;
+
+  // ============================================================
+  // 🔥 IMPORTANT
+  //
+  // Canonical authoritative orientation is:
+  //
+  //     COL_ROW
+  //
+  // NOT:
+  //
+  //     ROW_COL
+  //
+  // ============================================================
+
+  return `${col}_${row}`;
 }
 
 
