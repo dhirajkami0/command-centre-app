@@ -17011,263 +17011,598 @@ async function getAnalyticsSummary(
   monthKey
 ) {
 
+  // ============================================================
+  // VALIDATION / NORMALIZATION
+  // ============================================================
+
+  const ids =
+    Array.isArray(gridIds)
+      ? [...new Set(
+          gridIds.filter(Boolean)
+        )]
+      : gridIds instanceof Set
+        ? [...gridIds].filter(Boolean)
+        : [];
+
+
+  if(
+    !monthKey
+  ){
+
+    console.warn(
+      "⚠ getAnalyticsSummary missing monthKey"
+    );
+
+    return {
+      compartments: ids.length,
+      visitedCompartments: 0,
+      totalCells: 0,
+      areaHa: 0,
+      distanceMeters: 0,
+      visitCount: 0,
+      previouslyCovered: 0,
+      newlyCovered: 0,
+      totalCovered: 0,
+      latestUpdatedAt: 0,
+      coveragePercent: 0
+    };
+  }
+
+
+  // ============================================================
+  // RESULT COUNTERS
+  // ============================================================
+
   let totalCells = 0;
+
   let areaHa = 0;
+
   let distanceMeters = 0;
+
   let visitCount = 0;
-  let newlyCovered = 0;
 
   let latestUpdatedAt = 0;
 
   let visitedCompartments = 0;
 
+  let failedReads = 0;
+
+  let missingDocs = 0;
+
+
+  // ============================================================
+  // UNIQUE MONTHLY VISITED CELLS
+  //
+  // Key includes gridId for absolute protection against any
+  // accidental cell-ID overlap between compartment documents.
+  // ============================================================
+
   const uniqueVisitedCells =
     new Set();
 
-  // ==================================
-  // MASTER GRID TOTALS
-  // ==================================
 
-  for (const gridId of gridIds) {
+  // ============================================================
+  // MASTER GRID TOTALS
+  //
+  // LOCAL MEMORY ONLY.
+  // NO FIRESTORE READS.
+  // ============================================================
+
+  for(
+    const gridId
+    of ids
+  ){
 
     const master =
-      window.masterGrid?.[gridId];
+      window.masterGrid?.[
+        gridId
+      ];
 
-    if (!master) {
+
+    if(
+      !master
+    ){
       continue;
     }
 
-    totalCells +=
+
+    const cells =
       Number(
         master.totalCells || 0
       );
 
-    areaHa +=
+
+    const area =
       Number(
         master.actualAreaHa || 0
       );
-  }
 
-  // ==================================
-  // LOAD ANALYTICS_REBUILD
-  // ==================================
 
-  const promises =
-    gridIds.map(gridId =>
+    if(
+      Number.isFinite(cells)
+    ){
 
-      window.fb.getDoc(
-
-        window.fb.doc(
-
-          window.db,
-
-          "analytics_rebuild",
-
-          monthKey,
-
-          "compartments",
-
-          gridId
-
-        )
-      )
-    );
-
-  const results =
-    await Promise.allSettled(
-      promises
-    );
-
-  const foundDocs =
-    results.filter(
-      r =>
-        r.status === "fulfilled" &&
-        r.value.exists()
-    );
-
-  console.log(
-    "📊 GRID COUNT:",
-    gridIds.length
-  );
-
-  console.log(
-    "📊 ANALYTICS DOCS FOUND:",
-    foundDocs.length
-  );
-
-  // ==================================
-  // AGGREGATE
-  // ==================================
-
-  results.forEach(
-    (
-      result,
-      index
-    ) => {
-
-      const gridId =
-        gridIds[index];
-
-      if (
-        result.status !==
-        "fulfilled"
-      ) {
-
-        console.warn(
-          "❌ Fetch failed",
-          gridId
-        );
-
-        return;
-      }
-
-      if (
-        !result.value.exists()
-      ) {
-
-        console.warn(
-          "⚠ Analytics missing",
-          gridId
-        );
-
-        return;
-      }
-
-      // ==================================
-      // VISITED COMPARTMENT COUNT
-      // ==================================
-
-      visitedCompartments++;
-
-      const analytics =
-        result.value.data() || {};
-
-      // ==========================
-      // UPDATED AT
-      // ==========================
-
-      const updatedAtMs =
-
-        analytics.updatedAt
-          ?.toMillis?.()
-
-        ||
-
-        (
-          analytics.updatedAt
-            ?.seconds
-          ? analytics.updatedAt.seconds * 1000
-          : 0
-        )
-
-        ||
-
-        0;
-
-      latestUpdatedAt = Math.max(
-
-        latestUpdatedAt,
-
-        updatedAtMs
-
-      );
-
-      // ==========================
-      // VISITED CELLS
-      // ==========================
-
-      Object.keys(
-        analytics.visitedCells || {}
-      )
-      .forEach(cellId => {
-
-        uniqueVisitedCells.add(
-          `${gridId}_${cellId}`
-        );
-
-      });
-
-      // ==========================
-      // NEWLY COVERED
-      // ==========================
-
-      newlyCovered +=
-        Number(
-          analytics.lastSessionAddedCells || 0
-        );
-
-      // ==========================
-      // DISTANCE
-      // ==========================
-
-      distanceMeters +=
-        Number(
-          analytics.distanceMeters || 0
-        );
-
-      // ==========================
-      // VISITS
-      // ==========================
-
-      visitCount +=
-        Number(
-          analytics.visitCount || 0
+      totalCells +=
+        Math.max(
+          0,
+          cells
         );
     }
+
+
+    if(
+      Number.isFinite(area)
+    ){
+
+      areaHa +=
+        Math.max(
+          0,
+          area
+        );
+    }
+  }
+
+
+  // ============================================================
+  // NOTHING TO FETCH
+  // ============================================================
+
+  if(
+    ids.length === 0
+  ){
+
+    return {
+
+      compartments: 0,
+
+      visitedCompartments: 0,
+
+      totalCells,
+
+      areaHa,
+
+      distanceMeters: 0,
+
+      visitCount: 0,
+
+      previouslyCovered: 0,
+
+      newlyCovered: 0,
+
+      totalCovered: 0,
+
+      latestUpdatedAt: 0,
+
+      coveragePercent: 0
+    };
+  }
+
+
+  // ============================================================
+  // FIRESTORE READ CONCURRENCY
+  //
+  // IMPORTANT FOR LARGE GIS CONTEXTS.
+  //
+  // Do not launch hundreds of getDoc() calls simultaneously.
+  //
+  // 20 workers gives good parallelism without creating one huge
+  // Promise.all burst.
+  // ============================================================
+
+  const MAX_CONCURRENT_READS =
+    20;
+
+
+  let nextIndex = 0;
+
+
+  const analyticsResults =
+    new Array(
+      ids.length
+    );
+
+
+  // ============================================================
+  // WORKER
+  // ============================================================
+
+  async function readWorker(){
+
+    while(true){
+
+      const index =
+        nextIndex++;
+
+
+      if(
+        index >= ids.length
+      ){
+        return;
+      }
+
+
+      const gridId =
+        ids[index];
+
+
+      try{
+
+        const ref =
+          window.fb.doc(
+            window.db,
+            "analytics_rebuild",
+            monthKey,
+            "compartments",
+            gridId
+          );
+
+
+        const snap =
+          await window.fb.getDoc(
+            ref
+          );
+
+
+        analyticsResults[
+          index
+        ] = {
+
+          ok: true,
+
+          gridId,
+
+          exists:
+            snap.exists(),
+
+          data:
+            snap.exists()
+              ? (
+                  snap.data() ||
+                  {}
+                )
+              : null
+        };
+
+      }
+
+      catch(err){
+
+        analyticsResults[
+          index
+        ] = {
+
+          ok: false,
+
+          gridId,
+
+          exists: false,
+
+          data: null,
+
+          error: err
+        };
+      }
+    }
+  }
+
+
+  // ============================================================
+  // START BOUNDED WORKERS
+  // ============================================================
+
+  const workerCount =
+    Math.min(
+      MAX_CONCURRENT_READS,
+      ids.length
+    );
+
+
+  const workers = [];
+
+
+  for(
+    let i = 0;
+    i < workerCount;
+    i++
+  ){
+
+    workers.push(
+      readWorker()
+    );
+  }
+
+
+  await Promise.all(
+    workers
   );
 
-  // ==================================
-  // COVERAGE
-  // ==================================
+
+  // ============================================================
+  // AGGREGATE RESULTS
+  // ============================================================
+
+  for(
+    const result
+    of analyticsResults
+  ){
+
+    if(
+      !result
+    ){
+      continue;
+    }
+
+
+    // ==========================================================
+    // FAILED READ
+    // ==========================================================
+
+    if(
+      !result.ok
+    ){
+
+      failedReads++;
+
+
+      console.warn(
+        "❌ Analytics fetch failed",
+        result.gridId,
+        result.error
+      );
+
+
+      continue;
+    }
+
+
+    // ==========================================================
+    // NOT VISITED THIS MONTH
+    // ==========================================================
+
+    if(
+      !result.exists
+    ){
+
+      missingDocs++;
+
+      continue;
+    }
+
+
+    visitedCompartments++;
+
+
+    const gridId =
+      result.gridId;
+
+
+    const analytics =
+      result.data || {};
+
+
+    // ==========================================================
+    // UPDATED AT
+    // ==========================================================
+
+    let updatedAtMs = 0;
+
+
+    try{
+
+      if(
+        typeof analytics
+          ?.updatedAt
+          ?.toMillis ===
+          "function"
+      ){
+
+        updatedAtMs =
+          analytics.updatedAt
+            .toMillis();
+
+      }
+
+      else if(
+        analytics
+          ?.updatedAt
+          ?.seconds
+      ){
+
+        updatedAtMs =
+          Number(
+            analytics
+              .updatedAt
+              .seconds
+          ) * 1000;
+
+      }
+
+      else if(
+        analytics.updatedAt
+      ){
+
+        const parsed =
+          new Date(
+            analytics.updatedAt
+          ).getTime();
+
+
+        if(
+          Number.isFinite(
+            parsed
+          )
+        ){
+
+          updatedAtMs =
+            parsed;
+        }
+      }
+
+    }
+
+    catch(e){
+
+      updatedAtMs = 0;
+    }
+
+
+    if(
+      Number.isFinite(
+        updatedAtMs
+      )
+    ){
+
+      latestUpdatedAt =
+        Math.max(
+          latestUpdatedAt,
+          updatedAtMs
+        );
+    }
+
+
+    // ==========================================================
+    // VISITED CELLS
+    //
+    // visitedCells itself is the authoritative monthly coverage.
+    // ==========================================================
+
+    const visitedCells =
+
+      (
+        analytics.visitedCells &&
+        typeof analytics.visitedCells ===
+          "object" &&
+        !Array.isArray(
+          analytics.visitedCells
+        )
+      )
+
+      ? analytics.visitedCells
+
+      : {};
+
+
+    for(
+      const cellId
+      of Object.keys(
+        visitedCells
+      )
+    ){
+
+      uniqueVisitedCells.add(
+        `${gridId}_${cellId}`
+      );
+    }
+
+
+    // ==========================================================
+    // DISTANCE
+    // ==========================================================
+
+    const gridDistance =
+      Number(
+        analytics.distanceMeters || 0
+      );
+
+
+    if(
+      Number.isFinite(
+        gridDistance
+      )
+    ){
+
+      distanceMeters +=
+        Math.max(
+          0,
+          gridDistance
+        );
+    }
+
+
+    // ==========================================================
+    // VISITS
+    // ==========================================================
+
+    const gridVisits =
+      Number(
+        analytics.visitCount || 0
+      );
+
+
+    if(
+      Number.isFinite(
+        gridVisits
+      )
+    ){
+
+      visitCount +=
+        Math.max(
+          0,
+          gridVisits
+        );
+    }
+  }
+
+
+  // ============================================================
+  // MONTHLY COVERAGE
+  // ============================================================
 
   const totalCovered =
     uniqueVisitedCells.size;
 
+
+  // ============================================================
+  // IMPORTANT SEMANTICS
+  //
+  // The old code summed:
+  //
+  //     lastSessionAddedCells
+  //
+  // That is NOT "new cells this month".
+  //
+  // It means only:
+  //
+  //     cells added by the most recent write to each compartment.
+  //
+  // Therefore it must not be presented as a monthly cumulative
+  // value.
+  //
+  // Monthly coverage is already totalCovered.
+  // ============================================================
+
+  const newlyCovered =
+    totalCovered;
+
+
   const previouslyCovered =
-    Math.max(
-      0,
-      totalCovered -
-      newlyCovered
-    );
+    0;
 
-  console.log(
-    "📊 TOTAL COVERED:",
-    totalCovered
-  );
 
-  console.log(
-    "📊 VISITED COMPARTMENTS:",
-    visitedCompartments
-  );
+  // ============================================================
+  // COVERAGE %
+  // ============================================================
 
-  console.log(
-    "📊 NEWLY COVERED:",
-    newlyCovered
-  );
+  const coveragePercent =
 
-  console.log(
-    "📊 DISTANCE (m):",
-    distanceMeters
-  );
+    totalCells > 0
 
-  console.log(
-    "📊 VISITS:",
-    visitCount
-  );
+    ? (
+        totalCovered /
+        totalCells
+      ) * 100
 
-  console.log(
-    "📊 LAST UPDATE:",
-    latestUpdatedAt
-      ? new Date(
-          latestUpdatedAt
-        ).toLocaleString()
-      : "N/A"
-  );
+    : 0;
 
-  return {
+
+  // ============================================================
+  // FINAL NORMALIZED SUMMARY
+  // ============================================================
+
+  const summary = {
 
     compartments:
-      gridIds.length,
+      ids.length,
 
     visitedCompartments,
 
@@ -17275,9 +17610,16 @@ async function getAnalyticsSummary(
 
     areaHa,
 
-    distanceMeters,
+    distanceMeters:
+      Math.round(
+        distanceMeters
+      ),
 
-    visitCount,
+    visitCount:
+
+      Math.round(
+        visitCount
+      ),
 
     previouslyCovered,
 
@@ -17287,17 +17629,86 @@ async function getAnalyticsSummary(
 
     latestUpdatedAt,
 
-    coveragePercent:
+    coveragePercent,
 
-      totalCells > 0
+    // ----------------------------------------
+    // Diagnostic values.
+    // Existing renderer can simply ignore them.
+    // ----------------------------------------
 
-        ? (
-            totalCovered /
-            totalCells
-          ) * 100
+    analyticsDocsFound:
+      visitedCompartments,
 
-        : 0
+    missingAnalyticsDocs:
+      missingDocs,
+
+    failedAnalyticsReads:
+      failedReads
   };
+
+
+  // ============================================================
+  // DEBUG
+  // ============================================================
+
+  console.log(
+    "📊 MONTHLY ANALYTICS SUMMARY"
+  );
+
+
+  console.table({
+
+    requestedCompartments:
+      ids.length,
+
+    analyticsDocsFound:
+      visitedCompartments,
+
+    missingDocs,
+
+    failedReads,
+
+    totalCells,
+
+    totalCovered,
+
+    visitedCompartments,
+
+    visitCount:
+      summary.visitCount,
+
+    distanceMeters:
+      summary.distanceMeters,
+
+    distanceKm:
+      Number(
+        (
+          summary.distanceMeters /
+          1000
+        ).toFixed(2)
+      ),
+
+    coveragePercent:
+      Number(
+        coveragePercent
+          .toFixed(2)
+      ),
+
+    lastUpdate:
+
+      latestUpdatedAt
+
+      ? new Date(
+          latestUpdatedAt
+        ).toLocaleString(
+          "en-IN"
+        )
+
+      : "N/A"
+  });
+
+
+  return summary;
 }function pulseLivePerformanceCard(){
 
   const card =
