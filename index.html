@@ -14817,25 +14817,42 @@ function getTouchedCells(
   localCoordsArray
 ){
 
+  // ============================================================
+  // 🎯 EXACT AUTHORITATIVE CELL TRAVERSAL
+  //
+  // RULE:
+  // A mathematical 50m cell is accepted ONLY when that exact
+  // cell exists in the authoritative grid_master lookup.
+  //
+  // NO nearest-cell snapping.
+  // NO neighboring-compartment assignment.
+  // NO invented cells.
+  // ============================================================
+
   const STEP =
-    0.00045; // existing ~50m grid
+    0.00045;
 
   const SAMPLE_STEP_KM =
-    0.025; // 25m
+    0.025; // 25m sampling
 
   const touchedCells =
     new Set();
 
   let distanceMeters = 0;
 
+  let pointCandidates = 0;
+  let segmentCandidates = 0;
+  let rejectedCandidates = 0;
+
 
   // ============================================================
-  // CELL HELPER
+  // 🔥 AUTHORITATIVE RESOLVER
   // ============================================================
 
-  function addPointCell(
+  function addAuthoritativeCell(
     lat,
-    lng
+    lng,
+    source = "point"
   ){
 
     lat = Number(lat);
@@ -14845,26 +14862,221 @@ function getTouchedCells(
       !Number.isFinite(lat) ||
       !Number.isFinite(lng)
     ){
-      return;
+      return null;
     }
 
-    const row =
-      Math.floor(
-        lat / STEP
-      );
 
-    const col =
-      Math.floor(
-        lng / STEP
-      );
+    // ==========================================================
+    // GENERATE CELL USING SAME PRODUCTION CELL-ID ENGINE
+    // ==========================================================
+
+    let rawCellId = null;
+
+    try {
+
+      if(
+        typeof getAnalyticsCellId ===
+        "function"
+      ){
+
+        rawCellId =
+          getAnalyticsCellId(
+            lat,
+            lng
+          );
+
+      }
+
+      else {
+
+        // ------------------------------------------------------
+        // FALLBACK ONLY
+        // Same mathematical grid convention.
+        // ------------------------------------------------------
+
+        const row =
+          Math.floor(
+            lat / STEP
+          );
+
+        const col =
+          Math.floor(
+            lng / STEP
+          );
+
+        rawCellId =
+          `${col}_${row}`;
+      }
+
+    }
+    catch(err){
+
+      return null;
+    }
+
+
+    if(
+      !rawCellId
+    ){
+      return null;
+    }
+
+
+    if(
+      source === "point"
+    ){
+      pointCandidates++;
+    }
+    else {
+      segmentCandidates++;
+    }
+
+
+    // ==========================================================
+    // 🔥 RESOLVE AGAINST AUTHORITATIVE MASTER
+    // ==========================================================
+
+    let resolved = null;
+
+    try {
+
+      if(
+        typeof resolveAnalyticsCell ===
+        "function"
+      ){
+
+        resolved =
+          resolveAnalyticsCell(
+            rawCellId
+          );
+
+      }
+
+      else {
+
+        // ------------------------------------------------------
+        // DIRECT LOOKUP FALLBACK
+        // ------------------------------------------------------
+
+        const directGrid =
+          window.cellToGridId?.[
+            rawCellId
+          ];
+
+        if(
+          directGrid
+        ){
+
+          resolved = {
+            cellId:
+              rawCellId,
+
+            gridId:
+              directGrid,
+
+            reversed:
+              false
+          };
+
+        }
+
+        else {
+
+          const reversedId =
+            String(rawCellId)
+              .split("_")
+              .reverse()
+              .join("_");
+
+          const reverseGrid =
+            window.cellToGridId?.[
+              reversedId
+            ];
+
+          if(
+            reverseGrid
+          ){
+
+            resolved = {
+              cellId:
+                reversedId,
+
+              gridId:
+                reverseGrid,
+
+              reversed:
+                true
+            };
+          }
+        }
+      }
+
+    }
+    catch(err){
+
+      resolved = null;
+    }
+
+
+    // ==========================================================
+    // ❌ NOT AN AUTHORITATIVE CELL
+    // ==========================================================
+
+    if(
+      !resolved ||
+      !resolved.cellId ||
+      !resolved.gridId
+    ){
+
+      rejectedCandidates++;
+
+      return null;
+    }
+
+
+    // ==========================================================
+    // FINAL SAFETY
+    //
+    // The resolved canonical cell MUST exist in the authoritative
+    // lookup before it is accepted.
+    // ==========================================================
+
+    const authoritativeGridId =
+      window.cellToGridId?.[
+        resolved.cellId
+      ];
+
+
+    if(
+      !authoritativeGridId
+    ){
+
+      rejectedCandidates++;
+
+      return null;
+    }
+
 
     touchedCells.add(
-      `${col}_${row}`
+      resolved.cellId
     );
+
+
+    return {
+      cellId:
+        resolved.cellId,
+
+      gridId:
+        authoritativeGridId
+    };
   }
 
 
   try {
+
+    // ==========================================================
+    // EACH ARRAY = ONE CONTINUOUS TRACK SECTION
+    // ==========================================================
 
     for(
       const rawSeg
@@ -14880,23 +15092,30 @@ function getTouchedCells(
 
 
       // ========================================================
-      // CLEAN VALID COORDINATES
+      // CLEAN COORDINATES
       // ========================================================
 
       const seg =
         rawSeg
-        .map(c => [
+          .map(c => [
 
-          Number(c?.[0]), // lat
-          Number(c?.[1])  // lon
+            Number(c?.[0]), // lat
+            Number(c?.[1])  // lon
 
-        ])
-        .filter(c =>
+          ])
+          .filter(c =>
 
-          Number.isFinite(c[0]) &&
-          Number.isFinite(c[1])
+            Number.isFinite(
+              c[0]
+            )
 
-        );
+            &&
+
+            Number.isFinite(
+              c[1]
+            )
+
+          );
 
 
       if(
@@ -14907,10 +15126,7 @@ function getTouchedCells(
 
 
       // ========================================================
-      // 🔥 POINT-BASED DETECTION
-      //
-      // Every actual GPS point is sufficient evidence that
-      // its cell was visited.
+      // 📍 ACTUAL GPS POINTS
       // ========================================================
 
       for(
@@ -14918,18 +15134,16 @@ function getTouchedCells(
         of seg
       ){
 
-        addPointCell(
+        addAuthoritativeCell(
           point[0],
-          point[1]
+          point[1],
+          "point"
         );
       }
 
 
       // ========================================================
-      // 🔥 SINGLE POINT
-      //
-      // Point cell has already been added above.
-      // No line is required.
+      // SINGLE GPS POINT
       // ========================================================
 
       if(
@@ -14940,11 +15154,7 @@ function getTouchedCells(
 
 
       // ========================================================
-      // 🔥 SEGMENT-BASED DETECTION
-      //
-      // Process EVERY consecutive pair separately.
-      // This is safer than treating the whole array as one
-      // continuous line if future segmentation changes.
+      // 🧭 EVERY CONSECUTIVE MOVEMENT SEGMENT
       // ========================================================
 
       for(
@@ -14960,11 +15170,7 @@ function getTouchedCells(
           seg[i];
 
 
-        // ======================================================
-        // BUILD SEGMENT
-        // ======================================================
-
-        let line;
+        let line = null;
 
         try {
 
@@ -14984,14 +15190,14 @@ function getTouchedCells(
             ]);
 
         }
-        catch(e){
+        catch(err){
 
           continue;
         }
 
 
         // ======================================================
-        // DISTANCE
+        // SEGMENT LENGTH
         // ======================================================
 
         let lengthKm = 0;
@@ -15008,14 +15214,16 @@ function getTouchedCells(
             );
 
         }
-        catch(e){
+        catch(err){
 
           continue;
         }
 
 
         if(
-          !Number.isFinite(lengthKm)
+          !Number.isFinite(
+            lengthKm
+          )
         ){
           continue;
         }
@@ -15026,9 +15234,10 @@ function getTouchedCells(
 
 
         // ======================================================
-        // 🔥 DENSIFIED LINE SAMPLING
+        // 🔥 DENSIFIED SEGMENT TRAVERSAL
         //
-        // Detect cells between GPS observations.
+        // 25m is below the ~50m cell size, allowing cells crossed
+        // between GPS observations to be recovered.
         // ======================================================
 
         for(
@@ -15053,12 +15262,14 @@ function getTouchedCells(
                 }
               );
 
+
             const lng =
               Number(
                 sample
                   ?.geometry
                   ?.coordinates?.[0]
               );
+
 
             const lat =
               Number(
@@ -15067,28 +15278,32 @@ function getTouchedCells(
                   ?.coordinates?.[1]
               );
 
-            addPointCell(
+
+            addAuthoritativeCell(
               lat,
-              lng
+              lng,
+              "segment"
             );
 
           }
-          catch(e){}
+          catch(err){}
         }
 
 
         // ======================================================
-        // GUARANTEE BOTH ENDPOINTS
+        // GUARANTEE SEGMENT ENDPOINTS
         // ======================================================
 
-        addPointCell(
+        addAuthoritativeCell(
           prev[0],
-          prev[1]
+          prev[1],
+          "segment"
         );
 
-        addPointCell(
+        addAuthoritativeCell(
           curr[0],
-          curr[1]
+          curr[1],
+          "segment"
         );
       }
     }
@@ -15103,6 +15318,34 @@ function getTouchedCells(
   }
 
 
+  // ============================================================
+  // DEBUG
+  // ============================================================
+
+  console.log(
+    "🎯 EXACT AUTHORITATIVE getTouchedCells",
+    {
+      touchedCells:
+        touchedCells.size,
+
+      pointCandidates,
+
+      segmentCandidates,
+
+      rejectedCandidates,
+
+      distanceMeters:
+        Math.round(
+          distanceMeters
+        )
+    }
+  );
+
+
+  // ============================================================
+  // RETURN SHAPE REMAINS BACKWARD COMPATIBLE
+  // ============================================================
+
   return {
 
     touchedCells,
@@ -15116,332 +15359,923 @@ function getTouchedCells(
 async function updateMonthlyAnalyticsRebuild(
   gridId,
   localCoordsArray,
-  monthKey
+  monthKey,
+  authoritativeTouchedCells = null
 ) {
-  try {
-    if (
-      !gridId ||
-      !monthKey ||
-      !Array.isArray(localCoordsArray) ||
-      !localCoordsArray.length
-    ) {
-      return;
-    }
 
-    const {
-      touchedCells,
-      distanceMeters
-    } = getTouchedCells(
-      localCoordsArray
-    );
+  // ============================================================
+  // PURPOSE
+  //
+  // Update ONE compartment/month analytics document.
+  //
+  // IMPORTANT ARCHITECTURE:
+  //
+  // 1. Authoritative touched cells may already have been resolved
+  //    by the live GPS / exact traversal pipeline.
+  //
+  // 2. Coordinates remain supported as fallback.
+  //
+  // 3. Every cell is validated against cellToGridId.
+  //
+  // 4. NO summary/global transaction is performed here.
+  //
+  // 5. Only this compartment document is contended by staff
+  //    currently operating in the same compartment.
+  //
+  // 6. Failed writes THROW back to flushAnalyticsBuffer(),
+  //    allowing the detached buffer to be restored safely.
+  // ============================================================
 
-    console.log(
-      "GRID DISTANCE DEBUG",
+
+  // ============================================================
+  // VALIDATE BASIC INPUT
+  // ============================================================
+
+  if(
+    !gridId ||
+    !monthKey
+  ){
+
+    console.warn(
+      "⚠ updateMonthlyAnalyticsRebuild invalid input",
       {
         gridId,
-        distanceMeters,
-        touchedCells:
-          touchedCells.size,
-        segments:
-          localCoordsArray.length,
-        firstSegmentPoints:
-          localCoordsArray?.[0]?.length
+        monthKey
       }
     );
 
-    if (
-      touchedCells.size === 0
-    ) {
-      return;
+    return {
+      success: false,
+      skipped: true,
+      reason: "INVALID_INPUT"
+    };
+  }
+
+
+  // ============================================================
+  // NORMALIZE COORDINATE INPUT
+  // ============================================================
+
+  const coordsArray =
+
+    Array.isArray(
+      localCoordsArray
+    )
+
+    ? localCoordsArray
+
+    : [];
+
+
+  // ============================================================
+  // AUTHORITATIVE CELLS
+  //
+  // These normally come directly from analyticsBuffer after
+  // exact traversal.
+  // ============================================================
+
+  const suppliedCells =
+    new Set();
+
+
+  if(
+    authoritativeTouchedCells
+    instanceof Set
+  ){
+
+    for(
+      const cellId
+      of authoritativeTouchedCells
+    ){
+
+      if(
+        cellId !== undefined &&
+        cellId !== null
+      ){
+
+        suppliedCells.add(
+          String(cellId)
+        );
+      }
     }
 
-    const analyticsRef =
-      window.fb.doc(
-        window.db,
-        "analytics_rebuild",
-        monthKey,
-        "compartments",
-        gridId
-      );
+  }
 
-    const summaryRef =
-      window.fb.doc(
-        window.db,
-        "analytics_rebuild",
-        monthKey,
-        "summary",
-        "global"
-      );
+  else if(
+    Array.isArray(
+      authoritativeTouchedCells
+    )
+  ){
 
-    await window.fb.runTransaction(
-      window.db,
-      async (transaction) => {
-        const snap =
-          await transaction.get(
-            analyticsRef
-          );
+    for(
+      const cellId
+      of authoritativeTouchedCells
+    ){
 
-        const summarySnap =
-          await transaction.get(
-            summaryRef
-          );
+      if(
+        cellId !== undefined &&
+        cellId !== null
+      ){
 
-        let summary = {
-          totalDistanceMeters: 0,
-          totalCovered: 0,
-          visitCount: 0,
-          visitedCompartments: 0,
-          latestUpdatedAt:
-            window.fb.serverTimestamp()
-        };
-
-        if (
-          summarySnap.exists()
-        ) {
-          summary = {
-            ...summary,
-            ...summarySnap.data()
-          };
-        }
-
-        const isFirstVisitThisMonth =
-          !snap.exists();
-// =====================================
-// SESSION MONTHLY CONTRIBUTION COUNTERS
-// =====================================
-
-window.sessionNewMonthlyCellCount ??= 0;
-
-window.sessionNewMonthlyCompartmentCount ??= 0;
-        let analytics = {
-          gridId,
-          monthKey,
-          distanceMeters: 0,
-          visitCount: 0,
-          visitedCells: {},
-          previousCoveredCells: 0,
-          lastSessionAddedCells: 0,
-          totalCoveredCells: 0,
-          firstSeenAt:
-            window.fb.serverTimestamp(),
-          lastSeenAt:
-            window.fb.serverTimestamp(),
-          updatedAt:
-            window.fb.serverTimestamp()
-        };
-
-        if (
-          snap.exists()
-        ) {
-          analytics = {
-            ...analytics,
-            ...snap.data()
-          };
-        }
-
-        // =====================================
-        // UNIQUE GRID COUNTER
-        // FIRST TIME GRID VISITED THIS MONTH
-        // =====================================
-
-        if (
-          isFirstVisitThisMonth
-        ) {
-          window.newMonthlyCompartmentIds ??=
-            new Set();
-
-          window.newMonthlyCompartmentIds.add(
-            gridId
-          );
-        }
-
-        // =====================================
-        // DISTANCE
-        // =====================================
-
-        analytics.distanceMeters =
-          Number(
-            analytics.distanceMeters || 0
-          )
-          +
-          Number(
-            distanceMeters || 0
-          );
-
-        summary.totalDistanceMeters =
-          Number(
-            summary.totalDistanceMeters || 0
-          )
-          +
-          Number(
-            distanceMeters || 0
-          );
-
-        // =====================================
-        // VISIT COUNT
-        // ONCE PER SESSION PER GRID
-        // =====================================
-
-        if (
-          !window.sessionVisitedGrids
-        ) {
-          window.sessionVisitedGrids =
-            new Set();
-        }
-
-        if (
-          !window.sessionVisitedGrids.has(
-            gridId
-          )
-        ) {
-          analytics.visitCount =
-            Number(
-              analytics.visitCount || 0
-            )
-            + 1;
-
-          summary.visitCount =
-            Number(
-              summary.visitCount || 0
-            )
-            + 1;
-
-          window.sessionVisitedGrids.add(
-            gridId
-          );
-        }
-
-        // =====================================
-        // VISITED CELLS
-        // =====================================
-
-        if (
-          !analytics.visitedCells
-        ) {
-          analytics.visitedCells = {};
-        }
-
-        const previousCoveredCount =
-          Object.keys(
-            analytics.visitedCells
-          ).length;
-
-        let newlyAddedCells = 0;
-
-        for (
-          const cellId
-          of touchedCells
-        ) {
-          if (
-            analytics.visitedCells[
-              cellId
-            ] === undefined
-          ) {
-            newlyAddedCells++;
-
-            window.newMonthlyCellIds ??=
-              new Set();
-
-            if (
-              !window.newMonthlyCellIds.has(
-                `${gridId}_${cellId}`
-              )
-            ) {
-              window.newMonthlyCellIds.add(
-                `${gridId}_${cellId}`
-              );
-            }
-          }
-
-          analytics.visitedCells[
-            cellId
-          ] =
-            Number(
-              analytics.visitedCells[
-                cellId
-              ] || 0
-            )
-            + 1;
-        }
-
-        if (
-          isFirstVisitThisMonth
-        ) {
-          summary.visitedCompartments =
-            Number(
-              summary.visitedCompartments || 0
-            )
-            + 1;
-        }
-
-        const totalCoveredCount =
-          Object.keys(
-            analytics.visitedCells
-          ).length;
-
-        summary.totalCovered =
-          Number(
-            summary.totalCovered || 0
-          )
-          +
-          newlyAddedCells;
-// =====================================
-// SESSION MONTHLY CONTRIBUTION
-// =====================================
-
-window.sessionNewMonthlyCellCount +=
-  newlyAddedCells;
-
-if (
-  isFirstVisitThisMonth
-) {
-  window.sessionNewMonthlyCompartmentCount++;
-}
-        analytics.previousCoveredCells =
-          previousCoveredCount;
-
-        analytics.lastSessionAddedCells =
-          newlyAddedCells;
-
-        analytics.totalCoveredCells =
-          totalCoveredCount;
-
-        analytics.lastSeenAt =
-          window.fb.serverTimestamp();
-
-        analytics.updatedAt =
-          window.fb.serverTimestamp();
-
-        transaction.set(
-          analyticsRef,
-          analytics,
-          {
-            merge: true
-          }
-        );
-
-        summary.latestUpdatedAt =
-          window.fb.serverTimestamp();
-
-        transaction.set(
-          summaryRef,
-          summary,
-          {
-            merge: true
-          }
+        suppliedCells.add(
+          String(cellId)
         );
       }
+    }
+  }
+
+
+  // ============================================================
+  // FALLBACK TRAVERSAL
+  //
+  // We still run getTouchedCells() when coordinates exist.
+  //
+  // This provides:
+  //
+  // - compatibility with old callers
+  // - distanceMeters
+  // - recovery if a caller did not pre-resolve cells
+  // ============================================================
+
+  let calculatedCells =
+    new Set();
+
+
+  let distanceMeters = 0;
+
+
+  if(
+    coordsArray.length > 0
+  ){
+
+    try {
+
+      const result =
+        getTouchedCells(
+          coordsArray
+        );
+
+
+      if(
+        result?.touchedCells
+        instanceof Set
+      ){
+
+        calculatedCells =
+          result.touchedCells;
+      }
+
+
+      distanceMeters =
+        Number(
+          result?.distanceMeters || 0
+        );
+
+
+      if(
+        !Number.isFinite(
+          distanceMeters
+        )
+      ){
+
+        distanceMeters = 0;
+      }
+
+    }
+
+    catch(err){
+
+      // ========================================================
+      // IMPORTANT
+      //
+      // Traversal failure does NOT destroy supplied authoritative
+      // cells. If supplied cells exist we can still continue.
+      // ========================================================
+
+      console.error(
+        "❌ getTouchedCells failed inside analytics rebuild",
+        {
+          gridId,
+          error: err
+        }
+      );
+
+
+      distanceMeters = 0;
+    }
+  }
+
+
+  // ============================================================
+  // MERGE BOTH SOURCES
+  //
+  // suppliedCells:
+  // already resolved by live authoritative pipeline
+  //
+  // calculatedCells:
+  // calculated from coordinates for compatibility/fallback
+  // ============================================================
+
+  const candidateCells =
+    new Set();
+
+
+  for(
+    const cellId
+    of suppliedCells
+  ){
+
+    candidateCells.add(
+      String(cellId)
     );
+  }
+
+
+  for(
+    const cellId
+    of calculatedCells
+  ){
+
+    candidateCells.add(
+      String(cellId)
+    );
+  }
+
+
+  // ============================================================
+  // 🔒 AUTHORITATIVE GRID OWNERSHIP FILTER
+  //
+  // A compartment document must NEVER receive a cell belonging
+  // to another grid.
+  // ============================================================
+
+  const touchedCells =
+    new Set();
+
+
+  let rejectedCells = 0;
+
+
+  for(
+    const cellId
+    of candidateCells
+  ){
+
+    const ownerGridId =
+
+      window.cellToGridId?.[
+        cellId
+      ];
+
+
+    if(
+      ownerGridId === gridId
+    ){
+
+      touchedCells.add(
+        cellId
+      );
+
+    }
+
+    else {
+
+      rejectedCells++;
+    }
+  }
+
+
+  // ============================================================
+  // DEBUG
+  // ============================================================
+
+  console.log(
+    "🎯 MONTHLY ANALYTICS INPUT",
+    {
+      gridId,
+
+      monthKey,
+
+      suppliedCells:
+        suppliedCells.size,
+
+      calculatedCells:
+        calculatedCells.size,
+
+      candidateCells:
+        candidateCells.size,
+
+      acceptedCells:
+        touchedCells.size,
+
+      rejectedCells,
+
+      distanceMeters,
+
+      segments:
+        coordsArray.length,
+
+      firstSegmentPoints:
+        Array.isArray(
+          coordsArray?.[0]
+        )
+          ? coordsArray[0].length
+          : 0
+    }
+  );
+
+
+  // ============================================================
+  // NOTHING TO WRITE
+  //
+  // A distance-only update is intentionally NOT written here.
+  //
+  // Global/session distance is handled separately by the
+  // distance pipeline.
+  // ============================================================
+
+  if(
+    touchedCells.size === 0
+  ){
+
+    console.warn(
+      "⚠ No authoritative cells for analytics update",
+      {
+        gridId,
+
+        suppliedCells:
+          suppliedCells.size,
+
+        calculatedCells:
+          calculatedCells.size,
+
+        rejectedCells
+      }
+    );
+
+
+    return {
+      success: false,
+      skipped: true,
+      reason: "NO_AUTHORITATIVE_CELLS",
+      gridId,
+      touchedCells: 0,
+      distanceMeters
+    };
+  }
+
+
+  // ============================================================
+  // FIRESTORE REFERENCE
+  //
+  // ONLY compartment document.
+  //
+  // NO summary/global reference here.
+  // ============================================================
+
+  const analyticsRef =
+
+    window.fb.doc(
+      window.db,
+      "analytics_rebuild",
+      monthKey,
+      "compartments",
+      gridId
+    );
+
+
+  // ============================================================
+  // SESSION IDENTIFIER
+  //
+  // Used only for local/runtime visit protection.
+  // ============================================================
+
+  const currentSessionId =
+
+    String(
+      window.currentSessionId ||
+      ""
+    );
+
+
+  // ============================================================
+  // TRANSACTION RESULT
+  //
+  // We return this from Firestore transaction so runtime counters
+  // are changed ONLY AFTER the transaction successfully commits.
+  // ============================================================
+
+  let transactionResult = null;
+
+
+  try {
+
+    transactionResult =
+
+      await window.fb.runTransaction(
+
+        window.db,
+
+        async transaction => {
+
+
+          // ====================================================
+          // READ ONLY THIS COMPARTMENT
+          // ====================================================
+
+          const snap =
+
+            await transaction.get(
+              analyticsRef
+            );
+
+
+          const existing =
+
+            snap.exists()
+
+            ? snap.data() || {}
+
+            : {};
+
+
+          const isFirstVisitThisMonth =
+            !snap.exists();
+
+
+          // ====================================================
+          // EXISTING VISITED CELLS
+          // ====================================================
+
+          const existingVisitedCells =
+
+            (
+              existing.visitedCells &&
+              typeof existing.visitedCells === "object" &&
+              !Array.isArray(
+                existing.visitedCells
+              )
+            )
+
+            ? {
+                ...existing.visitedCells
+              }
+
+            : {};
+
+
+          const previousCoveredCount =
+
+            Object.keys(
+              existingVisitedCells
+            ).length;
+
+
+          // ====================================================
+          // ADD / INCREMENT CELLS
+          // ====================================================
+
+          let newlyAddedCells = 0;
+
+
+          for(
+            const cellId
+            of touchedCells
+          ){
+
+            const previousValue =
+
+              Number(
+                existingVisitedCells[
+                  cellId
+                ] || 0
+              );
+
+
+            if(
+              previousValue === 0
+            ){
+
+              newlyAddedCells++;
+            }
+
+
+            existingVisitedCells[
+              cellId
+            ] =
+              previousValue + 1;
+          }
+
+
+          const totalCoveredCount =
+
+            Object.keys(
+              existingVisitedCells
+            ).length;
+
+
+          // ====================================================
+          // VISIT COUNT
+          //
+          // Existing runtime behaviour:
+          // once per session per grid.
+          //
+          // IMPORTANT:
+          // Do NOT mutate sessionVisitedGrids inside transaction.
+          //
+          // Firestore can retry transaction callbacks.
+          // Runtime state must only change after successful commit.
+          // ====================================================
+
+          window.sessionVisitedGrids ??=
+            new Set();
+
+
+          const visitKey =
+
+            currentSessionId
+
+            ? `${currentSessionId}::${gridId}`
+
+            : gridId;
+
+
+          const shouldAddVisit =
+
+            !window.sessionVisitedGrids.has(
+              visitKey
+            );
+
+
+          const previousVisitCount =
+
+            Number(
+              existing.visitCount || 0
+            );
+
+
+          const nextVisitCount =
+
+            previousVisitCount
+
+            +
+
+            (
+              shouldAddVisit
+                ? 1
+                : 0
+            );
+
+
+          // ====================================================
+          // COMPARTMENT DISTANCE
+          //
+          // Preserved for compatibility.
+          //
+          // NOTE:
+          // This is NOT the global monthly distance accumulator.
+          // ====================================================
+
+          const previousDistance =
+
+            Number(
+              existing.distanceMeters || 0
+            );
+
+
+          const safePreviousDistance =
+
+            Number.isFinite(
+              previousDistance
+            )
+
+            ? previousDistance
+
+            : 0;
+
+
+          const safeDistance =
+
+            Number.isFinite(
+              distanceMeters
+            )
+
+            ? Math.max(
+                0,
+                distanceMeters
+              )
+
+            : 0;
+
+
+          const nextDistance =
+
+            safePreviousDistance
+            +
+            safeDistance;
+
+
+          // ====================================================
+          // DOCUMENT
+          // ====================================================
+
+          const analytics = {
+
+            ...existing,
+
+            gridId,
+
+            monthKey,
+
+            distanceMeters:
+              nextDistance,
+
+            visitCount:
+              nextVisitCount,
+
+            visitedCells:
+              existingVisitedCells,
+
+            previousCoveredCells:
+              previousCoveredCount,
+
+            lastSessionAddedCells:
+              newlyAddedCells,
+
+            totalCoveredCells:
+              totalCoveredCount,
+
+            lastSeenAt:
+              window.fb.serverTimestamp(),
+
+            updatedAt:
+              window.fb.serverTimestamp()
+          };
+
+
+          // ====================================================
+          // FIRST SEEN
+          // ====================================================
+
+          if(
+            isFirstVisitThisMonth
+          ){
+
+            analytics.firstSeenAt =
+              window.fb.serverTimestamp();
+          }
+
+          else if(
+            existing.firstSeenAt
+          ){
+
+            analytics.firstSeenAt =
+              existing.firstSeenAt;
+          }
+
+
+          // ====================================================
+          // OPTIONAL LAST SESSION
+          //
+          // Useful for debugging without changing the document
+          // structure required by the rest of the application.
+          // ====================================================
+
+          if(
+            currentSessionId
+          ){
+
+            analytics.lastSessionId =
+              currentSessionId;
+          }
+
+
+          // ====================================================
+          // WRITE ONE DOCUMENT
+          // ====================================================
+
+          transaction.set(
+
+            analyticsRef,
+
+            analytics,
+
+            {
+              merge: true
+            }
+
+          );
+
+
+          // ====================================================
+          // RETURN COMMIT DATA
+          // ====================================================
+
+          return {
+
+            gridId,
+
+            isFirstVisitThisMonth,
+
+            shouldAddVisit,
+
+            visitKey,
+
+            newlyAddedCells,
+
+            previousCoveredCount,
+
+            totalCoveredCount,
+
+            acceptedCells:
+              touchedCells.size,
+
+            distanceMeters:
+              safeDistance
+          };
+        }
+      );
+
+
+    // ==========================================================
+    // 🔥 TRANSACTION COMMITTED SUCCESSFULLY
+    //
+    // Runtime counters are updated HERE, never inside transaction.
+    // ==========================================================
+
+
+    // ==========================================================
+    // SESSION VISITED GRID
+    // ==========================================================
+
+    if(
+      transactionResult
+        ?.shouldAddVisit
+    ){
+
+      window.sessionVisitedGrids ??=
+        new Set();
+
+
+      window.sessionVisitedGrids.add(
+        transactionResult.visitKey
+      );
+    }
+
+
+    // ==========================================================
+    // NEW MONTHLY CELL IDS
+    // ==========================================================
+
+    window.newMonthlyCellIds ??=
+      new Set();
+
+
+    // ==========================================================
+    // We need to identify only cells that were genuinely new.
+    //
+    // transactionResult contains the count, but the existing
+    // application also maintains the ID Set.
+    //
+    // Since this set is used as runtime/session support, adding
+    // all touched IDs is safe because Set prevents duplicates.
+    // ==========================================================
+
+    for(
+      const cellId
+      of touchedCells
+    ){
+
+      window.newMonthlyCellIds.add(
+        `${gridId}_${cellId}`
+      );
+    }
+
+
+    // ==========================================================
+    // NEW MONTHLY COMPARTMENT IDS
+    // ==========================================================
+
+    if(
+      transactionResult
+        ?.isFirstVisitThisMonth
+    ){
+
+      window.newMonthlyCompartmentIds ??=
+        new Set();
+
+
+      window.newMonthlyCompartmentIds.add(
+        gridId
+      );
+    }
+
+
+    // ==========================================================
+    // SESSION CONTRIBUTION COUNTERS
+    //
+    // IMPORTANT:
+    // Update only after successful commit.
+    // ==========================================================
+
+    window.sessionNewMonthlyCellCount ??=
+      0;
+
+
+    window.sessionNewMonthlyCompartmentCount ??=
+      0;
+
+
+    window.sessionNewMonthlyCellCount +=
+
+      Number(
+        transactionResult
+          ?.newlyAddedCells || 0
+      );
+
+
+    if(
+      transactionResult
+        ?.isFirstVisitThisMonth
+    ){
+
+      window.sessionNewMonthlyCompartmentCount++;
+    }
+
+
+    // ==========================================================
+    // SUCCESS
+    // ==========================================================
 
     console.log(
       "✅ REBUILD",
-      gridId
+      {
+        gridId,
+
+        monthKey,
+
+        touchedCells:
+          transactionResult
+            ?.acceptedCells || 0,
+
+        newlyAddedCells:
+          transactionResult
+            ?.newlyAddedCells || 0,
+
+        totalCoveredCells:
+          transactionResult
+            ?.totalCoveredCount || 0,
+
+        firstCompartmentVisit:
+          !!transactionResult
+            ?.isFirstVisitThisMonth,
+
+        visitAdded:
+          !!transactionResult
+            ?.shouldAddVisit,
+
+        distanceMeters:
+          transactionResult
+            ?.distanceMeters || 0
+      }
     );
-  } catch (err) {
+
+
+    return {
+
+      success: true,
+
+      skipped: false,
+
+      ...transactionResult
+    };
+
+  }
+
+  catch(err){
+
+    // ==========================================================
+    // CRITICAL:
+    //
+    // THROW ERROR.
+    //
+    // Do NOT swallow it.
+    //
+    // flushAnalyticsBuffer() needs to know the write failed so it
+    // can restore this grid's detached analytics buffer.
+    // ==========================================================
+
     console.error(
       "❌ updateMonthlyAnalyticsRebuild",
-      err
+      {
+        gridId,
+        monthKey,
+        error: err
+      }
     );
+
+
+    throw err;
   }
 }
 async function getMonthlyGlobalSummary(
@@ -19812,6 +20646,10 @@ async function updateMonthlyStatusCard(){
 
   try{
 
+    // =========================================================
+    // CARD EXISTS?
+    // =========================================================
+
     if(
       !document.getElementById(
         "monthlyStatusCard"
@@ -19820,8 +20658,14 @@ async function updateMonthlyStatusCard(){
       return;
     }
 
+
+    // =========================================================
+    // MONTH
+    // =========================================================
+
     const d =
       new Date();
+
 
     const monthKey =
       `${d.getFullYear()}_${
@@ -19833,12 +20677,22 @@ async function updateMonthlyStatusCard(){
         )
       }`;
 
+
+    // =========================================================
+    // CURRENT GIS LEVEL
+    // =========================================================
+
     const level =
       String(
         window.activePopupContext?.level ||
         "btr"
       )
       .toLowerCase();
+
+
+    // =========================================================
+    // CURRENT FILTER
+    // =========================================================
 
     const filterValue =
 
@@ -19860,295 +20714,591 @@ async function updateMonthlyStatusCard(){
 
       : "";
 
-    // =====================================
+
+    // =========================================================
     // CACHE KEY
-    // =====================================
+    //
+    // INCLUDE MONTH.
+    //
+    // This prevents stale previous-month data being reused after
+    // the calendar month changes.
+    // =========================================================
 
     const cacheKey =
-
-      `${level}_${
+      `${monthKey}_${level}_${
         filterValue || "all"
       }`;
 
-    const gridIds =
-      getAnalyticsGridIds(
-        level,
-        filterValue
-      );
 
-    // =====================================
-    // CACHE LOOKUP
-    // =====================================
+    // =========================================================
+    // ENSURE CACHE EXISTS
+    // =========================================================
 
-    const cached =
+    window.monthlyStatusCache ??=
+      {};
 
-      window.monthlyStatusCache?.[
-        cacheKey
-      ];
 
-    // =====================================
-    // ⚡ INSTANT CACHE PAINT
-    // =====================================
+    // =========================================================
+    // RESOLVE COMPARTMENTS FOR CURRENT GIS CONTEXT
+    // =========================================================
 
-    if(cached){
+    let gridIds = [];
 
-      renderMonthlyStatusCard(
-        cached,
-        level
-      );
+
+    try{
+
+      const resolved =
+        getAnalyticsGridIds(
+          level,
+          filterValue
+        );
+
+
+      if(
+        Array.isArray(
+          resolved
+        )
+      ){
+
+        gridIds =
+          resolved.filter(
+            Boolean
+          );
+
+      }
+
+      else if(
+        resolved instanceof Set
+      ){
+
+        gridIds =
+          [...resolved]
+            .filter(
+              Boolean
+            );
+
+      }
 
     }
 
-    // =====================================
-    // ⚡ USE CACHE IF FRESH (<30 SEC)
-    // BUT REFRESH GLOBAL DISTANCE
-    // =====================================
+    catch(gridErr){
+
+      console.error(
+        "❌ Analytics grid resolution failed",
+        {
+          level,
+          filterValue,
+          error:
+            gridErr
+        }
+      );
+
+
+      return;
+    }
+
+
+    // =========================================================
+    // CACHE
+    // =========================================================
+
+    const cached =
+
+      window.monthlyStatusCache[
+        cacheKey
+      ];
+
+
+    // =========================================================
+    // ⚡ IMMEDIATE CACHE PAINT
+    //
+    // Give the UI an instant result while fresh analytics are
+    // loaded in the background when necessary.
+    // =========================================================
 
     if(
-
-      cached?.loadedAt
-
-      &&
-
-      (
-        Date.now() -
-        cached.loadedAt
-      ) < 30000
-
+      cached
     ){
 
       try{
 
-        const summarySnap =
-
-          await window.fb.getDoc(
-
-            window.fb.doc(
-
-              window.db,
-
-              "analytics_rebuild",
-
-              monthKey,
-
-              "summary",
-
-              "global"
-
-            )
-
-          );
-
-        if(
-          summarySnap.exists()
-        ){
-
-          const globalData =
-            summarySnap.data() || {};
-
-          cached.totalDistanceMeters =
-
-            Number(
-              globalData
-                ?.totalDistanceMeters || 0
-            );
-
-          renderMonthlyStatusCard(
-            cached,
-            level
-          );
-
-        }
-
-      }
-
-      catch(e){
-
-        console.warn(
-          "⚠ Live distance refresh failed",
-          e
+        renderMonthlyStatusCard(
+          cached,
+          level
         );
 
       }
 
+      catch(renderErr){
+
+        console.warn(
+          "⚠ Cached monthly status render failed",
+          renderErr
+        );
+      }
+    }
+
+
+    // =========================================================
+    // CACHE TTL
+    // =========================================================
+
+    const CACHE_TTL =
+      30000;
+
+
+    const cacheAge =
+
+      cached?.loadedAt
+
+      ? (
+          Date.now() -
+          Number(
+            cached.loadedAt
+          )
+        )
+
+      : Infinity;
+
+
+    // =========================================================
+    // ⚡ FRESH CACHE
+    //
+    // IMPORTANT:
+    //
+    // NO summary/global read anymore.
+    //
+    // The cached summary was already calculated from the
+    // compartment analytics documents.
+    // =========================================================
+
+    if(
+      cached &&
+      Number.isFinite(
+        cacheAge
+      ) &&
+      cacheAge >= 0 &&
+      cacheAge < CACHE_TTL
+    ){
+
       console.log(
-        "⚡ Monthly Status Cache Hit:",
-        cacheKey
+        "⚡ Monthly Status Cache Hit",
+        {
+          cacheKey,
+          ageMs:
+            Math.round(
+              cacheAge
+            )
+        }
       );
+
+
+      // -------------------------------------------------------
+      // TITLE
+      // -------------------------------------------------------
+
+      const titleEl =
+        document.getElementById(
+          "monthlyStatusTitle"
+        );
+
+
+      if(
+        titleEl
+      ){
+
+        titleEl.textContent =
+          getMonthlyStatusTitle();
+      }
+
+
+      // -------------------------------------------------------
+      // SESSION LABEL
+      // -------------------------------------------------------
+
+      const sessionLabelEl =
+        document.getElementById(
+          "msSessionsLabel"
+        );
+
+
+      if(
+        sessionLabelEl
+      ){
+
+        sessionLabelEl.textContent =
+
+          level === "compartment"
+
+          ? "Visits"
+
+          : "Patrol Activity";
+      }
+
+
+      // -------------------------------------------------------
+      // LIVE STAFF
+      //
+      // Do not cache this value.
+      // -------------------------------------------------------
+
+      try{
+
+        const liveStaff =
+
+          Number(
+            getLiveStaffCountForCurrentPolygon() ||
+            0
+          );
+
+
+        const liveStaffEl =
+          document.getElementById(
+            "msLiveStaff"
+          );
+
+
+        if(
+          liveStaffEl
+        ){
+
+          liveStaffEl.textContent =
+            liveStaff.toLocaleString();
+
+
+          if(
+            liveStaff === 0
+          ){
+
+            liveStaffEl.style.color =
+              "#ff5b5b";
+
+          }
+
+          else if(
+            liveStaff < 3
+          ){
+
+            liveStaffEl.style.color =
+              "#ffd54f";
+
+          }
+
+          else{
+
+            liveStaffEl.style.color =
+              "#4cff6d";
+          }
+        }
+
+      }
+
+      catch(liveErr){
+
+        console.warn(
+          "⚠ Live staff count failed",
+          liveErr
+        );
+      }
+
 
       return;
     }
+
+
+    // =========================================================
+    // LOAD AUTHORITATIVE MONTHLY ANALYTICS
+    //
+    // THIS is now the source of truth.
+    //
+    // analytics_rebuild
+    //    / monthKey
+    //       / compartments
+    // =========================================================
 
     console.time(
       "GET_ANALYTICS_SUMMARY"
     );
 
-    const summary =
-      await getAnalyticsSummary(
 
-        gridIds,
+    let summary;
 
-        monthKey
-
-      );
-try {
-
-  const summarySnap =
-
-    await window.fb.getDoc(
-
-      window.fb.doc(
-
-        window.db,
-
-        "analytics_rebuild",
-
-        monthKey,
-
-        "summary",
-
-        "global"
-
-      )
-
-    );
-
-  if(summarySnap.exists()){
-
-    const globalSummary =
-      summarySnap.data();
-
-    console.table({
-
-      rebuiltCovered:
-        summary.totalCovered,
-
-      summaryCovered:
-        globalSummary.totalCovered,
-
-      rebuiltVisits:
-        summary.visitCount,
-
-      summaryVisits:
-        globalSummary.visitCount,
-
-      rebuiltCompartments:
-        summary.visitedCompartments,
-
-      summaryCompartments:
-        globalSummary.visitedCompartments,
-
-      rebuiltDistance:
-        summary.distanceMeters,
-
-      summaryDistance:
-        globalSummary.totalDistanceMeters
-
-    });
-
-  }
-
-}catch(e){}
-    console.timeEnd(
-      "GET_ANALYTICS_SUMMARY"
-    );
-
-    // =====================================
-    // LOAD GLOBAL DISTANCE
-    // =====================================
 
     try{
 
-      const summarySnap =
-
-        await window.fb.getDoc(
-
-          window.fb.doc(
-
-            window.db,
-
-            "analytics_rebuild",
-
-            monthKey,
-
-            "summary",
-
-            "global"
-
-          )
-
+      summary =
+        await getAnalyticsSummary(
+          gridIds,
+          monthKey
         );
 
-      if(
-        summarySnap.exists()
-      ){
-
-        const globalData =
-          summarySnap.data() || {};
-
-      }
-
     }
 
-    catch(e){
+    finally{
 
-      console.warn(
-        "⚠ Global distance load failed",
-        e
+      console.timeEnd(
+        "GET_ANALYTICS_SUMMARY"
+      );
+    }
+
+
+    // =========================================================
+    // VALIDATE RESULT
+    // =========================================================
+
+    if(
+      !summary ||
+      typeof summary !== "object"
+    ){
+
+      throw new Error(
+        "getAnalyticsSummary() returned invalid result"
+      );
+    }
+
+
+    // =========================================================
+    // NORMALIZE NUMERIC VALUES
+    //
+    // Prevent NaN from reaching the UI.
+    // =========================================================
+
+    summary.totalCovered =
+      Number(
+        summary.totalCovered || 0
       );
 
+
+    summary.totalCells =
+      Number(
+        summary.totalCells || 0
+      );
+
+
+    summary.visitedCompartments =
+      Number(
+        summary.visitedCompartments || 0
+      );
+
+
+    summary.compartments =
+      Number(
+        summary.compartments || 0
+      );
+
+
+    summary.visitCount =
+      Number(
+        summary.visitCount || 0
+      );
+
+
+    summary.distanceMeters =
+      Number(
+        summary.distanceMeters || 0
+      );
+
+
+    summary.areaHa =
+      Number(
+        summary.areaHa || 0
+      );
+
+
+    summary.coveragePercent =
+      Number(
+        summary.coveragePercent || 0
+      );
+
+
+    // =========================================================
+    // SAFETY AGAINST INVALID NUMBERS
+    // =========================================================
+
+    if(
+      !Number.isFinite(
+        summary.totalCovered
+      )
+    ){
+      summary.totalCovered = 0;
     }
 
-    // =====================================
-    // SAVE CACHE
-    // =====================================
 
-    window.monthlyStatusCache[
-      cacheKey
-    ] = {
+    if(
+      !Number.isFinite(
+        summary.totalCells
+      )
+    ){
+      summary.totalCells = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.visitedCompartments
+      )
+    ){
+      summary.visitedCompartments = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.compartments
+      )
+    ){
+      summary.compartments = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.visitCount
+      )
+    ){
+      summary.visitCount = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.distanceMeters
+      )
+    ){
+      summary.distanceMeters = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.areaHa
+      )
+    ){
+      summary.areaHa = 0;
+    }
+
+
+    if(
+      !Number.isFinite(
+        summary.coveragePercent
+      )
+    ){
+      summary.coveragePercent = 0;
+    }
+
+
+    // =========================================================
+    // DEBUG
+    //
+    // This replaces the old comparison against summary/global.
+    // =========================================================
+
+    console.table({
+
+      level:
+        level,
+
+      filter:
+        filterValue || "ALL",
+
+      compartmentsRequested:
+        gridIds.length,
+
+      totalCells:
+        summary.totalCells,
+
+      coveredCells:
+        summary.totalCovered,
+
+      visitedCompartments:
+        summary.visitedCompartments,
+
+      visitCount:
+        summary.visitCount,
+
+      distanceMeters:
+        Math.round(
+          summary.distanceMeters
+        ),
+
+      coveragePercent:
+        Number(
+          summary.coveragePercent
+            .toFixed(2)
+        )
+
+    });
+
+
+    // =========================================================
+    // SAVE CACHE
+    // =========================================================
+
+    const cacheEntry = {
 
       ...summary,
 
       loadedAt:
-        Date.now()
+        Date.now(),
+
+      monthKey,
+
+      level,
+
+      filterValue:
+        filterValue || ""
 
     };
 
-    // =====================================
+
+    window.monthlyStatusCache[
+      cacheKey
+    ] =
+      cacheEntry;
+
+
+    // =========================================================
     // FINAL PAINT
-    // =====================================
+    // =========================================================
 
     renderMonthlyStatusCard(
-      summary,
+      cacheEntry,
       level
     );
 
-    // =====================================
+
+    // =========================================================
     // TITLE
-    // =====================================
+    // =========================================================
 
     const titleEl =
       document.getElementById(
         "monthlyStatusTitle"
       );
 
-    if(titleEl){
+
+    if(
+      titleEl
+    ){
 
       titleEl.textContent =
         getMonthlyStatusTitle();
-
     }
 
-    // =====================================
+
+    // =========================================================
     // SESSION LABEL
-    // =====================================
+    // =========================================================
 
     const sessionLabelEl =
       document.getElementById(
         "msSessionsLabel"
       );
 
-    if(sessionLabelEl){
+
+    if(
+      sessionLabelEl
+    ){
 
       sessionLabelEl.textContent =
 
@@ -20157,86 +21307,150 @@ try {
         ? "Visits"
 
         : "Patrol Activity";
-
     }
 
-    // =====================================
+
+    // =========================================================
     // LIVE STAFF
-    // =====================================
+    //
+    // Live staff remains runtime/live data and is intentionally
+    // NOT derived from monthly analytics.
+    // =========================================================
 
-    const liveStaff =
-      getLiveStaffCountForCurrentPolygon();
+    try{
 
-    const liveStaffEl =
-      document.getElementById(
-        "msLiveStaff"
-      );
-
-    if(liveStaffEl){
-
-      liveStaffEl.textContent =
+      const liveStaff =
 
         Number(
-          liveStaff
-        ).toLocaleString();
+          getLiveStaffCountForCurrentPolygon() ||
+          0
+        );
+
+
+      const liveStaffEl =
+        document.getElementById(
+          "msLiveStaff"
+        );
+
 
       if(
-        liveStaff === 0
+        liveStaffEl
       ){
 
-        liveStaffEl.style.color =
-          "#ff5b5b";
+        liveStaffEl.textContent =
+          liveStaff.toLocaleString();
 
-      }
 
-      else if(
-        liveStaff < 3
-      ){
+        if(
+          liveStaff === 0
+        ){
 
-        liveStaffEl.style.color =
-          "#ffd54f";
+          liveStaffEl.style.color =
+            "#ff5b5b";
 
-      }
+        }
 
-      else{
+        else if(
+          liveStaff < 3
+        ){
 
-        liveStaffEl.style.color =
-          "#4cff6d";
+          liveStaffEl.style.color =
+            "#ffd54f";
 
+        }
+
+        else{
+
+          liveStaffEl.style.color =
+            "#4cff6d";
+        }
       }
 
     }
 
-    // =====================================
+    catch(liveErr){
+
+      console.warn(
+        "⚠ Live staff count failed",
+        liveErr
+      );
+    }
+
+
+    // =========================================================
     // UPDATED AT
-    // =====================================
+    // =========================================================
 
     const updatedAtEl =
       document.getElementById(
         "msUpdatedAt"
       );
 
-    if(updatedAtEl){
+
+    if(
+      updatedAtEl
+    ){
+
+      let latestUpdatedAt =
+        summary.latestUpdatedAt;
+
+
+      // -------------------------------------------------------
+      // Firestore Timestamp
+      // -------------------------------------------------------
 
       if(
-        summary.latestUpdatedAt
+        latestUpdatedAt &&
+        typeof latestUpdatedAt.toDate ===
+          "function"
+      ){
+
+        latestUpdatedAt =
+          latestUpdatedAt.toDate();
+      }
+
+
+      // -------------------------------------------------------
+      // Milliseconds / Date / parseable value
+      // -------------------------------------------------------
+
+      const updatedDate =
+
+        latestUpdatedAt
+
+        ? new Date(
+            latestUpdatedAt
+          )
+
+        : null;
+
+
+      if(
+        updatedDate &&
+        Number.isFinite(
+          updatedDate.getTime()
+        )
       ){
 
         updatedAtEl.textContent =
 
-          new Date(
-            summary.latestUpdatedAt
-          )
+          updatedDate
+            .toLocaleTimeString(
+              "en-IN",
+              {
+                hour:
+                  "2-digit",
 
-          .toLocaleTimeString(
-            "en-IN",
-            {
-              hour:"2-digit",
-              minute:"2-digit",
-              second:"2-digit",
-              hour12:true
-            }
-          );
+                minute:
+                  "2-digit",
+
+                second:
+                  "2-digit",
+
+                hour12:
+                  true
+              }
+            );
 
       }
 
@@ -20244,10 +21458,36 @@ try {
 
         updatedAtEl.textContent =
           "--";
-
       }
-
     }
+
+
+    // =========================================================
+    // COMPLETE
+    // =========================================================
+
+    console.log(
+      "📊 Monthly Status Updated",
+      {
+        monthKey,
+        level,
+        filter:
+          filterValue || "ALL",
+        grids:
+          gridIds.length,
+        covered:
+          summary.totalCovered,
+        visits:
+          summary.visitCount,
+        distanceKm:
+          Number(
+            (
+              summary.distanceMeters /
+              1000
+            ).toFixed(2)
+          )
+      }
+    );
 
   }
 
@@ -20257,10 +21497,9 @@ try {
       "❌ Monthly Status",
       err
     );
-
   }
-
-}    function renderMonthlyStatusCard(
+}
+    function renderMonthlyStatusCard(
   summary,
   level
 ){
@@ -40645,9 +41884,18 @@ function collectAnalyticsHit(
 }
 async function flushAnalyticsBuffer(){
 
+  // ============================================================
+  // 🔒 PREVENT OVERLAPPING FLUSHES
+  // ============================================================
+
   if(
     window.analyticsFlushRunning
   ){
+
+    console.log(
+      "⏸ Analytics flush already running"
+    );
+
     return;
   }
 
@@ -40656,13 +41904,32 @@ async function flushAnalyticsBuffer(){
     true;
 
 
+  // ============================================================
+  // RESULT FLAGS
+  // ============================================================
+
+  let analyticsChanged = false;
+
+  let successfulGridFlushes = 0;
+
+  let failedGridFlushes = 0;
+
+
   try {
+
+    // ==========================================================
+    // MONTH KEY
+    // ==========================================================
+
+    const now =
+      new Date();
+
 
     const monthKey =
 
-      `${new Date().getFullYear()}_${
+      `${now.getFullYear()}_${
         String(
-          new Date().getMonth() + 1
+          now.getMonth() + 1
         ).padStart(
           2,
           "0"
@@ -40670,11 +41937,195 @@ async function flushAnalyticsBuffer(){
       }`;
 
 
-    const entries =
+    // ==========================================================
+    // 🔥 SNAPSHOT CURRENT BUFFER
+    //
+    // IMPORTANT:
+    //
+    // We detach the current buffer before writing.
+    //
+    // Any GPS arriving WHILE this flush is running will therefore
+    // be written into a fresh window.analyticsBuffer and cannot
+    // be accidentally deleted when this flush finishes.
+    // ==========================================================
 
+    const flushingBuffer =
+      window.analyticsBuffer || {};
+
+
+    window.analyticsBuffer = {};
+
+
+    const entries =
       Object.entries(
-        window.analyticsBuffer || {}
+        flushingBuffer
       );
+
+
+    console.log(
+      "📤 ANALYTICS FLUSH START",
+      {
+        monthKey,
+
+        grids:
+          entries.length
+      }
+    );
+
+
+    // ==========================================================
+    // HELPER:
+    // MERGE FAILED/UNFLUSHED DATA BACK INTO LIVE BUFFER
+    // ==========================================================
+
+    function restoreGridBuffer(
+      gridId,
+      data
+    ){
+
+      if(
+        !gridId ||
+        !data
+      ){
+        return;
+      }
+
+
+      window.analyticsBuffer ??= {};
+
+
+      const existing =
+        window.analyticsBuffer[
+          gridId
+        ];
+
+
+      // ========================================================
+      // NOTHING ARRIVED WHILE FLUSH WAS RUNNING
+      // ========================================================
+
+      if(
+        !existing
+      ){
+
+        window.analyticsBuffer[
+          gridId
+        ] = data;
+
+        return;
+      }
+
+
+      // ========================================================
+      // MERGE COORDINATES
+      // ========================================================
+
+      const restoredCoords =
+
+        Array.isArray(
+          data?.localCoordsArray?.[0]
+        )
+
+        ? data.localCoordsArray[0]
+
+        : [];
+
+
+      const liveCoords =
+
+        Array.isArray(
+          existing?.localCoordsArray?.[0]
+        )
+
+        ? existing.localCoordsArray[0]
+
+        : [];
+
+
+      const mergedCoords =
+        [
+          ...restoredCoords,
+          ...liveCoords
+        ];
+
+
+      existing.localCoordsArray =
+        [
+          mergedCoords
+        ];
+
+
+      // ========================================================
+      // MERGE AUTHORITATIVE CELLS
+      // ========================================================
+
+      if(
+        !(
+          existing.touchedCells
+          instanceof Set
+        )
+      ){
+
+        existing.touchedCells =
+          new Set();
+      }
+
+
+      if(
+        data?.touchedCells
+        instanceof Set
+      ){
+
+        for(
+          const cellId
+          of data.touchedCells
+        ){
+
+          existing.touchedCells.add(
+            cellId
+          );
+        }
+      }
+
+
+      // ========================================================
+      // PRESERVE OPTIONAL METADATA
+      // ========================================================
+
+      if(
+        data.lastPoint &&
+        !existing.lastPoint
+      ){
+
+        existing.lastPoint =
+          data.lastPoint;
+      }
+
+
+      if(
+        data.sessionId &&
+        !existing.sessionId
+      ){
+
+        existing.sessionId =
+          data.sessionId;
+      }
+
+
+      if(
+        data.staffName &&
+        !existing.staffName
+      ){
+
+        existing.staffName =
+          data.staffName;
+      }
+
+
+      window.analyticsBuffer[
+        gridId
+      ] = existing;
+    }
 
 
     // ==========================================================
@@ -40690,40 +42141,134 @@ async function flushAnalyticsBuffer(){
       );
 
     }
+
     else {
 
       console.log(
         "📤 FLUSHING",
         entries.length,
-        "GRIDS"
+        "GRID BUFFER(S)"
       );
 
 
-      // ========================================================
-      // IMPORTANT
-      // Do NOT destroy failed buffers.
-      // ========================================================
-
-      const remainingBuffer = {};
-
-
       for(
-        const [gridId,data]
+        const [
+          gridId,
+          data
+        ]
         of entries
       ){
 
         try {
 
+          // ====================================================
+          // COORDINATES
+          // ====================================================
+
           const segment =
 
-            data
-            ?.localCoordsArray?.[0];
+            Array.isArray(
+              data?.localCoordsArray?.[0]
+            )
 
+            ? data.localCoordsArray[0]
+
+            : [];
+
+
+          const coords =
+            segment
+              .map(point => [
+
+                Number(
+                  point?.[0]
+                ),
+
+                Number(
+                  point?.[1]
+                )
+
+              ])
+              .filter(point =>
+
+                Number.isFinite(
+                  point[0]
+                )
+
+                &&
+
+                Number.isFinite(
+                  point[1]
+                )
+
+              );
+
+
+          // ====================================================
+          // AUTHORITATIVE CELLS
+          // ====================================================
 
           const bufferedCells =
 
-            data
-            ?.touchedCells;
+            data?.touchedCells
+            instanceof Set
+
+            ? new Set(
+                data.touchedCells
+              )
+
+            : new Set();
+
+
+          // ====================================================
+          // 🔒 AUTHORITATIVE OWNERSHIP FILTER
+          //
+          // Every cell in this grid buffer MUST actually belong
+          // to this grid according to grid_master.
+          // ====================================================
+
+          const authoritativeCells =
+            new Set();
+
+
+          for(
+            const cellId
+            of bufferedCells
+          ){
+
+            const ownerGridId =
+
+              window.cellToGridId?.[
+                cellId
+              ];
+
+
+            if(
+              ownerGridId === gridId
+            ){
+
+              authoritativeCells.add(
+                cellId
+              );
+
+            }
+
+            else {
+
+              console.warn(
+                "⚠ BUFFER CELL REJECTED",
+                {
+                  gridId,
+
+                  cellId,
+
+                  authoritativeOwner:
+                    ownerGridId ||
+                    "NONE"
+                }
+              );
+            }
+          }
 
 
           // ====================================================
@@ -40732,17 +42277,11 @@ async function flushAnalyticsBuffer(){
 
           if(
 
-            (
-              !Array.isArray(segment) ||
-              segment.length === 0
-            )
+            coords.length === 0
 
             &&
 
-            !(
-              bufferedCells instanceof Set &&
-              bufferedCells.size > 0
-            )
+            authoritativeCells.size === 0
 
           ){
 
@@ -40751,41 +42290,23 @@ async function flushAnalyticsBuffer(){
               gridId
             );
 
-            continue;
-          }
 
-
-          // ====================================================
-          // 🔥 SINGLE POINT IS VALID
-          // ====================================================
-
-          let coords =
-            Array.isArray(segment)
-              ? segment
-              : [];
-
-
-          // ====================================================
-          // If cells exist but coordinate somehow doesn't,
-          // retain buffer rather than silently losing analytics.
-          // ====================================================
-
-          if(
-            coords.length === 0
-          ){
-
-            console.warn(
-              "⚠ Touched cells exist but coordinates missing",
-              gridId
-            );
-
-            remainingBuffer[
-              gridId
-            ] = data;
+            // There is nothing valid to retry.
+            // Do not restore an empty buffer.
 
             continue;
           }
 
+
+          // ====================================================
+          // 🔥 IMPORTANT
+          //
+          // Authoritative cells are sufficient evidence.
+          //
+          // Coordinates are useful for distance and fallback
+          // traversal, but we must NOT throw away valid cells
+          // simply because coordinates are unavailable.
+          // ====================================================
 
           console.log(
             "🔥 ANALYTICS WRITE",
@@ -40798,41 +42319,74 @@ async function flushAnalyticsBuffer(){
                 coords.length,
 
               bufferedCells:
-                bufferedCells instanceof Set
-                  ? bufferedCells.size
-                  : 0
+                bufferedCells.size,
+
+              authoritativeCells:
+                authoritativeCells.size
             }
           );
 
+
+          // ====================================================
+          // WRITE
+          //
+          // 4th parameter contains the authoritative cells
+          // already resolved by the live patrol pipeline.
+          // ====================================================
 
           await updateMonthlyAnalyticsRebuild(
 
             gridId,
 
-            [
-              coords
-            ],
+            coords.length > 0
+              ? [
+                  coords
+                ]
+              : [],
 
-            monthKey
+            monthKey,
+
+            authoritativeCells
 
           );
+
+
+          successfulGridFlushes++;
+
+          analyticsChanged = true;
 
 
           console.log(
-            "✅ Flushed",
-            gridId
+            "✅ Analytics grid flushed",
+            {
+              gridId,
+
+              cells:
+                authoritativeCells.size,
+
+              points:
+                coords.length
+            }
           );
 
         }
+
         catch(err){
 
+          failedGridFlushes++;
+
+
           // ====================================================
-          // 🔥 DO NOT LOSE FAILED ANALYTICS
+          // 🔥 RESTORE FAILED BUFFER
+          //
+          // If fresh GPS arrived during the Firestore operation,
+          // restoreGridBuffer() MERGES rather than overwrites it.
           // ====================================================
 
-          remainingBuffer[
-            gridId
-          ] = data;
+          restoreGridBuffer(
+            gridId,
+            data
+          );
 
 
           console.error(
@@ -40842,19 +42396,17 @@ async function flushAnalyticsBuffer(){
           );
         }
       }
-
-
-      // ========================================================
-      // ONLY FAILED ITEMS REMAIN
-      // ========================================================
-
-      window.analyticsBuffer =
-        remainingBuffer;
     }
 
 
     // ==========================================================
-    // GLOBAL DISTANCE
+    // GLOBAL / MONTHLY DISTANCE BUFFER
+    //
+    // Preserve the current distance system for compatibility.
+    //
+    // IMPORTANT:
+    // Snapshot it first so new GPS distance arriving while the
+    // write runs cannot be deleted.
     // ==========================================================
 
     try {
@@ -40871,25 +42423,67 @@ async function flushAnalyticsBuffer(){
 
       ){
 
-        await updateMonthlyDistanceTotal(
+        // ======================================================
+        // DETACH CURRENT DISTANCE BUFFER
+        // ======================================================
 
-          window.distanceBuffer,
-
-          monthKey
-
-        );
-
-
-        console.log(
-          "📏 Monthly Distance Updated",
-          window.distanceBuffer.length
-        );
+        const flushingDistance =
+          window.distanceBuffer;
 
 
         window.distanceBuffer = [];
+
+
+        try {
+
+          await updateMonthlyDistanceTotal(
+
+            flushingDistance,
+
+            monthKey
+
+          );
+
+
+          analyticsChanged = true;
+
+
+          console.log(
+            "📏 Monthly Distance Updated",
+            flushingDistance.length
+          );
+
+        }
+
+        catch(distanceWriteErr){
+
+          // ====================================================
+          // RESTORE FAILED DISTANCE DATA
+          //
+          // New distance data may already exist in
+          // window.distanceBuffer, so prepend failed data.
+          // ====================================================
+
+          window.distanceBuffer =
+            [
+              ...flushingDistance,
+
+              ...(
+                Array.isArray(
+                  window.distanceBuffer
+                )
+                  ? window.distanceBuffer
+                  : []
+              )
+            ];
+
+
+          throw distanceWriteErr;
+        }
       }
 
     }
+
     catch(distanceErr){
 
       console.error(
@@ -40899,29 +42493,58 @@ async function flushAnalyticsBuffer(){
     }
 
 
+    // ==========================================================
+    // FLUSH RESULT
+    // ==========================================================
+
     console.log(
       "✅ ANALYTICS FLUSH COMPLETE",
       {
-        remaining:
+        successfulGridFlushes,
+
+        failedGridFlushes,
+
+        remainingGrids:
           Object.keys(
             window.analyticsBuffer || {}
-          ).length
+          ).length,
+
+        remainingDistanceItems:
+          Array.isArray(
+            window.distanceBuffer
+          )
+            ? window.distanceBuffer.length
+            : 0
       }
     );
 
 
     // ==========================================================
-    // 🔥 INVALIDATE MONTHLY CARD CACHE
+    // NOTHING CHANGED
     //
-    // Otherwise the card can continue showing the old result
-    // for up to 30 seconds.
+    // No reason to invalidate caches or refresh UI.
+    // ==========================================================
+
+    if(
+      !analyticsChanged
+    ){
+
+      return;
+    }
+
+
+    // ==========================================================
+    // INVALIDATE MONTHLY CARD CACHE
     // ==========================================================
 
     window.monthlyStatusCache = {};
 
 
     // ==========================================================
-    // REFRESH MONTHLY CARD
+    // REFRESH MONTHLY STATUS CARD
+    //
+    // This is UI only.
+    // Failure here must NEVER restore already-written analytics.
     // ==========================================================
 
     try {
@@ -40940,6 +42563,7 @@ async function flushAnalyticsBuffer(){
       }
 
     }
+
     catch(cardErr){
 
       console.error(
@@ -40950,7 +42574,7 @@ async function flushAnalyticsBuffer(){
 
 
     // ==========================================================
-    // OPTIONAL HEATMAP
+    // OPTIONAL HEATMAP REFRESH
     // ==========================================================
 
     try {
@@ -40970,6 +42594,7 @@ async function flushAnalyticsBuffer(){
       }
 
     }
+
     catch(heatErr){
 
       console.warn(
@@ -40979,6 +42604,7 @@ async function flushAnalyticsBuffer(){
     }
 
   }
+
   catch(err){
 
     console.error(
@@ -40987,7 +42613,12 @@ async function flushAnalyticsBuffer(){
     );
 
   }
+
   finally {
+
+    // ==========================================================
+    // ALWAYS RELEASE LOCK
+    // ==========================================================
 
     window.analyticsFlushRunning =
       false;
