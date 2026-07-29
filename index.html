@@ -12529,7 +12529,88 @@ await appendTrackToGeometries(
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL FIRESTORE SAFE ENTERPRISE VERSION
 // ======================================
+// ============================================================
+// 🔥 NORMALIZE + RESOLVE ANALYTICS CELL
+// ACCEPTS BOTH CURRENT AND LEGACY ORIENTATION
+// ============================================================
 
+function resolveAnalyticsCell(cellId){
+
+  if(
+    !cellId ||
+    !window.cellToGridId
+  ){
+    return null;
+  }
+
+  const id =
+    String(cellId).trim();
+
+  // ==========================================
+  // DIRECT MATCH
+  // ==========================================
+
+  if(
+    window.cellToGridId[id]
+  ){
+
+    return {
+
+      gridId:
+        window.cellToGridId[id],
+
+      cellId:
+        id,
+
+      reversed:
+        false
+
+    };
+  }
+
+  // ==========================================
+  // TRY REVERSED FORMAT
+  // ==========================================
+
+  const parts =
+    id.split("_");
+
+  if(
+    parts.length !== 2
+  ){
+    return null;
+  }
+
+  const reversedId =
+    `${parts[1]}_${parts[0]}`;
+
+  if(
+    window.cellToGridId[
+      reversedId
+    ]
+  ){
+
+    return {
+
+      gridId:
+        window.cellToGridId[
+          reversedId
+        ],
+
+      // IMPORTANT:
+      // return ID that actually exists
+      // in cellToGridId
+      cellId:
+        reversedId,
+
+      reversed:
+        true
+
+    };
+  }
+
+  return null;
+}
 // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL FIRESTORE SAFE ENTERPRISE VERSION
@@ -37806,48 +37887,58 @@ for(
   }
 
 
-  // ==========================================================
-  // 1. 🔥 POINT-BASED VISIT DETECTION
-  //
-  // ONE valid GPS point inside a cell is enough to establish
-  // that the cell was visited.
-  // ==========================================================
+// ==========================================================
+// 1. 🔥 POINT-BASED VISIT DETECTION
+//
+// ONE valid GPS point inside a cell is enough to establish
+// that the cell was visited.
+//
+// resolveAnalyticsCell() accepts BOTH:
+//
+// 59010_198960
+// 198960_59010
+//
+// and always returns the canonical ID that exists in
+// cellToGridId.
+// ==========================================================
 
-  const pointCellId =
+const pointCellId =
 
-    getAnalyticsCellId(
+  getAnalyticsCellId(
 
-      lat,
+    lat,
 
-      lon
+    lon
 
-    );
-
-
-  const pointGridId =
-
-    window.cellToGridId?.[
-      pointCellId
-    ];
+  );
 
 
-  if(
-    pointGridId
-  ){
+const pointResolved =
 
-    collectAnalyticsHit(
+  resolveAnalyticsCell(
 
-      pointGridId,
+    pointCellId
 
-      pointCellId,
+  );
 
-      lat,
 
-      lon
+if(
+  pointResolved
+){
 
-    );
+  collectAnalyticsHit(
 
-  }
+    pointResolved.gridId,
+
+    pointResolved.cellId,
+
+    lat,
+
+    lon
+
+  );
+
+}
 
 
   // ==========================================================
@@ -38067,39 +38158,63 @@ for(
           // a compartment/grid boundary.
           // ====================================================
 
-          for(
-            const touchedCellId
-            of segmentResult.touchedCells
-          ){
+         for(
+  const touchedCellId
+  of segmentResult.touchedCells
+){
 
-            const touchedGridId =
+  // ========================================================
+  // 🔥 NORMALIZE CELL ID + RESOLVE TRUE MASTER GRID
+  //
+  // getTouchedCells() may produce:
+  //
+  // 198960_59010
+  //
+  // while cellToGridId may contain:
+  //
+  // 59010_198960
+  //
+  // resolveAnalyticsCell() handles BOTH.
+  // ========================================================
 
-              window.cellToGridId?.[
-                touchedCellId
-              ];
+  const resolved =
+
+    resolveAnalyticsCell(
+
+      touchedCellId
+
+    );
 
 
-            if(
-              !touchedGridId
-            ){
+  if(
+    !resolved
+  ){
 
-              continue;
-            }
+    console.warn(
+
+      "⚠ TOUCHED CELL NOT IN MASTER",
+
+      touchedCellId
+
+    );
+
+    continue;
+  }
 
 
-            collectAnalyticsHit(
+  collectAnalyticsHit(
 
-              touchedGridId,
+    resolved.gridId,
 
-              touchedCellId,
+    resolved.cellId,
 
-              lat,
+    lat,
 
-              lon
+    lon
 
-            );
+  );
 
-          }
+}
 
 
           console.log(
