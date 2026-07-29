@@ -20481,14 +20481,14 @@ function updateDutyUI(isActive){
 // ======================================================
 // 🔥 MAIN DUTY CHECK (FIXED)
 // ======================================================
-async function autoShowEndDuty(){
+async function autoShowEndDuty() {
 
   console.group("🧠 autoShowEndDuty START");
 
   // =====================================================
   // 🔒 PREVENT DUPLICATE CHECKS
   // =====================================================
-  if(window.dutyCheckRunning === true){
+  if (window.dutyCheckRunning === true) {
 
     console.warn(
       "⛔ Duplicate duty check blocked"
@@ -20506,11 +20506,11 @@ async function autoShowEndDuty(){
     // =====================================================
     // 🔥 FIREBASE READY
     // =====================================================
-    if(
+    if (
       !window.firebaseReady ||
       !window.fb ||
       !window.db
-    ){
+    ) {
 
       console.warn(
         "⏳ Firebase not ready"
@@ -20522,10 +20522,10 @@ async function autoShowEndDuty(){
     // =====================================================
     // 🔥 PROFILE
     // =====================================================
-    if(
+    if (
       !window.userProfile ||
       !window.userProfile.cleanName
-    ){
+    ) {
 
       console.warn(
         "⚠ userProfile missing"
@@ -20538,13 +20538,11 @@ async function autoShowEndDuty(){
     // 🔥 CLEAN NAME
     // =====================================================
     const cleanName =
-
       String(
         window.userProfile.cleanName || ""
       )
-
-      .trim()
-      .toUpperCase();
+        .trim()
+        .toUpperCase();
 
     console.log(
       "🔥 DUTY CHECK:",
@@ -20561,13 +20559,9 @@ async function autoShowEndDuty(){
     // 🔥 FIRESTORE REF
     // =====================================================
     const docRef =
-
       window.fb.doc(
-
         window.db,
-
         "live_staff",
-
         cleanName
       );
 
@@ -20575,7 +20569,6 @@ async function autoShowEndDuty(){
     // 🔥 READ FIRESTORE
     // =====================================================
     const snap =
-
       await window.fb.getDoc(
         docRef
       );
@@ -20583,23 +20576,48 @@ async function autoShowEndDuty(){
     // =====================================================
     // ❌ NO DOC
     // =====================================================
-    if(!snap.exists()){
+    if (!snap.exists()) {
 
       console.warn(
         "❌ live_staff missing"
       );
 
       window.isDutyActive = false;
-
       window.currentSessionId = "";
 
       localStorage.removeItem(
         "sessionId"
       );
 
+      localStorage.setItem(
+        "dutyActive",
+        "false"
+      );
+
       updateDutyButton();
 
       window.__dutyChecked = true;
+
+      // =================================================
+      // 🔥 STOP REALTIME ANALYTICS IF STILL ATTACHED
+      // =================================================
+      try {
+
+        if (
+          typeof window.stopRealtimeAnalytics ===
+          "function"
+        ) {
+
+          window.stopRealtimeAnalytics();
+        }
+
+      } catch (e) {
+
+        console.error(
+          "❌ stopRealtimeAnalytics failed:",
+          e
+        );
+      }
 
       return;
     }
@@ -20621,7 +20639,6 @@ async function autoShowEndDuty(){
     // 🔥 SESSION
     // =====================================================
     const firestoreSessionId =
-
       String(
         fireData.sessionId || ""
       ).trim();
@@ -20629,9 +20646,9 @@ async function autoShowEndDuty(){
     // =====================================================
     // 🟢 DUTY ACTIVE
     // =====================================================
-    if(
+    if (
       fireData.dutyActive === true
-    ){
+    ) {
 
       console.log(
         "🟢 DUTY ACTIVE"
@@ -20640,13 +20657,23 @@ async function autoShowEndDuty(){
       // =================================================
       // 🔥 INVALID SESSION
       // =================================================
-      if(!firestoreSessionId){
+      if (!firestoreSessionId) {
 
         console.error(
           "❌ Missing Firestore sessionId"
         );
 
         window.isDutyActive = false;
+        window.currentSessionId = "";
+
+        localStorage.removeItem(
+          "sessionId"
+        );
+
+        localStorage.setItem(
+          "dutyActive",
+          "false"
+        );
 
         updateDutyButton();
 
@@ -20678,92 +20705,131 @@ async function autoShowEndDuty(){
       // 🔥 UPDATE BUTTON
       // =================================================
       updateDutyButton();
-// =================================================
-// 🔥 RESTORE REALTIME ANALYTICS
-//
-// IMPORTANT:
-// startDuty() normally starts realtime analytics,
-// but after page reload autoShowEndDuty() restores
-// the active Firestore duty without calling startDuty().
-//
-// Therefore make sure the listener for THIS SAME
-// session is attached.
-// =================================================
-try {
 
-  const realtimeSessionId =
-    String(
-      window.realtimeAnalyticsState
-        ?.sessionId || ""
-    ).trim();
+      // =================================================
+      // 🔥 RESTORE REALTIME ANALYTICS
+      //
+      // IMPORTANT:
+      // autoShowEndDuty may recover an already-active
+      // duty after reload / reconnect.
+      //
+      // In that situation wasActive may already be TRUE,
+      // but the realtime analytics listener may be absent.
+      //
+      // Therefore analytics recovery MUST NOT depend only
+      // on the OFF → ON transition.
+      // =================================================
+      try {
 
-  const realtimeListenerActive =
-    typeof window.realtimeAnalyticsState
-      ?.unsubscribe === "function";
+        const realtimeState =
+          window.realtimeAnalyticsState || {};
 
-  // Start only when the correct listener is missing.
-  // This prevents autoShowEndDuty(), which runs
-  // repeatedly, from creating duplicate listeners.
-  if(
-    realtimeSessionId !== firestoreSessionId ||
-    !realtimeListenerActive
-  ){
+        const realtimeSessionId =
+          String(
+            realtimeState.sessionId || ""
+          ).trim();
 
-    console.warn(
-      "🔄 RESTORING REALTIME ANALYTICS",
-      {
-        firestoreSessionId,
-        realtimeSessionId:
-          realtimeSessionId || "NONE",
-        listenerActive:
-          realtimeListenerActive
+        const listenerActive =
+          typeof realtimeState.unsubscribe ===
+          "function";
+
+        const correctSession =
+          realtimeSessionId ===
+          firestoreSessionId;
+
+        const analyticsAttached =
+          correctSession &&
+          listenerActive;
+
+        console.log(
+          "🔎 REALTIME ANALYTICS STATE",
+          {
+            firestoreSessionId:
+              firestoreSessionId,
+
+            realtimeSessionId:
+              realtimeSessionId || "NONE",
+
+            listenerActive:
+              listenerActive,
+
+            analyticsAttached:
+              analyticsAttached
+          }
+        );
+
+        // =============================================
+        // 🔥 START / RESTORE ONLY WHEN NEEDED
+        // =============================================
+        if (!analyticsAttached) {
+
+          console.warn(
+            "🔄 RESTORING REALTIME ANALYTICS",
+            {
+              firestoreSessionId:
+                firestoreSessionId,
+
+              realtimeSessionId:
+                realtimeSessionId || "NONE",
+
+              listenerActive:
+                listenerActive
+            }
+          );
+
+          if (
+            typeof window.startRealtimeAnalytics ===
+            "function"
+          ) {
+
+            const started =
+              await window.startRealtimeAnalytics();
+
+            console.log(
+              "✅ REALTIME ANALYTICS RESTORE RESULT:",
+              started
+            );
+
+          } else if (
+            typeof startRealtimeAnalytics ===
+            "function"
+          ) {
+
+            const started =
+              await startRealtimeAnalytics();
+
+            console.log(
+              "✅ REALTIME ANALYTICS RESTORE RESULT:",
+              started
+            );
+
+          } else {
+
+            console.error(
+              "❌ startRealtimeAnalytics function missing"
+            );
+          }
+
+        } else {
+
+          console.log(
+            "✅ REALTIME ANALYTICS ALREADY ACTIVE",
+            firestoreSessionId
+          );
+        }
+
+      } catch (e) {
+
+        console.error(
+          "❌ Realtime analytics restore failed:",
+          e
+        );
       }
-    );
 
-    if(
-      typeof window.startRealtimeAnalytics ===
-        "function"
-    ){
-
-      const analyticsStarted =
-        await window.startRealtimeAnalytics();
-
-      console.log(
-        "✅ REALTIME ANALYTICS RESTORE RESULT",
-        analyticsStarted
-      );
-
-    } else {
-
-      console.error(
-        "❌ startRealtimeAnalytics unavailable"
-      );
-    }
-
-  } else {
-
-    console.log(
-      "✅ REALTIME ANALYTICS ALREADY ACTIVE",
-      firestoreSessionId
-    );
-  }
-
-} catch(e){
-
-  console.error(
-    "❌ Realtime analytics restore failed:",
-    e
-  );
-}
-
-// =================================================
-// 🔥 ONLY ON OFF → ON
-// =================================================
-if(!wasActive){
       // =================================================
       // 🔥 ONLY ON OFF → ON
       // =================================================
-      if(!wasActive){
+      if (!wasActive) {
 
         console.warn(
           "🚀 OFF → ON transition"
@@ -20778,7 +20844,9 @@ if(!wasActive){
             "offlineGPS"
           );
 
-        } catch(_){}
+        } catch (_) {
+          // Ignore localStorage cleanup failure
+        }
 
         try {
 
@@ -20787,7 +20855,9 @@ if(!wasActive){
           window.lastGpsSent = 0;
           window.gpsQueue = [];
 
-        } catch(_){}
+        } catch (_) {
+          // Ignore runtime cleanup failure
+        }
 
         // =============================================
         // 🔥 START APK GPS
@@ -20801,19 +20871,28 @@ if(!wasActive){
           // =========================================
           // 🔥 SAME SESSION TO APK
           // =========================================
-          await notifyAndroidDuty(
+          if (
+            typeof notifyAndroidDuty ===
+            "function"
+          ) {
 
-            true,
+            await notifyAndroidDuty(
+              true,
+              firestoreSessionId
+            );
 
-            firestoreSessionId
+            console.log(
+              "✅ APK GPS STARTED"
+            );
 
-          );
+          } else {
 
-          console.log(
-            "✅ APK GPS STARTED"
-          );
+            console.warn(
+              "⚠ notifyAndroidDuty unavailable"
+            );
+          }
 
-        } catch(e){
+        } catch (e) {
 
           console.error(
             "❌ notifyAndroidDuty(true) failed:",
@@ -20825,7 +20904,7 @@ if(!wasActive){
       // =================================================
       // 🔥 FRONTEND GPS STATE
       // =================================================
-      if(!window.gpsRunning){
+      if (!window.gpsRunning) {
 
         try {
 
@@ -20833,9 +20912,12 @@ if(!wasActive){
             "🚀 FRONTEND GPS READY"
           );
 
+          // Existing architecture currently leaves
+          // frontend auto-GPS disabled here.
+          //
           // startAutoGPS();
 
-        } catch(e){
+        } catch (e) {
 
           console.error(
             "❌ Frontend GPS error:",
@@ -20843,6 +20925,7 @@ if(!wasActive){
           );
         }
       }
+
     }
 
     // =====================================================
@@ -20879,9 +20962,45 @@ if(!wasActive){
       updateDutyButton();
 
       // =================================================
+      // 🔥 STOP REALTIME ANALYTICS
+      // =================================================
+      try {
+
+        if (
+          typeof window.stopRealtimeAnalytics ===
+          "function"
+        ) {
+
+          console.log(
+            "🛑 STOP REALTIME ANALYTICS"
+          );
+
+          window.stopRealtimeAnalytics();
+
+        } else if (
+          typeof stopRealtimeAnalytics ===
+          "function"
+        ) {
+
+          console.log(
+            "🛑 STOP REALTIME ANALYTICS"
+          );
+
+          stopRealtimeAnalytics();
+        }
+
+      } catch (e) {
+
+        console.error(
+          "❌ stopRealtimeAnalytics failed:",
+          e
+        );
+      }
+
+      // =================================================
       // 🔥 ONLY ON ON → OFF
       // =================================================
-      if(wasActive){
+      if (wasActive) {
 
         console.warn(
           "🛑 ON → OFF transition"
@@ -20896,15 +21015,27 @@ if(!wasActive){
             "📱 STOP APK GPS"
           );
 
-          await notifyAndroidDuty(
-            false
-          );
+          if (
+            typeof notifyAndroidDuty ===
+            "function"
+          ) {
 
-          console.log(
-            "✅ APK GPS STOPPED"
-          );
+            await notifyAndroidDuty(
+              false
+            );
 
-        } catch(e){
+            console.log(
+              "✅ APK GPS STOPPED"
+            );
+
+          } else {
+
+            console.warn(
+              "⚠ notifyAndroidDuty unavailable"
+            );
+          }
+
+        } catch (e) {
 
           console.error(
             "❌ notifyAndroidDuty(false) failed:",
@@ -20921,12 +21052,17 @@ if(!wasActive){
             "🛑 STOP FRONTEND GPS"
           );
 
+          // Existing architecture currently leaves
+          // frontend auto-GPS disabled here.
+          //
           // stopAutoGPS();
 
-        } catch(_){}
+        } catch (_) {
+          // Ignore frontend GPS cleanup failure
+        }
 
         // =============================================
-        // 🔥 CLEAR MEMORY
+        // 🔥 CLEAR OFFLINE GPS MEMORY
         // =============================================
         try {
 
@@ -20934,8 +21070,13 @@ if(!wasActive){
             "offlineGPS"
           );
 
-        } catch(_){}
+        } catch (_) {
+          // Ignore localStorage cleanup failure
+        }
 
+        // =============================================
+        // 🔥 CLEAR RUNTIME GPS MEMORY
+        // =============================================
         try {
 
           window.lastManualKey = "";
@@ -20943,12 +21084,17 @@ if(!wasActive){
           window.lastGpsSent = 0;
           window.gpsQueue = [];
 
-        } catch(_){}
+        } catch (_) {
+          // Ignore runtime cleanup failure
+        }
       }
     }
 
-  } catch(e){
+  } catch (e) {
 
+    // =====================================================
+    // ❌ MAIN DUTY CHECK ERROR
+    // =====================================================
     console.error(
       "❌ autoShowEndDuty crash:",
       e
@@ -20959,15 +21105,19 @@ if(!wasActive){
     // =====================================================
     // 🔓 RELEASE LOCK
     // =====================================================
-    setTimeout(() => {
+    setTimeout(
+      () => {
 
-      window.dutyCheckRunning = false;
+        window.dutyCheckRunning = false;
 
-      console.groupEnd();
+        console.groupEnd();
 
-    }, 800);
+      },
+      800
+    );
   }
-}// ======================================================
+}
+    // ======================================================
 // 🔥 INIT DUTY CONTROL (CLEAN)
 // ======================================================
 let dutyInitDone = false;
