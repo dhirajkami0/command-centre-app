@@ -63078,23 +63078,48 @@ if (
 
 ) {
 
-    try {
+// =====================================================
+// REQUEST LOCATION PERMISSION
+// =====================================================
+
+if (
+
+    window.Android &&
+    typeof Android.ensureLocationPermission === "function"
+
+){
+
+    try{
+
+        console.log(
+            "📍 Requesting Android Location Permission..."
+        );
 
         await waitForAndroidLocationPermission();
 
-    }catch (err) {
+        console.log(
+            "✅ Permission Granted"
+        );
 
-    startDutySubmitting = false;
+    }
+    catch(err){
 
-if (err.message !== "Permission already requested") {
+        console.warn(
+            "❌ Permission Denied",
+            err
+        );
 
-    alert("Location permission is required.");
+        startDutySubmitting = false;
 
-}
+        alert(
+            "Location permission is required to start duty."
+        );
 
-    console.groupEnd();
+        console.groupEnd();
 
-    return;
+        return;
+
+    }
 
 }
 
