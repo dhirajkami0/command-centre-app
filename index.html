@@ -40562,24 +40562,41 @@ if(
   // BOTH MUST MATCH
   // ========================================================
 
-  if(
-    divisionMatch &&
-    rangeMatch
-  ){
+if(
+  divisionMatch &&
+  rangeMatch
+){
 
-    collectAnalyticsHit(
+  // ========================================================
+  // ✅ AUTHORIZED ANALYTICS HIT
+  //
+  // Pass REAL staff + patrol session identity so that:
+  //
+  // analyticsBuffer
+  //   ├── touchedCells
+  //   ├── localCoordsArray
+  //   └── visitSessions
+  //
+  // can correctly maintain compartment visits.
+  // ========================================================
 
-      pointResolved.gridId,
+  collectAnalyticsHit(
 
-      pointResolved.cellId,
+    pointResolved.gridId,
 
-      lat,
+    pointResolved.cellId,
 
-      lon
+    lat,
 
-    );
+    lon,
 
-  }
+    analyticsStaffName,
+
+    analyticsSessionId
+
+  );
+
+}
 
   else {
 
@@ -41007,7 +41024,11 @@ collectAnalyticsHit(
 
   lat,
 
-  lon
+  lon,
+
+  analyticsStaffName,
+
+  analyticsSessionId
 
 );
               }
@@ -43342,10 +43363,16 @@ function collectAnalyticsHit(
   gridId,
   cellId,
   lat,
-  lon
+  lon,
+  staffName,
+  sessionId
 ){
 
   try{
+
+    // ==========================================================
+    // 🔥 VALIDATE REQUIRED ANALYTICS IDENTITY
+    // ==========================================================
 
     if(
       !gridId ||
@@ -43354,9 +43381,76 @@ function collectAnalyticsHit(
       return;
     }
 
-    // ==========================================
+
+    // ==========================================================
+    // 🔥 NORMALIZE STAFF / SESSION
+    //
+    // These identify the REAL patrol session that generated
+    // this analytics hit.
+    //
+    // Example:
+    //
+    // staffName:
+    // NILKUSH MARAK
+    //
+    // sessionId:
+    // NILKUSH MARAK_1785376148055
+    //
+    // Together:
+    //
+    // NILKUSH MARAK|NILKUSH MARAK_1785376148055
+    //
+    // This identity is carried forward to:
+    //
+    // analyticsBuffer
+    //      ↓
+    // flushAnalyticsBuffer()
+    //      ↓
+    // updateMonthlyAnalyticsRebuild()
+    //      ↓
+    // compartment visitCount
+    //
+    // One staff patrol session touching one compartment
+    // must count as ONE compartment visit.
+    // ==========================================================
+
+    const normalizedStaffName =
+
+      String(
+        staffName ||
+        ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const normalizedSessionId =
+
+      String(
+        sessionId ||
+        ""
+      )
+      .trim();
+
+
+    // ==========================================================
     // 🔥 CREATE GRID BUFFER
-    // ==========================================
+    //
+    // ONE BUFFER ENTRY PER AUTHORITATIVE GRID / COMPARTMENT.
+    //
+    // Existing structure is preserved:
+    //
+    // touchedCells
+    // localCoordsArray
+    //
+    // New:
+    //
+    // visitSessions
+    //
+    // visitSessions is a Set so repeated GPS points from the
+    // same staff/session do NOT create repeated visits.
+    // ==========================================================
+
     if(
       !window.analyticsBuffer[
         gridId
@@ -43367,97 +43461,329 @@ function collectAnalyticsHit(
         gridId
       ] = {
 
+        // ======================================================
+        // 🔥 UNIQUE AUTHORITATIVE CELLS TOUCHED
+        // ======================================================
+
         touchedCells:
           new Set(),
 
-        // ======================================
-        // IMPORTANT
-        // MATCHES appendTrackToGeometries()
-        // FORMAT
-        // ======================================
+
+        // ======================================================
+        // 🔥 TRACK COORDINATES
+        //
+        // IMPORTANT:
+        // MATCHES appendTrackToGeometries() FORMAT.
+        //
+        // [
+        //   [
+        //     [lat, lon],
+        //     [lat, lon],
+        //     ...
+        //   ]
+        // ]
+        // ======================================================
+
         localCoordsArray: [
           []
-        ]
+        ],
+
+
+        // ======================================================
+        // 🔥 REAL STAFF PATROL SESSIONS
+        //
+        // Example:
+        //
+        // Set {
+        //   "NILKUSH MARAK|NILKUSH MARAK_1785376148055",
+        //   "SACHIN CHHETRI|SACHIN CHHETRI_1785343482080"
+        // }
+        //
+        // Multiple points from Nilkush's SAME session remain
+        // one Set entry.
+        //
+        // Different staff/session becomes another entry.
+        // ======================================================
+
+        visitSessions:
+          new Set()
 
       };
 
+
       console.log(
         "🆕 NEW ANALYTICS GRID",
-        gridId
+        {
+          gridId,
+
+          staff:
+            normalizedStaffName ||
+            null,
+
+          session:
+            normalizedSessionId ||
+            null
+        }
       );
 
     }
 
-    // ==========================================
-    // 🔥 CELL
-    // ==========================================
-    window.analyticsBuffer[
-      gridId
-    ]
-    .touchedCells
-    .add(
-      cellId
-    );
 
-    // ==========================================
-    // 🔥 COORDS
-    // ==========================================
+    // ==========================================================
+    // 🔥 BACKWARD-COMPATIBILITY SAFETY
+    //
+    // A buffer may already exist because it was created before
+    // this updated function was loaded.
+    //
+    // Do NOT destroy that buffer.
+    // Add missing structures only.
+    // ==========================================================
+
+    const buffer =
+
+      window.analyticsBuffer[
+        gridId
+      ];
+
+
+    if(
+      !(
+        buffer.touchedCells
+        instanceof Set
+      )
+    ){
+
+      buffer.touchedCells =
+        new Set(
+          Array.isArray(
+            buffer.touchedCells
+          )
+            ? buffer.touchedCells
+            : []
+        );
+    }
+
+
+    if(
+      !Array.isArray(
+        buffer.localCoordsArray
+      )
+    ){
+
+      buffer.localCoordsArray = [
+        []
+      ];
+    }
+
+
+    if(
+      !Array.isArray(
+        buffer.localCoordsArray[0]
+      )
+    ){
+
+      buffer.localCoordsArray[0] =
+        [];
+    }
+
+
+    if(
+      !(
+        buffer.visitSessions
+        instanceof Set
+      )
+    ){
+
+      buffer.visitSessions =
+        new Set(
+          Array.isArray(
+            buffer.visitSessions
+          )
+            ? buffer.visitSessions
+            : []
+        );
+    }
+
+
+    // ==========================================================
+    // 🔥 AUTHORITATIVE CELL
+    //
+    // Jurisdiction checking has ALREADY happened before this
+    // function is called:
+    //
+    // staff Division
+    //      +
+    // staff Range
+    //      ↓
+    // authoritative grid
+    //      ↓
+    // authorized
+    //      ↓
+    // collectAnalyticsHit()
+    //
+    // Therefore this function only COLLECTS an already-approved
+    // analytics hit.
+    // ==========================================================
+
+    buffer
+      .touchedCells
+      .add(
+        cellId
+      );
+
+
+    // ==========================================================
+    // 🔥 PRESERVE REAL STAFF + SESSION VISIT IDENTITY
+    //
+    // IMPORTANT:
+    //
+    // We add a visit identity ONLY when BOTH are available.
+    //
+    // We do NOT invent:
+    //
+    // CURRENT
+    // UNKNOWN
+    // gridId
+    //
+    // as a fake patrol session.
+    //
+    // This prevents incorrect compartment visitCount.
+    // ==========================================================
+
+    let visitSessionKey =
+      null;
+
+
+    if(
+      normalizedStaffName &&
+      normalizedSessionId
+    ){
+
+      visitSessionKey =
+
+        `${normalizedStaffName}|${normalizedSessionId}`;
+
+
+      buffer
+        .visitSessions
+        .add(
+          visitSessionKey
+        );
+
+    }
+
+
+    // ==========================================================
+    // 🔥 COORDINATES
+    // ==========================================================
+
+    const numericLat =
+      Number(
+        lat
+      );
+
+
+    const numericLon =
+      Number(
+        lon
+      );
+
+
     if(
 
       Number.isFinite(
-        Number(lat)
+        numericLat
       )
 
       &&
 
       Number.isFinite(
-        Number(lon)
+        numericLon
       )
 
     ){
 
-      window.analyticsBuffer[
-        gridId
-      ]
-      .localCoordsArray[0]
-      .push([
+      buffer
+        .localCoordsArray[0]
+        .push([
 
-        Number(lat),
+          numericLat,
 
-        Number(lon)
+          numericLon
 
-      ]);
+        ]);
 
     }
 
-    // ==========================================
+
+    // ==========================================================
     // 🔥 DEBUG
-    // ==========================================
+    // ==========================================================
+
     console.log(
       "➕ BUFFER UPDATE",
       {
+
         gridId,
 
         cellId,
 
+
+        // ------------------------------------------------------
+        // REAL STAFF / SESSION
+        // ------------------------------------------------------
+
+        staff:
+          normalizedStaffName ||
+          null,
+
+        session:
+          normalizedSessionId ||
+          null,
+
+        visitSessionKey,
+
+
+        // ------------------------------------------------------
+        // COORDINATE COUNT
+        // ------------------------------------------------------
+
         points:
-          window.analyticsBuffer[
-            gridId
-          ]
-          .localCoordsArray[0]
-          .length,
+          buffer
+            .localCoordsArray[0]
+            .length,
+
+
+        // ------------------------------------------------------
+        // UNIQUE AUTHORITATIVE CELLS
+        // ------------------------------------------------------
 
         cells:
-          window.analyticsBuffer[
-            gridId
-          ]
-          .touchedCells
-          .size,
+          buffer
+            .touchedCells
+            .size,
+
+
+        // ------------------------------------------------------
+        // UNIQUE STAFF PATROL SESSIONS THAT HAVE TOUCHED
+        // THIS GRID DURING THE CURRENT BUFFER WINDOW
+        // ------------------------------------------------------
+
+        visitSessions:
+          buffer
+            .visitSessions
+            .size,
+
+
+        // ------------------------------------------------------
+        // TOTAL GRID BUFFERS
+        // ------------------------------------------------------
 
         totalBufferedGrids:
           Object.keys(
             window.analyticsBuffer
           ).length
+
       }
     );
 
@@ -43467,7 +43793,14 @@ function collectAnalyticsHit(
 
     console.error(
       "❌ collectAnalyticsHit",
-      err
+      {
+        gridId,
+        cellId,
+        staffName,
+        sessionId,
+        error:
+          err
+      }
     );
 
   }
