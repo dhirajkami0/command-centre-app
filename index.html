@@ -40439,24 +40439,170 @@ if(
         );
 
 
-      if(
-        pointResolved &&
-        pointResolved.gridId &&
-        pointResolved.cellId
-      ){
+if(
+  pointResolved &&
+  pointResolved.gridId &&
+  pointResolved.cellId
+){
 
-        collectAnalyticsHit(
+  // ========================================================
+  // 🔒 LIVE ANALYTICS JURISDICTION
+  //
+  // STAFF / TEAM_LEADER:
+  // BOTH DIVISION + RANGE MUST MATCH
+  //
+  // Example:
+  //
+  // Staff:
+  // division = BuxaTR_WEST
+  // range    = WestDamanpur
+  //
+  // Allowed:
+  // BTR_W_WESTDAMANPUR_...
+  //
+  // Rejected:
+  // BTR_W_WESTRAJABHATKHAWA_...
+  // BTR_E_...
+  // ========================================================
 
+  const staffDivision =
+    String(
+      s.division ||
+      s.Division ||
+      ""
+    )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]/g,
+      ""
+    );
+
+
+  const staffRange =
+    String(
+      s.range ||
+      s.Range ||
+      ""
+    )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]/g,
+      ""
+    );
+
+
+  const analyticsGridId =
+    String(
+      pointResolved.gridId ||
+      ""
+    )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]/g,
+      ""
+    );
+
+
+  // ========================================================
+  // DIVISION
+  //
+  // BuxaTR_WEST → BUXATRWEST
+  // Grid prefix BTR_W → BTRW
+  //
+  // Existing grid IDs use BTR_W / BTR_E, so resolve
+  // division side explicitly.
+  // ========================================================
+
+  let divisionMatch =
+    false;
+
+
+  if(
+    staffDivision.includes(
+      "WEST"
+    )
+  ){
+
+    divisionMatch =
+      analyticsGridId.startsWith(
+        "BTRW"
+      );
+  }
+
+  else if(
+    staffDivision.includes(
+      "EAST"
+    )
+  ){
+
+    divisionMatch =
+      analyticsGridId.startsWith(
+        "BTRE"
+      );
+  }
+
+
+  // ========================================================
+  // RANGE
+  // ========================================================
+
+  const rangeMatch =
+
+    !!staffRange &&
+
+    analyticsGridId.includes(
+      staffRange
+    );
+
+
+  // ========================================================
+  // BOTH MUST MATCH
+  // ========================================================
+
+  if(
+    divisionMatch &&
+    rangeMatch
+  ){
+
+    collectAnalyticsHit(
+
+      pointResolved.gridId,
+
+      pointResolved.cellId,
+
+      lat,
+
+      lon
+
+    );
+
+  }
+
+  else {
+
+    console.log(
+      "🚫 ANALYTICS POINT OUTSIDE STAFF JURISDICTION",
+      {
+        staff:
+          analyticsStaffName,
+
+        staffDivision,
+
+        staffRange,
+
+        gridId:
           pointResolved.gridId,
 
-          pointResolved.cellId,
+        divisionMatch,
 
-          lat,
-
-          lon
-
-        );
+        rangeMatch
       }
+    );
+  }
+}
 
     }
     catch(err){
@@ -40686,17 +40832,184 @@ if(
                 }
 
 
-                collectAnalyticsHit(
+              // ==========================================================
+// 🔒 LIVE TOUCHED-CELL JURISDICTION CHECK
+//
+// STAFF / TEAM LEADER:
+// BOTH DIVISION + RANGE MUST MATCH.
+//
+// GPS / patrol track itself remains untouched.
+// Only analytics credit is restricted.
+// ==========================================================
 
-                  resolved.gridId,
+const staffDivision =
 
-                  resolved.cellId,
+  String(
+    s.division ||
+    s.Division ||
+    ""
+  )
+  .trim()
+  .toUpperCase()
+  .replace(
+    /[^A-Z0-9]/g,
+    ""
+  );
 
-                  lat,
 
-                  lon
+const staffRange =
 
-                );
+  String(
+    s.range ||
+    s.Range ||
+    ""
+  )
+  .trim()
+  .toUpperCase()
+  .replace(
+    /[^A-Z0-9]/g,
+    ""
+  );
+
+
+const analyticsGridId =
+
+  String(
+    resolved.gridId ||
+    ""
+  )
+  .trim()
+  .toUpperCase()
+  .replace(
+    /[^A-Z0-9]/g,
+    ""
+  );
+
+
+// ==========================================================
+// 🔥 DIVISION MATCH
+//
+// BuxaTR_WEST
+//      ↓
+// BUXATRWEST
+//
+// BTR_W_...
+//      ↓
+// BTRW...
+// ==========================================================
+
+let divisionMatch =
+  false;
+
+
+if(
+  staffDivision.includes(
+    "WEST"
+  )
+){
+
+  divisionMatch =
+
+    analyticsGridId.startsWith(
+      "BTRW"
+    );
+}
+
+else if(
+  staffDivision.includes(
+    "EAST"
+  )
+){
+
+  divisionMatch =
+
+    analyticsGridId.startsWith(
+      "BTRE"
+    );
+}
+
+
+// ==========================================================
+// 🔥 RANGE MATCH
+//
+// WestDamanpur
+//      ↓
+// WESTDAMANPUR
+//
+// BTR_W_WESTDAMANPUR_...
+//      ↓
+// MATCH
+// ==========================================================
+
+const rangeMatch =
+
+  !!staffRange &&
+
+  analyticsGridId.includes(
+    staffRange
+  );
+
+
+// ==========================================================
+// ❌ OUTSIDE STAFF DIVISION / RANGE
+// ==========================================================
+
+if(
+  !divisionMatch ||
+  !rangeMatch
+){
+
+  console.log(
+
+    "🚫 ANALYTICS TOUCHED CELL OUTSIDE STAFF JURISDICTION",
+
+    {
+
+      staff:
+        analyticsStaffName,
+
+      session:
+        analyticsSessionId,
+
+      staffDivision,
+
+      staffRange,
+
+      gridId:
+        resolved.gridId,
+
+      cellId:
+        resolved.cellId,
+
+      divisionMatch,
+
+      rangeMatch
+
+    }
+
+  );
+
+  continue;
+}
+
+
+// ==========================================================
+// ✅ AUTHORIZED CELL
+//
+// Existing analytics flow continues unchanged.
+// ==========================================================
+
+collectAnalyticsHit(
+
+  resolved.gridId,
+
+  resolved.cellId,
+
+  lat,
+
+  lon
+
+);
               }
             }
 
