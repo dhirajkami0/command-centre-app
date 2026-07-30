@@ -35692,6 +35692,66 @@ async function loadSightings(){
             );
 
 
+          // =================================================
+          // 🔐 ELEPHANT SIGHTING VISIBILITY
+          // =================================================
+
+          const normalizeScope =
+            value =>
+              String(value || "")
+                .trim()
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, "");
+
+
+          const viewerRole =
+            String(
+              window.userProfile?.role || ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+          const viewerDivision =
+            normalizeScope(
+              window.userProfile?.division
+            );
+
+
+          const sightingDivision =
+            normalizeScope(
+              gisDivision
+            );
+
+
+          // -------------------------------------------------
+          // ADMIN
+          // -------------------------------------------------
+
+          if(
+              viewerRole === "ADMIN"
+          ){
+
+              // Visible everywhere
+
+          }
+
+          // -------------------------------------------------
+          // ALL OTHER USERS
+          // Same Division only
+          // -------------------------------------------------
+
+          else if(
+              viewerDivision !==
+              sightingDivision
+          ){
+
+              // Skip this sighting completely
+              return;
+
+          }
+
+
 // ==================================================
 // 📍 CURRENT ACTUAL GIS LOCATION
 // ==================================================
@@ -39349,15 +39409,30 @@ let visibilityReason =
 //
 // ==============================================
 
-if(
-    targetEmergency
-){
+if(targetEmergency){
 
-    staffVisible =
-        true;
+    if(
+        role === "ADMIN"
+    ){
 
-    visibilityReason =
-        "GLOBAL EMERGENCY TARGET";
+        staffVisible = true;
+        visibilityReason = "ADMIN EMERGENCY";
+
+    }
+    else if(
+        sameDivision
+    ){
+
+        staffVisible = true;
+        visibilityReason = "SAME DIVISION EMERGENCY";
+
+    }
+    else{
+
+        staffVisible = false;
+        visibilityReason = "OTHER DIVISION EMERGENCY";
+
+    }
 
 }
 
