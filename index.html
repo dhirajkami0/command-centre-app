@@ -15739,15 +15739,16 @@ async function updateMonthlyAnalyticsRebuild(
   gridId,
   localCoordsArray,
   monthKey,
-  authoritativeTouchedCells = null
-) {
+  authoritativeTouchedCells = null,
+  visitSessions = new Set()
+){
 
   // ============================================================
   // PURPOSE
   //
   // Update ONE compartment/month analytics document.
   //
-  // IMPORTANT ARCHITECTURE:
+  // DESIGN:
   //
   // 1. Authoritative touched cells may already have been resolved
   //    by the live GPS / exact traversal pipeline.
@@ -15756,13 +15757,19 @@ async function updateMonthlyAnalyticsRebuild(
   //
   // 3. Every cell is validated against cellToGridId.
   //
-  // 4. NO summary/global transaction is performed here.
+  // 4. Real staff + patrol-session identity is supplied through
+  //    visitSessions.
   //
-  // 5. Only this compartment document is contended by staff
-  //    currently operating in the same compartment.
+  // 5. ONE staff duty session touching ONE compartment
+  //    counts as ONE compartment visit.
   //
-  // 6. Failed writes THROW back to flushAnalyticsBuffer(),
-  //    allowing the detached buffer to be restored safely.
+  // 6. Repeated flushes from the SAME staff/session must NOT
+  //    increase visitCount again.
+  //
+  // 7. Different staff/session touching the same compartment
+  //    DOES increase visitCount.
+  //
+  // 8. Failed writes THROW back to flushAnalyticsBuffer().
   // ============================================================
 
 
@@ -15808,9 +15815,6 @@ async function updateMonthlyAnalyticsRebuild(
 
   // ============================================================
   // AUTHORITATIVE CELLS
-  //
-  // These normally come directly from analyticsBuffer after
-  // exact traversal.
   // ============================================================
 
   const suppliedCells =
@@ -15837,7 +15841,6 @@ async function updateMonthlyAnalyticsRebuild(
         );
       }
     }
-
   }
 
   else if(
@@ -15865,22 +15868,91 @@ async function updateMonthlyAnalyticsRebuild(
 
 
   // ============================================================
+  // 🔥 NORMALIZE REAL STAFF + SESSION VISITS
+  //
+  // Input examples:
+  //
+  // NILKUSH MARAK|NILKUSH MARAK_1785376148055
+  // SACHIN CHHETRI|SACHIN CHHETRI_1785343482080
+  //
+  // IMPORTANT:
+  // This replaces dependency on window.currentSessionId.
+  // ============================================================
+
+  const suppliedVisitSessions =
+    new Set();
+
+
+  if(
+    visitSessions
+    instanceof Set
+  ){
+
+    for(
+      const sessionKey
+      of visitSessions
+    ){
+
+      const normalizedKey =
+        String(
+          sessionKey ||
+          ""
+        )
+        .trim();
+
+
+      if(
+        normalizedKey
+      ){
+
+        suppliedVisitSessions.add(
+          normalizedKey
+        );
+      }
+    }
+  }
+
+  else if(
+    Array.isArray(
+      visitSessions
+    )
+  ){
+
+    for(
+      const sessionKey
+      of visitSessions
+    ){
+
+      const normalizedKey =
+        String(
+          sessionKey ||
+          ""
+        )
+        .trim();
+
+
+      if(
+        normalizedKey
+      ){
+
+        suppliedVisitSessions.add(
+          normalizedKey
+        );
+      }
+    }
+  }
+
+
+  // ============================================================
   // FALLBACK TRAVERSAL
-  //
-  // We still run getTouchedCells() when coordinates exist.
-  //
-  // This provides:
-  //
-  // - compatibility with old callers
-  // - distanceMeters
-  // - recovery if a caller did not pre-resolve cells
   // ============================================================
 
   let calculatedCells =
     new Set();
 
 
-  let distanceMeters = 0;
+  let distanceMeters =
+    0;
 
 
   if(
@@ -15890,6 +15962,7 @@ async function updateMonthlyAnalyticsRebuild(
     try {
 
       const result =
+
         getTouchedCells(
           coordsArray
         );
@@ -15906,6 +15979,7 @@ async function updateMonthlyAnalyticsRebuild(
 
 
       distanceMeters =
+
         Number(
           result?.distanceMeters || 0
         );
@@ -15917,42 +15991,32 @@ async function updateMonthlyAnalyticsRebuild(
         )
       ){
 
-        distanceMeters = 0;
+        distanceMeters =
+          0;
       }
 
     }
 
     catch(err){
 
-      // ========================================================
-      // IMPORTANT
-      //
-      // Traversal failure does NOT destroy supplied authoritative
-      // cells. If supplied cells exist we can still continue.
-      // ========================================================
-
       console.error(
         "❌ getTouchedCells failed inside analytics rebuild",
         {
           gridId,
-          error: err
+          error:
+            err
         }
       );
 
 
-      distanceMeters = 0;
+      distanceMeters =
+        0;
     }
   }
 
 
   // ============================================================
-  // MERGE BOTH SOURCES
-  //
-  // suppliedCells:
-  // already resolved by live authoritative pipeline
-  //
-  // calculatedCells:
-  // calculated from coordinates for compatibility/fallback
+  // MERGE BOTH CELL SOURCES
   // ============================================================
 
   const candidateCells =
@@ -15984,15 +16048,16 @@ async function updateMonthlyAnalyticsRebuild(
   // ============================================================
   // 🔒 AUTHORITATIVE GRID OWNERSHIP FILTER
   //
-  // A compartment document must NEVER receive a cell belonging
-  // to another grid.
+  // Never allow one compartment document to receive cells
+  // belonging to another authoritative grid.
   // ============================================================
 
   const touchedCells =
     new Set();
 
 
-  let rejectedCells = 0;
+  let rejectedCells =
+    0;
 
 
   for(
@@ -16020,17 +16085,19 @@ async function updateMonthlyAnalyticsRebuild(
     else {
 
       rejectedCells++;
+
     }
   }
 
 
   // ============================================================
-  // DEBUG
+  // DEBUG INPUT
   // ============================================================
 
   console.log(
     "🎯 MONTHLY ANALYTICS INPUT",
     {
+
       gridId,
 
       monthKey,
@@ -16049,28 +16116,39 @@ async function updateMonthlyAnalyticsRebuild(
 
       rejectedCells,
 
+      visitSessions:
+        suppliedVisitSessions.size,
+
+      visitSessionSample:
+        Array.from(
+          suppliedVisitSessions
+        )
+        .slice(
+          0,
+          5
+        ),
+
       distanceMeters,
 
       segments:
         coordsArray.length,
 
       firstSegmentPoints:
+
         Array.isArray(
           coordsArray?.[0]
         )
-          ? coordsArray[0].length
-          : 0
+
+        ? coordsArray[0].length
+
+        : 0
+
     }
   );
 
 
   // ============================================================
   // NOTHING TO WRITE
-  //
-  // A distance-only update is intentionally NOT written here.
-  //
-  // Global/session distance is handled separately by the
-  // distance pipeline.
   // ============================================================
 
   if(
@@ -16080,6 +16158,7 @@ async function updateMonthlyAnalyticsRebuild(
     console.warn(
       "⚠ No authoritative cells for analytics update",
       {
+
         gridId,
 
         suppliedCells:
@@ -16088,18 +16167,31 @@ async function updateMonthlyAnalyticsRebuild(
         calculatedCells:
           calculatedCells.size,
 
-        rejectedCells
+        rejectedCells,
+
+        visitSessions:
+          suppliedVisitSessions.size
+
       }
     );
 
 
     return {
+
       success: false,
+
       skipped: true,
-      reason: "NO_AUTHORITATIVE_CELLS",
+
+      reason:
+        "NO_AUTHORITATIVE_CELLS",
+
       gridId,
-      touchedCells: 0,
+
+      touchedCells:
+        0,
+
       distanceMeters
+
     };
   }
 
@@ -16107,44 +16199,32 @@ async function updateMonthlyAnalyticsRebuild(
   // ============================================================
   // FIRESTORE REFERENCE
   //
-  // ONLY compartment document.
-  //
-  // NO summary/global reference here.
+  // ONE compartment/month document.
   // ============================================================
 
   const analyticsRef =
 
     window.fb.doc(
+
       window.db,
+
       "analytics_rebuild",
+
       monthKey,
+
       "compartments",
+
       gridId
-    );
 
-
-  // ============================================================
-  // SESSION IDENTIFIER
-  //
-  // Used only for local/runtime visit protection.
-  // ============================================================
-
-  const currentSessionId =
-
-    String(
-      window.currentSessionId ||
-      ""
     );
 
 
   // ============================================================
   // TRANSACTION RESULT
-  //
-  // We return this from Firestore transaction so runtime counters
-  // are changed ONLY AFTER the transaction successfully commits.
   // ============================================================
 
-  let transactionResult = null;
+  let transactionResult =
+    null;
 
 
   try {
@@ -16159,7 +16239,7 @@ async function updateMonthlyAnalyticsRebuild(
 
 
           // ====================================================
-          // READ ONLY THIS COMPARTMENT
+          // READ EXISTING COMPARTMENT
           // ====================================================
 
           const snap =
@@ -16207,14 +16287,16 @@ async function updateMonthlyAnalyticsRebuild(
 
             Object.keys(
               existingVisitedCells
-            ).length;
+            )
+            .length;
 
 
           // ====================================================
           // ADD / INCREMENT CELLS
           // ====================================================
 
-          let newlyAddedCells = 0;
+          let newlyAddedCells =
+            0;
 
 
           for(
@@ -16236,13 +16318,16 @@ async function updateMonthlyAnalyticsRebuild(
             ){
 
               newlyAddedCells++;
+
             }
 
 
             existingVisitedCells[
               cellId
             ] =
+
               previousValue + 1;
+
           }
 
 
@@ -16250,41 +16335,110 @@ async function updateMonthlyAnalyticsRebuild(
 
             Object.keys(
               existingVisitedCells
-            ).length;
+            )
+            .length;
 
 
           // ====================================================
-          // VISIT COUNT
+          // 🔥 EXISTING PERSISTED VISIT SESSIONS
           //
-          // Existing runtime behaviour:
-          // once per session per grid.
+          // THIS is the important protection.
           //
-          // IMPORTANT:
-          // Do NOT mutate sessionVisitedGrids inside transaction.
+          // Runtime Set alone is NOT sufficient because:
           //
-          // Firestore can retry transaction callbacks.
-          // Runtime state must only change after successful commit.
+          // - page can reload
+          // - another control-room browser can run
+          // - buffer can flush multiple times
+          //
+          // Therefore session identity is persisted in the
+          // compartment/month document itself.
           // ====================================================
 
-          window.sessionVisitedGrids ??=
-            new Set();
+          const existingVisitSessions =
+
+            (
+              existing.visitSessions &&
+              typeof existing.visitSessions === "object" &&
+              !Array.isArray(
+                existing.visitSessions
+              )
+            )
+
+            ? {
+                ...existing.visitSessions
+              }
+
+            : {};
 
 
-          const visitKey =
+          // ====================================================
+          // 🔥 ADD ONLY GENUINELY NEW STAFF SESSIONS
+          // ====================================================
 
-            currentSessionId
-
-            ? `${currentSessionId}::${gridId}`
-
-            : gridId;
+          let newlyAddedVisits =
+            0;
 
 
-          const shouldAddVisit =
+          const newlyAddedVisitKeys =
+            [];
 
-            !window.sessionVisitedGrids.has(
-              visitKey
+
+          for(
+            const staffSessionKey
+            of suppliedVisitSessions
+          ){
+
+            const normalizedKey =
+
+              String(
+                staffSessionKey ||
+                ""
+              )
+              .trim();
+
+
+            if(
+              !normalizedKey
+            ){
+
+              continue;
+            }
+
+
+            if(
+              existingVisitSessions[
+                normalizedKey
+              ]
+            ){
+
+              continue;
+            }
+
+
+            existingVisitSessions[
+              normalizedKey
+            ] =
+              true;
+
+
+            newlyAddedVisitKeys.push(
+              normalizedKey
             );
 
+
+            newlyAddedVisits++;
+
+          }
+
+
+          // ====================================================
+          // 🔥 VISIT COUNT
+          //
+          // Existing count is preserved.
+          //
+          // Only genuinely NEW staff/session identities increase
+          // the compartment visit count.
+          // ====================================================
 
           const previousVisitCount =
 
@@ -16293,26 +16447,26 @@ async function updateMonthlyAnalyticsRebuild(
             );
 
 
+          const safePreviousVisitCount =
+
+            Number.isFinite(
+              previousVisitCount
+            )
+
+            ? previousVisitCount
+
+            : 0;
+
+
           const nextVisitCount =
 
-            previousVisitCount
-
+            safePreviousVisitCount
             +
-
-            (
-              shouldAddVisit
-                ? 1
-                : 0
-            );
+            newlyAddedVisits;
 
 
           // ====================================================
           // COMPARTMENT DISTANCE
-          //
-          // Preserved for compatibility.
-          //
-          // NOTE:
-          // This is NOT the global monthly distance accumulator.
           // ====================================================
 
           const previousDistance =
@@ -16372,6 +16526,13 @@ async function updateMonthlyAnalyticsRebuild(
             visitCount:
               nextVisitCount,
 
+            // ==================================================
+            // 🔥 PERSISTED REAL STAFF/SESSION VISIT IDENTITIES
+            // ==================================================
+
+            visitSessions:
+              existingVisitSessions,
+
             visitedCells:
               existingVisitedCells,
 
@@ -16389,6 +16550,7 @@ async function updateMonthlyAnalyticsRebuild(
 
             updatedAt:
               window.fb.serverTimestamp()
+
           };
 
 
@@ -16402,6 +16564,7 @@ async function updateMonthlyAnalyticsRebuild(
 
             analytics.firstSeenAt =
               window.fb.serverTimestamp();
+
           }
 
           else if(
@@ -16410,27 +16573,29 @@ async function updateMonthlyAnalyticsRebuild(
 
             analytics.firstSeenAt =
               existing.firstSeenAt;
+
           }
 
 
           // ====================================================
-          // OPTIONAL LAST SESSION
-          //
-          // Useful for debugging without changing the document
-          // structure required by the rest of the application.
+          // OPTIONAL LAST REAL SESSION
           // ====================================================
 
           if(
-            currentSessionId
+            newlyAddedVisitKeys.length > 0
           ){
 
             analytics.lastSessionId =
-              currentSessionId;
+
+              newlyAddedVisitKeys[
+                newlyAddedVisitKeys.length - 1
+              ];
+
           }
 
 
           // ====================================================
-          // WRITE ONE DOCUMENT
+          // WRITE ONE COMPARTMENT DOCUMENT
           // ====================================================
 
           transaction.set(
@@ -16456,9 +16621,9 @@ async function updateMonthlyAnalyticsRebuild(
 
             isFirstVisitThisMonth,
 
-            shouldAddVisit,
+            newlyAddedVisits,
 
-            visitKey,
+            newlyAddedVisitKeys,
 
             newlyAddedCells,
 
@@ -16466,39 +16631,55 @@ async function updateMonthlyAnalyticsRebuild(
 
             totalCoveredCount,
 
+            previousVisitCount:
+              safePreviousVisitCount,
+
+            nextVisitCount,
+
             acceptedCells:
               touchedCells.size,
 
             distanceMeters:
               safeDistance
+
           };
+
         }
+
       );
 
 
     // ==========================================================
     // 🔥 TRANSACTION COMMITTED SUCCESSFULLY
+    // ==========================================================
+
+
+    // ==========================================================
+    // OPTIONAL RUNTIME VISIT CACHE
     //
-    // Runtime counters are updated HERE, never inside transaction.
+    // Keep runtime awareness, but Firestore persisted
+    // visitSessions is the authoritative duplicate protection.
     // ==========================================================
 
+    window.sessionVisitedGrids ??=
+      new Set();
 
-    // ==========================================================
-    // SESSION VISITED GRID
-    // ==========================================================
 
-    if(
-      transactionResult
-        ?.shouldAddVisit
+    for(
+      const staffSessionKey
+      of (
+        transactionResult
+          ?.newlyAddedVisitKeys ||
+        []
+      )
     ){
 
-      window.sessionVisitedGrids ??=
-        new Set();
-
-
       window.sessionVisitedGrids.add(
-        transactionResult.visitKey
+
+        `${monthKey}::${gridId}::${staffSessionKey}`
+
       );
+
     }
 
 
@@ -16510,24 +16691,17 @@ async function updateMonthlyAnalyticsRebuild(
       new Set();
 
 
-    // ==========================================================
-    // We need to identify only cells that were genuinely new.
-    //
-    // transactionResult contains the count, but the existing
-    // application also maintains the ID Set.
-    //
-    // Since this set is used as runtime/session support, adding
-    // all touched IDs is safe because Set prevents duplicates.
-    // ==========================================================
-
     for(
       const cellId
       of touchedCells
     ){
 
       window.newMonthlyCellIds.add(
+
         `${gridId}_${cellId}`
+
       );
+
     }
 
 
@@ -16547,14 +16721,12 @@ async function updateMonthlyAnalyticsRebuild(
       window.newMonthlyCompartmentIds.add(
         gridId
       );
+
     }
 
 
     // ==========================================================
     // SESSION CONTRIBUTION COUNTERS
-    //
-    // IMPORTANT:
-    // Update only after successful commit.
     // ==========================================================
 
     window.sessionNewMonthlyCellCount ??=
@@ -16579,6 +16751,7 @@ async function updateMonthlyAnalyticsRebuild(
     ){
 
       window.sessionNewMonthlyCompartmentCount++;
+
     }
 
 
@@ -16589,6 +16762,7 @@ async function updateMonthlyAnalyticsRebuild(
     console.log(
       "✅ REBUILD",
       {
+
         gridId,
 
         monthKey,
@@ -16609,13 +16783,21 @@ async function updateMonthlyAnalyticsRebuild(
           !!transactionResult
             ?.isFirstVisitThisMonth,
 
-        visitAdded:
-          !!transactionResult
-            ?.shouldAddVisit,
+        suppliedVisitSessions:
+          suppliedVisitSessions.size,
+
+        newlyAddedVisits:
+          transactionResult
+            ?.newlyAddedVisits || 0,
+
+        visitCount:
+          transactionResult
+            ?.nextVisitCount || 0,
 
         distanceMeters:
           transactionResult
             ?.distanceMeters || 0
+
       }
     );
 
@@ -16627,6 +16809,7 @@ async function updateMonthlyAnalyticsRebuild(
       skipped: false,
 
       ...transactionResult
+
     };
 
   }
@@ -16634,14 +16817,12 @@ async function updateMonthlyAnalyticsRebuild(
   catch(err){
 
     // ==========================================================
-    // CRITICAL:
+    // CRITICAL
     //
     // THROW ERROR.
     //
-    // Do NOT swallow it.
-    //
-    // flushAnalyticsBuffer() needs to know the write failed so it
-    // can restore this grid's detached analytics buffer.
+    // flushAnalyticsBuffer() needs the failure so the detached
+    // cells + coordinates + visitSessions can be restored.
     // ==========================================================
 
     console.error(
@@ -16649,13 +16830,18 @@ async function updateMonthlyAnalyticsRebuild(
       {
         gridId,
         monthKey,
-        error: err
+        visitSessions:
+          suppliedVisitSessions.size,
+        error:
+          err
       }
     );
 
 
     throw err;
+
   }
+
 }
 async function getMonthlyGlobalSummary(
   monthKey
