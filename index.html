@@ -62952,11 +62952,61 @@ async function cleanupOldTracks(){
     );
   }
 }
+// ===========================================================
+// ANDROID LOCATION PERMISSION PROMISE
+// ===========================================================
+
+window.__permissionResolver = null;
+
+function waitForAndroidLocationPermission() {
+
+    if (window.__permissionResolver) {
+        return Promise.reject(
+            new Error("Permission already requested")
+        );
+    }
+
+    return new Promise((resolve, reject) => {
+
+        window.__permissionResolver = {
+            resolve: () => {
+                window.__permissionResolver = null;
+                resolve();
+            },
+            reject: (err) => {
+                window.__permissionResolver = null;
+                reject(err);
+            }
+        };
+
+        Android.ensureLocationPermission();
+
+    });
+
+}
+
+window.onAndroidLocationPermissionGranted = function () {
+
+    console.log("✅ Android permission granted");
+
+    window.__permissionResolver?.resolve();
+
+};
+
+window.onAndroidLocationPermissionDenied = function () {
+
+    console.warn("❌ Android permission denied");
+
+    window.__permissionResolver?.reject(
+        new Error("Location permission denied")
+    );
+
+};
+    
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;
 
-function startDuty(event) {
-
+async function startDuty(event) {
   console.trace("🚨 startDuty CALLED FROM");
   console.group("🚀 startDuty START");
 
@@ -63017,7 +63067,40 @@ function startDuty(event) {
       console.groupEnd();
       return;
     }
+// ===========================================================
+// WAIT FOR ANDROID LOCATION PERMISSION
+// ===========================================================
 
+if (
+
+    window.Android &&
+    typeof Android.ensureLocationPermission === "function"
+
+) {
+
+    try {
+
+        await waitForAndroidLocationPermission();
+
+    }catch (err) {
+
+    startDutySubmitting = false;
+
+if (err.message !== "Permission already requested") {
+
+    alert("Location permission is required.");
+
+}
+
+    console.groupEnd();
+
+    return;
+
+}
+
+}
+
+    
     // 🔒 LOCK PROCESS
     startDutySubmitting = true;
 
