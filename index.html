@@ -39933,6 +39933,42 @@ for(const s of staff){
 
       continue;
     }
+
+
+  // ==================================================
+// 🔥 TRACK AUTHORIZATION
+// ==================================================
+
+const currentUserName =
+    cleanName(
+        window.userProfile?.cleanName ||
+        window.userProfile?.name ||
+        ""
+    );
+
+const isCurrentUser =
+    cleanName(s.cleanName) === currentUserName;
+
+const isSelectedStaff =
+    cleanName(
+        window.staffTrackState?.selectedStaff || ""
+    ) === cleanName(s.cleanName);
+
+// --------------------------------------------------
+// Only these may have an individual listener:
+//
+// 1. Logged-in user
+// 2. Marker-click selected staff
+//
+// Everyone else uses bulk mode.
+// --------------------------------------------------
+
+if(
+    !isCurrentUser &&
+    !isSelectedStaff
+){
+    continue;
+}
 // ==========================================================
 // 🔥 ACTIVE STAFF SESSION ANALYTICS STREAM
 // ----------------------------------------------------------
