@@ -18519,22 +18519,94 @@ const newMonthlyGrids =
         displayDistance,
       });
 
-      rows.push({
-        gridId,
-        compartment: master.compartment || gridId,
-        visits: Number(analytics.visitCount || 0),
-        coveredCells,
-        totalCells,
-        coverage,
-        distanceKm,
-        displayDistance,
-        distanceMeters: Number(analytics.distanceMeters || 0),
-        newlyCovered: Number(analytics.lastSessionAddedCells || 0),
-        totalCovered: coveredCells,
-        updatedAt:
-          analytics.updatedAt?.toMillis?.() ||
-          (analytics.updatedAt?.seconds ? analytics.updatedAt.seconds * 1000 : 0),
-      });
+// ==========================================================
+// VISIT DISPLAY
+//
+// Legacy analytics may contain valid covered cells but no
+// recorded visit/session identity.
+//
+// Keep the real numeric visitCount unchanged.
+// Only the displayed value becomes "—" for such legacy data.
+// ==========================================================
+
+const actualVisitCount =
+  Number(
+    analytics.visitCount || 0
+  );
+
+const persistedVisitSessions =
+  (
+    analytics.visitSessions &&
+    typeof analytics.visitSessions === "object"
+  )
+    ? Object.keys(
+        analytics.visitSessions
+      ).length
+    : 0;
+
+const isLegacyCoverageOnly =
+  coveredCells > 0 &&
+  actualVisitCount === 0 &&
+  persistedVisitSessions === 0 &&
+  !analytics.lastSessionId;
+
+const displayVisits =
+  isLegacyCoverageOnly
+    ? "—"
+    : String(
+        actualVisitCount
+      );
+
+
+rows.push({
+
+  gridId,
+
+  compartment:
+    master.compartment ||
+    gridId,
+
+  // Keep numeric value for sorting / calculations.
+  visits:
+    actualVisitCount,
+
+  // Value shown in the table.
+  displayVisits,
+
+  isLegacyCoverageOnly,
+
+  coveredCells,
+
+  totalCells,
+
+  coverage,
+
+  distanceKm,
+
+  displayDistance,
+
+  distanceMeters:
+    Number(
+      analytics.distanceMeters || 0
+    ),
+
+  newlyCovered:
+    Number(
+      analytics.lastSessionAddedCells || 0
+    ),
+
+  totalCovered:
+    coveredCells,
+
+  updatedAt:
+    analytics.updatedAt?.toMillis?.() ||
+    (
+      analytics.updatedAt?.seconds
+        ? analytics.updatedAt.seconds * 1000
+        : 0
+    )
+
+});
     });
 
     rows.sort(
@@ -18789,7 +18861,7 @@ padding:10px 8px;
 text-align:center;
 border-bottom:1px solid rgba(255,255,255,.06);
 ">
-${r.visits}
+${r.displayVisits ?? r.visits}
 </td>
 
 <td style="
