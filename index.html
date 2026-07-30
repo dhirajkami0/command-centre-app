@@ -44010,7 +44010,52 @@ async function flushAnalyticsBuffer(){
           );
         }
       }
+      // ========================================================
+      // 🔥 MERGE REAL STAFF + SESSION VISITS
+      //
+      // Required for compartment visitCount.
+      //
+      // If this flush fails, visit identities must NOT be lost.
+      // ========================================================
 
+      if(
+        !(
+          existing.visitSessions
+          instanceof Set
+        )
+      ){
+
+        existing.visitSessions =
+          new Set(
+            Array.isArray(
+              existing.visitSessions
+            )
+              ? existing.visitSessions
+              : []
+          );
+      }
+
+
+      if(
+        data?.visitSessions
+        instanceof Set
+      ){
+
+        for(
+          const visitSessionKey
+          of data.visitSessions
+        ){
+
+          if(
+            visitSessionKey
+          ){
+
+            existing.visitSessions.add(
+              visitSessionKey
+            );
+          }
+        }
+      }
 
       // ========================================================
       // PRESERVE OPTIONAL METADATA
