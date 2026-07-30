@@ -44187,7 +44187,33 @@ async function flushAnalyticsBuffer(){
               )
 
             : new Set();
+          // ====================================================
+          // 🔥 REAL STAFF + PATROL SESSIONS
+          //
+          // Each entry represents one real staff duty session
+          // that touched this compartment.
+          //
+          // Example:
+          //
+          // NILKUSH MARAK|NILKUSH MARAK_1785376148055
+          // ====================================================
 
+          const visitSessions =
+
+            data?.visitSessions
+            instanceof Set
+
+            ? new Set(
+                data.visitSessions
+              )
+
+            : new Set(
+                Array.isArray(
+                  data?.visitSessions
+                )
+                  ? data.visitSessions
+                  : []
+              );
 
           // ====================================================
           // 🔒 AUTHORITATIVE OWNERSHIP FILTER
@@ -44277,7 +44303,7 @@ async function flushAnalyticsBuffer(){
           // simply because coordinates are unavailable.
           // ====================================================
 
-          console.log(
+                    console.log(
             "🔥 ANALYTICS WRITE",
             {
               gridId,
@@ -44291,7 +44317,10 @@ async function flushAnalyticsBuffer(){
                 bufferedCells.size,
 
               authoritativeCells:
-                authoritativeCells.size
+                authoritativeCells.size,
+
+              visitSessions:
+                visitSessions.size
             }
           );
 
@@ -44315,7 +44344,9 @@ async function flushAnalyticsBuffer(){
 
             monthKey,
 
-            authoritativeCells
+            authoritativeCells,
+
+            visitSessions
 
           );
 
@@ -44326,6 +44357,7 @@ async function flushAnalyticsBuffer(){
 
 
           console.log(
+          console.log(
             "✅ Analytics grid flushed",
             {
               gridId,
@@ -44334,7 +44366,10 @@ async function flushAnalyticsBuffer(){
                 authoritativeCells.size,
 
               points:
-                coords.length
+                coords.length,
+
+              visitSessions:
+                visitSessions.size
             }
           );
 
