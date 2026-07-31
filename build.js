@@ -194,7 +194,8 @@ async function processJS(folder) {
 
 const lower = item.toLowerCase();
 if (lower.endsWith(".map")) {
-    console.log("COPY       :", item);
+    fs.removeSync(fullPath);
+    console.log("REMOVE     :", item);
     continue;
 }
 if (!lower.endsWith(".js"))
@@ -226,8 +227,7 @@ const obfuscated = JavaScriptObfuscator.obfuscate(source, {
 
     controlFlowFlattening: false,
 
-    deadCodeInjection: true,
-    deadCodeInjectionThreshold: 0.10,
+      
 
     stringArray: true,
     stringArrayRotate: true,
@@ -238,11 +238,15 @@ const obfuscated = JavaScriptObfuscator.obfuscate(source, {
 
     simplify: true,
 
-    selfDefending: true,
+    
 
     renameGlobals: false,
 
-    disableConsoleOutput: true
+    deadCodeInjection: false,
+
+selfDefending: false,
+
+disableConsoleOutput: false
 
 });            const minified = await minify(
                 obfuscated.getObfuscatedCode(),
