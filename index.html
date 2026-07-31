@@ -62979,7 +62979,24 @@ function waitForAndroidLocationPermission() {
             }
         };
 
-        Android.ensureLocationPermission();
+        if (
+            window.Android &&
+            typeof window.Android.ensureLocationPermission === "function"
+        ) {
+
+            console.log("📱 Calling Android.ensureLocationPermission()");
+            window.Android.ensureLocationPermission();
+
+        } else {
+
+            console.error("❌ Android bridge missing");
+
+            window.__permissionResolver = null;
+
+            reject(
+                new Error("Android bridge missing")
+            );
+        }
 
     });
 
