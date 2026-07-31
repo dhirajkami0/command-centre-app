@@ -6944,13 +6944,10 @@ function cleanName(n){
 
     adminButtons.forEach(el => {
 
-      if(el.id !== "clearKMLBtn"){
+    el.style.display = "none";
 
-        el.style.display = "flex";
-      }
-    });
-
-    staffButtons.forEach(el => {
+});
+staffButtons.forEach(el => {
 
       el.style.display = "flex";
     });
