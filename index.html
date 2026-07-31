@@ -63088,25 +63088,12 @@ async function startDuty(event) {
 // WAIT FOR ANDROID LOCATION PERMISSION
 // ===========================================================
 
-if (
+try {
 
-    window.Android &&
-    typeof Android.ensureLocationPermission === "function"
-
-) {
-
-// =====================================================
-// REQUEST LOCATION PERMISSION
-// =====================================================
-
-if (
-
-    window.Android &&
-    typeof Android.ensureLocationPermission === "function"
-
-){
-
-    try{
+    if (
+        window.Android &&
+        typeof window.Android.ensureLocationPermission === "function"
+    ) {
 
         console.log(
             "📍 Requesting Android Location Permission..."
@@ -63118,27 +63105,30 @@ if (
             "✅ Permission Granted"
         );
 
-    }
-    catch(err){
+    } else {
 
         console.warn(
-            "❌ Permission Denied",
-            err
+            "⚠ Android bridge not available. Skipping permission request."
         );
-
-        startDutySubmitting = false;
-
-        alert(
-            "Location permission is required to start duty."
-        );
-
-        console.groupEnd();
-
-        return;
 
     }
 
-}
+} catch (err) {
+
+    console.error(
+        "❌ Permission request failed",
+        err
+    );
+
+    startDutySubmitting = false;
+
+    alert(
+        "Location permission is required to start duty."
+    );
+
+    console.groupEnd();
+
+    return;
 
 }
 
