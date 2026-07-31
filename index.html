@@ -62960,63 +62960,131 @@ window.__permissionResolver = null;
 
 function waitForAndroidLocationPermission() {
 
+    // Prevent duplicate requests
     if (window.__permissionResolver) {
+
         return Promise.reject(
             new Error("Permission already requested")
         );
+
     }
 
     return new Promise((resolve, reject) => {
 
+        // Save Promise callbacks
         window.__permissionResolver = {
+
             resolve: () => {
+
+                console.log(
+                    "✅ Permission Promise Resolved"
+                );
+
                 window.__permissionResolver = null;
+
                 resolve();
+
             },
+
             reject: (err) => {
+
+                console.warn(
+                    "❌ Permission Promise Rejected",
+                    err
+                );
+
                 window.__permissionResolver = null;
+
                 reject(err);
+
             }
+
         };
 
+        // ===================================================
+        // VERIFY BRIDGE
+        // ===================================================
         if (
-            window.Android &&
-            typeof window.Android.ensureLocationPermission === "function"
+
+            !window.Android ||
+
+            typeof window.Android.ensureLocationPermission !== "function"
+
         ) {
 
-            console.log("📱 Calling Android.ensureLocationPermission()");
-            window.Android.ensureLocationPermission();
-
-        } else {
-
-            console.error("❌ Android bridge missing");
+            console.error(
+                "❌ Android bridge missing"
+            );
 
             window.__permissionResolver = null;
 
             reject(
                 new Error("Android bridge missing")
             );
+
+            return;
+
+        }
+
+        // ===================================================
+        // REQUEST PERMISSION
+        // ===================================================
+        console.log(
+            "📱 Calling Android.ensureLocationPermission()"
+        );
+
+        try {
+
+            window.Android.ensureLocationPermission();
+
+        } catch (e) {
+
+            console.error(
+                "❌ Android.ensureLocationPermission() crashed",
+                e
+            );
+
+            window.__permissionResolver = null;
+
+            reject(e);
+
         }
 
     });
 
 }
 
+// ===========================================================
+// CALLBACK FROM ANDROID
+// ===========================================================
+
 window.onAndroidLocationPermissionGranted = function () {
 
-    console.log("✅ Android permission granted");
+    console.log(
+        "✅ Android permission granted"
+    );
 
-    window.__permissionResolver?.resolve();
+    if (window.__permissionResolver) {
+
+        window.__permissionResolver.resolve();
+
+    }
 
 };
 
 window.onAndroidLocationPermissionDenied = function () {
 
-    console.warn("❌ Android permission denied");
-
-    window.__permissionResolver?.reject(
-        new Error("Location permission denied")
+    console.warn(
+        "❌ Android permission denied"
     );
+
+    if (window.__permissionResolver) {
+
+        window.__permissionResolver.reject(
+            new Error("Location permission denied")
+        );
+
+    }
 
 };
     
