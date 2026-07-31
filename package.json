@@ -1,0 +1,38 @@
+{
+  "name": "command-centre-app",
+  "version": "1.0.0",
+  "description": "GreenGuard Web Application",
+  "main": "sw.js",
+  "type": "commonjs",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "clean": "node -e \"require('fs-extra').removeSync('dist'); console.log('dist removed');\"",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhirajkami0/command-centre-app.git"
+  },
+  "keywords": [
+    "greenguard",
+    "forest",
+    "gis",
+    "leaflet",
+    "firebase",
+    "pwa"
+  ],
+  "author": "Dhiraj Kami",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dhirajkami0/command-centre-app/issues"
+  },
+  "homepage": "https://github.com/dhirajkami0/command-centre-app#readme",
+  "dependencies": {
+    "fs-extra": "^11.4.0"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^5.5.0",
+    "terser": "^5.49.0"
+  }
+}
