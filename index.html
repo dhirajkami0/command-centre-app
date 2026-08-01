@@ -56941,11 +56941,250 @@ function calculateTotal(){
     useCurrentHelpLocation();
 
 }
-// =====================================================
+
+    
+    
+    // =====================================================
 // ❌ CLOSE HELP FORM
 // =====================================================
-
 // =====================================================
+// 📍 CHANGE INCIDENT LOCATION MODE
+// =====================================================
+
+function changeHelpLocationMode(){
+
+    const mode =
+
+        document.querySelector(
+
+            'input[name="helpLocationMode"]:checked'
+
+        )?.value;
+
+    const currentPanel =
+
+        document.getElementById(
+
+            "helpCurrentPanel"
+
+        );
+
+    const villagePanel =
+
+        document.getElementById(
+
+            "helpVillagePanel"
+
+        );
+
+    if(
+
+        mode === "CURRENT"
+
+    ){
+
+        currentPanel.style.display = "";
+
+        villagePanel.style.display = "none";
+
+        useCurrentHelpLocation();
+
+        return;
+
+    }
+
+    if(
+
+        mode === "MAP"
+
+    ){
+
+        currentPanel.style.display = "";
+
+        villagePanel.style.display = "none";
+
+        startHelpMapSelection();
+
+        return;
+
+    }
+
+    if(
+
+        mode === "VILLAGE"
+
+    ){
+
+        currentPanel.style.display = "none";
+
+        villagePanel.style.display = "";
+
+        populateHelpVillagePanel();
+
+        return;
+
+    }
+
+}
+
+    
+    // =====================================================
+// 📍 POPULATE VILLAGE PANEL
+// =====================================================
+
+function populateHelpVillagePanel(){
+
+    try{
+
+        const user =
+
+            window.userProfile || {};
+
+        document.getElementById(
+
+            "helpDivision"
+
+        ).value =
+
+            user.division || "";
+
+        document.getElementById(
+
+            "helpRange"
+
+        ).value =
+
+            user.range || "";
+
+        document.getElementById(
+
+            "helpBeat"
+
+        ).value =
+
+            user.beat || "";
+
+        const select =
+
+            document.getElementById(
+
+                "helpVillage"
+
+            );
+
+        select.innerHTML =
+
+            '<option value="">Select Village</option>';
+
+        const villages =
+
+            window.__villageCache || [];
+
+        const beat =
+
+            String(
+
+                user.beat || ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        villages
+
+        .filter(function(v){
+
+            return String(
+
+                v.beat ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase()
+
+            ===
+
+            beat;
+
+        })
+
+        .sort(function(a,b){
+
+            return String(
+
+                a.name ||
+
+                ""
+
+            )
+
+            .localeCompare(
+
+                String(
+
+                    b.name ||
+
+                    ""
+
+                )
+
+            );
+
+        })
+
+        .forEach(function(v){
+
+            const opt =
+
+                document.createElement(
+
+                    "option"
+
+                );
+
+            opt.value =
+
+                v.cleanName ||
+
+                v.name ||
+
+                v.village;
+
+            opt.textContent =
+
+                v.name ||
+
+                v.village;
+
+            select.appendChild(
+
+                opt
+
+            );
+
+        });
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            err
+
+        );
+
+    }
+
+}
+    
+    // =====================================================
 // ❌ CLOSE HELP FORM
 // =====================================================
 
@@ -67508,9 +67747,9 @@ cursor:pointer;
 
 <hr>
 
-<!-- ========================= -->
-<!-- LOCATION -->
-<!-- ========================= -->
+<!-- ===================================================== -->
+<!-- 📍 INCIDENT LOCATION -->
+<!-- ===================================================== -->
 
 <label>
 
@@ -67518,9 +67757,96 @@ cursor:pointer;
 
 </label>
 
+<div
+style="
+margin-top:10px;
+display:flex;
+flex-direction:column;
+gap:8px;
+">
+
+<label
+style="
+font-size:14px;
+cursor:pointer;
+">
+
+<input
+
+type="radio"
+
+name="helpLocationMode"
+
+value="CURRENT"
+
+checked
+
+onchange="changeHelpLocationMode()">
+
+🟢 Current Location
+
+</label>
+
+<label
+style="
+font-size:14px;
+cursor:pointer;
+">
+
+<input
+
+type="radio"
+
+name="helpLocationMode"
+
+value="MAP"
+
+onchange="changeHelpLocationMode()">
+
+🔵 Select On Map
+
+</label>
+
+<label
+style="
+font-size:14px;
+cursor:pointer;
+">
+
+<input
+
+type="radio"
+
+name="helpLocationMode"
+
+value="VILLAGE"
+
+onchange="changeHelpLocationMode()">
+
+🏡 Village / Landmark
+
+</label>
+
+</div>
+
+<!-- ========================================= -->
+<!-- CURRENT / MAP PANEL -->
+<!-- ========================================= -->
+
+<div
+
+id="helpCurrentPanel"
+
+style="
+margin-top:12px;
+">
+
 <button
+
 type="button"
+
 class="btn-center btn-green"
+
 onclick="useCurrentHelpLocation()">
 
 ✔ USE CURRENT LOCATION
@@ -67528,9 +67854,13 @@ onclick="useCurrentHelpLocation()">
 </button>
 
 <button
+
 type="button"
+
 class="btn-center btn-blue"
+
 style="margin-top:8px;"
+
 onclick="startHelpMapSelection()">
 
 📍 SELECT ON MAP
@@ -67538,7 +67868,9 @@ onclick="startHelpMapSelection()">
 </button>
 
 <div
+
 id="helpLocationText"
+
 style="
 margin-top:10px;
 padding:8px;
@@ -67553,8 +67885,237 @@ Waiting for location...
 
 </div>
 
-<hr>
+</div>
 
+<!-- ========================================= -->
+<!-- VILLAGE PANEL -->
+<!-- ========================================= -->
+
+<div
+
+id="helpVillagePanel"
+
+style="
+display:none;
+margin-top:12px;
+">
+
+<label>
+
+Division
+
+</label>
+
+<input
+
+id="helpDivision"
+
+readonly
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+">
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Range
+
+</label>
+
+<input
+
+id="helpRange"
+
+readonly
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+">
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Beat
+
+</label>
+
+<input
+
+id="helpBeat"
+
+readonly
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+">
+<!-- ========================================= -->
+<!-- VILLAGE -->
+<!-- ========================================= -->
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Village
+
+</label>
+
+<select
+
+id="helpVillage"
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+"
+
+onchange="helpVillageChanged()">
+
+<option value="">
+
+Select Village
+
+</option>
+
+</select>
+
+<!-- ========================================= -->
+<!-- LANDMARK -->
+<!-- ========================================= -->
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Landmark
+
+</label>
+
+<select
+
+id="helpLandmark"
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+">
+
+<option value="">
+
+Select Landmark
+
+</option>
+
+</select>
+
+<!-- ========================================= -->
+<!-- OTHER LANDMARK -->
+<!-- ========================================= -->
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Other Landmark
+
+</label>
+
+<input
+
+id="helpOtherLandmark"
+
+type="text"
+
+placeholder="House, School, Tea Garden, Bridge..."
+
+style="
+width:100%;
+padding:10px;
+border-radius:8px;
+margin-top:5px;
+">
+
+<!-- ========================================= -->
+<!-- GPS -->
+<!-- ========================================= -->
+
+<label
+style="
+margin-top:10px;
+display:block;
+">
+
+Selected GPS
+
+</label>
+
+<div
+
+id="helpVillageGps"
+
+style="
+margin-top:5px;
+padding:10px;
+background:#e8f5e9;
+border-radius:8px;
+font-size:13px;
+color:#2e7d32;
+text-align:center;
+">
+
+Waiting for village selection...
+
+</div>
+
+<!-- ========================================= -->
+<!-- REFINE -->
+<!-- ========================================= -->
+
+<button
+
+type="button"
+
+class="btn-center btn-blue"
+
+style="
+margin-top:10px;
+"
+
+onclick="startHelpMapSelection()">
+
+📍 REFINE ON MAP
+
+</button>
+
+</div>
+
+<hr>
 <!-- ========================= -->
 <!-- SITUATION -->
 <!-- ========================= -->
