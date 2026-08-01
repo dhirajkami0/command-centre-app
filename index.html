@@ -38011,6 +38011,229 @@ window.hecLayer.removeLayer(
 
                         });
 
+    // =====================================================
+// 🕒 REPORT TIME
+// =====================================================
+
+const now = Date.now();
+
+let reportTime = now;
+
+const ts =
+
+    e.createdAt ||
+
+    e.created_at ||
+
+    null;
+
+
+// Firestore Timestamp
+
+if(
+
+    ts &&
+    typeof ts.toDate === "function"
+
+){
+
+    reportTime =
+
+        ts.toDate().getTime();
+
+}
+
+// Timestamp Object
+
+else if(
+
+    ts?.seconds
+
+){
+
+    reportTime =
+
+        ts.seconds * 1000;
+
+}
+
+// Number
+
+else if(
+
+    typeof ts === "number"
+
+){
+
+    reportTime = ts;
+
+}
+
+// String
+
+else if(
+
+    typeof ts === "string"
+
+){
+
+    const d =
+
+        new Date(ts);
+
+    if(
+
+        !isNaN(d)
+
+    ){
+
+        reportTime =
+
+            d.getTime();
+
+    }
+
+}
+
+
+// =====================================================
+// REPORT AGE
+// =====================================================
+
+const ageMinutes =
+
+    Math.floor(
+
+        (
+
+            now -
+
+            reportTime
+
+        )
+
+        /60000
+
+    );
+
+let reportAge = "";
+
+if(ageMinutes < 60){
+
+    reportAge =
+
+        ageMinutes +
+
+        " min";
+
+}
+
+else if(ageMinutes < 1440){
+
+    reportAge =
+
+        Math.floor(
+
+            ageMinutes/60
+
+        )
+
+        +
+
+        " hr "
+
+        +
+
+        (
+
+            ageMinutes%60
+
+        )
+
+        +
+
+        " min";
+
+}
+
+else{
+
+    reportAge =
+
+        Math.floor(
+
+            ageMinutes/1440
+
+        )
+
+        +
+
+        " day";
+
+}
+
+
+// =====================================================
+// FORMATTED TIME
+// =====================================================
+
+const reportDate =
+
+    new Date(
+
+        reportTime
+
+    )
+
+    .toLocaleString(
+
+        "en-IN"
+
+    );
+
+
+                  // =====================================================
+// 📍 GIS LOCATION
+// =====================================================
+
+const village =
+
+    e.village ||
+
+    "Unknown";
+
+const beat =
+
+    e.beat ||
+
+    "Unknown";
+
+const range =
+
+    e.range ||
+
+    "Unknown";
+
+const division =
+
+    e.division ||
+
+    "Unknown";
+
+const landmark =
+
+    e.landmark ||
+
+    "-";
+
+const gpsText =
+
+    lat.toFixed(6) +
+
+    ", " +
+
+    lon.toFixed(6);
+
                                       const popup =
 
 `
@@ -38023,41 +38246,75 @@ padding:10px;
 
 <div
 style="
-font-size:15px;
-font-weight:bold;
-color:red;
+display:flex;
+justify-content:space-between;
+align-items:center;
 margin-bottom:8px;
 ">
 
-🚨 HEC INCIDENT
+<div
+style="
+font-size:17px;
+font-weight:700;
+color:#c62828;
+">
+
+🚨 Elephant Response Request
+
+</div>
+
+<div
+style="
+padding:4px 10px;
+border-radius:14px;
+font-size:11px;
+font-weight:bold;
+background:
+
+${status==="WAITING"
+?"#d32f2f":
+status==="ACCEPTED"
+?"#fb8c00":
+status==="ARRIVED"
+?"#1976d2":
+"#2e7d32"};
+
+color:#fff;
+">
+
+${status}
+
+</div>
 
 </div>
 
 <hr>
 
-<b>ID :</b>
+🆔 <b>Incident ID</b>
+
+<br>
 
 ${key}
 
-<br>
+<br><br>
 
-<b>Status :</b>
-
-${status}
+🚨 <b>Situation</b>
 
 <br>
 
-<b>Situation :</b>
+${e.situation || "-"}
 
-${e.situation || ""}
+<br><br>
+
+🐘 <b>Elephants</b>
+
+<br>
+
+${e.elephantCount || "-"}
 
 <br>
 
-<b>Elephants :</b>
 
-${e.elephantCount || ""}
-
-<br>
 
 <b>Reporter :</b>
 
@@ -38067,28 +38324,170 @@ ${e.reporterName || ""}
 
 <b>Mobile :</b>
 
-${e.reporterMobile || ""}
+${e.reporterMobile || "-"}
+
+<br>
+
+<hr>
+
+<b>📍 Incident Location</b>
+
+<br>
+
+🏡 Village :
+
+${village}
+
+<br>
+
+🌲 Beat :
+
+${beat}
+
+<br>
+
+🟢 Range :
+
+${range}
+
+<br>
+
+🏢 Division :
+
+${division}
+
+<br>
+
+📌 Landmark :
+
+${landmark}
+
+<br>
+
+🛰 GPS :
+
+${gpsText}
+
+<br>
+
+<hr>
+
+<b>🕒 Reported :</b>
+
+${reportDate}
+
+<br>
+
+<b>⏱ Duration :</b>
+
+${reportAge}
 
 <br>
 
 <br>
+
+<hr>
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+margin-top:10px;
+">
 
 <button
 
-onclick="openHECResponse('${key}')"
+onclick="acceptHECIncident('${key}')"
 
 style="
-width:100%;
 padding:10px;
 background:#2e7d32;
-color:white;
+color:#fff;
 border:none;
 border-radius:8px;
 font-weight:bold;
 cursor:pointer;
 ">
 
-RESPOND
+🟢 ACCEPT
+
+</button>
+
+<button
+
+onclick="navigateHEC('${lat}','${lon}')"
+
+style="
+padding:10px;
+background:#1565c0;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+📍 NAVIGATE
+
+</button>
+
+<button
+
+onclick="callHECReporter('${e.reporterMobile || ""}')"
+
+style="
+padding:10px;
+background:#6a1b9a;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+☎ CALL
+
+</button>
+
+<button
+
+onclick="arriveHECIncident('${key}')"
+
+style="
+padding:10px;
+background:#ef6c00;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+✅ ARRIVED
+
+</button>
+
+</div>
+
+<button
+
+onclick="closeHECIncident('${key}')"
+
+style="
+width:100%;
+margin-top:10px;
+padding:12px;
+background:#c62828;
+color:#fff;
+border:none;
+border-radius:8px;
+font-size:14px;
+font-weight:bold;
+cursor:pointer;
+">
+
+✔ CLOSE INCIDENT
 
 </button>
 
@@ -38178,6 +38577,132 @@ window.hecLayer.removeLayer(
             "HEC Load Error",
 
             err
+
+        );
+
+    }
+
+}
+
+    // =====================================================
+// 🟢 ACCEPT HEC INCIDENT
+// =====================================================
+
+async function acceptHECIncident(
+
+    incidentId
+
+){
+
+    try{
+
+        const {
+
+            collection,
+            query,
+            where,
+            getDocs,
+            updateDoc
+
+        } = window.fb;
+
+        const snap = await getDocs(
+
+            query(
+
+                collection(
+
+                    window.db,
+
+                    "hec_incidents"
+
+                ),
+
+                where(
+
+                    "incidentId",
+
+                    "==",
+
+                    incidentId
+
+                )
+
+            )
+
+        );
+
+        if(
+
+            snap.empty
+
+        ){
+
+            alert(
+
+                "Incident not found."
+
+            );
+
+            return;
+
+        }
+
+        const docRef =
+
+            snap.docs[0].ref;
+
+        await updateDoc(
+
+            docRef,
+
+            {
+
+                status :
+
+                    "ACCEPTED",
+
+                acceptedBy :
+
+                    window.userProfile?.rawName ||
+
+                    "",
+
+                assignedTeam :
+
+                    window.userProfile?.beat ||
+
+                    "",
+
+                acceptedTime :
+
+                    new Date()
+
+            }
+
+        );
+
+        showToast(
+
+            "✅ Incident Accepted"
+
+        );
+
+        loadHECIncidents();
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            err
+
+        );
+
+        alert(
+
+            "Unable to accept incident."
 
         );
 
