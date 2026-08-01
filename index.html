@@ -9113,7 +9113,28 @@ setTimeout(() => {
           "✅ Sightings loaded"
         );
 
+// ==============================================
+// 🚨 LOAD HEC INCIDENTS
+// ==============================================
 
+if(
+
+    typeof loadHECIncidents ===
+    "function"
+
+){
+
+    console.log(
+        "🚨 Loading HEC incidents..."
+    );
+
+    await loadHECIncidents();
+
+    console.log(
+        "✅ HEC incidents loaded"
+    );
+
+}
         /*==============================================
           SIGHTING INTELLIGENCE STORE
 
