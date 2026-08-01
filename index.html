@@ -55688,17 +55688,39 @@ function calculateTotal(){
     useCurrentHelpLocation();
 
 }
+// =====================================================
+// ❌ CLOSE HELP FORM
+// =====================================================
+
 function closeHelpForm(){
 
-    document.getElementById(
+    // ============================================
+    // HIDE MODAL
+    // ============================================
 
-        "help-modal"
+    const modal =
 
-    ).style.display="none";
+        document.getElementById(
+            "help-modal"
+        );
 
-    window.mapAction=null;
+    if(modal){
 
-    map.getContainer().style.cursor="";
+        modal.style.display = "none";
+
+    }
+
+    // ============================================
+    // RESET MAP MODE
+    // ============================================
+
+    window.mapAction = null;
+
+    map.getContainer().style.cursor = "";
+
+    // ============================================
+    // REMOVE TEMP MARKER
+    // ============================================
 
     if(window.helpMarker){
 
@@ -55708,11 +55730,95 @@ function closeHelpForm(){
 
         );
 
-        window.helpMarker=null;
+        window.helpMarker = null;
 
     }
 
+    // ============================================
+    // CLEAR LOCATION
+    // ============================================
+
+    window.helpLocation = null;
+
+    // ============================================
+    // RESET LOCATION TEXT
+    // ============================================
+
+    const txt =
+
+        document.getElementById(
+            "helpLocationText"
+        );
+
+    if(txt){
+
+        txt.innerHTML =
+
+            "Waiting for location...";
+
+    }
+
+    // ============================================
+    // RESET CURRENT GPS BUTTON
+    // ============================================
+
+    const btn = document.querySelector(
+
+        "#help-modal .btn-green"
+
+    );
+
+    if(btn){
+
+        btn.innerHTML =
+
+            "✔ USE CURRENT LOCATION";
+
+        btn.disabled = false;
+
+        btn.style.opacity = "1";
+
+    }
+
+    // ============================================
+    // RESET DROPDOWNS
+    // ============================================
+
+    const situation =
+
+        document.getElementById(
+            "helpSituation"
+        );
+
+    if(situation){
+
+        situation.selectedIndex = 0;
+
+    }
+
+    const count =
+
+        document.getElementById(
+            "helpCount"
+        );
+
+    if(count){
+
+        count.selectedIndex = 0;
+
+    }
+
+    console.log(
+
+        "❌ Help form closed"
+
+    );
+
 }
+// =====================================================
+// 📍 USE CURRENT GPS
+// =====================================================
+
 // =====================================================
 // 📍 USE CURRENT GPS
 // =====================================================
@@ -55721,8 +55827,8 @@ function useCurrentHelpLocation(){
 
     if(
         !window.latestGps ||
-        !window.latestGps.lat ||
-        !window.latestGps.lng
+        typeof window.latestGps.lat !== "number" ||
+        typeof window.latestGps.lng !== "number"
     ){
 
         alert(
@@ -55733,6 +55839,10 @@ function useCurrentHelpLocation(){
 
     }
 
+    // ============================================
+    // SAVE LOCATION
+    // ============================================
+
     window.helpLocation = {
 
         lat : window.latestGps.lat,
@@ -55741,17 +55851,51 @@ function useCurrentHelpLocation(){
 
     };
 
+    // ============================================
+    // UPDATE UI
+    // ============================================
+
     document.getElementById(
         "helpLocationText"
     ).innerHTML =
 
-        "✔ Current GPS Selected<br>" +
+        "✅ Current GPS Selected<br>" +
 
         window.latestGps.lat.toFixed(6) +
 
         ", " +
 
-        window.latestGps.lng.toFixed(6);
+        window.latestGps.lng.toFixed(6) +
+
+        "<br><small>Accuracy : " +
+
+        Math.round(
+            window.latestGps.accuracy || 0
+        ) +
+
+        " m</small>";
+
+    // ============================================
+    // BUTTON FEEDBACK
+    // ============================================
+
+    const btn = document.querySelector(
+
+        "#help-modal .btn-green"
+
+    );
+
+    if(btn){
+
+        btn.innerHTML =
+
+            "✔ LOCATION SELECTED";
+
+        btn.disabled = true;
+
+        btn.style.opacity = "0.7";
+
+    }
 
     console.log(
 
