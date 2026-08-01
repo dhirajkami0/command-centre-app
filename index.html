@@ -25622,12 +25622,21 @@ window.helpPhotoBase64 = "";
 window.helpPhotoFileName = "";
 
 window.helpPhotoUrl = "";
+// =========================================
+// 🎤 HEC VOICE GLOBALS
+// =========================================
 
+window.helpVoiceBlob = null;
+
+window.helpVoiceUrl = "";
+
+window.helpVoiceFileName = "";
 window.helpMarker = null;
 
 window.mapAction = null;
     window.hecMarkers = {};
 window.compartmentLayerVisible = true;
+    
 // ======================================================
 // 🌍 ACTIVE LAYERS
 // ======================================================
@@ -57649,9 +57658,170 @@ function saveHelpLocation(latlng){
     );
 
 }
-    function captureHelpPhoto(){
+// =====================================================
+// 📷 CAPTURE HELP PHOTO
+// =====================================================
 
-    alert("Photo module");
+function captureHelpPhoto(event){
+
+    try{
+
+        const file =
+
+            event.target.files[0];
+
+        if(!file){
+
+            return;
+
+        }
+
+        window.helpPhotoBlob =
+            file;
+
+        window.helpPhotoFileName =
+            file.name;
+
+        const url =
+
+            URL.createObjectURL(file);
+
+        document.getElementById(
+
+            "helpPhotoImage"
+
+        ).src =
+
+            url;
+
+        document.getElementById(
+
+            "helpPhotoPreview"
+
+        ).style.display =
+            "block";
+
+        console.log(
+
+            "📷 Photo Selected",
+
+            file
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "Photo Error",
+
+            err
+
+        );
+
+    }
+
+}
+
+
+    // =====================================================
+// 🎤 CAPTURE HELP VOICE
+// =====================================================
+
+async function captureHelpVoice(event){
+
+    try{
+
+        const file =
+
+            event.target.files[0];
+
+        if(!file){
+
+            return;
+
+        }
+
+        window.helpVoiceBlob =
+            file;
+
+        window.helpVoiceFileName =
+
+            "VOICE_" +
+
+            Date.now() +
+
+            ".webm";
+
+        const url =
+
+            URL.createObjectURL(file);
+
+        document.getElementById(
+
+            "helpVoicePlayer"
+
+        ).src =
+
+            url;
+
+        document.getElementById(
+
+            "helpVoicePreview"
+
+        ).style.display =
+
+            "block";
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+        alert(
+
+            "Unable to load voice recording."
+
+        );
+
+    }
+
+}
+
+    // =====================================================
+// 🗑 REMOVE HELP VOICE
+// =====================================================
+
+function removeHelpVoice(){
+
+    window.helpVoiceBlob = null;
+
+    window.helpVoiceUrl = "";
+
+    window.helpVoiceFileName = "";
+
+    document.getElementById(
+
+        "helpVoiceInput"
+
+    ).value = "";
+
+    document.getElementById(
+
+        "helpVoicePlayer"
+
+    ).src = "";
+
+    document.getElementById(
+
+        "helpVoicePreview"
+
+    ).style.display =
+
+        "none";
 
 }
     function recordHelpVoice(){
@@ -58062,11 +58232,13 @@ async function captureHelpPhoto(event){
 // 🗑 REMOVE PHOTO
 // =====================================================
 
+// =====================================================
+// 🗑 REMOVE HELP PHOTO
+// =====================================================
+
 function removeHelpPhoto(){
 
     window.helpPhotoBlob = null;
-
-    window.helpPhotoBase64 = "";
 
     window.helpPhotoFileName = "";
 
@@ -58080,10 +58252,15 @@ function removeHelpPhoto(){
 
     document.getElementById(
 
+        "helpPhotoImage"
+
+    ).src = "";
+
+    document.getElementById(
+
         "helpPhotoPreview"
 
     ).style.display =
-
         "none";
 
 }
@@ -68393,7 +68570,7 @@ type="file"
 
 accept="image/*"
 
-capture="environment"
+capture
 
 style="display:none;"
 
@@ -68462,6 +68639,63 @@ color:#2e7d32;
 <div
 
 style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:12px;
+">
+
+<button
+
+type="button"
+
+style="
+background:#1976d2;
+color:white;
+border:none;
+padding:11px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+
+onclick="
+document.getElementById(
+'helpPhotoInput'
+).click();
+">
+
+🔄 CHANGE PHOTO
+
+</button>
+
+<button
+
+type="button"
+
+style="
+background:#d32f2f;
+color:white;
+border:none;
+padding:11px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+
+onclick="removeHelpPhoto()">
+
+🗑 REMOVE
+
+</button>
+
+</div>
+
+</div>
+
+<div
+
+style="
 margin-top:10px;
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -68516,15 +68750,137 @@ onclick="removeHelpPhoto()">
 
 </div>
 
+<!-- ========================================= -->
+<!-- 🎤 VOICE MODULE -->
+<!-- ========================================= -->
+
+<input
+
+id="helpVoiceInput"
+
+type="file"
+
+accept="audio/*"
+
+capture
+
+style="display:none;"
+
+onchange="captureHelpVoice(event)">
+
 <button
+
 type="button"
+
 class="btn-center"
-style="margin-top:8px;"
-onclick="recordHelpVoice()">
+
+style="margin-top:10px;"
+
+onclick="
+document.getElementById(
+'helpVoiceInput'
+).click();
+">
 
 🎤 RECORD VOICE
 
 </button>
+
+<div
+
+id="helpVoicePreview"
+
+style="
+display:none;
+margin-top:12px;
+background:#ffffff;
+border:1px solid #d9d9d9;
+border-radius:12px;
+padding:12px;
+box-shadow:0 2px 10px rgba(0,0,0,.10);
+">
+
+<div
+style="
+display:flex;
+align-items:center;
+gap:10px;
+font-weight:600;
+color:#1565c0;
+margin-bottom:10px;
+">
+
+🎤 Voice Recording Ready
+
+</div>
+
+<audio
+
+id="helpVoicePlayer"
+
+controls
+
+style="
+width:100%;
+">
+
+</audio>
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:12px;
+">
+
+<button
+
+type="button"
+
+style="
+background:#1976d2;
+color:#fff;
+border:none;
+padding:11px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+
+onclick="
+document.getElementById(
+'helpVoiceInput'
+).click();
+">
+
+🔄 CHANGE
+
+</button>
+
+<button
+
+type="button"
+
+style="
+background:#d32f2f;
+color:white;
+border:none;
+padding:11px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+
+onclick="removeHelpVoice()">
+
+🗑 REMOVE
+
+</button>
+
+</div>
+
+</div>
 
 <button
 type="button"
