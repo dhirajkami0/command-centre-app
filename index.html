@@ -38453,6 +38453,13 @@ gap:8px;
 margin-top:10px;
 ">
 
+${
+status === "WAITING"
+
+?
+
+`
+
 <button
 
 onclick="acceptHECIncident('${key}')"
@@ -38465,11 +38472,88 @@ border:none;
 border-radius:8px;
 font-weight:bold;
 cursor:pointer;
+width:100%;
 ">
 
 🟢 ACCEPT
 
 </button>
+
+`
+
+:
+
+`
+
+<div
+style="
+background:#e8f5e9;
+border:1px solid #4caf50;
+border-radius:8px;
+padding:10px;
+text-align:center;
+font-size:12px;
+line-height:1.5;
+color:#2e7d32;
+font-weight:bold;
+width:100%;
+box-sizing:border-box;
+">
+
+✅ ACCEPTED
+
+<br>
+
+👤 ${e.acceptedBy || "-"}
+
+<br>
+
+🕒
+
+${
+
+e.acceptedTime
+
+?
+
+new Date(
+
+e.acceptedTime.seconds
+
+?
+
+e.acceptedTime.seconds * 1000
+
+:
+
+e.acceptedTime
+
+)
+
+.toLocaleTimeString(
+
+"en-IN",
+
+{
+
+hour:"numeric",
+
+minute:"2-digit"
+
+}
+
+)
+
+:
+
+"-"
+
+}
+
+</div>
+
+`
+}
 
 <button
 
