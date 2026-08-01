@@ -57880,7 +57880,215 @@ async function submitHelpRequest(){
         "🚨 SEND REQUEST";
 
 }
-          /* 3. Open Form + GPS */
+
+    
+    // =====================================================
+// 📷 CAPTURE HEC PHOTO
+// =====================================================
+
+async function captureHelpPhoto(event){
+
+    try{
+
+        const file =
+
+            event.target.files[0];
+
+        if(!file){
+
+            return;
+
+        }
+
+        const reader =
+
+            new FileReader();
+
+        reader.onload =
+
+            function(e){
+
+                const img =
+
+                    new Image();
+
+                img.onload =
+
+                    function(){
+
+                        const canvas =
+
+                            document.createElement(
+                                "canvas"
+                            );
+
+                        let w = img.width;
+
+                        let h = img.height;
+
+                        const MAX = 1280;
+
+                        if(w > h){
+
+                            if(w > MAX){
+
+                                h *= MAX / w;
+
+                                w = MAX;
+
+                            }
+
+                        }
+
+                        else{
+
+                            if(h > MAX){
+
+                                w *= MAX / h;
+
+                                h = MAX;
+
+                            }
+
+                        }
+
+                        canvas.width = w;
+
+                        canvas.height = h;
+
+                        const ctx =
+
+                            canvas.getContext(
+                                "2d"
+                            );
+
+                        ctx.drawImage(
+
+                            img,
+
+                            0,
+
+                            0,
+
+                            w,
+
+                            h
+
+                        );
+
+                        canvas.toBlob(
+
+                            function(blob){
+
+                                window.helpPhotoBlob =
+                                    blob;
+
+                                window.helpPhotoBase64 =
+
+                                    canvas.toDataURL(
+
+                                        "image/jpeg",
+
+                                        0.82
+
+                                    );
+
+                                window.helpPhotoFileName =
+
+                                    "HEC_" +
+
+                                    Date.now() +
+
+                                    ".jpg";
+
+                                document.getElementById(
+
+                                    "helpPhotoImage"
+
+                                ).src =
+
+                                    window.helpPhotoBase64;
+
+                                document.getElementById(
+
+                                    "helpPhotoPreview"
+
+                                ).style.display =
+
+                                    "block";
+
+                            },
+
+                            "image/jpeg",
+
+                            0.82
+
+                        );
+
+                    };
+
+                img.src =
+
+                    e.target.result;
+
+            };
+
+        reader.readAsDataURL(
+
+            file
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            err
+
+        );
+
+        alert(
+
+            "Unable to process photo."
+
+        );
+
+    }
+
+}
+    // =====================================================
+// 🗑 REMOVE PHOTO
+// =====================================================
+
+function removeHelpPhoto(){
+
+    window.helpPhotoBlob = null;
+
+    window.helpPhotoBase64 = "";
+
+    window.helpPhotoFileName = "";
+
+    window.helpPhotoUrl = "";
+
+    document.getElementById(
+
+        "helpPhotoInput"
+
+    ).value = "";
+
+    document.getElementById(
+
+        "helpPhotoPreview"
+
+    ).style.display =
+
+        "none";
+
+}
+    
+    /* 3. Open Form + GPS */
        function openSightingForm(){
 
   console.group("🐘 openSightingForm START");
