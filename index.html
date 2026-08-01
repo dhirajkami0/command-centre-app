@@ -37872,7 +37872,19 @@ async function submitMoveForm(){
 async function loadHECIncidents(){
 
     try{
+        // =============================================
+        // ADMIN ONLY
+        // =============================================
 
+        if(
+
+            window.userProfile?.role !== "ADMIN"
+
+        ){
+
+            return;
+
+        }
         // =============================================
         // INIT
         // =============================================
