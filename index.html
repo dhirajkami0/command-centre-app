@@ -38758,7 +38758,6 @@ const marker =
   // =====================================================
 // 🚨 START HEC REALTIME LISTENER
 // =====================================================
-
 window.hecListener = null;
 
 async function startHECListener(){
@@ -38768,7 +38767,6 @@ async function startHECListener(){
         // -----------------------------
         // Already running?
         // -----------------------------
-
         if(window.hecListener){
 
             console.log(
@@ -38776,14 +38774,11 @@ async function startHECListener(){
             );
 
             return;
-
         }
 
         const {
-
             collection,
             onSnapshot
-
         } = window.fb;
 
         console.log(
@@ -38793,26 +38788,17 @@ async function startHECListener(){
         window.hecListener = onSnapshot(
 
             collection(
-
                 window.db,
-
                 "hec_incidents"
-
             ),
 
-               function(snapshot){
+            function(snapshot){
 
-        console.log(
+                console.log(
+                    "🔄 HEC realtime update"
+                );
 
-            "🔄 HEC realtime update"
-
-        );
-
-        loadHECIncidents();
-
-    }
-
-);
+                loadHECIncidents();
 
             }
 
@@ -38826,9 +38812,7 @@ async function startHECListener(){
 
     catch(err){
 
-        console.error(
-            err
-        );
+        console.error(err);
 
     }
 
