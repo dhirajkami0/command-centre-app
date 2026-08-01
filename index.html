@@ -4080,7 +4080,7 @@ background: rgba(25, 25, 25, 0.94);
 
 /* =========================================
 🔥 LEAFLET POPUP FIX
-FOR FULLSCREEN Admin UI
+FOR FULLSCREEN ADMIN UI
 ========================================= */
 /* ============================================================
 📍 LEAFLET FIXES & INTERACTION
@@ -5840,7 +5840,7 @@ width:56px;
 <body>
 <!--=========================================================
   GREENGUARD AI CHAT
-  Admin ONLY
+  ADMIN ONLY
 ==========================================================-->
 
 <div id="ggAiOverlay" class="gg-ai-overlay" hidden>
@@ -5894,7 +5894,7 @@ width:56px;
 </div>
 
 
-<!-- Admin ONLY AI BUTTON -->
+<!-- ADMIN ONLY AI BUTTON -->
 
 <button
     id="ggAiOpen"
@@ -5970,7 +5970,7 @@ width:56px;
 <button id="locBtn" class="btn-center btn-blue staff-only" onclick="toggleLocation()">
   MY LOCATION
 </button> 
-    <button id="force-refresh-btn" class="Admin-only btn-center btn-green" onclick="refreshAll()">
+    <button id="force-refresh-btn" class="admin-only btn-center btn-green" onclick="refreshAll()">
   FORCE REFRESH
 </button>
 <button id="dutyMainBtn"
@@ -5994,7 +5994,7 @@ width:56px;
     <!-- 🚨 HELP REQUEST -->
 <button
     id="requestHelpBtn"
-    class="btn-center Admin-only"
+    class="btn-center admin-only"
     onclick="openHelpForm()"
     style="
         background:#d32f2f;
@@ -6007,7 +6007,7 @@ width:56px;
 
 </button>
 <button id="generateAndShowBtn"
-  class="Admin-only btn-center"
+  class="admin-only btn-center"
   onclick="generateAndShowReport()"
   style="background:#2e7d32; margin-top:6px; display:none;">
   📊 GENERATE & VIEW REPORT
@@ -6015,13 +6015,13 @@ width:56px;
     <!-- 📂 KML UPLOAD -->
     <div style="margin-top:10px;">
 
-      <button id="upload-kml-btn" class="Admin-only btn-center btn-blue" onclick="openKMLForm()">
+      <button id="upload-kml-btn" class="admin-only btn-center btn-blue" onclick="openKMLForm()">
   <i class="fa-solid fa-upload"></i>
   <span>UPLOAD KML</span>
 </button>
       <!-- 🔥 NEW BUTTON ADDED -->
       <button id="clearKMLBtn"
-  class="Admin-only btn-center"
+  class="admin-only btn-center"
   onclick="clearKMLPreview()"
   style="background:#c62828; margin-top:6px; display:none;">
   ❌ CLEAR KML PREVIEW
@@ -6854,9 +6854,9 @@ function cleanName(n){
       ".leader-only"
     );
 
-  const AdminButtons =
+  const adminButtons =
     document.querySelectorAll(
-      ".Admin-only"
+      ".admin-only"
     );
 
   const staffButtons =
@@ -6906,9 +6906,9 @@ function cleanName(n){
     );
 
   // ============================================================
-  // 🔴 Admin
+  // 🔴 ADMIN
   // ============================================================
-  if(role === "Admin"){
+  if(role === "ADMIN"){
 
     // ======================================
     // 🔥 BUTTONS
@@ -6918,7 +6918,7 @@ function cleanName(n){
       el.style.display = "flex";
     });
 
-    AdminButtons.forEach(el => {
+    adminButtons.forEach(el => {
 
       if(el.id !== "clearKMLBtn"){
 
@@ -6994,7 +6994,7 @@ function cleanName(n){
       el.style.display = "flex";
     });
 
-    AdminButtons.forEach(el => {
+    adminButtons.forEach(el => {
 
     el.style.display = "none";
 
@@ -7062,7 +7062,7 @@ staffButtons.forEach(el => {
       el.style.display = "flex";
     });
 
-    AdminButtons.forEach(el => {
+    adminButtons.forEach(el => {
 
       el.style.display = "none";
     });
@@ -7133,7 +7133,7 @@ staffButtons.forEach(el => {
       el.style.display = "none";
     });
 
-    AdminButtons.forEach(el => {
+    adminButtons.forEach(el => {
 
       el.style.display = "none";
     });
@@ -7201,7 +7201,7 @@ staffButtons.forEach(el => {
       el.style.display = "none";
     });
 
-    AdminButtons.forEach(el => {
+    adminButtons.forEach(el => {
 
       el.style.display = "none";
     });
@@ -9114,12 +9114,12 @@ setTimeout(() => {
         );
 
 // ==============================================
-// 🚨 LOAD HEC (Admin ONLY)
+// 🚨 LOAD HEC (ADMIN ONLY)
 // ==============================================
 
 if(
 
-    window.userProfile?.role === "Admin"
+    window.userProfile?.role === "ADMIN"
 
 ){
 
@@ -9984,7 +9984,7 @@ if (
 
 
         // ==========================================
-        // 🤖 GREENGUARD AI — Admin ACCESS
+        // 🤖 GREENGUARD AI — ADMIN ACCESS
         //
         // Profile is NOW available.
         // This must run AFTER window.userProfile
@@ -10763,10 +10763,10 @@ function updateDutyStaff(source = "UNKNOWN"){
   try{
 
     // =====================================
-    // 👑 Admin
+    // 👑 ADMIN
     // =====================================
 
-    if(role === "Admin"){
+    if(role === "ADMIN"){
 
       staff = allProfiles;
     }
@@ -11063,25 +11063,25 @@ function updateDutyCompt(source = "UNKNOWN"){
 
 
     // ==========================================================
-    // 👑 Admin
+    // 👑 ADMIN
     // ----------------------------------------------------------
     // Existing design:
-    // Admin receives all GIS compartment features.
+    // ADMIN receives all GIS compartment features.
     // ==========================================================
 
     if(
-      role === "Admin"
+      role === "ADMIN"
     ){
 
       compartments =
         features;
 
       resolutionMode =
-        "Admin_ALL";
+        "ADMIN_ALL";
 
 
       console.log(
-        "👑 Admin → ALL COMPARTMENTS:",
+        "👑 ADMIN → ALL COMPARTMENTS:",
         compartments.length
       );
 
@@ -13209,13 +13209,13 @@ async function buildAndStoreMasterGrid() {
 // ============================================================
 // 🤖 GREENGUARD AI ACCESS CONTROL
 //
-// Admin:
+// ADMIN:
 //   ✓ Button exists
 //   ✓ Button attached directly to document.body
 //   ✓ Button visible
 //   ✓ Button clickable
 //
-// NON-Admin:
+// NON-ADMIN:
 //   ✓ Button hidden
 //   ✓ AI overlay closed
 //
@@ -13285,11 +13285,11 @@ function applyGreenGuardAiAccess(
 
 
         // ====================================================
-        // 4. NON-Admin
+        // 4. NON-ADMIN
         // ====================================================
 
         if (
-            role !== "Admin"
+            role !== "ADMIN"
         ) {
 
             openBtn.hidden =
@@ -13317,7 +13317,7 @@ function applyGreenGuardAiAccess(
 
 
             // -----------------------------------------------
-            // Force-close AI overlay for non-Admin
+            // Force-close AI overlay for non-admin
             // -----------------------------------------------
 
             if (
@@ -13355,11 +13355,11 @@ function applyGreenGuardAiAccess(
 
 
         // ====================================================
-        // 5. Admin CONFIRMED
+        // 5. ADMIN CONFIRMED
         // ====================================================
 
         console.log(
-            "🔓 GreenGuard AI Admin confirmed"
+            "🔓 GreenGuard AI ADMIN confirmed"
         );
 
 
@@ -13388,7 +13388,7 @@ function applyGreenGuardAiAccess(
 
 
         // ====================================================
-        // 7. SHOW Admin BUTTON
+        // 7. SHOW ADMIN BUTTON
         // ====================================================
 
         openBtn.hidden =
@@ -14432,7 +14432,7 @@ if (
 }
 
 else if (
-  userRole !== "Admin"
+  userRole !== "ADMIN"
 ) {
 
   if (
@@ -14545,7 +14545,7 @@ console.log(
 
       // --- AUTHORIZATION LOGIC ---
       let authorized = false;
-      if (userRole === "Admin") {
+      if (userRole === "ADMIN") {
         authorized = true;
       } else if (userRole === "DFO" || userRole === "ADFO") {
         authorized = (compDivision === effectiveDivision);
@@ -17257,10 +17257,10 @@ async function getMonthlyGlobalSummary(
   const userProfile = window.userProfile || {};
   const userRole = String(userProfile.role || "STAFF").trim().toUpperCase();
 
-  // 🛡️ ROLE CLAMP: Recovery restricted to MANAGEMENT level accounts (Admin/DFO/ADFO).
+  // 🛡️ ROLE CLAMP: Recovery restricted to MANAGEMENT level accounts (ADMIN/DFO/ADFO).
   // Field STAFF/TEAM_LEADER devices are completely excluded from this background process.
   const isManagementRole = (
-    userRole === "Admin" || 
+    userRole === "ADMIN" || 
     userRole === "DFO" || 
     userRole === "ADFO"
   );
@@ -26603,10 +26603,10 @@ console.time(
     let url = "";
 
     // ==================================================
-    // 👑 Admin
+    // 👑 ADMIN
     // ==================================================
 
-    if(role === "Admin"){
+    if(role === "ADMIN"){
 
       window.gisFilter = {
 
@@ -26764,12 +26764,12 @@ preloadAllCompartments()
     // ==================================================
 
     // ==========================================
-// 👑 Admin
+// 👑 ADMIN
 // ==========================================
 
 if(
 
-  role === "Admin"
+  role === "ADMIN"
 
 ){
 
@@ -27625,10 +27625,10 @@ async function populateDivisionButtons(){
       "flex";
 
     // ==========================================
-    // 👑 Admin
+    // 👑 ADMIN
     // ==========================================
 
-  if(role === "Admin"){
+  if(role === "ADMIN"){
 
   const divisions = [
 
@@ -28130,7 +28130,7 @@ loadPolygonWeather();
 
     if(
 
-      role !== "Admin"
+      role !== "ADMIN"
 
       &&
 
@@ -35999,11 +35999,11 @@ const db = window.db;
 
 
           // -------------------------------------------------
-          // Admin
+          // ADMIN
           // -------------------------------------------------
 
           if(
-              viewerRole === "Admin"
+              viewerRole === "ADMIN"
           ){
 
               // Visible everywhere
@@ -37014,7 +37014,7 @@ function populateMoveRemarks(){
     "✅ Move Remarks Loaded:",
     compartments.size,
     "| Range:",
-    userRange || "Admin"
+    userRange || "ADMIN"
   );
 
 }  /* 🔥 STATUS UPDATE */
@@ -37896,12 +37896,12 @@ async function loadHECIncidents(){
 
     try{
         // =============================================
-        // Admin ONLY
+        // ADMIN ONLY
         // =============================================
 
         if(
 
-            window.userProfile?.role !== "Admin"
+            window.userProfile?.role !== "ADMIN"
 
         ){
 
@@ -39012,7 +39012,7 @@ async function acceptHECIncident(
 
 }
     // ============================================================
-// 🔐 VERIFY LATEST PLANET — Admin ONLY
+// 🔐 VERIFY LATEST PLANET — ADMIN ONLY
 // ============================================================
 
 function updateVerifyLatestPlanetVisibility(){
@@ -39036,7 +39036,7 @@ function updateVerifyLatestPlanetVisibility(){
 
 
     button.style.display =
-        role === "Admin"
+        role === "ADMIN"
             ? ""
             : "none";
 
@@ -40285,12 +40285,12 @@ if(
 }
 
     /* ============================================================
-   🏡 REGISTER VILLAGE BOUNDARIES — Admin ONLY
+   🏡 REGISTER VILLAGE BOUNDARIES — ADMIN ONLY
    ------------------------------------------------------------
 
    DESIGN:
 
-   Admin
+   ADMIN
    ✓ Village Boundaries visible in EXISTING Layer Control.
    ✓ Starts OFF.
    ✓ Clicking ON triggers existing overlayadd handler.
@@ -40298,7 +40298,7 @@ if(
    ✓ Clicking OFF triggers existing overlayremove handler.
    ✓ No second Leaflet control is created.
 
-   NON-Admin
+   NON-ADMIN
    ✓ Village Boundaries is NOT registered.
    ✓ Option therefore does NOT appear in Layer Control.
    ✓ Existing Staff / Elephant / Staff Tracks untouched.
@@ -40326,12 +40326,12 @@ try {
 
 
     // ========================================================
-    // Admin ONLY
+    // ADMIN ONLY
     // ========================================================
 
     if (
         villageBoundaryControlRole ===
-        "Admin"
+        "ADMIN"
     ) {
 
         // ====================================================
@@ -40431,7 +40431,7 @@ try {
 
 
             console.log(
-                "🔓 Admin — Village Boundary Layer Control ready"
+                "🔓 ADMIN — Village Boundary Layer Control ready"
             );
 
         }
@@ -40440,7 +40440,7 @@ try {
 
 
     // ========================================================
-    // NON-Admin
+    // NON-ADMIN
     // ========================================================
 
     else {
@@ -40449,7 +40449,7 @@ try {
          * Do NOT call layerControl.addOverlay().
          *
          * Therefore Village Boundaries never appears
-         * in the Layer Control for non-Admin users.
+         * in the Layer Control for non-admin users.
          */
 
         window.villageBoundaryLayer &&
@@ -40480,7 +40480,7 @@ try {
 
 
         console.log(
-            "🔒 Village Boundaries unavailable — Admin only",
+            "🔒 Village Boundaries unavailable — ADMIN only",
             villageBoundaryControlRole ||
             "UNKNOWN"
         );
@@ -40589,7 +40589,7 @@ window.staffUnsubscribe = onSnapshot(
 //
 // NORMAL TARGET:
 //
-//   Admin
+//   ADMIN
 //      → ALL
 //
 //   DFO / ADFO
@@ -40810,11 +40810,11 @@ let visibilityReason =
 if(targetEmergency){
 
     if(
-        role === "Admin"
+        role === "ADMIN"
     ){
 
         staffVisible = true;
-        visibilityReason = "Admin EMERGENCY";
+        visibilityReason = "ADMIN EMERGENCY";
 
     }
     else if(
@@ -40836,18 +40836,18 @@ if(targetEmergency){
 
 
 // ==============================================
-// 👑 2. Admin — NORMAL TARGETS
+// 👑 2. ADMIN — NORMAL TARGETS
 // ==============================================
 
 else if(
-    role === "Admin"
+    role === "ADMIN"
 ){
 
     staffVisible =
         true;
 
     visibilityReason =
-        "Admin";
+        "ADMIN";
 
 }
 
@@ -53555,7 +53555,7 @@ async function loadVillageData() {
 
 
           /* ==================================================
-             🗺 AdminISTRATIVE HIERARCHY
+             🗺 ADMINISTRATIVE HIERARCHY
           ================================================== */
 
           gramPanchayat:
@@ -54303,7 +54303,7 @@ var villageBoundaryLayer =
 
 
           /* ====================================================
-             🗺 AdminISTRATIVE HIERARCHY
+             🗺 ADMINISTRATIVE HIERARCHY
           ==================================================== */
 
           gramPanchayat:
@@ -55471,7 +55471,7 @@ async function loadVillageBoundaryLayer() {
    - 👮 Staff
    - 🐘 Elephants
 
-   Admin ONLY:
+   ADMIN ONLY:
    - 🚨 Alerts
    - 📡 Prediction
    - 📍 Village Locations
@@ -55499,7 +55499,7 @@ const layerControlUserRole =
 
 const layerControlIsAdmin =
     layerControlUserRole ===
-    "Admin";
+    "ADMIN";
 
 
 /* ============================================================
@@ -55520,7 +55520,7 @@ const layerControlOverlays = {
 
 
 /* ============================================================
-   👑 Admin-ONLY OVERLAYS
+   👑 ADMIN-ONLY OVERLAYS
 ============================================================ */
 
 if(
@@ -55601,17 +55601,17 @@ if(
    ✓ Preserved exactly through layerControlOverlays.
 
    VILLAGE BOUNDARIES
-   ✓ Admin only in Layer Control.
+   ✓ ADMIN only in Layer Control.
    ✓ Starts OFF.
-   ✓ Lazy loads only when Admin enables it.
+   ✓ Lazy loads only when ADMIN enables it.
    ✓ Existing overlayadd / overlayremove behavior preserved.
-   ✓ Non-Admin cannot see Village Boundaries option.
+   ✓ Non-admin cannot see Village Boundaries option.
    ✓ Does NOT create another Leaflet Layer Control.
 ============================================================ */
 
 
 /* ============================================================
-   🏡 REGISTER Admin-ONLY VILLAGE BOUNDARY OVERLAY
+   🏡 REGISTER ADMIN-ONLY VILLAGE BOUNDARY OVERLAY
    ------------------------------------------------------------
    IMPORTANT:
 
@@ -55642,7 +55642,7 @@ try {
 
     const villageBoundaryIsAdmin =
         villageBoundaryRole ===
-        "Admin";
+        "ADMIN";
 
 
     if (
@@ -55657,7 +55657,7 @@ try {
 
 
         console.log(
-            "🔓 Admin — Village Boundaries registered in Layer Control"
+            "🔓 ADMIN — Village Boundaries registered in Layer Control"
         );
 
     }
@@ -55687,7 +55687,7 @@ try {
 
 
         /*
-         * If a previous Admin session left the layer attached
+         * If a previous ADMIN session left the layer attached
          * to the same running map instance, remove ONLY the
          * village boundary layer.
          */
@@ -55760,7 +55760,7 @@ var layerControl =
 
            Existing overlays remain unchanged.
 
-           Admin additionally receives:
+           ADMIN additionally receives:
            🏡 Village Boundaries
         ===================================================== */
 
@@ -55844,7 +55844,7 @@ console.log(
         role:
             layerControlUserRole,
 
-        Admin:
+        admin:
             layerControlIsAdmin,
 
         overlays:
@@ -55872,7 +55872,7 @@ console.log(
    Handles Leaflet overlay layers when user enables them.
 
    VILLAGE BOUNDARIES:
-   - Admin only.
+   - ADMIN only.
    - Lazy loads GeoJSON on first use.
    - Village polygons remain visible.
    - BTR polygons remain visible.
@@ -55895,7 +55895,7 @@ console.log(
    - Current user's automatic track remains untouched.
 
    VILLAGE BOUNDARIES:
-   - Admin only.
+   - ADMIN only.
    - Lazy loads polygons.
    - Switches interaction ownership to village canvas.
 
@@ -56127,13 +56127,13 @@ map.on(
 
 
       /* ========================================================
-         🏡 VILLAGE BOUNDARIES ON — Admin ONLY
+         🏡 VILLAGE BOUNDARIES ON — ADMIN ONLY
          --------------------------------------------------------
 
          FIRST TIME:
          1. Leaflet adds empty villageBoundaryLayer.
          2. overlayadd fires.
-         3. Admin role is verified again.
+         3. ADMIN role is verified again.
          4. GeoJSON lazy loads.
          5. Polygons are added.
          6. Village Canvas becomes interaction owner.
@@ -56144,7 +56144,7 @@ map.on(
          3. Village Canvas becomes interaction owner.
 
          IMPORTANT:
-         - Non-Admin access is rejected.
+         - Non-admin access is rejected.
          - BTR stays visible.
          - BTR Canvas becomes non-interactive.
          - Village Canvas becomes interactive.
@@ -56157,7 +56157,7 @@ map.on(
       ){
 
         /* ------------------------------------------------------
-           Admin ACCESS RECHECK
+           ADMIN ACCESS RECHECK
         ------------------------------------------------------ */
 
         const currentVillageRole =
@@ -56172,7 +56172,7 @@ map.on(
 
         if(
           currentVillageRole !==
-          "Admin"
+          "ADMIN"
         ){
 
           console.warn(
@@ -56228,7 +56228,7 @@ map.on(
 
         console.log(
 
-          "🏡 Village Boundaries Enabled — Admin"
+          "🏡 Village Boundaries Enabled — ADMIN"
 
         );
 
@@ -56595,7 +56595,7 @@ map.on(
 
 
     // ============================================================
-// 🏡 Admin-ONLY VILLAGE BOUNDARY ACCESS
+// 🏡 ADMIN-ONLY VILLAGE BOUNDARY ACCESS
 // ============================================================
 
 window.applyVillageBoundaryAccess =
@@ -56664,11 +56664,11 @@ function applyVillageBoundaryAccess(
 
 
         // ====================================================
-        // Admin
+        // ADMIN
         // ====================================================
 
         if (
-            role === "Admin"
+            role === "ADMIN"
         ) {
 
             if (
@@ -56701,7 +56701,7 @@ function applyVillageBoundaryAccess(
 
 
             console.log(
-                "🔓 Admin — Village Boundary access enabled"
+                "🔓 ADMIN — Village Boundary access enabled"
             );
 
 
@@ -56710,7 +56710,7 @@ function applyVillageBoundaryAccess(
 
 
         // ====================================================
-        // NON-Admin
+        // NON-ADMIN
         // Remove ONLY Village Boundaries.
         // Other layers remain untouched.
         // ====================================================
@@ -56748,7 +56748,7 @@ function applyVillageBoundaryAccess(
 
 
         console.log(
-            "🔒 Village Boundaries hidden — Admin only"
+            "🔒 Village Boundaries hidden — ADMIN only"
         );
 
 
@@ -58094,10 +58094,10 @@ const allProfiles =
 let beats = [];
 
 // =====================================================
-// 👑 Admin
+// 👑 ADMIN
 // =====================================================
 
-if(role === "Admin"){
+if(role === "ADMIN"){
 
   beats = [
 
@@ -58222,7 +58222,7 @@ beats.forEach(beat => {
 // 🔥 DEFAULT SELECTION
 // =====================================================
 
-if(role === "Admin"){
+if(role === "ADMIN"){
 
   beatSel.selectedIndex = 0;
 
@@ -61681,7 +61681,7 @@ if(
     "✅ Driving Remarks Loaded:",
     compartments.size,
     "| Range:",
-    userRange || "Admin"
+    userRange || "ADMIN"
   );
 
 }
@@ -64110,7 +64110,7 @@ OPEN
 openBtn.onclick = () => {
 
     // ====================================================
-    // Admin SECURITY CHECK
+    // ADMIN SECURITY CHECK
     // ====================================================
 
     const role =
@@ -64124,7 +64124,7 @@ openBtn.onclick = () => {
 
 
     if (
-        role !== "Admin"
+        role !== "ADMIN"
     ) {
 
         console.warn(
@@ -64237,7 +64237,7 @@ closeBtn.onclick = () => {
 
 
     // ====================================================
-    // RESTORE BUTTON ONLY IF USER IS Admin
+    // RESTORE BUTTON ONLY IF USER IS ADMIN
     // ====================================================
 
     applyGreenGuardAiAccess(
