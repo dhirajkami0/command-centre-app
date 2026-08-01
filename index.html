@@ -20372,6 +20372,22 @@ function showPlanetThumb(scene){
 
             try {
 
+              // =====================================================
+// 🐘 HELP LOCATION MODE
+// =====================================================
+
+if(window.mapAction === "HELP_LOCATION"){
+
+    window.mapAction = null;
+
+    map.getContainer().style.cursor = "";
+
+    saveHelpLocation(e.latlng);
+
+    return;
+
+}
+
                 // ==========================================
                 // 🔥 LAYER / POLYGON CLICK BUBBLING
                 //
@@ -25482,7 +25498,15 @@ window.allCompartmentFeatures = [];
 // ==========================================
 // 👁 COMPARTMENT LAYER VISIBILITY
 // ==========================================
+// =====================================
+// HELP REQUEST
+// =====================================
 
+window.helpLocation = null;
+
+window.helpMarker = null;
+
+window.mapAction = null;
 window.compartmentLayerVisible = true;
 // ======================================================
 // 🌍 ACTIVE LAYERS
@@ -55646,6 +55670,198 @@ function calculateTotal(){
 
   document.getElementById("f-total").value = m + f + u + c;
 }
+    function openHelpForm(){
+
+    const modal =
+        document.getElementById(
+            "help-modal"
+        );
+
+    if(!modal) return;
+
+    modal.style.display="block";
+
+    document.getElementById(
+        "helpLocationText"
+    ).innerHTML="Waiting...";
+
+    useCurrentHelpLocation();
+
+}
+function closeHelpForm(){
+
+    document.getElementById(
+
+        "help-modal"
+
+    ).style.display="none";
+
+    window.mapAction=null;
+
+    map.getContainer().style.cursor="";
+
+    if(window.helpMarker){
+
+        map.removeLayer(
+
+            window.helpMarker
+
+        );
+
+        window.helpMarker=null;
+
+    }
+
+}
+    function useCurrentHelpLocation(){
+
+    document.getElementById(
+        "helpLocationText"
+    ).innerHTML=
+
+    "✔ Current GPS Selected";
+
+}
+function startHelpMapSelection(){
+
+    window.mapAction =
+
+        "HELP_LOCATION";
+
+    showToast(
+
+        "📍 Tap elephant location"
+
+    );
+
+    map.getContainer().style.cursor =
+
+        "crosshair";
+
+}
+// =====================================================
+// 🐘 SAVE HELP LOCATION
+// =====================================================
+
+function saveHelpLocation(latlng){
+
+    window.helpLocation={
+
+        lat:latlng.lat,
+
+        lon:latlng.lng
+
+    };
+
+    // ----------------------------------------
+    // Remove previous temporary marker
+    // ----------------------------------------
+
+    if(window.helpMarker){
+
+        map.removeLayer(
+
+            window.helpMarker
+
+        );
+
+    }
+
+    // ----------------------------------------
+    // Temporary marker
+    // ----------------------------------------
+
+    window.helpMarker=L.marker(
+
+        [
+
+            latlng.lat,
+
+            latlng.lng
+
+        ]
+
+    ).addTo(map);
+
+    // ----------------------------------------
+    // Update popup
+    // ----------------------------------------
+
+    const box=
+
+        document.getElementById(
+
+            "helpLocationText"
+
+        );
+
+    if(box){
+
+        box.innerHTML=
+
+        "📍 Manual Location Selected<br>"+
+
+        latlng.lat.toFixed(6)+
+
+        ", "+
+
+        latlng.lon?.toFixed?.(6);
+
+    }
+
+    showToast(
+
+        "✅ Help location selected"
+
+    );
+
+}
+    function captureHelpPhoto(){
+
+    alert("Photo module");
+
+}
+    function recordHelpVoice(){
+
+    alert("Voice module");
+
+}
+    function callControlRoom(){
+
+    alert("Call Control Room");
+
+}
+function submitHelpRequest(){
+
+    if(!window.helpLocation){
+
+        alert("Please choose Current Location or Select on Map.");
+
+        return;
+
+    }
+
+    const situation =
+        document.getElementById("helpSituation").value;
+
+    const count =
+        document.getElementById("helpCount").value;
+
+    console.log({
+
+        location: window.helpLocation,
+
+        situation,
+
+        count
+
+    });
+
+    alert("Help Request Submitted");
+
+    closeHelpForm();
+
+}
           /* 3. Open Form + GPS */
        function openSightingForm(){
 
@@ -65459,7 +65675,297 @@ KEEP THIS AS IS
 </div>
  
 
+<!-- ===================================== -->
+<!-- 🐘 HELP REQUEST MODAL -->
+<!-- ===================================== -->
 
+<div id="help-modal"
+style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.85);
+z-index:6000;
+overflow-y:auto;
+padding:10px;
+">
+
+<div style="
+background:#f4f4f4;
+max-width:430px;
+margin:15px auto;
+padding:20px;
+border-radius:14px;
+border-top:8px solid #d32f2f;
+font-family:'Segoe UI',sans-serif;
+">
+
+<!-- ========================= -->
+<!-- HEADER -->
+<!-- ========================= -->
+
+<div style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+">
+
+<h3 style="
+margin:0;
+color:#d32f2f;
+font-size:20px;
+">
+
+🐘 REQUEST ELEPHANT RESPONSE TEAM
+
+</h3>
+
+<button
+onclick="closeHelpForm()"
+style="
+background:none;
+border:none;
+font-size:30px;
+cursor:pointer;
+">
+
+&times;
+
+</button>
+
+</div>
+
+<hr>
+
+<!-- ========================= -->
+<!-- LOCATION -->
+<!-- ========================= -->
+
+<label>
+
+<b>📍 INCIDENT LOCATION</b>
+
+</label>
+
+<button
+type="button"
+class="btn-center btn-green"
+onclick="useCurrentHelpLocation()">
+
+✔ USE CURRENT LOCATION
+
+</button>
+
+<button
+type="button"
+class="btn-center btn-blue"
+style="margin-top:8px;"
+onclick="startHelpMapSelection()">
+
+📍 SELECT ON MAP
+
+</button>
+
+<div
+id="helpLocationText"
+style="
+margin-top:10px;
+padding:8px;
+background:#e8f5e9;
+border-radius:8px;
+font-size:13px;
+color:#2e7d32;
+text-align:center;
+">
+
+Waiting for location...
+
+</div>
+
+<hr>
+
+<!-- ========================= -->
+<!-- SITUATION -->
+<!-- ========================= -->
+
+<label>
+
+<b>🚨 WHAT IS HAPPENING?</b>
+
+</label>
+
+<select
+id="helpSituation"
+style="
+width:100%;
+padding:10px;
+margin-top:8px;
+border-radius:8px;
+">
+
+<option value="HOUSE">
+
+🏠 Elephant Near House
+
+</option>
+
+<option value="VILLAGE">
+
+🏘 Elephant Inside Village
+
+</option>
+
+<option value="CROP">
+
+🌾 Crop Damage
+
+</option>
+
+<option value="DANGER">
+
+🚨 Human In Danger
+
+</option>
+
+</select>
+
+<hr>
+
+<!-- ========================= -->
+<!-- COUNT -->
+<!-- ========================= -->
+
+<label>
+
+<b>🐘 Approximate Elephants</b>
+
+</label>
+
+<select
+id="helpCount"
+style="
+width:100%;
+padding:10px;
+margin-top:8px;
+border-radius:8px;
+">
+
+<option value="1">
+
+1 Elephant
+
+</option>
+
+<option value="2-5">
+
+2 - 5 Elephants
+
+</option>
+
+<option value="6-10">
+
+6 - 10 Elephants
+
+</option>
+
+<option value="10+">
+
+More than 10
+
+</option>
+
+</select>
+
+<hr>
+
+<!-- ========================= -->
+<!-- ACTIONS -->
+<!-- ========================= -->
+
+<button
+type="button"
+class="btn-center"
+onclick="captureHelpPhoto()">
+
+📷 ADD PHOTO
+
+</button>
+
+<button
+type="button"
+class="btn-center"
+style="margin-top:8px;"
+onclick="recordHelpVoice()">
+
+🎤 RECORD VOICE
+
+</button>
+
+<button
+type="button"
+class="btn-center"
+style="margin-top:8px;"
+onclick="callControlRoom()">
+
+📞 CALL CONTROL ROOM
+
+</button>
+
+<hr>
+
+<!-- ========================= -->
+<!-- BUTTONS -->
+<!-- ========================= -->
+
+<div style="
+display:flex;
+gap:10px;
+">
+
+<button
+type="button"
+style="
+flex:1;
+background:#757575;
+color:#fff;
+border:none;
+padding:12px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+onclick="closeHelpForm()">
+
+⬅ CANCEL
+
+</button>
+
+<button
+type="button"
+style="
+flex:2;
+background:#d32f2f;
+color:#fff;
+border:none;
+padding:12px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+"
+onclick="submitHelpRequest()">
+
+🚨 SEND REQUEST
+
+</button>
+
+</div>
+
+</div>
+
+</div>
 
 </body>
 </html>
