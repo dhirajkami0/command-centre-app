@@ -55713,13 +55713,53 @@ function closeHelpForm(){
     }
 
 }
-    function useCurrentHelpLocation(){
+// =====================================================
+// 📍 USE CURRENT GPS
+// =====================================================
+
+function useCurrentHelpLocation(){
+
+    if(
+        !window.latestGps ||
+        !window.latestGps.lat ||
+        !window.latestGps.lng
+    ){
+
+        alert(
+            "Current GPS not available."
+        );
+
+        return;
+
+    }
+
+    window.helpLocation = {
+
+        lat : window.latestGps.lat,
+
+        lon : window.latestGps.lng
+
+    };
 
     document.getElementById(
         "helpLocationText"
-    ).innerHTML=
+    ).innerHTML =
 
-    "✔ Current GPS Selected";
+        "✔ Current GPS Selected<br>" +
+
+        window.latestGps.lat.toFixed(6) +
+
+        ", " +
+
+        window.latestGps.lng.toFixed(6);
+
+    console.log(
+
+        "📍 HELP LOCATION",
+
+        window.helpLocation
+
+    );
 
 }
 function startHelpMapSelection(){
