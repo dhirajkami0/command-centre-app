@@ -67900,81 +67900,30 @@ display:none;
 margin-top:12px;
 ">
 
-<label>
-
-Division
-
-</label>
-
-<input
-
-id="helpDivision"
-
-readonly
-
+<div
 style="
-width:100%;
+background:#eef8ff;
 padding:10px;
 border-radius:8px;
-margin-top:5px;
+font-size:13px;
+color:#1565c0;
+margin-bottom:12px;
 ">
 
-<label
-style="
-margin-top:10px;
-display:block;
-">
+📍 Select the village where the elephant is currently located.
 
-Range
+</div>
 
-</label>
-
-<input
-
-id="helpRange"
-
-readonly
-
-style="
-width:100%;
-padding:10px;
-border-radius:8px;
-margin-top:5px;
-">
-
-<label
-style="
-margin-top:10px;
-display:block;
-">
-
-Beat
-
-</label>
-
-<input
-
-id="helpBeat"
-
-readonly
-
-style="
-width:100%;
-padding:10px;
-border-radius:8px;
-margin-top:5px;
-">
 <!-- ========================================= -->
 <!-- VILLAGE -->
 <!-- ========================================= -->
 
 <label
 style="
-margin-top:10px;
-display:block;
+font-weight:600;
 ">
 
-Village
+🏡 Village
 
 </label>
 
@@ -67984,16 +67933,17 @@ id="helpVillage"
 
 style="
 width:100%;
-padding:10px;
+padding:11px;
 border-radius:8px;
-margin-top:5px;
+margin-top:6px;
+font-size:15px;
 "
 
 onchange="helpVillageChanged()">
 
 <option value="">
 
-Select Village
+Select Village...
 
 </option>
 
@@ -68005,11 +67955,12 @@ Select Village
 
 <label
 style="
-margin-top:10px;
+margin-top:12px;
 display:block;
+font-weight:600;
 ">
 
-Landmark
+📍 Landmark
 
 </label>
 
@@ -68019,14 +67970,15 @@ id="helpLandmark"
 
 style="
 width:100%;
-padding:10px;
+padding:11px;
 border-radius:8px;
-margin-top:5px;
+margin-top:6px;
+font-size:15px;
 ">
 
 <option value="">
 
-Select Landmark
+Select Landmark...
 
 </option>
 
@@ -68038,11 +67990,12 @@ Select Landmark
 
 <label
 style="
-margin-top:10px;
+margin-top:12px;
 display:block;
+font-weight:600;
 ">
 
-Other Landmark
+Other Landmark (Optional)
 
 </label>
 
@@ -68052,13 +68005,14 @@ id="helpOtherLandmark"
 
 type="text"
 
-placeholder="House, School, Tea Garden, Bridge..."
+placeholder="School, Tea Garden, Bridge, Temple..."
 
 style="
 width:100%;
-padding:10px;
+padding:11px;
 border-radius:8px;
-margin-top:5px;
+margin-top:6px;
+font-size:15px;
 ">
 
 <!-- ========================================= -->
@@ -68067,11 +68021,12 @@ margin-top:5px;
 
 <label
 style="
-margin-top:10px;
+margin-top:12px;
 display:block;
+font-weight:600;
 ">
 
-Selected GPS
+📍 Selected Location
 
 </label>
 
@@ -68080,22 +68035,18 @@ Selected GPS
 id="helpVillageGps"
 
 style="
-margin-top:5px;
+margin-top:6px;
 padding:10px;
 background:#e8f5e9;
 border-radius:8px;
-font-size:13px;
 color:#2e7d32;
-text-align:center;
+font-size:13px;
+line-height:1.6;
 ">
 
 Waiting for village selection...
 
 </div>
-
-<!-- ========================================= -->
-<!-- REFINE -->
-<!-- ========================================= -->
 
 <button
 
@@ -68109,13 +68060,14 @@ margin-top:10px;
 
 onclick="startHelpMapSelection()">
 
-📍 REFINE ON MAP
+📍 REFINE LOCATION ON MAP
 
 </button>
 
 </div>
 
 <hr>
+
 <!-- ========================= -->
 <!-- SITUATION -->
 <!-- ========================= -->
