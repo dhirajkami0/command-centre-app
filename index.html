@@ -55692,17 +55692,19 @@ function calculateTotal(){
 // ❌ CLOSE HELP FORM
 // =====================================================
 
+// =====================================================
+// ❌ CLOSE HELP FORM
+// =====================================================
+
 function closeHelpForm(){
 
     // ============================================
     // HIDE MODAL
     // ============================================
 
-    const modal =
-
-        document.getElementById(
-            "help-modal"
-        );
+    const modal = document.getElementById(
+        "help-modal"
+    );
 
     if(modal){
 
@@ -55711,23 +55713,25 @@ function closeHelpForm(){
     }
 
     // ============================================
-    // RESET MAP MODE
+    // EXIT MAP SELECTION MODE
     // ============================================
 
     window.mapAction = null;
 
-    map.getContainer().style.cursor = "";
+    if(window.map && map.getContainer){
+
+        map.getContainer().style.cursor = "";
+
+    }
 
     // ============================================
-    // REMOVE TEMP MARKER
+    // REMOVE TEMP LOCATION MARKER
     // ============================================
 
     if(window.helpMarker){
 
         map.removeLayer(
-
             window.helpMarker
-
         );
 
         window.helpMarker = null;
@@ -55735,7 +55739,7 @@ function closeHelpForm(){
     }
 
     // ============================================
-    // CLEAR LOCATION
+    // CLEAR SAVED LOCATION
     // ============================================
 
     window.helpLocation = null;
@@ -55744,51 +55748,62 @@ function closeHelpForm(){
     // RESET LOCATION TEXT
     // ============================================
 
-    const txt =
+    const locationText = document.getElementById(
+        "helpLocationText"
+    );
 
-        document.getElementById(
-            "helpLocationText"
-        );
+    if(locationText){
 
-    if(txt){
-
-        txt.innerHTML =
-
+        locationText.innerHTML =
             "Waiting for location...";
 
     }
 
     // ============================================
-    // RESET CURRENT GPS BUTTON
+    // RESET CURRENT LOCATION BUTTON
     // ============================================
 
-    const btn = document.querySelector(
-
+    const gpsBtn = document.querySelector(
         "#help-modal .btn-green"
-
     );
 
-    if(btn){
+    if(gpsBtn){
 
-        btn.innerHTML =
-
+        gpsBtn.innerHTML =
             "✔ USE CURRENT LOCATION";
 
-        btn.disabled = false;
+        gpsBtn.disabled = false;
 
-        btn.style.opacity = "1";
+        gpsBtn.style.opacity = "1";
 
     }
 
     // ============================================
-    // RESET DROPDOWNS
+    // RESET MAP BUTTON
     // ============================================
 
-    const situation =
+    const mapBtn = document.querySelector(
+        "#help-modal .btn-blue"
+    );
 
-        document.getElementById(
-            "helpSituation"
-        );
+    if(mapBtn){
+
+        mapBtn.innerHTML =
+            "📍 SELECT ON MAP";
+
+        mapBtn.disabled = false;
+
+        mapBtn.style.opacity = "1";
+
+    }
+
+    // ============================================
+    // RESET SITUATION
+    // ============================================
+
+    const situation = document.getElementById(
+        "helpSituation"
+    );
 
     if(situation){
 
@@ -55796,11 +55811,13 @@ function closeHelpForm(){
 
     }
 
-    const count =
+    // ============================================
+    // RESET ELEPHANT COUNT
+    // ============================================
 
-        document.getElementById(
-            "helpCount"
-        );
+    const count = document.getElementById(
+        "helpCount"
+    );
 
     if(count){
 
@@ -55808,10 +55825,25 @@ function closeHelpForm(){
 
     }
 
+    // ============================================
+    // FUTURE RESET PLACEHOLDERS
+    // ============================================
+
+    // Voice recording
+    window.helpVoiceBlob = null;
+
+    // Photo
+    window.helpPhotoFile = null;
+
+    // Call status
+    window.helpCallStarted = false;
+
+    // ============================================
+    // DEBUG
+    // ============================================
+
     console.log(
-
-        "❌ Help form closed"
-
+        "❌ Help form closed and reset."
     );
 
 }
@@ -55906,96 +55938,178 @@ function useCurrentHelpLocation(){
     );
 
 }
+// ======================================================
+// 📍 SELECT INCIDENT LOCATION
+// ======================================================
+
 function startHelpMapSelection(){
 
-    window.mapAction =
+    closeEnterpriseTooltipFully?.();
 
-        "HELP_LOCATION";
+    window.mapAction = "HELP_LOCATION";
 
     showToast(
-
-        "📍 Tap elephant location"
-
+        "📍 Tap elephant location on map"
     );
 
-    map.getContainer().style.cursor =
+    map.getContainer().style.cursor = "crosshair";
 
-        "crosshair";
+    document.getElementById(
+        "helpLocationText"
+    ).innerHTML =
+
+        "📍 Waiting for map selection...";
 
 }
 // =====================================================
 // 🐘 SAVE HELP LOCATION
 // =====================================================
 
+// =====================================================
+// 🐘 SAVE HELP LOCATION
+// =====================================================
+
 function saveHelpLocation(latlng){
 
-    window.helpLocation={
+    // ============================================
+    // EXIT MAP SELECTION MODE
+    // ============================================
 
-        lat:latlng.lat,
+    window.mapAction = null;
 
-        lon:latlng.lng
+    map.getContainer().style.cursor = "";
+
+    // ============================================
+    // SAVE LOCATION
+    // ============================================
+
+    window.helpLocation = {
+
+        lat : latlng.lat,
+
+        lon : latlng.lng
 
     };
 
-    // ----------------------------------------
-    // Remove previous temporary marker
-    // ----------------------------------------
+    // ============================================
+    // REMOVE PREVIOUS TEMP MARKER
+    // ============================================
 
     if(window.helpMarker){
 
         map.removeLayer(
-
             window.helpMarker
-
         );
+
+        window.helpMarker = null;
 
     }
 
-    // ----------------------------------------
-    // Temporary marker
-    // ----------------------------------------
+    // ============================================
+    // CREATE TEMP MARKER
+    // (Replace elephantIcon with your existing icon
+    // variable if available)
+    // ============================================
 
-    window.helpMarker=L.marker(
+    if(typeof elephantIcon !== "undefined"){
 
-        [
+        window.helpMarker = L.marker(
 
-            latlng.lat,
+            [
 
-            latlng.lng
+                latlng.lat,
 
-        ]
+                latlng.lng
 
-    ).addTo(map);
+            ],
 
-    // ----------------------------------------
-    // Update popup
-    // ----------------------------------------
+            {
 
-    const box=
+                icon: elephantIcon
 
-        document.getElementById(
+            }
 
-            "helpLocationText"
+        ).addTo(map);
 
-        );
+    }else{
+
+        window.helpMarker = L.marker(
+
+            [
+
+                latlng.lat,
+
+                latlng.lng
+
+            ]
+
+        ).addTo(map);
+
+    }
+
+    // ============================================
+    // UPDATE LOCATION TEXT
+    // ============================================
+
+    const box = document.getElementById(
+        "helpLocationText"
+    );
 
     if(box){
 
-        box.innerHTML=
+        box.innerHTML =
 
-        "📍 Manual Location Selected<br>"+
+            "✅ Manual Location Selected<br>" +
 
-        latlng.lat.toFixed(6)+
+            latlng.lat.toFixed(6) +
 
-        ", "+
+            ", " +
 
-        latlng.lon?.toFixed?.(6);
+            latlng.lng.toFixed(6);
 
     }
 
+    // ============================================
+    // UPDATE SELECT BUTTON
+    // ============================================
+
+    const btn = document.querySelector(
+
+        "#help-modal .btn-blue"
+
+    );
+
+    if(btn){
+
+        btn.innerHTML =
+
+            "✔ LOCATION SELECTED";
+
+        btn.disabled = true;
+
+        btn.style.opacity = "0.7";
+
+    }
+
+    // ============================================
+    // LOG
+    // ============================================
+
+    console.log(
+
+        "🐘 HELP LOCATION",
+
+        window.helpLocation
+
+    );
+
+    // ============================================
+    // TOAST
+    // ============================================
+
     showToast(
 
-        "✅ Help location selected"
+        "✅ Incident location selected"
 
     );
 
