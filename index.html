@@ -55942,25 +55942,58 @@ function useCurrentHelpLocation(){
 // 📍 SELECT INCIDENT LOCATION
 // ======================================================
 
+// =====================================================
+// 📍 SELECT INCIDENT LOCATION
+// =====================================================
+
 function startHelpMapSelection(){
 
     closeEnterpriseTooltipFully?.();
 
+    // ============================================
+    // ENTER MAP SELECTION MODE
+    // ============================================
+
     window.mapAction = "HELP_LOCATION";
+
+    // ============================================
+    // HIDE HELP MODAL
+    // ============================================
+
+    const modal = document.getElementById(
+        "help-modal"
+    );
+
+    if(modal){
+
+        modal.style.display = "none";
+
+    }
+
+    // ============================================
+    // CHANGE CURSOR
+    // ============================================
+
+    map.getContainer().style.cursor =
+        "crosshair";
+
+    // ============================================
+    // USER MESSAGE
+    // ============================================
 
     showToast(
         "📍 Tap elephant location on map"
     );
 
-    map.getContainer().style.cursor = "crosshair";
-
-    document.getElementById(
-        "helpLocationText"
-    ).innerHTML =
-
-        "📍 Waiting for map selection...";
+    console.log(
+        "📍 HELP LOCATION MODE ENABLED"
+    );
 
 }
+// =====================================================
+// 🐘 SAVE HELP LOCATION
+// =====================================================
+
 // =====================================================
 // 🐘 SAVE HELP LOCATION
 // =====================================================
@@ -56007,8 +56040,6 @@ function saveHelpLocation(latlng){
 
     // ============================================
     // CREATE TEMP MARKER
-    // (Replace elephantIcon with your existing icon
-    // variable if available)
     // ============================================
 
     if(typeof elephantIcon !== "undefined"){
@@ -56016,34 +56047,43 @@ function saveHelpLocation(latlng){
         window.helpMarker = L.marker(
 
             [
-
                 latlng.lat,
-
                 latlng.lng
-
             ],
 
             {
-
-                icon: elephantIcon
-
+                icon : elephantIcon
             }
 
         ).addTo(map);
 
-    }else{
+    }
+    else{
 
         window.helpMarker = L.marker(
 
             [
-
                 latlng.lat,
-
                 latlng.lng
-
             ]
 
         ).addTo(map);
+
+    }
+
+    // ============================================
+    // SHOW MODAL AGAIN
+    // ============================================
+
+    const modal = document.getElementById(
+        "help-modal"
+    );
+
+    if(modal){
+
+        modal.style.display = "block";
+
+        modal.style.pointerEvents = "auto";
 
     }
 
@@ -56070,24 +56110,21 @@ function saveHelpLocation(latlng){
     }
 
     // ============================================
-    // UPDATE SELECT BUTTON
+    // UPDATE MAP BUTTON
     // ============================================
 
-    const btn = document.querySelector(
-
+    const mapBtn = document.querySelector(
         "#help-modal .btn-blue"
-
     );
 
-    if(btn){
+    if(mapBtn){
 
-        btn.innerHTML =
-
+        mapBtn.innerHTML =
             "✔ LOCATION SELECTED";
 
-        btn.disabled = true;
+        mapBtn.disabled = true;
 
-        btn.style.opacity = "0.7";
+        mapBtn.style.opacity = "0.7";
 
     }
 
@@ -56096,11 +56133,8 @@ function saveHelpLocation(latlng){
     // ============================================
 
     console.log(
-
         "🐘 HELP LOCATION",
-
         window.helpLocation
-
     );
 
     // ============================================
@@ -56108,9 +56142,7 @@ function saveHelpLocation(latlng){
     // ============================================
 
     showToast(
-
         "✅ Incident location selected"
-
     );
 
 }
