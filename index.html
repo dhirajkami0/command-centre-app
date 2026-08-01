@@ -56161,6 +56161,10 @@ function saveHelpLocation(latlng){
     alert("Call Control Room");
 
 }
+// =====================================================
+// 🐘 SUBMIT HELP REQUEST
+// =====================================================
+
 async function submitHelpRequest(){
 
     if(!window.helpLocation){
@@ -56182,7 +56186,30 @@ async function submitHelpRequest(){
 
     try{
 
+        const {
+
+            doc,
+            setDoc,
+            serverTimestamp
+
+        } = window.fb;
+
+        // ============================================
+        // TEMP DOCUMENT ID
+        // (Replace later with dynamic counter ID)
+        // ============================================
+
+        const docId =
+
+            "HELP_" +
+
+            Date.now();
+
         const incident = {
+
+            incidentId :
+
+                docId,
 
             type : "HELP",
 
@@ -56191,35 +56218,42 @@ async function submitHelpRequest(){
             priority : "HIGH",
 
             createdAt :
-            firebase.firestore.FieldValue.serverTimestamp(),
 
-            reporterType : "VILLAGER",
+                serverTimestamp(),
+
+            reporterType :
+
+                "VILLAGER",
 
             reporterName :
-            window.userProfile?.rawName || "",
+
+                window.userProfile?.rawName || "",
 
             reporterMobile :
-            window.userProfile?.mobile || "",
+
+                window.userProfile?.mobile || "",
 
             situation :
 
-            document.getElementById(
-                "helpSituation"
-            ).value,
+                document.getElementById(
+                    "helpSituation"
+                ).value,
 
             elephantCount :
 
-            document.getElementById(
-                "helpCount"
-            ).value,
+                document.getElementById(
+                    "helpCount"
+                ).value,
 
             location : {
 
                 lat :
-                window.helpLocation.lat,
+
+                    window.helpLocation.lat,
 
                 lon :
-                window.helpLocation.lon
+
+                    window.helpLocation.lon
 
             },
 
@@ -56251,20 +56285,28 @@ async function submitHelpRequest(){
 
         };
 
-        await firebase
+        const ref = doc(
 
-        .firestore()
+            window.db,
 
-        .collection(
-            "hec_incidents"
-        )
+            "hec_incidents",
 
-        .add(
+            docId
+
+        );
+
+        await setDoc(
+
+            ref,
+
             incident
+
         );
 
         showToast(
+
             "✅ Help Request Submitted"
+
         );
 
         closeHelpForm();
@@ -56276,7 +56318,9 @@ async function submitHelpRequest(){
         console.error(err);
 
         alert(
+
             "Unable to submit request."
+
         );
 
     }
@@ -56284,6 +56328,7 @@ async function submitHelpRequest(){
     btn.disabled = false;
 
     btn.innerHTML =
+
         "🚨 SEND REQUEST";
 
 }
