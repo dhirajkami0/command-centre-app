@@ -9135,6 +9135,29 @@ if(
     );
 
 }
+
+// ==============================================
+// 🚨 START HEC REALTIME LISTENER
+// ==============================================
+
+if(
+
+    typeof startHECListener ===
+    "function"
+
+){
+
+    console.log(
+        "🚨 Starting HEC realtime..."
+    );
+
+    await startHECListener();
+
+    console.log(
+        "✅ HEC realtime active"
+    );
+
+}
         /*==============================================
           SIGHTING INTELLIGENCE STORE
 
@@ -38730,6 +38753,120 @@ const marker =
 
 }
 
+
+
+  // =====================================================
+// 🚨 START HEC REALTIME LISTENER
+// =====================================================
+
+window.hecListener = null;
+
+async function startHECListener(){
+
+    try{
+
+        // -----------------------------
+        // Already running?
+        // -----------------------------
+
+        if(window.hecListener){
+
+            console.log(
+                "⏸ HEC listener already active"
+            );
+
+            return;
+
+        }
+
+        const {
+
+            collection,
+            onSnapshot
+
+        } = window.fb;
+
+        console.log(
+            "🚨 Starting HEC listener..."
+        );
+
+        window.hecListener = onSnapshot(
+
+            collection(
+
+                window.db,
+
+                "hec_incidents"
+
+            ),
+
+               function(snapshot){
+
+        console.log(
+
+            "🔄 HEC realtime update"
+
+        );
+
+        loadHECIncidents();
+
+    }
+
+);
+
+            }
+
+        );
+
+        console.log(
+            "✅ HEC realtime active"
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            err
+        );
+
+    }
+
+}
+
+    // =====================================================
+// REMOVE MARKER
+// =====================================================
+
+function removeHECMarker(e){
+
+    const key =
+
+        String(
+
+            e.incidentId ||
+
+            e.firestore_id
+
+        );
+
+    if(
+
+        window.hecMarkers[key]
+
+    ){
+
+        window.hecLayer.removeLayer(
+
+            window.hecMarkers[key]
+
+        );
+
+        delete window.hecMarkers[key];
+
+    }
+
+}
     // =====================================================
 // 🟢 ACCEPT HEC INCIDENT
 // =====================================================
@@ -57284,8 +57421,7 @@ async function submitHelpRequest(){
         } = window.fb;
 
         // ============================================
-        // TEMP DOCUMENT ID
-        // (Replace later with dynamic counter ID)
+        // DOCUMENT ID
         // ============================================
 
         const docId =
@@ -57294,9 +57430,17 @@ async function submitHelpRequest(){
 
             Date.now();
 
+        // ============================================
+        // INCIDENT OBJECT
+        // ============================================
+
         const incident = {
 
             incidentId :
+
+                docId,
+
+            firestore_id :
 
                 docId,
 
@@ -57374,6 +57518,10 @@ async function submitHelpRequest(){
 
         };
 
+        // ============================================
+        // SAVE TO FIRESTORE
+        // ============================================
+
         const ref = doc(
 
             window.db,
@@ -57392,6 +57540,36 @@ async function submitHelpRequest(){
 
         );
 
+        // ============================================
+        // SHOW MARKER IMMEDIATELY
+        // ============================================
+
+        try{
+
+            addOrUpdateHECMarker(
+
+                incident
+
+            );
+
+        }
+
+        catch(err){
+
+            console.warn(
+
+                "Immediate HEC marker failed",
+
+                err
+
+            );
+
+        }
+
+        // ============================================
+        // SUCCESS
+        // ============================================
+
         showToast(
 
             "✅ Help Request Submitted"
@@ -57404,7 +57582,11 @@ async function submitHelpRequest(){
 
     catch(err){
 
-        console.error(err);
+        console.error(
+
+            err
+
+        );
 
         alert(
 
