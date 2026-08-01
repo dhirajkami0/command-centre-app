@@ -9114,47 +9114,70 @@ setTimeout(() => {
         );
 
 // ==============================================
-// 🚨 LOAD HEC INCIDENTS
+// 🚨 LOAD HEC (ADMIN ONLY)
 // ==============================================
 
 if(
 
-    typeof loadHECIncidents ===
-    "function"
+    window.userProfile?.role === "ADMIN"
 
 ){
 
-    console.log(
-        "🚨 Loading HEC incidents..."
-    );
+    // ==========================================
+    // LOAD EXISTING INCIDENTS
+    // ==========================================
 
-    await loadHECIncidents();
+    if(
 
-    console.log(
-        "✅ HEC incidents loaded"
-    );
+        typeof loadHECIncidents ===
+        "function"
+
+    ){
+
+        console.log(
+            "🚨 Loading HEC incidents..."
+        );
+
+        await loadHECIncidents();
+
+        console.log(
+            "✅ HEC incidents loaded"
+        );
+
+    }
+
+    // ==========================================
+    // START REALTIME LISTENER
+    // ==========================================
+
+    if(
+
+        typeof startHECListener ===
+        "function"
+
+    ){
+
+        console.log(
+            "🚨 Starting HEC realtime..."
+        );
+
+        await startHECListener();
+
+        console.log(
+            "✅ HEC realtime active"
+        );
+
+    }
 
 }
-
-// ==============================================
-// 🚨 START HEC REALTIME LISTENER
-// ==============================================
-
-if(
-
-    typeof startHECListener ===
-    "function"
-
-){
+else{
 
     console.log(
-        "🚨 Starting HEC realtime..."
-    );
 
-    await startHECListener();
+        "⏭ HEC disabled for role:",
 
-    console.log(
-        "✅ HEC realtime active"
+        window.userProfile?.role
+
     );
 
 }
