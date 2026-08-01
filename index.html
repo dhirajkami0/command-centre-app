@@ -12079,7 +12079,8 @@ window.historyLayers = {
   btr:
     L.layerGroup()
 };
-
+window.hecLayer =
+    L.layerGroup().addTo(map);
 // ======================================
 // 📜 ADD HISTORY LAYERS TO MAP
 // ======================================
@@ -25507,6 +25508,7 @@ window.helpLocation = null;
 window.helpMarker = null;
 
 window.mapAction = null;
+    window.hecMarkers = {};
 window.compartmentLayerVisible = true;
 // ======================================================
 // 🌍 ACTIVE LAYERS
@@ -34695,19 +34697,14 @@ async function loadSightings(){
     // FIRESTORE MODULES
     // =====================================================
 
-    const {
+const {
 
-      getFirestore,
-      collection,
-      getDocs
+    collection,
+    getDocs
 
-    } = await import(
-      "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-    );
+} = window.fb;
 
-
-    const db =
-      getFirestore();
+const db = window.db;
 
 
     // =====================================================
@@ -37764,6 +37761,427 @@ async function submitMoveForm(){
 
 
   console.groupEnd();
+
+}
+
+    // =====================================================
+// 🚨 LOAD HEC INCIDENTS
+// =====================================================
+
+async function loadHECIncidents(){
+
+    try{
+
+        // =============================================
+        // INIT
+        // =============================================
+
+        if(!window.hecInitialized){
+
+window.hecLayer?.clearLayers?.();
+            window.hecInitialized = true;
+
+        }
+
+        window.hecMarkers =
+            window.hecMarkers || {};
+
+        // =============================================
+        // FIRESTORE
+        // =============================================
+
+        const {
+
+            getFirestore,
+            collection,
+            getDocs
+
+        } = await import(
+
+            "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+
+        );
+
+        const db =
+            getFirestore();
+
+        console.log(
+            "🚨 Loading HEC incidents..."
+        );
+
+        const snapshot =
+            await getDocs(
+
+                collection(
+
+                    db,
+
+                    "hec_incidents"
+
+                )
+
+            );
+
+        const incidents = [];
+
+        snapshot.forEach(
+
+            function(docSnap){
+
+                incidents.push({
+
+                    ...docSnap.data(),
+
+                    firestore_id :
+                        docSnap.id
+
+                });
+
+            }
+
+        );
+
+        console.log(
+
+            "🚨 HEC Loaded:",
+
+            incidents.length
+
+        );
+              incidents.forEach(
+
+            function(e){
+
+                try{
+
+                    const lat =
+
+                        Number(
+
+                            e.location?.lat
+
+                        );
+
+                    const lon =
+
+                        Number(
+
+                            e.location?.lon
+
+                        );
+
+                    if(
+
+                        !Number.isFinite(lat) ||
+
+                        !Number.isFinite(lon)
+
+                    ){
+
+                        return;
+
+                    }
+
+                    const key =
+
+                        String(
+
+                            e.incidentId ||
+
+                            e.firestore_id
+
+                        );
+
+                    const status =
+
+                        String(
+
+                            e.status ||
+
+                            "WAITING"
+
+                        )
+
+                        .toUpperCase();
+
+                    if(
+
+                        status === "CLOSED"
+
+                    ){
+
+                        if(
+
+                            window.hecMarkers[key]
+
+                        ){
+
+window.hecLayer.removeLayer(
+    window.hecMarkers[key]
+);
+
+                            delete window.hecMarkers[key];
+
+                        }
+
+                        return;
+
+                    }
+                                      let colour =
+                        "#ff0000";
+
+                    if(
+
+                        status === "WAITING"
+
+                    ){
+
+                        colour = "#ff0000";
+
+                    }
+
+                    else if(
+
+                        status === "ACCEPTED"
+
+                    ){
+
+                        colour = "#ff9800";
+
+                    }
+
+                    else if(
+
+                        status === "ARRIVED"
+
+                    ){
+
+                        colour = "#2196f3";
+
+                    }
+
+                        const icon =
+
+                        L.divIcon({
+
+                            className : "",
+
+                            html :
+
+`
+<div class="markerWrap">
+
+    <div class="radarPulse riskPulseRed"></div>
+
+    <div class="radarPulse delay1 riskPulseRed"></div>
+
+    <div class="radarPulse delay2 riskPulseRed"></div>
+
+    <div class="markerCore">
+
+        <span
+        style="
+            font-size:22px;
+            color:${colour};
+            text-shadow:0 0 5px black;
+        ">
+        🚨
+        </span>
+
+    </div>
+
+</div>
+`,
+
+                            iconSize : [
+
+                                30,
+
+                                30
+
+                            ],
+
+                            iconAnchor : [
+
+                                15,
+
+                                15
+
+                            ]
+
+                        });
+
+                                      const popup =
+
+`
+<div
+style="
+font-family:Segoe UI;
+min-width:260px;
+padding:10px;
+">
+
+<div
+style="
+font-size:15px;
+font-weight:bold;
+color:red;
+margin-bottom:8px;
+">
+
+🚨 HEC INCIDENT
+
+</div>
+
+<hr>
+
+<b>ID :</b>
+
+${key}
+
+<br>
+
+<b>Status :</b>
+
+${status}
+
+<br>
+
+<b>Situation :</b>
+
+${e.situation || ""}
+
+<br>
+
+<b>Elephants :</b>
+
+${e.elephantCount || ""}
+
+<br>
+
+<b>Reporter :</b>
+
+${e.reporterName || ""}
+
+<br>
+
+<b>Mobile :</b>
+
+${e.reporterMobile || ""}
+
+<br>
+
+<br>
+
+<button
+
+onclick="openHECResponse('${key}')"
+
+style="
+width:100%;
+padding:10px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+RESPOND
+
+</button>
+
+</div>
+`;
+
+
+                                      if(
+
+                        window.hecMarkers[key]
+
+                    ){
+
+window.hecLayer.removeLayer(
+    window.hecMarkers[key]
+);
+
+                    }
+
+                    const marker =
+
+                        L.marker(
+
+                            [
+
+                                lat,
+
+                                lon
+
+                            ],
+
+                            {
+
+                                icon
+
+                            }
+
+                        )
+
+                        .bindPopup(
+
+                            popup
+
+                        )
+
+.addTo(
+    window.hecLayer
+);
+
+                    window.hecMarkers[key] =
+                        marker;
+
+                }
+
+                catch(err){
+
+                    console.error(
+
+                        err
+
+                    );
+
+                }
+
+            }
+
+        );
+
+              console.log(
+
+            "✅ HEC markers:",
+
+            Object.keys(
+
+                window.hecMarkers
+
+            ).length
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "HEC Load Error",
+
+            err
+
+        );
+
+    }
 
 }
     // ============================================================
