@@ -9119,7 +9119,11 @@ setTimeout(() => {
 
 if(
 
-    window.userProfile?.role === "ADMIN"
+    String(
+
+        window.userProfile?.role || ""
+
+    ).toUpperCase() === "ADMIN"
 
 ){
 
@@ -37901,7 +37905,11 @@ async function loadHECIncidents(){
 
         if(
 
-            window.userProfile?.role !== "ADMIN"
+            String(
+
+                window.userProfile?.role || ""
+
+            ).trim().toUpperCase() !== "ADMIN"
 
         ){
 
