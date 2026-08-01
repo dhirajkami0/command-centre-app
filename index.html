@@ -56943,22 +56943,78 @@ function calculateTotal(){
 
   document.getElementById("f-total").value = m + f + u + c;
 }
-    function openHelpForm(){
+// =====================================================
+// 🚨 OPEN HELP FORM
+// =====================================================
+
+function openHelpForm(){
 
     const modal =
+
         document.getElementById(
             "help-modal"
         );
 
-    if(!modal) return;
+    if(!modal){
 
-    modal.style.display="block";
+        return;
+
+    }
+
+    modal.style.display = "block";
+
+    // ---------------------------------------
+    // Default = Current Location
+    // ---------------------------------------
+
+    document.querySelector(
+
+        'input[name="helpLocationMode"][value="CURRENT"]'
+
+    ).checked = true;
+
+    // ---------------------------------------
+    // Reset Current Location button
+    // ---------------------------------------
+
+    const btn =
+
+        document.querySelector(
+
+            "#help-modal .btn-green"
+
+        );
+
+    if(btn){
+
+        btn.disabled = false;
+
+        btn.innerHTML =
+
+            "✔ USE CURRENT LOCATION";
+
+        btn.style.opacity = "1";
+
+    }
+
+    // ---------------------------------------
+    // Reset display
+    // ---------------------------------------
 
     document.getElementById(
-        "helpLocationText"
-    ).innerHTML="Waiting...";
 
-    useCurrentHelpLocation();
+        "helpLocationText"
+
+    ).innerHTML =
+
+        "📡 Getting GPS...";
+
+    // ---------------------------------------
+    // Let changeHelpLocationMode()
+    // handle everything
+    // ---------------------------------------
+
+    changeHelpLocationMode();
 
 }
 
@@ -56997,21 +57053,87 @@ function changeHelpLocationMode(){
 
         );
 
+if(
+
+    mode === "CURRENT"
+
+){
+
+    currentPanel.style.display = "";
+
+    villagePanel.style.display = "none";
+
+    // Use cached GPS immediately if available
+
     if(
 
-        mode === "CURRENT"
+        window.latestGps &&
+
+        Number.isFinite(window.latestGps.lat) &&
+
+        Number.isFinite(window.latestGps.lng)
 
     ){
 
-        currentPanel.style.display = "";
-
-        villagePanel.style.display = "none";
-
         useCurrentHelpLocation();
 
-        return;
+    }
+
+    else{
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(pos){
+
+                window.latestGps = {
+
+                    lat :
+
+                        pos.coords.latitude,
+
+                    lng :
+
+                        pos.coords.longitude,
+
+                    accuracy :
+
+                        pos.coords.accuracy
+
+                };
+
+                useCurrentHelpLocation();
+
+            },
+
+            function(){
+
+                document.getElementById(
+
+                    "helpLocationText"
+
+                ).innerHTML =
+
+                    "❌ GPS unavailable";
+
+            },
+
+            {
+
+                enableHighAccuracy : true,
+
+                timeout : 10000,
+
+                maximumAge : 30000
+
+            }
+
+        );
 
     }
+
+    return;
+
+}
 
     if(
 
