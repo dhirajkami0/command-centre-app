@@ -56161,35 +56161,130 @@ function saveHelpLocation(latlng){
     alert("Call Control Room");
 
 }
-function submitHelpRequest(){
+async function submitHelpRequest(){
 
     if(!window.helpLocation){
 
-        alert("Please choose Current Location or Select on Map.");
+        alert(
+            "Please select incident location."
+        );
 
         return;
 
     }
 
-    const situation =
-        document.getElementById("helpSituation").value;
+    const btn = event.target;
 
-    const count =
-        document.getElementById("helpCount").value;
+    btn.disabled = true;
 
-    console.log({
+    btn.innerHTML =
+        "Submitting...";
 
-        location: window.helpLocation,
+    try{
 
-        situation,
+        const incident = {
 
-        count
+            type : "HELP",
 
-    });
+            status : "WAITING",
 
-    alert("Help Request Submitted");
+            priority : "HIGH",
 
-    closeHelpForm();
+            createdAt :
+            firebase.firestore.FieldValue.serverTimestamp(),
+
+            reporterType : "VILLAGER",
+
+            reporterName :
+            window.userProfile?.rawName || "",
+
+            reporterMobile :
+            window.userProfile?.mobile || "",
+
+            situation :
+
+            document.getElementById(
+                "helpSituation"
+            ).value,
+
+            elephantCount :
+
+            document.getElementById(
+                "helpCount"
+            ).value,
+
+            location : {
+
+                lat :
+                window.helpLocation.lat,
+
+                lon :
+                window.helpLocation.lon
+
+            },
+
+            photo : "",
+
+            voice : "",
+
+            village : "",
+
+            beat : "",
+
+            range : "",
+
+            division : "",
+
+            landmark : "",
+
+            assignedTeam : "",
+
+            acceptedBy : "",
+
+            acceptedTime : null,
+
+            arrivedTime : null,
+
+            operationStarted : null,
+
+            closedTime : null
+
+        };
+
+        await firebase
+
+        .firestore()
+
+        .collection(
+            "hec_incidents"
+        )
+
+        .add(
+            incident
+        );
+
+        showToast(
+            "✅ Help Request Submitted"
+        );
+
+        closeHelpForm();
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+        alert(
+            "Unable to submit request."
+        );
+
+    }
+
+    btn.disabled = false;
+
+    btn.innerHTML =
+        "🚨 SEND REQUEST";
 
 }
           /* 3. Open Form + GPS */
