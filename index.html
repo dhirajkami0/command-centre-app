@@ -5799,6 +5799,42 @@ width:56px;
 }
 
 }
+
+    .hec-popup
+.leaflet-popup-content-wrapper{
+
+    background:#ffffff !important;
+
+    color:#222 !important;
+
+    border-radius:16px !important;
+
+    box-shadow:
+        0 8px 28px rgba(0,0,0,.35) !important;
+
+    padding:0 !important;
+
+}
+
+.hec-popup
+.leaflet-popup-content{
+
+    margin:0 !important;
+
+    color:#222 !important;
+
+    font-family:Segoe UI;
+
+    line-height:1.5;
+
+}
+
+.hec-popup
+.leaflet-popup-tip{
+
+    background:#ffffff !important;
+
+}
   </style>
 </head>
 <body>
@@ -29033,19 +29069,40 @@ if(
 
   }
 
-  .leaflet-popup-tip-container{
+  .gis-hover-tooltip{
 
-    display:none !important;
+    background:
+        rgba(12,12,12,.78) !important;
 
-  }
+    border:none !important;
 
-  .leaflet-popup-content-wrapper{
+    box-shadow:
+        0 4px 18px rgba(0,0,0,.30) !important;
+
+}
+
+.planet-popup
+.leaflet-popup-content-wrapper{
 
     background:transparent !important;
 
     box-shadow:none !important;
 
-  }
+}
+
+.planet-loading-popup
+.leaflet-popup-content-wrapper{
+
+    background:#fff !important;
+
+}
+
+.planet-popup
+.leaflet-popup-tip-container{
+
+    display:block !important;
+
+}
 
   .leaflet-interactive:focus{
 
@@ -38507,35 +38564,19 @@ window.hecLayer.removeLayer(
 
                     }
 
-                    const marker =
-
-                        L.marker(
-
-                            [
-
-                                lat,
-
-                                lon
-
-                            ],
-
-                            {
-
-                                icon
-
-                            }
-
-                        )
-
-                        .bindPopup(
-
-                            popup
-
-                        )
-
-.addTo(
-    window.hecLayer
-);
+const marker =
+    L.marker(
+        [lat, lon],
+        { icon }
+    )
+    .bindPopup(
+        popup,
+        {
+            className : "hec-popup",
+            maxWidth  : 360
+        }
+    )
+    .addTo(window.hecLayer);
 
                     window.hecMarkers[key] =
                         marker;
