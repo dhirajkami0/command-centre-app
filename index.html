@@ -25610,8 +25610,27 @@ window.allCompartmentFeatures = [];
 // ============================================================
 
 window.helpLocation = null;
+// =====================================================
+// 👤 REPORTER LOCATION
+// =====================================================
 
-window.helpMarker = null;
+
+
+window.reporterLocationResolved = {
+
+    village : "",
+
+    block : "",
+
+    beat : "",
+
+    range : "",
+
+    division : "",
+
+    villageCode : ""
+
+};window.helpMarker = null;
 
 window.mapAction = null;
 
@@ -57196,6 +57215,10 @@ function calculateTotal(){
 // 🚨 OPEN HELP FORM
 // =====================================================
 
+// =====================================================
+// 🚨 OPEN HELP FORM
+// =====================================================
+
 function openHelpForm(){
 
     const modal =
@@ -57211,6 +57234,68 @@ function openHelpForm(){
     }
 
     modal.style.display = "block";
+
+    // =====================================================
+    // RESET REPORTER LOCATION (Resolved Fields Only)
+    // =====================================================
+
+    window.reporterLocationResolved = {
+
+        village : "",
+
+        block : "",
+
+        beat : "",
+
+        range : "",
+
+        division : "",
+
+        villageCode : ""
+
+    };
+
+    // =====================================================
+    // REPORTER GPS = LATEST LIVE GPS
+    // =====================================================
+
+    if(
+
+        window.latestgps &&
+
+        Number.isFinite(
+
+            Number(window.latestgps.lat)
+
+        ) &&
+
+        Number.isFinite(
+
+            Number(window.latestgps.lon)
+
+        )
+
+    ){
+
+        console.log(
+
+            "📍 Reporter GPS Ready",
+
+            window.latestgps
+
+        );
+
+    }
+
+    else{
+
+        console.warn(
+
+            "⚠ Reporter GPS not available (window.latestgps)"
+
+        );
+
+    }
 
     // ---------------------------------------
     // Default = Current Location
@@ -57688,6 +57773,10 @@ function hideHelpLoading(){
 // ❌ CLOSE HELP FORM
 // =====================================================
 
+// =====================================================
+// ❌ CLOSE HELP FORM
+// =====================================================
+
 function closeHelpForm(){
 
     // ============================================
@@ -57705,25 +57794,45 @@ function closeHelpForm(){
     }
 
     // ============================================
+    // HIDE LOADING (IF OPEN)
+    // ============================================
+
+    try{
+
+        hideHelpLoading();
+
+    }
+
+    catch(e){}
+
+    // ============================================
     // EXIT MAP SELECTION MODE
     // ============================================
 
     window.mapAction = null;
 
-    if(window.map && map.getContainer){
+    if(
+
+        window.map &&
+
+        map.getContainer
+
+    ){
 
         map.getContainer().style.cursor = "";
 
     }
 
     // ============================================
-    // REMOVE TEMP LOCATION MARKER
+    // REMOVE TEMP INCIDENT MARKER
     // ============================================
 
     if(window.helpMarker){
 
         map.removeLayer(
+
             window.helpMarker
+
         );
 
         window.helpMarker = null;
@@ -57731,22 +57840,68 @@ function closeHelpForm(){
     }
 
     // ============================================
-    // CLEAR SAVED LOCATION
+    // CLEAR INCIDENT GPS
     // ============================================
 
     window.helpLocation = null;
 
     // ============================================
-    // RESET LOCATION TEXT
+    // CLEAR REPORTER LOCATION
+    // (GPS remains in window.latestgps)
     // ============================================
 
-    const locationText = document.getElementById(
-        "helpLocationText"
-    );
+    window.reporterLocationResolved = {
+
+        village : "",
+
+        block : "",
+
+        beat : "",
+
+        range : "",
+
+        division : "",
+
+        villageCode : ""
+
+    };
+
+    // ============================================
+    // CLEAR INCIDENT RESOLVED LOCATION
+    // ============================================
+
+    window.incidentLocationResolved = {
+
+        village : "",
+
+        block : "",
+
+        beat : "",
+
+        range : "",
+
+        division : "",
+
+        villageCode : ""
+
+    };
+
+    // ============================================
+    // RESET LOCATION DISPLAY
+    // ============================================
+
+    const locationText =
+
+        document.getElementById(
+
+            "helpLocationText"
+
+        );
 
     if(locationText){
 
         locationText.innerHTML =
+
             "Waiting for location...";
 
     }
@@ -57755,18 +57910,23 @@ function closeHelpForm(){
     // RESET CURRENT LOCATION BUTTON
     // ============================================
 
-    const gpsBtn = document.querySelector(
-        "#help-modal .btn-green"
-    );
+    const gpsBtn =
+
+        document.querySelector(
+
+            "#help-modal .btn-green"
+
+        );
 
     if(gpsBtn){
-
-        gpsBtn.innerHTML =
-            "✔ USE CURRENT LOCATION";
 
         gpsBtn.disabled = false;
 
         gpsBtn.style.opacity = "1";
+
+        gpsBtn.innerHTML =
+
+            "✔ USE CURRENT LOCATION";
 
     }
 
@@ -57774,28 +57934,115 @@ function closeHelpForm(){
     // RESET MAP BUTTON
     // ============================================
 
-    const mapBtn = document.querySelector(
-        "#help-modal .btn-blue"
-    );
+    const mapBtn =
+
+        document.querySelector(
+
+            "#help-modal .btn-blue"
+
+        );
 
     if(mapBtn){
-
-        mapBtn.innerHTML =
-            "📍 SELECT ON MAP";
 
         mapBtn.disabled = false;
 
         mapBtn.style.opacity = "1";
 
+        mapBtn.innerHTML =
+
+            "📍 SELECT ON MAP";
+
     }
 
     // ============================================
-    // RESET SITUATION
+    // RESET VILLAGE MODE
     // ============================================
 
-    const situation = document.getElementById(
-        "helpSituation"
-    );
+    const villageRadio =
+
+        document.querySelector(
+
+            'input[name="helpLocationMode"][value="VILLAGE"]'
+
+        );
+
+    if(villageRadio){
+
+        villageRadio.checked = false;
+
+    }
+
+    // ============================================
+    // RESET CURRENT MODE
+    // ============================================
+
+    const currentRadio =
+
+        document.querySelector(
+
+            'input[name="helpLocationMode"][value="CURRENT"]'
+
+        );
+
+    if(currentRadio){
+
+        currentRadio.checked = true;
+
+    }
+
+    // ============================================
+    // RESET FORM FIELDS
+    // ============================================
+
+    const village =
+
+        document.getElementById(
+
+            "helpVillage"
+
+        );
+
+    if(village){
+
+        village.value = "";
+
+    }
+
+    const landmark =
+
+        document.getElementById(
+
+            "helpLandmark"
+
+        );
+
+    if(landmark){
+
+        landmark.value = "";
+
+    }
+
+    const otherLandmark =
+
+        document.getElementById(
+
+            "helpOtherLandmark"
+
+        );
+
+    if(otherLandmark){
+
+        otherLandmark.value = "";
+
+    }
+
+    const situation =
+
+        document.getElementById(
+
+            "helpSituation"
+
+        );
 
     if(situation){
 
@@ -57803,13 +58050,13 @@ function closeHelpForm(){
 
     }
 
-    // ============================================
-    // RESET ELEPHANT COUNT
-    // ============================================
+    const count =
 
-    const count = document.getElementById(
-        "helpCount"
-    );
+        document.getElementById(
+
+            "helpCount"
+
+        );
 
     if(count){
 
@@ -57818,16 +58065,99 @@ function closeHelpForm(){
     }
 
     // ============================================
-    // FUTURE RESET PLACEHOLDERS
+    // RESET PHOTO
     // ============================================
 
-    // Voice recording
-    window.helpVoiceBlob = null;
+    window.helpPhotoBlob = null;
 
-    // Photo
     window.helpPhotoFile = null;
 
-    // Call status
+    window.helpPhotoBase64 = "";
+
+    window.helpPhotoFileName = "";
+
+    window.helpPhotoMimeType = "";
+
+    window.helpPhotoUrl = "";
+
+    const photoInput =
+
+        document.getElementById(
+
+            "helpPhotoInput"
+
+        );
+
+    if(photoInput){
+
+        photoInput.value = "";
+
+    }
+
+    const preview =
+
+        document.getElementById(
+
+            "helpPhotoPreview"
+
+        );
+
+    if(preview){
+
+        preview.style.display = "none";
+
+    }
+
+    const img =
+
+        document.getElementById(
+
+            "helpPhotoImage"
+
+        );
+
+    if(img){
+
+        img.removeAttribute(
+
+            "src"
+
+        );
+
+    }
+
+    // ============================================
+    // RESET VOICE
+    // ============================================
+
+    window.helpVoiceBlob = null;
+
+    window.helpVoiceUri = "";
+
+    window.helpVoiceName = "";
+
+    window.helpVoiceDuration = 0;
+
+    const voiceLabel =
+
+        document.getElementById(
+
+            "helpVoiceStatus"
+
+        );
+
+    if(voiceLabel){
+
+        voiceLabel.innerHTML =
+
+            "No voice recorded";
+
+    }
+
+    // ============================================
+    // RESET CALL FLAG
+    // ============================================
+
     window.helpCallStarted = false;
 
     // ============================================
@@ -57835,7 +58165,9 @@ function closeHelpForm(){
     // ============================================
 
     console.log(
-        "❌ Help form closed and reset."
+
+        "✅ Help Form Reset Complete"
+
     );
 
 }
@@ -58790,7 +59122,115 @@ async function submitHelpRequest(event){
             document.getElementById(
                 "helpOtherLandmark"
             )?.value || "";
+// ============================================================
+// 🌍 LOCATION MODE
+// ============================================================
 
+const locationMode =
+
+    document.querySelector(
+
+        'input[name="helpLocationMode"]:checked'
+
+    )?.value ||
+
+    "CURRENT";
+
+// ============================================================
+// 👤 REPORTER GPS
+// ============================================================
+
+const reporterLat =
+
+    Number(
+
+        window.latestgps?.lat
+
+    );
+
+const reporterLon =
+
+    Number(
+
+        window.latestgps?.lon
+
+    );
+
+// ============================================================
+// 🐘 INCIDENT GPS
+// ============================================================
+
+const incidentLat =
+
+    Number(
+
+        window.helpLocation?.lat
+
+    );
+
+const incidentLon =
+
+    Number(
+
+        window.helpLocation?.lon
+
+    );
+
+// ============================================================
+// VALIDATE
+// ============================================================
+
+if(
+
+    !Number.isFinite(
+
+        reporterLat
+
+    ) ||
+
+    !Number.isFinite(
+
+        reporterLon
+
+    )
+
+){
+
+    alert(
+
+        "Reporter GPS unavailable."
+
+    );
+
+    return;
+
+}
+
+if(
+
+    !Number.isFinite(
+
+        incidentLat
+
+    ) ||
+
+    !Number.isFinite(
+
+        incidentLon
+
+    )
+
+){
+
+    alert(
+
+        "Incident GPS unavailable."
+
+    );
+
+    return;
+
+}
         // ============================================================
         // STORAGE URLS
         // ============================================================
