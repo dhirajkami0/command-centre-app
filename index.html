@@ -39086,37 +39086,76 @@ async function startHECListener(){
                 "hec_incidents"
             ),
 
-function(snapshot){
-
+async function(snapshot){
     console.log(
 
         "🔄 HEC realtime update"
 
     );
 
-    snapshot.docChanges().forEach(
+for(
 
-        function(change){
+    const change of
 
-            if(
+    snapshot.docChanges()
 
-                change.type !== "added"
+){
 
-            ){
+    if(
 
-                return;
+        change.type !== "added"
 
-            }
+    ){
 
-            const incident = {
+        continue;
 
-                firestore_id :
+    }
 
-                    change.doc.id,
+    const incident = {
 
-                ...change.doc.data()
+        firestore_id :
 
-            };
+            change.doc.id,
+
+        ...change.doc.data()
+
+    };
+
+    if(
+
+        window.hecAlertCache[
+
+            incident.firestore_id
+
+        ]
+
+    ){
+
+        continue;
+
+    }
+
+    window.hecAlertCache[
+
+        incident.firestore_id
+
+    ] = true;
+
+    if(
+
+        incident.type === "HELP"
+
+    ){
+
+        await showNewHECAlert(
+
+            incident
+
+        );
+
+    }
+
+}
 
             if(
 
@@ -39148,11 +39187,11 @@ function(snapshot){
 
             ){
 
-                showNewHECAlert(
+await showNewHECAlert(
 
-                    incident
+    incident
 
-                );
+);
 
             }
 
@@ -39160,7 +39199,6 @@ function(snapshot){
 
     );
 
-    loadHECIncidents();
 
 }
         );
@@ -39184,11 +39222,37 @@ function(snapshot){
 // 🚨 NEW HEC ALERT
 // =====================================================
 
-function showNewHECAlert(
+async function showNewHECAlert(
 
     incident
 
 ){
+
+    // =====================================
+    // ADMIN ONLY
+    // =====================================
+
+    if(
+
+        String(
+
+            window.userProfile?.role ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase() !==
+
+        "ADMIN"
+
+    ){
+
+        return;
+
+    }
 
     console.log(
 
@@ -39222,13 +39286,13 @@ function showNewHECAlert(
 
     }
 
-    catch(e){
+    catch(err){
 
         console.warn(
 
             "Android Vibrate Failed",
 
-            e
+            err
 
         );
 
@@ -39268,13 +39332,13 @@ function showNewHECAlert(
 
     }
 
-    catch(e){
+    catch(err){
 
         console.warn(
 
             "Browser Vibrate Failed",
 
-            e
+            err
 
         );
 
@@ -39296,58 +39360,93 @@ function showNewHECAlert(
 
         audio.volume = 1;
 
-        audio.play();
+        await audio.play()
+
+        .catch(
+
+            err =>
+
+                console.warn(
+
+                    "Alarm Failed",
+
+                    err
+
+                )
+
+        );
 
     }
 
-    catch(e){
+    catch(err){
 
         console.warn(
 
             "Alarm Failed",
 
-            e
+            err
 
         );
 
     }
 
     // =====================================
-    // SHOW PROFESSIONAL POPUP
+    // REFRESH HEC MARKERS
+    // (Popup is created by loadHECIncidents())
     // =====================================
 
-    showHECPopup(
+    try{
 
-        incident
+        await loadHECIncidents();
 
-    );
+    }
+
+    catch(err){
+
+        console.error(
+
+            "HEC Refresh Failed",
+
+            err
+
+        );
+
+    }
 
 }
     // =====================================================
-// REMOVE MARKER
+// REMOVE HEC MARKER
 // =====================================================
 
-function removeHECMarker(e){
+function removeHECMarker(
+
+    incident
+
+){
 
     const key =
 
         String(
 
-            e.incidentId ||
+            incident.incidentId ||
 
-            e.firestore_id
+            incident.firestore_id
 
         );
 
+    const marker =
+
+        window.hecMarkers?.[key];
+
     if(
 
-        window.hecMarkers[key]
+        marker
 
     ){
 
-        window.hecLayer.removeLayer(
+        window.hecLayer?.removeLayer(
 
-            window.hecMarkers[key]
+            marker
 
         );
 
@@ -39460,8 +39559,7 @@ async function acceptHECIncident(
 
         );
 
-        loadHECIncidents();
-
+await loadHECIncidents();
     }
 
     catch(err){
