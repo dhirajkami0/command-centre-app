@@ -39045,178 +39045,212 @@ const marker =
 
 
 
-  // =====================================================
+// =====================================================
 // 🚨 START HEC REALTIME LISTENER
 // =====================================================
+
 window.hecListener = null;
+
 // =====================================================
 // 🚨 HEC ALERT CACHE
 // =====================================================
 
 window.hecAlertCache = {};
+
 async function startHECListener(){
 
     try{
 
-        // -----------------------------
-        // Already running?
-        // -----------------------------
-        if(window.hecListener){
+        // =====================================
+        // ALREADY RUNNING
+        // =====================================
+
+        if(
+
+            window.hecListener
+
+        ){
 
             console.log(
+
                 "⏸ HEC listener already active"
+
             );
 
             return;
+
         }
 
         const {
+
             collection,
             onSnapshot
+
         } = window.fb;
 
         console.log(
-            "🚨 Starting HEC listener..."
+
+            "🚨 Starting HEC realtime..."
+
         );
+
+        // =====================================
+        // START LISTENER
+        // =====================================
 
         window.hecListener = onSnapshot(
 
             collection(
+
                 window.db,
+
                 "hec_incidents"
+
             ),
 
-async function(snapshot){
-    console.log(
+            async function(snapshot){
 
-        "🔄 HEC realtime update"
+                console.log(
 
-    );
+                    "🔄 HEC realtime update"
 
-for(
+                );
 
-    const change of
+                // =====================================
+                // PROCESS CHANGES
+                // =====================================
 
-    snapshot.docChanges()
+                for(
 
-){
+                    const change of
 
-    if(
+                    snapshot.docChanges()
 
-        change.type !== "added"
+                ){
 
-    ){
+                    // -------------------------
+                    // NEW DOCUMENT ONLY
+                    // -------------------------
 
-        continue;
+                    if(
 
-    }
+                        change.type !== "added"
 
-    const incident = {
+                    ){
 
-        firestore_id :
+                        continue;
 
-            change.doc.id,
+                    }
 
-        ...change.doc.data()
+                    const incident = {
 
-    };
+                        firestore_id :
 
-    if(
+                            change.doc.id,
 
-        window.hecAlertCache[
+                        ...change.doc.data()
 
-            incident.firestore_id
+                    };
 
-        ]
+                    // -------------------------
+                    // ALREADY NOTIFIED?
+                    // -------------------------
 
-    ){
+                    if(
 
-        continue;
+                        window.hecAlertCache[
 
-    }
+                            incident.firestore_id
 
-    window.hecAlertCache[
+                        ]
 
-        incident.firestore_id
+                    ){
 
-    ] = true;
+                        continue;
 
-    if(
+                    }
 
-        incident.type === "HELP"
+                    window.hecAlertCache[
 
-    ){
+                        incident.firestore_id
 
-        await showNewHECAlert(
+                    ] = true;
 
-            incident
+                    // -------------------------
+                    // HELP REQUEST ONLY
+                    // -------------------------
 
-        );
+                    if(
 
-    }
+                        incident.type !== "HELP"
 
-}
+                    ){
 
-            if(
+                        continue;
 
-                window.hecAlertCache[
+                    }
 
-                    incident.firestore_id
+                    // -------------------------
+                    // WAITING ONLY
+                    // -------------------------
 
-                ]
+                    if(
 
-            ){
+                        String(
 
-                return;
+                            incident.status ||
+
+                            ""
+
+                        ).toUpperCase()
+
+                        !==
+
+                        "WAITING"
+
+                    ){
+
+                        continue;
+
+                    }
+
+                    // -------------------------
+                    // SHOW ALERT
+                    // -------------------------
+
+                    await showNewHECAlert(
+
+                        incident
+
+                    );
+
+                }
 
             }
 
-            window.hecAlertCache[
-
-                incident.firestore_id
-
-            ] = true;
-
-            // =====================================
-            // NEW HELP REQUEST
-            // =====================================
-
-            if(
-
-                incident.type === "HELP"
-
-            ){
-
-await showNewHECAlert(
-
-    incident
-
-);
-
-            }
-
-        }
-
-    );
-
-
-}
         );
 
         console.log(
+
             "✅ HEC realtime active"
+
         );
 
     }
 
     catch(err){
 
-        console.error(err);
+        console.error(
+
+            "HEC Listener Error",
+
+            err
+
+        );
 
     }
 
 }
-
 
 // =====================================================
 // 🚨 NEW HEC ALERT
