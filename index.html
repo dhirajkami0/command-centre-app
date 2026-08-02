@@ -38480,9 +38480,14 @@ const gpsText =
 `
 <div
 style="
-font-family:Segoe UI;
-min-width:260px;
+font-family:'Segoe UI',sans-serif;
+width:100%;
+max-width:100%;
+min-width:0;
 padding:10px;
+box-sizing:border-box;
+overflow-wrap:break-word;
+word-break:break-word;
 ">
 
 <div
@@ -38800,9 +38805,11 @@ ${reportAge}
 <div
 style="
 display:grid;
-grid-template-columns:1fr 1fr;
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
 gap:8px;
 margin-top:10px;
+width:100%;
+box-sizing:border-box;
 ">
 
 ${
