@@ -38093,21 +38093,21 @@ window.hecLayer?.clearLayers?.();
 
                 try{
 
-                    const lat =
+const lat = Number(
 
-                        Number(
+    e.incidentLocation?.lat ??
 
-                            e.location?.lat
+    e.location?.lat
 
-                        );
+);
 
-                    const lon =
+const lon = Number(
 
-                        Number(
+    e.incidentLocation?.lon ??
 
-                            e.location?.lon
+    e.location?.lon
 
-                        );
+);
 
                     if(
 
@@ -38555,31 +38555,125 @@ ${e.reporterMobile || "-"}
 
 <hr>
 
-<b>📍 Incident Location</b>
-
-<br><br>
-
-🏡 <b>Village</b>
+<b>📍 INCIDENT LOCATION</b>
 
 <br>
 
-${village}
+🏡 Village :
 
-<br><br>
+${
 
-📌 <b>Landmark</b>
+    e.incidentLocation?.village ||
+
+    e.village ||
+
+    "Unknown"
+
+}
+
+<br>
+
+📌 Landmark :
+
+${
+
+    e.incidentLocation?.landmark ||
+
+    e.landmark ||
+
+    "-"
+
+}
 
 <br>
 
-${landmark}
-
-<br><br>
-
-🛰 <b>GPS Coordinates</b>
-
-<br>
+🛰 GPS :
 
 ${gpsText}
+
+<br>
+
+<hr>
+
+<b>👤 REPORTER LOCATION</b>
+
+<br>
+
+🏡 Village :
+
+${
+
+    e.reporterLocation?.village ||
+
+    "Unknown"
+
+}
+
+<br>
+
+📌 Landmark :
+
+${
+
+    e.reporterLocation?.landmark ||
+
+    "-"
+
+}
+
+<br>
+
+🛰 GPS :
+
+${
+
+    Number.isFinite(
+
+        e.reporterLocation?.lat
+
+    ) &&
+
+    Number.isFinite(
+
+        e.reporterLocation?.lon
+
+    )
+
+    ?
+
+    e.reporterLocation.lat.toFixed(6) +
+
+    ", " +
+
+    e.reporterLocation.lon.toFixed(6)
+
+    :
+
+    Number.isFinite(
+
+        e.reporterGps?.lat
+
+    ) &&
+
+    Number.isFinite(
+
+        e.reporterGps?.lon
+
+    )
+
+    ?
+
+    e.reporterGps.lat.toFixed(6) +
+
+    ", " +
+
+    e.reporterGps.lon.toFixed(6)
+
+    :
+
+    "Unavailable"
+
+}
 
 <br>
 
@@ -38594,7 +38688,67 @@ ${reportDate}
 <br><br>
 
 ⏱ <b>Waiting Time</b>
+${
 
+e.hasPhoto ?
+
+`
+
+<button
+onclick="window.open('${e.photoUrl}','_blank')"
+style="
+width:100%;
+margin-top:8px;
+background:#1565c0;
+color:white;
+border:none;
+padding:9px;
+border-radius:8px;
+font-weight:bold;
+">
+
+📷 VIEW PHOTO
+
+</button>
+
+`
+
+:
+
+""
+
+}
+
+${
+
+e.hasVoice ?
+
+`
+
+<button
+onclick="playHECVoice('${e.voice}')"
+style="
+width:100%;
+margin-top:8px;
+background:#00897b;
+color:white;
+border:none;
+padding:9px;
+border-radius:8px;
+font-weight:bold;
+">
+
+🎤 PLAY VOICE
+
+</button>
+
+`
+
+:
+
+""
+
+}
 <br>
 
 ${reportAge}
@@ -59568,7 +59722,188 @@ updateHelpLoading(
     75
 
 );
-        // ============================================================
+// ============================================================
+// 🌍 RESOLVE REPORTER & INCIDENT LOCATION
+// ============================================================
+
+let reporterResolved = {
+
+    village : "",
+
+    villageCode : "",
+
+    block : "",
+
+    beat : "",
+
+    range : "",
+
+    division : "",
+
+    landmark : ""
+
+};
+
+let incidentResolved = {
+
+    village : "",
+
+    villageCode : "",
+
+    block : "",
+
+    beat : "",
+
+    range : "",
+
+    division : "",
+
+    landmark : ""
+
+};
+
+// ============================================================
+// 👤 REPORTER LOCATION
+// (Always from reporter GPS)
+// ============================================================
+
+try{
+
+    reporterResolved =
+
+        await window.GreenGuardAI
+            .GISEntities
+            .resolveCurrentLocation(
+
+                reporterLat,
+
+                reporterLon
+
+            );
+
+}
+
+catch(err){
+
+    console.warn(
+
+        "Reporter location resolve failed",
+
+        err
+
+    );
+
+}
+
+// ============================================================
+// 🐘 INCIDENT LOCATION
+// ============================================================
+
+try{
+
+    // --------------------------------------------------------
+    // CURRENT
+    // --------------------------------------------------------
+
+    if(
+
+        locationMode === "CURRENT"
+
+    ){
+
+        incidentResolved =
+
+            await window.GreenGuardAI
+                .GISEntities
+                .resolveCurrentLocation(
+
+                    incidentLat,
+
+                    incidentLon
+
+                );
+
+    }
+
+    // --------------------------------------------------------
+    // MAP
+    // --------------------------------------------------------
+
+    else if(
+
+        locationMode === "MAP"
+
+    ){
+
+        incidentResolved =
+
+            await window.GreenGuardAI
+                .GISEntities
+                .resolveCurrentLocation(
+
+                    incidentLat,
+
+                    incidentLon
+
+                );
+
+    }
+
+    // --------------------------------------------------------
+    // VILLAGE
+    // --------------------------------------------------------
+
+    else{
+
+        incidentResolved = {
+
+            village :
+
+                village,
+
+            villageCode :
+
+                "",
+
+            block :
+
+                "",
+
+            beat :
+
+                "",
+
+            range :
+
+                "",
+
+            division :
+
+                "",
+
+            landmark :
+
+                landmark
+
+        };
+
+    }
+
+}
+
+catch(err){
+
+    console.warn(
+
+        "Incident location resolve failed",
+
+        err
+
+    );
+
+}
+      
+    // ============================================================
         // INCIDENT OBJECT
         // ============================================================
 
@@ -59630,21 +59965,153 @@ updatedAt :
                     "helpCount"
                 ).value,
 
-            location : {
+// ========================================================
+// INCIDENT GPS
+// ========================================================
 
-                lat :
+location : {
 
-                    Number(
-                        window.helpLocation.lat
-                    ),
+    lat :
 
-                lon :
+        incidentLat,
 
-                    Number(
-                        window.helpLocation.lon
-                    )
+    lon :
 
-            },
+        incidentLon
+
+},
+
+// ========================================================
+// 🐘 INCIDENT LOCATION
+// ========================================================
+
+incidentLocation : {
+
+    lat :
+
+        incidentLat,
+
+    lon :
+
+        incidentLon,
+
+    village :
+
+        incidentResolved?.village ||
+
+        village ||
+
+        "",
+
+    villageCode :
+
+        incidentResolved?.villageCode ||
+
+        "",
+
+    block :
+
+        incidentResolved?.block ||
+
+        "",
+
+    beat :
+
+        incidentResolved?.beat ||
+
+        "",
+
+    range :
+
+        incidentResolved?.range ||
+
+        "",
+
+    division :
+
+        incidentResolved?.division ||
+
+        "",
+
+    landmark :
+
+        incidentResolved?.landmark ||
+
+        landmark ||
+
+        "",
+
+    landmarkDistance :
+
+        incidentResolved?.distanceMeters ||
+
+        0
+
+},
+
+// ========================================================
+// 👤 REPORTER LOCATION
+// ========================================================
+
+reporterLocation : {
+
+    lat :
+
+        reporterLat,
+
+    lon :
+
+        reporterLon,
+
+    village :
+
+        reporterResolved?.village ||
+
+        "",
+
+    villageCode :
+
+        reporterResolved?.villageCode ||
+
+        "",
+
+    block :
+
+        reporterResolved?.block ||
+
+        "",
+
+    beat :
+
+        reporterResolved?.beat ||
+
+        "",
+
+    range :
+
+        reporterResolved?.range ||
+
+        "",
+
+    division :
+
+        reporterResolved?.division ||
+
+        "",
+
+    landmark :
+
+        reporterResolved?.landmark ||
+
+        "",
+
+    landmarkDistance :
+
+        reporterResolved?.distanceMeters ||
+
+        0
+
+},
 
             // ========================================================
             // PHOTO
