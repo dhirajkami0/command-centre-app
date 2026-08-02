@@ -25628,9 +25628,15 @@ window.helpPhotoUrl = "";
 
 window.helpVoiceBlob = null;
 
-window.helpVoiceUrl = "";
+// =========================================
+// 🎤 HEC VOICE
+// =========================================
 
-window.helpVoiceFileName = "";
+window.helpVoiceUri = "";
+
+window.helpVoiceName = "";
+
+window.helpVoiceDuration = 0;
 window.helpMarker = null;
 
 window.mapAction = null;
@@ -57946,9 +57952,85 @@ function removeHelpVoice(){
         "none";
 
 }
-    function recordHelpVoice(){
+// ======================================================
+// 🎤 RECORD HELP VOICE
+// ======================================================
 
-    alert("Voice module");
+// ======================================================
+// 🎤 RECORD HELP VOICE
+// ======================================================
+
+function recordHelpVoice(){
+
+    try{
+
+        if(
+
+            typeof Android !== "undefined" &&
+
+            Android.startVoiceRecorder
+
+        ){
+
+            window.helpVoiceUri="";
+
+            window.helpVoiceName="";
+
+            Android.startVoiceRecorder();
+
+            return;
+
+        }
+
+        alert(
+
+            "Voice recording is supported in Android APK."
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+    }
+
+}
+
+    // ======================================================
+// 🎤 CALLED FROM ANDROID
+// ======================================================
+
+function onVoiceRecorded(uri){
+
+    window.helpVoiceUri = uri;
+
+    window.helpVoiceName =
+
+        uri.split("/").pop();
+
+    const btn = document.querySelector(
+
+        "#help-modal button[onclick='recordHelpVoice()']"
+
+    );
+
+    if(btn){
+
+        btn.innerHTML =
+
+            "✅ Voice Recorded";
+
+    }
+
+    console.log(
+
+        "Voice Recorded:",
+
+        uri
+
+    );
 
 }
     function callControlRoom(){
@@ -57960,7 +58042,7 @@ function removeHelpVoice(){
 // 🐘 SUBMIT HELP REQUEST
 // =====================================================
 
-async function submitHelpRequest(){
+async function submitHelpRequest(event){
 
     if(!window.helpLocation){
 
@@ -57972,12 +58054,26 @@ async function submitHelpRequest(){
 
     }
 
-    const btn = event.target;
+    const btn =
 
-    btn.disabled = true;
+        event?.target ||
 
-    btn.innerHTML =
-        "Submitting...";
+        document.querySelector(
+            '#help-modal button[onclick="submitHelpRequest(event)"]'
+        ) ||
+
+        document.querySelector(
+            '#help-modal button[onclick="submitHelpRequest(event)"]'
+        );
+
+    if(btn){
+
+        btn.disabled = true;
+
+        btn.innerHTML =
+            "Submitting...";
+
+    }
 
     try{
 
@@ -57998,6 +58094,28 @@ async function submitHelpRequest(){
             "HELP_" +
 
             Date.now();
+
+        // ============================================
+        // LOCATION DETAILS
+        // ============================================
+
+        const village =
+
+            document.getElementById(
+                "helpVillage"
+            )?.value || "";
+
+        const landmark =
+
+            document.getElementById(
+                "helpLandmark"
+            )?.value || "";
+
+        const otherLandmark =
+
+            document.getElementById(
+                "helpOtherLandmark"
+            )?.value || "";
 
         // ============================================
         // INCIDENT OBJECT
@@ -58029,11 +58147,17 @@ async function submitHelpRequest(){
 
             reporterName :
 
-                window.userProfile?.rawName || "",
+                window.userProfile?.rawName ||
+
+                window.userProfile?.name ||
+
+                "",
 
             reporterMobile :
 
-                window.userProfile?.mobile || "",
+                window.userProfile?.mobile ||
+
+                "",
 
             situation :
 
@@ -58051,39 +58175,105 @@ async function submitHelpRequest(){
 
                 lat :
 
-                    window.helpLocation.lat,
+                    Number(
+                        window.helpLocation.lat
+                    ),
 
                 lon :
 
-                    window.helpLocation.lon
+                    Number(
+                        window.helpLocation.lon
+                    )
 
             },
 
-            photo : "",
+            // ========================================
+            // PHOTO
+            // ========================================
 
-            voice : "",
+            photo :
 
-            village : "",
+                window.helpPhotoBase64 ||
 
-            beat : "",
+                "",
 
-            range : "",
+            photoFileName :
 
-            division : "",
+                window.helpPhotoFileName ||
 
-            landmark : "",
+                "",
 
-            assignedTeam : "",
+            photoUrl :
 
-            acceptedBy : "",
+                window.helpPhotoUrl ||
 
-            acceptedTime : null,
+                "",
 
-            arrivedTime : null,
+            // ========================================
+            // VOICE
+            // ========================================
 
-            operationStarted : null,
+            voice :
 
-            closedTime : null
+                window.helpVoiceUri ||
+
+                "",
+
+            // ========================================
+            // LOCATION DETAILS
+            // ========================================
+
+            village :
+
+                village,
+
+            landmark :
+
+                landmark,
+
+            otherLandmark :
+
+                otherLandmark,
+
+            beat :
+
+                "",
+
+            range :
+
+                "",
+
+            division :
+
+                "",
+
+            // ========================================
+            // TEAM STATUS
+            // ========================================
+
+            assignedTeam :
+
+                "",
+
+            acceptedBy :
+
+                "",
+
+            acceptedTime :
+
+                null,
+
+            arrivedTime :
+
+                null,
+
+            operationStarted :
+
+                null,
+
+            closedTime :
+
+                null
 
         };
 
@@ -58165,11 +58355,19 @@ async function submitHelpRequest(){
 
     }
 
-    btn.disabled = false;
+    finally{
 
-    btn.innerHTML =
+        if(btn){
 
-        "🚨 SEND REQUEST";
+            btn.disabled = false;
+
+            btn.innerHTML =
+
+                "🚨 SEND REQUEST";
+
+        }
+
+    }
 
 }
 
@@ -69055,7 +69253,7 @@ border-radius:8px;
 font-weight:bold;
 cursor:pointer;
 "
-onclick="submitHelpRequest()">
+onclick="submitHelpRequest(event)">
 
 🚨 SEND REQUEST
 
