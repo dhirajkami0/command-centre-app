@@ -57361,7 +57361,15 @@ function openHelpForm(){
 // 📍 CHANGE INCIDENT LOCATION MODE
 // =====================================================
 
+// =====================================================
+// 🚨 CHANGE HELP LOCATION MODE
+// =====================================================
+
 function changeHelpLocationMode(){
+
+    // ============================================
+    // CURRENT SELECTED MODE
+    // ============================================
 
     const mode =
 
@@ -57369,7 +57377,19 @@ function changeHelpLocationMode(){
 
             'input[name="helpLocationMode"]:checked'
 
-        )?.value;
+        )?.value ||
+
+        "CURRENT";
+
+    // ============================================
+    // SAVE MODE GLOBALLY
+    // ============================================
+
+    window.helpLocationMode = mode;
+
+    // ============================================
+    // PANELS
+    // ============================================
 
     const currentPanel =
 
@@ -57387,87 +57407,109 @@ function changeHelpLocationMode(){
 
         );
 
-if(
-
-    mode === "CURRENT"
-
-){
-
-    currentPanel.style.display = "";
-
-    villagePanel.style.display = "none";
-
-    // Use cached GPS immediately if available
+    // =====================================================
+    // 📍 CURRENT LOCATION
+    // =====================================================
 
     if(
 
-        window.latestGps &&
-
-        Number.isFinite(window.latestGps.lat) &&
-
-        Number.isFinite(window.latestGps.lng)
+        mode === "CURRENT"
 
     ){
 
-        useCurrentHelpLocation();
+        currentPanel.style.display = "";
+
+        villagePanel.style.display = "none";
+
+        // ---------------------------------------
+        // Use cached GPS immediately
+        // ---------------------------------------
+
+        if(
+
+            window.latestgps &&
+
+            Number.isFinite(
+
+                window.latestgps.lat
+
+            ) &&
+
+            Number.isFinite(
+
+                window.latestgps.lng
+
+            )
+
+        ){
+
+            useCurrentHelpLocation();
+
+        }
+
+        else{
+
+            navigator.geolocation.getCurrentPosition(
+
+                function(pos){
+
+                    // ---------------------------------------
+                    // Cache GPS
+                    // ---------------------------------------
+
+                    window.latestgps = {
+
+                        lat :
+
+                            pos.coords.latitude,
+
+                        lng :
+
+                            pos.coords.longitude,
+
+                        accuracy :
+
+                            pos.coords.accuracy
+
+                    };
+
+                    useCurrentHelpLocation();
+
+                },
+
+                function(){
+
+                    document.getElementById(
+
+                        "helpLocationText"
+
+                    ).innerHTML =
+
+                        "❌ GPS unavailable";
+
+                },
+
+                {
+
+                    enableHighAccuracy : true,
+
+                    timeout : 10000,
+
+                    maximumAge : 30000
+
+                }
+
+            );
+
+        }
+
+        return;
 
     }
 
-    else{
-
-        navigator.geolocation.getCurrentPosition(
-
-            function(pos){
-
-                window.latestGps = {
-
-                    lat :
-
-                        pos.coords.latitude,
-
-                    lng :
-
-                        pos.coords.longitude,
-
-                    accuracy :
-
-                        pos.coords.accuracy
-
-                };
-
-                useCurrentHelpLocation();
-
-            },
-
-            function(){
-
-                document.getElementById(
-
-                    "helpLocationText"
-
-                ).innerHTML =
-
-                    "❌ GPS unavailable";
-
-            },
-
-            {
-
-                enableHighAccuracy : true,
-
-                timeout : 10000,
-
-                maximumAge : 30000
-
-            }
-
-        );
-
-    }
-
-    return;
-
-}
+    // =====================================================
+    // 🗺 SELECT ON MAP
+    // =====================================================
 
     if(
 
@@ -57484,6 +57526,10 @@ if(
         return;
 
     }
+
+    // =====================================================
+    // 🏡 SELECT VILLAGE
+    // =====================================================
 
     if(
 
@@ -58179,16 +58225,30 @@ function closeHelpForm(){
 // 📍 USE CURRENT GPS
 // =====================================================
 
+// =====================================================
+// 📍 USE CURRENT HELP LOCATION
+// =====================================================
+
 function useCurrentHelpLocation(){
 
+    // ============================================
+    // VALIDATE GPS
+    // ============================================
+
     if(
-        !window.latestGps ||
-        typeof window.latestGps.lat !== "number" ||
-        typeof window.latestGps.lng !== "number"
+
+        !window.latestgps ||
+
+        typeof window.latestgps.lat !== "number" ||
+
+        typeof window.latestgps.lng !== "number"
+
     ){
 
         alert(
+
             "Current GPS not available."
+
         );
 
         return;
@@ -58196,50 +58256,74 @@ function useCurrentHelpLocation(){
     }
 
     // ============================================
-    // SAVE LOCATION
+    // CURRENT MODE
+    // ============================================
+
+    window.helpLocationMode = "CURRENT";
+
+    // ============================================
+    // SAVE INCIDENT LOCATION
     // ============================================
 
     window.helpLocation = {
 
-        lat : window.latestGps.lat,
+        lat :
 
-        lon : window.latestGps.lng
+            window.latestgps.lat,
+
+        lon :
+
+            window.latestgps.lng
 
     };
 
     // ============================================
-    // UPDATE UI
+    // UPDATE LOCATION DISPLAY
     // ============================================
 
-    document.getElementById(
-        "helpLocationText"
-    ).innerHTML =
+    const text =
 
-        "✅ Current GPS Selected<br>" +
+        document.getElementById(
 
-        window.latestGps.lat.toFixed(6) +
+            "helpLocationText"
 
-        ", " +
+        );
 
-        window.latestGps.lng.toFixed(6) +
+    if(text){
 
-        "<br><small>Accuracy : " +
+        text.innerHTML =
 
-        Math.round(
-            window.latestGps.accuracy || 0
-        ) +
+            "✅ Current GPS Selected<br>" +
 
-        " m</small>";
+            window.latestgps.lat.toFixed(6) +
+
+            ", " +
+
+            window.latestgps.lng.toFixed(6) +
+
+            "<br><small>Accuracy : " +
+
+            Math.round(
+
+                window.latestgps.accuracy || 0
+
+            ) +
+
+            " m</small>";
+
+    }
 
     // ============================================
     // BUTTON FEEDBACK
     // ============================================
 
-    const btn = document.querySelector(
+    const btn =
 
-        "#help-modal .btn-green"
+        document.querySelector(
 
-    );
+            "#help-modal .btn-green"
+
+        );
 
     if(btn){
 
@@ -58253,11 +58337,23 @@ function useCurrentHelpLocation(){
 
     }
 
+    // ============================================
+    // DEBUG
+    // ============================================
+
     console.log(
 
-        "📍 HELP LOCATION",
+        "📍 CURRENT INCIDENT LOCATION",
 
         window.helpLocation
+
+    );
+
+    console.log(
+
+        "👤 REPORTER LOCATION",
+
+        window.latestgps
 
     );
 
@@ -59160,21 +59256,93 @@ const reporterLon =
 // 🐘 INCIDENT GPS
 // ============================================================
 
-const incidentLat =
+// ============================================================
+// 🐘 INCIDENT GPS
+// ============================================================
 
-    Number(
+let incidentLat;
 
-        window.helpLocation?.lat
+let incidentLon;
 
-    );
+// ------------------------------------------------------------
+// CURRENT LOCATION
+// ------------------------------------------------------------
 
-const incidentLon =
+if(
 
-    Number(
+    locationMode === "CURRENT"
 
-        window.helpLocation?.lon
+){
 
-    );
+    incidentLat =
+
+        Number(
+
+            window.latestgps?.lat
+
+        );
+
+    incidentLon =
+
+        Number(
+
+            window.latestgps?.lon
+
+        );
+
+}
+
+// ------------------------------------------------------------
+// SELECT ON MAP
+// ------------------------------------------------------------
+
+else if(
+
+    locationMode === "MAP"
+
+){
+
+    incidentLat =
+
+        Number(
+
+            window.helpLocation?.lat
+
+        );
+
+    incidentLon =
+
+        Number(
+
+            window.helpLocation?.lon
+
+        );
+
+}
+
+// ------------------------------------------------------------
+// SELECT VILLAGE
+// ------------------------------------------------------------
+
+else{
+
+    incidentLat =
+
+        Number(
+
+            window.helpLocation?.lat
+
+        );
+
+    incidentLon =
+
+        Number(
+
+            window.helpLocation?.lon
+
+        );
+
+}
 
 // ============================================================
 // VALIDATE
