@@ -38559,29 +38559,55 @@ ${e.reporterMobile || "-"}
 
 <br>
 
-🏡 Village :
+📍
 
 ${
 
-    e.incidentLocation?.village ||
+    e.incidentLocation?.text ||
 
-    e.village ||
+    (
 
-    "Unknown"
+        (
 
-}
+            e.incidentLocation?.village ||
 
-<br>
+            e.village ||
 
-📌 Landmark :
+            "Unknown"
 
-${
+        )
 
-    e.incidentLocation?.landmark ||
+        +
 
-    e.landmark ||
+        (
 
-    "-"
+            (
+
+                e.incidentLocation?.landmark ||
+
+                e.landmark
+
+            )
+
+            ?
+
+            " — Near " +
+
+            (
+
+                e.incidentLocation?.landmark ||
+
+                e.landmark
+
+            )
+
+            :
+
+            ""
+
+        )
+
+    )
 
 }
 
@@ -38599,25 +38625,41 @@ ${gpsText}
 
 <br>
 
-🏡 Village :
+📍
 
 ${
 
-    e.reporterLocation?.village ||
+    e.reporterLocation?.text ||
 
-    "Unknown"
+    (
 
-}
+        (
 
-<br>
+            e.reporterLocation?.village ||
 
-📌 Landmark :
+            "Unknown"
 
-${
+        )
 
-    e.reporterLocation?.landmark ||
+        +
 
-    "-"
+        (
+
+            e.reporterLocation?.landmark
+
+            ?
+
+            " — Near " +
+
+            e.reporterLocation.landmark
+
+            :
+
+            ""
+
+        )
+
+    )
 
 }
 
@@ -38646,28 +38688,6 @@ ${
     ", " +
 
     e.reporterLocation.lon.toFixed(6)
-
-    :
-
-    Number.isFinite(
-
-        e.reporterGps?.lat
-
-    ) &&
-
-    Number.isFinite(
-
-        e.reporterGps?.lon
-
-    )
-
-    ?
-
-    e.reporterGps.lat.toFixed(6) +
-
-    ", " +
-
-    e.reporterGps.lon.toFixed(6)
 
     :
 
@@ -60035,7 +60055,7 @@ incidentLocation : {
 
     landmark :
 
-        incidentResolved?.landmark ||
+        incidentResolved?.nearestPoint ||
 
         landmark ||
 
@@ -60043,9 +60063,15 @@ incidentLocation : {
 
     landmarkDistance :
 
-        incidentResolved?.distanceMeters ||
+        incidentResolved?.distanceMeters ??
 
-        0
+        null,
+
+    text :
+
+        incidentResolved?.text ||
+
+        ""
 
 },
 
@@ -60101,15 +60127,21 @@ reporterLocation : {
 
     landmark :
 
-        reporterResolved?.landmark ||
+        reporterResolved?.nearestPoint ||
 
         "",
 
     landmarkDistance :
 
-        reporterResolved?.distanceMeters ||
+        reporterResolved?.distanceMeters ??
 
-        0
+        null,
+
+    text :
+
+        reporterResolved?.text ||
+
+        ""
 
 },
 
@@ -60214,34 +60246,51 @@ uploadCompletedAt :
     serverTimestamp(),
 
 
-            // ========================================================
-            // LOCATION
-            // ========================================================
+// ========================================================
+// LOCATION (Legacy Compatibility)
+// These fields are kept for older code.
+// Values are synchronized with incidentLocation.
+// ========================================================
 
-            village :
+village :
 
-                village,
+    incidentResolved?.village ||
 
-            landmark :
+    village ||
 
-                landmark,
+    "",
 
-            otherLandmark :
+landmark :
 
-                otherLandmark,
+    incidentResolved?.nearestPoint ||
 
-            beat :
+    landmark ||
 
-                "",
+    "",
 
-            range :
+otherLandmark :
 
-                "",
+    otherLandmark ||
 
-            division :
+    "",
 
-                "",
+beat :
 
+    incidentResolved?.beat ||
+
+    "",
+
+range :
+
+    incidentResolved?.range ||
+
+    "",
+
+division :
+
+    incidentResolved?.division ||
+
+    "",
             // ========================================================
             // RESPONSE TEAM
             // ========================================================
