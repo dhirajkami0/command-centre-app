@@ -29325,61 +29325,68 @@ window.__mobileTooltipLocked =
 
 function closeEnterpriseTooltipFully(){
 
-  try {
+  try{
 
-    if(
-      window.__activeEnterpriseTooltipLayer
-    ){
+    if(window.__activeEnterpriseTooltipLayer){
 
-      try {
+      try{
 
-        window
-        .__activeEnterpriseTooltipLayer
-        .closeTooltip();
+        window.__activeEnterpriseTooltipLayer.closeTooltip();
 
-      } catch(err){}
+      }catch(err){}
 
-      try {
+      try{
 
         if(
-          window
-          .__activeEnterpriseTooltipLayer
-          ._tooltip
+          window.__activeEnterpriseTooltipLayer._tooltip &&
+          window.map.hasLayer(
+            window.__activeEnterpriseTooltipLayer._tooltip
+          )
         ){
 
           window.map.removeLayer(
-
-            window
-            .__activeEnterpriseTooltipLayer
-            ._tooltip
-
+            window.__activeEnterpriseTooltipLayer._tooltip
           );
 
         }
 
-      } catch(err){}
+      }catch(err){}
 
     }
 
-  } catch(err){}
+  }catch(err){}
 
-  try {
+  // ==========================================
+  // Close only Enterprise tooltips
+  // ==========================================
+
+  try{
 
     window.map.closeTooltip();
 
-  } catch(err){}
+  }catch(err){}
 
-  try {
+  // ==========================================
+  // IMPORTANT
+  // DO NOT CLOSE ALL POPUPS
+  //
+  // This was closing:
+  // ✔ HEC popup
+  // ✔ Wildlife popup
+  // ✔ Staff popup
+  // ✔ Offence popup
+  // ✔ Every Leaflet popup
+  //
+  // Stack trace proved this was the bug.
+  // ==========================================
 
-    window.map.closePopup();
+  // try{
+  //     window.map.closePopup();
+  // }catch(err){}
 
-  } catch(err){}
-
-  window.__activeEnterpriseTooltipLayer =
-    null;
+  window.__activeEnterpriseTooltipLayer = null;
 
 }
-
 // ==================================================
 // 🛰 UNIVERSAL TOOLTIP
 // ==================================================
@@ -29777,14 +29784,25 @@ if(
 
   if(!L.Browser.mobile){
 
-    window.map.on(
-      "click",
-      function(){
+window.map.on(
+  "click",
+  function(e){
 
-        closeEnterpriseTooltipFully();
+    // Ignore marker and popup clicks
+    if(
+      e.originalEvent &&
+      (
+        e.originalEvent.target.closest(".leaflet-marker-icon") ||
+        e.originalEvent.target.closest(".leaflet-popup")
+      )
+    ){
+      return;
+    }
 
-      }
-    );
+    closeEnterpriseTooltipFully();
+
+  }
+);
 
   }
 
