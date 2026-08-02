@@ -25605,42 +25605,92 @@ window.distanceBuffer ??= [];
 window.allCompartmentFeatures = [];
 // ==========================================
 // 👁 COMPARTMENT LAYER VISIBILITY
-// ==========================================
-// =====================================
-// HELP REQUEST
-// =====================================
+// ============================================================
+// 🐘 HELP REQUEST GLOBALS
+// ============================================================
 
 window.helpLocation = null;
-// =========================================
-// 📷 HEC PHOTO GLOBALS
-// =========================================
+
+window.helpMarker = null;
+
+window.mapAction = null;
+
+// ============================================================
+// 📷 PHOTO
+// ============================================================
 
 window.helpPhotoBlob = null;
+
+window.helpPhotoFile = null;
 
 window.helpPhotoBase64 = "";
 
 window.helpPhotoFileName = "";
 
+window.helpPhotoMimeType = "";
+
 window.helpPhotoUrl = "";
-// =========================================
-// 🎤 HEC VOICE GLOBALS
-// =========================================
+
+// ============================================================
+// 🎤 VOICE
+// ============================================================
 
 window.helpVoiceBlob = null;
 
-// =========================================
-// 🎤 HEC VOICE
-// =========================================
+window.helpVoiceFile = null;
 
 window.helpVoiceUri = "";
+
+window.helpVoiceBase64 = "";
+
+window.helpVoiceMimeType = "";
 
 window.helpVoiceName = "";
 
 window.helpVoiceDuration = 0;
-window.helpMarker = null;
 
-window.mapAction = null;
-    window.hecMarkers = {};
+// ============================================================
+// 📹 VIDEO (Future)
+// ============================================================
+
+window.helpVideoBlob = null;
+
+window.helpVideoFile = null;
+
+window.helpVideoUrl = "";
+
+// ============================================================
+// 📄 DOCUMENT (Future)
+// ============================================================
+
+window.helpDocumentFile = null;
+
+window.helpDocumentUrl = "";
+
+// ============================================================
+// 👤 CONTACT (Future)
+// ============================================================
+
+window.helpContact = {
+
+    name : "",
+
+    phone : ""
+
+};
+
+// ============================================================
+// ☎ CONTROL ROOM
+// ============================================================
+
+window.helpCallStarted = false;
+
+// ============================================================
+// HEC MAP
+// ============================================================
+
+window.hecMarkers = {};
+
 window.compartmentLayerVisible = true;
     
 // ======================================================
@@ -38828,7 +38878,11 @@ const marker =
 // 🚨 START HEC REALTIME LISTENER
 // =====================================================
 window.hecListener = null;
+// =====================================================
+// 🚨 HEC ALERT CACHE
+// =====================================================
 
+window.hecAlertCache = {};
 async function startHECListener(){
 
     try{
@@ -38861,16 +38915,83 @@ async function startHECListener(){
                 "hec_incidents"
             ),
 
-            function(snapshot){
+function(snapshot){
 
-                console.log(
-                    "🔄 HEC realtime update"
-                );
+    console.log(
 
-                loadHECIncidents();
+        "🔄 HEC realtime update"
+
+    );
+
+    snapshot.docChanges().forEach(
+
+        function(change){
+
+            if(
+
+                change.type !== "added"
+
+            ){
+
+                return;
 
             }
 
+            const incident = {
+
+                firestore_id :
+
+                    change.doc.id,
+
+                ...change.doc.data()
+
+            };
+
+            if(
+
+                window.hecAlertCache[
+
+                    incident.firestore_id
+
+                ]
+
+            ){
+
+                return;
+
+            }
+
+            window.hecAlertCache[
+
+                incident.firestore_id
+
+            ] = true;
+
+            // =====================================
+            // NEW HELP REQUEST
+            // =====================================
+
+            if(
+
+                incident.type === "HELP"
+
+            ){
+
+                showNewHECAlert(
+
+                    incident
+
+                );
+
+            }
+
+        }
+
+    );
+
+    loadHECIncidents();
+
+}
         );
 
         console.log(
@@ -38887,6 +39008,122 @@ async function startHECListener(){
 
 }
 
+
+    // =====================================================
+// 🚨 NEW HEC ALERT
+// =====================================================
+
+function showNewHECAlert(
+
+    incident
+
+){
+
+    console.log(
+
+        "🚨 NEW HELP",
+
+        incident
+
+    );
+
+    // =====================================
+    // ANDROID VIBRATE
+    // =====================================
+
+    try{
+
+        if(
+
+            window.Android &&
+
+            Android.vibrate
+
+        ){
+
+            Android.vibrate(
+
+                1000
+
+            );
+
+        }
+
+    }
+
+    catch(e){}
+
+    // =====================================
+    // BROWSER VIBRATE
+    // =====================================
+
+    try{
+
+        navigator.vibrate?.(
+
+            [
+
+                300,
+
+                150,
+
+                300,
+
+                150,
+
+                300
+
+            ]
+
+        );
+
+    }
+
+    catch(e){}
+
+    // =====================================
+    // SOUND
+    // =====================================
+
+    try{
+
+        new Audio(
+
+            "audio/alarm.mp3"
+
+        ).play();
+
+    }
+
+    catch(e){}
+
+    alert(
+
+        "🚨 NEW ELEPHANT HELP REQUEST\n\n" +
+
+        "Reporter : " +
+
+        (
+
+            incident.reporterName ||
+
+            "Unknown"
+
+        ) +
+
+        "\n\nSituation : " +
+
+        (
+
+            incident.situation ||
+
+            ""
+
+        )
+
+    );
+
+}
     // =====================================================
 // REMOVE MARKER
 // =====================================================
@@ -57331,6 +57568,115 @@ function populateHelpVillagePanel(){
     }
 
 }
+    // ============================================================
+// SHOW LOADING
+// ============================================================
+
+function showHelpLoading(
+
+    text = "Preparing...",
+
+    progress = 0
+
+){
+
+    const box =
+
+        document.getElementById(
+
+            "helpLoading"
+
+        );
+
+    if(box){
+
+        box.style.display =
+
+            "flex";
+
+    }
+
+    updateHelpLoading(
+
+        text,
+
+        progress
+
+    );
+
+}
+
+// ============================================================
+// UPDATE LOADING
+// ============================================================
+
+function updateHelpLoading(
+
+    text,
+
+    progress
+
+){
+
+    const txt =
+
+        document.getElementById(
+
+            "helpLoadingText"
+
+        );
+
+    if(txt){
+
+        txt.innerHTML =
+
+            text;
+
+    }
+
+    const bar =
+
+        document.getElementById(
+
+            "helpLoadingBar"
+
+        );
+
+    if(bar){
+
+        bar.style.width =
+
+            progress +
+
+            "%";
+
+    }
+
+}
+
+// ============================================================
+// HIDE LOADING
+// ============================================================
+
+function hideHelpLoading(){
+
+    const box =
+
+        document.getElementById(
+
+            "helpLoading"
+
+        );
+
+    if(box){
+
+        box.style.display =
+
+            "none";
+
+    }
+
+}
     
     // =====================================================
 // ❌ CLOSE HELP FORM
@@ -57790,68 +58136,7 @@ function saveHelpLocation(latlng){
 // 📷 CAPTURE HELP PHOTO
 // =====================================================
 
-function captureHelpPhoto(event){
 
-    try{
-
-        const file =
-
-            event.target.files[0];
-
-        if(!file){
-
-            return;
-
-        }
-
-        window.helpPhotoBlob =
-            file;
-
-        window.helpPhotoFileName =
-            file.name;
-
-        const url =
-
-            URL.createObjectURL(file);
-
-        document.getElementById(
-
-            "helpPhotoImage"
-
-        ).src =
-
-            url;
-
-        document.getElementById(
-
-            "helpPhotoPreview"
-
-        ).style.display =
-            "block";
-
-        console.log(
-
-            "📷 Photo Selected",
-
-            file
-
-        );
-
-    }
-
-    catch(err){
-
-        console.error(
-
-            "Photo Error",
-
-            err
-
-        );
-
-    }
-
-}
 
 
     // =====================================================
@@ -57923,25 +58208,41 @@ async function captureHelpVoice(event){
 // 🗑 REMOVE HELP VOICE
 // =====================================================
 
+// ============================================================
+// REMOVE VOICE
+// ============================================================
+
 function removeHelpVoice(){
 
     window.helpVoiceBlob = null;
 
-    window.helpVoiceUrl = "";
+    window.helpVoiceUri = "";
 
-    window.helpVoiceFileName = "";
+    window.helpVoiceName = "";
 
-    document.getElementById(
+    window.helpVoiceDuration = 0;
 
-        "helpVoiceInput"
+    const player =
 
-    ).value = "";
+        document.getElementById(
 
-    document.getElementById(
+            "helpVoicePlayer"
 
-        "helpVoicePlayer"
+        );
 
-    ).src = "";
+    if(player){
+
+        player.pause();
+
+        player.removeAttribute(
+
+            "src"
+
+        );
+
+        player.load();
+
+    }
 
     document.getElementById(
 
@@ -57960,9 +58261,17 @@ function removeHelpVoice(){
 // 🎤 RECORD HELP VOICE
 // ======================================================
 
-function recordHelpVoice(){
+// ============================================================
+// 🎤 RECORD HELP VOICE
+// ============================================================
+
+async function recordHelpVoice(){
 
     try{
+
+        // ============================================
+        // ANDROID APK
+        // ============================================
 
         if(
 
@@ -57972,21 +58281,131 @@ function recordHelpVoice(){
 
         ){
 
-            window.helpVoiceUri="";
-
-            window.helpVoiceName="";
-
             Android.startVoiceRecorder();
 
             return;
 
         }
 
+        // ============================================
+        // BROWSER
+        // ============================================
+
+        if(
+
+            !navigator.mediaDevices ||
+
+            !navigator.mediaDevices.getUserMedia
+
+        ){
+
+            alert(
+
+                "Voice recording is not supported."
+
+            );
+
+            return;
+
+        }
+
+        const stream =
+
+            await navigator.mediaDevices.getUserMedia({
+
+                audio:true
+
+            });
+
+        const recorder =
+
+            new MediaRecorder(
+
+                stream
+
+            );
+
+        const chunks = [];
+
+        recorder.ondataavailable =
+
+            e => chunks.push(
+
+                e.data
+
+            );
+
+        recorder.onstop =
+
+            function(){
+
+                const blob =
+
+                    new Blob(
+
+                        chunks,
+
+                        {
+
+                            type:
+
+                            "audio/webm"
+
+                        }
+
+                    );
+
+                window.helpVoiceBlob =
+
+                    blob;
+
+                window.helpVoiceName =
+
+                    "VOICE_" +
+
+                    Date.now() +
+
+                    ".webm";
+
+                window.helpVoiceUri =
+
+                    URL.createObjectURL(
+
+                        blob
+
+                    );
+
+                const player =
+
+                    document.getElementById(
+
+                        "helpVoicePlayer"
+
+                    );
+
+                player.src =
+
+                    window.helpVoiceUri;
+
+                document.getElementById(
+
+                    "helpVoicePreview"
+
+                ).style.display =
+
+                    "block";
+
+            };
+
+        recorder.start();
+
         alert(
 
-            "Voice recording is supported in Android APK."
+            "Recording...\nPress OK to stop."
 
         );
+
+        recorder.stop();
 
     }
 
@@ -57998,41 +58417,193 @@ function recordHelpVoice(){
 
 }
 
-    // ======================================================
-// 🎤 CALLED FROM ANDROID
-// ======================================================
+// ============================================================
+// 🎤 ANDROID CALLBACK
+// ============================================================
 
-function onVoiceRecorded(uri){
+// ============================================================
+// 🎤 ANDROID VOICE CALLBACK
+// ============================================================
 
-    window.helpVoiceUri = uri;
+window.onVoiceRecorded = function(
 
-    window.helpVoiceName =
+    base64,
 
-        uri.split("/").pop();
+    fileName
 
-    const btn = document.querySelector(
+){
 
-        "#help-modal button[onclick='recordHelpVoice()']"
+    try{
 
-    );
+        // ====================================================
+        // BASE64 → BINARY
+        // ====================================================
 
-    if(btn){
+        const binary =
 
-        btn.innerHTML =
+            atob(
 
-            "✅ Voice Recorded";
+                base64
+
+            );
+
+        const len =
+
+            binary.length;
+
+        const bytes =
+
+            new Uint8Array(
+
+                len
+
+            );
+
+        for(
+
+            let i = 0;
+
+            i < len;
+
+            i++
+
+        ){
+
+            bytes[i] =
+
+                binary.charCodeAt(
+
+                    i
+
+                );
+
+        }
+
+        // ====================================================
+        // CREATE BLOB
+        // ====================================================
+
+        const blob =
+
+            new Blob(
+
+                [
+
+                    bytes
+
+                ],
+
+                {
+
+                    type :
+
+                        "audio/webm"
+
+                }
+
+            );
+
+        // ====================================================
+        // SAVE GLOBALS
+        // ====================================================
+
+        window.helpVoiceBlob =
+
+            blob;
+
+        window.helpVoiceName =
+
+            fileName ||
+
+            (
+
+                "VOICE_" +
+
+                Date.now() +
+
+                ".webm"
+
+            );
+
+        window.helpVoiceUri =
+
+            URL.createObjectURL(
+
+                blob
+
+            );
+
+        // ====================================================
+        // PLAYER
+        // ====================================================
+
+        const player =
+
+            document.getElementById(
+
+                "helpVoicePlayer"
+
+            );
+
+        if(player){
+
+            player.src =
+
+                window.helpVoiceUri;
+
+        }
+
+        // ====================================================
+        // SHOW PREVIEW
+        // ====================================================
+
+        const preview =
+
+            document.getElementById(
+
+                "helpVoicePreview"
+
+            );
+
+        if(preview){
+
+            preview.style.display =
+
+                "block";
+
+        }
+
+        console.log(
+
+            "🎤 Voice Blob Ready",
+
+            blob.size,
+
+            "bytes"
+
+        );
 
     }
 
-    console.log(
+    catch(err){
 
-        "Voice Recorded:",
+        console.error(
 
-        uri
+            "Voice Callback Error",
 
-    );
+            err
 
-}
+        );
+
+        alert(
+
+            "Unable to process voice recording."
+
+        );
+
+    }
+
+};
 // ============================================================
 // 📞 CALL CONTROL ROOM
 // ============================================================
@@ -58122,6 +58693,10 @@ function callControlRoom(){
 
 async function submitHelpRequest(event){
 
+    // ============================================================
+    // VALIDATE LOCATION
+    // ============================================================
+
     if(!window.helpLocation){
 
         alert(
@@ -58132,6 +58707,10 @@ async function submitHelpRequest(event){
 
     }
 
+    // ============================================================
+    // BUTTON
+    // ============================================================
+
     const btn =
 
         event?.target ||
@@ -58141,7 +58720,7 @@ async function submitHelpRequest(event){
         ) ||
 
         document.querySelector(
-            '#help-modal button[onclick="submitHelpRequest(event)"]'
+            '#help-modal button[onclick="submitHelpRequest()"]'
         );
 
     if(btn){
@@ -58149,23 +58728,34 @@ async function submitHelpRequest(event){
         btn.disabled = true;
 
         btn.innerHTML =
+
             "Submitting...";
 
     }
 
     try{
 
+      showHelpLoading(
+
+    "Preparing Incident...",
+
+    5
+
+);
         const {
 
             doc,
             setDoc,
-            serverTimestamp
+            serverTimestamp,
+            ref,
+            uploadBytes,
+            getDownloadURL
 
         } = window.fb;
 
-        // ============================================
+        // ============================================================
         // DOCUMENT ID
-        // ============================================
+        // ============================================================
 
         const docId =
 
@@ -58173,9 +58763,9 @@ async function submitHelpRequest(event){
 
             Date.now();
 
-        // ============================================
+        // ============================================================
         // LOCATION DETAILS
-        // ============================================
+        // ============================================================
 
         const village =
 
@@ -58195,9 +58785,178 @@ async function submitHelpRequest(event){
                 "helpOtherLandmark"
             )?.value || "";
 
-        // ============================================
+        // ============================================================
+        // STORAGE URLS
+        // ============================================================
+
+        let photoUrl = "";
+
+        let voiceUrl = "";
+
+        // ============================================================
+        // UPLOAD PHOTO
+        // ============================================================
+
+        if(window.helpPhotoBlob){
+
+    updateHelpLoading(
+
+        "Uploading Photo...",
+
+        20
+
+    );
+
+            try{
+
+                const photoRef =
+
+                    ref(
+
+                        window.storage,
+
+                        "hec_photos/" +
+
+                        docId +
+
+                        ".jpg"
+
+                    );
+
+await uploadBytes(
+
+    photoRef,
+
+    window.helpPhotoBlob,
+
+    {
+
+        contentType :
+
+            "image/jpeg"
+
+    }
+
+);
+
+                photoUrl =
+
+                    await getDownloadURL(
+
+                        photoRef
+
+                    );
+
+                console.log(
+
+                    "📷 Photo Uploaded",
+
+                    photoUrl
+
+                );
+
+            }
+
+            catch(err){
+
+                console.error(
+
+                    "Photo Upload Failed",
+
+                    err
+
+                );
+
+            }
+
+        }
+
+        // ============================================================
+        // UPLOAD VOICE
+        // ============================================================
+
+        if(window.helpVoiceBlob){
+
+    updateHelpLoading(
+
+        "Uploading Voice...",
+
+        55
+
+    );
+
+            try{
+
+                const voiceRef =
+
+                    ref(
+
+                        window.storage,
+
+                        "hec_voice/" +
+
+                        docId +
+
+                        ".webm"
+
+                    );
+
+                await uploadBytes(
+
+    voiceRef,
+
+    window.helpVoiceBlob,
+
+    {
+
+        contentType :
+
+            "audio/webm"
+
+    }
+
+);
+                voiceUrl =
+
+                    await getDownloadURL(
+
+                        voiceRef
+
+                    );
+
+                console.log(
+
+                    "🎤 Voice Uploaded",
+
+                    voiceUrl
+
+                );
+
+            }
+
+            catch(err){
+
+                console.error(
+
+                    "Voice Upload Failed",
+
+                    err
+
+                );
+
+            }
+
+        }
+updateHelpLoading(
+
+    "Preparing Incident Data...",
+
+    75
+
+);
+        // ============================================================
         // INCIDENT OBJECT
-        // ============================================
+        // ============================================================
 
         const incident = {
 
@@ -58209,16 +58968,24 @@ async function submitHelpRequest(event){
 
                 docId,
 
-            type : "HELP",
+            type :
 
-            status : "WAITING",
+                "HELP",
 
-            priority : "HIGH",
+            status :
+
+                "WAITING",
+
+            priority :
+
+                "HIGH",
 
             createdAt :
 
                 serverTimestamp(),
+updatedAt :
 
+    serverTimestamp(),
             reporterType :
 
                 "VILLAGER",
@@ -58265,15 +59032,13 @@ async function submitHelpRequest(event){
 
             },
 
-            // ========================================
+            // ========================================================
             // PHOTO
-            // ========================================
+            // ========================================================
 
             photo :
 
-                window.helpPhotoBase64 ||
-
-                "",
+                photoUrl,
 
             photoFileName :
 
@@ -58283,23 +59048,94 @@ async function submitHelpRequest(event){
 
             photoUrl :
 
-                window.helpPhotoUrl ||
+                photoUrl,
 
-                "",
-
-            // ========================================
+            // ========================================================
             // VOICE
-            // ========================================
+            // ========================================================
 
             voice :
 
-                window.helpVoiceUri ||
+                voiceUrl,
+
+            voiceFileName :
+
+                window.helpVoiceName ||
 
                 "",
+          photoStoragePath :
 
-            // ========================================
-            // LOCATION DETAILS
-            // ========================================
+    photoUrl ?
+
+    "hec_photos/" +
+
+    docId +
+
+    ".jpg" :
+
+    "",
+
+voiceStoragePath :
+
+    voiceUrl ?
+
+    "hec_voice/" +
+
+    docId +
+
+    ".webm" :
+
+    "",
+
+
+          photoSize :
+
+    window.helpPhotoBlob ?
+
+    window.helpPhotoBlob.size :
+
+    0,
+
+voiceSize :
+
+    window.helpVoiceBlob ?
+
+    window.helpVoiceBlob.size :
+
+    0,
+
+
+          photoMimeType :
+
+    "image/jpeg",
+
+voiceMimeType :
+
+    "audio/webm",
+hasPhoto :
+
+    photoUrl !== "",
+
+hasVoice :
+
+    voiceUrl !== "",
+
+          // ========================================================
+// UPLOAD STATUS
+// ========================================================
+
+uploadStatus :
+
+    "COMPLETED",
+
+uploadCompletedAt :
+
+    serverTimestamp(),
+
+
+            // ========================================================
+            // LOCATION
+            // ========================================================
 
             village :
 
@@ -58325,9 +59161,9 @@ async function submitHelpRequest(event){
 
                 "",
 
-            // ========================================
-            // TEAM STATUS
-            // ========================================
+            // ========================================================
+            // RESPONSE TEAM
+            // ========================================================
 
             assignedTeam :
 
@@ -58355,31 +59191,39 @@ async function submitHelpRequest(event){
 
         };
 
-        // ============================================
-        // SAVE TO FIRESTORE
-        // ============================================
+        // ============================================================
+        // SAVE FIRESTORE
+        // ============================================================
 
-        const ref = doc(
+        const incidentRef =
 
-            window.db,
+            doc(
 
-            "hec_incidents",
+                window.db,
 
-            docId
+                "hec_incidents",
 
-        );
+                docId
 
+            );
+updateHelpLoading(
+
+    "Saving to Firestore...",
+
+    90
+
+);
         await setDoc(
 
-            ref,
+            incidentRef,
 
             incident
 
         );
 
-        // ============================================
-        // SHOW MARKER IMMEDIATELY
-        // ============================================
+        // ============================================================
+        // SHOW MARKER
+        // ============================================================
 
         try{
 
@@ -58402,23 +59246,58 @@ async function submitHelpRequest(event){
             );
 
         }
+updateHelpLoading(
 
-        // ============================================
-        // SUCCESS
-        // ============================================
+    "Request Sent Successfully",
 
-        showToast(
+    100
 
-            "✅ Help Request Submitted"
+);await new Promise(
 
-        );
+    r => setTimeout(
 
-        closeHelpForm();
+        r,
+
+        700
+
+    )
+
+);hideHelpLoading();
+      
+      closeHelpForm();
+      // ============================================================
+// RESET MEDIA
+// ============================================================
+
+window.helpPhotoBlob = null;
+
+window.helpPhotoFile = null;
+
+window.helpPhotoBase64 = "";
+
+window.helpPhotoFileName = "";
+
+window.helpPhotoMimeType = "";
+
+window.helpPhotoUrl = "";
+
+window.helpVoiceBlob = null;
+
+window.helpVoiceUri = "";
+
+window.helpVoiceName = "";
+
+window.helpVoiceDuration = 0;
+      
+      showToast(
+
+    "✅ Elephant Response Team Notified"
+
+);
 
     }
 
     catch(err){
-
         console.error(
 
             err
@@ -58434,7 +59313,7 @@ async function submitHelpRequest(event){
     }
 
     finally{
-
+hideHelpLoading();
         if(btn){
 
             btn.disabled = false;
@@ -58448,11 +59327,13 @@ async function submitHelpRequest(event){
     }
 
 }
-
     
-    // =====================================================
-// 📷 CAPTURE HEC PHOTO
-// =====================================================
+// ============================================================
+// 📷 CAPTURE HELP PHOTO
+// Android APK + Browser
+// Camera + Gallery
+// Compress + Preview
+// ============================================================
 
 async function captureHelpPhoto(event){
 
@@ -58460,13 +59341,29 @@ async function captureHelpPhoto(event){
 
         const file =
 
-            event.target.files[0];
+            event?.target?.files?.[0];
 
         if(!file){
 
             return;
 
         }
+
+        // ============================================
+        // SAVE ORIGINAL FILE
+        // ============================================
+
+        window.helpPhotoFile =
+
+            file;
+
+        window.helpPhotoMimeType =
+
+            file.type || "image/jpeg";
+
+        // ============================================
+        // READ FILE
+        // ============================================
 
         const reader =
 
@@ -58484,25 +59381,53 @@ async function captureHelpPhoto(event){
 
                     function(){
 
-                        const canvas =
+                        // ====================================
+                        // RESIZE IMAGE
+                        // ====================================
 
-                            document.createElement(
-                                "canvas"
-                            );
+                        let width =
 
-                        let w = img.width;
+                            img.width;
 
-                        let h = img.height;
+                        let height =
 
-                        const MAX = 1280;
+                            img.height;
 
-                        if(w > h){
+                        const MAX_WIDTH =
 
-                            if(w > MAX){
+                            1280;
 
-                                h *= MAX / w;
+                        const MAX_HEIGHT =
 
-                                w = MAX;
+                            1280;
+
+                        if(
+
+                            width > height
+
+                        ){
+
+                            if(
+
+                                width > MAX_WIDTH
+
+                            ){
+
+                                height =
+
+                                    Math.round(
+
+                                        height *
+
+                                        MAX_WIDTH /
+
+                                        width
+
+                                    );
+
+                                width =
+
+                                    MAX_WIDTH;
 
                             }
 
@@ -58510,24 +59435,58 @@ async function captureHelpPhoto(event){
 
                         else{
 
-                            if(h > MAX){
+                            if(
 
-                                w *= MAX / h;
+                                height > MAX_HEIGHT
 
-                                h = MAX;
+                            ){
+
+                                width =
+
+                                    Math.round(
+
+                                        width *
+
+                                        MAX_HEIGHT /
+
+                                        height
+
+                                    );
+
+                                height =
+
+                                    MAX_HEIGHT;
 
                             }
 
                         }
 
-                        canvas.width = w;
+                        // ====================================
+                        // DRAW
+                        // ====================================
 
-                        canvas.height = h;
+                        const canvas =
+
+                            document.createElement(
+
+                                "canvas"
+
+                            );
+
+                        canvas.width =
+
+                            width;
+
+                        canvas.height =
+
+                            height;
 
                         const ctx =
 
                             canvas.getContext(
+
                                 "2d"
+
                             );
 
                         ctx.drawImage(
@@ -58538,18 +59497,47 @@ async function captureHelpPhoto(event){
 
                             0,
 
-                            w,
+                            width,
 
-                            h
+                            height
 
                         );
+
+                        // ====================================
+                        // COMPRESS
+                        // ====================================
 
                         canvas.toBlob(
 
                             function(blob){
 
+                                if(!blob){
+
+                                    alert(
+
+                                        "Unable to compress photo."
+
+                                    );
+
+                                    return;
+
+                                }
+
+                                // ================================
+                                // GLOBALS
+                                // ================================
+
                                 window.helpPhotoBlob =
+
                                     blob;
+
+                                window.helpPhotoFileName =
+
+                                    "HEC_" +
+
+                                    Date.now() +
+
+                                    ".jpg";
 
                                 window.helpPhotoBase64 =
 
@@ -58561,29 +59549,83 @@ async function captureHelpPhoto(event){
 
                                     );
 
-                                window.helpPhotoFileName =
+                                window.helpPhotoUrl =
 
-                                    "HEC_" +
+                                    URL.createObjectURL(
 
-                                    Date.now() +
+                                        blob
 
-                                    ".jpg";
+                                    );
 
-                                document.getElementById(
+                                // ================================
+                                // PREVIEW
+                                // ================================
 
-                                    "helpPhotoImage"
+                                const preview =
 
-                                ).src =
+                                    document.getElementById(
 
-                                    window.helpPhotoBase64;
+                                        "helpPhotoPreview"
 
-                                document.getElementById(
+                                    );
 
-                                    "helpPhotoPreview"
+                                const image =
 
-                                ).style.display =
+                                    document.getElementById(
 
-                                    "block";
+                                        "helpPhotoImage"
+
+                                    );
+
+                                if(image){
+
+                                    image.src =
+
+                                        window.helpPhotoBase64;
+
+                                }
+
+                                if(preview){
+
+                                    preview.style.display =
+
+                                        "block";
+
+                                }
+
+                                // ================================
+                                // INFO
+                                // ================================
+
+                                console.log(
+
+                                    "📷 HELP PHOTO READY"
+
+                                );
+
+                                console.log(
+
+                                    "File :",
+
+                                    window.helpPhotoFileName
+
+                                );
+
+                                console.log(
+
+                                    "Size :",
+
+                                    Math.round(
+
+                                        blob.size /
+
+                                        1024
+
+                                    ),
+
+                                    "KB"
+
+                                );
 
                             },
 
@@ -58612,6 +59654,8 @@ async function captureHelpPhoto(event){
     catch(err){
 
         console.error(
+
+            "HELP PHOTO ERROR",
 
             err
 
@@ -68968,7 +70012,7 @@ type="file"
 
 accept="image/*"
 
-capture
+capture="environment"
 
 style="display:none;"
 
@@ -68989,6 +70033,10 @@ document.getElementById(
 📷 ADD PHOTO
 
 </button>
+
+<!-- ========================================= -->
+<!-- PHOTO PREVIEW -->
+<!-- ========================================= -->
 
 <div
 
@@ -69034,6 +70082,10 @@ color:#2e7d32;
 
 </div>
 
+<!-- ========================================= -->
+<!-- PHOTO ACTION BUTTONS -->
+<!-- ========================================= -->
+
 <div
 
 style="
@@ -69049,7 +70101,7 @@ type="button"
 
 style="
 background:#1976d2;
-color:white;
+color:#ffffff;
 border:none;
 padding:11px;
 border-radius:8px;
@@ -69073,7 +70125,7 @@ type="button"
 
 style="
 background:#d32f2f;
-color:white;
+color:#ffffff;
 border:none;
 padding:11px;
 border-radius:8px;
@@ -69083,64 +70135,7 @@ cursor:pointer;
 
 onclick="removeHelpPhoto()">
 
-🗑 REMOVE
-
-</button>
-
-</div>
-
-</div>
-
-<div
-
-style="
-margin-top:10px;
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-">
-
-<button
-
-type="button"
-
-style="
-background:#1976d2;
-color:#fff;
-border:none;
-border-radius:8px;
-padding:11px;
-font-weight:bold;
-cursor:pointer;
-"
-
-onclick="
-document.getElementById(
-'helpPhotoInput'
-).click();
-">
-
-🔄 CHANGE
-
-</button>
-
-<button
-
-type="button"
-
-style="
-background:#d32f2f;
-color:#fff;
-border:none;
-border-radius:8px;
-padding:11px;
-font-weight:bold;
-cursor:pointer;
-"
-
-onclick="removeHelpPhoto()">
-
-🗑 REMOVE
+🗑 REMOVE PHOTO
 
 </button>
 
@@ -69149,36 +70144,20 @@ onclick="removeHelpPhoto()">
 </div>
 
 <!-- ========================================= -->
-<!-- 🎤 VOICE MODULE -->
+<!-- 🎤 VOICE -->
 <!-- ========================================= -->
 
-<input
-
-id="helpVoiceInput"
-
-type="file"
-
-accept="audio/*"
-
-capture
-
-style="display:none;"
-
-onchange="captureHelpVoice(event)">
-
 <button
+
+id="helpVoiceButton"
 
 type="button"
 
 class="btn-center"
 
-style="margin-top:10px;"
+style="margin-top:8px;"
 
-onclick="
-document.getElementById(
-'helpVoiceInput'
-).click();
-">
+onclick="recordHelpVoice()">
 
 🎤 RECORD VOICE
 
@@ -69195,20 +70174,21 @@ background:#ffffff;
 border:1px solid #d9d9d9;
 border-radius:12px;
 padding:12px;
-box-shadow:0 2px 10px rgba(0,0,0,.10);
 ">
 
 <div
+
 style="
 display:flex;
 align-items:center;
-gap:10px;
-font-weight:600;
-color:#1565c0;
+justify-content:center;
+font-size:14px;
+font-weight:bold;
+color:#2e7d32;
 margin-bottom:10px;
 ">
 
-🎤 Voice Recording Ready
+✅ Voice Recording Ready
 
 </div>
 
@@ -69225,6 +70205,7 @@ width:100%;
 </audio>
 
 <div
+
 style="
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -69243,16 +70224,11 @@ border:none;
 padding:11px;
 border-radius:8px;
 font-weight:bold;
-cursor:pointer;
 "
 
-onclick="
-document.getElementById(
-'helpVoiceInput'
-).click();
-">
+onclick="recordHelpVoice()">
 
-🔄 CHANGE
+🎤 RECORD AGAIN
 
 </button>
 
@@ -69262,12 +70238,11 @@ type="button"
 
 style="
 background:#d32f2f;
-color:white;
+color:#fff;
 border:none;
 padding:11px;
 border-radius:8px;
 font-weight:bold;
-cursor:pointer;
 "
 
 onclick="removeHelpVoice()">
@@ -69342,6 +70317,110 @@ onclick="submitHelpRequest(event)">
 </div>
 
 </div>
+<!-- ===================================================== -->
+<!-- 🚨 HELP REQUEST LOADING -->
+<!-- ===================================================== -->
 
+<div
+
+id="helpLoading"
+
+style="
+display:none;
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.72);
+z-index:999999;
+justify-content:center;
+align-items:center;
+">
+
+<div
+
+style="
+background:#ffffff;
+padding:28px;
+border-radius:16px;
+width:300px;
+text-align:center;
+box-shadow:0 8px 30px rgba(0,0,0,.30);
+">
+
+<div
+
+style="
+font-size:42px;
+">
+
+🐘
+
+</div>
+
+<div
+
+style="
+margin-top:18px;
+font-size:18px;
+font-weight:bold;
+color:#d32f2f;
+">
+
+Sending Help Request
+
+</div>
+
+<div
+
+id="helpLoadingText"
+
+style="
+margin-top:18px;
+font-size:14px;
+color:#555;
+">
+
+Preparing...
+
+</div>
+
+<div
+
+style="
+margin-top:20px;
+">
+
+<div
+
+style="
+width:100%;
+height:8px;
+background:#eeeeee;
+border-radius:10px;
+overflow:hidden;
+">
+
+<div
+
+id="helpLoadingBar"
+
+style="
+width:0%;
+height:100%;
+background:#43a047;
+transition:.3s;
+">
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
 </body>
 </html>
