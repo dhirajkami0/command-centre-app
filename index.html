@@ -38422,23 +38422,7 @@ const village =
 
     "Unknown";
 
-const beat =
 
-    e.beat ||
-
-    "Unknown";
-
-const range =
-
-    e.range ||
-
-    "Unknown";
-
-const division =
-
-    e.division ||
-
-    "Unknown";
 
 const landmark =
 
@@ -38518,16 +38502,14 @@ ${key}
 
 <br><br>
 
-🚨 <b>Situation</b>
-
+🐘 <b>Situation</b>
 <br>
 
 ${e.situation || "-"}
 
 <br><br>
 
-🐘 <b>Elephants</b>
-
+🐘 <b>Approx. Elephant Count</b>
 <br>
 
 ${e.elephantCount || "-"}
@@ -38536,13 +38518,17 @@ ${e.elephantCount || "-"}
 
 
 
-<b>Reporter :</b>
-
-${e.reporterName || ""}
+👤 <b>Reporter</b>
 
 <br>
 
-<b>Mobile :</b>
+${e.reporterName || "-"}
+
+<br><br>
+
+☎ <b>Mobile</b>
+
+<br>
 
 ${e.reporterMobile || "-"}
 
@@ -38552,39 +38538,27 @@ ${e.reporterMobile || "-"}
 
 <b>📍 Incident Location</b>
 
-<br>
+<br><br>
 
-🏡 Village :
+🏡 <b>Village</b>
+
+<br>
 
 ${village}
 
-<br>
+<br><br>
 
-🌲 Beat :
-
-${beat}
+📌 <b>Landmark</b>
 
 <br>
-
-🟢 Range :
-
-${range}
-
-<br>
-
-🏢 Division :
-
-${division}
-
-<br>
-
-📌 Landmark :
 
 ${landmark}
 
-<br>
+<br><br>
 
-🛰 GPS :
+🛰 <b>GPS Coordinates</b>
+
+<br>
 
 ${gpsText}
 
@@ -38592,13 +38566,17 @@ ${gpsText}
 
 <hr>
 
-<b>🕒 Reported :</b>
-
-${reportDate}
+🕒 <b>Reported</b>
 
 <br>
 
-<b>⏱ Duration :</b>
+${reportDate}
+
+<br><br>
+
+⏱ <b>Waiting Time</b>
+
+<br>
 
 ${reportAge}
 
@@ -39009,7 +38987,7 @@ function(snapshot){
 }
 
 
-    // =====================================================
+// =====================================================
 // 🚨 NEW HEC ALERT
 // =====================================================
 
@@ -39037,7 +39015,7 @@ function showNewHECAlert(
 
             window.Android &&
 
-            Android.vibrate
+            typeof Android.vibrate === "function"
 
         ){
 
@@ -39051,7 +39029,17 @@ function showNewHECAlert(
 
     }
 
-    catch(e){}
+    catch(e){
+
+        console.warn(
+
+            "Android Vibrate Failed",
+
+            e
+
+        );
+
+    }
 
     // =====================================
     // BROWSER VIBRATE
@@ -39059,67 +39047,85 @@ function showNewHECAlert(
 
     try{
 
-        navigator.vibrate?.(
+        if(
 
-            [
+            navigator.vibrate
 
-                300,
+        ){
 
-                150,
+            navigator.vibrate(
 
-                300,
+                [
 
-                150,
+                    300,
 
-                300
+                    150,
 
-            ]
+                    300,
+
+                    150,
+
+                    300
+
+                ]
+
+            );
+
+        }
+
+    }
+
+    catch(e){
+
+        console.warn(
+
+            "Browser Vibrate Failed",
+
+            e
 
         );
 
     }
 
-    catch(e){}
-
     // =====================================
-    // SOUND
+    // PLAY ALARM
     // =====================================
 
     try{
 
-        new Audio(
+        const audio =
 
-            "audio/alarm.mp3"
+            new Audio(
 
-        ).play();
+                "audio/alarm.mp3"
+
+            );
+
+        audio.volume = 1;
+
+        audio.play();
 
     }
 
-    catch(e){}
+    catch(e){
 
-    alert(
+        console.warn(
 
-        "🚨 NEW ELEPHANT HELP REQUEST\n\n" +
+            "Alarm Failed",
 
-        "Reporter : " +
+            e
 
-        (
+        );
 
-            incident.reporterName ||
+    }
 
-            "Unknown"
+    // =====================================
+    // SHOW PROFESSIONAL POPUP
+    // =====================================
 
-        ) +
+    showHECPopup(
 
-        "\n\nSituation : " +
-
-        (
-
-            incident.situation ||
-
-            ""
-
-        )
+        incident
 
     );
 
