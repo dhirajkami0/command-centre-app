@@ -38970,31 +38970,38 @@ cursor:pointer;
 `;
 
 
-                                      if(
+let marker = window.hecMarkers[key];
 
-                        window.hecMarkers[key]
+if (!marker) {
 
-                    ){
-
-window.hecLayer.removeLayer(
-    window.hecMarkers[key]
-);
-
-                    }
-
-const marker =
-    L.marker(
+    marker = L.marker(
         [lat, lon],
         { icon }
-    )
-    .bindPopup(
-        popup,
-        {
-            className : "hec-popup",
-            maxWidth  : 360
-        }
-    )
-    .addTo(window.hecLayer);
+    ).addTo(window.hecLayer);
+
+    marker.bindPopup(
+        L.popup({
+            className: "hec-popup",
+            maxWidth: 360,
+            autoClose: false,
+            closeOnClick: false
+        })
+    );
+
+    marker.on("click", function () {
+        this.openPopup();
+    });
+
+    window.hecMarkers[key] = marker;
+}
+else {
+
+    marker.setLatLng([lat, lon]);
+
+    marker.setIcon(icon);
+}
+
+marker.getPopup().setContent(popup);
 
                     window.hecMarkers[key] =
                         marker;
