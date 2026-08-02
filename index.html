@@ -58033,9 +58033,87 @@ function onVoiceRecorded(uri){
     );
 
 }
-    function callControlRoom(){
+// ============================================================
+// 📞 CALL CONTROL ROOM
+// ============================================================
 
-    alert("Call Control Room");
+function callControlRoom(){
+
+    // ============================================
+    // CHANGE THIS TO YOUR CONTROL ROOM NUMBER
+    // ============================================
+
+    const number =
+
+        "8250149855";
+
+    // ============================================
+    // CONFIRM
+    // ============================================
+
+    if(
+
+        !confirm(
+
+            "Call Forest Control Room?\n\n" +
+
+            number
+
+        )
+
+    ){
+
+        return;
+
+    }
+
+    // ============================================
+    // ANDROID APK
+    // ============================================
+
+    try{
+
+        location.href =
+
+            "tel:" + number;
+
+        return;
+
+    }
+
+    catch(e){
+
+        console.warn(e);
+
+    }
+
+    // ============================================
+    // FALLBACK
+    // ============================================
+
+    try{
+
+        window.open(
+
+            "tel:" + number,
+
+            "_self"
+
+        );
+
+    }
+
+    catch(err){
+
+        alert(
+
+            "Please call : " +
+
+            number
+
+        );
+
+    }
 
 }
 // =====================================================
