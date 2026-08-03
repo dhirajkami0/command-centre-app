@@ -58697,20 +58697,13 @@ const locationMode =
 // ============================================================
 
 const reporterLat =
-
-    Number(
-
-        window.latestgps?.lat
-
-    );
+Number(window.latestgps?.lat);
 
 const reporterLon =
-
-    Number(
-
-        window.latestgps?.lon
-
-    );
+Number(
+    window.latestgps?.lon ??
+    window.latestgps?.lng
+);
 
 // ============================================================
 // 🐘 INCIDENT GPS
