@@ -42051,13 +42051,6 @@ for(const s of staff){
 // 🔥 TRACK AUTHORIZATION
 // ==================================================
 
-const currentUserName =
-    cleanName(
-        window.userProfile?.cleanName ||
-        window.userProfile?.name ||
-        ""
-    );
-
 const isCurrentUser =
     cleanName(s.cleanName) === currentUserName;
 
@@ -42066,21 +42059,10 @@ const isSelectedStaff =
         window.staffTrackState?.selectedStaff || ""
     ) === cleanName(s.cleanName);
 
-// --------------------------------------------------
-// Only these may have an individual listener:
-//
-// 1. Logged-in user
-// 2. Marker-click selected staff
-//
-// Everyone else uses bulk mode.
-// --------------------------------------------------
-
-if(
-    !isCurrentUser &&
-    !isSelectedStaff
-){
-    continue;
-}
+// Track rendering only
+const enableTrackRendering =
+    isCurrentUser ||
+    isSelectedStaff;
 // ==========================================================
 // 🔥 ACTIVE STAFF SESSION ANALYTICS STREAM
 // ----------------------------------------------------------
@@ -42502,11 +42484,10 @@ catch(err){
 // 🔥 CREATE POLYLINE FIRST TIME
 // ======================================
 if(
-
-  !window.staffTracks[
-    s.cleanName
-  ]
-
+    enableTrackRendering &&
+    !window.staffTracks[
+        s.cleanName
+    ]
 ){
 
   const color =
@@ -43677,10 +43658,11 @@ else {
 // 🔥 GET POLYLINE
 // ======================================
 const polyline =
-
-  window.staffTracks[
-    s.cleanName
-  ];
+    enableTrackRendering
+        ? window.staffTracks[
+            s.cleanName
+          ]
+        : null;
 
 // ======================================
 // 🔥 APPEND NEW GPS POINTS
@@ -43702,27 +43684,18 @@ const cleanedPoints =
 // ======================================
 // 🔥 APPEND CLEANED POINTS
 // ======================================
-cleanedPoints.forEach(p=>{
+if(enableTrackRendering && polyline){
 
-  if(
-    !Array.isArray(p)
-  ){
-    return;
-  }
+    cleanedPoints.forEach(p=>{
 
-  if(
-    isNaN(p[0]) ||
-    isNaN(p[1])
-  ){
-    return;
-  }
+        polyline.addLatLng([
+            p[0],
+            p[1]
+        ]);
 
-  polyline.addLatLng([
-    p[0],
-    p[1]
-  ]);
+    });
 
-});
+}
 
 // ==================================================
 // 🔥 GRID DETECTION FROM CLEANED POLYLINE
