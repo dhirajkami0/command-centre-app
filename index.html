@@ -41200,6 +41200,7 @@ window.staffUnsubscribe = onSnapshot(
 
         let staff = [];     
     let analyticsStaff = [];
+    window.analyticsStaff = analyticsStaff;   // temporary debug
     // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
@@ -41597,7 +41598,12 @@ else {
 
 }
 
-
+if(
+    s.dutyActive === true &&
+    s.sessionId
+){
+    analyticsStaff.push(s);
+}
 // ==============================================
 // 🔒 REJECT TARGET
 // ==============================================
