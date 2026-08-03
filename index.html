@@ -38009,7 +38009,34 @@ async function submitMoveForm(){
   console.groupEnd();
 
 }
+// =====================================================
+// 📍 NAVIGATE TO INCIDENT
+// =====================================================
+function navigateHEC(lat, lon){
 
+    lat = Number(lat);
+    lon = Number(lon);
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+        alert("Invalid incident location.");
+        return;
+    }
+
+    // Google Maps turn-by-turn navigation
+    const url =
+        `https://www.google.com/maps/dir/?api=1` +
+        `&destination=${lat},${lon}` +
+        `&travelmode=driving`;
+
+    window.open(
+        url,
+        "_blank"
+    );
+
+}
     // =====================================================
 // 🚨 LOAD HEC INCIDENTS
 // =====================================================
