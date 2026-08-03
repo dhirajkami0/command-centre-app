@@ -7257,6 +7257,17 @@ let loginCompleted = false;
 // ============================================================
 // 🔓 HIDE LOGIN
 // ============================================================
+    // =====================================================
+// DIVISION NORMALIZATION
+// =====================================================
+
+const DIVISION_MAP = {
+
+    "BTR_W" : "BuxaTR_WEST",
+
+    "BTR_E" : "BuxaTR_EAST"
+
+};
 // ============================================================
 // 🔓 HIDE LOGIN
 // ============================================================
@@ -7535,9 +7546,23 @@ function loadProfile(){
 
       if(saved){
 
-        window.userProfile =
+window.userProfile =
 
-          JSON.parse(saved);
+JSON.parse(saved);
+
+window.userProfile.uid ||= "";
+
+window.userProfile.villagerId ||= "";
+
+window.userProfile.village ||= "";
+
+window.userProfile.villageCode ||= "";
+
+window.userProfile.block ||= "";
+
+window.userProfile.district ||= "";
+
+window.userProfile.state ||= "";
 
         // ======================================================
         // 🔒 STAFF GIS LOCK
@@ -7732,24 +7757,8 @@ function loadProfile(){
     // 🌍 NORMALIZE DIVISION
     // ============================================================
 
-    if(
-      finalProfile.division ===
-      "BTR_W"
-    ){
 
-      finalProfile.division =
-        "BuxaTR_WEST";
-    }
-
-    if(
-      finalProfile.division ===
-      "BTR_E"
-    ){
-
-      finalProfile.division =
-        "BuxaTR_EAST";
-    }
-
+}
     // ============================================================
     // 🔒 STAFF GIS LOCK
     // ============================================================
@@ -8026,69 +8035,101 @@ function login(){
       // ========================================================
       // 🔥 FINAL PROFILE
       // ========================================================
-      const finalProfile = {
+const finalProfile = {
 
-        rawName:
-          profile.name,
+  // =====================================================
+  // IDENTITY
+  // =====================================================
 
-        cleanName:
-          profile.cleanName ||
-          cleanName(profile.name),
+  uid :
 
-        role:
-          profile.role,
+    profile.uid || "",
 
-        beat:
-          profile.beat,
+  villagerId :
 
-        phone:
-          profile.phone,
+    profile.villagerId || "",
 
-        circle:
-          profile.circle || "",
+  rawName :
 
-        division:
-          profile.division || "",
+    profile.name || "",
 
-        range:
-          profile.range || ""
-      };
+  cleanName :
 
-      // ========================================================
-      // 🌍 NORMALIZE DIVISION
-      // ========================================================
-      if(
-        finalProfile.division === "BTR_W"
-      ){
+    profile.cleanName ||
 
-        finalProfile.division =
-          "BuxaTR_WEST";
-      }
+    cleanName(profile.name || ""),
 
-      if(
-        finalProfile.division === "BTR_E"
-      ){
+  role :
 
-        finalProfile.division =
-          "BuxaTR_EAST";
-      }
+    profile.role || "",
+
+  phone :
+
+    profile.phone || "",
+
+  // =====================================================
+  // LOCATION
+  // =====================================================
+
+  village :
+
+    profile.village || "",
+
+  villageCode :
+
+    profile.villageCode || "",
+
+  beat :
+
+    profile.beat || "",
+
+  range :
+
+    profile.range || "",
+
+  division :
+
+    profile.division || "",
+
+  circle :
+
+    profile.circle || "",
+
+  district :
+
+    profile.district || "",
+
+  block :
+
+    profile.block || "",
+
+  state :
+
+    profile.state || ""
+
+};
+
+
 
       // ========================================================
       // 🔒 STAFF GIS LOCK
       // ========================================================
-      if(
+const isStaff =
 
-        finalProfile.role === "Staff"
+[
+    "STAFF",
+    "TEAM LEADER",
+    "RANGER",
+    "FOREST GUARD",
+    "BEAT OFFICER",
+    "DEPUTY RANGER",
+    "FORESTER",
+    "ADMIN"
+]
 
-        ||
+.includes(role);
 
-        finalProfile.role === "TEAM LEADER"
-
-        ||
-
-        finalProfile.role === "Team Leader"
-
-      ){
+if(isStaff){
 
         window.gisFilter = {
 
