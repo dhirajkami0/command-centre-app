@@ -42981,17 +42981,34 @@ const touchedCells =
             continue;
         }
 
-        collectAnalyticsHit(
+collectAnalyticsHit(
 
-            resolved.gridId,
+    resolved.gridId,
 
-            resolved.cellId,
+    resolved.cellId,
 
-            currentPoint.lat,
+    currentPoint.lat,
 
-            currentPoint.lon
+    currentPoint.lon,
 
-        );
+    [
+        [
+            [
+                previousPoint.lat,
+                previousPoint.lon
+            ],
+            [
+                currentPoint.lat,
+                currentPoint.lon
+            ]
+        ]
+    ],
+
+    s.cleanName,
+
+    currentSessionId
+
+);
 
 
     }
@@ -44834,12 +44851,17 @@ console.log(
 // 🔥 COLLECT ANALYTICS HITS
 // ==================================================
 function collectAnalyticsHit(
-  gridId,
-  cellId,
-  lat,
-  lon,
-  staffName,
-  sessionId
+
+    gridId,
+    cellId,
+    lat,
+    lon,
+
+    localCoordsArray,
+
+    staffName,
+    sessionId
+
 ){
 
   try{
@@ -45134,61 +45156,75 @@ if(
     // 🔥 COORDINATES
     // ==========================================================
 
-    const numericLat =
-      Number(
-        lat
-      );
+    // ==========================================================
+// 🔥 MERGE SEGMENT COORDINATES
+// Used later by updateMonthlyAnalyticsRebuild()
+// to calculate patrol distance.
+// ==========================================================
 
+if(
 
-    const numericLon =
-      Number(
-        lon
-      );
+    Array.isArray(localCoordsArray) &&
 
+    Array.isArray(localCoordsArray[0])
 
-    if(
+){
 
-      Number.isFinite(
-        numericLat
-      )
+    const coords =
+        buffer.localCoordsArray[0];
 
-      &&
+    for(
 
-      Number.isFinite(
-        numericLon
-      )
+        const point of localCoordsArray[0]
 
     ){
 
-      const coords =
-          buffer.localCoordsArray[0];
-      const last =
-          coords.length
-              ? coords[
-                  coords.length - 1
-                ]
-              : null;
+        const lat =
+            Number(point[0]);
 
-      if(
-          !last ||
+        const lon =
+            Number(point[1]);
 
-          last[0] !== numericLat ||
+        if(
 
-          last[1] !== numericLon
-      ){
+            !Number.isFinite(lat) ||
 
-          coords.push([
+            !Number.isFinite(lon)
 
-              numericLat,
+        ){
+            continue;
+        }
 
-              numericLon
+        const last =
+            coords.length
+                ? coords[
+                    coords.length - 1
+                  ]
+                : null;
 
-          ]);
+        if(
 
-      }
+            !last ||
+
+            last[0] !== lat ||
+
+            last[1] !== lon
+
+        ){
+
+            coords.push([
+
+                lat,
+
+                lon
+
+            ]);
+
+        }
 
     }
 
+}
 
     // ==========================================================
     // 🔥 DEBUG
