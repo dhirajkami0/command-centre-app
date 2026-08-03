@@ -58727,21 +58727,16 @@ if(
 
 ){
 
-    incidentLat =
+incidentLat =
+    Number(
+        window.latestgps?.lat
+    );
 
-        Number(
-
-            window.latestgps?.lat
-
-        );
-
-    incidentLon =
-
-        Number(
-
-            window.latestgps?.lon
-
-        );
+incidentLon =
+    Number(
+        window.latestgps?.lon ??
+        window.latestgps?.lng
+    );
 
 }
 
