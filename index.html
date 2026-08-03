@@ -39120,8 +39120,9 @@ cursor:pointer;
 
 <button
 
-onclick="callHECReporter('${e.reporterMobile || ""}')"
-
+onclick="callHECReporter(
+'${e.reporterMobile || e.phone || ""}'
+)"
 style="
 padding:10px;
 background:#6a1b9a;
@@ -59414,19 +59415,29 @@ updatedAt :
 
                 "VILLAGER",
 
-            reporterName :
+reporterName :
 
-                window.userProfile?.rawName ||
+    window.userProfile?.rawName ||
 
-                window.userProfile?.name ||
+    window.userProfile?.name ||
 
-                "",
+    "",
 
-            reporterMobile :
+reporterMobile :
 
-                window.userProfile?.mobile ||
+    String(
 
-                "",
+        window.userProfile?.phone ??
+
+        window.userProfile?.mobile ??
+
+        window.userProfile?.mobileNo ??
+
+        window.userProfile?.contact ??
+
+        ""
+
+    ).trim(),
 
             situation :
 
