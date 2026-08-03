@@ -15857,11 +15857,17 @@ function getTouchedCells(
   };
 }
 async function updateMonthlyAnalyticsRebuild(
-  gridId,
-  localCoordsArray,
-  monthKey,
-  authoritativeTouchedCells = null,
-  visitSessions = new Set()
+
+    gridId,
+
+    localCoordsArray,
+
+    monthKey,
+
+    authoritativeTouchedCells,
+
+    visitSessions
+
 ){
 
   // ============================================================
@@ -16068,8 +16074,8 @@ async function updateMonthlyAnalyticsRebuild(
   // FALLBACK TRAVERSAL
   // ============================================================
 
-  let calculatedCells =
-    new Set();
+let fallbackCells =
+new Set();
 
 
   let distanceMeters =
@@ -16094,16 +16100,19 @@ async function updateMonthlyAnalyticsRebuild(
         instanceof Set
       ){
 
-        calculatedCells =
-          result.touchedCells;
+distanceMeters =
+Number(
+    result.distanceMeters || 0
+);
+
+// DON'T overwrite supplied cells
+
+fallbackCells =
+result.touchedCells || new Set();
       }
 
 
-      distanceMeters =
 
-        Number(
-          result?.distanceMeters || 0
-        );
 
 
       if(
@@ -16155,16 +16164,12 @@ async function updateMonthlyAnalyticsRebuild(
   }
 
 
-  for(
-    const cellId
-    of calculatedCells
-  ){
-
-    candidateCells.add(
-      String(cellId)
-    );
-  }
-
+for(
+const cellId
+of fallbackCells
+){
+    candidateCells.add(String(cellId));
+}
 
   // ============================================================
   // 🔒 AUTHORITATIVE GRID OWNERSHIP FILTER
@@ -16226,8 +16231,8 @@ async function updateMonthlyAnalyticsRebuild(
       suppliedCells:
         suppliedCells.size,
 
-      calculatedCells:
-        calculatedCells.size,
+fallbackCells:
+    fallbackCells.size,
 
       candidateCells:
         candidateCells.size,
@@ -16285,8 +16290,8 @@ async function updateMonthlyAnalyticsRebuild(
         suppliedCells:
           suppliedCells.size,
 
-        calculatedCells:
-          calculatedCells.size,
+fallbackCells:
+    fallbackCells.size,
 
         rejectedCells,
 
