@@ -38038,6 +38038,160 @@ function navigateHEC(lat, lon){
 
 }
     // =====================================================
+// ☎ CALL REPORTER
+// =====================================================
+window.callHECReporter=function(mobile){
+
+    mobile=String(
+        mobile||""
+    ).replace(/\D/g,"");
+
+    if(!mobile){
+
+        alert(
+            "Reporter mobile number unavailable."
+        );
+
+        return;
+
+    }
+
+    window.open(
+
+        "tel:"+mobile,
+
+        "_self"
+
+    );
+
+};
+
+    // =====================================================
+// ✅ ARRIVED
+// =====================================================
+window.arriveHECIncident=async function(id){
+
+try{
+
+const{
+getFirestore,
+doc,
+updateDoc,
+serverTimestamp
+
+}=await import(
+"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+);
+
+const db=getFirestore();
+
+await updateDoc(
+
+doc(
+db,
+"hec_incidents",
+String(id)
+),
+
+{
+
+status:"ARRIVED",
+
+arrivedBy:
+window.userProfile?.cleanName||"",
+
+arrivedTime:
+serverTimestamp()
+
+}
+
+);
+
+alert(
+"Arrival recorded."
+);
+
+loadHECIncidents();
+
+}catch(err){
+
+console.error(err);
+
+alert(
+"Unable to update arrival."
+);
+
+}
+
+};
+
+    // =====================================================
+// ✔ CLOSE INCIDENT
+// =====================================================
+window.closeHECIncident=async function(id){
+
+if(
+!confirm(
+"Close this incident?"
+)
+){
+return;
+}
+
+try{
+
+const{
+getFirestore,
+doc,
+updateDoc,
+serverTimestamp
+
+}=await import(
+"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
+);
+
+const db=getFirestore();
+
+await updateDoc(
+
+doc(
+db,
+"hec_incidents",
+String(id)
+),
+
+{
+
+status:"CLOSED",
+
+closedBy:
+window.userProfile?.cleanName||"",
+
+closedTime:
+serverTimestamp()
+
+}
+
+);
+
+alert(
+"Incident closed."
+);
+
+loadHECIncidents();
+
+}catch(err){
+
+console.error(err);
+
+alert(
+"Unable to close incident."
+);
+
+}
+
+};
+    // =====================================================
 // 🚨 LOAD HEC INCIDENTS
 // =====================================================
 
