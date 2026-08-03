@@ -7762,23 +7762,24 @@ window.userProfile.state ||= "";
     // 🔒 STAFF GIS LOCK
     // ============================================================
 
-    const role =
+const role = finalProfile.role;
 
-      String(
-        finalProfile.role || ""
-      )
-      .trim()
-      .toUpperCase();
+const isStaff =
 
-    if(
+[
+    "ADMIN",
+    "STAFF",
+    "TEAM LEADER",
+    "RANGER",
+    "FOREST GUARD",
+    "BEAT OFFICER",
+    "DEPUTY RANGER",
+    "FORESTER"
+]
 
-      role === "STAFF"
+.includes(role);
 
-      ||
-
-      role === "TEAM LEADER"
-
-    ){
+if(isStaff){
 
       window.gisFilter = {
 
@@ -8031,80 +8032,85 @@ function login(){
         return;
       }
 
-      // ========================================================
-      // 🔥 FINAL PROFILE
-      // ========================================================
+// ============================================================
+// 🔥 FINAL PROFILE
+// ============================================================
+
 const finalProfile = {
 
-  // =====================================================
-  // IDENTITY
-  // =====================================================
+    // =====================================================
+    // IDENTITY
+    // =====================================================
 
-  uid :
+    uid :
 
-    profile.uid || "",
+        profile.uid || "",
 
-  villagerId :
+    villagerId :
 
-    profile.villagerId || "",
+        profile.villagerId || "",
 
-  rawName :
+    rawName :
 
-    profile.name || "",
+        profile.name || "",
 
-  cleanName :
+    cleanName :
 
-    profile.cleanName ||
+        profile.cleanName ||
 
-    cleanName(profile.name || ""),
+        cleanName(profile.name || ""),
 
-  role :
+    role :
 
-    profile.role || "",
+        String(
+            profile.role || ""
+        )
+        .trim()
+        .toUpperCase(),
 
-  phone :
+    phone :
 
-    profile.phone || "",
+        profile.phone || "",
 
-  // =====================================================
-  // LOCATION
-  // =====================================================
+    // =====================================================
+    // LOCATION
+    // =====================================================
 
-  village :
+    village :
 
-    profile.village || "",
+        profile.village || "",
 
-  villageCode :
+    villageCode :
 
-    profile.villageCode || "",
+        profile.villageCode || "",
 
-  beat :
+    beat :
 
-    profile.beat || "",
+        profile.beat || "",
 
-  range :
+    range :
 
-    profile.range || "",
+        profile.range || "",
 
-  division :
+    division :
 
-    profile.division || "",
+        profile.division || "",
 
-  circle :
+    circle :
 
-    profile.circle || "",
+        profile.circle || "",
 
-  district :
+    block :
 
-    profile.district || "",
+        profile.block || "",
 
-  block :
+    district :
 
-    profile.block || "",
+        profile.district || "",
 
-  state :
+    state :
 
-    profile.state || ""
+        profile.state || ""
 
 };
 
