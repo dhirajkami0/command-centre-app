@@ -39775,6 +39775,12 @@ function syncOfflineMoves(){
  /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
+
+    window.analyticsTrackListeners ??=
+    Object.create(null);
+
+window.analyticsPointCount ??=
+    Object.create(null);
 // ======================================================
 // 🔥 GLOBAL STAFF CACHE
 // ======================================================
@@ -41193,6 +41199,7 @@ window.staffUnsubscribe = onSnapshot(
           new Set();
 
         let staff = [];     
+    let analyticsStaff = [];
     // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
@@ -41959,7 +41966,22 @@ window.liveStaffCache[
 activeUsers.add(
   s.cleanName
 );
+// ==============================================
+// ANALYTICS SOURCE
+// ALL DUTY ACTIVE STAFF
+// ==============================================
 
+if(
+
+    s.dutyActive === true &&
+
+    String(s.sessionId || "").trim()
+
+){
+
+    analyticsStaff.push(s);
+
+}
 staff.push(s);
 } catch(e){
 
@@ -42025,23 +42047,12 @@ for(const s of staff){
       String(
         s.sessionId || ""
       ).trim();
+if(!currentSessionId){
+    continue;
+}
 
-    if(!currentSessionId){
-
-      continue;
-    }
-// ==============================================
 // ==============================================
 // ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
-// --------------------------------------------------
-// loadStaff() has already decided:
-// - dutyActive
-// - visibility
-// - emergency/global access
-// - valid GPS
-//
-// Therefore here we ONLY decide whether this staff
-// is the logged-in user whose track auto-loads.
 // ==============================================
 
 const currentUserName =
@@ -42051,7 +42062,6 @@ const currentUserName =
         ""
     );
 
-
 const staffName =
     cleanName(
         s.cleanName ||
@@ -42059,15 +42069,17 @@ const staffName =
         ""
     );
 
+const enableTrackRendering =
+    currentUserName === staffName;
+
+// ==============================================
+// UI ONLY
+// ==============================================
 
 if(
-    !currentUserName ||
-    !staffName ||
-    staffName !== currentUserName
+    !enableTrackRendering
 ){
-
     continue;
-
 }
     // ==============================================
     // 🔥 SAME SESSION
@@ -42437,91 +42449,7 @@ const newPoints =
 // ======================================
 // 🔥 ANALYTICS COUNTER
 // ======================================
-window.analyticsPointCounter ??= 0;
 
-// ======================================
-// 🔥 PROCESS NEW POINTS
-// ======================================
-for(const p of newPoints){
-
-  // =========================
-  // ANALYTICS
-  // =========================
-  const cellId =
-
-    getAnalyticsCellId(
-
-      p.lat,
-
-      p.lon
-
-    );
-
-  const gridId =
-
-    window.cellToGridId?.[
-      cellId
-    ];
-
-  if(!gridId){
-
-    continue;
-  }
-
-  collectAnalyticsHit(
-
-    gridId,
-
-    cellId,
-
-    p.lat,
-
-    p.lon
-
-  );
-}
-
-// ======================================
-// 🔥 COUNT NEW GPS POINTS
-// ======================================
-window.analyticsPointCounter +=
-  newPoints.length;
-
-// ======================================
-// 🔥 AUTO FLUSH EVERY 50 POINTS
-// ======================================
-if(
-
-  window.analyticsPointCounter >= 5
-
-){
-
-  console.log(
-
-    "📤 AUTO FLUSH",
-
-    window.analyticsPointCounter,
-
-    "POINTS"
-
-  );
-
-  window.analyticsPointCounter = 0;
-
-  flushAnalyticsBuffer()
-
-    .catch(err=>{
-
-      console.error(
-
-        "❌ AUTO FLUSH FAILED",
-
-        err
-
-      );
-
-    });
-}
 // ======================================
 // 🔥 GET POLYLINE
 // ======================================
@@ -42844,6 +42772,189 @@ window.trackListeners[
     e
   );
 }
+}
+    // ==============================================
+// 🔥 ANALYTICS FOR ALL ACTIVE SESSIONS
+// ==============================================
+
+for(const s of analyticsStaff){
+
+    try{
+
+        const currentSessionId =
+            String(s.sessionId || "").trim();
+
+        if(!currentSessionId){
+            continue;
+        }
+
+        // already listening
+        if(
+            window.analyticsTrackListeners[
+                s.cleanName
+            ]
+        ){
+            continue;
+        }
+
+        const {
+            collection,
+            query,
+            orderBy,
+            onSnapshot
+        } = window.fb;
+
+        const pointsRef =
+            query(
+                collection(
+                    window.db,
+                    "patrol_tracks",
+                    currentSessionId,
+                    "points"
+                ),
+                orderBy("time")
+            );
+
+        const unsubscribe =
+            onSnapshot(
+                pointsRef,
+                (pointSnap)=>{
+
+                    try{
+
+                        const points=[];
+
+                        pointSnap.forEach(doc=>{
+
+                            const p=doc.data();
+
+                            if(!p)return;
+
+                            const lat=Number(p.lat);
+                            const lon=Number(p.lon);
+
+                            if(
+                                isNaN(lat)||
+                                isNaN(lon)
+                            ){
+                                return;
+                            }
+
+                            points.push({
+
+                                lat,
+                                lon,
+
+                                time:Number(
+                                    p.time||0
+                                )
+
+                            });
+
+                        });
+
+                        const oldCount=
+
+                            Number(
+                                window.analyticsPointCount[
+                                    s.cleanName
+                                ]||0
+                            );
+
+                        if(
+                            points.length<=oldCount
+                        ){
+                            return;
+                        }
+
+                        const newPoints=
+                            points.slice(oldCount);
+
+                        window.analyticsPointCounter ??=0;
+
+                        for(const p of newPoints){
+
+                            const cellId=
+                                getAnalyticsCellId(
+                                    p.lat,
+                                    p.lon
+                                );
+
+                            const gridId=
+                                window.cellToGridId?.[
+                                    cellId
+                                ];
+
+                            if(!gridId){
+                                continue;
+                            }
+
+                            collectAnalyticsHit(
+
+                                gridId,
+
+                                cellId,
+
+                                p.lat,
+
+                                p.lon
+
+                            );
+
+                        }
+
+                        window.analyticsPointCounter+=
+                            newPoints.length;
+
+                        window.analyticsPointCount[
+                            s.cleanName
+                        ]=points.length;
+
+                        if(
+                            window.analyticsPointCounter>=5
+                        ){
+
+                            console.log(
+                                "📤 AUTO FLUSH",
+                                window.analyticsPointCounter
+                            );
+
+                            window.analyticsPointCounter=0;
+
+                            flushAnalyticsBuffer()
+                            .catch(console.error);
+
+                        }
+
+                    }
+                    catch(e){
+
+                        console.error(
+                            "Analytics listener error",
+                            s.cleanName,
+                            e
+                        );
+
+                    }
+
+                }
+            );
+
+        window.analyticsTrackListeners[
+            s.cleanName
+        ]=unsubscribe;
+
+    }
+    catch(e){
+
+        console.warn(
+            "Analytics start failed",
+            s.cleanName,
+            e
+        );
+
+    }
+
 }
 // ==================================================
 // 🔥 GROUP OVERLAPPING USERS
