@@ -41189,10 +41189,10 @@ window.staffUnsubscribe = onSnapshot(
 
   async(snapshot)=>{     try {
 
-let activeUsers = new Set();
+        let activeUsers =
+          new Set();
 
-let staff = [];            // Visible staff (UI)
-let analyticsStaff = [];   // All dutyActive staff (Analytics)   
+        let staff = [];     
     // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
@@ -41446,30 +41446,15 @@ let visibilityReason =
 //
 // ==============================================
 
-if(targetEmergency){
+if(
+    targetEmergency
+){
 
-    if(
-        role === "ADMIN"
-    ){
+    staffVisible =
+        true;
 
-        staffVisible = true;
-        visibilityReason = "ADMIN EMERGENCY";
-
-    }
-    else if(
-        sameDivision
-    ){
-
-        staffVisible = true;
-        visibilityReason = "SAME DIVISION EMERGENCY";
-
-    }
-    else{
-
-        staffVisible = false;
-        visibilityReason = "OTHER DIVISION EMERGENCY";
-
-    }
+    visibilityReason =
+        "GLOBAL EMERGENCY TARGET";
 
 }
 
@@ -41879,12 +41864,7 @@ if(
 
   return;
 }
-// ==============================================
-// ANALYTICS STAFF
-// ALL ACTIVE STAFF
-// ==============================================
 
-analyticsStaff.push(s);
 // ==============================================
 // 🔥 LIVE STAFF CACHE
 // ONLY GPS ACTIVE STAFF
@@ -42037,7 +42017,8 @@ for(
         // ==================================================
 // 🔥 LIVE SESSION STREAM
 // ==================================================
-for(const s of analyticsStaff){
+for(const s of staff){
+
   try {
 
     const currentSessionId =
@@ -42049,95 +42030,27 @@ for(const s of analyticsStaff){
 
       continue;
     }
+// ==============================================
+// ==============================================
+// ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
+// --------------------------------------------------
+// loadStaff() has already decided:
+// - dutyActive
+// - visibility
+// - emergency/global access
+// - valid GPS
+//
+// Therefore here we ONLY decide whether this staff
+// is the logged-in user whose track auto-loads.
+// ==============================================
 
-
-  // ==================================================
-// 🔥 TRACK AUTHORIZATION
-// ==================================================
-
-const isCurrentUser =
-    cleanName(s.cleanName) === currentUserName;
-
-const isSelectedStaff =
+const currentUserName =
     cleanName(
-        window.staffTrackState?.selectedStaff || ""
-    ) === cleanName(s.cleanName);
+        window.userProfile?.cleanName ||
+        window.userProfile?.name ||
+        ""
+    );
 
-// Track rendering only
-const enableTrackRendering =
-    isCurrentUser ||
-    isSelectedStaff;
-// ==========================================================
-// 🔥 ACTIVE STAFF SESSION ANALYTICS STREAM
-// ----------------------------------------------------------
-//
-// IMPORTANT:
-//
-// staff[] already contains ONLY staff that passed:
-//
-// 1. Staff visibility authorization
-// 2. Emergency/global visibility rules
-// 3. dutyActive === true
-// 4. Valid live GPS
-//
-// Every staff member reaching this point therefore has an
-// authorized ACTIVE live session.
-//
-// OLD BEHAVIOUR:
-// ----------------------------------------------------------
-// Only the logged-in user's patrol_tracks listener was opened.
-//
-// Result:
-//
-// OTHER ACTIVE STAFF
-//      ↓
-// live_staff GPS visible
-//      ↓
-// patrol_tracks listener NOT created
-//      ↓
-// points unavailable
-//      ↓
-// newPoints unavailable
-//      ↓
-// analytics never executed
-//
-// NEW BEHAVIOUR:
-// ----------------------------------------------------------
-// Every authorized ACTIVE staff/session gets its own
-// patrol_tracks listener.
-//
-// This allows:
-//
-// ACTIVE STAFF GPS
-//      ↓
-// loadStaff()
-//      ↓
-// patrol_tracks/{sessionId}/points
-//      ↓
-// points
-//      ↓
-// newPoints
-//      ↓
-// getAnalyticsCellId()
-//      ↓
-// resolveAnalyticsCell()
-//      ↓
-// collectAnalyticsHit()
-//      ↓
-// analyticsBuffer
-//      ↓
-// flushAnalyticsBuffer()
-//      ↓
-// updateMonthlyAnalyticsRebuild()
-//      ↓
-// analytics_rebuild
-//
-// Staff/session isolation remains protected by:
-//      s.cleanName
-//      currentSessionId
-//      analyticsStreamKey
-//
-// ==========================================================
 
 const staffName =
     cleanName(
@@ -42147,66 +42060,15 @@ const staffName =
     );
 
 
-// ==========================================================
-// 🔒 REQUIRE VALID STAFF IDENTITY
-// ==========================================================
-
 if(
-    !staffName
+    !currentUserName ||
+    !staffName ||
+    staffName !== currentUserName
 ){
 
-    console.warn(
-        "⚠ TRACK STREAM SKIPPED — STAFF NAME MISSING",
-        s
-    );
-
     continue;
+
 }
-
-
-// ==========================================================
-// 🔒 REQUIRE ACTIVE SESSION
-//
-// currentSessionId was already extracted above:
-//
-// const currentSessionId =
-//     String(
-//         s.sessionId || ""
-//     ).trim();
-//
-// Never create a synthetic session here.
-// ==========================================================
-
-if(
-    !currentSessionId
-){
-
-    console.warn(
-        "⚠ TRACK STREAM SKIPPED — SESSION MISSING",
-        staffName
-    );
-
-    continue;
-}
-
-
-// ==========================================================
-// 🔍 OPTIONAL DEVELOPMENT LOG
-// ==========================================================
-
-console.log(
-    "🛰 ACTIVE STAFF SESSION ELIGIBLE",
-    {
-        staff:
-            staffName,
-
-        session:
-            currentSessionId,
-
-        dutyActive:
-            s.dutyActive === true
-    }
-);
     // ==============================================
     // 🔥 SAME SESSION
     // ==============================================
@@ -42488,10 +42350,11 @@ catch(err){
 // 🔥 CREATE POLYLINE FIRST TIME
 // ======================================
 if(
-    enableTrackRendering &&
-    !window.staffTracks[
-        s.cleanName
-    ]
+
+  !window.staffTracks[
+    s.cleanName
+  ]
+
 ){
 
   const color =
@@ -42571,1102 +42434,102 @@ if(
 const newPoints =
   points.slice(oldCount);
 
-// ============================================================
-// 🔥 SESSION-AWARE AUTHORITATIVE TOUCHED-CELL ANALYTICS
-//
-// PURPOSE:
-//
-// 1. Process ONLY newly received GPS points.
-// 2. Count the authoritative cell containing each real GPS point.
-// 3. Recover authoritative cells crossed between consecutive GPS.
-// 4. Never connect different staff.
-// 5. Never connect different sessions.
-// 6. Reject impossible / teleport movement segments.
-// 7. Feed the EXISTING analyticsBuffer architecture.
-// 8. Flush through the EXISTING flushAnalyticsBuffer() writer.
-//
-// IMPORTANT:
-//
-// getTouchedCells() is now the authoritative traversal engine.
-// It has already been verified against cellToGridId.
-//
-// NO second realtime analytics engine is created here.
-// NO Firestore listener is created here.
-// NO direct analytics_rebuild write occurs here.
-// ============================================================
+// ======================================
+// 🔥 ANALYTICS COUNTER
+// ======================================
+window.analyticsPointCounter ??= 0;
 
+// ======================================
+// 🔥 PROCESS NEW POINTS
+// ======================================
+for(const p of newPoints){
 
-// ============================================================
-// 🔥 ENSURE ANALYTICS RUNTIME
-// ============================================================
+  // =========================
+  // ANALYTICS
+  // =========================
+  const cellId =
 
-window.analyticsBuffer ??=
-  Object.create(null);
+    getAnalyticsCellId(
 
-window.analyticsLastPoint ??=
-  Object.create(null);
+      p.lat,
 
-window.analyticsPointCounter ??=
-  0;
+      p.lon
 
-
-// ============================================================
-// 🔥 STAFF IDENTITY
-// ============================================================
-
-const analyticsStaffName =
-
-  String(
-    s.cleanName ||
-    s.name ||
-    ""
-  )
-
-  .trim()
-  .toUpperCase();
-
-
-// ============================================================
-// 🔥 SESSION ID
-//
-// Prefer the session already attached to this staff record.
-//
-// For the logged-in user, currentSessionId is also allowed as
-// a safe fallback because autoShowEndDuty() restores it.
-// ============================================================
-
-const currentUserAnalyticsName =
-
-  String(
-    window.userProfile?.cleanName ||
-    window.userProfile?.name ||
-    ""
-  )
-
-  .trim()
-  .toUpperCase();
-
-
-let analyticsSessionId =
-
-  String(
-
-    s.sessionId ||
-
-    s.dutySessionId ||
-
-    s.currentSessionId ||
-
-    s.activeSessionId ||
-
-    ""
-
-  )
-
-  .trim();
-
-
-// ============================================================
-// 🔥 CURRENT USER SESSION FALLBACK
-// ============================================================
-
-if(
-  !analyticsSessionId &&
-  analyticsStaffName &&
-  analyticsStaffName === currentUserAnalyticsName
-){
-
-  analyticsSessionId =
-
-    String(
-      window.currentSessionId ||
-      localStorage.getItem(
-        "sessionId"
-      ) ||
-      ""
-    )
-
-    .trim();
-}
-
-
-// ============================================================
-// 🔥 REQUIRE STAFF + SESSION
-//
-// Never merge unidentified streams.
-// ============================================================
-
-if(
-  analyticsStaffName &&
-  analyticsSessionId
-){
-
-  // ==========================================================
-  // 🔥 STAFF + SESSION STREAM KEY
-  //
-  // Example:
-  //
-  // DHIRAJ KAMI|DHIRAJ KAMI_1785235974085
-  //
-  // Different staff/session streams can therefore never share
-  // their previous analytics point.
-  // ==========================================================
-
-  const analyticsStreamKey =
-
-    `${analyticsStaffName}|${analyticsSessionId}`;
-
-
-  // ==========================================================
-  // 🔥 OPTIONAL DEBUG MEMORY
-  // ==========================================================
-
-  try {
-
-    localStorage.setItem(
-      "analyticsLastStreamKey",
-      analyticsStreamKey
     );
 
+  const gridId =
+
+    window.cellToGridId?.[
+      cellId
+    ];
+
+  if(!gridId){
+
+    continue;
   }
-  catch(_){}
-
-
-  // ==========================================================
-  // 🔥 PREVIOUS POINT FOR THIS EXACT STREAM
-  // ==========================================================
-
-  let previousAnalyticsPoint =
-
-    window.analyticsLastPoint[
-      analyticsStreamKey
-    ] || null;
-
-
-  // ==========================================================
-  // 🔥 PROCESS ONLY NEW GPS POINTS
-  // ==========================================================
-
-  for(
-    const p
-    of newPoints
-  ){
-
-    // ========================================================
-    // 🔥 NORMALIZE GPS
-    // ========================================================
-
-    const lat =
-      Number(
-        p?.lat
-      );
-
-    const lon =
-      Number(
-        p?.lon ??
-        p?.lng
-      );
-
-
-    if(
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lon)
-    ){
-
-      continue;
-    }
-
-
-    // ========================================================
-    // 🔥 NORMALIZE TIME
-    // ========================================================
-
-    let currentTime =
-
-      Number(
-
-        p?.time ??
-
-        p?.timestamp ??
-
-        p?.ts ??
-
-        0
-
-      );
-
-
-    if(
-      !Number.isFinite(currentTime) ||
-      currentTime <= 0
-    ){
-
-      currentTime =
-        Date.now();
-    }
-
-
-    // ========================================================
-    // 1️⃣ ACTUAL GPS POINT
-    //
-    // A real GPS point independently establishes that its
-    // authoritative cell was visited.
-    // ========================================================
-
-    try {
-
-      const pointCellId =
-
-        getAnalyticsCellId(
-          lat,
-          lon
-        );
-
-
-      const pointResolved =
-
-        resolveAnalyticsCell(
-          pointCellId
-        );
-
-
-if(
-  pointResolved &&
-  pointResolved.gridId &&
-  pointResolved.cellId
-){
-
-  // ========================================================
-  // 🔒 LIVE ANALYTICS JURISDICTION
-  //
-  // STAFF / TEAM_LEADER:
-  // BOTH DIVISION + RANGE MUST MATCH
-  //
-  // Example:
-  //
-  // Staff:
-  // division = BuxaTR_WEST
-  // range    = WestDamanpur
-  //
-  // Allowed:
-  // BTR_W_WESTDAMANPUR_...
-  //
-  // Rejected:
-  // BTR_W_WESTRAJABHATKHAWA_...
-  // BTR_E_...
-  // ========================================================
-
-  const staffDivision =
-    String(
-      s.division ||
-      s.Division ||
-      ""
-    )
-    .trim()
-    .toUpperCase()
-    .replace(
-      /[^A-Z0-9]/g,
-      ""
-    );
-
-
-  const staffRange =
-    String(
-      s.range ||
-      s.Range ||
-      ""
-    )
-    .trim()
-    .toUpperCase()
-    .replace(
-      /[^A-Z0-9]/g,
-      ""
-    );
-
-
-  const analyticsGridId =
-    String(
-      pointResolved.gridId ||
-      ""
-    )
-    .trim()
-    .toUpperCase()
-    .replace(
-      /[^A-Z0-9]/g,
-      ""
-    );
-
-
-  // ========================================================
-  // DIVISION
-  //
-  // BuxaTR_WEST → BUXATRWEST
-  // Grid prefix BTR_W → BTRW
-  //
-  // Existing grid IDs use BTR_W / BTR_E, so resolve
-  // division side explicitly.
-  // ========================================================
-
-  let divisionMatch =
-    false;
-
-
-  if(
-    staffDivision.includes(
-      "WEST"
-    )
-  ){
-
-    divisionMatch =
-      analyticsGridId.startsWith(
-        "BTRW"
-      );
-  }
-
-  else if(
-    staffDivision.includes(
-      "EAST"
-    )
-  ){
-
-    divisionMatch =
-      analyticsGridId.startsWith(
-        "BTRE"
-      );
-  }
-
-
-  // ========================================================
-  // RANGE
-  // ========================================================
-
-  const rangeMatch =
-
-    !!staffRange &&
-
-    analyticsGridId.includes(
-      staffRange
-    );
-
-
-  // ========================================================
-  // BOTH MUST MATCH
-  // ========================================================
-
-if(
-  divisionMatch &&
-  rangeMatch
-){
-
-  // ========================================================
-  // ✅ AUTHORIZED ANALYTICS HIT
-  //
-  // Pass REAL staff + patrol session identity so that:
-  //
-  // analyticsBuffer
-  //   ├── touchedCells
-  //   ├── localCoordsArray
-  //   └── visitSessions
-  //
-  // can correctly maintain compartment visits.
-  // ========================================================
 
   collectAnalyticsHit(
 
-    pointResolved.gridId,
+    gridId,
 
-    pointResolved.cellId,
+    cellId,
 
-    lat,
+    p.lat,
 
-    lon,
-
-    analyticsStaffName,
-
-    analyticsSessionId
+    p.lon
 
   );
-
 }
 
-  else {
-
-    console.log(
-      "🚫 ANALYTICS POINT OUTSIDE STAFF JURISDICTION",
-      {
-        staff:
-          analyticsStaffName,
-
-        staffDivision,
-
-        staffRange,
-
-        gridId:
-          pointResolved.gridId,
-
-        divisionMatch,
-
-        rangeMatch
-      }
-    );
-  }
-}
-
-    }
-    catch(err){
-
-      console.error(
-        "❌ ANALYTICS POINT ERROR",
-        analyticsStaffName,
-        err
-      );
-    }
-
-
-    // ========================================================
-    // 2️⃣ PREVIOUS → CURRENT MOVEMENT SEGMENT
-    // ========================================================
-
-    if(
-      previousAnalyticsPoint
-    ){
-
-      try {
-
-        const prevLat =
-          Number(
-            previousAnalyticsPoint.lat
-          );
-
-        const prevLon =
-          Number(
-            previousAnalyticsPoint.lon
-          );
-
-        const previousTime =
-          Number(
-            previousAnalyticsPoint.time || 0
-          );
-
-
-        if(
-          Number.isFinite(prevLat) &&
-          Number.isFinite(prevLon)
-        ){
-
-          // ==================================================
-          // 🔥 MOVEMENT DISTANCE
-          // ==================================================
-
-          let segmentDistance =
-            0;
-
-
-          try {
-
-            segmentDistance =
-
-              map.distance(
-
-                [
-                  prevLat,
-                  prevLon
-                ],
-
-                [
-                  lat,
-                  lon
-                ]
-
-              );
-
-          }
-          catch(err){
-
-            segmentDistance =
-              NaN;
-          }
-
-
-          // ==================================================
-          // 🔥 TIME DIFFERENCE
-          // ==================================================
-
-          let timeDiffSec =
-            1;
-
-
-          if(
-            Number.isFinite(previousTime) &&
-            previousTime > 0 &&
-            currentTime > previousTime
-          ){
-
-            timeDiffSec =
-
-              Math.max(
-
-                1,
-
-                (
-                  currentTime -
-                  previousTime
-                )
-                /
-                1000
-
-              );
-          }
-
-
-          // ==================================================
-          // 🔥 SPEED
-          // ==================================================
-
-          const speedKmh =
-
-            (
-              segmentDistance /
-              timeDiffSec
-            )
-
-            * 3.6;
-
-
-          // ==================================================
-          // 🛡️ TELEPORT / BAD SEGMENT PROTECTION
-          //
-          // Current point still counts.
-          //
-          // Only the artificial connecting line is rejected.
-          // ==================================================
-
-          const validMovement =
-
-            Number.isFinite(
-              segmentDistance
-            )
-
-            &&
-
-            Number.isFinite(
-              speedKmh
-            )
-
-            &&
-
-            segmentDistance >= 0
-
-            &&
-
-            segmentDistance <= 500
-
-            &&
-
-            speedKmh <= 120;
-
-
-          if(
-            validMovement &&
-            segmentDistance > 0
-          ){
-
-            // ================================================
-            // 🎯 AUTHORITATIVE SEGMENT TRAVERSAL
-            //
-            // Input contract:
-            //
-            // [
-            //   [
-            //     [lat, lon],
-            //     [lat, lon]
-            //   ]
-            // ]
-            // ================================================
-
-            const segmentResult =
-
-              getTouchedCells([
-
-                [
-
-                  [
-                    prevLat,
-                    prevLon
-                  ],
-
-                  [
-                    lat,
-                    lon
-                  ]
-
-                ]
-
-              ]);
-
-
-            // ================================================
-            // 🔥 EVERY TOUCHED CELL ALREADY COMES FROM
-            // AUTHORITATIVE grid_master RESOLUTION.
-            //
-            // Resolve again here only to obtain its gridId
-            // safely for collectAnalyticsHit().
-            // ================================================
-
-            if(
-              segmentResult?.touchedCells
-              instanceof Set
-            ){
-
-              for(
-                const touchedCellId
-                of segmentResult.touchedCells
-              ){
-
-                const resolved =
-
-                  resolveAnalyticsCell(
-                    touchedCellId
-                  );
-
-
-                if(
-                  !resolved ||
-                  !resolved.gridId ||
-                  !resolved.cellId
-                ){
-
-                  continue;
-                }
-
-
-              // ==========================================================
-// 🔒 LIVE TOUCHED-CELL JURISDICTION CHECK
-//
-// STAFF / TEAM LEADER:
-// BOTH DIVISION + RANGE MUST MATCH.
-//
-// GPS / patrol track itself remains untouched.
-// Only analytics credit is restricted.
-// ==========================================================
-
-const staffDivision =
-
-  String(
-    s.division ||
-    s.Division ||
-    ""
-  )
-  .trim()
-  .toUpperCase()
-  .replace(
-    /[^A-Z0-9]/g,
-    ""
-  );
-
-
-const staffRange =
-
-  String(
-    s.range ||
-    s.Range ||
-    ""
-  )
-  .trim()
-  .toUpperCase()
-  .replace(
-    /[^A-Z0-9]/g,
-    ""
-  );
-
-
-const analyticsGridId =
-
-  String(
-    resolved.gridId ||
-    ""
-  )
-  .trim()
-  .toUpperCase()
-  .replace(
-    /[^A-Z0-9]/g,
-    ""
-  );
-
-
-// ==========================================================
-// 🔥 DIVISION MATCH
-//
-// BuxaTR_WEST
-//      ↓
-// BUXATRWEST
-//
-// BTR_W_...
-//      ↓
-// BTRW...
-// ==========================================================
-
-let divisionMatch =
-  false;
-
-
+// ======================================
+// 🔥 COUNT NEW GPS POINTS
+// ======================================
+window.analyticsPointCounter +=
+  newPoints.length;
+
+// ======================================
+// 🔥 AUTO FLUSH EVERY 50 POINTS
+// ======================================
 if(
-  staffDivision.includes(
-    "WEST"
-  )
-){
 
-  divisionMatch =
+  window.analyticsPointCounter >= 5
 
-    analyticsGridId.startsWith(
-      "BTRW"
-    );
-}
-
-else if(
-  staffDivision.includes(
-    "EAST"
-  )
-){
-
-  divisionMatch =
-
-    analyticsGridId.startsWith(
-      "BTRE"
-    );
-}
-
-
-// ==========================================================
-// 🔥 RANGE MATCH
-//
-// WestDamanpur
-//      ↓
-// WESTDAMANPUR
-//
-// BTR_W_WESTDAMANPUR_...
-//      ↓
-// MATCH
-// ==========================================================
-
-const rangeMatch =
-
-  !!staffRange &&
-
-  analyticsGridId.includes(
-    staffRange
-  );
-
-
-// ==========================================================
-// ❌ OUTSIDE STAFF DIVISION / RANGE
-// ==========================================================
-
-if(
-  !divisionMatch ||
-  !rangeMatch
 ){
 
   console.log(
 
-    "🚫 ANALYTICS TOUCHED CELL OUTSIDE STAFF JURISDICTION",
+    "📤 AUTO FLUSH",
 
-    {
+    window.analyticsPointCounter,
 
-      staff:
-        analyticsStaffName,
-
-      session:
-        analyticsSessionId,
-
-      staffDivision,
-
-      staffRange,
-
-      gridId:
-        resolved.gridId,
-
-      cellId:
-        resolved.cellId,
-
-      divisionMatch,
-
-      rangeMatch
-
-    }
+    "POINTS"
 
   );
 
-  continue;
-}
+  window.analyticsPointCounter = 0;
 
+  flushAnalyticsBuffer()
 
-// ==========================================================
-// ✅ AUTHORIZED CELL
-//
-// Existing analytics flow continues unchanged.
-// ==========================================================
+    .catch(err=>{
 
-collectAnalyticsHit(
+      console.error(
 
-  resolved.gridId,
+        "❌ AUTO FLUSH FAILED",
 
-  resolved.cellId,
+        err
 
-  lat,
+      );
 
-  lon,
-
-  analyticsStaffName,
-
-  analyticsSessionId
-
-);
-              }
-            }
-
-
-            // ================================================
-            // 🔍 DEVELOPMENT LOG
-            // ================================================
-
-            console.log(
-
-              "🧭 ANALYTICS SEGMENT",
-
-              {
-
-                staff:
-                  analyticsStaffName,
-
-                session:
-                  analyticsSessionId,
-
-                from:
-                  [
-                    prevLat,
-                    prevLon
-                  ],
-
-                to:
-                  [
-                    lat,
-                    lon
-                  ],
-
-                distanceMeters:
-                  Math.round(
-                    segmentDistance
-                  ),
-
-                speedKmh:
-                  Number(
-                    speedKmh.toFixed(1)
-                  ),
-
-                touchedCells:
-                  segmentResult
-                    ?.touchedCells
-                    ?.size || 0
-
-              }
-
-            );
-          }
-
-          else if(
-            segmentDistance > 0
-          ){
-
-            console.warn(
-
-              "⚠ ANALYTICS SEGMENT BLOCKED",
-
-              {
-
-                staff:
-                  analyticsStaffName,
-
-                session:
-                  analyticsSessionId,
-
-                distanceMeters:
-                  Number.isFinite(
-                    segmentDistance
-                  )
-                    ? Math.round(
-                        segmentDistance
-                      )
-                    : null,
-
-                speedKmh:
-                  Number.isFinite(
-                    speedKmh
-                  )
-                    ? Number(
-                        speedKmh.toFixed(1)
-                      )
-                    : null,
-
-                from:
-                  [
-                    prevLat,
-                    prevLon
-                  ],
-
-                to:
-                  [
-                    lat,
-                    lon
-                  ]
-
-              }
-
-            );
-          }
-        }
-
-      }
-      catch(err){
-
-        console.error(
-
-          "❌ ANALYTICS SEGMENT ERROR",
-
-          analyticsStaffName,
-
-          err
-
-        );
-      }
-    }
-
-
-    // ========================================================
-    // 🔥 CURRENT POINT BECOMES PREVIOUS
-    //
-    // IMPORTANT:
-    // This happens even when the connecting segment was blocked.
-    //
-    // Otherwise one bad GPS jump could cause later valid points
-    // to remain connected to an old position.
-    // ========================================================
-
-    previousAnalyticsPoint = {
-
-      lat,
-
-      lon,
-
-      time:
-        currentTime
-
-    };
-
-
-    window.analyticsLastPoint[
-      analyticsStreamKey
-    ] =
-      previousAnalyticsPoint;
-
-  }
-
-
-  // ==========================================================
-  // 🔥 COUNT NEW GPS OBSERVATIONS
-  //
-  // This counter controls flush frequency.
-  // It does NOT represent visited-cell count.
-  // ==========================================================
-
-  window.analyticsPointCounter +=
-
-    newPoints.length;
-
-
-  // ==========================================================
-  // 📤 FLUSH EVERY 5 NEW GPS POINTS
-  // ==========================================================
-
-  if(
-    window.analyticsPointCounter >= 5
-  ){
-
-    console.log(
-
-      "📤 AUTO FLUSH",
-
-      window.analyticsPointCounter,
-
-      "POINTS"
-
-    );
-
-
-    // ========================================================
-    // Reset before async flush.
-    //
-    // New GPS arriving during the flush can therefore start
-    // accumulating toward the next flush immediately.
-    // ========================================================
-
-    window.analyticsPointCounter =
-      0;
-
-
-    Promise
-      .resolve(
-        flushAnalyticsBuffer()
-      )
-      .catch(err=>{
-
-        console.error(
-          "❌ AUTO FLUSH FAILED",
-          err
-        );
-
-      });
-  }
-
-}
-
-else {
-
-  // ==========================================================
-  // No valid session.
-  //
-  // Do NOT write analytics under "CURRENT" or another synthetic
-  // session because that can mix independent patrol sessions.
-  // ==========================================================
-
-  if(
-    newPoints.length > 0
-  ){
-
-    console.warn(
-
-      "⚠ ANALYTICS SKIPPED — SESSION MISSING",
-
-      {
-        staff:
-          analyticsStaffName,
-
-        points:
-          newPoints.length
-      }
-
-    );
-  }
+    });
 }
 // ======================================
 // 🔥 GET POLYLINE
 // ======================================
 const polyline =
-    enableTrackRendering
-        ? window.staffTracks[
-            s.cleanName
-          ]
-        : null;
+
+  window.staffTracks[
+    s.cleanName
+  ];
 
 // ======================================
 // 🔥 APPEND NEW GPS POINTS
@@ -43688,18 +42551,27 @@ const cleanedPoints =
 // ======================================
 // 🔥 APPEND CLEANED POINTS
 // ======================================
-if(enableTrackRendering && polyline){
+cleanedPoints.forEach(p=>{
 
-    cleanedPoints.forEach(p=>{
+  if(
+    !Array.isArray(p)
+  ){
+    return;
+  }
 
-        polyline.addLatLng([
-            p[0],
-            p[1]
-        ]);
+  if(
+    isNaN(p[0]) ||
+    isNaN(p[1])
+  ){
+    return;
+  }
 
-    });
+  polyline.addLatLng([
+    p[0],
+    p[1]
+  ]);
 
-}
+});
 
 // ==================================================
 // 🔥 GRID DETECTION FROM CLEANED POLYLINE
@@ -45578,6 +44450,7 @@ console.log(
   ); // END onSnapshot
 
 } // END loadStaff
+
     
     
     
