@@ -38346,12 +38346,85 @@ const lon = Number(
                         )
 
                         .toUpperCase();
+                  // =====================================================
+// CURRENT USER
+// =====================================================
 
-                    if(
+const role =
 
-                        status === "CLOSED"
+String(
 
-                    ){
+window.userProfile?.role ||
+
+""
+
+)
+
+.trim()
+
+.toUpperCase();
+
+const currentUserId =
+
+window.userProfile?.uid ||
+
+window.userProfile?.userId ||
+
+window.userProfile?.id ||
+
+"";
+
+const isReporter =
+
+currentUserId ===
+
+e.reporterUserId;
+
+const isAdmin =
+
+role === "ADMIN";
+
+const isStaff =
+
+role === "DEPREDATION"
+
+||
+
+role === "FOREST_GUARD"
+
+||
+
+role === "RANGER"
+
+||
+
+role === "BEAT_OFFICER";
+
+                   if(
+
+status==="RESOLVED"
+
+){
+
+if(
+
+window.hecMarkers[key]
+
+){
+
+window.hecLayer.removeLayer(
+
+window.hecMarkers[key]
+
+);
+
+delete window.hecMarkers[key];
+
+}
+
+return;
+
+}{
 
                         if(
 
@@ -38370,38 +38443,55 @@ window.hecLayer.removeLayer(
                         return;
 
                     }
-                                      let colour =
-                        "#ff0000";
+let colour = "#ff0000";
 
-                    if(
+let pulseClass =
 
-                        status === "WAITING"
+"riskPulseRed";
 
-                    ){
+switch(status){
 
-                        colour = "#ff0000";
+case "WAITING":
 
-                    }
+colour = "#d32f2f";
 
-                    else if(
+pulseClass = "riskPulseRed";
 
-                        status === "ACCEPTED"
+break;
 
-                    ){
+case "ACCEPTED":
 
-                        colour = "#ff9800";
+colour = "#fb8c00";
 
-                    }
+pulseClass = "riskPulseOrange";
 
-                    else if(
+break;
 
-                        status === "ARRIVED"
+case "ARRIVED":
 
-                    ){
+colour = "#1976d2";
 
-                        colour = "#2196f3";
+pulseClass = "riskPulseBlue";
 
-                    }
+break;
+
+case "AWAITING_CONFIRMATION":
+
+colour = "#8e24aa";
+
+pulseClass = "riskPulsePurple";
+
+break;
+
+case "RESOLVED":
+
+colour = "#43a047";
+
+pulseClass = "riskPulseGreen";
+
+break;
+
+}
 
                         const icon =
 
@@ -38661,526 +38751,21 @@ const gpsText =
 
     lon.toFixed(6);
 
-                                      const popup =
-
-`
-<div
-style="
-font-family:'Segoe UI',sans-serif;
-width:100%;
-max-width:100%;
-min-width:0;
-padding:10px;
-box-sizing:border-box;
-overflow-wrap:break-word;
-word-break:break-word;
-">
-
-<div
-style="
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:8px;
-">
-
-<div
-style="
-font-size:17px;
-font-weight:700;
-color:#c62828;
-">
-
-🚨 Elephant Response Request
-
-</div>
-
-<div
-style="
-padding:4px 10px;
-border-radius:14px;
-font-size:11px;
-font-weight:bold;
-background:
-
-${status==="WAITING"
-?"#d32f2f":
-status==="ACCEPTED"
-?"#fb8c00":
-status==="ARRIVED"
-?"#1976d2":
-"#2e7d32"};
-
-color:#fff;
-">
-
-${status}
-
-</div>
-
-</div>
-
-<hr>
-
-🆔 <b>Incident ID</b>
-
-<br>
-
-${key}
-
-<br><br>
-
-🐘 <b>Situation</b>
-<br>
-
-${e.situation || "-"}
-
-<br><br>
-
-🐘 <b>Approx. Elephant Count</b>
-<br>
-
-${e.elephantCount || "-"}
-
-<br>
-
-
-
-👤 <b>Reporter</b>
-
-<br>
-
-${e.reporterName || "-"}
-
-<br><br>
-
-☎ <b>Mobile</b>
-
-<br>
-
-${e.reporterMobile || "-"}
-
-<br>
-
-<hr>
-
-<b>📍 INCIDENT LOCATION</b>
-
-<br>
-
-📍
-
-${
-
-    e.incidentLocation?.text ||
-
-    (
-
-        (
-
-            e.incidentLocation?.village ||
-
-            e.village ||
-
-            "Unknown"
-
-        )
-
-        +
-
-        (
-
-            (
-
-                e.incidentLocation?.landmark ||
-
-                e.landmark
-
-            )
-
-            ?
-
-            " — Near " +
-
-            (
-
-                e.incidentLocation?.landmark ||
-
-                e.landmark
-
-            )
-
-            :
-
-            ""
-
-        )
-
-    )
-
-}
-
-<br>
-
-🛰 GPS :
-
-${gpsText}
-
-<br>
-
-<hr>
-
-<b>👤 REPORTER LOCATION</b>
-
-<br>
-
-📍
-
-${
-
-    e.reporterLocation?.text ||
-
-    (
-
-        (
-
-            e.reporterLocation?.village ||
-
-            "Unknown"
-
-        )
-
-        +
-
-        (
-
-            e.reporterLocation?.landmark
-
-            ?
-
-            " — Near " +
-
-            e.reporterLocation.landmark
-
-            :
-
-            ""
-
-        )
-
-    )
-
-}
-
-<br>
-
-🛰 GPS :
-
-${
-
-    Number.isFinite(
-
-        e.reporterLocation?.lat
-
-    ) &&
-
-    Number.isFinite(
-
-        e.reporterLocation?.lon
-
-    )
-
-    ?
-
-    e.reporterLocation.lat.toFixed(6) +
-
-    ", " +
-
-    e.reporterLocation.lon.toFixed(6)
-
-    :
-
-    "Unavailable"
-
-}
-
-<br>
-
-<hr>
-
-🕒 <b>Reported</b>
-
-<br>
-
-${reportDate}
-
-<br><br>
-
-⏱ <b>Waiting Time</b>
-${
-
-e.hasPhoto ?
-
-`
-
-<button
-onclick="window.open('${e.photoUrl}','_blank')"
-style="
-width:100%;
-margin-top:8px;
-background:#1565c0;
-color:white;
-border:none;
-padding:9px;
-border-radius:8px;
-font-weight:bold;
-">
-
-📷 VIEW PHOTO
-
-</button>
-
-`
-
-:
-
-""
-
-}
-
-${
-
-e.hasVoice ?
-
-`
-
-<button
-onclick="playHECVoice('${e.voice}')"
-style="
-width:100%;
-margin-top:8px;
-background:#00897b;
-color:white;
-border:none;
-padding:9px;
-border-radius:8px;
-font-weight:bold;
-">
-
-🎤 PLAY VOICE
-
-</button>
-
-`
-
-:
-
-""
-
-}
-<br>
-
-${reportAge}
-
-<br>
-
-<br>
-
-<hr>
-
-<div
-style="
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-gap:8px;
-margin-top:10px;
-width:100%;
-box-sizing:border-box;
-">
-
-${
-status === "WAITING"
-
-?
-
-`
-
-<button
-
-onclick="acceptHECIncident('${key}')"
-
-style="
-padding:10px;
-background:#2e7d32;
-color:#fff;
-border:none;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
-width:100%;
-">
-
-🟢 ACCEPT
-
-</button>
-
-`
-
-:
-
-`
-
-<div
-style="
-background:#e8f5e9;
-border:1px solid #4caf50;
-border-radius:8px;
-padding:10px;
-text-align:center;
-font-size:12px;
-line-height:1.5;
-color:#2e7d32;
-font-weight:bold;
-width:100%;
-box-sizing:border-box;
-">
-
-✅ ACCEPTED
-
-<br>
-
-👤 ${e.acceptedBy || "-"}
-
-<br>
-
-🕒
-
-${
-
-e.acceptedTime
-
-?
-
-new Date(
-
-e.acceptedTime.seconds
-
-?
-
-e.acceptedTime.seconds * 1000
-
-:
-
-e.acceptedTime
-
-)
-
-.toLocaleTimeString(
-
-"en-IN",
-
-{
-
-hour:"numeric",
-
-minute:"2-digit"
-
-}
-
-)
-
-:
-
-"-"
-
-}
-
-</div>
-
-`
-}
-
-<button
-
-onclick="navigateHEC('${lat}','${lon}')"
-
-style="
-padding:10px;
-background:#1565c0;
-color:#fff;
-border:none;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
-">
-
-📍 NAVIGATE
-
-</button>
-
-<button
-
-onclick="callHECReporter(
-'${e.reporterMobile || e.phone || ""}'
-)"
-style="
-padding:10px;
-background:#6a1b9a;
-color:#fff;
-border:none;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
-">
-
-☎ CALL
-
-</button>
-
-<button
-
-onclick="arriveHECIncident('${key}')"
-
-style="
-padding:10px;
-background:#ef6c00;
-color:#fff;
-border:none;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
-">
-
-✅ ARRIVED
-
-</button>
-
-</div>
-
-<button
-
-onclick="closeHECIncident('${key}')"
-
-style="
-width:100%;
-margin-top:10px;
-padding:12px;
-background:#c62828;
-color:#fff;
-border:none;
-border-radius:8px;
-font-size:14px;
-font-weight:bold;
-cursor:pointer;
-">
-
-✔ CLOSE INCIDENT
-
-</button>
-
-</div>
-`;
-
+const popup = buildHECPopup(
+    e,
+    {
+        status,
+        key,
+        lat,
+        lon,
+        gpsText,
+        reportDate,
+        reportAge,
+        isReporter,
+        isStaff,
+        isAdmin
+    }
+);
 
 let marker = window.hecMarkers[key];
 
@@ -39262,7 +38847,154 @@ marker.getPopup().setContent(popup);
 
 }
 
+// =====================================================
+// HEC POPUP ROUTER
+// =====================================================
 
+function buildHECPopup(
+    e,
+    ctx
+){
+
+    if(
+        ctx.isAdmin
+    ){
+
+        return buildAdminPopup(
+            e,
+            ctx
+        );
+
+    }
+
+    if(
+        ctx.isStaff
+    ){
+
+        return buildStaffPopup(
+            e,
+            ctx
+        );
+
+    }
+
+    return buildVillagerPopup(
+        e,
+        ctx
+    );
+
+}
+
+    // =====================================================
+// VILLAGER POPUP
+// =====================================================
+
+function buildVillagerPopup(
+    e,
+    ctx
+){
+
+    return `
+<div
+style="
+font-family:Segoe UI,sans-serif;
+padding:10px;
+">
+
+<h3>
+
+👤 Villager Popup
+
+</h3>
+
+Incident
+
+${ctx.key}
+
+<br><br>
+
+Status
+
+${ctx.status}
+
+</div>
+`;
+
+}
+
+    // =====================================================
+// STAFF POPUP
+// =====================================================
+
+function buildStaffPopup(
+    e,
+    ctx
+){
+
+    return `
+<div
+style="
+font-family:Segoe UI,sans-serif;
+padding:10px;
+">
+
+<h3>
+
+🚓 Staff Popup
+
+</h3>
+
+Incident
+
+${ctx.key}
+
+<br><br>
+
+Status
+
+${ctx.status}
+
+</div>
+`;
+
+}
+
+    // =====================================================
+// ADMIN POPUP
+// =====================================================
+
+function buildAdminPopup(
+    e,
+    ctx
+){
+
+    return `
+<div
+style="
+font-family:Segoe UI,sans-serif;
+padding:10px;
+">
+
+<h3>
+
+👨‍💼 Admin Popup
+
+</h3>
+
+Incident
+
+${ctx.key}
+
+<br><br>
+
+Status
+
+${ctx.status}
+
+</div>
+`;
+
+}
 
 // =====================================================
 // 🚨 START HEC REALTIME LISTENER
@@ -58838,7 +58570,15 @@ async function submitHelpRequest(event){
             "HELP_" +
 
             Date.now();
+const currentUserId =
 
+    window.userProfile?.uid ||
+
+    window.userProfile?.userId ||
+
+    window.userProfile?.id ||
+
+    "";
         // ============================================================
         // LOCATION DETAILS
         // ============================================================
@@ -59757,35 +59497,115 @@ division :
     incidentResolved?.division ||
 
     "",
-            // ========================================================
-            // RESPONSE TEAM
-            // ========================================================
+// ========================================================
+// RESPONSE TEAM
+// ========================================================
 
-            assignedTeam :
+assignedTeam : "",
 
-                "",
+// --------------------------------------------------------
+// ACCEPT
+// --------------------------------------------------------
 
-            acceptedBy :
+acceptedBy : "",
+acceptedByUserId : "",
+acceptedTime : null,
 
-                "",
+// --------------------------------------------------------
+// ARRIVED
+// --------------------------------------------------------
 
-            acceptedTime :
+arrivedBy : "",
+arrivedByUserId : "",
+arrivedTime : null,
 
-                null,
+// --------------------------------------------------------
+// RESPONSE COMPLETED
+// --------------------------------------------------------
 
-            arrivedTime :
+completedBy : "",
+completedByUserId : "",
+completedTime : null,
 
-                null,
+// --------------------------------------------------------
+// LIVE TEAM LOCATION
+// --------------------------------------------------------
 
-            operationStarted :
+teamCurrentLocation : {
 
-                null,
+    lat : null,
 
-            closedTime :
+    lon : null,
 
-                null
+    text : "",
 
-        };
+    beat : "",
+
+    range : "",
+
+    division : "",
+
+    updatedAt : null
+
+},
+
+estimatedArrival : "",
+
+lastLocationUpdate : null,
+
+// ========================================================
+// REPORTER
+// ========================================================
+
+reporterUserId :
+
+    currentUserId,
+
+reporterDeviceId :
+
+    window.deviceId ||
+
+    "",
+
+// ========================================================
+// CONFIRMATION
+// ========================================================
+
+resolvedBy : "",
+
+resolvedByName : "",
+
+confirmationTime : null,
+
+feedbackRating : "",
+
+feedbackRemarks : "",
+
+// ========================================================
+// ADMIN
+// ========================================================
+
+adminResolutionReason : "",
+
+// ========================================================
+// STATUS HISTORY
+// ========================================================
+
+statusHistory : [
+
+    {
+
+        status : "WAITING",
+
+        by : "SYSTEM",
+
+        name : "SYSTEM",
+
+        time : serverTimestamp()
+
+    }
+
+]
 
         // ============================================================
         // SAVE FIRESTORE
