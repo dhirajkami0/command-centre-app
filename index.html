@@ -42901,14 +42901,16 @@ if(
                                 lat,
                                 lon,
 
-                                time:Number(
-                                    p.time||0
-                                )
+time: Number(
+    p.time ??
+    p.timestamp ??
+    0
+)
 
                             });
 
                         });
-
+points.sort((a, b) => a.time - b.time);
                         const oldCount = Number(
     window.analyticsPointCount[
         currentSessionId
@@ -42946,23 +42948,27 @@ previousPoint = currentPoint;
 continue;
     }
 
-    const segment = [[
+const result =
+    getTouchedCells([
+        [
+            [
+                previousPoint.lat,
+                previousPoint.lon
+            ],
+            [
+                currentPoint.lat,
+                currentPoint.lon
+            ]
+        ]
+    ]);
 
-        previousPoint.lat,
-        previousPoint.lon
+const touchedCells =
 
-    ],[
+    Array.from(
 
-        currentPoint.lat,
-        currentPoint.lon
+        result?.touchedCells || []
 
-    ]];
-
-    const result =
-        getTouchedCells(segment);
-
-    const touchedCells =
-        result?.touchedCells || [];
+    );
 
     for(const rawCellId of touchedCells){
 
@@ -42987,10 +42993,10 @@ continue;
 
         );
 
-        window.analyticsPointCounter++;
 
     }
-
+window.analyticsPointCounter +=
+    touchedCells.length;
 previousPoint = currentPoint;
 
 window.analyticsLastPoint[
@@ -43005,9 +43011,12 @@ window.analyticsPointCount[
 points.length;
 
 
-                        if(
-                            window.analyticsPointCounter>=5
-                        ){
+if(
+    window.analyticsPointCounter >= 5 &&
+    Object.keys(
+        window.analyticsBuffer || {}
+    ).length
+){
 
                             console.log(
                                 "📤 AUTO FLUSH",
