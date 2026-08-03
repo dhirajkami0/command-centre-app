@@ -45760,6 +45760,9 @@ console.log(
 // ==================================================
 // 🔥 COLLECT ANALYTICS HITS
 // ==================================================
+// ==================================================
+// 🔥 COLLECT ANALYTICS HITS
+// ==================================================
 function collectAnalyticsHit(
   gridId,
   cellId,
@@ -45852,64 +45855,39 @@ function collectAnalyticsHit(
     // same staff/session do NOT create repeated visits.
     // ==========================================================
 
-    if(
-      !window.analyticsBuffer[
-        gridId
-      ]
-    ){
+window.analyticsBuffer ??= {};
+
+if(
+  !window.analyticsBuffer[
+    gridId
+  ]
+){
 
       window.analyticsBuffer[
         gridId
       ] = {
 
-        // ======================================================
-        // 🔥 UNIQUE AUTHORITATIVE CELLS TOUCHED
-        // ======================================================
+    // Authoritative visited cells
+    touchedCells:
+      new Set(),
 
-        touchedCells:
-          new Set(),
+    // GPS path (used ONLY for distance)
+    localCoordsArray: [
+      []
+    ],
 
+    // Unique patrol sessions
+    visitSessions:
+      new Set(),
 
-        // ======================================================
-        // 🔥 TRACK COORDINATES
-        //
-        // IMPORTANT:
-        // MATCHES appendTrackToGeometries() FORMAT.
-        //
-        // [
-        //   [
-        //     [lat, lon],
-        //     [lat, lon],
-        //     ...
-        //   ]
-        // ]
-        // ======================================================
+    // New fields
+    pointCount: 0,
 
-        localCoordsArray: [
-          []
-        ],
+    firstTimestamp: Date.now(),
 
+    lastTimestamp: Date.now()
 
-        // ======================================================
-        // 🔥 REAL STAFF PATROL SESSIONS
-        //
-        // Example:
-        //
-        // Set {
-        //   "NILKUSH MARAK|NILKUSH MARAK_1785376148055",
-        //   "SACHIN CHHETRI|SACHIN CHHETRI_1785343482080"
-        // }
-        //
-        // Multiple points from Nilkush's SAME session remain
-        // one Set entry.
-        //
-        // Different staff/session becomes another entry.
-        // ======================================================
-
-        visitSessions:
-          new Set()
-
-      };
+};
 
 
       console.log(
@@ -46004,6 +45982,14 @@ function collectAnalyticsHit(
             : []
         );
     }
+
+
+    buffer.pointCount =
+        Number(buffer.pointCount || 0) + 1;
+    buffer.firstTimestamp ??=
+        Date.now();
+    buffer.lastTimestamp =
+        Date.now();
 
 
     // ==========================================================
@@ -46104,15 +46090,32 @@ function collectAnalyticsHit(
 
     ){
 
-      buffer
-        .localCoordsArray[0]
-        .push([
+      const coords =
+          buffer.localCoordsArray[0];
+      const last =
+          coords.length
+              ? coords[
+                  coords.length - 1
+                ]
+              : null;
 
-          numericLat,
+      if(
+          !last ||
 
-          numericLon
+          last[0] !== numericLat ||
 
-        ]);
+          last[1] !== numericLon
+      ){
+
+          coords.push([
+
+              numericLat,
+
+              numericLon
+
+          ]);
+
+      }
 
     }
 
@@ -46174,6 +46177,19 @@ function collectAnalyticsHit(
           buffer
             .visitSessions
             .size,
+
+        pointCount:
+          buffer.pointCount,
+
+        firstSeen:
+          new Date(
+              buffer.firstTimestamp
+          ).toLocaleTimeString(),
+
+        lastSeen:
+          new Date(
+              buffer.lastTimestamp
+          ).toLocaleTimeString(),
 
 
         // ------------------------------------------------------
