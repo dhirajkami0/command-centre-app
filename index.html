@@ -41727,6 +41727,29 @@ if(
 // 🔴 DUTY OFF CLEANUP
 // ==============================================
 if(s.dutyActive !== true){
+  window.liveStaffCache ??= Object.create(null);
+
+window.activeSessionMap ??= Object.create(null);
+
+window.trackPointCount ??= Object.create(null);
+
+window.analyticsPointCount ??= Object.create(null);
+
+window.analyticsLastPoint ??= Object.create(null);
+
+window.analyticsTrackListeners ??= Object.create(null);
+
+window.trackDistanceMap ??= Object.create(null);
+
+window.trackDistanceSessionMap ??= Object.create(null);
+
+window.staffMarkers ??= Object.create(null);
+
+window.staffTracks ??= Object.create(null);
+
+window.staffDecorators ??= Object.create(null);
+
+window.trackListeners ??= Object.create(null);
 
   delete window.liveStaffCache[
     s.cleanName
@@ -42013,12 +42036,17 @@ if(
 
 }
 staff.push(s);
-} catch(e){
+}catch(e){
 
-  console.error(
-    "❌ Staff parse error:",
-    e
-  );
+    console.error(
+        "❌ Staff parse error:",
+        s?.cleanName,
+        docSnap?.id,
+        e
+    );
+
+    throw e;
+
 }
 
 });
