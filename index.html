@@ -41189,10 +41189,10 @@ window.staffUnsubscribe = onSnapshot(
 
   async(snapshot)=>{     try {
 
-        let activeUsers =
-          new Set();
+let activeUsers = new Set();
 
-        let staff = [];     
+let staff = [];            // Visible staff (UI)
+let analyticsStaff = [];   // All dutyActive staff (Analytics)   
     // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
@@ -41879,7 +41879,12 @@ if(
 
   return;
 }
+// ==============================================
+// ANALYTICS STAFF
+// ALL ACTIVE STAFF
+// ==============================================
 
+analyticsStaff.push(s);
 // ==============================================
 // 🔥 LIVE STAFF CACHE
 // ONLY GPS ACTIVE STAFF
@@ -42032,8 +42037,7 @@ for(
         // ==================================================
 // 🔥 LIVE SESSION STREAM
 // ==================================================
-for(const s of staff){
-
+for(const s of analyticsStaff){
   try {
 
     const currentSessionId =
