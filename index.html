@@ -8032,112 +8032,86 @@ function login(){
         return;
       }
 
-// ============================================================
-// 🔥 FINAL PROFILE
-// ============================================================
+      // ============================================================
+      // 🔥 FINAL PROFILE
+      // ============================================================
+      const finalProfile = {
 
-const finalProfile = {
+          // =====================================================
+          // IDENTITY
+          // =====================================================
+          uid :
+              profile.uid || "",
 
-    // =====================================================
-    // IDENTITY
-    // =====================================================
+          villagerId :
+              profile.villagerId || "",
 
-    uid :
+          rawName :
+              profile.name || "",
 
-        profile.uid || "",
+          cleanName :
+              profile.cleanName ||
+              cleanName(profile.name || ""),
 
-    villagerId :
+          role :
+              String(
+                  profile.role || ""
+              )
+              .trim()
+              .toUpperCase(),
 
-        profile.villagerId || "",
+          phone :
+              profile.phone || "",
 
-    rawName :
+          // =====================================================
+          // LOCATION
+          // =====================================================
+          village :
+              profile.village || "",
 
-        profile.name || "",
+          villageCode :
+              profile.villageCode || "",
 
-    cleanName :
+          beat :
+              profile.beat || "",
 
-        profile.cleanName ||
+          range :
+              profile.range || "",
 
-        cleanName(profile.name || ""),
+          division :
+              profile.division || "",
 
-    role :
+          circle :
+              profile.circle || "",
 
-        String(
-            profile.role || ""
-        )
-        .trim()
-        .toUpperCase(),
+          block :
+              profile.block || "",
 
-    phone :
+          district :
+              profile.district || "",
 
-        profile.phone || "",
-
-    // =====================================================
-    // LOCATION
-    // =====================================================
-
-    village :
-
-        profile.village || "",
-
-    villageCode :
-
-        profile.villageCode || "",
-
-    beat :
-
-        profile.beat || "",
-
-    range :
-
-        profile.range || "",
-
-    division :
-
-        profile.division || "",
-
-    circle :
-
-        profile.circle || "",
-
-    block :
-
-        profile.block || "",
-
-    district :
-
-        profile.district || "",
-
-    state :
-
-        profile.state || ""
-
-};
-
-
+          state :
+              profile.state || ""
+      };
 
       // ========================================================
       // 🔒 STAFF GIS LOCK
       // ========================================================
-const isStaff =
+      const role = finalProfile.role;
+      const isStaff = [
+          "ADMIN",
+          "STAFF",
+          "TEAM LEADER",
+          "RANGER",
+          "FOREST GUARD",
+          "BEAT OFFICER",
+          "DEPUTY RANGER",
+          "FORESTER"
+      ].includes(role);
 
-[
-    "STAFF",
-    "TEAM LEADER",
-    "RANGER",
-    "FOREST GUARD",
-    "BEAT OFFICER",
-    "DEPUTY RANGER",
-    "FORESTER",
-    "ADMIN"
-]
-
-.includes(role);
-
-if(isStaff){
+      if(isStaff){
 
         window.gisFilter = {
-
           division:
             finalProfile.division || "ALL",
 
@@ -8164,9 +8138,7 @@ if(isStaff){
       );
 
       localStorage.setItem(
-
         "userProfile",
-
         JSON.stringify(
           finalProfile
         )
@@ -8236,151 +8208,126 @@ if(isStaff){
       // ========================================================
       setTimeout(async () => {
 
-  try {
+        try {
 
-    // ====================================================
-    // 🔥 RENDER GIS
-    // ====================================================
+          // ====================================================
+          // 🔥 RENDER GIS
+          // ====================================================
+          if(
+            typeof renderFilteredGIS ===
+            "function"
+          ){
 
-    if(
-      typeof renderFilteredGIS ===
-      "function"
-    ){
+            renderFilteredGIS();
+          }
 
-      renderFilteredGIS();
-    }
+          // ====================================================
+          // 🎯 AUTO CENTER MAP
+          // ====================================================
+          try {
 
-    // ====================================================
-    // 🎯 AUTO CENTER MAP
-    // ====================================================
+            if(
+              window.gisLayer &&
+              window.gisLayer.getBounds &&
+              window.gisLayer.getLayers().length > 0
+            ){
 
-    try {
+              const bounds =
+                window.gisLayer.getBounds();
 
-      if(
+              if(bounds.isValid()){
 
-        window.gisLayer &&
+                window.map.fitBounds(
+                  bounds,
+                  {
+                    padding:[40,40],
+                    maxZoom:15,
+                    animate:true
+                  }
+                );
 
-        window.gisLayer.getBounds &&
-
-        window.gisLayer.getLayers().length > 0
-
-      ){
-
-        const bounds =
-
-          window.gisLayer.getBounds();
-
-        if(bounds.isValid()){
-
-          window.map.fitBounds(
-
-            bounds,
-
-            {
-
-              padding:[40,40],
-
-              maxZoom:15,
-
-              animate:true
-
+                console.log(
+                  "🎯 MAP CENTERED TO GIS"
+                );
+              }
             }
 
+          } catch(e){
+
+            console.error(
+              "❌ fitBounds failed",
+              e
+            );
+          }
+
+          // ====================================================
+          // 🔥 STAFF/TL RANGE GIS
+          // ====================================================
+          const isStaffOrTL = [
+              "ADMIN",
+              "STAFF",
+              "TEAM LEADER",
+              "RANGER",
+              "FOREST GUARD",
+              "BEAT OFFICER",
+              "DEPUTY RANGER",
+              "FORESTER"
+          ].includes(
+              String(
+                  window.userProfile.role || ""
+              ).trim().toUpperCase()
           );
 
-          console.log(
-            "🎯 MAP CENTERED TO GIS"
+          if(isStaffOrTL){
+
+            // ================================================
+            // 🔥 BEAT BUTTONS
+            // ================================================
+            if(
+              typeof populateBeatButtons ===
+              "function"
+            ){
+
+              await populateBeatButtons();
+            }
+
+            // ================================================
+            // 🔥 RANGE COMPARTMENTS
+            // ================================================
+            if(
+              typeof loadCompartmentsForRange ===
+              "function"
+            ){
+
+              await loadCompartmentsForRange();
+            }
+
+            // ================================================
+            // 🎨 RENDER COMPARTMENTS
+            // ================================================
+            if(
+              typeof renderFilteredCompartments ===
+              "function"
+            ){
+
+              renderFilteredCompartments();
+            }
+
+            console.log(
+              "✅ Staff GIS Loaded"
+            );
+          }
+
+        } catch(e){
+
+          console.error(
+            "❌ GIS render failed",
+            e
           );
         }
-      }
 
-    } catch(e){
+      }, 1500);
 
-      console.error(
-        "❌ fitBounds failed",
-        e
-      );
-    }
-
-    // ====================================================
-    // 🔥 STAFF/TL RANGE GIS
-    // ====================================================
-
-    if(
-
-      window.userProfile
-
-      &&
-
-      (
-
-        window.userProfile.role ===
-        "Staff"
-
-        ||
-
-        window.userProfile.role ===
-        "TEAM LEADER"
-
-        ||
-
-        window.userProfile.role ===
-        "Team Leader"
-
-      )
-
-    ){
-
-      // ================================================
-      // 🔥 BEAT BUTTONS
-      // ================================================
-
-      if(
-        typeof populateBeatButtons ===
-        "function"
-      ){
-
-        await populateBeatButtons();
-      }
-
-      // ================================================
-      // 🔥 RANGE COMPARTMENTS
-      // ================================================
-
-      if(
-        typeof loadCompartmentsForRange ===
-        "function"
-      ){
-
-        await loadCompartmentsForRange();
-      }
-
-      // ================================================
-      // 🎨 RENDER COMPARTMENTS
-      // ================================================
-
-      if(
-        typeof renderFilteredCompartments ===
-        "function"
-      ){
-
-        renderFilteredCompartments();
-      }
-
-      console.log(
-        "✅ Staff GIS Loaded"
-      );
-    }
-
-  } catch(e){
-
-    console.error(
-      "❌ GIS render failed",
-      e
-    );
-  }
-
-}, 1500);
       // ========================================================
       // 🔥 SINGLE APP BOOT
       // ========================================================
@@ -8400,13 +8347,14 @@ if(isStaff){
 
     .catch(err => {
 
-      console.warn(
-        "⚠ Login error:",
+      console.error(
+        "LOGIN / PROFILE ERROR",
         err
       );
 
       alert(
-        "⚠ Network error"
+        err.message ||
+        String(err)
       );
 
       // ========================================================
@@ -8426,6 +8374,8 @@ if(isStaff){
         input.disabled =
           false;
       }
+
+      loginInProgress = false;
     })
 
     .finally(() => {
