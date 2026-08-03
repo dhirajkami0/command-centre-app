@@ -41739,7 +41739,37 @@ if(s.dutyActive !== true){
   delete window.trackPointCount[
     s.cleanName
   ];
+const currentSessionId =
+String(
+    s.sessionId || ""
+).trim();
 
+delete window.analyticsPointCount[
+    currentSessionId
+];
+
+delete window.analyticsLastPoint[
+    currentSessionId
+];
+
+if(
+window.analyticsTrackListeners[
+    currentSessionId
+]){
+
+    try{
+
+        window.analyticsTrackListeners[
+            currentSessionId
+        ]();
+
+    }catch(e){}
+
+    delete window.analyticsTrackListeners[
+        currentSessionId
+    ];
+
+}
   delete window.trackDistanceMap[
     s.cleanName
   ];
@@ -42416,14 +42446,11 @@ if(
 // 🔥 GET OLD COUNT
 // ======================================
 const oldCount =
-
-  Number(
-
-    window.trackPointCount[
-      s.cleanName
-    ] || 0
-
-  );
+Number(
+window.trackPointCount[
+    s.cleanName
+] || 0
+);
 
 // ======================================
 // 🔥 NO NEW POINTS
@@ -42789,13 +42816,13 @@ for(const s of analyticsStaff){
         }
 
         // already listening
-        if(
-            window.analyticsTrackListeners[
-                s.cleanName
-            ]
-        ){
-            continue;
-        }
+if(
+    window.analyticsTrackListeners[
+        currentSessionId
+    ]
+){
+    continue;
+}
 
         const {
             collection,
@@ -42853,13 +42880,11 @@ for(const s of analyticsStaff){
 
                         });
 
-                        const oldCount=
-
-                            Number(
-                                window.analyticsPointCount[
-                                    s.cleanName
-                                ]||0
-                            );
+                        const oldCount = Number(
+    window.analyticsPointCount[
+        currentSessionId
+    ] || 0
+);
 
                         if(
                             points.length<=oldCount
@@ -42869,46 +42894,87 @@ for(const s of analyticsStaff){
 
                         const newPoints=
                             points.slice(oldCount);
+window.analyticsPointCounter ??= 0;
 
-                        window.analyticsPointCounter ??=0;
+window.analyticsLastPoint ??=
+Object.create(null);
 
-                        for(const p of newPoints){
+let previousPoint =
+window.analyticsLastPoint[
+    currentSessionId
+];
+                      
+                      for(const currentPoint of newPoints){
 
-                            const cellId=
-                                getAnalyticsCellId(
-                                    p.lat,
-                                    p.lon
-                                );
+    if(!previousPoint){
 
-                            const gridId=
-                                window.cellToGridId?.[
-                                    cellId
-                                ];
+window.analyticsLastPoint[
+    currentSessionId
+] = currentPoint;
 
-                            if(!gridId){
-                                continue;
-                            }
+previousPoint = currentPoint;
 
-                            collectAnalyticsHit(
+continue;
+    }
 
-                                gridId,
+    const segment = [[
 
-                                cellId,
+        previousPoint.lat,
+        previousPoint.lon
 
-                                p.lat,
+    ],[
 
-                                p.lon
+        currentPoint.lat,
+        currentPoint.lon
 
-                            );
+    ]];
 
-                        }
+    const result =
+        getTouchedCells(segment);
 
-                        window.analyticsPointCounter+=
-                            newPoints.length;
+    const touchedCells =
+        result?.touchedCells || [];
 
-                        window.analyticsPointCount[
-                            s.cleanName
-                        ]=points.length;
+    for(const rawCellId of touchedCells){
+
+        const resolved =
+            resolveAnalyticsCell(
+                rawCellId
+            );
+
+        if(!resolved){
+            continue;
+        }
+
+        collectAnalyticsHit(
+
+            resolved.gridId,
+
+            resolved.cellId,
+
+            currentPoint.lat,
+
+            currentPoint.lon
+
+        );
+
+        window.analyticsPointCounter++;
+
+    }
+
+previousPoint = currentPoint;
+
+window.analyticsLastPoint[
+    currentSessionId
+] = currentPoint;
+
+}
+
+window.analyticsPointCount[
+    currentSessionId
+] =
+points.length;
+
 
                         if(
                             window.analyticsPointCounter>=5
@@ -42941,8 +43007,8 @@ for(const s of analyticsStaff){
             );
 
         window.analyticsTrackListeners[
-            s.cleanName
-        ]=unsubscribe;
+    currentSessionId
+]=unsubscribe;
 
     }
     catch(e){
