@@ -2979,6 +2979,9 @@ async function(
     // =====================================================
     // CASE 1
     // INSIDE VILLAGE POLYGON
+    //
+    // Village        : LGD Village
+    // Nearest Point  : Landmark
     // =====================================================
 
     if(
@@ -3006,6 +3009,9 @@ async function(
     // =====================================================
     // CASE 2
     // INSIDE FOREST COMPARTMENT
+    //
+    // Compartment    : Damanpur BL8
+    // Nearest Point  : BAT TALAI DAMANPUR
     // =====================================================
 
     else if(
@@ -3018,56 +3024,26 @@ async function(
 
             compartment.compartment;
 
-        displayVillage =
-
-            nearest?.village ||
-
-            "";
-
         displayNearestPoint =
 
             nearest?.pointName ||
 
             "";
 
-        if(
+        locationText =
 
-            displayVillage
-
-        ){
-
-            locationText =
-
-                displayVillage +
-
-                " • " +
-
-                displayCompartment;
-
-        }
-
-        else{
-
-            locationText =
-
-                displayCompartment;
-
-        }
+            displayCompartment;
 
     }
 
     // =====================================================
     // CASE 3
     // OUTSIDE VILLAGE & COMPARTMENT
+    //
+    // Nearest Point : BAT TALAI DAMANPUR
     // =====================================================
 
     else{
-
-        displayVillage =
-
-            nearest?.village ||
-
-            "";
 
         displayNearestPoint =
 
@@ -3077,7 +3053,7 @@ async function(
 
         locationText =
 
-            displayVillage ||
+            displayNearestPoint ||
 
             "Unknown Location";
 
@@ -3128,7 +3104,7 @@ async function(
             "",
 
         // -------------------------------------------------
-        // VILLAGE
+        // LGD VILLAGE (BOUNDARY ONLY)
         // -------------------------------------------------
 
         village :
@@ -3148,12 +3124,10 @@ async function(
             "",
 
         // -------------------------------------------------
-        // NEAREST VILLAGE LOCATION
+        // NEAREST LANDMARK
         // -------------------------------------------------
 
         nearestVillage :
-
-            nearest?.village ||
 
             "",
 
@@ -3194,7 +3168,6 @@ async function(
     };
 
 };
-
 
     /*=====================================================
       REGISTER
