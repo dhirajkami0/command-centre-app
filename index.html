@@ -41394,6 +41394,10 @@ e.adminResolutionReason
 // Reads responder live position from liveStaffCache
 // =====================================================
 
+// =====================================================
+// 🚓 LIVE HEC TEAM STATUS
+// =====================================================
+
 async function getLiveHECTeamStatus(
 
     incident
@@ -41431,7 +41435,7 @@ async function getLiveHECTeamStatus(
     try{
 
         // =====================================================
-        // INCIDENT NOT ACCEPTED
+        // VALIDATE
         // =====================================================
 
         if(
@@ -41488,14 +41492,6 @@ async function getLiveHECTeamStatus(
 
         ){
 
-            console.warn(
-
-                "⚠ Live responder not found:",
-
-                clean
-
-            );
-
             return result;
 
         }
@@ -41534,7 +41530,7 @@ async function getLiveHECTeamStatus(
 
                 live.lon ??
 
-                null
+                live.longitude
 
             );
 
@@ -41554,31 +41550,23 @@ async function getLiveHECTeamStatus(
 
         ){
 
-            console.warn(
-
-                "⚠ Invalid responder GPS",
-
-                live
-
-            );
-
             return result;
 
         }
 
         // =====================================================
-        // LAST GPS UPDATE
+        // LAST UPDATE
         // =====================================================
 
         const gpsTime =
 
-            live.time ||
+            live.updatedAt ??
 
-            live.timestamp ||
+            live.lastSeen ??
 
-            live.updatedAt ||
+            live.time ??
 
-            live.lastSeen;
+            live.timestamp;
 
         if(
 
@@ -41586,7 +41574,13 @@ async function getLiveHECTeamStatus(
 
         ){
 
-            try{
+            if(
+
+                typeof gpsTime ===
+
+                "number"
+
+            ){
 
                 result.lastUpdate =
 
@@ -41604,12 +41598,28 @@ async function getLiveHECTeamStatus(
 
             }
 
-            catch(e){}
+            else{
+
+                result.lastUpdate =
+
+                    new Date(
+
+                        gpsTime
+
+                    )
+
+                    .toLocaleString(
+
+                        "en-IN"
+
+                    );
+
+            }
 
         }
 
         // =====================================================
-        // RESOLVE CURRENT LOCATION
+        // GIS RESOLUTION
         // =====================================================
 
         try{
@@ -41620,31 +41630,7 @@ async function getLiveHECTeamStatus(
 
             if(
 
-                typeof window.resolveCurrentLocation ===
-
-                "function"
-
-            ){
-
-                resolved =
-
-                    await window.resolveCurrentLocation(
-
-                        result.lat,
-
-                        result.lon
-
-                    );
-
-            }
-
-            else if(
-
-                window.GreenGuardAI
-
-                ?.GISEntities
-
-                ?.resolveCurrentLocation
+                window.GreenGuardAI?.GISEntities?.resolveCurrentLocation
 
             ){
 
@@ -41664,6 +41650,26 @@ async function getLiveHECTeamStatus(
 
             }
 
+            else if(
+
+                typeof window.resolveCurrentLocation ===
+
+                "function"
+
+            ){
+
+                resolved =
+
+                    await window.resolveCurrentLocation(
+
+                        result.lat,
+
+                        result.lon
+
+                    );
+
+            }
+
             if(
 
                 resolved
@@ -41674,11 +41680,11 @@ async function getLiveHECTeamStatus(
 
                     resolved.village ||
 
+                    resolved.nearestVillage ||
+
                     "";
 
                 result.landmark =
-
-                    resolved.landmark ||
 
                     resolved.nearestPoint ||
 
@@ -41690,26 +41696,28 @@ async function getLiveHECTeamStatus(
 
                     resolved.text ||
 
+                    resolved.compartment ||
+
                     "";
 
             }
 
         }
 
-        catch(err){
+        catch(e){
 
             console.warn(
 
-                "⚠ GIS resolve failed",
+                "GIS resolve failed",
 
-                err
+                e
 
             );
 
         }
 
         // =====================================================
-        // DISTANCE + ETA
+        // DISTANCE
         // =====================================================
 
         const incidentLat =
@@ -41784,6 +41792,10 @@ async function getLiveHECTeamStatus(
 
                 + " km";
 
+            // =====================================================
+            // ETA
+            // =====================================================
+
             const speed =
 
                 Number(
@@ -41838,14 +41850,6 @@ async function getLiveHECTeamStatus(
 
         }
 
-        console.log(
-
-            "🚓 Live HEC Team:",
-
-            result
-
-        );
-
         return result;
 
     }
@@ -41854,7 +41858,7 @@ async function getLiveHECTeamStatus(
 
         console.error(
 
-            "❌ getLiveHECTeamStatus",
+            "getLiveHECTeamStatus",
 
             err
 
