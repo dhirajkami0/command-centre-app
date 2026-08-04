@@ -41449,7 +41449,12 @@ async function getLiveHECTeamStatus(
     incident
 
 ){
-
+console.log(
+    "getLiveHECTeamStatus()",
+    window.userProfile?.role,
+    incident.acceptedBy,
+    incident.assignedTeam
+);
     const result = {
 
         name :
@@ -41531,7 +41536,12 @@ async function getLiveHECTeamStatus(
         const live =
 
             cache[clean];
-
+console.log("================================");
+console.log("ROLE :", window.userProfile?.role);
+console.log("CLEAN NAME :", clean);
+console.log("CACHE KEYS :", Object.keys(cache));
+console.log("LIVE OBJECT :", live);
+console.log("================================");
         if(
 
             !live
@@ -41579,7 +41589,12 @@ async function getLiveHECTeamStatus(
                 live.longitude
 
             );
-
+console.log("LAT =", result.lat);
+console.log("LON =", result.lon);
+console.log("RAW LAT =", live.lat);
+console.log("RAW LNG =", live.lng);
+console.log("RAW LON =", live.lon);
+console.log("RAW LONGITUDE =", live.longitude);
         if(
 
             !Number.isFinite(
