@@ -32478,12 +32478,16 @@ console.log(
 // LOAD VILLAGE LOCATIONS
 // =====================================================
 
+// =====================================================
+// LOAD VILLAGE LOCATIONS
+// =====================================================
+
 async function loadVillageLocations(){
 
     try{
 
         // =============================================
-        // ALREADY LOADED
+        // CACHE ALREADY AVAILABLE
         // =============================================
 
         if(
@@ -32494,13 +32498,13 @@ async function loadVillageLocations(){
 
             ) &&
 
-            window.__villageLocationCache.length
+            window.__villageLocationCache.length > 0
 
         ){
 
             console.log(
 
-                "✅ village_locations cache:",
+                "⚡ Using cached village_locations:",
 
                 window.__villageLocationCache.length
 
@@ -32527,7 +32531,6 @@ async function loadVillageLocations(){
         );
 
         const db =
-
             getFirestore();
 
         console.log(
@@ -32550,17 +32553,107 @@ async function loadVillageLocations(){
 
             );
 
-        const locations = [];
+        // =============================================
+        // CLEAR CACHE
+        // =============================================
+
+        window.__villageLocationCache.length = 0;
+
+        // =============================================
+        // BUILD CACHE
+        // =============================================
 
         snapshot.forEach(
 
             function(doc){
 
-                locations.push({
+                const data =
 
-                    id : doc.id,
+                    doc.data() || {};
 
-                    ...doc.data()
+                window.__villageLocationCache.push({
+
+                    id :
+
+                        doc.id,
+
+                    village :
+
+                        data.village ||
+
+                        "",
+
+                    cleanName :
+
+                        data.cleanName ||
+
+                        "",
+
+                    pointName :
+
+                        data.cleanName ||
+
+                        data.village ||
+
+                        doc.id,
+
+                    lat :
+
+                        Number(
+
+                            data.lat ??
+
+                            data.location?.lat
+
+                        ),
+
+                    lon :
+
+                        Number(
+
+                            data.lon ??
+
+                            data.location?.lon
+
+                        ),
+
+                    block :
+
+                        data.block ||
+
+                        "",
+
+                    villageCode :
+
+                        data.villageCode ||
+
+                        "",
+
+                    riskLevel :
+
+                        data.riskLevel ||
+
+                        "",
+
+                    phone :
+
+                        data.phone ||
+
+                        "",
+
+                    whatsappLink :
+
+                        data.whatsappLink ||
+
+                        "#",
+
+                    active :
+
+                        data.active !== false,
+
+                    raw :
+
+                        data
 
                 });
 
@@ -32568,19 +32661,15 @@ async function loadVillageLocations(){
 
         );
 
-        window.__villageLocationCache =
-
-            locations;
-
         console.log(
 
             "✅ village_locations loaded:",
 
-            locations.length
+            window.__villageLocationCache.length
 
         );
 
-        return locations;
+        return window.__villageLocationCache;
 
     }
 
@@ -43596,6 +43685,18 @@ function syncOfflineMoves(){
 /* ============================================================
    🔥 AUTO TRIGGER
 ============================================================ */
+    // =====================================================
+// GLOBAL CACHES
+// =====================================================
+
+window.__villageLocationCache =
+    window.__villageLocationCache || [];
+
+window.__villageBoundaryCache =
+    window.__villageBoundaryCache || [];
+
+window.__villageCache =
+    window.__villageCache || null;
  /* ============================================================
        👮 BLOCK 8 → STAFF SYSTEM (FINAL)
     ============================================================ */
