@@ -41389,6 +41389,11 @@ e.adminResolutionReason
 // Reads responder live position from liveStaffCache
 // =====================================================
 
+// =====================================================
+// 🚓 LIVE HEC TEAM STATUS
+// Reads responder live position from liveStaffCache
+// =====================================================
+
 async function getLiveHECTeamStatus(
 
     incident
@@ -41397,7 +41402,13 @@ async function getLiveHECTeamStatus(
 
     const result = {
 
-        name : incident?.assignedTeam || "Not Assigned",
+        name :
+
+            incident?.acceptedBy ||
+
+            incident?.assignedTeam ||
+
+            "Not Assigned",
 
         village : "",
 
@@ -41427,7 +41438,13 @@ async function getLiveHECTeamStatus(
 
             !incident ||
 
-            !incident.assignedTeam
+            !(
+
+                incident.acceptedBy ||
+
+                incident.assignedTeam
+
+            )
 
         ){
 
@@ -41441,7 +41458,9 @@ async function getLiveHECTeamStatus(
 
         const cache =
 
-            window.liveStaffCache || {};
+            window.liveStaffCache ||
+
+            {};
 
         // =====================================================
         // FIND RESPONDER
@@ -41482,7 +41501,7 @@ async function getLiveHECTeamStatus(
         }
 
         // =====================================================
-        // BASIC
+        // NAME
         // =====================================================
 
         result.name =
@@ -41491,7 +41510,13 @@ async function getLiveHECTeamStatus(
 
             live.name ||
 
+            incident.acceptedBy ||
+
             incident.assignedTeam;
+
+        // =====================================================
+        // GPS
+        // =====================================================
 
         result.lat =
 
@@ -41505,17 +41530,37 @@ async function getLiveHECTeamStatus(
 
             Number(
 
-                live.lon
+                live.lng ??
+
+                live.lon ??
+
+                null
 
             );
 
         if(
 
-            !Number.isFinite(result.lat) ||
+            !Number.isFinite(
 
-            !Number.isFinite(result.lon)
+                result.lat
+
+            ) ||
+
+            !Number.isFinite(
+
+                result.lon
+
+            )
 
         ){
+
+            console.warn(
+
+                "⚠ Invalid responder GPS",
+
+                live
+
+            );
 
             return result;
 
@@ -41535,7 +41580,11 @@ async function getLiveHECTeamStatus(
 
             live.lastSeen;
 
-        if(gpsTime){
+        if(
+
+            gpsTime
+
+        ){
 
             try{
 
@@ -41545,7 +41594,9 @@ async function getLiveHECTeamStatus(
 
                         gpsTime
 
-                    ).toLocaleString(
+                    )
+
+                    .toLocaleString(
 
                         "en-IN"
 
@@ -41558,12 +41609,14 @@ async function getLiveHECTeamStatus(
         }
 
         // =====================================================
-        // RESOLVE LIVE LOCATION
+        // RESOLVE CURRENT LOCATION
         // =====================================================
 
-        let resolved = null;
-
         try{
+
+            let resolved =
+
+                null;
 
             if(
 
@@ -41611,13 +41664,43 @@ async function getLiveHECTeamStatus(
 
             }
 
+            if(
+
+                resolved
+
+            ){
+
+                result.village =
+
+                    resolved.village ||
+
+                    "";
+
+                result.landmark =
+
+                    resolved.landmark ||
+
+                    resolved.nearestPoint ||
+
+                    resolved.nearestPointResult?.pointName ||
+
+                    "";
+
+                result.text =
+
+                    resolved.text ||
+
+                    "";
+
+            }
+
         }
 
         catch(err){
 
             console.warn(
 
-                "GIS resolve failed",
+                "⚠ GIS resolve failed",
 
                 err
 
@@ -41625,41 +41708,39 @@ async function getLiveHECTeamStatus(
 
         }
 
-        if(resolved){
-
-            result.village =
-
-                resolved.village ||
-
-                "";
-
-            result.landmark =
-
-                resolved.landmark ||
-
-                resolved.nearestPoint ||
-
-                resolved.nearestPointResult?.pointName ||
-
-                "";
-
-            result.text =
-
-                resolved.text ||
-
-                "";
-
-        }
-
         // =====================================================
-        // DISTANCE TO INCIDENT
+        // DISTANCE + ETA
         // =====================================================
+
+        const incidentLat =
+
+            Number(
+
+                incident.incidentLocation?.lat
+
+            );
+
+        const incidentLon =
+
+            Number(
+
+                incident.incidentLocation?.lon
+
+            );
 
         if(
 
-            incident.incidentLocation?.lat != null &&
+            Number.isFinite(
 
-            incident.incidentLocation?.lon != null
+                incidentLat
+
+            ) &&
+
+            Number.isFinite(
+
+                incidentLon
+
+            )
 
         ){
 
@@ -41677,17 +41758,9 @@ async function getLiveHECTeamStatus(
 
                     [
 
-                        Number(
+                        incidentLat,
 
-                            incident.incidentLocation.lat
-
-                        ),
-
-                        Number(
-
-                            incident.incidentLocation.lon
-
-                        )
+                        incidentLon
 
                     ]
 
@@ -41697,15 +41770,19 @@ async function getLiveHECTeamStatus(
 
                 (
 
-                    meters / 1000
+                    meters /
 
-                ).toFixed(2)
+                    1000
+
+                )
+
+                .toFixed(
+
+                    2
+
+                )
 
                 + " km";
-
-            // =====================================================
-            // ETA
-            // =====================================================
 
             const speed =
 
@@ -41719,11 +41796,11 @@ async function getLiveHECTeamStatus(
 
             if(
 
-                speed > 0.5
+                speed >
+
+                0.5
 
             ){
-
-                // speed = metres / second
 
                 const mins =
 
