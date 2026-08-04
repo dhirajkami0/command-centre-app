@@ -40479,11 +40479,51 @@ const teamText =
 
 const teamGps =
 
-    team.lat && team.lon
+    Number.isFinite(
 
-    ? `${Number(team.lat).toFixed(6)}, ${Number(team.lon).toFixed(6)}`
+        team.lat
 
-    : "-";
+    )
+
+    &&
+
+    Number.isFinite(
+
+        team.lon
+
+    )
+
+    ?
+
+    `${
+
+        Number(
+
+            team.lat
+
+        ).toFixed(
+
+            6
+
+        )
+
+    }, ${
+
+        Number(
+
+            team.lon
+
+        ).toFixed(
+
+            6
+
+        )
+
+    }`
+
+    :
+
+    "-";
 
 const lastGps =
 
