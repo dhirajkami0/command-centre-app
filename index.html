@@ -40591,15 +40591,67 @@ ${e.elephantCount || "-"}
 
 ${
 
-e.incidentLocation?.text ||
+e.incidentLocation?.village
 
-e.incidentLocation?.village ||
+?
+
+`
+🏡 ${e.incidentLocation.village}
+
+${
+e.incidentLocation.landmark
+
+?
+
+`<br>
+📍 Near : ${e.incidentLocation.landmark}`
+
+:
+
+""
+}
+`
+
+:
+
+e.incidentLocation?.text
+
+?
+
+`
+🌳 ${e.incidentLocation.text}
+
+${
+e.incidentLocation.landmark
+
+?
+
+`<br>
+📍 Near : ${e.incidentLocation.landmark}`
+
+:
+
+""
+}
+`
+
+:
+
+e.incidentLocation?.landmark
+
+?
+
+`
+📍 ${e.incidentLocation.landmark}
+`
+
+:
 
 "-"
 
 }
 
-<br>
+<br><br>
 
 🛰 ${ctx.gpsText}
 
