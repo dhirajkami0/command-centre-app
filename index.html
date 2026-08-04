@@ -8653,7 +8653,13 @@ function logout(){
             "userProfile"
 
         );
+localStorage.removeItem(
+    "sessionId"
+);
 
+localStorage.removeItem(
+    "dutyActive"
+);
         // =============================================
         // RESET GLOBALS
         // =============================================
