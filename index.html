@@ -40102,6 +40102,38 @@ async function villagerConfirmNO(
     }
 
 }
+
+    // =====================================================
+// SHOW FEEDBACK
+// =====================================================
+
+async function showHECFeedbackDialog(incidentId){
+
+    const rating = prompt(
+        "Rate our response (1-5 stars)"
+    );
+
+    if(
+        rating === null
+    ){
+        return;
+    }
+
+    const remarks = prompt(
+        "Remarks (optional)"
+    ) || "";
+
+    await villagerConfirmYES(
+
+        incidentId,
+
+        rating,
+
+        remarks
+
+    );
+
+}
     // ============================================================
 // VILLAGER CONFIRM RESOLVED
 // ============================================================
@@ -42162,7 +42194,7 @@ Please confirm whether the problem has been resolved.
 
 <button
 
-onclick="villagerConfirmYES('${ctx.key}')"
+onclick="showHECFeedbackDialog('${ctx.key}')"
 
 style="
 width:100%;
@@ -66452,21 +66484,23 @@ async function addOrUpdateHECMarker(
         // REMOVE
         // =====================================================
 
-        if(
+if(
 
-            status === "RESOLVED"
+    status === "RESOLVED" &&
 
-        ){
+    role !== "VILLAGER"
 
-            removeHECMarker(
+){
 
-                id
+    removeHECMarker(
 
-            );
+        id
 
-            return;
+    );
 
-        }
+    return;
+
+}
 
         // =====================================================
         // COLOUR
