@@ -2680,14 +2680,22 @@ function(
 // FIND NEAREST VILLAGE LOCATION
 // =====================================================
 
+// =====================================================
+// FIND NEAREST VILLAGE LOCATION
+// (Lazy loads village_locations on first use)
+// =====================================================
+
 GISEntities.findNearestVillagePoint =
-function(
+async function(
     lat,
     lon
 ){
 
-    lat = Number(lat);
-    lon = Number(lon);
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
 
     if(
 
@@ -2698,6 +2706,26 @@ function(
     ){
 
         return null;
+
+    }
+
+    // =====================================================
+    // ENSURE CACHE
+    // =====================================================
+
+    if(
+
+        !Array.isArray(
+
+            window.__villageLocationCache
+
+        ) ||
+
+        !window.__villageLocationCache.length
+
+    ){
+
+        await loadVillageLocations();
 
     }
 
@@ -2717,6 +2745,10 @@ function(
 
     }
 
+    // =====================================================
+    // ORIGIN
+    // =====================================================
+
     const origin =
 
         L.latLng(
@@ -2724,29 +2756,41 @@ function(
             lon
         );
 
-    let nearest = null;
+    let nearest =
 
-    let bestDistance = Infinity;
+        null;
+
+    let bestDistance =
+
+        Infinity;
+
+    // =====================================================
+    // SEARCH
+    // =====================================================
 
     locations.forEach(
 
         function(point){
 
-            const plat = Number(
+            const plat =
 
-                point.lat ??
+                Number(
 
-                point.location?.lat
+                    point.lat ??
 
-            );
+                    point.location?.lat
 
-            const plon = Number(
+                );
 
-                point.lon ??
+            const plon =
 
-                point.location?.lon
+                Number(
 
-            );
+                    point.lon ??
+
+                    point.location?.lon
+
+                );
 
             if(
 
@@ -2765,8 +2809,11 @@ function(
                 origin.distanceTo(
 
                     L.latLng(
+
                         plat,
+
                         plon
+
                     )
 
                 );
@@ -2797,11 +2844,25 @@ function(
 
                 pointName :
 
+                    point.pointName ||
+
                     point.cleanName ||
 
                     point.village ||
 
                     point.id ||
+
+                    "",
+
+                villageCode :
+
+                    point.villageCode ||
+
+                    "",
+
+                block :
+
+                    point.block ||
 
                     "",
 
@@ -2816,7 +2877,9 @@ function(
                 distanceMeters :
 
                     Math.round(
+
                         distance
+
                     ),
 
                 raw :
@@ -2853,7 +2916,7 @@ function(
 ============================================================ */
 
 GISEntities.resolveCurrentLocation =
-function(
+async function(
     lat,
     lon
 ){
@@ -2896,7 +2959,7 @@ function(
 
     const nearest =
 
-        GISEntities.findNearestVillagePoint(
+        await GISEntities.findNearestVillagePoint(
             lat,
             lon
         );
