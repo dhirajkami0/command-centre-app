@@ -41510,51 +41510,34 @@ console.log(
 
         }
 
-        // =====================================================
-        // LIVE STAFF CACHE
-        // =====================================================
+// =====================================================
+// FIND RESPONDER
+// =====================================================
 
-        const cache =
+const live =
 
-            window.liveStaffCache ||
+    await getLiveStaffByName(
 
-            {};
+        incident.acceptedBy ||
 
-        // =====================================================
-        // FIND RESPONDER
-        // =====================================================
+        incident.assignedTeam
 
-        const clean =
+    );
 
-            cleanName(
-
-                incident.acceptedBy ||
-
-                incident.assignedTeam ||
-
-                ""
-
-            );
-
-        const live =
-
-            cache[clean];
 console.log("================================");
 console.log("ROLE :", window.userProfile?.role);
-console.log("CLEAN NAME :", clean);
-console.log("CACHE KEYS :", Object.keys(cache));
 console.log("LIVE OBJECT :", live);
 console.log("================================");
-        if(
 
-            !live
+if(
 
-        ){
+    !live
 
-            return result;
+){
 
-        }
+    return result;
 
+}
         // =====================================================
         // NAME
         // =====================================================
@@ -49748,7 +49731,43 @@ console.log(
 
 } // END loadStaff
 
-    
+    // =====================================================
+// LIVE STAFF LOOKUP
+// =====================================================
+
+async function getLiveStaffByName(name){
+
+    if(!name){
+        return null;
+    }
+
+    const clean = cleanName(name);
+
+    const snap = await db
+        .collection("live_staff")
+        .get();
+
+    let staff = null;
+
+    snap.forEach(doc=>{
+
+        const s = doc.data();
+
+        if(
+            cleanName(
+                s.name ||
+                s.rawName ||
+                ""
+            ) === clean
+        ){
+            staff = s;
+        }
+
+    });
+
+    return staff;
+
+}
     
     
     /* ============================================================
