@@ -66412,109 +66412,161 @@ const popup =
 
     );
 
-        // =====================================================
-        // EXISTING MARKER
-        // =====================================================
+// =====================================================
+// EXISTING MARKER
+// =====================================================
 
-        let marker =
+let marker =
 
-            window.hecMarkers[id];
+    window.hecMarkers[id];
 
-        if(
+// =====================================================
+// CREATE MARKER
+// =====================================================
 
-            !marker
+if(
 
-        ){
+    !marker
 
-            marker =
+){
 
-                L.marker(
+    marker =
 
-                    [
+        L.marker(
 
-                        lat,
+            [
 
-                        lon
+                lat,
 
-                    ],
+                lon
 
-                    {
+            ],
 
-                        icon
-
-                    }
-
-                )
-
-                .addTo(
-
-                    window.hecLayer
-
-                );
-
-            marker.bindPopup(
-
-                popup,
-
-                {
-
-                    maxWidth:360,
-
-                    autoClose:false,
-
-                    closeOnClick:false
-
-                }
-
-            );
-
-            window.hecMarkers[id] =
-
-                marker;
-
-        }
-
-        else{
-
-            marker.setLatLng(
-
-                [
-
-                    lat,
-
-                    lon
-
-                ]
-
-            );
-
-            marker.setIcon(
+            {
 
                 icon
 
-            );
+            }
 
-            marker.setPopupContent(
+        )
 
-                popup
+        .addTo(
 
-            );
+            window.hecLayer
+
+        );
+
+    marker.bindPopup(
+
+        popup,
+
+        {
+
+            maxWidth : 360,
+
+            autoClose : false,
+
+            closeOnClick : false
 
         }
 
-    }
+    );
 
-    catch(err){
+}
 
-        console.error(
+// =====================================================
+// UPDATE EXISTING
+// =====================================================
 
-            "addOrUpdateHECMarker",
+else{
 
-            err
+    marker.setLatLng(
+
+        [
+
+            lat,
+
+            lon
+
+        ]
+
+    );
+
+    marker.setIcon(
+
+        icon
+
+    );
+
+    marker.setPopupContent(
+
+        popup
+
+    );
+
+}
+
+// =====================================================
+// ALWAYS KEEP LATEST INCIDENT
+// =====================================================
+
+marker.incident = incident;
+marker.team = team;
+// =====================================================
+// SAVE MARKER
+// =====================================================
+
+window.hecMarkers[id] = marker;
+
+// =====================================================
+// REFRESH OPEN POPUP
+// =====================================================
+
+try{
+
+    if(
+
+        window.currentHECPopup &&
+
+        window.currentHECPopup.incidentId === id
+
+    ){
+
+        refreshOpenHECPopup(
+
+            incident
 
         );
 
     }
+
+}
+
+catch(err){
+
+    console.warn(
+
+        "Popup refresh failed",
+
+        err
+
+    );
+
+}
+
+}
+
+catch(err){
+
+    console.error(
+
+        "addOrUpdateHECMarker",
+
+        err
+
+    );
+
+}
 
 }
 
