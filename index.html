@@ -8813,116 +8813,104 @@ function showLogin(){
 
 function logout(){
 
-    try{
-        if(!confirm(
-            "Are you sure you want to logout?"
-        )){
+    showLogoutDialog(
 
-            return;
+        function(){
+
+            try{
+
+                // =============================================
+                // STOP HEC LISTENER
+                // =============================================
+
+                if(
+                    typeof stopHECListener === "function"
+                ){
+                    stopHECListener();
+                }
+
+                // =============================================
+                // CLEAR USER SESSION
+                // =============================================
+
+                localStorage.removeItem("userPhone");
+                localStorage.removeItem("userProfile");
+                localStorage.removeItem("sessionId");
+                localStorage.removeItem("dutyActive");
+
+                // =============================================
+                // RESET GLOBALS
+                // =============================================
+
+                window.userProfile = null;
+                window.currentHECPopup = null;
+                window.hecMarkers = {};
+                window.hecAlertCache = {};
+                window.hecInitialized = false;
+
+                loginCompleted = false;
+                loginInProgress = false;
+                authFlowRunning = false;
+
+                window.__appBootRequested = false;
+                window.__APP_BOOTED_ONCE__ = false;
+
+                // =============================================
+                // RELOAD
+                // =============================================
+
+                location.reload();
+
+            }
+
+            catch(err){
+
+                console.error(
+                    "Logout Error",
+                    err
+                );
+
+                location.reload();
+
+            }
 
         }
 
-        // =============================================
-        // STOP HEC LISTENER
-        // =============================================
+    );
 
-        if(
+}
 
-            typeof stopHECListener ===
+    // =====================================================
+// LOGOUT DIALOG
+// =====================================================
 
-            "function"
+let logoutCallback = null;
 
-        ){
+function showLogoutDialog(callback){
 
-            stopHECListener();
+    logoutCallback = callback;
 
-        }
+    document.getElementById(
+        "logoutDialog"
+    ).style.display = "flex";
 
-        // =============================================
-        // CLEAR USER SESSION
-        // =============================================
+}
 
-        localStorage.removeItem(
+function closeLogoutDialog(){
 
-            "userPhone"
+    document.getElementById(
+        "logoutDialog"
+    ).style.display = "none";
 
-        );
+}
 
-        localStorage.removeItem(
+async function confirmLogout(){
 
-            "userProfile"
+    closeLogoutDialog();
 
-        );
-localStorage.removeItem(
-    "sessionId"
-);
+    if(logoutCallback){
 
-localStorage.removeItem(
-    "dutyActive"
-);
-        // =============================================
-        // RESET GLOBALS
-        // =============================================
-
-        window.userProfile =
-
-            null;
-
-        window.currentHECPopup =
-
-            null;
-
-        window.hecMarkers =
-
-            {};
-
-        window.hecAlertCache =
-
-            {};
-
-        window.hecInitialized =
-
-            false;
-
-        loginCompleted =
-
-            false;
-
-        loginInProgress =
-
-            false;
-
-        authFlowRunning =
-
-            false;
-
-        window.__appBootRequested =
-
-            false;
-
-        window.__APP_BOOTED_ONCE__ =
-
-            false;
-
-        // =============================================
-        // RELOAD APP
-        // =============================================
-
-        location.reload();
-
-    }
-
-    catch(err){
-
-        console.error(
-
-            "Logout Error",
-
-            err
-
-        );
-
-        location.reload();
+        await logoutCallback();
 
     }
 
@@ -78420,6 +78408,109 @@ font-weight:bold;
 ">
 
 Submit
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+<!-- ===================================================== -->
+<!-- LOGOUT DIALOG -->
+<!-- ===================================================== -->
+
+<div
+id="logoutDialog"
+style="
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.45);
+z-index:999999;
+justify-content:center;
+align-items:center;
+">
+
+<div
+style="
+width:360px;
+max-width:95%;
+background:#fff;
+border-radius:14px;
+overflow:hidden;
+box-shadow:0 15px 35px rgba(0,0,0,.35);
+font-family:'Segoe UI',sans-serif;
+">
+
+<div
+style="
+background:#d32f2f;
+color:#fff;
+padding:16px;
+font-size:19px;
+font-weight:bold;
+">
+
+🚪 Logout
+
+</div>
+
+<div style="padding:20px;">
+
+<div
+style="
+font-size:16px;
+margin-bottom:20px;
+">
+
+Are you sure you want to logout?
+
+</div>
+
+<div
+style="
+display:flex;
+gap:10px;
+">
+
+<button
+
+onclick="closeLogoutDialog()"
+
+style="
+flex:1;
+padding:12px;
+border:none;
+border-radius:8px;
+background:#9e9e9e;
+color:white;
+font-weight:bold;
+cursor:pointer;
+">
+
+Cancel
+
+</button>
+
+<button
+
+onclick="confirmLogout()"
+
+style="
+flex:1;
+padding:12px;
+border:none;
+border-radius:8px;
+background:#d32f2f;
+color:white;
+font-weight:bold;
+cursor:pointer;
+">
+
+Logout
 
 </button>
 
