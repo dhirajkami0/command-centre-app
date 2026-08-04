@@ -6616,31 +6616,68 @@ async function safeBackend(
       );
     }
 
-    // ============================================================
-    // 🔥 FIRESTORE QUERY
-    // ============================================================
+// ============================================================
+// 🔥 FIND PROFILE (STAFF → VILLAGER)
+// ============================================================
+
+async function findProfile(
+    collectionName
+){
+
     const q =
 
-      window.fb.query(
+        window.fb.query(
 
-        window.fb.collection(
-          window.db,
-          "staff_profiles"
-        ),
+            window.fb.collection(
+                window.db,
+                collectionName
+            ),
 
-        window.fb.where(
-          "phone",
-          "==",
-          phone
-        )
-      );
+            window.fb.where(
+                "phone",
+                "==",
+                phone
+            )
 
-    // ============================================================
-    // 🔥 FETCH
-    // ============================================================
-    const snap =
+        );
 
-      await window.fb.getDocs(q);
+    return await window.fb.getDocs(q);
+
+}
+
+let loginType =
+    "STAFF";
+
+let snap =
+
+    await findProfile(
+        "staff_profiles"
+    );
+
+// ============================================================
+// NOT STAFF → TRY VILLAGER
+// ============================================================
+
+if(
+
+    snap.empty
+
+){
+
+    console.log(
+        "🔍 Not found in staff_profiles. Checking villager_profiles..."
+    );
+
+    snap =
+
+        await findProfile(
+            "villager_profiles"
+        );
+
+    loginType =
+        "VILLAGER";
+
+}
 
     // ============================================================
     // ❌ USER NOT FOUND
@@ -6648,7 +6685,7 @@ async function safeBackend(
 if(snap.empty){
 
   console.warn(
-    "⛔ STAFF PROFILE NOT FOUND:",
+    "⛔ PROFILE NOT FOUND:",
     phone
   );
 
@@ -6668,11 +6705,36 @@ if(snap.empty){
 // 🔥 PROFILE
 // ============================================================
 
+// ============================================================
+// 🔥 PROFILE
+// ============================================================
+
 const profileDoc =
-  snap.docs[0];
+    snap.docs[0];
 
 const data =
-  profileDoc.data();
+    profileDoc.data() || {};
+
+// ============================================================
+// LOGIN TYPE
+// ============================================================
+
+console.log(
+    "✅ Login Type:",
+    loginType
+);
+
+console.log(
+    "📄 Collection:",
+    loginType === "STAFF"
+        ? "staff_profiles"
+        : "villager_profiles"
+);
+
+console.log(
+    "👤 Profile:",
+    data
+);
 
 
 // ============================================================
@@ -6698,13 +6760,16 @@ const accessStatus =
 // ============================================================
 
 console.log(
-  "🔐 STAFF AUTH:",
-  {
-    documentId: profileDoc.id,
-    phone: phone,
-    name: data.name || "",
-    accessStatus: accessStatus
-  }
+    "🔐 AUTH:",
+    {
+        loginType,
+        documentId:
+            profileDoc.id,
+        phone,
+        name:
+            data.name || "",
+        accessStatus
+    }
 );
 
 
@@ -6773,8 +6838,11 @@ return {
       data.name
     ),
 
-  role:
-    data.role || "STAFF",
+ role:
+
+    data.role ||
+
+    loginType,
 
   beat:
     data.beat || "",
