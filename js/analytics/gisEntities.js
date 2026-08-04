@@ -2667,204 +2667,227 @@ function(
    Called lazily from staff marker click.
 ============================================================ */
 
+// =====================================================
+// FIND NEAREST VILLAGE POINT
+// =====================================================
+
 GISEntities.findNearestVillagePoint =
 function(
     lat,
     lon
 ){
 
-    lat =
-        Number(lat);
-
-    lon =
-        Number(lon);
-
+    lat = Number(lat);
+    lon = Number(lon);
 
     if(
+
         !Number.isFinite(lat) ||
+
         !Number.isFinite(lon)
+
     ){
 
         return null;
 
     }
 
+    const layerGroup =
 
-    const rootLayer =
-        window.villageLayer;
-
+        window.__villagePointLayer;
 
     if(
-        !rootLayer ||
-        typeof rootLayer.eachLayer !==
-            "function"
+
+        !layerGroup ||
+
+        typeof layerGroup.eachLayer !==
+
+        "function"
+
     ){
 
         return null;
 
     }
 
+    const source =
 
-    const origin =
         L.latLng(
             lat,
             lon
         );
 
-
     let nearest =
+
         null;
 
-    let nearestDistance =
+    let bestDistance =
+
         Infinity;
 
+    layerGroup.eachLayer(
 
-    rootLayer.eachLayer(
         function(layer){
 
-            /* ================================================
-               VALID MARKER
-            ================================================ */
-
             if(
+
                 !layer ||
+
                 typeof layer.getLatLng !==
-                    "function"
+
+                "function"
+
             ){
 
                 return;
 
             }
 
+            const point =
 
-            const ll =
                 layer.getLatLng();
 
-
             if(
-                !ll ||
+
+                !point ||
+
                 !Number.isFinite(
-                    Number(ll.lat)
+
+                    Number(point.lat)
+
                 ) ||
+
                 !Number.isFinite(
-                    Number(ll.lng)
+
+                    Number(point.lng)
+
                 )
+
             ){
 
                 return;
 
             }
-
-
-            /* ================================================
-               DISTANCE
-            ================================================ */
 
             const distance =
-                origin.distanceTo(
-                    ll
+
+                source.distanceTo(
+                    point
                 );
 
-
             if(
+
                 distance >=
-                nearestDistance
+
+                bestDistance
+
             ){
 
                 return;
 
             }
 
+            // =====================================
+            // EXTRACT VILLAGE NAME
+            // =====================================
 
-            /* ================================================
-               EXISTING POPUP HTML
-            ================================================ */
+            let villageName = "";
 
-            const popupContent =
+            const popup =
+
                 layer
-                    ?.getPopup?.()
-                    ?.getContent?.();
-
-
-            let pointName =
-                "";
-
-
-            /* ================================================
-               EXTRACT NAME FROM FIRST <b>
-               
-               Existing popup:
-               
-               <b>🏡 Burir Dokan</b>
-            ================================================ */
+                .getPopup?.()
+                ?.getContent?.();
 
             if(
-                typeof popupContent ===
-                    "string" &&
-                popupContent
+
+                typeof popup ===
+
+                "string"
+
             ){
 
                 const match =
-                    popupContent.match(
+
+                    popup.match(
+
                         /<b[^>]*>\s*(?:🏡\s*)?([^<]+)<\/b>/i
+
                     );
 
-
                 if(
+
                     match?.[1]
+
                 ){
 
-                    pointName =
+                    villageName =
+
                         String(
+
                             match[1]
+
                         )
+
                         .replace(
+
                             /^🏡\s*/,
+
                             ""
+
                         )
+
                         .trim();
 
                 }
 
             }
 
+            // =====================================
+            // SAVE
+            // =====================================
 
-            /* ================================================
-               THIS IS CURRENT NEAREST POINT
-            ================================================ */
+            bestDistance =
 
-            nearestDistance =
                 distance;
-
 
             nearest = {
 
-                name:
-                    pointName,
+                village :
 
-                latitude:
+                    villageName,
+
+                name :
+
+                    villageName,
+
+                latitude :
+
                     Number(
-                        ll.lat
+                        point.lat
                     ),
 
-                longitude:
+                longitude :
+
                     Number(
-                        ll.lng
+                        point.lng
                     ),
 
-                distanceMeters:
+                distanceMeters :
+
                     Math.round(
                         distance
                     ),
 
-                layer:
+                layer :
+
                     layer
 
             };
 
         }
-    );
 
+    );
 
     return nearest;
 
