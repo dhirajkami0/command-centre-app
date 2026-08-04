@@ -7191,42 +7191,151 @@ staffButtons.forEach(el => {
     }
   }
 
-  // ============================================================
-  // ❌ BLOCK
-  // ============================================================
-  else {
+// ============================================================
+// 🟡 VILLAGER
+// ============================================================
+else if(role === "VILLAGER"){
+
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
 
     leaderButtons.forEach(el => {
 
-      el.style.display = "none";
+        el.style.display = "none";
+
     });
 
     adminButtons.forEach(el => {
 
-      el.style.display = "none";
+        el.style.display = "none";
+
     });
 
     staffButtons.forEach(el => {
 
-      el.style.display = "none";
+        el.style.display = "none";
+
+    });
+
+    // ======================================
+    // ❌ DUTY
+    // ======================================
+
+    if(dutyBtn){
+
+        dutyBtn.style.display = "none";
+
+    }
+
+    // ======================================
+    // ❌ GIS PANEL
+    // ======================================
+
+    if(gisPanel){
+
+        gisPanel.style.display = "none";
+
+    }
+
+    // ======================================
+    // ❌ ALL GIS FILTERS
+    // ======================================
+
+    if(divisionButtons){
+
+        divisionButtons.style.display = "none";
+
+    }
+
+    if(rangeButtons){
+
+        rangeButtons.style.display = "none";
+
+    }
+
+    if(beatButtons){
+
+        beatButtons.style.display = "none";
+
+    }
+
+    if(compartmentButtons){
+
+        compartmentButtons.style.display = "none";
+
+    }
+
+    // ======================================
+    // 🚨 HEC HELP BUTTON
+    // ======================================
+
+    const hecBtn =
+
+        document.getElementById(
+
+            "hecHelpBtn"
+
+        );
+
+    if(hecBtn){
+
+        hecBtn.style.display = "flex";
+
+    }
+
+    console.log(
+
+        "✅ Villager UI Loaded"
+
+    );
+
+}
+
+// ============================================================
+// ❌ UNKNOWN ROLE
+// ============================================================
+else {
+
+    leaderButtons.forEach(el => {
+
+        el.style.display = "none";
+
+    });
+
+    adminButtons.forEach(el => {
+
+        el.style.display = "none";
+
+    });
+
+    staffButtons.forEach(el => {
+
+        el.style.display = "none";
+
     });
 
     if(dutyBtn){
 
-      dutyBtn.style.display = "none";
+        dutyBtn.style.display = "none";
+
     }
 
     if(gisPanel){
 
-      gisPanel.style.display =
-        "none";
+        gisPanel.style.display = "none";
+
     }
 
     console.warn(
-      "❌ Unknown role:",
-      role
+
+        "❌ Unknown role:",
+
+        role
+
     );
-  }
+
+}
 }// ================= LOAD PROFILE =================
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
@@ -9110,21 +9219,32 @@ setTimeout(() => {
         );
 
 // ==============================================
-// 🚨 LOAD HEC (ADMIN ONLY)
+// 🚨 LOAD HEC
+// Visible to:
+// • ADMIN
+// • VILLAGER
 // ==============================================
+
+const role =
+
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
 
 if(
 
-    String(
+    role === "ADMIN"
 
-        window.userProfile?.role || ""
+    ||
 
-    ).toUpperCase() === "ADMIN"
+    role === "VILLAGER"
 
 ){
 
     // ==========================================
-    // LOAD EXISTING INCIDENTS
+    // LOAD EXISTING HEC INCIDENTS
     // ==========================================
 
     if(
@@ -9170,13 +9290,14 @@ if(
     }
 
 }
+
 else{
 
     console.log(
 
         "⏭ HEC disabled for role:",
 
-        window.userProfile?.role
+        role
 
     );
 
@@ -38846,28 +38967,454 @@ marker.getPopup().setContent(popup);
 // =====================================================
 // HEC POPUP ROUTER
 // =====================================================
+// ============================================================
+// RESPONSE COMPLETED
+// Changes status -> AWAITING_CONFIRMATION
+// ============================================================
+
+async function completeHECIncident(
+    incidentId
+){
+
+    try{
+
+        const ref = doc(
+            window.db,
+            "hec_incidents",
+            incidentId
+        );
+
+        await updateDoc(
+            ref,
+            {
+
+                // =====================================
+                // STATUS
+                // =====================================
+
+                status :
+                    "AWAITING_CONFIRMATION",
+
+                completedBy :
+                    window.userProfile.rawName ||
+
+                    "",
+
+                completedByUserId :
+                    window.userProfile.uid ||
+
+                    "",
+
+                completedTime :
+                    serverTimestamp(),
+
+                updatedAt :
+                    serverTimestamp(),
+
+                // =====================================
+                // HISTORY
+                // =====================================
+
+                statusHistory :
+                    arrayUnion({
+
+                        status :
+                            "AWAITING_CONFIRMATION",
+
+                        by :
+                            window.userProfile.uid ||
+
+                            "",
+
+                        name :
+                            window.userProfile.rawName ||
+
+                            "",
+
+                        time :
+                            new Date()
+
+                    })
+
+            }
+
+        );
+
+        alert(
+            "Confirmation request sent to villager."
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "completeHECIncident",
+            err
+        );
+
+        alert(
+            "Unable to update incident."
+        );
+
+    }
+
+}
+    // ============================================================
+// VILLAGER CONFIRM RESOLVED
+// ============================================================
+
+async function confirmHECResolved(
+    incidentId
+){
+
+    try{
+
+        const ref = doc(
+            window.db,
+            "hec_incidents",
+            incidentId
+        );
+
+        await updateDoc(
+            ref,
+            {
+
+                // =====================================
+                // STATUS
+                // =====================================
+
+                status :
+                    "RESOLVED",
+
+                resolvedBy :
+                    "VILLAGER",
+
+                resolvedByName :
+                    window.userProfile.rawName ||
+
+                    "",
+
+                confirmationTime :
+                    serverTimestamp(),
+
+                updatedAt :
+                    serverTimestamp(),
+
+                // =====================================
+                // HISTORY
+                // =====================================
+
+                statusHistory :
+                    arrayUnion({
+
+                        status :
+                            "RESOLVED",
+
+                        by :
+                            window.userProfile.uid ||
+
+                            "",
+
+                        name :
+                            window.userProfile.rawName ||
+
+                            "",
+
+                        time :
+                            new Date()
+
+                    })
+
+            }
+
+        );
+
+        alert(
+            "Thank you for your feedback."
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "confirmHECResolved",
+            err
+        );
+
+        alert(
+            "Unable to submit confirmation."
+        );
+
+    }
+
+}
+    // ============================================================
+// ADMIN OVERRIDE RESOLVE
+// ============================================================
+
+async function adminResolveHEC(
+    incidentId
+){
+
+    try{
+
+        const ref = doc(
+
+            window.db,
+
+            "hec_incidents",
+
+            incidentId
+
+        );
+
+        await updateDoc(
+
+            ref,
+
+            {
+
+                // =====================================
+                // STATUS
+                // =====================================
+
+                status :
+
+                    "RESOLVED",
+
+                resolvedBy :
+
+                    "ADMIN",
+
+                resolvedByName :
+
+                    window.userProfile.rawName ||
+
+                    "",
+
+                adminResolutionReason :
+
+                    "Reporter unavailable",
+
+                confirmationTime :
+
+                    serverTimestamp(),
+
+                updatedAt :
+
+                    serverTimestamp(),
+
+                // =====================================
+                // HISTORY
+                // =====================================
+
+                statusHistory :
+
+                    arrayUnion({
+
+                        status :
+
+                            "RESOLVED",
+
+                        by :
+
+                            window.userProfile.uid ||
+
+                            "",
+
+                        name :
+
+                            window.userProfile.rawName ||
+
+                            "",
+
+                        time :
+
+                            new Date()
+
+                    })
+
+            }
+
+        );
+
+        alert(
+
+            "Incident Closed."
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "adminResolveHEC",
+
+            err
+
+        );
+
+        alert(
+
+            "Unable to close incident."
+
+        );
+
+    }
+
+}
+
+    // ============================================================
+// REOPEN INCIDENT
+// ============================================================
+
+async function reopenHECIncident(
+    incidentId
+){
+
+    try{
+
+        const ref = doc(
+
+            window.db,
+
+            "hec_incidents",
+
+            incidentId
+
+        );
+
+        await updateDoc(
+
+            ref,
+
+            {
+
+                // =====================================
+                // STATUS
+                // =====================================
+
+                status :
+
+                    "ACCEPTED",
+
+                updatedAt :
+
+                    serverTimestamp(),
+
+                // =====================================
+                // CLEAR PREVIOUS CLOSURE
+                // =====================================
+
+                resolvedBy :
+
+                    "",
+
+                resolvedByName :
+
+                    "",
+
+                confirmationTime :
+
+                    null,
+
+                feedbackRating :
+
+                    "",
+
+                feedbackRemarks :
+
+                    "",
+
+                adminResolutionReason :
+
+                    "",
+
+                // =====================================
+                // HISTORY
+                // =====================================
+
+                statusHistory :
+
+                    arrayUnion({
+
+                        status :
+
+                            "REOPENED",
+
+                        by :
+
+                            window.userProfile.uid ||
+
+                            "",
+
+                        name :
+
+                            window.userProfile.rawName ||
+
+                            "",
+
+                        time :
+
+                            new Date()
+
+                    })
+
+            }
+
+        );
+
+        alert(
+
+            "Incident Reopened."
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "reopenHECIncident",
+
+            err
+
+        );
+
+        alert(
+
+            "Unable to reopen incident."
+
+        );
+
+    }
+
+}
+// =====================================================
+// HEC POPUP ROUTER
+// =====================================================
 
 function buildHECPopup(
     e,
     ctx
 ){
 
-    if(
-        ctx.isAdmin
-    ){
+    const role =
+
+        String(
+            window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
+
+    if(role === "ADMIN"){
 
         return buildAdminPopup(
-            e,
-            ctx
-        );
-
-    }
-
-    if(
-        ctx.isStaff
-    ){
-
-        return buildStaffPopup(
             e,
             ctx
         );
@@ -38881,7 +39428,7 @@ function buildHECPopup(
 
 }
 
-    // =====================================================
+// =====================================================
 // VILLAGER POPUP
 // =====================================================
 
@@ -38890,30 +39437,405 @@ function buildVillagerPopup(
     ctx
 ){
 
-    return `
+    const status =
+
+        String(
+            ctx.status || "WAITING"
+        ).toUpperCase();
+
+    // =====================================================
+    // STATUS
+    // =====================================================
+
+    let badgeColor="#fbc02d";
+    let badgeText="Waiting for Response";
+
+    switch(status){
+
+        case "WAITING":
+
+            badgeColor="#fbc02d";
+            badgeText="Waiting for Response";
+
+            break;
+
+        case "ACCEPTED":
+
+            badgeColor="#43a047";
+            badgeText="Response Team Assigned";
+
+            break;
+
+        case "ARRIVED":
+
+            badgeColor="#1e88e5";
+            badgeText="Response Team Reached Site";
+
+            break;
+
+        case "AWAITING_CONFIRMATION":
+
+            badgeColor="#fb8c00";
+            badgeText="Waiting for Your Confirmation";
+
+            break;
+
+        case "RESOLVED":
+
+            badgeColor="#2e7d32";
+            badgeText="Incident Resolved";
+
+            break;
+
+    }
+
+    // =====================================================
+    // REPORTER
+    // =====================================================
+
+    const isReporter =
+
+        String(
+
+            window.userProfile?.uid ||
+
+            ""
+
+        )
+
+        ===
+
+        String(
+
+            e.reporterUserId ||
+
+            ""
+
+        );
+
+    // =====================================================
+    // WAIT TIME
+    // =====================================================
+
+    let waitText="-";
+
+    try{
+
+        const t =
+
+            e.createdAt?.seconds
+
+            ?
+
+            e.createdAt.seconds*1000
+
+            :
+
+            e.createdAt;
+
+        if(t){
+
+            const m =
+
+                Math.floor(
+
+                    (Date.now()-t)
+
+                    /
+
+                    60000
+
+                );
+
+            waitText =
+
+                m+" min";
+
+        }
+
+    }
+
+    catch(err){}
+
+    // =====================================================
+    // TEAM SECTION
+    // =====================================================
+
+    let teamHTML="";
+
+    if(
+
+        status!=="WAITING"
+
+    ){
+
+        teamHTML=
+
+`
+
+<hr>
+
+<div style="font-weight:bold;margin-bottom:5px;">
+
+👮 Response Team
+
+</div>
+
+<div>
+
+${e.acceptedBy || "-"}
+
+</div>
+
+<div>
+
+${e.teamCurrentLocation?.text || "-"}
+
+</div>
+
+`;
+
+    }
+
+    // =====================================================
+    // CONFIRMATION
+    // =====================================================
+
+    let confirmationHTML="";
+
+    if(
+
+        status==="AWAITING_CONFIRMATION"
+
+        &&
+
+        isReporter
+
+    ){
+
+confirmationHTML=
+
+`
+
+<hr>
+
 <div
 style="
-font-family:Segoe UI,sans-serif;
-padding:10px;
+font-size:14px;
+font-weight:bold;
+margin-bottom:8px;
 ">
 
-<h3>
+The response team has reported
+that your problem has been resolved.
 
-👤 Villager Popup
+</div>
 
-</h3>
+<div
+style="
+margin-bottom:10px;
+">
+
+Was your problem resolved?
+
+</div>
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+">
+
+<button
+
+onclick="confirmHECResolved('${ctx.key}')"
+
+style="
+padding:12px;
+background:#2e7d32;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+👍 YES
+
+</button>
+
+<button
+
+onclick="reopenHECIncident('${ctx.key}')"
+
+style="
+padding:12px;
+background:#c62828;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+👎 NO
+
+</button>
+
+</div>
+
+`;
+
+    }
+
+    // =====================================================
+    // HTML
+    // =====================================================
+
+return `
+
+<div
+style="
+font-family:'Segoe UI';
+padding:12px;
+width:320px;
+box-sizing:border-box;
+">
+
+<div
+style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+">
+
+<div
+style="
+font-size:18px;
+font-weight:bold;
+color:#c62828;
+">
+
+🚨 Elephant Help Request
+
+</div>
+
+<div
+style="
+padding:5px 10px;
+border-radius:20px;
+background:${badgeColor};
+color:white;
+font-size:11px;
+font-weight:bold;
+">
+
+${badgeText}
+
+</div>
+
+</div>
+
+<hr>
+
+<div
+style="
+font-weight:bold;
+margin-bottom:4px;
+">
+
+🐘 Situation
+
+</div>
+
+<div>
+
+${e.situation || "-"}
+
+</div>
+
+<br>
+
+<div
+style="
+font-weight:bold;
+margin-bottom:4px;
+">
+
+🐘 Approx. Elephants
+
+</div>
+
+<div>
+
+${e.elephantCount || "-"}
+
+</div>
+
+<hr>
+
+<div
+style="
+font-weight:bold;
+margin-bottom:4px;
+">
+
+📍 Incident Location
+
+</div>
+
+<div>
+
+${e.incidentLocation?.village || "-"}
+
+</div>
+
+<div>
+
+${e.incidentLocation?.landmark || ""}
+
+</div>
+
+<hr>
+
+<div
+style="
+font-weight:bold;
+margin-bottom:4px;
+">
+
+🕒 Waiting Time
+
+</div>
+
+<div>
+
+${waitText}
+
+</div>
+
+${teamHTML}
+
+${confirmationHTML}
+
+<div
+style="
+margin-top:12px;
+font-size:11px;
+color:#666;
+text-align:right;
+">
 
 Incident
 
 ${ctx.key}
 
-<br><br>
-
-Status
-
-${ctx.status}
+</div>
 
 </div>
+
 `;
 
 }
@@ -38955,7 +39877,7 @@ ${ctx.status}
 
 }
 
-    // =====================================================
+// =====================================================
 // ADMIN POPUP
 // =====================================================
 
@@ -38964,30 +39886,507 @@ function buildAdminPopup(
     ctx
 ){
 
-    return `
+    const status =
+
+        String(
+            ctx.status || "WAITING"
+        ).toUpperCase();
+
+    // =====================================================
+    // STATUS BADGE
+    // =====================================================
+
+    let badgeColor="#fbc02d";
+    let badgeText="WAITING";
+
+    switch(status){
+
+        case "WAITING":
+
+            badgeColor="#fbc02d";
+            badgeText="WAITING";
+
+            break;
+
+        case "ACCEPTED":
+
+            badgeColor="#43a047";
+            badgeText="ACCEPTED";
+
+            break;
+
+        case "ARRIVED":
+
+            badgeColor="#1e88e5";
+            badgeText="ARRIVED";
+
+            break;
+
+        case "AWAITING_CONFIRMATION":
+
+            badgeColor="#fb8c00";
+            badgeText="WAITING FOR VILLAGER";
+
+            break;
+
+        case "RESOLVED":
+
+            badgeColor="#2e7d32";
+            badgeText="RESOLVED";
+
+            break;
+
+    }
+
+    // =====================================================
+    // WAITING TIME
+    // =====================================================
+
+    let waitText="-";
+
+    try{
+
+        const t=
+
+            e.createdAt?.seconds ?
+
+            e.createdAt.seconds*1000 :
+
+            e.createdAt;
+
+        if(t){
+
+            waitText=
+
+                Math.floor(
+
+                    (Date.now()-t)
+
+                    /
+
+                    60000
+
+                )+" min";
+
+        }
+
+    }catch(err){}
+
+    // =====================================================
+    // TEAM
+    // =====================================================
+
+    const teamName=
+
+        e.acceptedBy ||
+
+        "-";
+
+    // =====================================================
+    // ACTIONS
+    // =====================================================
+
+    let actionHTML="";
+
+    switch(status){
+
+        // =============================================
+        // WAITING
+        // =============================================
+
+        case "WAITING":
+
+actionHTML=
+
+`
+
 <div
 style="
-font-family:Segoe UI,sans-serif;
-padding:10px;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+margin-top:10px;
 ">
 
-<h3>
+<button
 
-👨‍💼 Admin Popup
+onclick="acceptHECIncident('${ctx.key}')"
 
-</h3>
+style="
+padding:11px;
+background:#2e7d32;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+🟢 ACCEPT
+
+</button>
+
+<button
+
+onclick="navigateHEC('${ctx.lat}','${ctx.lon}')"
+
+style="
+padding:11px;
+background:#1565c0;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+📍 NAVIGATE
+
+</button>
+
+</div>
+
+`;
+
+break;
+
+        // =============================================
+        // ACCEPTED
+        // =============================================
+
+case "ACCEPTED":
+
+actionHTML=
+
+`
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+margin-top:10px;
+">
+
+<button
+
+onclick="arriveHECIncident('${ctx.key}')"
+
+style="
+padding:11px;
+background:#ef6c00;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+📍 ARRIVED
+
+</button>
+
+<button
+
+onclick="callHECReporter('${e.reporterMobile||""}')"
+
+style="
+padding:11px;
+background:#6a1b9a;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+☎ CALL
+
+</button>
+
+</div>
+
+`;
+
+break;
+
+        // =============================================
+        // ARRIVED
+        // =============================================
+
+case "ARRIVED":
+
+actionHTML=
+
+`
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr;
+gap:8px;
+margin-top:10px;
+">
+
+<button
+
+onclick="completeHECIncident('${ctx.key}')"
+
+style="
+padding:12px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+✅ RESPONSE COMPLETED
+
+</button>
+
+</div>
+
+`;
+
+break;
+
+        // =============================================
+        // WAITING CONFIRMATION
+        // =============================================
+
+case "AWAITING_CONFIRMATION":
+
+actionHTML=
+
+`
+
+<hr>
+
+<div
+style="
+font-weight:bold;
+margin-bottom:8px;
+">
+
+Waiting for Villager Confirmation
+
+</div>
+
+<div
+style="
+font-size:13px;
+color:#555;
+margin-bottom:12px;
+">
+
+The reporter has not yet confirmed the incident.
+
+</div>
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+">
+
+<button
+
+onclick="adminResolveHEC('${ctx.key}')"
+
+style="
+padding:11px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+✔ CONFIRM & CLOSE
+
+</button>
+
+<button
+
+onclick="reopenHECIncident('${ctx.key}')"
+
+style="
+padding:11px;
+background:#d32f2f;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+">
+
+🔄 REOPEN
+
+</button>
+
+</div>
+
+`;
+
+break;
+
+        // =============================================
+        // RESOLVED
+        // =============================================
+
+case "RESOLVED":
+
+actionHTML=
+
+`
+
+<hr>
+
+<div
+style="
+background:#e8f5e9;
+padding:12px;
+border-radius:8px;
+font-weight:bold;
+color:#2e7d32;
+text-align:center;
+">
+
+✅ Incident Successfully Closed
+
+</div>
+
+`;
+
+break;
+
+    }
+
+    // =====================================================
+    // RETURN
+    // =====================================================
+
+return `
+
+<div
+style="
+font-family:'Segoe UI';
+padding:12px;
+width:340px;
+box-sizing:border-box;
+">
+
+<div
+style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+">
+
+<div
+style="
+font-size:18px;
+font-weight:bold;
+color:#c62828;
+">
+
+🚨 Elephant Response
+
+</div>
+
+<div
+style="
+padding:5px 10px;
+border-radius:20px;
+background:${badgeColor};
+color:white;
+font-size:11px;
+font-weight:bold;
+">
+
+${badgeText}
+
+</div>
+
+</div>
+
+<hr>
+
+<b>👤 Reporter</b>
+
+<br>
+
+${e.reporterName||"-"}
+
+<br>
+
+☎ ${e.reporterMobile||"-"}
+
+<hr>
+
+<b>🐘 Situation</b>
+
+<br>
+
+${e.situation||"-"}
+
+<br><br>
+
+<b>🐘 Approx. Elephants</b>
+
+<br>
+
+${e.elephantCount||"-"}
+
+<hr>
+
+<b>📍 Incident Location</b>
+
+<br>
+
+${e.incidentLocation?.village||"-"}
+
+<br>
+
+${e.incidentLocation?.landmark||""}
+
+<br>
+
+🛰 ${ctx.gpsText}
+
+<hr>
+
+<b>👮 Response Team</b>
+
+<br>
+
+${teamName}
+
+<hr>
+
+<b>⏱ Waiting Time</b>
+
+<br>
+
+${waitText}
+
+${actionHTML}
+
+<div
+style="
+margin-top:12px;
+font-size:11px;
+color:#666;
+text-align:right;
+">
 
 Incident
 
 ${ctx.key}
 
-<br><br>
-
-Status
-
-${ctx.status}
+</div>
 
 </div>
+
 `;
 
 }
@@ -39399,46 +40798,14 @@ async function showNewHECAlert(
 // REMOVE HEC MARKER
 // =====================================================
 
-function removeHECMarker(
+// ============================================================
+// REMOVE HEC MARKER
+// ============================================================
 
-    incident
 
-){
-
-    const key =
-
-        String(
-
-            incident.incidentId ||
-
-            incident.firestore_id
-
-        );
-
-    const marker =
-
-        window.hecMarkers?.[key];
-
-    if(
-
-        marker
-
-    ){
-
-        window.hecLayer?.removeLayer(
-
-            marker
-
-        );
-
-        delete window.hecMarkers[key];
-
-    }
-
-}
-    // =====================================================
-// 🟢 ACCEPT HEC INCIDENT
-// =====================================================
+// ============================================================
+// ACCEPT INCIDENT
+// ============================================================
 
 async function acceptHECIncident(
 
@@ -39448,65 +40815,19 @@ async function acceptHECIncident(
 
     try{
 
-        const {
+        const ref = doc(
 
-            collection,
-            query,
-            where,
-            getDocs,
-            updateDoc
+            window.db,
 
-        } = window.fb;
+            "hec_incidents",
 
-        const snap = await getDocs(
-
-            query(
-
-                collection(
-
-                    window.db,
-
-                    "hec_incidents"
-
-                ),
-
-                where(
-
-                    "incidentId",
-
-                    "==",
-
-                    incidentId
-
-                )
-
-            )
+            incidentId
 
         );
 
-        if(
-
-            snap.empty
-
-        ){
-
-            alert(
-
-                "Incident not found."
-
-            );
-
-            return;
-
-        }
-
-        const docRef =
-
-            snap.docs[0].ref;
-
         await updateDoc(
 
-            docRef,
+            ref,
 
             {
 
@@ -39516,31 +40837,56 @@ async function acceptHECIncident(
 
                 acceptedBy :
 
-                    window.userProfile?.rawName ||
+                    window.userProfile.rawName,
 
-                    "",
+                acceptedByUserId :
 
-                assignedTeam :
-
-                    window.userProfile?.beat ||
+                    window.userProfile.uid ||
 
                     "",
 
                 acceptedTime :
 
-                    new Date()
+                    serverTimestamp(),
+
+                updatedAt :
+
+                    serverTimestamp(),
+
+                statusHistory :
+
+                    arrayUnion(
+
+                        {
+
+                            status :
+
+                                "ACCEPTED",
+
+                            by :
+
+                                window.userProfile.uid ||
+
+                                "",
+
+                            name :
+
+                                window.userProfile.rawName ||
+
+                                "",
+
+                            time :
+
+                                new Date()
+
+                        }
+
+                    )
 
             }
 
         );
 
-        showToast(
-
-            "✅ Incident Accepted"
-
-        );
-
-await loadHECIncidents();
     }
 
     catch(err){
@@ -39551,9 +40897,103 @@ await loadHECIncidents();
 
         );
 
-        alert(
+    }
 
-            "Unable to accept incident."
+}
+
+
+
+// ============================================================
+// ARRIVED
+// ============================================================
+
+async function arriveHECIncident(
+
+    incidentId
+
+){
+
+    try{
+
+        const ref = doc(
+
+            window.db,
+
+            "hec_incidents",
+
+            incidentId
+
+        );
+
+        await updateDoc(
+
+            ref,
+
+            {
+
+                status :
+
+                    "ARRIVED",
+
+                arrivedBy :
+
+                    window.userProfile.rawName,
+
+                arrivedByUserId :
+
+                    window.userProfile.uid ||
+
+                    "",
+
+                arrivedTime :
+
+                    serverTimestamp(),
+
+                updatedAt :
+
+                    serverTimestamp(),
+
+                statusHistory :
+
+                    arrayUnion(
+
+                        {
+
+                            status :
+
+                                "ARRIVED",
+
+                            by :
+
+                                window.userProfile.uid ||
+
+                                "",
+
+                            name :
+
+                                window.userProfile.rawName ||
+
+                                "",
+
+                            time :
+
+                                new Date()
+
+                        }
+
+                    )
+
+            }
+
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            err
 
         );
 
@@ -59739,7 +61179,471 @@ hideHelpLoading();
     }
 
 }
-    
+  // ============================================================
+// 🚨 ADD / UPDATE HEC MARKER
+// ============================================================
+
+// ============================================================
+// 🚨 HEC MARKERS
+// ============================================================
+
+window.hecMarkers =
+    window.hecMarkers || {};
+
+// ============================================================
+// ADD / UPDATE HEC MARKER
+// ============================================================
+
+function addOrUpdateHECMarker(
+
+    incident
+
+){
+
+    try{
+
+        if(
+
+            !window.map ||
+
+            !incident
+
+        ){
+
+            return;
+
+        }
+
+        // ========================================================
+        // ROLE FILTER
+        // (Phase 1)
+        // ========================================================
+
+        const role =
+
+            String(
+
+                window.userProfile?.role ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if(
+
+            role !== "ADMIN"
+
+            &&
+
+            role !== "VILLAGER"
+
+        ){
+
+            return;
+
+        }
+
+        // ========================================================
+        // INCIDENT ID
+        // ========================================================
+
+        const key =
+
+            String(
+
+                incident.firestore_id ||
+
+                incident.incidentId ||
+
+                ""
+
+            );
+
+        if(!key){
+
+            return;
+
+        }
+
+        // ========================================================
+        // RESOLVED
+        // ========================================================
+
+        if(
+
+            String(
+
+                incident.status ||
+
+                ""
+
+            )
+
+            .toUpperCase() ===
+
+            "RESOLVED"
+
+        ){
+
+            removeHECMarker(
+
+                incident
+
+            );
+
+            return;
+
+        }
+
+        // ========================================================
+        // LOCATION
+        // ========================================================
+
+        const lat = Number(
+
+            incident.location?.lat ??
+
+            incident.incidentLocation?.lat
+
+        );
+
+        const lon = Number(
+
+            incident.location?.lon ??
+
+            incident.incidentLocation?.lon
+
+        );
+
+        if(
+
+            !Number.isFinite(lat)
+
+            ||
+
+            !Number.isFinite(lon)
+
+        ){
+
+            return;
+
+        }
+
+        // ========================================================
+        // CREATE LAYER
+        // ========================================================
+
+        if(
+
+            !window.hecLayer
+
+        ){
+
+            window.hecLayer =
+
+                L.layerGroup()
+
+                .addTo(
+
+                    window.map
+
+                );
+
+        }
+
+        // ========================================================
+        // REMOVE OLD MARKER
+        // ========================================================
+
+        if(
+
+            window.hecMarkers[key]
+
+        ){
+
+            window.hecLayer.removeLayer(
+
+                window.hecMarkers[key]
+
+            );
+
+        }
+
+        // ========================================================
+        // STATUS
+        // ========================================================
+
+        const status =
+
+            String(
+
+                incident.status ||
+
+                "WAITING"
+
+            )
+
+            .toUpperCase();
+
+        let color = "#d32f2f";
+
+        let pulse = true;
+
+        switch(status){
+
+            case "WAITING":
+
+                color = "#d32f2f";
+
+                break;
+
+            case "ACCEPTED":
+
+                color = "#fb8c00";
+
+                break;
+
+            case "ARRIVED":
+
+                color = "#1976d2";
+
+                break;
+
+            case "AWAITING_CONFIRMATION":
+
+                color = "#8e24aa";
+
+                break;
+
+            case "RESOLVED":
+
+                color = "#2e7d32";
+
+                pulse = false;
+
+                break;
+
+        }
+
+        // ========================================================
+        // ICON
+        // ========================================================
+
+        const icon =
+
+            L.divIcon({
+
+                className : "",
+
+                iconSize : [28,28],
+
+                iconAnchor : [14,14],
+
+                html :
+
+`
+<div
+style="
+width:24px;
+height:24px;
+border-radius:50%;
+background:${color};
+border:3px solid white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:15px;
+box-shadow:0 0 10px rgba(0,0,0,.45);
+${pulse ? "animation:hecPulse 1.5s infinite;" : ""}
+">
+
+🐘
+
+</div>
+`
+
+            });
+
+        // ========================================================
+        // MARKER
+        // ========================================================
+
+        const marker =
+
+            L.marker(
+
+                [
+
+                    lat,
+
+                    lon
+
+                ],
+
+                {
+
+                    icon,
+
+                    zIndexOffset:1000
+
+                }
+
+            );
+
+        // ========================================================
+        // POPUP
+        // ========================================================
+
+        marker.on(
+
+            "click",
+
+            function(){
+
+                if(
+
+                    typeof openHECPopup ===
+
+                    "function"
+
+                ){
+
+                    openHECPopup(
+
+                        incident
+
+                    );
+
+                }
+
+                else{
+
+                    marker.bindPopup(
+
+`
+<b>🚨 Elephant Help Request</b>
+
+<br><br>
+
+<b>Status</b>
+
+<br>
+
+${status}
+
+<br><br>
+
+<b>Situation</b>
+
+<br>
+
+${incident.situation || "-"}
+
+<br><br>
+
+<b>Village</b>
+
+<br>
+
+${incident.incidentLocation?.village ||
+
+incident.village ||
+
+"-"}
+
+`
+
+                    )
+
+                    .openPopup();
+
+                }
+
+            }
+
+        );
+
+        // ========================================================
+        // SAVE
+        // ========================================================
+
+        marker.addTo(
+
+            window.hecLayer
+
+        );
+
+        window.hecMarkers[key] =
+
+            marker;
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "addOrUpdateHECMarker",
+
+            err
+
+        );
+
+    }
+
+}
+
+// ============================================================
+// REMOVE HEC MARKER
+// ============================================================
+
+function removeHECMarker(
+
+    incident
+
+){
+
+    const key =
+
+        String(
+
+            incident?.incidentId ||
+
+            incident?.firestore_id ||
+
+            incident ||
+
+            ""
+
+        );
+
+    if(!key){
+
+        return;
+
+    }
+
+    const marker =
+
+        window.hecMarkers?.[key];
+
+    if(marker){
+
+        window.hecLayer?.removeLayer(
+
+            marker
+
+        );
+
+        delete window.hecMarkers[key];
+
+    }
+
+}
 // ============================================================
 // 📷 CAPTURE HELP PHOTO
 // Android APK + Browser
@@ -64569,97 +66473,306 @@ function updateNetworkStatus(status) {
 
 
 // ================= PROFILE NORMALIZER =================
+// ============================================================
+// 🔥 NORMALIZE USER PROFILE
+//
+// Supports:
+// • ADMIN
+// • STAFF
+// • TEAM LEADER
+// • RANGER
+// • FOREST GUARD
+// • BEAT OFFICER
+// • DEPUTY RANGER
+// • FORESTER
+// • VILLAGER
+//
+// Supports legacy divisions:
+// BTR_W
+// BTR_E
+// BTR(W)
+// BTR(E)
+// BTR(WEST)
+// BTR(EAST)
+//
+// Normalized to:
+// BuxaTR_WEST
+// BuxaTR_EAST
+// ============================================================
+
 function normalizeUserProfile(profile){
 
-  try {
+    try{
 
-    if(!profile){
-      return null;
+        if(!profile){
+            return null;
+        }
+
+        // ========================================================
+        // ROLE
+        // ========================================================
+
+        const role =
+
+            String(
+                profile.role || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        // ========================================================
+        // DIVISION NORMALIZATION
+        // ========================================================
+
+        let division =
+
+            String(
+                profile.division || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        switch(division){
+
+            // ====================================================
+            // BUXA WEST
+            // ====================================================
+
+            case "BTR_W":
+
+            case "BTR(W)":
+
+            case "BTR(WEST)":
+
+            case "BUXATR_WEST":
+
+            case "BUXA TR WEST":
+
+            case "BUXA TR(W)":
+
+                division = "BuxaTR_WEST";
+
+                break;
+
+            // ====================================================
+            // BUXA EAST
+            // ====================================================
+
+            case "BTR_E":
+
+            case "BTR(E)":
+
+            case "BTR(EAST)":
+
+            case "BUXATR_EAST":
+
+            case "BUXA TR EAST":
+
+            case "BUXA TR(E)":
+
+                division = "BuxaTR_EAST";
+
+                break;
+
+            // ====================================================
+            // KEEP OTHER DIVISIONS
+            // ====================================================
+
+            default:
+
+                division =
+
+                    profile.division || "";
+
+                break;
+        }
+
+        // ========================================================
+        // NORMALIZED PROFILE
+        // ========================================================
+
+        return {
+
+            // ====================================================
+            // IDENTITY
+            // ====================================================
+
+            uid :
+
+                profile.uid ||
+
+                profile.userId ||
+
+                "",
+
+            villagerId :
+
+                profile.villagerId ||
+
+                "",
+
+            rawName :
+
+                profile.rawName ||
+
+                profile.name ||
+
+                "",
+
+            cleanName :
+
+                profile.cleanName ||
+
+                cleanName(
+
+                    profile.rawName ||
+
+                    profile.name ||
+
+                    ""
+
+                ),
+
+            role :
+
+                role,
+
+            phone :
+
+                String(
+                    profile.phone || ""
+                ).trim(),
+
+            email :
+
+                profile.email ||
+
+                "",
+
+            // ====================================================
+            // LOCATION
+            // ====================================================
+
+            village :
+
+                profile.village ||
+
+                "",
+
+            villageCode :
+
+                profile.villageCode ||
+
+                "",
+
+            landmark :
+
+                profile.landmark ||
+
+                "",
+
+            block :
+
+                profile.block ||
+
+                "",
+
+            district :
+
+                profile.district ||
+
+                "",
+
+            state :
+
+                profile.state ||
+
+                "",
+
+            // ====================================================
+            // FOREST JURISDICTION
+            // ====================================================
+
+            circle :
+
+                profile.circle ||
+
+                "",
+
+            division :
+
+                division,
+
+            range :
+
+                profile.range ||
+
+                "",
+
+            beat :
+
+                profile.beat ||
+
+                "",
+
+            compartment :
+
+                profile.compartment ||
+
+                "",
+
+            // ====================================================
+            // STATUS
+            // ====================================================
+
+            active :
+
+                profile.active !== false,
+
+            accessStatus :
+
+                profile.accessStatus ||
+
+                "ACTIVE",
+
+            createdAt :
+
+                profile.createdAt ||
+
+                null,
+
+            lastLogin :
+
+                profile.lastLogin ||
+
+                null,
+
+            lastSeen :
+
+                profile.lastSeen ||
+
+                null
+
+        };
+
     }
 
-    // ======================================
-    // 🌍 DIVISION
-    // ======================================
+    catch(e){
 
-    let division =
+        console.error(
 
-      String(
-        profile.division || ""
-      ).trim();
+            "❌ normalizeUserProfile failed",
 
-    // ======================================
-    // 🌍 NORMALIZE DIVISION
-    // ======================================
+            e
 
-    if(
-      division === "BTR_W"
-    ){
-      division =
-        "BuxaTR_WEST";
+        );
+
+        return null;
+
     }
 
-    if(
-      division === "BTR_E"
-    ){
-      division =
-        "BuxaTR_EAST";
-    }
-
-    // ======================================
-    // ✅ FINAL PROFILE
-    // ======================================
-
-    return {
-
-      // ====================================
-      // 🔥 EXISTING
-      // ====================================
-
-      rawName:
-        profile.rawName ||
-        profile.name ||
-        "",
-
-      cleanName:
-        profile.cleanName ||
-
-        cleanName(
-          profile.name || ""
-        ),
-
-      role:
-        profile.role || "",
-
-      beat:
-        profile.beat || "",
-
-      phone:
-        profile.phone || "",
-
-      // ====================================
-      // 🌍 GIS
-      // ====================================
-
-      circle:
-        profile.circle || "",
-
-      division:
-        division,
-
-      range:
-        profile.range || ""
-    };
-
-  } catch(e){
-
-    console.error(
-      "❌ normalizeUserProfile failed",
-      e
-    );
-
-    return null;
-  }
-}// ================= APP START =================
+}
+    // ================= APP START =================
 // ================= APP START =================
 
 
