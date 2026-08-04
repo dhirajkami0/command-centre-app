@@ -49735,37 +49735,129 @@ console.log(
 // LIVE STAFF LOOKUP
 // =====================================================
 
-async function getLiveStaffByName(name){
+// =====================================================
+// LIVE STAFF LOOKUP
+// =====================================================
 
-    if(!name){
-        return null;
-    }
+async function getLiveStaffByName(
 
-    const clean = cleanName(name);
+    name
 
-    const snap = await db
-        .collection("live_staff")
-        .get();
+){
 
-    let staff = null;
-
-    snap.forEach(doc=>{
-
-        const s = doc.data();
+    try{
 
         if(
-            cleanName(
-                s.name ||
-                s.rawName ||
-                ""
-            ) === clean
+
+            !name
+
         ){
-            staff = s;
+
+            return null;
+
         }
 
-    });
+        await waitForFirebaseReady();
 
-    return staff;
+        if(
+
+            !window.fb ||
+
+            !window.db ||
+
+            !window.fb.getDocs
+
+        ){
+
+            console.error(
+
+                "Firebase not ready"
+
+            );
+
+            return null;
+
+        }
+
+        const clean =
+
+            cleanName(
+
+                name
+
+            );
+
+        const snap =
+
+            await window.fb.getDocs(
+
+                window.fb.collection(
+
+                    window.db,
+
+                    "live_staff"
+
+                )
+
+            );
+
+        let staff =
+
+            null;
+
+        snap.forEach(doc=>{
+
+            const s =
+
+                doc.data() ||
+
+                {};
+
+            if(
+
+                cleanName(
+
+                    s.name ||
+
+                    s.rawName ||
+
+                    ""
+
+                ) === clean
+
+            ){
+
+                staff = s;
+
+            }
+
+        });
+
+        console.log(
+
+            "LIVE STAFF FOUND",
+
+            staff
+
+        );
+
+        return staff;
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "getLiveStaffByName",
+
+            err
+
+        );
+
+        return null;
+
+    }
 
 }
     
