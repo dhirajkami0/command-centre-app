@@ -40426,7 +40426,65 @@ function buildAdminPopup(
     const status =
 
         ctx.status;
+// =====================================================
+// 🚓 LIVE TEAM STATUS
+// =====================================================
 
+const team =
+
+    ctx.team || {};
+
+const teamName =
+
+    team.name ||
+
+    e.assignedTeam ||
+
+    "Not Assigned";
+
+const teamVillage =
+
+    team.village ||
+
+    "";
+
+const teamLandmark =
+
+    team.landmark ||
+
+    "";
+
+const teamText =
+
+    team.text ||
+
+    "";
+
+const teamGps =
+
+    team.lat && team.lon
+
+    ? `${Number(team.lat).toFixed(6)}, ${Number(team.lon).toFixed(6)}`
+
+    : "-";
+
+const lastGps =
+
+    team.lastUpdate ||
+
+    "-";
+
+const eta =
+
+    team.eta ||
+
+    "-";
+
+const distance =
+
+    team.distance ||
+
+    "-";
     let statusColor = "#d32f2f";
 
     let statusText = "🟡 WAITING";
@@ -41003,47 +41061,81 @@ status==="AWAITING_CONFIRMATION"
 
 <br>
 
-${
-
-e.assignedTeam ||
-
-"Not Assigned"
-
-}
+${teamName}
 
 <br><br>
 
-<b>📍 Team Location</b>
+<b>📍 Current Team Location</b>
 
 <br>
 
 ${
 
-e.teamCurrentLocation?.text ||
-
-"Updating..."
-
-}
-
-<br><br>
-
-<b>🕒 Last Update</b>
-
-<br>
-
-${
-
-e.lastLocationUpdate
+teamVillage
 
 ?
 
-"Recently Updated"
+`🏡 ${teamVillage}`
 
 :
 
-"-"
+""
 
 }
+
+${
+
+teamLandmark
+
+?
+
+`<br>📍 Near : ${teamLandmark}`
+
+:
+
+teamText
+
+?
+
+`<br>🌳 ${teamText}`
+
+:
+
+""
+
+}
+
+<br><br>
+
+<b>🛰 GPS</b>
+
+<br>
+
+${teamGps}
+
+<br><br>
+
+<b>🕒 Last GPS Update</b>
+
+<br>
+
+${lastGps}
+
+<br><br>
+
+<b>📏 Distance to Incident</b>
+
+<br>
+
+${distance}
+
+<br><br>
+
+<b>⏳ Estimated Arrival</b>
+
+<br>
+
+${eta}
 
 <hr>
 
@@ -41262,6 +41354,367 @@ e.adminResolutionReason
 </div>
 
 `;
+
+}
+
+    // =====================================================
+// 🚓 LIVE HEC TEAM STATUS
+// Reads responder live position from live_staff
+// =====================================================
+
+async function getLiveHECTeamStatus(
+
+    incident
+
+){
+
+    const result = {
+
+        name : incident.assignedTeam || "Not Assigned",
+
+        village : "",
+
+        landmark : "",
+
+        text : "",
+
+        lat : null,
+
+        lon : null,
+
+        lastUpdate : "-",
+
+        distance : "-",
+
+        eta : "-"
+
+    };
+
+    try{
+
+        // =================================================
+        // INCIDENT NOT ACCEPTED
+        // =================================================
+
+        if(
+
+            !incident.assignedTeam
+
+        ){
+
+            return result;
+
+        }
+
+        // =================================================
+        // LIVE STAFF ARRAY
+        // =================================================
+
+        const liveStaff =
+
+            window.live_staff ||
+
+            [];
+
+        // =================================================
+        // FIND RESPONDER
+        // =================================================
+
+        const live =
+
+            liveStaff.find(s => {
+
+                const phone1 =
+
+                    String(
+
+                        s.phone ||
+
+                        ""
+
+                    ).trim();
+
+                const phone2 =
+
+                    String(
+
+                        incident.responderPhone ||
+
+                        ""
+
+                    ).trim();
+
+                if(
+
+                    phone1 &&
+
+                    phone2 &&
+
+                    phone1 === phone2
+
+                ){
+
+                    return true;
+
+                }
+
+                return (
+
+                    String(
+
+                        s.cleanName ||
+
+                        ""
+
+                    )
+
+                    ===
+
+                    String(
+
+                        incident.acceptedBy ||
+
+                        ""
+
+                    )
+
+                );
+
+            });
+
+        if(
+
+            !live
+
+        ){
+
+            return result;
+
+        }
+
+        // =================================================
+        // BASIC
+        // =================================================
+
+        result.name =
+
+            live.rawName ||
+
+            live.name ||
+
+            incident.assignedTeam;
+
+        result.lat =
+
+            Number(
+
+                live.lat
+
+            );
+
+        result.lon =
+
+            Number(
+
+                live.lon
+
+            );
+
+        // =================================================
+        // LAST GPS
+        // =================================================
+
+        const gpsTime =
+
+            live.time ||
+
+            live.timestamp ||
+
+            live.updatedAt ||
+
+            live.lastSeen;
+
+        if(gpsTime){
+
+            result.lastUpdate =
+
+                new Date(
+
+                    gpsTime
+
+                ).toLocaleString(
+
+                    "en-IN"
+
+                );
+
+        }
+
+        // =================================================
+        // GIS RESOLUTION
+        // =================================================
+
+        if(
+
+            Number.isFinite(result.lat) &&
+
+            Number.isFinite(result.lon)
+
+        ){
+
+            const resolved =
+
+                await window.GreenGuardAI
+
+                .GISEntities
+
+                .resolveCurrentLocation(
+
+                    result.lat,
+
+                    result.lon
+
+                );
+
+            if(resolved){
+
+                result.village =
+
+                    resolved.village ||
+
+                    "";
+
+                result.landmark =
+
+                    resolved.nearestPoint ||
+
+                    resolved.nearestPointResult?.pointName ||
+
+                    "";
+
+                result.text =
+
+                    resolved.text ||
+
+                    "";
+
+            }
+
+        }
+
+        // =================================================
+        // DISTANCE + ETA
+        // =================================================
+
+        if(
+
+            Number.isFinite(result.lat) &&
+
+            Number.isFinite(result.lon)
+
+        ){
+
+            const distanceMeters =
+
+                window.map.distance(
+
+                    [
+
+                        result.lat,
+
+                        result.lon
+
+                    ],
+
+                    [
+
+                        incident.incidentLocation.lat,
+
+                        incident.incidentLocation.lon
+
+                    ]
+
+                );
+
+            result.distance =
+
+                (
+
+                    distanceMeters /
+
+                    1000
+
+                )
+
+                .toFixed(2)
+
+                + " km";
+
+            const speed =
+
+                Number(
+
+                    live.speed ||
+
+                    0
+
+                );
+
+            if(speed > 1){
+
+                const minutes =
+
+                    Math.max(
+
+                        1,
+
+                        Math.round(
+
+                            distanceMeters /
+
+                            speed /
+
+                            60
+
+                        )
+
+                    );
+
+                result.eta =
+
+                    minutes +
+
+                    " min";
+
+            }
+
+            else{
+
+                result.eta =
+
+                    "Stationary";
+
+            }
+
+        }
+
+        return result;
+
+    }
+
+    catch(err){
+
+        console.error(
+
+            "❌ getLiveHECTeamStatus",
+
+            err
+
+        );
+
+        return result;
+
+    }
 
 }
 // =====================================================
@@ -43757,7 +44210,7 @@ async function acceptHECIncident(
             {
 
                 // =====================================================
-                // STATUS
+                // INCIDENT STATUS
                 // =====================================================
 
                 status :
@@ -43784,6 +44237,10 @@ async function acceptHECIncident(
 
                     profile.phone || "",
 
+                responderRole :
+
+                    profile.role || "",
+
                 // =====================================================
                 // ACCEPT TIME
                 // =====================================================
@@ -43795,17 +44252,6 @@ async function acceptHECIncident(
                 updatedAt :
 
                     serverTimestamp(),
-
-                // =====================================================
-                // CLEAR DYNAMIC VALUES
-                // (These will be read from live_staff)
-                // =====================================================
-
-                teamCurrentLocation : null,
-
-                lastLocationUpdate : null,
-
-                estimatedArrival : null,
 
                 // =====================================================
                 // HISTORY
@@ -43831,6 +44277,10 @@ async function acceptHECIncident(
 
                             profile.phone || "",
 
+                        role :
+
+                            profile.role || "",
+
                         time :
 
                             new Date()
@@ -43843,9 +44293,15 @@ async function acceptHECIncident(
 
         console.log(
 
-            "✅ HEC Incident Accepted",
+            "✅ HEC Incident Accepted:",
 
             incidentId
+
+        );
+
+        showToast?.(
+
+            "✅ Response Accepted"
 
         );
 
@@ -43858,6 +44314,12 @@ async function acceptHECIncident(
             "❌ acceptHECIncident",
 
             err
+
+        );
+
+        alert(
+
+            "Failed to accept incident."
 
         );
 
@@ -65256,7 +65718,7 @@ hideHelpLoading();
 window.hecMarkers =
     window.hecMarkers || {};
 
-function addOrUpdateHECMarker(
+async function addOrUpdateHECMarker(
 
     incident
 
@@ -65699,37 +66161,51 @@ text-shadow:0 0 4px black;
         // POPUP
         // =====================================================
 
-        const popup =
+        // =====================================================
+// 🚓 LIVE TEAM STATUS
+// =====================================================
 
-            buildHECPopup(
+const team =
 
-                incident,
+    await getLiveHECTeamStatus(
 
-                {
+        incident
 
-                    status,
+    );
 
-                    key:id,
+const popup =
 
-                    lat,
+    buildHECPopup(
 
-                    lon,
+        incident,
 
-                    gpsText,
+        {
 
-                    reportDate,
+            status,
 
-                    reportAge,
+            key:id,
 
-                    isReporter,
+            lat,
 
-                    isVillager,
+            lon,
 
-                    isAdmin
+            gpsText,
 
-                }
+            reportDate,
 
-            );
+            reportAge,
+
+            isReporter,
+
+            isVillager,
+
+            isAdmin,
+
+            team
+
+        }
+
+    );
 
         // =====================================================
         // EXISTING MARKER
