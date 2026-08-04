@@ -64120,7 +64120,7 @@ const isReporter =
 // REFRESH OPEN HEC POPUP
 // =====================================================
 
-function refreshOpenHECPopup(
+async function refreshOpenHECPopup(
 
     incident
 
@@ -64158,6 +64158,10 @@ function refreshOpenHECPopup(
 
         }
 
+        // =====================================================
+        // ROLE
+        // =====================================================
+
         const role =
 
             String(
@@ -64172,71 +64176,71 @@ function refreshOpenHECPopup(
 
             .toUpperCase();
 
-const currentUserId =
+        const currentUserId =
 
-    String(
+            String(
 
-        window.userProfile?.uid ||
+                window.userProfile?.uid ||
 
-        window.userProfile?.userId ||
+                window.userProfile?.userId ||
 
-        ""
+                ""
 
-    ).trim();
+            ).trim();
 
-const currentPhone =
+        const currentPhone =
 
-    String(
+            String(
 
-        window.userProfile?.phone ||
+                window.userProfile?.phone ||
 
-        ""
+                ""
 
-    ).trim();
+            ).trim();
 
-const reporterUserId =
+        const reporterUserId =
 
-    String(
+            String(
 
-        incident.reporterUserId ||
+                incident.reporterUserId ||
 
-        ""
+                ""
 
-    ).trim();
+            ).trim();
 
-const reporterPhone =
+        const reporterPhone =
 
-    String(
+            String(
 
-        incident.reporterMobile ||
+                incident.reporterMobile ||
 
-        ""
+                ""
 
-    ).trim();
+            ).trim();
 
-const isReporter =
+        const isReporter =
 
-    (
+            (
 
-        currentUserId &&
+                currentUserId &&
 
-        reporterUserId &&
+                reporterUserId &&
 
-        currentUserId === reporterUserId
+                currentUserId === reporterUserId
 
-    )
+            )
 
-    ||
+            ||
 
-    (
+            (
 
-        currentPhone &&
+                currentPhone &&
 
-        reporterPhone &&
+                reporterPhone &&
 
-        currentPhone === reporterPhone
+                currentPhone === reporterPhone
 
-    );
+            );
 
         const isAdmin =
 
@@ -64247,6 +64251,10 @@ const isReporter =
             !isAdmin &&
 
             role !== "VILLAGER";
+
+        // =====================================================
+        // INCIDENT GPS
+        // =====================================================
 
         const lat = Number(
 
@@ -64264,9 +64272,17 @@ const isReporter =
 
         );
 
-        const now = Date.now();
+        // =====================================================
+        // REPORT AGE
+        // =====================================================
 
-        let reportTime = now;
+        const now =
+
+            Date.now();
+
+        let reportTime =
+
+            now;
 
         const ts =
 
@@ -64278,15 +64294,15 @@ const isReporter =
 
         if(
 
-            ts &&
-
-            typeof ts.toDate === "function"
+            ts?.toDate
 
         ){
 
             reportTime =
 
-                ts.toDate().getTime();
+                ts.toDate()
+
+                .getTime();
 
         }
 
@@ -64308,7 +64324,9 @@ const isReporter =
 
         ){
 
-            reportTime = ts;
+            reportTime =
+
+                ts;
 
         }
 
@@ -64346,7 +64364,9 @@ const isReporter =
 
                     reportTime
 
-                ) / 60000
+                )
+
+                /60000
 
             );
 
@@ -64427,11 +64447,26 @@ const isReporter =
                 "en-IN"
 
             );
-              const ctx = {
 
-            key :
+        // =====================================================
+        // LIVE TEAM STATUS
+        // =====================================================
 
-                key,
+        const team =
+
+            await getLiveHECTeamStatus(
+
+                incident
+
+            );
+
+        // =====================================================
+        // CONTEXT
+        // =====================================================
+
+        const ctx = {
+
+            key,
 
             status :
 
@@ -64451,15 +64486,21 @@ const isReporter =
 
             gpsText :
 
-                Number.isFinite(lat) &&
+                Number.isFinite(lat)
+
+                &&
 
                 Number.isFinite(lon)
 
                 ?
 
-                lat.toFixed(6) +
+                lat.toFixed(6)
 
-                ", " +
+                +
+
+                ", "
+
+                +
 
                 lon.toFixed(6)
 
@@ -64475,9 +64516,15 @@ const isReporter =
 
             isAdmin,
 
-            isStaff
+            isStaff,
+
+            team
 
         };
+
+        // =====================================================
+        // HTML
+        // =====================================================
 
         const html =
 
@@ -64488,6 +64535,10 @@ const isReporter =
                 ctx
 
             );
+
+        // =====================================================
+        // MARKER
+        // =====================================================
 
         const marker =
 
@@ -64505,6 +64556,12 @@ const isReporter =
 
         }
 
+        // keep latest incident
+
+        marker.incident =
+
+            incident;
+
         marker
 
             .getPopup()
@@ -64517,7 +64574,7 @@ const isReporter =
 
         if(
 
-            !marker.isPopupOpen()
+            marker.isPopupOpen()
 
         ){
 
