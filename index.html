@@ -7272,31 +7272,31 @@ staffButtons.forEach(el => {
 // ============================================================
 else if(role === "VILLAGER"){
 
-    // ======================================
-    // 🔥 BUTTONS
-    // ======================================
+    // ========================================================
+    // HIDE STAFF / ADMIN UI
+    // ========================================================
 
-    leaderButtons.forEach(el => {
-
-        el.style.display = "none";
-
-    });
-
-    adminButtons.forEach(el => {
+    leaderButtons.forEach(function(el){
 
         el.style.display = "none";
 
     });
 
-    staffButtons.forEach(el => {
+    adminButtons.forEach(function(el){
 
         el.style.display = "none";
 
     });
 
-    // ======================================
-    // ❌ DUTY
-    // ======================================
+    staffButtons.forEach(function(el){
+
+        el.style.display = "none";
+
+    });
+
+    // ========================================================
+    // HIDE DUTY
+    // ========================================================
 
     if(dutyBtn){
 
@@ -7304,19 +7304,15 @@ else if(role === "VILLAGER"){
 
     }
 
-    // ======================================
-    // ❌ GIS PANEL
-    // ======================================
+    // ========================================================
+    // HIDE GIS PANEL
+    // ========================================================
 
     if(gisPanel){
 
         gisPanel.style.display = "none";
 
     }
-
-    // ======================================
-    // ❌ ALL GIS FILTERS
-    // ======================================
 
     if(divisionButtons){
 
@@ -7342,28 +7338,158 @@ else if(role === "VILLAGER"){
 
     }
 
-    // ======================================
-    // 🚨 HEC HELP BUTTON
-    // ======================================
+    // ========================================================
+    // HIDE MONTHLY STATUS
+    // ========================================================
 
-    const hecBtn =
+    const monthlyCard =
 
         document.getElementById(
-
-            "hecHelpBtn"
-
+            "monthlyStatusCard"
         );
 
-    if(hecBtn){
+    if(monthlyCard){
 
-        hecBtn.style.display = "flex";
+        monthlyCard.style.display = "none";
 
     }
 
+    // ========================================================
+    // HIDE FOREST GIS LAYERS
+    // ========================================================
+
+    [
+
+        window.divisionLayer,
+
+        window.rangeLayer,
+
+        window.beatLayer,
+
+        window.compartmentLayer,
+
+        window.villageBoundaryLayer,
+
+        window.masterGridLayer,
+
+        window.gridLayer,
+
+        window.coverageLayer,
+
+        window.analyticsLayer,
+
+        window.monthHistoryLayer,
+
+        window.monthHeatmapLayer,
+
+        window.historyLayer,
+
+        window.heatmapLayer,
+
+        window.gisLayer
+
+    ]
+
+    .forEach(function(layer){
+
+        if(
+
+            layer &&
+
+            map.hasLayer(layer)
+
+        ){
+
+            map.removeLayer(layer);
+
+        }
+
+    });
+
+    // ========================================================
+    // SHOW REQUEST RRT
+    // ========================================================
+
+    const requestBtn =
+
+        document.getElementById(
+            "requestHelpBtn"
+        );
+
+    if(requestBtn){
+
+        requestBtn.style.display = "flex";
+
+    }
+
+    // ========================================================
+    // SHOW MY LOCATION
+    // ========================================================
+
+    const locBtn =
+
+        document.getElementById(
+            "locBtn"
+        );
+
+    if(locBtn){
+
+        locBtn.style.display = "flex";
+
+    }
+
+    // ========================================================
+    // SHOW WEATHER
+    // ========================================================
+
+    const weatherDrawer =
+
+        document.getElementById(
+            "weatherDrawer"
+        );
+
+    if(weatherDrawer){
+
+        weatherDrawer.style.display = "block";
+
+    }
+
+    // ========================================================
+    // SHOW LOGOUT
+    // ========================================================
+
+    const logoutBtn =
+
+        document.getElementById(
+            "logoutBtn"
+        );
+
+    if(logoutBtn){
+
+        logoutBtn.style.display = "block";
+
+    }
+
+    // ========================================================
+    // KEEP HEC FEATURES ENABLED
+    // ========================================================
+
+    window.HEC_ENABLED = true;
+
+    // Villagers should still receive:
+    //
+    // ✅ HEC incident markers
+    // ✅ buildVillagerPopup()
+    // ✅ Live status updates
+    // ✅ Team location
+    // ✅ Accept/Arrived/Resolved status display
+    // ✅ Feedback popup
+    // ✅ Photo & Voice attachments
+    //
+    // Nothing is hidden here.
+
     console.log(
-
         "✅ Villager UI Loaded"
-
     );
 
 }
