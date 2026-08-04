@@ -63116,23 +63116,71 @@ function openHECPopup(
 
         .toUpperCase();
 
-    const currentUserId =
+const currentUserId =
+
+    String(
 
         window.userProfile?.uid ||
 
         window.userProfile?.userId ||
 
-        window.userProfile?.id ||
+        ""
 
-        "";
+    ).trim();
 
-    const isReporter =
+const currentPhone =
+
+    String(
+
+        window.userProfile?.phone ||
+
+        ""
+
+    ).trim();
+
+const reporterUserId =
+
+    String(
+
+        incident.reporterUserId ||
+
+        ""
+
+    ).trim();
+
+const reporterPhone =
+
+    String(
+
+        incident.reporterMobile ||
+
+        ""
+
+    ).trim();
+
+const isReporter =
+
+    (
 
         currentUserId &&
 
-        currentUserId ===
+        reporterUserId &&
 
-        incident.reporterUserId;
+        currentUserId === reporterUserId
+
+    )
+
+    ||
+
+    (
+
+        currentPhone &&
+
+        reporterPhone &&
+
+        currentPhone === reporterPhone
+
+    );
 
     const isAdmin =
 
@@ -63522,21 +63570,71 @@ function refreshOpenHECPopup(
 
             .toUpperCase();
 
-        const currentUserId =
+const currentUserId =
 
-            window.userProfile?.uid ||
+    String(
 
-            window.userProfile?.userId ||
+        window.userProfile?.uid ||
 
-            window.userProfile?.id ||
+        window.userProfile?.userId ||
 
-            "";
+        ""
 
-        const isReporter =
+    ).trim();
 
-            currentUserId ===
+const currentPhone =
 
-            incident.reporterUserId;
+    String(
+
+        window.userProfile?.phone ||
+
+        ""
+
+    ).trim();
+
+const reporterUserId =
+
+    String(
+
+        incident.reporterUserId ||
+
+        ""
+
+    ).trim();
+
+const reporterPhone =
+
+    String(
+
+        incident.reporterMobile ||
+
+        ""
+
+    ).trim();
+
+const isReporter =
+
+    (
+
+        currentUserId &&
+
+        reporterUserId &&
+
+        currentUserId === reporterUserId
+
+    )
+
+    ||
+
+    (
+
+        currentPhone &&
+
+        reporterPhone &&
+
+        currentPhone === reporterPhone
+
+    );
 
         const isAdmin =
 
@@ -65116,7 +65214,7 @@ function addOrUpdateHECMarker(
 
         }
 
-        // =====================================================
+               // =====================================================
         // USER
         // =====================================================
 
@@ -65134,13 +65232,55 @@ function addOrUpdateHECMarker(
 
             .toUpperCase();
 
+        // =====================================================
+        // CURRENT USER
+        // =====================================================
+
         const currentUserId =
 
-            window.userProfile?.uid ||
+            String(
 
-            window.userProfile?.userId ||
+                window.userProfile?.uid ||
 
-            "";
+                window.userProfile?.userId ||
+
+                ""
+
+            ).trim();
+
+        const currentPhone =
+
+            String(
+
+                window.userProfile?.phone ||
+
+                ""
+
+            ).trim();
+
+        // =====================================================
+        // REPORTER
+        // =====================================================
+
+        const reporterUserId =
+
+            String(
+
+                incident.reporterUserId ||
+
+                ""
+
+            ).trim();
+
+        const reporterPhone =
+
+            String(
+
+                incident.reporterMobile ||
+
+                ""
+
+            ).trim();
 
         // =====================================================
         // FLAGS
@@ -65154,13 +65294,39 @@ function addOrUpdateHECMarker(
 
             role === "VILLAGER";
 
+        // =====================================================
+        // REPORTER CHECK
+        // First compare User ID.
+        // If UID is unavailable, compare phone number.
+        // =====================================================
+
         const isReporter =
 
-            currentUserId &&
+            (
 
-            currentUserId ===
+                currentUserId &&
 
-            incident.reporterUserId;
+                reporterUserId &&
+
+                currentUserId === reporterUserId
+
+            )
+
+            ||
+
+            (
+
+                currentPhone &&
+
+                reporterPhone &&
+
+                currentPhone === reporterPhone
+
+            );
+
+        // =====================================================
+        // VILLAGER CAN SEE ONLY OWN INCIDENT
+        // =====================================================
 
         if(
 
