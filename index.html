@@ -41676,29 +41676,31 @@ async function getLiveHECTeamStatus(
 
             ){
 
-                result.village =
+result.village =
 
-                    resolved.village ||
+    resolved.village ||
 
-                    resolved.nearestVillage ||
+    resolved.nearestPointResult?.village ||
 
-                    "";
+    resolved.nearestVillage ||
 
-                result.landmark =
+    "";
 
-                    resolved.nearestPoint ||
+result.landmark =
 
-                    resolved.nearestPointResult?.pointName ||
+    resolved.nearestPoint ||
 
-                    "";
+    resolved.nearestPointResult?.pointName ||
 
-                result.text =
+    "";
 
-                    resolved.text ||
+result.text =
 
-                    resolved.compartment ||
+    resolved.text ||
 
-                    "";
+    resolved.compartment ||
+
+    "";
 
             }
 
