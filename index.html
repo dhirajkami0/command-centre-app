@@ -8509,135 +8509,132 @@ function login(){
         "online"
       );
 
-      // ========================================================
-      // 🔥 ROLE CONTROL
-      // ========================================================
-      applyRoleControl();
+// ========================================================
+// 🔥 ROLE CONTROL
+// ========================================================
+applyRoleControl();
 
-      // ========================================================
-      // 🔥 RENDER STAFF GIS
-      // ========================================================
-      setTimeout(async () => {
+// ========================================================
+// 🟡 VILLAGER
+// No Forest GIS
+// ========================================================
 
-        try {
+const role =
 
-          // ====================================================
-          // 🔥 RENDER GIS
-          // ====================================================
-          if(
-            typeof renderFilteredGIS ===
-            "function"
-          ){
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
 
-            renderFilteredGIS();
-          }
+if(role === "VILLAGER"){
 
-          // ====================================================
-          // 🎯 AUTO CENTER MAP
-          // ====================================================
-          try {
+    console.log(
+        "🟡 Villager Mode → Skip Forest GIS"
+    );
+
+}
+else{
+
+    setTimeout(async () => {
+
+        try{
 
             if(
-              window.gisLayer &&
-              window.gisLayer.getBounds &&
-              window.gisLayer.getLayers().length > 0
+                typeof renderFilteredGIS ===
+                "function"
             ){
 
-              const bounds =
-                window.gisLayer.getBounds();
+                renderFilteredGIS();
 
-              if(bounds.isValid()){
-
-                window.map.fitBounds(
-                  bounds,
-                  {
-                    padding:[40,40],
-                    maxZoom:15,
-                    animate:true
-                  }
-                );
-
-                console.log(
-                  "🎯 MAP CENTERED TO GIS"
-                );
-              }
             }
 
-          } catch(e){
+            try{
 
-            console.error(
-              "❌ fitBounds failed",
-              e
-            );
-          }
+                if(
+                    window.gisLayer &&
+                    window.gisLayer.getBounds &&
+                    window.gisLayer.getLayers().length > 0
+                ){
 
-          // ====================================================
-          // 🔥 STAFF/TL RANGE GIS
-          // ====================================================
-          const isStaffOrTL = [
-              "ADMIN",
-              "STAFF",
-              "TEAM LEADER",
-              "RANGER",
-              "FOREST GUARD",
-              "BEAT OFFICER",
-              "DEPUTY RANGER",
-              "FORESTER"
-          ].includes(
-              String(
-                  window.userProfile.role || ""
-              ).trim().toUpperCase()
-          );
+                    const bounds =
+                        window.gisLayer.getBounds();
 
-          if(isStaffOrTL){
+                    if(bounds.isValid()){
 
-            // ================================================
-            // 🔥 BEAT BUTTONS
-            // ================================================
-            if(
-              typeof populateBeatButtons ===
-              "function"
-            ){
+                        window.map.fitBounds(
+                            bounds,
+                            {
+                                padding:[40,40],
+                                maxZoom:15,
+                                animate:true
+                            }
+                        );
 
-              await populateBeatButtons();
+                    }
+
+                }
+
+            }catch(e){
+
+                console.error(e);
+
             }
 
-            // ================================================
-            // 🔥 RANGE COMPARTMENTS
-            // ================================================
-            if(
-              typeof loadCompartmentsForRange ===
-              "function"
-            ){
+            const isStaffOrTL = [
 
-              await loadCompartmentsForRange();
+                "ADMIN",
+                "STAFF",
+                "TEAM LEADER",
+                "RANGER",
+                "FOREST GUARD",
+                "BEAT OFFICER",
+                "DEPUTY RANGER",
+                "FORESTER"
+
+            ].includes(role);
+
+            if(isStaffOrTL){
+
+                if(
+                    typeof populateBeatButtons ===
+                    "function"
+                ){
+
+                    await populateBeatButtons();
+
+                }
+
+                if(
+                    typeof loadCompartmentsForRange ===
+                    "function"
+                ){
+
+                    await loadCompartmentsForRange();
+
+                }
+
+                if(
+                    typeof renderFilteredCompartments ===
+                    "function"
+                ){
+
+                    renderFilteredCompartments();
+
+                }
+
             }
 
-            // ================================================
-            // 🎨 RENDER COMPARTMENTS
-            // ================================================
-            if(
-              typeof renderFilteredCompartments ===
-              "function"
-            ){
+        }
+        catch(e){
 
-              renderFilteredCompartments();
-            }
+            console.error(e);
 
-            console.log(
-              "✅ Staff GIS Loaded"
-            );
-          }
-
-        } catch(e){
-
-          console.error(
-            "❌ GIS render failed",
-            e
-          );
         }
 
-      }, 1500);
+    },1500);
+
+}
 
       // ========================================================
       // 🔥 SINGLE APP BOOT
@@ -30922,7 +30919,58 @@ function (
 function renderFilteredGIS(){
 
 try {
+// ==================================================
+// 🟡 VILLAGER
+// NO FOREST GIS
+// ==================================================
 
+const role =
+
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+if(role === "VILLAGER"){
+
+    [
+        window.rootLayer,
+        window.divisionLayer,
+        window.rangeLayer,
+        window.beatLayer,
+        window.compartmentLayer
+    ].forEach(layer => {
+
+        try{
+
+            if(
+                layer &&
+                window.map.hasLayer(layer)
+            ){
+
+                window.map.removeLayer(layer);
+
+            }
+
+        }
+        catch(e){}
+
+    });
+
+    window.rootLayer = null;
+    window.divisionLayer = null;
+    window.rangeLayer = null;
+    window.beatLayer = null;
+    window.compartmentLayer = null;
+
+    console.log(
+        "🟡 Villager → Forest GIS disabled"
+    );
+
+    return;
+
+}
 // ==================================================
 // 🌍 FILTERS
 // ==================================================
@@ -31610,7 +31658,43 @@ console.error(
 function renderFilteredCompartments(){
 
 try {
+// ==================================================
+// 🟡 VILLAGER
+// NO COMPARTMENTS
+// ==================================================
 
+const role =
+
+    String(
+        window.userProfile?.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+if(role === "VILLAGER"){
+
+    try{
+
+        if(window.compartmentLayer){
+
+            window.map.removeLayer(
+                window.compartmentLayer
+            );
+
+            window.compartmentLayer = null;
+
+        }
+
+    }
+    catch(e){}
+
+    console.log(
+        "🟡 Villager → Compartments disabled"
+    );
+
+    return;
+
+}
 // ==================================================
 // 📦 FEATURES
 // ==================================================
