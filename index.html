@@ -39092,11 +39092,9 @@ window.hecIncidentCache =
         // LOOP
         // =====================================================
 
-        incidents.forEach(
+        for (const e of incidents) {
 
-            function(e){
-
-                try{
+    try{
 // =====================================================
 // CACHE INCIDENT
 // =====================================================
@@ -39559,8 +39557,12 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 // ============================================
 // LIVE TEAM STATUS
 // ============================================
+const team =
+    await getLiveHECTeamStatus(
+        e
+    );
 
-
+      
     
                                       // ============================================
                     // POPUP
@@ -39592,7 +39594,8 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 
                                 isVillager,
 
-                                isAdmin
+                                isAdmin,
+                              team
                               
                             }
 
@@ -39711,7 +39714,7 @@ else{
 // ============================================
 
 marker.incident = e;
-
+marker.team = team;
 // ============================================
 // UPDATE POPUP
 // ============================================
@@ -39765,7 +39768,7 @@ window.hecMarkers[key] =
 
                 }
 
-            });
+            }
 
         console.log(
 
