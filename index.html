@@ -40113,17 +40113,40 @@ function showHECFeedbackDialog(incidentId){
 
     currentHECFeedbackIncident = incidentId;
 
-    document.getElementById(
-        "hecFeedbackRating"
-    ).value = "";
+    document.getElementById("hecFeedbackRating").value = "";
+    document.getElementById("hecFeedbackRemarks").value = "";
 
-    document.getElementById(
-        "hecFeedbackRemarks"
-    ).value = "";
+    document.getElementById("hecFeedbackDialog").style.display = "flex";
 
-    document.getElementById(
-        "hecFeedbackDialog"
-    ).style.display = "flex";
+    document.getElementById("hecFeedbackSubmit").onclick = async function(){
+
+        const rating =
+            document.getElementById("hecFeedbackRating").value;
+
+        if(!rating){
+
+            alert("Please select a rating.");
+
+            return;
+
+        }
+
+        const remarks =
+            document.getElementById("hecFeedbackRemarks").value;
+
+        await villagerConfirmYES(
+
+            currentHECFeedbackIncident,
+
+            rating,
+
+            remarks
+
+        );
+
+        closeHECFeedbackDialog();
+
+    };
 
 }
     function closeHECFeedbackDialog(){
@@ -40133,45 +40156,7 @@ function showHECFeedbackDialog(incidentId){
     ).style.display = "none";
 
 }
-    document
-.getElementById(
-    "hecFeedbackSubmit"
-)
-.onclick = async function(){
 
-    const rating =
-        document.getElementById(
-            "hecFeedbackRating"
-        ).value;
-
-    if(!rating){
-
-        alert(
-            "Please select a rating."
-        );
-
-        return;
-
-    }
-
-    const remarks =
-        document.getElementById(
-            "hecFeedbackRemarks"
-        ).value.trim();
-
-    await villagerConfirmYES(
-
-        currentHECFeedbackIncident,
-
-        rating,
-
-        remarks
-
-    );
-
-    closeHECFeedbackDialog();
-
-};
     // ============================================================
 // VILLAGER CONFIRM RESOLVED
 // ============================================================
