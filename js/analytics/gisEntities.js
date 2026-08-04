@@ -2671,6 +2671,11 @@ function(
 // FIND NEAREST VILLAGE POINT
 // =====================================================
 
+// =====================================================
+// FIND NEAREST VILLAGE LOCATION POINT
+// Works from ANY GPS location
+// =====================================================
+
 GISEntities.findNearestVillagePoint =
 function(
     lat,
@@ -2692,17 +2697,23 @@ function(
 
     }
 
-    const layerGroup =
+    // ==========================================
+    // CACHE
+    // ==========================================
 
-        window.__villagePointLayer;
+    const locations =
+
+        window.__villageLocationCache ||
+
+        window.villageLocations ||
+
+        [];
 
     if(
 
-        !layerGroup ||
+        !Array.isArray(locations) ||
 
-        typeof layerGroup.eachLayer !==
-
-        "function"
+        !locations.length
 
     ){
 
@@ -2710,58 +2721,44 @@ function(
 
     }
 
-    const source =
+    let nearest = null;
+
+    let bestDistance = Infinity;
+
+    const origin =
 
         L.latLng(
             lat,
             lon
         );
 
-    let nearest =
+    locations.forEach(
 
-        null;
+        function(point){
 
-    let bestDistance =
+            const plat = Number(
 
-        Infinity;
+                point.lat ??
 
-    layerGroup.eachLayer(
+                point.latitude
 
-        function(layer){
+            );
 
-            if(
+            const plon = Number(
 
-                !layer ||
+                point.lon ??
 
-                typeof layer.getLatLng !==
+                point.lng ??
 
-                "function"
+                point.longitude
 
-            ){
-
-                return;
-
-            }
-
-            const point =
-
-                layer.getLatLng();
+            );
 
             if(
 
-                !point ||
+                !Number.isFinite(plat) ||
 
-                !Number.isFinite(
-
-                    Number(point.lat)
-
-                ) ||
-
-                !Number.isFinite(
-
-                    Number(point.lng)
-
-                )
+                !Number.isFinite(plon)
 
             ){
 
@@ -2771,8 +2768,16 @@ function(
 
             const distance =
 
-                source.distanceTo(
-                    point
+                origin.distanceTo(
+
+                    L.latLng(
+
+                        plat,
+
+                        plon
+
+                    )
+
                 );
 
             if(
@@ -2787,101 +2792,59 @@ function(
 
             }
 
-            // =====================================
-            // EXTRACT VILLAGE NAME
-            // =====================================
-
-            let villageName = "";
-
-            const popup =
-
-                layer
-                .getPopup?.()
-                ?.getContent?.();
-
-            if(
-
-                typeof popup ===
-
-                "string"
-
-            ){
-
-                const match =
-
-                    popup.match(
-
-                        /<b[^>]*>\s*(?:🏡\s*)?([^<]+)<\/b>/i
-
-                    );
-
-                if(
-
-                    match?.[1]
-
-                ){
-
-                    villageName =
-
-                        String(
-
-                            match[1]
-
-                        )
-
-                        .replace(
-
-                            /^🏡\s*/,
-
-                            ""
-
-                        )
-
-                        .trim();
-
-                }
-
-            }
-
-            // =====================================
-            // SAVE
-            // =====================================
-
             bestDistance =
 
                 distance;
 
             nearest = {
 
+                pointName :
+
+                    point.name ||
+
+                    point.point ||
+
+                    point.location ||
+
+                    "",
+
                 village :
 
-                    villageName,
+                    point.village ||
 
-                name :
+                    "",
 
-                    villageName,
+                villageCode :
+
+                    point.villageCode ||
+
+                    "",
+
+                block :
+
+                    point.block ||
+
+                    "",
 
                 latitude :
 
-                    Number(
-                        point.lat
-                    ),
+                    plat,
 
                 longitude :
 
-                    Number(
-                        point.lng
-                    ),
+                    plon,
 
                 distanceMeters :
 
                     Math.round(
+
                         distance
+
                     ),
 
-                layer :
+                raw :
 
-                    layer
+                    point
 
             };
 
@@ -2908,14 +2871,21 @@ function(
 
 ============================================================ */
 
+/* ============================================================
+   🧭 RESOLVE COMPLETE CURRENT LOCATION
+============================================================ */
+
 GISEntities.resolveCurrentLocation =
 function(
     lat,
     lon
 ){
 
-    lat = Number(lat);
-    lon = Number(lon);
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
 
     if(
 
@@ -2935,33 +2905,28 @@ function(
 
     const village =
 
-        GISEntities
-            .findVillageAtPoint(
-                lat,
-                lon
-            );
+        GISEntities.findVillageAtPoint(
+            lat,
+            lon
+        );
 
     const compartment =
 
-        GISEntities
-            .findCompartmentAtPoint(
-                lat,
-                lon
-            );
+        GISEntities.findCompartmentAtPoint(
+            lat,
+            lon
+        );
 
     const nearest =
 
-        GISEntities
-            .findNearestVillagePoint(
-                lat,
-                lon
-            );
+        GISEntities.findNearestVillagePoint(
+            lat,
+            lon
+        );
 
     // =====================================================
-    // DISPLAY LOCATION
+    // DISPLAY VARIABLES
     // =====================================================
-
-    let locationText = "";
 
     let displayVillage = "";
 
@@ -2969,9 +2934,11 @@ function(
 
     let displayCompartment = "";
 
+    let locationText = "";
+
     // =====================================================
     // CASE 1
-    // INSIDE VILLAGE
+    // INSIDE VILLAGE POLYGON
     // =====================================================
 
     if(
@@ -2986,7 +2953,7 @@ function(
 
         displayNearestPoint =
 
-            nearest?.name ||
+            nearest?.pointName ||
 
             "";
 
@@ -3019,7 +2986,7 @@ function(
 
         displayNearestPoint =
 
-            nearest?.name ||
+            nearest?.pointName ||
 
             "";
 
@@ -3051,7 +3018,7 @@ function(
 
     // =====================================================
     // CASE 3
-    // OUTSIDE EVERYTHING
+    // OUTSIDE VILLAGE & COMPARTMENT
     // =====================================================
 
     else{
@@ -3064,13 +3031,15 @@ function(
 
         displayNearestPoint =
 
-            nearest?.name ||
+            nearest?.pointName ||
 
             "";
 
         locationText =
 
-            displayVillage;
+            displayVillage ||
+
+            "Unknown Location";
 
     }
 
@@ -3081,34 +3050,38 @@ function(
     return{
 
         // -------------------------------------------------
-        // GPS
+        // INPUT GPS
         // -------------------------------------------------
 
-        lat,
+        lat :
 
-        lon,
+            lat,
+
+        lon :
+
+            lon,
 
         // -------------------------------------------------
         // FOREST
         // -------------------------------------------------
 
-        compartment:
+        compartment :
 
             displayCompartment,
 
-        beat:
+        beat :
 
             compartment?.beat ||
 
             "",
 
-        range:
+        range :
 
             compartment?.range ||
 
             "",
 
-        division:
+        division :
 
             compartment?.division ||
 
@@ -3118,61 +3091,63 @@ function(
         // VILLAGE
         // -------------------------------------------------
 
-        village:
+        village :
 
             displayVillage,
 
-        villageCode:
+        villageCode :
 
             village?.villageCode ||
 
             "",
 
-        block:
+        block :
 
             village?.block ||
 
             "",
 
         // -------------------------------------------------
-        // NEAREST VILLAGE POINT
+        // NEAREST VILLAGE LOCATION
         // -------------------------------------------------
 
-        nearestVillage:
+        nearestVillage :
 
-            displayVillage,
+            nearest?.village ||
 
-        nearestPoint:
+            "",
+
+        nearestPoint :
 
             displayNearestPoint,
 
-        distanceMeters:
+        distanceMeters :
 
             nearest?.distanceMeters ??
 
             null,
 
         // -------------------------------------------------
-        // READY FOR POPUP
+        // DISPLAY
         // -------------------------------------------------
 
-        text:
+        text :
 
             locationText,
 
         // -------------------------------------------------
-        // RAW
+        // RAW RESULTS
         // -------------------------------------------------
 
-        compartmentResult:
+        compartmentResult :
 
             compartment,
 
-        villageResult:
+        villageResult :
 
             village,
 
-        nearestPointResult:
+        nearestPointResult :
 
             nearest
 
