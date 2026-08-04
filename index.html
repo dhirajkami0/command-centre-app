@@ -39556,6 +39556,18 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 
                         lon.toFixed(6);
 
+// ============================================
+// LIVE TEAM STATUS
+// ============================================
+
+const team =
+
+    await getLiveHECTeamStatus(
+
+        e
+
+    );
+    
                                       // ============================================
                     // POPUP
                     // ============================================
@@ -39586,8 +39598,8 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 
                                 isVillager,
 
-                                isAdmin
-
+                                isAdmin,
+                                 team
                             }
 
                         );
@@ -39705,7 +39717,7 @@ else{
 // ============================================
 
 marker.incident = e;
-
+marker.team = team;
 // ============================================
 // UPDATE POPUP
 // ============================================
@@ -41976,8 +41988,9 @@ const team =
 
 const teamName =
     team.name ||
+    e.assignedTeamName ||
     e.assignedTeam ||
-    "Being Assigned";
+    "-";
 
 const teamVillage =
     team.village || "";
@@ -41991,19 +42004,19 @@ const teamText =
 const teamGps =
     Number.isFinite(team.lat) &&
     Number.isFinite(team.lon)
-    ?
-    `${team.lat.toFixed(6)}, ${team.lon.toFixed(6)}`
-    :
-    "-";
+        ?
+        `${Number(team.lat).toFixed(6)}, ${Number(team.lon).toFixed(6)}`
+        :
+        "-";
 
 const lastGps =
     team.lastUpdate || "-";
 
-const eta =
-    team.eta || "-";
-
 const distance =
     team.distance || "-";
+
+const eta =
+    team.eta || "-";
     let statusColor = "#d32f2f";
 
     let statusText = "🟡 WAITING";
@@ -42447,19 +42460,59 @@ e.elephantCount ||
 
 ${
 
-e.incidentLocation?.text ||
+e.incidentLocation?.village
 
-e.incidentLocation?.village ||
+?
+
+`
+🏡 ${e.incidentLocation.village}
+
+${
+e.incidentLocation.landmark
+?
+`<br>📍 Near : ${e.incidentLocation.landmark}`
+:
+""
+}
+`
+
+:
+
+e.incidentLocation?.text
+
+?
+
+`
+🌳 ${e.incidentLocation.text}
+
+${
+e.incidentLocation.landmark
+?
+`<br>📍 Near : ${e.incidentLocation.landmark}`
+:
+""
+}
+`
+
+:
+
+e.incidentLocation?.landmark
+
+?
+
+`
+📍 ${e.incidentLocation.landmark}
+`
+
+:
 
 "-"
 
 }
 
-<br>
+<br><br>
 
-🛰
-
-${ctx.gpsText}
+🛰 ${ctx.gpsText}
 
 <hr>
 
@@ -42522,15 +42575,7 @@ teamVillage
 
 :
 
-teamText
-
-?
-
-`🌳 ${teamText}`
-
-:
-
-"Updating..."
+""
 
 }
 
@@ -42541,6 +42586,14 @@ teamLandmark
 ?
 
 `<br>📍 Near : ${teamLandmark}`
+
+:
+
+teamText
+
+?
+
+`<br>🌳 ${teamText}`
 
 :
 
@@ -42558,7 +42611,7 @@ ${teamGps}
 
 <br><br>
 
-<b>🕒 Last Update</b>
+<b>🕒 Last GPS Update</b>
 
 <br>
 
@@ -63812,7 +63865,7 @@ function callControlRoom(){
 // OPEN HEC POPUP
 // =====================================================
 
-function openHECPopup(
+async function openHECPopup(
 
     incident
 
@@ -63842,71 +63895,71 @@ function openHECPopup(
 
         .toUpperCase();
 
-const currentUserId =
+    const currentUserId =
 
-    String(
+        String(
 
-        window.userProfile?.uid ||
+            window.userProfile?.uid ||
 
-        window.userProfile?.userId ||
+            window.userProfile?.userId ||
 
-        ""
+            ""
 
-    ).trim();
+        ).trim();
 
-const currentPhone =
+    const currentPhone =
 
-    String(
+        String(
 
-        window.userProfile?.phone ||
+            window.userProfile?.phone ||
 
-        ""
+            ""
 
-    ).trim();
+        ).trim();
 
-const reporterUserId =
+    const reporterUserId =
 
-    String(
+        String(
 
-        incident.reporterUserId ||
+            incident.reporterUserId ||
 
-        ""
+            ""
 
-    ).trim();
+        ).trim();
 
-const reporterPhone =
+    const reporterPhone =
 
-    String(
+        String(
 
-        incident.reporterMobile ||
+            incident.reporterMobile ||
 
-        ""
+            ""
 
-    ).trim();
+        ).trim();
 
-const isReporter =
+    const isReporter =
 
-    (
+        (
 
-        currentUserId &&
+            currentUserId &&
 
-        reporterUserId &&
+            reporterUserId &&
 
-        currentUserId === reporterUserId
+            currentUserId === reporterUserId
 
-    )
+        )
 
-    ||
+        ||
 
-    (
+        (
 
-        currentPhone &&
+            currentPhone &&
 
-        reporterPhone &&
+            reporterPhone &&
 
-        currentPhone === reporterPhone
+            currentPhone === reporterPhone
 
-    );
+        );
 
     const isAdmin =
 
@@ -63978,7 +64031,9 @@ const isReporter =
 
     ){
 
-        reportTime = ts;
+        reportTime =
+
+            ts;
 
     }
 
@@ -63990,11 +64045,19 @@ const isReporter =
 
         const d =
 
-            new Date(ts);
+            new Date(
+
+                ts
+
+            );
 
         if(
 
-            !isNaN(d)
+            !isNaN(
+
+                d
+
+            )
 
         ){
 
@@ -64097,7 +64160,48 @@ const isReporter =
             "en-IN"
 
         );
-      const ctx = {
+
+    // =====================================================
+    // LIVE TEAM STATUS
+    // =====================================================
+
+    let team = {};
+
+    try{
+
+        team =
+
+            await getLiveHECTeamStatus(
+
+                incident
+
+            );
+
+    }
+
+    catch(
+
+        err
+
+    ){
+
+        console.error(
+
+            "HEC Team Status",
+
+            err
+
+        );
+
+        team = {};
+
+    }
+
+    // =====================================================
+    // CONTEXT
+    // =====================================================
+
+    const ctx = {
 
         key :
 
@@ -64125,15 +64229,27 @@ const isReporter =
 
         gpsText :
 
-            Number.isFinite(lat)
+            Number.isFinite(
+
+                lat
+
+            )
 
             &&
 
-            Number.isFinite(lon)
+            Number.isFinite(
+
+                lon
+
+            )
 
             ?
 
-            lat.toFixed(6)
+            lat.toFixed(
+
+                6
+
+            )
 
             +
 
@@ -64141,7 +64257,11 @@ const isReporter =
 
             +
 
-            lon.toFixed(6)
+            lon.toFixed(
+
+                6
+
+            )
 
             :
 
@@ -64155,7 +64275,9 @@ const isReporter =
 
         isAdmin,
 
-        isStaff
+        isStaff,
+
+        team
 
     };
 
@@ -64233,7 +64355,9 @@ const isReporter =
 
     window.currentHECPopup = {
 
-        incidentId : key,
+        incidentId :
+
+            key,
 
         marker
 
