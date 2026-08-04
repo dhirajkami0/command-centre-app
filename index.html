@@ -41967,7 +41967,43 @@ function buildVillagerPopup(
     const status =
 
         ctx.status;
+// =====================================================
+// 🚓 LIVE TEAM STATUS
+// =====================================================
 
+const team =
+    ctx.team || {};
+
+const teamName =
+    team.name ||
+    e.assignedTeam ||
+    "Being Assigned";
+
+const teamVillage =
+    team.village || "";
+
+const teamLandmark =
+    team.landmark || "";
+
+const teamText =
+    team.text || "";
+
+const teamGps =
+    Number.isFinite(team.lat) &&
+    Number.isFinite(team.lon)
+    ?
+    `${team.lat.toFixed(6)}, ${team.lon.toFixed(6)}`
+    :
+    "-";
+
+const lastGps =
+    team.lastUpdate || "-";
+
+const eta =
+    team.eta || "-";
+
+const distance =
+    team.distance || "-";
     let statusColor = "#d32f2f";
 
     let statusText = "🟡 WAITING";
@@ -42468,13 +42504,7 @@ status==="REOPENED"
 
 <br>
 
-${
-
-e.assignedTeam ||
-
-"Being Assigned"
-
-}
+${teamName}
 
 <br><br>
 
@@ -42484,9 +42514,37 @@ e.assignedTeam ||
 
 ${
 
-e.teamCurrentLocation?.text ||
+teamVillage
+
+?
+
+`🏡 ${teamVillage}`
+
+:
+
+teamText
+
+?
+
+`🌳 ${teamText}`
+
+:
 
 "Updating..."
+
+}
+
+${
+
+teamLandmark
+
+?
+
+`<br>📍 Near : ${teamLandmark}`
+
+:
+
+""
 
 }
 
@@ -42496,31 +42554,7 @@ e.teamCurrentLocation?.text ||
 
 <br>
 
-${
-
-Number.isFinite(
-
-e.teamCurrentLocation?.lat
-
-)
-
-?
-
-e.teamCurrentLocation.lat.toFixed(6)
-
-+
-
-", "
-
-+
-
-e.teamCurrentLocation.lon.toFixed(6)
-
-:
-
-"-"
-
-}
+${teamGps}
 
 <br><br>
 
@@ -42528,35 +42562,15 @@ e.teamCurrentLocation.lon.toFixed(6)
 
 <br>
 
-${
+${lastGps}
 
-e.lastLocationUpdate
+<br><br>
 
-?
+<b>📏 Distance to Incident</b>
 
-new Date(
+<br>
 
-e.lastLocationUpdate.seconds
-
-?
-
-e.lastLocationUpdate.seconds*1000
-
-:
-
-e.lastLocationUpdate
-
-).toLocaleTimeString(
-
-"en-IN"
-
-)
-
-:
-
-"-"
-
-}
+${distance}
 
 <br><br>
 
@@ -42564,13 +42578,7 @@ e.lastLocationUpdate
 
 <br>
 
-${
-
-e.estimatedArrival ||
-
-"Calculating..."
-
-}
+${eta}
 
 <hr>
 
