@@ -17021,44 +17021,67 @@ fallbackCells:
           // COMPARTMENT DISTANCE
           // ====================================================
 
-          const previousDistance =
+// ====================================================
+// SESSION DISTANCE
+// One value per patrol session.
+// Repeated flushes overwrite, never accumulate.
+// ====================================================
 
-            Number(
-              existing.distanceMeters || 0
-            );
+const existingSessionDistances =
 
+    (
+        existing.sessionDistances &&
+        typeof existing.sessionDistances === "object" &&
+        !Array.isArray(existing.sessionDistances)
+    )
 
-          const safePreviousDistance =
+    ? {
 
-            Number.isFinite(
-              previousDistance
-            )
+        ...existing.sessionDistances
 
-            ? previousDistance
+    }
 
-            : 0;
+    : {};
 
+const safeDistance =
 
-          const safeDistance =
+    Number.isFinite(distanceMeters)
 
-            Number.isFinite(
-              distanceMeters
-            )
+    ? Math.max(0, distanceMeters)
 
-            ? Math.max(
-                0,
-                distanceMeters
-              )
+    : 0;
 
-            : 0;
+for(
 
+    const sessionKey of suppliedVisitSessions
 
-          const nextDistance =
+){
 
-            safePreviousDistance
-            +
-            safeDistance;
+    existingSessionDistances[
+        sessionKey
+    ] = safeDistance;
 
+}
+
+const nextDistance =
+
+    Object.values(
+
+        existingSessionDistances
+
+    )
+
+    .reduce(
+
+        (sum,value)=>
+
+            sum +
+
+            Number(value || 0),
+
+        0
+
+    );
 
           // ====================================================
           // DOCUMENT
@@ -17072,8 +17095,13 @@ fallbackCells:
 
             monthKey,
 
-            distanceMeters:
-              nextDistance,
+distanceMeters:
+
+    nextDistance,
+
+sessionDistances:
+
+    existingSessionDistances,
 
             visitCount:
               nextVisitCount,
