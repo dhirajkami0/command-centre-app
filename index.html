@@ -60750,6 +60750,10 @@ function openHelpForm(){
 // 🚨 CHANGE HELP LOCATION MODE
 // =====================================================
 
+// ======================================================
+// CHANGE HELP LOCATION MODE
+// ======================================================
+
 function changeHelpLocationMode(){
 
     // ============================================
@@ -60759,18 +60763,32 @@ function changeHelpLocationMode(){
     const mode =
 
         document.querySelector(
-
             'input[name="helpLocationMode"]:checked'
-
         )?.value ||
 
         "CURRENT";
 
     // ============================================
-    // SAVE MODE GLOBALLY
+    // SAVE MODE (SOURCE OF TRUTH)
     // ============================================
 
-    window.helpLocationMode = mode;
+    window.helpLocationMode =
+        mode;
+
+    // ============================================
+    // KEEP RADIO BUTTONS IN SYNC
+    // ============================================
+
+    document
+        .querySelectorAll(
+            'input[name="helpLocationMode"]'
+        )
+        .forEach(function(radio){
+
+            radio.checked =
+                radio.value === mode;
+
+        });
 
     // ============================================
     // PANELS
@@ -60779,51 +60797,35 @@ function changeHelpLocationMode(){
     const currentPanel =
 
         document.getElementById(
-
             "helpCurrentPanel"
-
         );
 
     const villagePanel =
 
         document.getElementById(
-
             "helpVillagePanel"
-
         );
 
-    // =====================================================
-    // 📍 CURRENT LOCATION
-    // =====================================================
+    // ============================================
+    // CURRENT LOCATION
+    // ============================================
 
-    if(
-
-        mode === "CURRENT"
-
-    ){
+    if(mode === "CURRENT"){
 
         currentPanel.style.display = "";
 
         villagePanel.style.display = "none";
-
-        // ---------------------------------------
-        // Use cached GPS immediately
-        // ---------------------------------------
 
         if(
 
             window.latestgps &&
 
             Number.isFinite(
-
                 window.latestgps.lat
-
             ) &&
 
             Number.isFinite(
-
                 window.latestgps.lng
-
             )
 
         ){
@@ -60831,16 +60833,11 @@ function changeHelpLocationMode(){
             useCurrentHelpLocation();
 
         }
-
         else{
 
             navigator.geolocation.getCurrentPosition(
 
                 function(pos){
-
-                    // ---------------------------------------
-                    // Cache GPS
-                    // ---------------------------------------
 
                     window.latestgps = {
 
@@ -60865,9 +60862,7 @@ function changeHelpLocationMode(){
                 function(){
 
                     document.getElementById(
-
                         "helpLocationText"
-
                     ).innerHTML =
 
                         "❌ GPS unavailable";
@@ -60888,19 +60883,20 @@ function changeHelpLocationMode(){
 
         }
 
+        console.log(
+            "📌 Help Mode:",
+            window.helpLocationMode
+        );
+
         return;
 
     }
 
-    // =====================================================
-    // 🗺 SELECT ON MAP
-    // =====================================================
+    // ============================================
+    // MAP
+    // ============================================
 
-    if(
-
-        mode === "MAP"
-
-    ){
+    if(mode === "MAP"){
 
         currentPanel.style.display = "";
 
@@ -60908,19 +60904,20 @@ function changeHelpLocationMode(){
 
         startHelpMapSelection();
 
+        console.log(
+            "📌 Help Mode:",
+            window.helpLocationMode
+        );
+
         return;
 
     }
 
-    // =====================================================
-    // 🏡 SELECT VILLAGE
-    // =====================================================
+    // ============================================
+    // VILLAGE
+    // ============================================
 
-    if(
-
-        mode === "VILLAGE"
-
-    ){
+    if(mode === "VILLAGE"){
 
         currentPanel.style.display = "none";
 
@@ -60928,12 +60925,16 @@ function changeHelpLocationMode(){
 
         populateHelpVillagePanel();
 
+        console.log(
+            "📌 Help Mode:",
+            window.helpLocationMode
+        );
+
         return;
 
     }
 
 }
-
     
     // =====================================================
 // 📍 POPULATE VILLAGE PANEL
@@ -61631,9 +61632,7 @@ function useCurrentHelpLocation(){
     ){
 
         alert(
-
             "Current GPS not available."
-
         );
 
         return;
@@ -61641,13 +61640,35 @@ function useCurrentHelpLocation(){
     }
 
     // ============================================
-    // CURRENT MODE
+    // LOCATION MODE
     // ============================================
 
-    window.helpLocationMode = "CURRENT";
+    window.helpLocationMode =
+        "CURRENT";
 
     // ============================================
-    // SAVE INCIDENT LOCATION
+    // SYNC RADIO BUTTONS
+    // ============================================
+
+    document
+        .querySelectorAll(
+            'input[name="helpLocationMode"]'
+        )
+        .forEach(
+
+            function(radio){
+
+                radio.checked =
+
+                    radio.value ===
+                    "CURRENT";
+
+            }
+
+        );
+
+    // ============================================
+    // INCIDENT LOCATION
     // ============================================
 
     window.helpLocation = {
@@ -61663,6 +61684,27 @@ function useCurrentHelpLocation(){
     };
 
     // ============================================
+    // REMOVE TEMP MAP MARKER
+    // ============================================
+
+    if(
+
+        window.helpMarker
+
+    ){
+
+        map.removeLayer(
+
+            window.helpMarker
+
+        );
+
+        window.helpMarker =
+            null;
+
+    }
+
+    // ============================================
     // UPDATE LOCATION DISPLAY
     // ============================================
 
@@ -61674,7 +61716,11 @@ function useCurrentHelpLocation(){
 
         );
 
-    if(text){
+    if(
+
+        text
+
+    ){
 
         text.innerHTML =
 
@@ -61699,10 +61745,39 @@ function useCurrentHelpLocation(){
     }
 
     // ============================================
-    // BUTTON FEEDBACK
+    // RESET MAP BUTTON
     // ============================================
 
-    const btn =
+    const mapBtn =
+
+        document.querySelector(
+
+            "#help-modal .btn-blue"
+
+        );
+
+    if(
+
+        mapBtn
+
+    ){
+
+        mapBtn.innerHTML =
+            "SELECT ON MAP";
+
+        mapBtn.disabled =
+            false;
+
+        mapBtn.style.opacity =
+            "1";
+
+    }
+
+    // ============================================
+    // CURRENT BUTTON FEEDBACK
+    // ============================================
+
+    const currentBtn =
 
         document.querySelector(
 
@@ -61710,15 +61785,21 @@ function useCurrentHelpLocation(){
 
         );
 
-    if(btn){
+    if(
 
-        btn.innerHTML =
+        currentBtn
+
+    ){
+
+        currentBtn.innerHTML =
 
             "✔ LOCATION SELECTED";
 
-        btn.disabled = true;
+        currentBtn.disabled =
+            true;
 
-        btn.style.opacity = "0.7";
+        currentBtn.style.opacity =
+            "0.7";
 
     }
 
@@ -61742,6 +61823,14 @@ function useCurrentHelpLocation(){
 
     );
 
+    console.log(
+
+        "📌 MODE:",
+
+        window.helpLocationMode
+
+    );
+
 }
 // ======================================================
 // 📍 SELECT INCIDENT LOCATION
@@ -61749,6 +61838,10 @@ function useCurrentHelpLocation(){
 
 // =====================================================
 // 📍 SELECT INCIDENT LOCATION
+// =====================================================
+
+// =====================================================
+// 📍 SELECT INCIDENT LOCATION ON MAP
 // =====================================================
 
 function startHelpMapSelection(){
@@ -61759,19 +61852,55 @@ function startHelpMapSelection(){
     // ENTER MAP SELECTION MODE
     // ============================================
 
-    window.mapAction = "HELP_LOCATION";
+    window.mapAction =
+        "HELP_LOCATION";
+
+    // ============================================
+    // LOCATION MODE
+    // ============================================
+
+    window.helpLocationMode =
+        "MAP";
+
+    // ============================================
+    // SYNC RADIO BUTTONS
+    // ============================================
+
+    document
+        .querySelectorAll(
+            'input[name="helpLocationMode"]'
+        )
+        .forEach(
+
+            function(radio){
+
+                radio.checked =
+
+                    radio.value ===
+                    "MAP";
+
+            }
+
+        );
 
     // ============================================
     // HIDE HELP MODAL
     // ============================================
 
-    const modal = document.getElementById(
-        "help-modal"
-    );
+    const modal =
 
-    if(modal){
+        document.getElementById(
+            "help-modal"
+        );
 
-        modal.style.display = "none";
+    if(
+
+        modal
+
+    ){
+
+        modal.style.display =
+            "none";
 
     }
 
@@ -61779,22 +61908,37 @@ function startHelpMapSelection(){
     // CHANGE CURSOR
     // ============================================
 
-    map.getContainer().style.cursor =
-        "crosshair";
+    map
+        .getContainer()
+        .style.cursor =
+            "crosshair";
 
     // ============================================
     // USER MESSAGE
     // ============================================
 
     showToast(
-        "📍 Tap elephant location on map"
+        "📍 Tap elephant incident location on map"
     );
+
+    // ============================================
+    // DEBUG
+    // ============================================
 
     console.log(
         "📍 HELP LOCATION MODE ENABLED"
     );
 
+    console.log(
+        "📌 MODE:",
+        window.helpLocationMode
+    );
+
 }
+// =====================================================
+// 🐘 SAVE HELP LOCATION
+// =====================================================
+
 // =====================================================
 // 🐘 SAVE HELP LOCATION
 // =====================================================
@@ -61810,6 +61954,18 @@ function startHelpMapSelection(){
 function saveHelpLocation(latlng){
 
     // ============================================
+    // VALIDATE
+    // ============================================
+
+    if(
+        !latlng ||
+        !Number.isFinite(latlng.lat) ||
+        !Number.isFinite(latlng.lng)
+    ){
+        return;
+    }
+
+    // ============================================
     // EXIT MAP SELECTION MODE
     // ============================================
 
@@ -61818,14 +61974,35 @@ function saveHelpLocation(latlng){
     map.getContainer().style.cursor = "";
 
     // ============================================
-    // SAVE LOCATION
+    // LOCATION MODE (SOURCE OF TRUTH)
+    // ============================================
+
+    window.helpLocationMode = "MAP";
+
+    // ============================================
+    // SYNC RADIO BUTTONS
+    // ============================================
+
+    document
+        .querySelectorAll(
+            'input[name="helpLocationMode"]'
+        )
+        .forEach(function(radio){
+
+            radio.checked =
+                radio.value === "MAP";
+
+        });
+
+    // ============================================
+    // SAVE INCIDENT LOCATION
     // ============================================
 
     window.helpLocation = {
 
-        lat : latlng.lat,
+        lat : Number(latlng.lat),
 
-        lon : latlng.lng
+        lon : Number(latlng.lng)
 
     };
 
@@ -61844,51 +62021,59 @@ function saveHelpLocation(latlng){
     }
 
     // ============================================
-    // CREATE TEMP MARKER
+    // CREATE TEMP INCIDENT MARKER
     // ============================================
 
     if(typeof elephantIcon !== "undefined"){
 
-        window.helpMarker = L.marker(
+        window.helpMarker =
 
-            [
-                latlng.lat,
-                latlng.lng
-            ],
+            L.marker(
 
-            {
-                icon : elephantIcon
-            }
+                [
+                    latlng.lat,
+                    latlng.lng
+                ],
 
-        ).addTo(map);
+                {
+                    icon : elephantIcon
+                }
+
+            ).addTo(map);
 
     }
     else{
 
-        window.helpMarker = L.marker(
+        window.helpMarker =
 
-            [
-                latlng.lat,
-                latlng.lng
-            ]
+            L.marker(
 
-        ).addTo(map);
+                [
+                    latlng.lat,
+                    latlng.lng
+                ]
+
+            ).addTo(map);
 
     }
 
     // ============================================
-    // SHOW MODAL AGAIN
+    // SHOW HELP MODAL
     // ============================================
 
-    const modal = document.getElementById(
-        "help-modal"
-    );
+    const modal =
+
+        document.getElementById(
+            "help-modal"
+        );
 
     if(modal){
 
-        modal.style.display = "block";
+        modal.style.display =
+            "block";
 
-        modal.style.pointerEvents = "auto";
+        modal.style.pointerEvents =
+            "auto";
 
     }
 
@@ -61896,9 +62081,11 @@ function saveHelpLocation(latlng){
     // UPDATE LOCATION TEXT
     // ============================================
 
-    const box = document.getElementById(
-        "helpLocationText"
-    );
+    const box =
+
+        document.getElementById(
+            "helpLocationText"
+        );
 
     if(box){
 
@@ -61915,35 +62102,79 @@ function saveHelpLocation(latlng){
     }
 
     // ============================================
-    // UPDATE MAP BUTTON
+    // MAP BUTTON FEEDBACK
     // ============================================
 
-    const mapBtn = document.querySelector(
-        "#help-modal .btn-blue"
-    );
+    const mapBtn =
+
+        document.querySelector(
+            "#help-modal .btn-blue"
+        );
 
     if(mapBtn){
 
         mapBtn.innerHTML =
             "✔ LOCATION SELECTED";
 
-        mapBtn.disabled = true;
+        mapBtn.disabled =
+            true;
 
-        mapBtn.style.opacity = "0.7";
+        mapBtn.style.opacity =
+            "0.7";
 
     }
 
     // ============================================
-    // LOG
+    // RESET CURRENT BUTTON
+    // ============================================
+
+    const currentBtn =
+
+        document.querySelector(
+            "#help-modal .btn-green"
+        );
+
+    if(currentBtn){
+
+        currentBtn.innerHTML =
+            "USE CURRENT LOCATION";
+
+        currentBtn.disabled =
+            false;
+
+        currentBtn.style.opacity =
+            "1";
+
+    }
+
+    // ============================================
+    // DEBUG
     // ============================================
 
     console.log(
-        "🐘 HELP LOCATION",
+        "📌 LOCATION MODE:",
+        window.helpLocationMode
+    );
+
+    console.log(
+        "📍 INCIDENT LOCATION:",
         window.helpLocation
     );
 
+    console.log(
+        "👤 REPORTER LOCATION:",
+        window.latestgps
+    );
+
+    console.log(
+        "📻 RADIO:",
+        document.querySelector(
+            'input[name="helpLocationMode"]:checked'
+        )?.value
+    );
+
     // ============================================
-    // TOAST
+    // USER MESSAGE
     // ============================================
 
     showToast(
@@ -63374,15 +63605,8 @@ const currentUserId =
 // ============================================================
 
 const locationMode =
-
-    document.querySelector(
-
-        'input[name="helpLocationMode"]:checked'
-
-    )?.value ||
-
+    window.helpLocationMode ||
     "CURRENT";
-
 // ============================================================
 // 👤 REPORTER GPS
 // ============================================================
