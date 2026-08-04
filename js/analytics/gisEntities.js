@@ -2894,365 +2894,268 @@ function(
     lat = Number(lat);
     lon = Number(lon);
 
-
     if(
+
         !Number.isFinite(lat) ||
+
         !Number.isFinite(lon)
+
     ){
+
         return null;
+
     }
 
-
-    const compartment =
-        GISEntities
-            .findCompartmentAtPoint(
-                lat,
-                lon
-            );
-
+    // =====================================================
+    // FIND GIS
+    // =====================================================
 
     const village =
+
         GISEntities
             .findVillageAtPoint(
                 lat,
                 lon
             );
 
+    const compartment =
+
+        GISEntities
+            .findCompartmentAtPoint(
+                lat,
+                lon
+            );
 
     const nearest =
+
         GISEntities
             .findNearestVillagePoint(
                 lat,
                 lon
             );
 
+    // =====================================================
+    // DISPLAY LOCATION
+    // =====================================================
 
-    /* ========================================================
-       DISPLAY LOCATION
-    ======================================================== */
+    let locationText = "";
 
-    let locationText =
-        "";
+    let displayVillage = "";
 
+    let displayNearestPoint = "";
+
+    let displayCompartment = "";
+
+    // =====================================================
+    // CASE 1
+    // INSIDE VILLAGE
+    // =====================================================
 
     if(
+
         village?.village
+
     ){
 
-        locationText =
+        displayVillage =
+
             village.village;
 
+        displayNearestPoint =
+
+            nearest?.name ||
+
+            "";
+
+        locationText =
+
+            displayVillage;
+
     }
 
+    // =====================================================
+    // CASE 2
+    // INSIDE FOREST COMPARTMENT
+    // =====================================================
 
-    if(
-        nearest?.name
+    else if(
+
+        compartment?.compartment
+
     ){
 
-        locationText +=
-            (
-                locationText
-                    ? " — "
-                    : ""
-            ) +
-            "Near " +
-            nearest.name;
+        displayCompartment =
+
+            compartment.compartment;
+
+        displayVillage =
+
+            nearest?.village ||
+
+            "";
+
+        displayNearestPoint =
+
+            nearest?.name ||
+
+            "";
+
+        if(
+
+            displayVillage
+
+        ){
+
+            locationText =
+
+                displayVillage +
+
+                " • " +
+
+                displayCompartment;
+
+        }
+
+        else{
+
+            locationText =
+
+                displayCompartment;
+
+        }
 
     }
 
+    // =====================================================
+    // CASE 3
+    // OUTSIDE EVERYTHING
+    // =====================================================
 
-    return {
+    else{
 
-        /* FOREST GIS */
+        displayVillage =
+
+            nearest?.village ||
+
+            "";
+
+        displayNearestPoint =
+
+            nearest?.name ||
+
+            "";
+
+        locationText =
+
+            displayVillage;
+
+    }
+
+    // =====================================================
+    // RETURN
+    // =====================================================
+
+    return{
+
+        // -------------------------------------------------
+        // GPS
+        // -------------------------------------------------
+
+        lat,
+
+        lon,
+
+        // -------------------------------------------------
+        // FOREST
+        // -------------------------------------------------
 
         compartment:
-            compartment?.compartment ||
-            "",
+
+            displayCompartment,
 
         beat:
+
             compartment?.beat ||
+
             "",
 
         range:
+
             compartment?.range ||
+
             "",
 
         division:
+
             compartment?.division ||
+
             "",
 
-
-        /* VILLAGE POLYGON */
+        // -------------------------------------------------
+        // VILLAGE
+        // -------------------------------------------------
 
         village:
-            village?.village ||
-            "",
+
+            displayVillage,
 
         villageCode:
+
             village?.villageCode ||
+
             "",
 
         block:
+
             village?.block ||
+
             "",
 
+        // -------------------------------------------------
+        // NEAREST VILLAGE POINT
+        // -------------------------------------------------
 
-        /* NEAREST RECORDED POINT */
+        nearestVillage:
+
+            displayVillage,
 
         nearestPoint:
-            nearest?.name ||
-            "",
+
+            displayNearestPoint,
 
         distanceMeters:
+
             nearest?.distanceMeters ??
+
             null,
 
-
-        /* READY FOR POPUP */
+        // -------------------------------------------------
+        // READY FOR POPUP
+        // -------------------------------------------------
 
         text:
+
             locationText,
 
-
-        /* OPTIONAL RAW OBJECTS */
+        // -------------------------------------------------
+        // RAW
+        // -------------------------------------------------
 
         compartmentResult:
+
             compartment,
 
         villageResult:
+
             village,
 
         nearestPointResult:
+
             nearest
 
     };
 
 };
-
-    /*
-     * Returns all canonical range keys currently indexed.
-     *
-     * Primarily useful for diagnostics.
-     */
-
-    GISEntities.getRangeNames =
-        function () {
-
-            if (
-
-                !index
-
-            ) {
-
-                GISEntities
-                    .build();
-
-            }
-
-
-            return Object.keys(
-
-                index.ranges
-
-            );
-
-        };
-
-
-    /*=====================================================
-      RANGE FEATURE COUNT
-    =====================================================*/
-
-
-    GISEntities.getRangeFeatureCount =
-        function (
-
-            value
-
-        ) {
-
-            return GISEntities
-                .searchRangeFeatures(
-
-                    value
-
-                )
-                .length;
-
-        };
-
-
-    /*=====================================================
-      GET INDEX STATS
-    =====================================================*/
-
-
-    /*
-     * Diagnostic helper.
-     *
-     * Does not expose the mutable internal index itself.
-     */
-
-    GISEntities.getStats =
-        function () {
-
-            if (
-
-                !index
-
-            ) {
-
-                GISEntities
-                    .build();
-
-            }
-
-
-            return {
-
-                version:
-
-                    GISEntities.VERSION,
-
-
-                divisions:
-
-                    Object.keys(
-
-                        index.divisions
-
-                    ).length,
-
-
-                ranges:
-
-                    Object.keys(
-
-                        index.ranges
-
-                    ).length,
-
-
-                rangeGroups:
-
-                    Object.keys(
-
-                        index.rangeGroups
-
-                    ).length,
-
-
-                rangeFeatures:
-
-                    Object.values(
-
-                        index.rangeGroups
-
-                    ).reduce(
-
-                        function (
-
-                            total,
-
-                            features
-
-                        ) {
-
-                            return (
-
-                                total +
-
-                                (
-
-                                    Array.isArray(
-
-                                        features
-
-                                    )
-
-                                        ? features.length
-
-                                        : 0
-
-                                )
-
-                            );
-
-                        },
-
-                        0
-
-                    ),
-
-
-                beats:
-
-                    Object.keys(
-
-                        index.beats
-
-                    ).length,
-
-
-                compartments:
-
-                    Object.keys(
-
-                        index.compartments
-
-                    ).length,
-
-
-                                villages:
-
-                    Object.keys(
-
-                        index.villages
-
-                    ).length,
-
-
-                canonicalVillages:
-
-                    Object.keys(
-
-                        index.canonicalVillages
-
-                    ).length,
-
-
-                canonicalVillageRecords:
-
-                    (
-
-                        window.__villageBoundaryCache ||
-
-                        []
-
-                    ).length,
-
-
-                villageCodes:
-
-                    Object.keys(
-
-                        index.villagesByCode
-
-                    ).length,
-
-
-                villageBlocks:
-
-                    Object.keys(
-
-                        index.villagesByBlock
-
-                    ).length
-
-
-            };
-
-        };
 
 
     /*=====================================================
