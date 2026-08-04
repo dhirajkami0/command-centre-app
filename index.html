@@ -41384,6 +41384,11 @@ e.adminResolutionReason
 // Reads responder live location from liveStaffCache
 // =====================================================
 
+// =====================================================
+// 🚓 LIVE HEC TEAM STATUS
+// Reads responder live position from liveStaffCache
+// =====================================================
+
 async function getLiveHECTeamStatus(
 
     incident
@@ -41392,7 +41397,7 @@ async function getLiveHECTeamStatus(
 
     const result = {
 
-        name : incident.assignedTeam || "Not Assigned",
+        name : incident?.assignedTeam || "Not Assigned",
 
         village : "",
 
@@ -41431,7 +41436,7 @@ async function getLiveHECTeamStatus(
         }
 
         // =====================================================
-        // LIVE CACHE
+        // LIVE STAFF CACHE
         // =====================================================
 
         const cache =
@@ -41439,7 +41444,7 @@ async function getLiveHECTeamStatus(
             window.liveStaffCache || {};
 
         // =====================================================
-        // FIND STAFF
+        // FIND RESPONDER
         // =====================================================
 
         const clean =
@@ -41477,7 +41482,7 @@ async function getLiveHECTeamStatus(
         }
 
         // =====================================================
-        // NAME
+        // BASIC
         // =====================================================
 
         result.name =
@@ -41487,10 +41492,6 @@ async function getLiveHECTeamStatus(
             live.name ||
 
             incident.assignedTeam;
-
-        // =====================================================
-        // GPS
-        // =====================================================
 
         result.lat =
 
@@ -41521,7 +41522,7 @@ async function getLiveHECTeamStatus(
         }
 
         // =====================================================
-        // LAST UPDATE
+        // LAST GPS UPDATE
         // =====================================================
 
         const gpsTime =
@@ -41536,33 +41537,43 @@ async function getLiveHECTeamStatus(
 
         if(gpsTime){
 
-            result.lastUpdate =
+            try{
 
-                new Date(
+                result.lastUpdate =
 
-                    gpsTime
+                    new Date(
 
-                ).toLocaleString(
+                        gpsTime
 
-                    "en-IN"
+                    ).toLocaleString(
 
-                );
+                        "en-IN"
+
+                    );
+
+            }
+
+            catch(e){}
 
         }
 
         // =====================================================
-        // RESOLVE CURRENT LOCATION
+        // RESOLVE LIVE LOCATION
         // =====================================================
+
+        let resolved = null;
 
         try{
 
             if(
 
-                window.resolveCurrentLocation
+                typeof window.resolveCurrentLocation ===
+
+                "function"
 
             ){
 
-                const resolved =
+                resolved =
 
                     await window.resolveCurrentLocation(
 
@@ -41572,41 +41583,19 @@ async function getLiveHECTeamStatus(
 
                     );
 
-                if(resolved){
-
-                    result.village =
-
-                        resolved.village ||
-
-                        "";
-
-                    result.landmark =
-
-                        resolved.landmark ||
-
-                        resolved.nearestPoint ||
-
-                        resolved.nearestPointResult?.pointName ||
-
-                        "";
-
-                    result.text =
-
-                        resolved.text ||
-
-                        "";
-
-                }
-
             }
 
             else if(
 
-                window.GreenGuardAI?.GISEntities?.resolveCurrentLocation
+                window.GreenGuardAI
+
+                ?.GISEntities
+
+                ?.resolveCurrentLocation
 
             ){
 
-                const resolved =
+                resolved =
 
                     await window.GreenGuardAI
 
@@ -41619,32 +41608,6 @@ async function getLiveHECTeamStatus(
                         result.lon
 
                     );
-
-                if(resolved){
-
-                    result.village =
-
-                        resolved.village ||
-
-                        "";
-
-                    result.landmark =
-
-                        resolved.landmark ||
-
-                        resolved.nearestPoint ||
-
-                        resolved.nearestPointResult?.pointName ||
-
-                        "";
-
-                    result.text =
-
-                        resolved.text ||
-
-                        "";
-
-                }
 
             }
 
@@ -41662,8 +41625,34 @@ async function getLiveHECTeamStatus(
 
         }
 
+        if(resolved){
+
+            result.village =
+
+                resolved.village ||
+
+                "";
+
+            result.landmark =
+
+                resolved.landmark ||
+
+                resolved.nearestPoint ||
+
+                resolved.nearestPointResult?.pointName ||
+
+                "";
+
+            result.text =
+
+                resolved.text ||
+
+                "";
+
+        }
+
         // =====================================================
-        // DISTANCE
+        // DISTANCE TO INCIDENT
         // =====================================================
 
         if(
@@ -41714,9 +41703,9 @@ async function getLiveHECTeamStatus(
 
                 + " km";
 
-            // =================================================
+            // =====================================================
             // ETA
-            // =================================================
+            // =====================================================
 
             const speed =
 
@@ -41728,9 +41717,13 @@ async function getLiveHECTeamStatus(
 
                 );
 
-            if(speed > 0.5){
+            if(
 
-                // live.speed is metres/second
+                speed > 0.5
+
+            ){
+
+                // speed = metres / second
 
                 const mins =
 
