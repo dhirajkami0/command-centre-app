@@ -38985,6 +38985,12 @@ async function loadHECIncidents(){
 
         window.hecLayer =
             window.hecLayer || L.layerGroup().addTo(window.map);
+      // =====================================================
+// INCIDENT CACHE
+// =====================================================
+
+window.hecIncidentCache =
+    window.hecIncidentCache || {};
 
         if(
 
@@ -39091,7 +39097,17 @@ async function loadHECIncidents(){
             function(e){
 
                 try{
+// =====================================================
+// CACHE INCIDENT
+// =====================================================
 
+window.hecIncidentCache[
+
+    e.firestore_id ||
+
+    e.incidentId
+
+] = e;
                     // ============================================
                     // LOCATION
                     // ============================================
@@ -39584,150 +39600,151 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 
                         window.hecMarkers[key];
 
-                    // ============================================
-                    // CREATE
-                    // ============================================
+// ============================================
+// CREATE
+// ============================================
 
-                    if(
+if(
 
-                        !marker
+    !marker
 
-                    ){
+){
 
-                        marker =
+    marker =
 
-                            L.marker(
+        L.marker(
 
-                                [
+            [
 
-                                    lat,
+                lat,
 
-                                    lon
+                lon
 
-                                ],
+            ],
 
-                                {
+            {
 
-                                    icon
+                icon
 
-                                }
+            }
 
-                            );
+        );
 
-                        marker.addTo(
+    marker.addTo(
 
-                            window.hecLayer
+        window.hecLayer
 
-                        );
+    );
 
-                        marker.bindPopup(
+    marker.bindPopup(
 
-                            L.popup({
+        L.popup({
 
-                                className :
+            className :
 
-                                    "hec-popup",
+                "hec-popup",
 
-                                maxWidth :
+            maxWidth :
 
-                                    360,
+                360,
 
-                                autoClose :
+            autoClose :
 
-                                    false,
+                false,
 
-                                closeOnClick :
+            closeOnClick :
 
-                                    false
+                false
 
-                            })
+        })
 
-                        );
+    );
 
-                        marker.on(
+    marker.on(
 
-                            "click",
+        "click",
 
-                            function(){
+        function(){
 
-                                this.openPopup();
+            this.openPopup();
 
-                            }
+        }
 
-                        );
+    );
 
-                        window.hecMarkers[key] =
+}
 
-                            marker;
+// ============================================
+// UPDATE EXISTING
+// ============================================
 
-                    }
+else{
 
-                    // ============================================
-                    // UPDATE EXISTING
-                    // ============================================
+    marker.setLatLng(
 
-                    else{
+        [
 
-                        marker.setLatLng(
+            lat,
 
-                            [
+            lon
 
-                                lat,
+        ]
 
-                                lon
+    );
 
-                            ]
+    marker.setIcon(
 
-                        );
+        icon
 
-                        marker.setIcon(
+    );
 
-                            icon
+}
 
-                        );
+// ============================================
+// ALWAYS KEEP LATEST INCIDENT
+// ============================================
 
-                    }
+marker.incident = e;
 
-                    // ============================================
-                    // UPDATE POPUP
-                    // ============================================
+// ============================================
+// UPDATE POPUP
+// ============================================
 
-                    if(
+if(
 
-                        marker.getPopup()
+    marker.getPopup()
 
-                    ){
+){
 
-                        marker
+    marker
 
-                        .getPopup()
+        .getPopup()
 
-                        .setContent(
+        .setContent(
 
-                            popup
+            popup
 
-                        );
+        );
 
-                    }
+}
 
-                    else{
+else{
 
-                        marker.bindPopup(
+    marker.bindPopup(
 
-                            popup
+        popup
 
-                        );
+    );
 
-                    }
+}
 
-                    // ============================================
-                    // SAVE
-                    // ============================================
+// ============================================
+// SAVE
+// ============================================
 
-                    window.hecMarkers[key] =
+window.hecMarkers[key] =
 
-                        marker;
-
+    marker;
                 }
 
                 catch(err){
