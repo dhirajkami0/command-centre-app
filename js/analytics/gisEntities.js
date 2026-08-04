@@ -2676,6 +2676,10 @@ function(
 // Works from ANY GPS location
 // =====================================================
 
+// =====================================================
+// FIND NEAREST VILLAGE LOCATION
+// =====================================================
+
 GISEntities.findNearestVillagePoint =
 function(
     lat,
@@ -2697,17 +2701,9 @@ function(
 
     }
 
-    // ==========================================
-    // CACHE
-    // ==========================================
-
     const locations =
 
-        window.__villageLocationCache ||
-
-        window.villageLocations ||
-
-        [];
+        window.__villageLocationCache;
 
     if(
 
@@ -2721,16 +2717,16 @@ function(
 
     }
 
-    let nearest = null;
-
-    let bestDistance = Infinity;
-
     const origin =
 
         L.latLng(
             lat,
             lon
         );
+
+    let nearest = null;
+
+    let bestDistance = Infinity;
 
     locations.forEach(
 
@@ -2740,7 +2736,7 @@ function(
 
                 point.lat ??
 
-                point.latitude
+                point.location?.lat
 
             );
 
@@ -2748,9 +2744,7 @@ function(
 
                 point.lon ??
 
-                point.lng ??
-
-                point.longitude
+                point.location?.lon
 
             );
 
@@ -2771,11 +2765,8 @@ function(
                 origin.distanceTo(
 
                     L.latLng(
-
                         plat,
-
                         plon
-
                     )
 
                 );
@@ -2798,31 +2789,19 @@ function(
 
             nearest = {
 
-                pointName :
-
-                    point.name ||
-
-                    point.point ||
-
-                    point.location ||
-
-                    "",
-
                 village :
 
                     point.village ||
 
                     "",
 
-                villageCode :
+                pointName :
 
-                    point.villageCode ||
+                    point.cleanName ||
 
-                    "",
+                    point.village ||
 
-                block :
-
-                    point.block ||
+                    point.id ||
 
                     "",
 
@@ -2837,9 +2816,7 @@ function(
                 distanceMeters :
 
                     Math.round(
-
                         distance
-
                     ),
 
                 raw :
