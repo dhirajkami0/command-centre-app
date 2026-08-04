@@ -9916,23 +9916,25 @@ setTimeout(() => {
       // ==================================================
       // 🔥 FIRESTORE (Importing runTransaction here)
       // ==================================================
-      const {
-        getFirestore,
-        collection,
-        query,
-        where,
-        orderBy,
-        onSnapshot,
-        serverTimestamp,
-        getDocs,
-        getDoc,
-        deleteDoc,
-        deleteField,
-        doc,
-        setDoc,
-        updateDoc,
-        runTransaction // <--- ADDED THIS IMPORT
-      } = firestoreModule;
+const {
+    getFirestore,
+    collection,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    serverTimestamp,
+    getDocs,
+    getDoc,
+    deleteDoc,
+    deleteField,
+    doc,
+    setDoc,
+    updateDoc,
+    runTransaction,
+    arrayUnion,
+    increment
+} = firestoreModule;
 
       // ==================================================
       // 🔥 STORAGE
