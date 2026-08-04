@@ -39891,6 +39891,807 @@ async function reopenHECIncident(
     }
 
 }
+    // =====================================================
+// ADMIN POPUP
+// =====================================================
+
+function buildAdminPopup(
+
+    e,
+
+    ctx
+
+){
+
+    const status =
+
+        ctx.status;
+
+    let statusColor = "#d32f2f";
+
+    let statusText = "🟡 WAITING";
+
+    let actionHTML = "";
+
+    switch(status){
+
+        // =====================================================
+        // WAITING
+        // =====================================================
+
+        case "WAITING":
+
+            statusColor = "#d32f2f";
+
+            statusText = "🟡 WAITING";
+
+            actionHTML = `
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Accepting...'
+
+);
+
+acceptHECIncident(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#2e7d32;
+color:#fff;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+border-radius:8px;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+">
+
+🟢 ACCEPT RESPONSE
+
+</button>
+
+`;
+
+        break;
+                // =====================================================
+        // ACCEPTED
+        // =====================================================
+
+        case "ACCEPTED":
+
+            statusColor = "#fb8c00";
+
+            statusText = "🟢 ACCEPTED";
+
+            actionHTML = `
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Updating...'
+
+);
+
+arriveHECIncident(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#ef6c00;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+cursor:pointer;
+">
+
+📍 ARRIVED
+
+</button>
+
+`;
+
+        break;
+
+
+        // =====================================================
+        // ARRIVED
+        // =====================================================
+
+        case "ARRIVED":
+
+            statusColor = "#1976d2";
+
+            statusText = "🔵 ARRIVED";
+
+            actionHTML = `
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Completing...'
+
+);
+
+completeHECIncident(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#1565c0;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+cursor:pointer;
+">
+
+✅ RESPONSE COMPLETED
+
+</button>
+
+`;
+
+        break;
+
+                // =====================================================
+        // AWAITING CONFIRMATION
+        // =====================================================
+
+        case "AWAITING_CONFIRMATION":
+
+            statusColor = "#8e24aa";
+
+            statusText = "🟣 WAITING FOR VILLAGER";
+
+            actionHTML = `
+
+<div
+style="
+padding:12px;
+background:#f3e5f5;
+border-radius:8px;
+text-align:center;
+font-weight:bold;
+color:#6a1b9a;
+margin-bottom:10px;
+">
+
+Waiting for villager confirmation...
+
+</div>
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Closing...'
+
+);
+
+adminResolveHEC(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+">
+
+✔ ADMIN CLOSE
+
+</button>
+
+<br><br>
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Reopening...'
+
+);
+
+adminReopenHEC(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+background:#d32f2f;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+">
+
+🔄 REOPEN INCIDENT
+
+</button>
+
+`;
+
+        break;
+
+                // =====================================================
+        // REOPENED
+        // =====================================================
+
+        case "REOPENED":
+
+            statusColor = "#e53935";
+
+            statusText = "🔴 REOPENED";
+
+            actionHTML = `
+
+<div
+style="
+padding:12px;
+background:#ffebee;
+border-radius:8px;
+text-align:center;
+font-weight:bold;
+color:#b71c1c;
+margin-bottom:10px;
+">
+
+⚠ Villager reported that the problem is NOT resolved.
+
+</div>
+
+<button
+
+onclick="
+
+disableHECButton(
+
+this,
+
+'Accepting...'
+
+);
+
+acceptHECIncident(
+
+'${ctx.key}'
+
+);
+
+"
+
+style="
+width:100%;
+padding:12px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+box-shadow:0 2px 6px rgba(0,0,0,.25);
+">
+
+🟢 ACCEPT AGAIN
+
+</button>
+
+`;
+
+        break;
+
+
+        // =====================================================
+        // RESOLVED
+        // =====================================================
+
+        case "RESOLVED":
+
+            statusColor = "#2e7d32";
+
+            statusText = "✅ RESOLVED";
+
+            actionHTML = `
+
+<div
+style="
+padding:14px;
+background:#e8f5e9;
+border-radius:8px;
+text-align:center;
+color:#2e7d32;
+font-weight:bold;
+">
+
+✅ Incident Successfully Closed
+
+</div>
+
+`;
+
+        break;
+
+    }
+
+      return `
+
+<div
+style="
+font-family:'Segoe UI',sans-serif;
+padding:12px;
+width:330px;
+box-sizing:border-box;
+">
+
+<!-- ================================================= -->
+<!-- HEADER -->
+<!-- ================================================= -->
+
+<div
+style="
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+">
+
+<div
+style="
+font-size:18px;
+font-weight:bold;
+color:#c62828;
+">
+
+🚨 Elephant Response
+
+</div>
+
+<div
+style="
+background:${statusColor};
+color:white;
+padding:5px 10px;
+border-radius:14px;
+font-size:11px;
+font-weight:bold;
+">
+
+${statusText}
+
+</div>
+
+</div>
+
+<hr>
+
+<!-- ================================================= -->
+<!-- REPORTER -->
+<!-- ================================================= -->
+
+<b>👤 Reporter</b>
+
+<br>
+
+${e.reporterName || "-"}
+
+<br>
+
+☎ ${e.reporterMobile || "-"}
+
+<hr>
+
+<!-- ================================================= -->
+<!-- INCIDENT -->
+<!-- ================================================= -->
+
+<b>🐘 Situation</b>
+
+<br>
+
+${e.situation || "-"}
+
+<br><br>
+
+<b>🐘 Number of Elephants</b>
+
+<br>
+
+${e.elephantCount || "-"}
+
+<hr>
+
+<!-- ================================================= -->
+<!-- LOCATION -->
+<!-- ================================================= -->
+
+<b>📍 Incident Location</b>
+
+<br>
+
+${
+
+e.incidentLocation?.text ||
+
+e.incidentLocation?.village ||
+
+"-"
+
+}
+
+<br>
+
+🛰 ${ctx.gpsText}
+
+<hr>
+
+<!-- ================================================= -->
+<!-- REPORT TIME -->
+<!-- ================================================= -->
+
+<b>🕒 Reported</b>
+
+<br>
+
+${ctx.reportDate}
+
+<br><br>
+
+<b>⏱ Waiting Time</b>
+
+<br>
+
+${ctx.reportAge}
+
+<hr>
+
+<!-- ================================================= -->
+<!-- TEAM LOCATION -->
+<!-- ================================================= -->
+
+${
+
+status==="ACCEPTED" ||
+
+status==="ARRIVED" ||
+
+status==="AWAITING_CONFIRMATION"
+
+?
+
+`
+
+<b>🚓 Response Team</b>
+
+<br>
+
+${
+
+e.assignedTeam ||
+
+"Not Assigned"
+
+}
+
+<br><br>
+
+<b>📍 Team Location</b>
+
+<br>
+
+${
+
+e.teamCurrentLocation?.text ||
+
+"Updating..."
+
+}
+
+<br><br>
+
+<b>🕒 Last Update</b>
+
+<br>
+
+${
+
+e.lastLocationUpdate
+
+?
+
+"Recently Updated"
+
+:
+
+"-"
+
+}
+
+<hr>
+
+`
+
+:
+
+""
+
+}
+
+<!-- ================================================= -->
+<!-- ACTIONS -->
+<!-- ================================================= -->
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+margin-top:8px;
+">
+
+<button
+
+onclick="callHECReporter('${e.reporterMobile||""}')"
+
+style="
+padding:11px;
+background:#6a1b9a;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+☎ CALL
+
+</button>
+
+<button
+
+onclick="navigateHEC('${ctx.lat}','${ctx.lon}')"
+
+style="
+padding:11px;
+background:#1565c0;
+color:white;
+border:none;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+">
+
+🧭 NAVIGATE
+
+</button>
+
+</div>
+
+<br>
+
+${actionHTML}
+
+<!-- ================================================= -->
+<!-- FEEDBACK -->
+<!-- ================================================= -->
+
+${
+
+e.feedbackRating
+
+?
+
+`
+
+<hr>
+
+<b>⭐ Villager Feedback</b>
+
+<br><br>
+
+<b>Rating</b>
+
+<br>
+
+${e.feedbackRating}
+
+<br><br>
+
+<b>Remarks</b>
+
+<br>
+
+${
+
+e.feedbackRemarks ||
+
+"-"
+
+}
+
+`
+
+:
+
+""
+
+}
+
+<!-- ================================================= -->
+<!-- RESOLUTION -->
+<!-- ================================================= -->
+
+${
+
+status==="RESOLVED"
+
+?
+
+`
+
+<hr>
+
+<b>✔ Resolved By</b>
+
+<br>
+
+${
+
+e.resolvedByName ||
+
+e.resolvedBy ||
+
+"-"
+
+}
+
+<br><br>
+
+<b>Confirmation Time</b>
+
+<br>
+
+${
+
+e.confirmationTime
+
+?
+
+new Date(
+
+e.confirmationTime.seconds
+
+?
+
+e.confirmationTime.seconds*1000
+
+:
+
+e.confirmationTime
+
+).toLocaleString(
+
+"en-IN"
+
+)
+
+:
+
+"-"
+
+}
+
+`
+
+:
+
+""
+
+}
+
+<!-- ================================================= -->
+<!-- ADMIN OVERRIDE -->
+<!-- ================================================= -->
+
+${
+
+e.adminResolutionReason
+
+?
+
+`
+
+<hr>
+
+<b>Admin Note</b>
+
+<br>
+
+${
+
+e.adminResolutionReason
+
+}
+
+`
+
+:
+
+""
+
+}
+
+</div>
+
+`;
+
+}
 // =====================================================
 // HEC POPUP ROUTER
 // =====================================================
