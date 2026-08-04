@@ -43738,6 +43738,10 @@ async function acceptHECIncident(
 
         } = window.fb;
 
+        const profile =
+
+            window.userProfile || {};
+
         await updateDoc(
 
             doc(
@@ -43752,19 +43756,37 @@ async function acceptHECIncident(
 
             {
 
+                // =====================================================
+                // STATUS
+                // =====================================================
+
                 status :
 
                     "ACCEPTED",
 
+                // =====================================================
+                // TEAM ASSIGNMENT (STATIC)
+                // =====================================================
+
+                assignedTeam :
+
+                    profile.rawName || "",
+
                 acceptedBy :
 
-                    window.userProfile.rawName,
+                    profile.rawName || "",
 
                 acceptedByUserId :
 
-                    window.userProfile.uid ||
+                    profile.uid || "",
 
-                    "",
+                responderPhone :
+
+                    profile.phone || "",
+
+                // =====================================================
+                // ACCEPT TIME
+                // =====================================================
 
                 acceptedTime :
 
@@ -43773,6 +43795,21 @@ async function acceptHECIncident(
                 updatedAt :
 
                     serverTimestamp(),
+
+                // =====================================================
+                // CLEAR DYNAMIC VALUES
+                // (These will be read from live_staff)
+                // =====================================================
+
+                teamCurrentLocation : null,
+
+                lastLocationUpdate : null,
+
+                estimatedArrival : null,
+
+                // =====================================================
+                // HISTORY
+                // =====================================================
 
                 statusHistory :
 
@@ -43784,13 +43821,15 @@ async function acceptHECIncident(
 
                         by :
 
-                            window.userProfile.uid ||
-
-                            "",
+                            profile.uid || "",
 
                         name :
 
-                            window.userProfile.rawName,
+                            profile.rawName || "",
+
+                        phone :
+
+                            profile.phone || "",
 
                         time :
 
@@ -43802,11 +43841,21 @@ async function acceptHECIncident(
 
         );
 
+        console.log(
+
+            "✅ HEC Incident Accepted",
+
+            incidentId
+
+        );
+
     }
 
     catch(err){
 
         console.error(
+
+            "❌ acceptHECIncident",
 
             err
 
