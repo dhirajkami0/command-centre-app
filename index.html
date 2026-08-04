@@ -5800,7 +5800,7 @@ width:56px;
 
 }
 
-    .hec-popup
+.hec-popup
 .leaflet-popup-content-wrapper{
 
     background:#ffffff !important;
@@ -5813,6 +5813,12 @@ width:56px;
         0 8px 28px rgba(0,0,0,.35) !important;
 
     padding:0 !important;
+
+    max-width:95vw !important;
+
+    width:auto !important;
+
+    overflow:hidden !important;
 
 }
 
@@ -5827,12 +5833,66 @@ width:56px;
 
     line-height:1.5;
 
+    width:auto !important;
+
+    max-width:calc(95vw - 20px) !important;
+
+    max-height:70vh !important;
+
+    overflow-y:auto !important;
+
+    overflow-x:hidden !important;
+
+    word-break:break-word !important;
+
+    overflow-wrap:anywhere !important;
+
+    box-sizing:border-box;
+
 }
 
 .hec-popup
 .leaflet-popup-tip{
 
     background:#ffffff !important;
+
+}
+
+@media (max-width:768px){
+
+.hec-popup
+.leaflet-popup-content-wrapper{
+
+    width:95vw !important;
+
+    max-width:95vw !important;
+
+}
+
+.hec-popup
+.leaflet-popup-content{
+
+    width:calc(95vw - 20px) !important;
+
+    max-width:calc(95vw - 20px) !important;
+
+}
+
+.hecActionButtons{
+
+    display:flex !important;
+
+    flex-direction:column !important;
+
+    gap:8px !important;
+
+}
+
+.hecActionButtons button{
+
+    width:100% !important;
+
+}
 
 }
   </style>
@@ -40995,14 +41055,18 @@ font-weight:bold;
 
     }
 
-      return `
+return `
 
 <div
 style="
 font-family:'Segoe UI',sans-serif;
 padding:12px;
-width:330px;
+width:100%;
+max-width:320px;
 box-sizing:border-box;
+overflow-x:hidden;
+word-break:break-word;
+overflow-wrap:anywhere;
 ">
 
 <!-- ================================================= -->
@@ -42418,8 +42482,12 @@ e.feedbackRemarks ||
 style="
 font-family:'Segoe UI',sans-serif;
 padding:12px;
-width:330px;
+width:100%;
+max-width:320px;
 box-sizing:border-box;
+overflow-x:hidden;
+word-break:break-word;
+overflow-wrap:anywhere;
 ">
 
 <div
@@ -42718,6 +42786,7 @@ ${eta}
 <!-- ================================================= -->
 
 <div
+class="hecActionButtons"
 style="
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -43397,14 +43466,18 @@ Incident successfully closed.
 
     }
 
-    return `
+   return `
 
 <div
 style="
 font-family:'Segoe UI',sans-serif;
 padding:12px;
-width:330px;
+width:100%;
+max-width:320px;
 box-sizing:border-box;
+overflow-x:hidden;
+word-break:break-word;
+overflow-wrap:anywhere;
 ">
 
 <div
@@ -64513,30 +64586,30 @@ async function openHECPopup(
 
     ){
 
-        marker.bindPopup(
+marker.bindPopup(
 
-            L.popup({
+    L.popup({
 
-                className :
+        className : "hec-popup",
 
-                    "hec-popup",
+        maxWidth : Math.min(
+            window.innerWidth - 20,
+            340
+        ),
 
-                maxWidth :
+        minWidth : 0,
 
-                    360,
+        autoPan : true,
 
-                autoClose :
+        keepInView : true,
 
-                    false,
+        autoClose : false,
 
-                closeOnClick :
+        closeOnClick : false
 
-                    false
+    })
 
-            })
-
-        );
-
+);
     }
 
     marker
@@ -66834,21 +66907,32 @@ if(
 
         );
 
-    marker.bindPopup(
+marker.bindPopup(
 
-        popup,
+    popup,
 
-        {
+    {
 
-            maxWidth : 360,
+        className : "hec-popup",
 
-            autoClose : false,
+        maxWidth : Math.min(
+            window.innerWidth - 20,
+            340
+        ),
 
-            closeOnClick : false
+        minWidth : 0,
 
-        }
+        autoPan : true,
 
-    );
+        keepInView : true,
+
+        autoClose : false,
+
+        closeOnClick : false
+
+    }
+
+);
 
 }
 
