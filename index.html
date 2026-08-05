@@ -64589,32 +64589,36 @@ async function openHECPopup(
 
     }
 
-    if(
+if(
+    !marker.getPopup()
+){
 
-        !marker.getPopup()
+    marker.bindPopup(
 
-    ){
+        L.popup({
 
-L.popup({
+            className : "hec-popup",
 
-    className : "hec-popup",
+            maxWidth :
+                window.innerWidth <= 768
+                ? 340
+                : 360,
 
-    maxWidth : window.innerWidth <= 768 ? 340 : 360,
+            minWidth : 0,
 
-    minWidth : 0,
+            autoPan : false,
 
-    autoPan : false,
+            keepInView : false,
 
-    keepInView : false,
+            autoClose : false,
 
-    autoClose : false,
+            closeOnClick : false
 
-    closeOnClick : false
+        })
 
-})
+    );
 
-);
-    }
+}
 
     marker
 
