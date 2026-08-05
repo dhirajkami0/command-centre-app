@@ -5834,7 +5834,24 @@ width:56px;
     background:#ffffff !important;
 
 }
+/* =======================
+   DESKTOP
+======================= */
 
+@media (min-width:769px){
+
+.hec-popup
+.leaflet-popup-content{
+
+    max-height:75vh !important;
+
+    overflow-y:auto !important;
+
+    overflow-x:hidden !important;
+
+}
+
+}
 
 /* =======================
    MOBILE ONLY
@@ -64578,35 +64595,23 @@ async function openHECPopup(
 
     ){
 
-marker.bindPopup(
+L.popup({
 
-    L.popup({
+    className : "hec-popup",
 
-        className : "hec-popup",
+    maxWidth : window.innerWidth <= 768 ? 340 : 360,
 
-maxWidth:
+    minWidth : 0,
 
-window.innerWidth <= 768
+    autoPan : false,
 
-?
+    keepInView : false,
 
-340
+    autoClose : false,
 
-:
+    closeOnClick : false
 
-360,
-
-        minWidth : 0,
-
-        autoPan : true,
-
-        keepInView : true,
-
-        autoClose : false,
-
-        closeOnClick : false
-
-    })
+})
 
 );
     }
@@ -65090,15 +65095,11 @@ console.log("CTX TEAM", team);
 
             );
 
-        if(
+if(marker.isPopupOpen()){
 
-            marker.isPopupOpen()
+    marker.getPopup().update();
 
-        ){
-
-            marker.openPopup();
-
-        }
+}
 
     }
 
@@ -66907,37 +66908,18 @@ if(
         );
 
 marker.bindPopup(
-
     popup,
-
     {
-
         className : "hec-popup",
-
-maxWidth:
-
-window.innerWidth <= 768
-
-?
-
-340
-
-:
-
-360,
-
+        maxWidth : window.innerWidth <= 768 ? 340 : 360,
         minWidth : 0,
 
-        autoPan : true,
-
-        keepInView : true,
+        autoPan : false,
+        keepInView : false,
 
         autoClose : false,
-
         closeOnClick : false
-
     }
-
 );
 
 }
