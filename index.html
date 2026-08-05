@@ -48856,97 +48856,76 @@ if(
 
 ){
 
-    gis
-        .resolveCurrentLocation(
+   try{
+
+    const resolved =
+        gis.resolveCurrentLocation(
             lat,
             lon
-        )
+        );
 
-        .then(function(resolved){
+    if(resolved){
 
-            if(
-                !resolved
-            ){
-                return;
-            }
+        currentLocation = {
 
-            currentLocation =
-            {
-                ...currentLocation,
+            ...currentLocation,
 
-                compartment :
-                    resolved.compartment || "",
+            compartment:
+                resolved.compartment || "",
 
-                beat :
-                    resolved.beat || "",
+            beat:
+                resolved.beat || "",
 
-                range :
-                    resolved.range || "",
+            range:
+                resolved.range || "",
 
-                division :
-                    resolved.division || "",
+            division:
+                resolved.division || "",
 
-                village :
-                    resolved.village || "",
+            village:
+                resolved.village || "",
 
-                block :
-                    resolved.block || "",
+            block:
+                resolved.block || "",
 
-                nearestPoint :
-                    resolved.nearestPoint || "",
+            nearestPoint:
+                resolved.nearestPoint || "",
 
-                distanceMeters :
-                    resolved.distanceMeters ?? null
-            };
+            distanceMeters:
+                resolved.distanceMeters ?? null
+        };
 
-            // ==========================================
-            // FOREST HAS PRIORITY
-            // ==========================================
+        if(
+            currentLocation.compartment ||
+            currentLocation.beat ||
+            currentLocation.range
+        ){
 
-            if(
+            currentLocation.type =
+                "FOREST";
 
-                currentLocation.compartment ||
+        }
 
-                currentLocation.beat ||
+        else if(
+            currentLocation.village
+        ){
 
-                currentLocation.range
+            currentLocation.type =
+                "VILLAGE";
 
-            ){
+        }
 
-                currentLocation.type =
-                    "FOREST";
+    }
 
-            }
+}
+catch(err){
 
-            else if(
+    console.warn(
+        "⚠ Current GIS location resolution failed:",
+        err
+    );
 
-                currentLocation.village
-
-            ){
-
-                currentLocation.type =
-                    "VILLAGE";
-
-            }
-
-            // ==========================================
-            // OPTIONAL
-            // Refresh popup if marker still exists
-            // ==========================================
-
-            // updateStaffPopup(marker,currentLocation);
-
-        })
-
-        .catch(function(err){
-
-            console.warn(
-                "⚠ Current GIS location resolution failed:",
-                err
-            );
-
-        });
-
+}
 }
 
 
