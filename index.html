@@ -75557,14 +75557,183 @@ background:none;
 
 <form id="wildlifeForm">
 
+<!-- ====================================================== -->
+<!-- AUTO FIELDS -->
+<!-- ====================================================== -->
+
 <input type="hidden" id="w-lat">
 <input type="hidden" id="w-lon">
+
+<!-- ====================================================== -->
+<!-- ANIMAL INFORMATION -->
+<!-- ====================================================== -->
+
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #1565c0;
+">
+
+<h4 style="
+margin:0 0 10px 0;
+color:#1565c0;
+">
+
+🐅 Wildlife Information
+
+</h4>
+
+<label><b>Animal *</b></label>
+
+<select
+id="w-animal"
+required
+onchange="toggleOtherAnimal()">
+
+<option value="">
+-- Select Animal --
+</option>
+
+<option>Tiger</option>
+<option>Leopard</option>
+<option>Clouded Leopard</option>
+<option>Fishing Cat</option>
+<option>Leopard Cat</option>
+<option>Jungle Cat</option>
+<option>Rhino</option>
+<option>Gaur</option>
+<option>Wild Buffalo</option>
+<option>Sambar Deer</option>
+<option>Spotted Deer</option>
+<option>Hog Deer</option>
+<option>Barking Deer</option>
+<option>Wild Boar</option>
+<option>Himalayan Black Bear</option>
+<option>Sloth Bear</option>
+<option>Pangolin</option>
+<option>Otter</option>
+<option>Monkey</option>
+<option>Langur</option>
+<option>Python</option>
+<option>King Cobra</option>
+<option>Monitor Lizard</option>
+<option>Peacock</option>
+<option>Hornbill</option>
+<option>Eagle</option>
+<option>Owl</option>
+<option>Turtle</option>
+<option>Crocodile</option>
+
+<option value="Other">
+Other
+</option>
+
+</select>
+
+<div
+id="otherAnimalDiv"
+style="display:none;">
+
+<label>
+<b>Animal Name</b>
+</label>
+
+<input
+type="text"
+id="w-otherAnimal"
+placeholder="Enter Animal Name">
+
+</div>
+
+<div style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:12px;
+">
+
+<div>
+
+<label>
+<b>Age Class</b>
+</label>
+
+<select id="w-age">
+
+<option>Unknown</option>
+<option>Adult</option>
+<option>Sub Adult</option>
+<option>Juvenile</option>
+<option>Infant / Calf</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label>
+<b>Sex</b>
+</label>
+
+<select id="w-sex">
+
+<option>Unknown</option>
+<option>Male</option>
+<option>Female</option>
+<option>Mixed Group</option>
+
+</select>
+
+</div>
+
+</div>
+
+<label style="
+margin-top:12px;
+display:block;">
+
+<b>Number Seen</b>
+
+</label>
+
+<input
+type="number"
+id="w-count"
+min="1"
+value="1">
+
+</div>
+
+<!-- ====================================================== -->
+<!-- LOCATION -->
+<!-- ====================================================== -->
+
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #2e7d32;
+">
+
+<h4 style="
+margin:0;
+margin-bottom:10px;
+color:#2e7d32;
+">
+
+📍 Forest Location
+
+</h4>
 
 <!-- ====================================== -->
 <!-- BEAT -->
 <!-- ====================================== -->
 
-<label><b>Beat</b></label>
+<label><b>Beat <span style="color:red">*</span></b></label>
 
 <select
 id="w-beat"
@@ -75583,38 +75752,52 @@ border-radius:6px;
 
 </select>
 
-<!-- ====================================== -->
-<!-- BLOCK -->
-<!-- ====================================== -->
+<label style="margin-top:10px;display:block;">
 
-<label><b>Forest Block</b></label>
+<b>Forest Block <span style="color:red">*</span></b>
+
+</label>
 
 <select
 id="w-block"
 required
-onchange="updateWildlifeCompt()">
+onchange="updateWildlifeCompt()"
+style="
+width:100%;
+padding:8px;
+border:1px solid #ccc;
+border-radius:6px;
+">
 
 <option value="">
--- Select Block --
+-- Select Forest Block --
 </option>
 
 </select>
 
-<!-- ====================================== -->
-<!-- COMPARTMENT -->
-<!-- ====================================== -->
+<label style="margin-top:10px;display:block;">
 
-<label><b>Compartment</b></label>
+<b>Compartment <span style="color:red">*</span></b>
+
+</label>
 
 <input
 id="w-compt"
 list="w-compt-list"
+placeholder="Search / Select Compartment"
 required
-placeholder="Select Compartment">
+style="
+width:100%;
+padding:8px;
+border:1px solid #ccc;
+border-radius:6px;
+">
 
 <datalist id="w-compt-list">
 
 </datalist>
+
+</div>
 
 <!-- ====================================== -->
 <!-- TIME -->
