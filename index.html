@@ -35859,7 +35859,8 @@ const db = window.db;
     // PROCESS EACH SIGHTING
     // =====================================================
 
-for (const e of data) {
+    data.forEach(
+      function(e){
 
         try{
 
@@ -37028,7 +37029,7 @@ try {
   ){
 
     const resolved =
-      await gis.resolveCurrentLocation(
+      gis.resolveCurrentLocation(
         lat,
         lon
       );
@@ -37664,7 +37665,7 @@ else {
         }
 
       }
-    
+    );
 
 
     // =====================================================
@@ -37784,6 +37785,7 @@ else {
   }
 
 }   
+ 
   /* ===============================
    🧠 ADVANCED HERD MATCH SCORE (WITH ELEPHANT COUNT)
 =============================== */
