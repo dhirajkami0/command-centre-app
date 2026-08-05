@@ -75799,16 +75799,113 @@ border-radius:6px;
 
 </div>
 
-<!-- ====================================== -->
-<!-- TIME -->
-<!-- ====================================== -->
+<!-- ====================================================== -->
+<!-- OBSERVATION -->
+<!-- ====================================================== -->
 
-<label><b>Time</b></label>
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #ff9800;
+">
 
-<input
-type="time"
-id="w-time"
-required>
+<h4 style="
+margin:0 0 10px 0;
+color:#ff9800;
+">
+
+👀 Observation
+
+</h4>
+
+<label>
+
+<b>Behaviour</b>
+
+</label>
+
+<select
+id="w-behaviour">
+
+<option>Walking</option>
+
+<option>Running</option>
+
+<option>Resting</option>
+
+<option>Feeding</option>
+
+<option>Drinking</option>
+
+<option>Grazing</option>
+
+<option>Hunting</option>
+
+<option>Crossing Road</option>
+
+<option>Crossing River</option>
+
+<option>Climbing</option>
+
+<option>Nesting</option>
+
+<option>Flying</option>
+
+<option>Swimming</option>
+
+<option>Calling</option>
+
+<option>Fighting</option>
+
+<option>Injured</option>
+
+<option>Dead</option>
+
+<option>Trapped</option>
+
+<option>Near Village</option>
+
+<option>Inside Forest</option>
+
+<option>Other</option>
+
+</select>
+
+<label
+style="
+margin-top:12px;
+display:block;
+">
+
+<b>Direction</b>
+
+</label>
+
+<select id="w-dir">
+
+<option value="N">North</option>
+
+<option value="NE">North-East</option>
+
+<option value="E">East</option>
+
+<option value="SE">South-East</option>
+
+<option value="S">South</option>
+
+<option value="SW">South-West</option>
+
+<option value="W">West</option>
+
+<option value="NW">North-West</option>
+
+<option value="ST">Stationary</option>
+
+</select>
+
+</div>
 
 <!-- ====================================== -->
 <!-- ANIMAL -->
@@ -75950,56 +76047,229 @@ min="1">
 
 </select>
 
-<!-- ====================================== -->
-<!-- TEAM -->
-<!-- ====================================== -->
+<!-- ====================================================== -->
+<!-- EVIDENCE -->
+<!-- ====================================================== -->
 
-<label><b>Team Leader</b></label>
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #8e24aa;
+">
 
-<input
-id="w-team"
-readonly>
+<h4 style="
+margin:0 0 10px 0;
+color:#8e24aa;
+">
 
-<!-- ====================================== -->
-<!-- LOCATION -->
-<!-- ====================================== -->
+📷 Evidence
 
-<label><b>Location</b></label>
-
-<input
-id="w-location"
-readonly>
-
-<!-- ====================================== -->
-<!-- PHOTO -->
-<!-- ====================================== -->
+</h4>
 
 <label><b>Photo</b></label>
 
 <input
 type="file"
-id="w-photo">
+id="w-photo"
+accept="image/*">
 
-<!-- ====================================== -->
+<br><br>
+
+<label><b>Video (Optional)</b></label>
+
+<input
+type="file"
+id="w-video"
+accept="video/*">
+
+<br><br>
+
+<label><b>Audio (Optional)</b></label>
+
+<input
+type="file"
+id="w-audio"
+accept="audio/*">
+
+</div>
+
+<!-- ====================================================== -->
 <!-- REMARKS -->
-<!-- ====================================== -->
+<!-- ====================================================== -->
 
-<label><b>Remarks</b></label>
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #546e7a;
+">
+
+<h4 style="
+margin:0 0 10px 0;
+color:#546e7a;
+">
+
+📝 Remarks
+
+</h4>
 
 <textarea
 id="w-remarks"
-rows="3"></textarea>
+rows="4"
+style="
+width:100%;
+resize:vertical;
+"
+placeholder="Wildlife movement, crossing road, feeding, etc."></textarea>
 
-<br><br>
+</div>
+
+<!-- ====================================================== -->
+<!-- SPECIAL FLAGS -->
+<!-- ====================================================== -->
+
+<div style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+border-left:5px solid #d32f2f;
+">
+
+<h4 style="
+margin:0 0 10px 0;
+color:#d32f2f;
+">
+
+🚨 Special Flags
+
+</h4>
+
+<label>
+
+<input
+type="checkbox"
+id="w-injured">
+
+Injured Animal
+
+</label>
+
+<br>
+
+<label>
+
+<input
+type="checkbox"
+id="w-dead">
+
+Dead Animal
+
+</label>
+
+<br>
+
+<label>
+
+<input
+type="checkbox"
+id="w-conflict">
+
+Conflict Animal
+
+</label>
+
+<br>
+
+<label>
+
+<input
+type="checkbox"
+id="w-rescue">
+
+Rescue Required
+
+</label>
+
+<br>
+
+<label>
+
+<input
+type="checkbox"
+id="w-vet">
+
+Veterinary Assistance Required
+
+</label>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- GPS STATUS -->
+<!-- ====================================================== -->
+
+<div style="
+background:#e8f5e9;
+padding:12px;
+border-radius:10px;
+margin-bottom:15px;
+text-align:center;
+font-size:13px;
+">
+
+📍 GPS will be captured automatically during submission.
+
+</div>
+
+<!-- ====================================================== -->
+<!-- BUTTONS -->
+<!-- ====================================================== -->
+
+<div style="
+display:flex;
+gap:10px;
+">
+
+<button
+type="button"
+onclick="closeWildlifeForm()"
+style="
+flex:1;
+background:#757575;
+color:white;
+padding:12px;
+border:none;
+border-radius:8px;
+font-size:16px;
+">
+
+❌ Cancel
+
+</button>
 
 <button
 type="button"
 id="wildlifeSubmitBtn"
-onclick="submitWildlifeForm()">
+onclick="submitWildlifeForm()"
+style="
+flex:1;
+background:#1565c0;
+color:white;
+padding:12px;
+border:none;
+border-radius:8px;
+font-size:16px;
+">
 
-📤 SUBMIT
+📤 Submit
 
 </button>
+
+</div>
 
 </form>
 
