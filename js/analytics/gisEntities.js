@@ -2686,7 +2686,7 @@ function(
 // =====================================================
 
 GISEntities.findNearestVillagePoint =
-async function(
+function(
     lat,
     lon
 ){
@@ -2710,24 +2710,68 @@ async function(
     }
 
     // =====================================================
-    // ENSURE CACHE
+    // ENSURE CACHE (NON-BLOCKING)
     // =====================================================
 
     if(
 
         !Array.isArray(
-
             window.__villageLocationCache
-
         ) ||
 
         !window.__villageLocationCache.length
 
     ){
 
-        await loadVillageLocations();
+        // -----------------------------------------
+        // Load only once in background
+        // -----------------------------------------
+
+        if(
+
+            !window.__VILLAGE_LOCATION_LOADING__
+
+        ){
+
+            window.__VILLAGE_LOCATION_LOADING__ = true;
+
+            Promise.resolve(
+
+                loadVillageLocations()
+
+            )
+
+            .catch(function(err){
+
+                console.error(
+
+                    "❌ loadVillageLocations failed",
+
+                    err
+
+                );
+
+            })
+
+            .finally(function(){
+
+                window.__VILLAGE_LOCATION_LOADING__ = false;
+
+            });
+
+        }
+
+        // -----------------------------------------
+        // Cache not ready yet
+        // -----------------------------------------
+
+        return null;
 
     }
+
+    // =====================================================
+    // CACHE READY
+    // =====================================================
 
     const locations =
 
@@ -2877,9 +2921,7 @@ async function(
                 distanceMeters :
 
                     Math.round(
-
                         distance
-
                     ),
 
                 raw :
@@ -2895,7 +2937,6 @@ async function(
     return nearest;
 
 };
-
 
 /* ============================================================
    🧭 RESOLVE COMPLETE CURRENT LOCATION
@@ -2916,7 +2957,7 @@ async function(
 ============================================================ */
 
 GISEntities.resolveCurrentLocation =
-async function(
+function(
     lat,
     lon
 ){
@@ -2959,7 +3000,7 @@ async function(
 
     const nearest =
 
-        await GISEntities.findNearestVillagePoint(
+        GISEntities.findNearestVillagePoint(
             lat,
             lon
         );
@@ -3010,8 +3051,8 @@ async function(
     // CASE 2
     // INSIDE FOREST COMPARTMENT
     //
-    // Compartment    : Damanpur BL8
-    // Nearest Point  : BAT TALAI DAMANPUR
+    // Compartment    : Forest Compartment
+    // Nearest Point  : Landmark
     // =====================================================
 
     else if(
@@ -3040,7 +3081,7 @@ async function(
     // CASE 3
     // OUTSIDE VILLAGE & COMPARTMENT
     //
-    // Nearest Point : BAT TALAI DAMANPUR
+    // Nearest Point : Landmark
     // =====================================================
 
     else{
@@ -3104,7 +3145,7 @@ async function(
             "",
 
         // -------------------------------------------------
-        // LGD VILLAGE (BOUNDARY ONLY)
+        // LGD VILLAGE
         // -------------------------------------------------
 
         village :
@@ -3168,7 +3209,6 @@ async function(
     };
 
 };
-
     /*=====================================================
       REGISTER
     =====================================================*/
