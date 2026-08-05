@@ -56887,49 +56887,337 @@ async function loadPolygonWeather(){
 }  /* =========================
        🌦 WEATHER SYSTEM (FINAL)
     ========================= */
-    function loadWeatherFull() {
+function loadWeatherFull() {
 
-      // 🔥 REMOVE GAS CHECK (not needed in GitHub)
+    console.log("🌦 Loading Weather...");
 
-      callBackend("getWeatherFull")
+    callBackend("getWeatherFull")
 
-        .then(function (w) {
+    .then(function (w) {
 
-          if (!w || !w.current) {
-            document.getElementById("weatherNow").innerHTML = "⚠ Weather unavailable";
+        console.log("🌦 Weather Response:", w);
+
+        const weatherNow =
+            document.getElementById("weatherNow");
+
+        const todayForecast =
+            document.getElementById("todayForecast");
+
+        const weekForecast =
+            document.getElementById("weekForecast");
+
+        if (
+            !weatherNow ||
+            !todayForecast ||
+            !weekForecast
+        ) {
+
+            console.warn(
+                "Weather DOM not ready."
+            );
+
             return;
-          }
 
-          /* 🔥 CURRENT */
-          document.getElementById("weatherNow").innerHTML =
-            "🌡 " + Math.round(w.current.temp) + "°C | " + w.current.cloud + "<br>" +
-            "💧 " + w.current.humidity + "% | 🌬 " + w.current.wind + " m/s";
+        }
 
-          /* 🔥 HOURLY */
-          let todayHTML = "<b style='color:#4caf50'>Next 18 Hours</b><br>";
+        // =====================================================
+        // INVALID RESPONSE
+        // =====================================================
 
-          w.hourly.forEach(h => {
-            todayHTML += `${h.time} | ${h.temp}°C | ${h.weather}<br>`;
-          });
+        if (
+            !w ||
+            !w.current
+        ) {
 
-          document.getElementById("todayForecast").innerHTML = todayHTML;
+            weatherNow.innerHTML =
+                "⚠ Weather unavailable";
 
-          /* 🔥 WEEK */
-          let weekHTML = "<b style='color:#4caf50'>5-Day Forecast</b><br>";
+            todayForecast.innerHTML = "";
 
-          w.week.forEach(d => {
-            weekHTML += `${d.day}: ${d.max}°/${d.min}° | 🌧 ${d.rain}%<br>`;
-          });
+            weekForecast.innerHTML = "";
 
-          document.getElementById("weekForecast").innerHTML = weekHTML;
+            resizeWeatherDrawer();
 
-        })
+            return;
 
-        .catch(function () {
-          document.getElementById("weatherNow").innerHTML = "⚠ Weather error";
-        });
+        }
+
+        // =====================================================
+        // CURRENT WEATHER
+        // =====================================================
+
+        weatherNow.innerHTML =
+
+            "🌡 " +
+
+            Math.round(
+
+                w.current.temp || 0
+
+            )
+
+            +
+
+            "°C | "
+
+            +
+
+            (
+
+                w.current.cloud ||
+
+                "-"
+
+            )
+
+            +
+
+            "<br>"
+
+            +
+
+            "💧 "
+
+            +
+
+            (
+
+                w.current.humidity ??
+
+                "-"
+
+            )
+
+            +
+
+            "% | 🌬 "
+
+            +
+
+            (
+
+                w.current.wind ??
+
+                "-"
+
+            )
+
+            +
+
+            " m/s";
+
+        // =====================================================
+        // NEXT 18 HOURS
+        // =====================================================
+
+        let todayHTML =
+
+            "<b style='color:#4caf50'>Next 18 Hours</b><br>";
+
+        if (
+
+            Array.isArray(
+
+                w.hourly
+
+            )
+
+            &&
+
+            w.hourly.length
+
+        ) {
+
+            w.hourly.forEach(function(h){
+
+                todayHTML +=
+
+                    h.time +
+
+                    " | " +
+
+                    h.temp +
+
+                    "°C | " +
+
+                    h.weather +
+
+                    "<br>";
+
+            });
+
+        }
+
+        else{
+
+            todayHTML +=
+
+                "No hourly forecast available";
+
+        }
+
+        todayForecast.innerHTML =
+
+            todayHTML;
+
+        // =====================================================
+        // 5 DAY FORECAST
+        // =====================================================
+
+        let weekHTML =
+
+            "<b style='color:#4caf50'>5-Day Forecast</b><br>";
+
+        if (
+
+            Array.isArray(
+
+                w.week
+
+            )
+
+            &&
+
+            w.week.length
+
+        ) {
+
+            w.week.forEach(function(d){
+
+                weekHTML +=
+
+                    d.day +
+
+                    ": " +
+
+                    d.max +
+
+                    "°/" +
+
+                    d.min +
+
+                    "° | 🌧 " +
+
+                    d.rain +
+
+                    "%<br>";
+
+            });
+
+        }
+
+        else{
+
+            weekHTML +=
+
+                "No weekly forecast available";
+
+        }
+
+        weekForecast.innerHTML =
+
+            weekHTML;
+
+        console.log("✅ Weather Loaded");
+
+        resizeWeatherDrawer();
+
+    })
+
+    .catch(function(err){
+
+        console.error(
+
+            "Weather Error",
+
+            err
+
+        );
+
+        const weatherNow =
+
+            document.getElementById(
+
+                "weatherNow"
+
+            );
+
+        if(
+
+            weatherNow
+
+        ){
+
+            weatherNow.innerHTML =
+
+                "⚠ Weather error";
+
+        }
+
+        resizeWeatherDrawer();
+
+    });
+
+}
+
+
+// =====================================================
+// AUTO RESIZE WEATHER DRAWER
+// =====================================================
+
+function resizeWeatherDrawer(){
+
+    const content =
+
+        document.getElementById(
+
+            "weatherContent"
+
+        );
+
+    if(
+
+        !content ||
+
+        content.style.maxHeight === "0px"
+
+    ){
+
+        return;
 
     }
+
+    requestAnimationFrame(function(){
+
+        content.style.maxHeight =
+
+            content.scrollHeight +
+
+            "px";
+
+    });
+
+    setTimeout(function(){
+
+        content.style.maxHeight =
+
+            content.scrollHeight +
+
+            "px";
+
+    },150);
+
+    setTimeout(function(){
+
+        content.style.maxHeight =
+
+            content.scrollHeight +
+
+            "px";
+
+    },500);
+
+}
 
 
     /* =========================
@@ -57516,63 +57804,141 @@ function loginStaff(){
 }
     
     
-    function toggleWeatherDrawer() {
-      console.log("-----------------------------------------");
-      console.log("🔍 DIAGNOSIS: Weather Toggle Triggered");
+function toggleWeatherDrawer() {
 
-      const content = document.getElementById("weatherContent");
-      const icon = document.getElementById("weatherChevron");
-      const drawer = document.getElementById("weatherDrawer");
-      const panel = document.getElementById("mainPanel");
+    console.log("-----------------------------------------");
+    console.log("🌦 Weather Toggle");
 
-      // 1. DOM Check
-      if (!content || !drawer || !panel) {
-        console.error("❌ ERROR: Missing Elements:", { content: !!content, drawer: !!drawer, panel: !!panel });
+    const content =
+        document.getElementById("weatherContent");
+
+    const icon =
+        document.getElementById("weatherChevron");
+
+    const drawer =
+        document.getElementById("weatherDrawer");
+
+    const panel =
+        document.getElementById("mainPanel");
+
+    if (
+        !content ||
+        !drawer ||
+        !panel
+    ) {
+
+        console.error(
+            "Weather drawer elements missing."
+        );
+
         return;
-      }
 
-      // 2. Computed Style Check (What the browser is actually doing)
-      const computedContent = window.getComputedStyle(content);
-      const computedDrawer = window.getComputedStyle(drawer);
-      const computedPanel = window.getComputedStyle(panel);
+    }
 
-      console.log("📊 Computed Max-Height (Content):", computedContent.maxHeight);
-      console.log("📊 Computed Overflow (Panel):", computedPanel.overflowY);
-      console.log("📊 Drawer Display State:", computedDrawer.display);
+    const isCollapsed =
+        !content.style.maxHeight ||
+        content.style.maxHeight === "0px";
 
-      // 3. Logic Execution
-      const isCollapsed = !content.style.maxHeight || content.style.maxHeight === "0px";
-      console.log("❓ Logic State: " + (isCollapsed ? "IS COLLAPSED" : "IS EXPANDED"));
+    // =====================================================
+    // OPEN
+    // =====================================================
 
-      if (isCollapsed) {
-        console.log("🚀 Action: ATTEMPTING EXPAND...");
+    if (isCollapsed) {
 
-        // Applying Styles
-        content.style.maxHeight = content.scrollHeight + "px";   /* 🔥 dynamic height */
+        console.log("📂 Opening Weather Drawer");
+
+        content.style.display = "block";
         content.style.opacity = "1";
-        content.style.display = "block"; // Force display
 
-        if (icon) icon.className = "fa-solid fa-chevron-up";
-        drawer.style.background = "rgba(255,255,255,0.1)";
+        drawer.style.background =
+            "rgba(255,255,255,0.1)";
 
-        // 4. Post-Action Validation
-        setTimeout(() => {
-          console.log("✅ POST-EXPAND CHECK: Content maxHeight is now: " + content.style.maxHeight);
-          if (window.getComputedStyle(content).maxHeight === "0px") {
-            console.error("⛔ CRITICAL: Browser REJECTED the 500px setting. Check for !important in your CSS.");
-          }
-        }, 100);
+        if (icon) {
 
-      } else {
-        console.log("🚀 Action: ATTEMPTING COLLAPSE...");
+            icon.className =
+                "fa-solid fa-chevron-up";
+
+        }
+
+        // Initial expand
+        content.style.maxHeight =
+            content.scrollHeight + "px";
+
+        // -------------------------------------------------
+        // Refresh weather only every 10 minutes
+        // -------------------------------------------------
+
+        const now =
+            Date.now();
+
+        if (
+            !window.lastWeatherLoad ||
+            now - window.lastWeatherLoad > 600000
+        ) {
+
+            console.log(
+                "🌦 Loading latest weather..."
+            );
+
+            window.lastWeatherLoad =
+                now;
+
+            loadWeatherFull();
+
+        }
+
+        // -------------------------------------------------
+        // Recalculate height after async weather arrives
+        // -------------------------------------------------
+
+        setTimeout(function () {
+
+            content.style.maxHeight =
+                content.scrollHeight + "px";
+
+        },300);
+
+        setTimeout(function () {
+
+            content.style.maxHeight =
+                content.scrollHeight + "px";
+
+        },1000);
+
+    }
+
+    // =====================================================
+    // CLOSE
+    // =====================================================
+
+    else {
+
+        console.log("📁 Closing Weather Drawer");
+
         content.style.maxHeight = "0px";
         content.style.opacity = "0";
-        if (icon) icon.className = "fa-solid fa-chevron-down";
-        drawer.style.background = "rgba(255,255,255,0.05)";
-      }
 
-      if (window.navigator.vibrate) window.navigator.vibrate(15);
-    } 
+        drawer.style.background =
+            "rgba(255,255,255,0.05)";
+
+        if (icon) {
+
+            icon.className =
+                "fa-solid fa-chevron-down";
+
+        }
+
+    }
+
+    if (
+        navigator.vibrate
+    ) {
+
+        navigator.vibrate(15);
+
+    }
+
+}
     
     function toggleLegend() {
       const legend = document.getElementById("mapLegend");
