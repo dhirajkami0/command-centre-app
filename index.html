@@ -48824,105 +48824,126 @@ try {
 
 let currentLocation =
 {
-  type: "GPS",
-  gps: `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
-  compartment: "",
-  beat: "",
-  range: "",
-  division: "",
-  village: "",
-  block: "",
-  nearestPoint: "",
-  distanceMeters: null
+    type : "GPS",
+
+    gps :
+        `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+
+    compartment : "",
+    beat : "",
+    range : "",
+    division : "",
+
+    village : "",
+    block : "",
+
+    nearestPoint : "",
+    distanceMeters : null
 };
 
-try {
-
-  const gis =
+const gis =
     window.GreenGuardAI
-      ?.GISEntities;
+        ?.GISEntities;
 
-  if(
+if(
+
     gis &&
+
     typeof gis.resolveCurrentLocation ===
-      "function"
-  ){
+        "function"
 
-    const resolved =
-      await gis.resolveCurrentLocation(
-        lat,
-        lon
-      );
+){
 
-    if(resolved){
+    gis
+        .resolveCurrentLocation(
+            lat,
+            lon
+        )
 
-      currentLocation =
-      {
-        ...currentLocation,
+        .then(function(resolved){
 
-        compartment:
-          resolved.compartment || "",
+            if(
+                !resolved
+            ){
+                return;
+            }
 
-        beat:
-          resolved.beat || "",
+            currentLocation =
+            {
+                ...currentLocation,
 
-        range:
-          resolved.range || "",
+                compartment :
+                    resolved.compartment || "",
 
-        division:
-          resolved.division || "",
+                beat :
+                    resolved.beat || "",
 
-        village:
-          resolved.village || "",
+                range :
+                    resolved.range || "",
 
-        block:
-          resolved.block || "",
+                division :
+                    resolved.division || "",
 
-        nearestPoint:
-          resolved.nearestPoint || "",
+                village :
+                    resolved.village || "",
 
-        distanceMeters:
-          resolved.distanceMeters ?? null
-      };
+                block :
+                    resolved.block || "",
 
+                nearestPoint :
+                    resolved.nearestPoint || "",
 
-      // ------------------------------------------
-      // LOCATION TYPE
-      // Forest gets priority when point falls
-      // inside a compartment polygon.
-      // ------------------------------------------
+                distanceMeters :
+                    resolved.distanceMeters ?? null
+            };
 
-      if(
-        currentLocation.compartment ||
-        currentLocation.beat ||
-        currentLocation.range
-      ){
+            // ==========================================
+            // FOREST HAS PRIORITY
+            // ==========================================
 
-        currentLocation.type =
-          "FOREST";
+            if(
 
-      }
+                currentLocation.compartment ||
 
-      else if(
-        currentLocation.village
-      ){
+                currentLocation.beat ||
 
-        currentLocation.type =
-          "VILLAGE";
+                currentLocation.range
 
-      }
+            ){
 
-    }
+                currentLocation.type =
+                    "FOREST";
 
-  }
+            }
 
-}
-catch(err){
+            else if(
 
-  console.warn(
-    "⚠ Current GIS location resolution failed:",
-    err
-  );
+                currentLocation.village
+
+            ){
+
+                currentLocation.type =
+                    "VILLAGE";
+
+            }
+
+            // ==========================================
+            // OPTIONAL
+            // Refresh popup if marker still exists
+            // ==========================================
+
+            // updateStaffPopup(marker,currentLocation);
+
+        })
+
+        .catch(function(err){
+
+            console.warn(
+                "⚠ Current GIS location resolution failed:",
+                err
+            );
+
+        });
 
 }
 
