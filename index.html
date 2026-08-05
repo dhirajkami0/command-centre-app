@@ -12365,6 +12365,624 @@ function updateDutyCompt(source = "UNKNOWN"){
   console.groupEnd();
 
 }
+
+    // ======================================================
+// 🐅 TOGGLE OTHER ANIMAL
+// ======================================================
+
+function toggleOtherAnimal(){
+
+    // ==================================================
+    // CONTROLS
+    // ==================================================
+
+    const animal =
+
+        document.getElementById(
+            "w-animal"
+        );
+
+    const otherDiv =
+
+        document.getElementById(
+            "otherAnimalDiv"
+        );
+
+    const otherInput =
+
+        document.getElementById(
+            "w-otherAnimal"
+        );
+
+    // ==================================================
+    // SAFETY
+    // ==================================================
+
+    if(
+
+        !animal ||
+
+        !otherDiv ||
+
+        !otherInput
+
+    ){
+
+        console.warn(
+            "⚠ Wildlife Other Animal controls missing."
+        );
+
+        return;
+
+    }
+
+    // ==================================================
+    // SELECTED VALUE
+    // ==================================================
+
+    const selected =
+
+        String(
+            animal.value || ""
+        ).trim();
+
+    // ==================================================
+    // SHOW OTHER ANIMAL
+    // ==================================================
+
+    if(
+
+        selected === "Other"
+
+    ){
+
+        otherDiv.style.display =
+
+            "block";
+
+        otherInput.required =
+
+            true;
+
+        otherInput.focus();
+
+    }
+
+    // ==================================================
+    // HIDE OTHER ANIMAL
+    // ==================================================
+
+    else{
+
+        otherDiv.style.display =
+
+            "none";
+
+        otherInput.required =
+
+            false;
+
+        otherInput.value =
+
+            "";
+
+    }
+
+}
+function updateWildlifeCompt(source = "UNKNOWN"){
+  console.group(
+    "📦 updateWildlifeCompt"
+  );
+  console.log(
+    "📍 SOURCE:",
+    source
+  );
+
+  // ============================================================
+  // 📦 COMPARTMENT DATALIST CONTAINER
+  // ============================================================
+  const datalist =
+    document.getElementById(
+      "w-compt-list"
+    );
+
+  if(!datalist){
+    console.warn(
+      "⚠ w-compt-list missing"
+    );
+    console.groupEnd();
+    return;
+  }
+
+  // ============================================================
+  // 🧹 CLEAR OLD LIST
+  // ============================================================
+  datalist.innerHTML = "";
+
+  // ============================================================
+  // 👤 CURRENT PROFILE
+  // ============================================================
+  const profile =
+    window.userProfile || {};
+
+  const role =
+    String(
+      profile.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+  // ============================================================
+  // 📍 SELECTED BEAT & BLOCK
+  // ============================================================
+  const beat =
+    String(
+      document.getElementById(
+        "w-beat"
+      )?.value || ""
+    )
+    .trim();
+
+  const block =
+    String(
+      document.getElementById(
+        "w-block"
+      )?.value || ""
+    )
+    .trim();
+
+  // ============================================================
+  // 🌍 USER DIVISION & RANGE
+  // ============================================================
+  const division =
+    typeof normalizeDivision === "function"
+      ? normalizeDivision(profile.division || "")
+      : String(profile.division || "").trim().toUpperCase();
+
+  const userRange =
+    String(
+      profile.range || ""
+    )
+    .trim();
+
+  // ============================================================
+  // 🗺️ COMPARTMENT GIS DATA
+  // ============================================================
+  const features =
+    Array.isArray(
+      window.allCompartmentFeatures
+    )
+      ? window.allCompartmentFeatures
+      : [];
+
+  console.log(
+    "🧠 WILDLIFE CONTEXT:",
+    {
+      role,
+      beat,
+      block,
+      division,
+      userRange,
+      featureCount:
+        features.length
+    }
+  );
+
+  // ============================================================
+  // 🔑 SAFE COMPARISON KEY
+  // ============================================================
+  const key = value =>
+    String(
+      value || ""
+    )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]/g,
+      ""
+    );
+
+  // ============================================================
+  // 🔥 WORKING VARIABLES
+  // ============================================================
+  let compartments = [];
+  let resolutionMode =
+    "NONE";
+
+  try{
+
+    // ==========================================================
+    // 👑 ADMIN
+    // ==========================================================
+    if(
+      role === "ADMIN"
+    ){
+      compartments =
+        features;
+
+      resolutionMode =
+        "ADMIN_ALL";
+
+      console.log(
+        "👑 ADMIN → ALL COMPARTMENTS:",
+        compartments.length
+      );
+    }
+    // ==========================================================
+    // 🟣 DFO / ADFO
+    // ==========================================================
+    else if(
+      role.includes("DFO")
+      ||
+      role.includes("ADFO")
+    ){
+      compartments =
+        features.filter(f => {
+          const featureDivision =
+            f?.properties?.Division ??
+            f?.properties?.division ??
+            "";
+
+          return (
+            (typeof normalizeDivision === "function" ? normalizeDivision(featureDivision) : key(featureDivision))
+            ===
+            division
+          );
+        });
+
+      resolutionMode =
+        "DIVISION";
+
+      console.log(
+        "🟣 DFO/ADFO → DIVISION COMPARTMENTS:",
+        {
+          division,
+          matchedFeatures:
+            compartments.length
+        }
+      );
+    }
+    // ==========================================================
+    // 👮 STAFF / TEAM LEADER
+    // ==========================================================
+    else{
+
+      const beatKey =
+        key(beat);
+
+      const isRangeHQ =
+        beatKey === "RANGEHQ"
+        ||
+        beatKey === "RANGEHEADQUARTER"
+        ||
+        beatKey === "RANGEHEADQUARTERS";
+
+      // ========================================================
+      // 🏢 RANGE HQ
+      // ========================================================
+      if(
+        isRangeHQ
+      ){
+        console.log(
+          "🏢 RANGE HQ DETECTED:",
+          {
+            beat,
+            range:
+              userRange
+          }
+        );
+
+        const rangeMatches =
+          userRange
+            ? features.filter(f => {
+                const featureRange =
+                  f?.properties?.Range ??
+                  f?.properties?.range ??
+                  "";
+
+                return (
+                  key(featureRange)
+                  ===
+                  key(userRange)
+                );
+              })
+            : [];
+
+        if(
+          rangeMatches.length > 0
+        ){
+          compartments =
+            rangeMatches;
+
+          resolutionMode =
+            "RANGE_HQ";
+
+          console.log(
+            "✅ RANGE HQ → ALL RANGE COMPARTMENTS:",
+            {
+              range:
+                userRange,
+              matchedFeatures:
+                rangeMatches.length
+            }
+          );
+        }
+        else{
+          compartments = [];
+          resolutionMode =
+            "RANGE_HQ_UNRESOLVED";
+
+          console.warn(
+            "⚠ RANGE HQ → RANGE NOT FOUND IN GIS:",
+            {
+              beat,
+              range:
+                userRange
+            }
+          );
+        }
+      }
+      // ========================================================
+      // 👮 NORMAL STAFF POSTING
+      // ========================================================
+      else{
+
+        const beatMatches =
+          beat
+            ? features.filter(f => {
+                const featureBeat =
+                  f?.properties?.Beat ??
+                  f?.properties?.beat ??
+                  "";
+
+                return (
+                  key(featureBeat)
+                  ===
+                  key(beat)
+                );
+              })
+            : [];
+
+        if(
+          beatMatches.length > 0
+        ){
+          compartments =
+            beatMatches;
+
+          resolutionMode =
+            "BEAT";
+
+          console.log(
+            "✅ GIS BEAT RESOLVED:",
+            {
+              beat,
+              matchedFeatures:
+                beatMatches.length
+            }
+          );
+        }
+        else if(
+          userRange
+        ){
+          const rangeMatches =
+            features.filter(f => {
+              const featureRange =
+                f?.properties?.Range ??
+                f?.properties?.range ??
+                "";
+
+              return (
+                key(featureRange)
+                ===
+                key(userRange)
+              );
+            });
+
+          if(
+            rangeMatches.length > 0
+          ){
+            compartments =
+              rangeMatches;
+
+            resolutionMode =
+              "RANGE_FALLBACK";
+
+            console.warn(
+              "↪️ BEAT NOT IN GIS → RANGE FALLBACK:",
+              {
+                beat,
+                range:
+                  userRange,
+                matchedFeatures:
+                  rangeMatches.length
+              }
+            );
+          }
+          else{
+            compartments = [];
+            resolutionMode =
+              "UNRESOLVED";
+
+            console.warn(
+              "⚠ BEAT AND RANGE NOT RESOLVED:",
+              {
+                beat,
+                range:
+                  userRange
+              }
+            );
+          }
+        }
+        else{
+          compartments = [];
+          resolutionMode =
+            "UNRESOLVED";
+
+          console.warn(
+            "⚠ NO GIS BEAT AND NO RANGE:",
+            {
+              beat,
+              range:
+                userRange
+            }
+          );
+        }
+      }
+    }
+
+    // ==========================================================
+    // 🌲 FURTHER BLOCK FILTERING (IF BLOCK SELECTED)
+    // ==========================================================
+    if(
+      block &&
+      block !== "VILLAGE" &&
+      block !== "-- Select Forest Block --"
+    ){
+      const blockFiltered =
+        compartments.filter(f => {
+          const featureBlock =
+            f?.properties?.Block ??
+            f?.properties?.block ??
+            f?.properties?.FOREST_BLOCK ??
+            "";
+
+          return (
+            key(featureBlock) === key(block)
+          );
+        });
+
+      if(
+        blockFiltered.length > 0
+      ){
+        compartments =
+          blockFiltered;
+
+        console.log(
+          "🌲 FILTERED BY BLOCK:",
+          {
+            block,
+            matchedFeatures:
+              compartments.length
+          }
+        );
+      }
+    }
+
+    // ==========================================================
+    // 📋 EXTRACT UNIQUE COMPARTMENT NAMES
+    // ==========================================================
+    const list = [
+      ...new Set(
+        compartments.map(f =>
+          String(
+            f?.properties?.compartment ??
+            f?.properties?.Compartment ??
+            f?.properties?.COMPT ??
+            ""
+          ).trim()
+        )
+      )
+    ]
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        a.localeCompare(
+          b,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        )
+    );
+
+    // ==========================================================
+    // 🌍 PERMANENT FALLBACK AREAS
+    // ==========================================================
+    const permanentAreas = [
+      "Village Area",
+      "Forest Area"
+    ];
+
+    permanentAreas.forEach(area => {
+      const existingIndex =
+        list.findIndex(
+          value =>
+            key(value) === key(area)
+        );
+
+      if(
+        existingIndex !== -1
+      ){
+        list.splice(
+          existingIndex,
+          1
+        );
+      }
+    });
+
+    list.unshift(
+      "Village Area",
+      "Forest Area"
+    );
+
+    // ==========================================================
+    // 🧩 RENDER DATALIST OPTIONS
+    // ==========================================================
+    const frag =
+      document.createDocumentFragment();
+
+    list.forEach(comp => {
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        comp;
+
+      frag.appendChild(
+        option
+      );
+    });
+
+    datalist.appendChild(
+      frag
+    );
+
+    // ==========================================================
+    // 🔍 FINAL DIAGNOSTIC
+    // ==========================================================
+    console.log(
+      "✅ Wildlife Compartments rendered:",
+      {
+        source,
+        role,
+        beat,
+        block,
+        range:
+          userRange,
+        mode:
+          resolutionMode,
+        matchedFeatures:
+          compartments.length,
+        rendered:
+          list.length,
+        list
+      }
+    );
+
+  }
+  catch(err){
+    console.error(
+      "❌ updateWildlifeCompt",
+      err
+    );
+  }
+
+  console.groupEnd();
+}
+    
     /* ============================================================
      📲 INSTALL PROMPT SYSTEM
   ============================================================ */
@@ -52409,7 +53027,23 @@ async function saveSightingToFirestore(
 
     }
 
+// =====================================================
+// OBSERVATION TYPE
+// =====================================================
 
+const observationType =
+
+    String(
+
+        payload.observation_type ||
+
+        "ELEPHANT"
+
+    )
+
+    .trim()
+
+    .toUpperCase();
     // =====================================================
     // 5. FINANCIAL YEAR
     //
@@ -52551,26 +53185,55 @@ const compartment =
     // 2026-27__BuxaTR_WEST__EastDamanpur
     // =====================================================
 
-    const divisionCounterRef =
-        doc(
-            db,
-            "elephant_sighting_counters",
-            safeFY +
-            "__" +
-            safeDivision
-        );
+// =====================================================
+// COUNTER COLLECTION
+// =====================================================
 
+const counterCollection =
 
-    const rangeCounterRef =
-        doc(
-            db,
-            "elephant_sighting_counters",
-            safeFY +
-            "__" +
-            safeDivision +
-            "__" +
-            safeRange
-        );
+    observationType === "WILDLIFE"
+
+        ? "wildlife_sighting_counters"
+
+        : "elephant_sighting_counters";
+
+// =====================================================
+// DIVISION COUNTER
+// =====================================================
+
+const divisionCounterRef =
+
+    doc(
+
+        db,
+
+        counterCollection,
+
+        safeFY +
+        "__" +
+        safeDivision
+
+    );
+
+// =====================================================
+// RANGE COUNTER
+// =====================================================
+
+const rangeCounterRef =
+
+    doc(
+
+        db,
+
+        counterCollection,
+
+        safeFY +
+        "__" +
+        safeDivision +
+        "__" +
+        safeRange
+
+    );
 
 
     // =====================================================
@@ -52745,16 +53408,33 @@ const compartment =
                     );
 
 
-                // =============================================
-                // SIGHTING DOCUMENT REFERENCE
-                // =============================================
+// =====================================================
+// SIGHTING COLLECTION
+// =====================================================
 
-                const sightingRef =
-                    doc(
-                        db,
-                        "elephant_sightings",
-                        firestoreDocumentID
-                    );
+const sightingCollection =
+
+    observationType === "WILDLIFE"
+
+        ? "wildlife_sightings"
+
+        : "elephant_sightings";
+
+// =====================================================
+// DOCUMENT
+// =====================================================
+
+const sightingRef =
+
+    doc(
+
+        db,
+
+        sightingCollection,
+
+        firestoreDocumentID
+
+    );
 
 
                 // =============================================
@@ -52852,7 +53532,12 @@ const compartment =
                         // =====================================
 
                         ...payload,
+// =====================================
+// OBSERVATION TYPE
+// =====================================
 
+observation_type:
+    observationType,
 
                         // =====================================
                         // CANONICAL IDENTITY
@@ -53070,7 +53755,7 @@ async function submitSightingForm(event){
     // =====================================================
     // DETERMINE OBSERVATION TYPE
     // =====================================================
-    const observationType = window.activeObservationType || "ELEPHANT";
+    const observationType = window.currentObservationType  || "ELEPHANT";
 
 
     // =====================================================
@@ -68174,9 +68859,47 @@ openSightingForm();
 // 🐅 OPEN WILDLIFE FORM
 // ======================================================
 
+// ======================================================
+// 🐅 OPEN WILDLIFE FORM
+// ======================================================
+
 async function openWildlifeForm(){
 
+    // ==================================================
+    // CLOSE SELECTOR
+    // ==================================================
+
     closeSightingSelector();
+
+    // ==================================================
+    // NEW OBSERVATION
+    // ==================================================
+
+    window.currentObservationType = "WILDLIFE";
+
+    window.isEditingSighting = false;
+
+    window.currentSightingId = null;
+
+    // ==================================================
+    // RESET FORM
+    // ==================================================
+
+    const form =
+
+        document.getElementById(
+            "wildlifeForm"
+        );
+
+    if(form){
+
+        form.reset();
+
+    }
+
+    // ==================================================
+    // SHOW MODAL
+    // ==================================================
 
     document
         .getElementById(
@@ -68185,7 +68908,7 @@ async function openWildlifeForm(){
         .style.display = "block";
 
     // ==================================================
-    // CURRENT PROFILE
+    // CURRENT USER
     // ==================================================
 
     const user =
@@ -68223,7 +68946,17 @@ async function openWildlifeForm(){
         ).padStart(2,"0");
 
     // ==================================================
-    // COPY DROPDOWNS
+    // SAVE FOR SUBMISSION
+    // ==================================================
+
+    window.wildlifeDate = now;
+
+    window.wildlifeTime =
+
+        hh + ":" + mm;
+
+    // ==================================================
+    // COPY ELEPHANT DROPDOWNS
     // ==================================================
 
     document.getElementById("w-beat").innerHTML =
@@ -68239,7 +68972,7 @@ async function openWildlifeForm(){
         document.getElementById("f-compt-list").innerHTML;
 
     // ==================================================
-    // AUTO SELECT USER'S BEAT
+    // AUTO SELECT USER BEAT
     // ==================================================
 
     if(user.beat){
@@ -68251,13 +68984,13 @@ async function openWildlifeForm(){
     }
 
     // ==================================================
-    // UPDATE BLOCK / COMPARTMENT
+    // REFRESH BLOCK / COMPARTMENT
     // ==================================================
 
     updateWildlifeCompt();
 
     // ==================================================
-    // TEAM
+    // STORE REPORTER DETAILS
     // ==================================================
 
     window.wildlifeReporter = {
@@ -68304,6 +69037,12 @@ async function openWildlifeForm(){
 
             user.circle ||
 
+            "",
+
+        sessionId :
+
+            window.sessionId ||
+
             ""
 
     };
@@ -68312,36 +69051,30 @@ async function openWildlifeForm(){
     // GPS
     // ==================================================
 
-    document.getElementById("w-lat").value =
+    const lat =
 
-        gps.lat ||
+        gps.lat ??
 
-        gps.latitude ||
-
-        "";
-
-    document.getElementById("w-lon").value =
-
-        gps.lng ||
-
-        gps.lon ||
-
-        gps.longitude ||
+        gps.latitude ??
 
         "";
 
+    const lon =
+
+        gps.lng ??
+
+        gps.lon ??
+
+        gps.longitude ??
+
+        "";
+
+    document.getElementById("w-lat").value = lat;
+
+    document.getElementById("w-lon").value = lon;
+
     // ==================================================
-    // TIME
-    // ==================================================
-
-    window.wildlifeDate = now;
-
-    window.wildlifeTime =
-
-        hh + ":" + mm;
-
-    // ==================================================
-    // RESET
+    // DEFAULT VALUES
     // ==================================================
 
     document.getElementById("w-count").value = 1;
@@ -68356,17 +69089,59 @@ async function openWildlifeForm(){
 
     document.getElementById("w-dir").selectedIndex = 0;
 
+    // ==================================================
+    // OTHER ANIMAL
+    // ==================================================
+
+    const otherDiv =
+
+        document.getElementById(
+            "otherAnimalDiv"
+        );
+
+    if(otherDiv){
+
+        otherDiv.style.display =
+
+            "none";
+
+    }
+
+    const otherAnimal =
+
+        document.getElementById(
+            "w-otherAnimal"
+        );
+
+    if(otherAnimal){
+
+        otherAnimal.value = "";
+
+    }
+
+    // ==================================================
+    // REMARKS
+    // ==================================================
+
     document.getElementById("w-remarks").value = "";
+
+    // ==================================================
+    // FILES
+    // ==================================================
 
     document.getElementById("w-photo").value = "";
 
-    if(document.getElementById("w-video"))
+    if(document.getElementById("w-video")){
 
-        document.getElementById("w-video").value="";
+        document.getElementById("w-video").value = "";
 
-    if(document.getElementById("w-audio"))
+    }
 
-        document.getElementById("w-audio").value="";
+    if(document.getElementById("w-audio")){
+
+        document.getElementById("w-audio").value = "";
+
+    }
 
     // ==================================================
     // RESET FLAGS
@@ -68392,11 +69167,39 @@ async function openWildlifeForm(){
 
             document.getElementById(id);
 
-        if(el)
+        if(el){
 
-            el.checked=false;
+            el.checked = false;
+
+        }
 
     });
+
+    // ==================================================
+    // RESET SUBMIT BUTTON
+    // ==================================================
+
+    if(
+
+        typeof setSubmitLoading ===
+
+        "function"
+
+    ){
+
+        setSubmitLoading(false);
+
+    }
+
+    // ==================================================
+    // FOCUS
+    // ==================================================
+
+    document
+        .getElementById(
+            "w-animal"
+        )
+        .focus();
 
 }
 
