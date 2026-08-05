@@ -7116,7 +7116,88 @@ function cleanName(n){
         "flex";
     }
   }
+// ============================================================
+// 🟠 CCF
+// ============================================================
+else if(
 
+    role === "CCF"
+
+){
+
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
+
+    leaderButtons.forEach(el => {
+
+        el.style.display = "flex";
+
+    });
+
+    adminButtons.forEach(el => {
+
+        el.style.display = "none";
+
+    });
+
+    staffButtons.forEach(el => {
+
+        el.style.display = "flex";
+
+    });
+
+    if(dutyBtn){
+
+        dutyBtn.style.display = "flex";
+
+    }
+
+    // ======================================
+    // 🌍 GIS PANEL
+    // ======================================
+
+    if(gisPanel){
+
+        gisPanel.style.display =
+            "block";
+
+    }
+
+    // ======================================
+    // ❌ CIRCLE LOCKED
+    // (CCF cannot change circle)
+    // ======================================
+
+    if(divisionButtons){
+
+        divisionButtons.style.display =
+            "flex";
+
+    }
+
+    if(rangeButtons){
+
+        rangeButtons.style.display =
+            "flex";
+
+    }
+
+    if(beatButtons){
+
+        beatButtons.style.display =
+            "flex";
+
+    }
+
+    if(compartmentButtons){
+
+        compartmentButtons.style.display =
+            "flex";
+
+    }
+
+}
   // ============================================================
   // 🟣 DFO / ADFO
   // ============================================================
@@ -31098,8 +31179,74 @@ window.gisFilter.beat || "ALL";
 // 📦 FEATURES
 // ==================================================
 
-const allFeatures =
-window.allGISFeatures || [];
+let allFeatures =
+    window.allGISFeatures || [];
+
+// ==================================================
+// 🟠 CCF CIRCLE FILTER
+// ==================================================
+
+if(
+
+    role === "CCF"
+
+){
+
+    const DIVISION_TO_CIRCLE = {
+
+        BTR_W : "BTR",
+        BTR_E : "BTR",
+
+        Jaldapara : "WLN",
+        Gorumara : "WLN",
+        DarjeelingWL : "WLN"
+
+    };
+
+    allFeatures =
+
+        allFeatures.filter(feature => {
+
+            const props =
+
+                feature.properties || {};
+
+            const division =
+
+                normalizeDivision(
+
+                    props.Division ||
+
+                    props.division ||
+
+                    ""
+
+                );
+
+            return (
+
+                DIVISION_TO_CIRCLE[
+                    division
+                ] ===
+                window.userProfile.circle
+
+            );
+
+        });
+
+    console.log(
+
+        "🟠 CCF GIS Filter:",
+
+        window.userProfile.circle,
+
+        allFeatures.length,
+
+        "features"
+
+    );
+
+}
 
 // ==================================================
 // ❌ EMPTY
@@ -31805,13 +31952,63 @@ if(role === "VILLAGER"){
     return;
 
 }
-// ==================================================
-// 📦 FEATURES
-// ==================================================
-
-const allFeatures =
+let allFeatures =
 
 window.allCompartmentFeatures || [];
+
+// ==================================================
+// 🟠 CCF CIRCLE FILTER
+// ==================================================
+
+if(
+
+    role === "CCF"
+
+){
+
+    const DIVISION_TO_CIRCLE = {
+
+        BTR_W : "BTR",
+        BTR_E : "BTR",
+
+        Jaldapara : "WLN",
+        Gorumara : "WLN",
+        DarjeelingWL : "WLN"
+
+    };
+
+    allFeatures =
+
+        allFeatures.filter(feature => {
+
+            const props =
+
+                feature.properties || {};
+
+            const division =
+
+                normalizeDivision(
+
+                    props.Division ||
+
+                    props.division ||
+
+                    ""
+
+                );
+
+            return (
+
+                DIVISION_TO_CIRCLE[
+                    division
+                ] ===
+                window.userProfile.circle
+
+            );
+
+        });
+
+}
 
 // ==================================================
 // ❌ EMPTY
