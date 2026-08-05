@@ -68119,6 +68119,64 @@ document
 
 }
 
+
+    // ======================================================
+// WILDLIFE SUBMIT
+// ======================================================
+
+async function submitWildlifeForm(){
+
+    try{
+
+        // ------------------------------------------
+        // Tell Elephant code this is Wildlife
+        // ------------------------------------------
+
+        window.currentObservationType =
+
+            "WILDLIFE";
+
+        // ------------------------------------------
+        // Copy Wildlife form values into
+        // Elephant controls temporarily
+        // ------------------------------------------
+
+        document.getElementById("f-beat").value =
+            document.getElementById("w-beat").value;
+
+        document.getElementById("f-block").value =
+            document.getElementById("w-block").value;
+
+        document.getElementById("f-compt").value =
+            document.getElementById("w-compt").value;
+
+        // ------------------------------------------
+        // GPS
+        // ------------------------------------------
+
+        document.getElementById("f-lat").value =
+            document.getElementById("w-lat").value;
+
+        document.getElementById("f-lon").value =
+            document.getElementById("w-lon").value;
+
+        // ------------------------------------------
+        // Call existing submission
+        // ------------------------------------------
+
+        await submitSightingForm();
+
+    }
+
+    finally{
+
+        window.currentObservationType =
+
+            "ELEPHANT";
+
+    }
+
+}
           function updateWildlifeCompt(){
 
 updateCompt();
