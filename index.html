@@ -53068,6 +53068,12 @@ async function submitSightingForm(event){
   try{
 
     // =====================================================
+    // DETERMINE OBSERVATION TYPE
+    // =====================================================
+    const observationType = window.activeObservationType || "ELEPHANT";
+
+
+    // =====================================================
     // SIGHTING ID
     // =====================================================
 
@@ -53096,46 +53102,74 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // COUNTS
+    // COUNTS & VALUES (CONDITIONAL BY TYPE)
     // =====================================================
 
-    const m =
-      parseInt(
-        document.getElementById(
-          "f-m"
-        )?.value
-      ) || 0;
+    let m = 0, f = 0, uni = 0, calf = 0, total = 0;
+    let animalVal = "Elephant";
+    let otherAnimalVal = "";
+    let sexVal = "";
+    let ageVal = "";
+    let behaviourVal = "";
+    let directionVal = "";
+    let remarksVal = "";
+
+    if(observationType === "WILDLIFE"){
+      animalVal = String(document.getElementById("w-animal")?.value || "").trim();
+      otherAnimalVal = String(document.getElementById("w-otherAnimal")?.value || "").trim();
+      if(animalVal === "Other"){
+        animalVal = otherAnimalVal || "Other Wildlife";
+      }
+      total = parseInt(document.getElementById("w-count")?.value) || 1;
+      sexVal = document.getElementById("w-sex")?.value || "Unknown";
+      ageVal = document.getElementById("w-age")?.value || "Unknown";
+      behaviourVal = document.getElementById("w-behaviour")?.value || "";
+      directionVal = document.getElementById("w-dir")?.value || "";
+      remarksVal = document.getElementById("w-remarks")?.value || "";
+    }
+    else{
+      m =
+        parseInt(
+          document.getElementById(
+            "f-m"
+          )?.value
+        ) || 0;
 
 
-    const f =
-      parseInt(
-        document.getElementById(
-          "f-f"
-        )?.value
-      ) || 0;
+      f =
+        parseInt(
+          document.getElementById(
+            "f-f"
+          )?.value
+        ) || 0;
 
 
-    const uni =
-      parseInt(
-        document.getElementById(
-          "f-u"
-        )?.value
-      ) || 0;
+      uni =
+        parseInt(
+          document.getElementById(
+            "f-u"
+          )?.value
+        ) || 0;
 
 
-    const calf =
-      parseInt(
-        document.getElementById(
-          "f-c"
-        )?.value
-      ) || 0;
+      calf =
+        parseInt(
+          document.getElementById(
+            "f-c"
+          )?.value
+        ) || 0;
 
 
-    const total =
-      m +
-      f +
-      uni +
-      calf;
+      total =
+        m +
+        f +
+        uni +
+        calf;
+
+      animalVal = "Elephant";
+      directionVal = document.getElementById("f-dir")?.value || "";
+      remarksVal = document.getElementById("f-remarks")?.value || "";
+    }
 
 
     // =====================================================
@@ -53144,13 +53178,13 @@ async function submitSightingForm(event){
 
     let lat =
       document.getElementById(
-        "f-lat"
+        observationType === "WILDLIFE" ? "w-lat" : "f-lat"
       )?.value || "";
 
 
     let lon =
       document.getElementById(
-        "f-lon"
+        observationType === "WILDLIFE" ? "w-lon" : "f-lon"
       )?.value || "";
 
 
@@ -53259,10 +53293,12 @@ async function submitSightingForm(event){
     // FORM VALUES
     // =====================================================
 
+    const beatPrefix = observationType === "WILDLIFE" ? "w-" : "f-";
+
     const beat =
       String(
         document.getElementById(
-          "f-beat"
+          beatPrefix + "beat"
         )?.value || ""
       ).trim();
 
@@ -53270,7 +53306,7 @@ async function submitSightingForm(event){
     const forestBlock =
       String(
         document.getElementById(
-          "f-block"
+          beatPrefix + "block"
         )?.value || ""
       ).trim();
 
@@ -53278,7 +53314,7 @@ async function submitSightingForm(event){
     const compt =
       String(
         document.getElementById(
-          "f-compt"
+          beatPrefix + "compt"
         )?.value || ""
       ).trim();
 
@@ -54639,189 +54675,243 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // PAYLOAD
+    // PAYLOAD (CONDITIONAL SWITCH)
     // =====================================================
 
-    const payload = {
+    let payload;
 
-      sighting_id:
-        sightingID,
+    if(observationType === "WILDLIFE"){
+      payload = {
+        sighting_id: sightingID,
+        parent_id: "",
+        observation_type: "WILDLIFE",
+        animal: animalVal,
+        other_animal: otherAnimalVal,
+        beat: beat,
+        forest_block: forestBlock,
+        compt: compt,
+        time: time,
+        total_seen: Number(total),
+        sex: sexVal,
+        age_class: ageVal,
+        behaviour: behaviourVal,
+        direction: directionVal,
+        remarks: remarksVal,
+        leader: leaderValue,
+        phone: window.userProfile?.phone || "",
+        lat: lat,
+        lon: lon,
+        location: location,
 
-      parent_id:
-        "",
+        injured: document.getElementById("w-injured")?.checked ? "Yes" : "No",
+        dead: document.getElementById("w-dead")?.checked ? "Yes" : "No",
+        conflict: document.getElementById("w-conflict")?.checked ? "Yes" : "No",
+        rescue: document.getElementById("w-rescue")?.checked ? "Yes" : "No",
+        vet_assistance: document.getElementById("w-vet")?.checked ? "Yes" : "No",
 
-      beat:
-        beat,
+        gis_division: resolvedDivision,
+        gis_range: resolvedRange,
+        gis_beat: resolvedBeat,
+        gis_compartment: resolvedCompartment,
+        SID: resolvedSID,
+        DID: resolvedDID,
+        RID: resolvedRID,
+        BID: resolvedBID,
 
-      forest_block:
-        forestBlock,
+        village: officialVillageName,
+        village_code: officialVillageCode,
+        village_lgd: officialVillageCode,
+        village_district: officialVillageDistrict,
+        village_subdistrict: officialVillageSubdistrict,
+        village_pincode: officialVillagePincode,
+        nearest_village: nearestVillageName,
+        nearest_location: nearestVillageName,
+        nearest_village_distance_m: nearestVillageDistance,
+        nearest_location_distance_m: nearestVillageDistance,
+        nearest_village_distance_km: nearestVillageDistanceKm,
+        nearest_village_risk: nearestVillageRisk,
+        nearest_location_risk: nearestVillageRisk,
+        nearest_village_conflict_history: nearestVillageConflictHistory,
+        nearest_location_conflict_history: nearestVillageConflictHistory,
+        nearest_location_phone: nearestVillagePhone,
+        nearest_location_whatsapp: nearestVillageWhatsapp,
+        resolved_location: resolvedLocationText
+      };
+    }
+    else{
+      payload = {
 
-      compt:
-        compt,
+        sighting_id:
+          sightingID,
 
-      time:
-        time,
+        parent_id:
+          "",
 
-      m:
-        Number(m),
+        beat:
+          beat,
 
-      f:
-        Number(f),
+        forest_block:
+          forestBlock,
 
-      unidentified:
-        Number(uni),
+        compt:
+          compt,
 
-      calf:
-        Number(calf),
+        time:
+          time,
 
-      total_seen:
-        total,
+        m:
+          Number(m),
 
-      anticipated:
-        "",
+        f:
+          Number(f),
 
-      depredation:
-        "",
+        unidentified:
+          Number(uni),
 
-      involved:
-        "",
+        calf:
+          Number(calf),
 
-      driving:
-        "",
+        total_seen:
+          total,
 
-      remarks:
-        document
-          .getElementById(
-            "f-remarks"
-          )
-          ?.value || "",
+        anticipated:
+          "",
 
-      leader:
-        leaderValue,
+        depredation:
+          "",
 
-      phone:
-        window.userProfile
-          ?.phone || "",
+        involved:
+          "",
 
-      staff:
-        "",
+        driving:
+          "",
 
-      lat:
-        lat,
+        remarks:
+          remarksVal,
 
-      lon:
-        lon,
+        leader:
+          leaderValue,
 
-      location:
-        location,
+        phone:
+          window.userProfile
+            ?.phone || "",
 
-      direction:
-        document
-          .getElementById(
-            "f-dir"
-          )
-          ?.value || "",
+        staff:
+          "",
 
+        lat:
+          lat,
 
-      // ===================================================
-      // GIS CONTEXT
-      // ===================================================
+        lon:
+          lon,
 
-      gis_division:
-        resolvedDivision,
+        location:
+          location,
 
-      gis_range:
-        resolvedRange,
-
-      gis_beat:
-        resolvedBeat,
-
-      gis_compartment:
-        resolvedCompartment,
-
-
-      // ===================================================
-      // GIS IDS
-      // ===================================================
-
-      SID:
-        resolvedSID,
-
-      DID:
-        resolvedDID,
-
-      RID:
-        resolvedRID,
-
-      BID:
-        resolvedBID,
-
-
-      // ===================================================
-      // OFFICIAL VILLAGE
-      // ===================================================
-
-      village:
-        officialVillageName,
-
-      village_code:
-        officialVillageCode,
-
-      village_lgd:
-        officialVillageCode,
-
-      village_district:
-        officialVillageDistrict,
-
-      village_subdistrict:
-        officialVillageSubdistrict,
-
-      village_pincode:
-        officialVillagePincode,
+        direction:
+          directionVal,
 
 
-      // ===================================================
-      // NEAREST LOCATION
-      // ===================================================
+        // ===================================================
+        // GIS CONTEXT
+        // ===================================================
 
-      nearest_village:
-        nearestVillageName,
+        gis_division:
+          resolvedDivision,
 
-      nearest_location:
-        nearestVillageName,
+        gis_range:
+          resolvedRange,
 
-      nearest_village_distance_m:
-        nearestVillageDistance,
+        gis_beat:
+          resolvedBeat,
 
-      nearest_location_distance_m:
-        nearestVillageDistance,
-
-      nearest_village_distance_km:
-        nearestVillageDistanceKm,
-
-      nearest_village_risk:
-        nearestVillageRisk,
-
-      nearest_location_risk:
-        nearestVillageRisk,
-
-      nearest_village_conflict_history:
-        nearestVillageConflictHistory,
-
-      nearest_location_conflict_history:
-        nearestVillageConflictHistory,
-
-      nearest_location_phone:
-        nearestVillagePhone,
-
-      nearest_location_whatsapp:
-        nearestVillageWhatsapp,
+        gis_compartment:
+          resolvedCompartment,
 
 
-      resolved_location:
-        resolvedLocationText
+        // ===================================================
+        // GIS IDS
+        // ===================================================
 
-    };
+        SID:
+          resolvedSID,
+
+        DID:
+          resolvedDID,
+
+        RID:
+          resolvedRID,
+
+        BID:
+          resolvedBID,
+
+
+        // ===================================================
+        // OFFICIAL VILLAGE
+        // ===================================================
+
+        village:
+          officialVillageName,
+
+        village_code:
+          officialVillageCode,
+
+        village_lgd:
+          officialVillageCode,
+
+        village_district:
+          officialVillageDistrict,
+
+        village_subdistrict:
+          officialVillageSubdistrict,
+
+        village_pincode:
+          officialVillagePincode,
+
+
+        // ===================================================
+        // NEAREST LOCATION
+        // ===================================================
+
+        nearest_village:
+          nearestVillageName,
+
+        nearest_location:
+          nearestVillageName,
+
+        nearest_village_distance_m:
+          nearestVillageDistance,
+
+        nearest_location_distance_m:
+          nearestVillageDistance,
+
+        nearest_village_distance_km:
+          nearestVillageDistanceKm,
+
+        nearest_village_risk:
+          nearestVillageRisk,
+
+        nearest_location_risk:
+          nearestVillageRisk,
+
+        nearest_village_conflict_history:
+          nearestVillageConflictHistory,
+
+        nearest_location_conflict_history:
+          nearestVillageConflictHistory,
+
+        nearest_location_phone:
+          nearestVillagePhone,
+
+        nearest_location_whatsapp:
+          nearestVillageWhatsapp,
+
+
+        resolved_location:
+          resolvedLocationText
+
+      };
+    }
 
 
     // =====================================================
@@ -54830,7 +54920,7 @@ async function submitSightingForm(event){
 
     const fileInput =
       document.getElementById(
-        "f-photo"
+        observationType === "WILDLIFE" ? "w-photo" : "f-photo"
       );
 
 
@@ -54990,8 +55080,10 @@ async function submitSightingForm(event){
 
         try{
 
+          const backendMethod = observationType === "WILDLIFE" ? "saveWildlifeSighting" : "saveElephantSighting";
+
           await callBackend(
-            "saveElephantSighting",
+            backendMethod,
             finalPayload
           );
 
@@ -55027,6 +55119,12 @@ async function submitSightingForm(event){
 
 
           if(
+            observationType === "WILDLIFE" &&
+            typeof closeWildlifeForm === "function"
+          ){
+            closeWildlifeForm();
+          }
+          else if(
             typeof closeSightingForm ===
             "function"
           ){
@@ -55038,7 +55136,7 @@ async function submitSightingForm(event){
 
           const form =
             document.getElementById(
-              "elephantForm"
+              observationType === "WILDLIFE" ? "wildlifeForm" : "elephantForm"
             );
 
 
