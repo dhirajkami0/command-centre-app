@@ -53058,7 +53058,10 @@ const compartment =
 
 }
 async function submitSightingForm(event){
-// ======================================================
+
+  if(event){
+    event.preventDefault();
+  }
 
   setSubmitLoading(true);
 
@@ -54639,15 +54642,8 @@ async function submitSightingForm(event){
     // PAYLOAD
     // =====================================================
 
-let payload = {};
+    const payload = {
 
-const observationType =
-window.currentObservationType ||
-"ELEPHANT";
-
-if(observationType==="ELEPHANT"){
-
-payload = {
       sighting_id:
         sightingID,
 
@@ -54825,9 +54821,8 @@ payload = {
       resolved_location:
         resolvedLocationText
 
-};
+    };
 
-}
 
     // =====================================================
     // FILE
@@ -68077,429 +68072,70 @@ openSightingForm();
 // WILDLIFE FORM
 // ========================================================
 
-// ======================================================
-// 🐅 OPEN WILDLIFE FORM
-// ======================================================
+function openWildlifeForm(){
 
-async function openWildlifeForm(){
+closeSightingSelector();
 
-    closeSightingSelector();
+document
+.getElementById(
+"wildlife-form-modal"
+)
+.style.display="block";
 
-    document
-        .getElementById(
-            "wildlife-form-modal"
-        )
-        .style.display = "block";
+// ------------------------------------------
+// COPY VALUES FROM ELEPHANT FORM
+// ------------------------------------------
 
-    // ==================================================
-    // CURRENT PROFILE
-    // ==================================================
+document.getElementById("w-beat").innerHTML =
+document.getElementById("f-beat").innerHTML;
 
-    const user =
+document.getElementById("w-block").innerHTML =
+document.getElementById("f-block").innerHTML;
 
-        window.userProfile || {};
+document.getElementById("w-team").value =
+document.getElementById("f-team").value;
 
-    // ==================================================
-    // CURRENT GPS
-    // ==================================================
+document.getElementById("w-location").value =
+document.getElementById("f-location").value;
 
-    const gps =
+document.getElementById("w-lat").value =
+document.getElementById("f-lat").value;
 
-        window.latestGPS ||
+document.getElementById("w-lon").value =
+document.getElementById("f-lon").value;
 
-        window.latestGps ||
-
-        {};
-
-    // ==================================================
-    // DATE & TIME
-    // ==================================================
-
-    const now = new Date();
-
-    const hh =
-
-        String(
-            now.getHours()
-        ).padStart(2,"0");
-
-    const mm =
-
-        String(
-            now.getMinutes()
-        ).padStart(2,"0");
-
-    // ==================================================
-    // COPY DROPDOWNS
-    // ==================================================
-
-    document.getElementById("w-beat").innerHTML =
-
-        document.getElementById("f-beat").innerHTML;
-
-    document.getElementById("w-block").innerHTML =
-
-        document.getElementById("f-block").innerHTML;
-
-    document.getElementById("w-compt-list").innerHTML =
-
-        document.getElementById("f-compt-list").innerHTML;
-
-    // ==================================================
-    // AUTO SELECT USER'S BEAT
-    // ==================================================
-
-    if(user.beat){
-
-        document.getElementById("w-beat").value =
-
-            user.beat;
-
-    }
-
-    // ==================================================
-    // UPDATE BLOCK / COMPARTMENT
-    // ==================================================
-
-    updateWildlifeCompt();
-
-    // ==================================================
-    // TEAM
-    // ==================================================
-
-    window.wildlifeReporter = {
-
-        leader :
-
-            user.rawName ||
-
-            user.name ||
-
-            "",
-
-        phone :
-
-            user.phone ||
-
-            "",
-
-        designation :
-
-            user.role ||
-
-            "",
-
-        beat :
-
-            user.beat ||
-
-            "",
-
-        range :
-
-            user.range ||
-
-            "",
-
-        division :
-
-            user.division ||
-
-            "",
-
-        circle :
-
-            user.circle ||
-
-            ""
-
-    };
-
-    // ==================================================
-    // GPS
-    // ==================================================
-
-    document.getElementById("w-lat").value =
-
-        gps.lat ||
-
-        gps.latitude ||
-
-        "";
-
-    document.getElementById("w-lon").value =
-
-        gps.lng ||
-
-        gps.lon ||
-
-        gps.longitude ||
-
-        "";
-
-    // ==================================================
-    // TIME
-    // ==================================================
-
-    window.wildlifeDate = now;
-
-    window.wildlifeTime =
-
-        hh + ":" + mm;
-
-    // ==================================================
-    // RESET
-    // ==================================================
-
-    document.getElementById("w-count").value = 1;
-
-    document.getElementById("w-animal").selectedIndex = 0;
-
-    document.getElementById("w-age").selectedIndex = 0;
-
-    document.getElementById("w-sex").selectedIndex = 0;
-
-    document.getElementById("w-behaviour").selectedIndex = 0;
-
-    document.getElementById("w-dir").selectedIndex = 0;
-
-    document.getElementById("w-remarks").value = "";
-
-    document.getElementById("w-photo").value = "";
-
-    if(document.getElementById("w-video"))
-
-        document.getElementById("w-video").value="";
-
-    if(document.getElementById("w-audio"))
-
-        document.getElementById("w-audio").value="";
-
-    // ==================================================
-    // RESET FLAGS
-    // ==================================================
-
-    [
-
-        "w-injured",
-
-        "w-dead",
-
-        "w-conflict",
-
-        "w-rescue",
-
-        "w-vet"
-
-    ]
-
-    .forEach(id=>{
-
-        const el =
-
-            document.getElementById(id);
-
-        if(el)
-
-            el.checked=false;
-
-    });
+document.getElementById("w-time").value =
+document.getElementById("f-time").value;
 
 }
 
-function updateWildlifeCompt(){
+function closeWildlifeForm(){
 
-    updateCompt();
-
-    document.getElementById("w-compt-list").innerHTML =
-
-        document.getElementById("f-compt-list").innerHTML;
-
-}
-    function closeWildlifeForm(){
-
-    document
-        .getElementById(
-            "wildlife-form-modal"
-        )
-        .style.display="none";
+document
+.getElementById(
+"wildlife-form-modal"
+)
+.style.display="none";
 
 }
-// ======================================================
-// WILDLIFE SUBMIT
-// ======================================================
 
-async function submitWildlifeForm(){
+          function updateWildlifeCompt(){
 
-    try{
+updateCompt();
 
-        // ------------------------------------------
-        // Tell Elephant code this is Wildlife
-        // ------------------------------------------
-
-        window.currentObservationType =
-
-            "WILDLIFE";
-
-        // ------------------------------------------
-        // Copy Wildlife form values into
-        // Elephant controls temporarily
-        // ------------------------------------------
-
-        document.getElementById("f-beat").value =
-            document.getElementById("w-beat").value;
-
-        document.getElementById("f-block").value =
-            document.getElementById("w-block").value;
-
-        document.getElementById("f-compt").value =
-            document.getElementById("w-compt").value;
-
-        // ------------------------------------------
-        // GPS
-        // ------------------------------------------
-
-        document.getElementById("f-lat").value =
-            document.getElementById("w-lat").value;
-
-        document.getElementById("f-lon").value =
-            document.getElementById("w-lon").value;
-
-        // ------------------------------------------
-        // Call existing submission
-        // ------------------------------------------
-
-        await submitSightingForm();
-
-    }
-
-    finally{
-
-        window.currentObservationType =
-
-            "ELEPHANT";
-
-    }
+document
+.getElementById(
+"w-compt-list"
+)
+.innerHTML =
+document
+.getElementById(
+"f-compt-list"
+)
+.innerHTML;
 
 }
-    
-    // ==========================================================
-// 🐅 SUBMIT WILDLIFE SIGHTING
-// ==========================================================
-
-async function submitWildlifeForm(){
-
-try{
-
-    // ============================================
-    // LOADING
-    // ============================================
-
-    const btn =
-
-        document.getElementById(
-            "wildlifeSubmitBtn"
-        );
-
-    btn.disabled = true;
-
-    btn.innerHTML = "Saving...";
-
-    // ============================================
-    // USER
-    // ============================================
-
-    const user =
-
-        window.userProfile || {};
-
-    // ============================================
-    // GPS
-    // ============================================
-
-    const gps =
-
-        window.latestGPS ||
-
-        window.latestGps ||
-
-        {};
-
-    // ============================================
-    // FORM VALUES
-    // ============================================
-
-    const animal =
-
-        document.getElementById(
-            "w-animal"
-        ).value;
-
-    const otherAnimal =
-
-        document.getElementById(
-            "w-otherAnimal"
-        ).value.trim();
-
-    const age =
-
-        document.getElementById(
-            "w-age"
-        ).value;
-
-    const sex =
-
-        document.getElementById(
-            "w-sex"
-        ).value;
-
-    const count =
-
-        Number(
-
-            document.getElementById(
-                "w-count"
-            ).value
-
-        ) || 1;
-
-    const beat =
-
-        document.getElementById(
-            "w-beat"
-        ).value;
-
-    const block =
-
-        document.getElementById(
-            "w-block"
-        ).value;
-
-    const compartment =
-
-        document.getElementById(
-            "w-compt"
-        ).value;
-
-    const behaviour =
-
-        document.getElementById(
-            "w-behaviour"
-        ).value;
-
-    const direction =
-
-        document.getElementById(
-            "w-dir"
-        ).value;
-
-    const remarks =
-
-        document.getElementById(
-            "w-remarks"
-        ).value.trim();
-
-  /* 3. Open Form + GPS */
+    /* 3. Open Form + GPS */
        function openSightingForm(){
 
   console.group("🐘 openSightingForm START");
@@ -75921,183 +75557,14 @@ background:none;
 
 <form id="wildlifeForm">
 
-<!-- ====================================================== -->
-<!-- AUTO FIELDS -->
-<!-- ====================================================== -->
-
 <input type="hidden" id="w-lat">
 <input type="hidden" id="w-lon">
-
-<!-- ====================================================== -->
-<!-- ANIMAL INFORMATION -->
-<!-- ====================================================== -->
-
-<div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-margin-bottom:12px;
-border-left:5px solid #1565c0;
-">
-
-<h4 style="
-margin:0 0 10px 0;
-color:#1565c0;
-">
-
-🐅 Wildlife Information
-
-</h4>
-
-<label><b>Animal *</b></label>
-
-<select
-id="w-animal"
-required
-onchange="toggleOtherAnimal()">
-
-<option value="">
--- Select Animal --
-</option>
-
-<option>Tiger</option>
-<option>Leopard</option>
-<option>Clouded Leopard</option>
-<option>Fishing Cat</option>
-<option>Leopard Cat</option>
-<option>Jungle Cat</option>
-<option>Rhino</option>
-<option>Gaur</option>
-<option>Wild Buffalo</option>
-<option>Sambar Deer</option>
-<option>Spotted Deer</option>
-<option>Hog Deer</option>
-<option>Barking Deer</option>
-<option>Wild Boar</option>
-<option>Himalayan Black Bear</option>
-<option>Sloth Bear</option>
-<option>Pangolin</option>
-<option>Otter</option>
-<option>Monkey</option>
-<option>Langur</option>
-<option>Python</option>
-<option>King Cobra</option>
-<option>Monitor Lizard</option>
-<option>Peacock</option>
-<option>Hornbill</option>
-<option>Eagle</option>
-<option>Owl</option>
-<option>Turtle</option>
-<option>Crocodile</option>
-
-<option value="Other">
-Other
-</option>
-
-</select>
-
-<div
-id="otherAnimalDiv"
-style="display:none;">
-
-<label>
-<b>Animal Name</b>
-</label>
-
-<input
-type="text"
-id="w-otherAnimal"
-placeholder="Enter Animal Name">
-
-</div>
-
-<div style="
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-margin-top:12px;
-">
-
-<div>
-
-<label>
-<b>Age Class</b>
-</label>
-
-<select id="w-age">
-
-<option>Unknown</option>
-<option>Adult</option>
-<option>Sub Adult</option>
-<option>Juvenile</option>
-<option>Infant / Calf</option>
-
-</select>
-
-</div>
-
-<div>
-
-<label>
-<b>Sex</b>
-</label>
-
-<select id="w-sex">
-
-<option>Unknown</option>
-<option>Male</option>
-<option>Female</option>
-<option>Mixed Group</option>
-
-</select>
-
-</div>
-
-</div>
-
-<label style="
-margin-top:12px;
-display:block;">
-
-<b>Number Seen</b>
-
-</label>
-
-<input
-type="number"
-id="w-count"
-min="1"
-value="1">
-
-</div>
-
-<!-- ====================================================== -->
-<!-- LOCATION -->
-<!-- ====================================================== -->
-
-<div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-margin-bottom:12px;
-border-left:5px solid #2e7d32;
-">
-
-<h4 style="
-margin:0;
-margin-bottom:10px;
-color:#2e7d32;
-">
-
-📍 Forest Location
-
-</h4>
 
 <!-- ====================================== -->
 <!-- BEAT -->
 <!-- ====================================== -->
 
-<label><b>Beat <span style="color:red">*</span></b></label>
+<label><b>Beat</b></label>
 
 <select
 id="w-beat"
@@ -76116,52 +75583,38 @@ border-radius:6px;
 
 </select>
 
-<label style="margin-top:10px;display:block;">
+<!-- ====================================== -->
+<!-- BLOCK -->
+<!-- ====================================== -->
 
-<b>Forest Block <span style="color:red">*</span></b>
-
-</label>
+<label><b>Forest Block</b></label>
 
 <select
 id="w-block"
 required
-onchange="updateWildlifeCompt()"
-style="
-width:100%;
-padding:8px;
-border:1px solid #ccc;
-border-radius:6px;
-">
+onchange="updateWildlifeCompt()">
 
 <option value="">
--- Select Forest Block --
+-- Select Block --
 </option>
 
 </select>
 
-<label style="margin-top:10px;display:block;">
+<!-- ====================================== -->
+<!-- COMPARTMENT -->
+<!-- ====================================== -->
 
-<b>Compartment <span style="color:red">*</span></b>
-
-</label>
+<label><b>Compartment</b></label>
 
 <input
 id="w-compt"
 list="w-compt-list"
-placeholder="Search / Select Compartment"
 required
-style="
-width:100%;
-padding:8px;
-border:1px solid #ccc;
-border-radius:6px;
-">
+placeholder="Select Compartment">
 
 <datalist id="w-compt-list">
 
 </datalist>
-
-</div>
 
 <!-- ====================================== -->
 <!-- TIME -->
@@ -76314,229 +75767,56 @@ min="1">
 
 </select>
 
-<!-- ====================================================== -->
-<!-- EVIDENCE -->
-<!-- ====================================================== -->
+<!-- ====================================== -->
+<!-- TEAM -->
+<!-- ====================================== -->
 
-<div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-margin-bottom:12px;
-border-left:5px solid #8e24aa;
-">
+<label><b>Team Leader</b></label>
 
-<h4 style="
-margin:0 0 10px 0;
-color:#8e24aa;
-">
+<input
+id="w-team"
+readonly>
 
-📷 Evidence
+<!-- ====================================== -->
+<!-- LOCATION -->
+<!-- ====================================== -->
 
-</h4>
+<label><b>Location</b></label>
+
+<input
+id="w-location"
+readonly>
+
+<!-- ====================================== -->
+<!-- PHOTO -->
+<!-- ====================================== -->
 
 <label><b>Photo</b></label>
 
 <input
 type="file"
-id="w-photo"
-accept="image/*">
+id="w-photo">
 
-<br><br>
-
-<label><b>Video (Optional)</b></label>
-
-<input
-type="file"
-id="w-video"
-accept="video/*">
-
-<br><br>
-
-<label><b>Audio (Optional)</b></label>
-
-<input
-type="file"
-id="w-audio"
-accept="audio/*">
-
-</div>
-
-<!-- ====================================================== -->
+<!-- ====================================== -->
 <!-- REMARKS -->
-<!-- ====================================================== -->
+<!-- ====================================== -->
 
-<div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-margin-bottom:12px;
-border-left:5px solid #546e7a;
-">
-
-<h4 style="
-margin:0 0 10px 0;
-color:#546e7a;
-">
-
-📝 Remarks
-
-</h4>
+<label><b>Remarks</b></label>
 
 <textarea
 id="w-remarks"
-rows="4"
-style="
-width:100%;
-resize:vertical;
-"
-placeholder="Wildlife movement, crossing road, feeding, etc."></textarea>
+rows="3"></textarea>
 
-</div>
-
-<!-- ====================================================== -->
-<!-- SPECIAL FLAGS -->
-<!-- ====================================================== -->
-
-<div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-margin-bottom:12px;
-border-left:5px solid #d32f2f;
-">
-
-<h4 style="
-margin:0 0 10px 0;
-color:#d32f2f;
-">
-
-🚨 Special Flags
-
-</h4>
-
-<label>
-
-<input
-type="checkbox"
-id="w-injured">
-
-Injured Animal
-
-</label>
-
-<br>
-
-<label>
-
-<input
-type="checkbox"
-id="w-dead">
-
-Dead Animal
-
-</label>
-
-<br>
-
-<label>
-
-<input
-type="checkbox"
-id="w-conflict">
-
-Conflict Animal
-
-</label>
-
-<br>
-
-<label>
-
-<input
-type="checkbox"
-id="w-rescue">
-
-Rescue Required
-
-</label>
-
-<br>
-
-<label>
-
-<input
-type="checkbox"
-id="w-vet">
-
-Veterinary Assistance Required
-
-</label>
-
-</div>
-
-<!-- ====================================================== -->
-<!-- GPS STATUS -->
-<!-- ====================================================== -->
-
-<div style="
-background:#e8f5e9;
-padding:12px;
-border-radius:10px;
-margin-bottom:15px;
-text-align:center;
-font-size:13px;
-">
-
-📍 GPS will be captured automatically during submission.
-
-</div>
-
-<!-- ====================================================== -->
-<!-- BUTTONS -->
-<!-- ====================================================== -->
-
-<div style="
-display:flex;
-gap:10px;
-">
-
-<button
-type="button"
-onclick="closeWildlifeForm()"
-style="
-flex:1;
-background:#757575;
-color:white;
-padding:12px;
-border:none;
-border-radius:8px;
-font-size:16px;
-">
-
-❌ Cancel
-
-</button>
+<br><br>
 
 <button
 type="button"
 id="wildlifeSubmitBtn"
-onclick="submitWildlifeForm()"
-style="
-flex:1;
-background:#1565c0;
-color:white;
-padding:12px;
-border:none;
-border-radius:8px;
-font-size:16px;
-">
+onclick="submitWildlifeForm()">
 
-📤 Submit
+📤 SUBMIT
 
 </button>
-
-</div>
 
 </form>
 
