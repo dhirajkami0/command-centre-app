@@ -23724,7 +23724,24 @@ Number(
   );
 
 }
-   function addMonthlyStatusCard() {
+function addMonthlyStatusCard() {
+
+  // =========================================================
+  // DO NOT CREATE CARD FOR VILLAGER
+  // =========================================================
+
+  const role =
+    String(
+      window.userProfile?.role || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (role === "VILLAGER") {
+
+    return;
+
+  }
 
   const control =
     L.control({
@@ -23773,23 +23790,23 @@ Number(
             Live Duty Team
           </span>
 
-        <span
-  id="msLiveStaff"
-  onclick="
-  if(typeof showMonthlyLiveStaff==='function'){
-    showMonthlyLiveStaff();
-  }
-"
-  title="View Live Duty Team"
-  style="
-    cursor:pointer;
-    text-decoration:underline;
-    color:#7fdfff;
-    font-weight:700;
-  "
->
-  0
-</span>
+          <span
+            id="msLiveStaff"
+            onclick="
+              if(typeof showMonthlyLiveStaff==='function'){
+                showMonthlyLiveStaff();
+              }
+            "
+            title="View Live Duty Team"
+            style="
+              cursor:pointer;
+              text-decoration:underline;
+              color:#7fdfff;
+              font-weight:700;
+            "
+          >
+            0
+          </span>
 
         </div>
 
@@ -23824,23 +23841,23 @@ Number(
             Patrol Activity
           </span>
 
-        <span
-  id="msSessions"
- onclick="
-  if(typeof showCompartmentVisitBreakdown==='function'){
-    showCompartmentVisitBreakdown();
-  }
-"
-  title="View Compartment Visit Breakdown"
-  style="
-    cursor:pointer;
-    text-decoration:underline;
-    color:#7fdfff;
-    font-weight:700;
-  "
->
-  0
-</span>
+          <span
+            id="msSessions"
+            onclick="
+              if(typeof showCompartmentVisitBreakdown==='function'){
+                showCompartmentVisitBreakdown();
+              }
+            "
+            title="View Compartment Visit Breakdown"
+            style="
+              cursor:pointer;
+              text-decoration:underline;
+              color:#7fdfff;
+              font-weight:700;
+            "
+          >
+            0
+          </span>
 
         </div>
 
@@ -23868,12 +23885,14 @@ Number(
     );
 
     return div;
+
   };
 
   control.addTo(map);
 
   window.monthlyStatusControl =
     control;
+
 }
 
 function getLiveStaffForCurrentPolygon(){
