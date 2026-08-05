@@ -68068,7 +68068,73 @@ closeSightingSelector();
 openSightingForm();
 
 }
-    
+    // ========================================================
+// WILDLIFE FORM
+// ========================================================
+
+function openWildlifeForm(){
+
+closeSightingSelector();
+
+document
+.getElementById(
+"wildlife-form-modal"
+)
+.style.display="block";
+
+// ------------------------------------------
+// COPY VALUES FROM ELEPHANT FORM
+// ------------------------------------------
+
+document.getElementById("w-beat").innerHTML =
+document.getElementById("f-beat").innerHTML;
+
+document.getElementById("w-block").innerHTML =
+document.getElementById("f-block").innerHTML;
+
+document.getElementById("w-team").value =
+document.getElementById("f-team").value;
+
+document.getElementById("w-location").value =
+document.getElementById("f-location").value;
+
+document.getElementById("w-lat").value =
+document.getElementById("f-lat").value;
+
+document.getElementById("w-lon").value =
+document.getElementById("f-lon").value;
+
+document.getElementById("w-time").value =
+document.getElementById("f-time").value;
+
+}
+
+function closeWildlifeForm(){
+
+document
+.getElementById(
+"wildlife-form-modal"
+)
+.style.display="none";
+
+}
+
+          function updateWildlifeCompt(){
+
+updateCompt();
+
+document
+.getElementById(
+"w-compt-list"
+)
+.innerHTML =
+document
+.getElementById(
+"f-compt-list"
+)
+.innerHTML;
+
+}
     /* 3. Open Form + GPS */
        function openSightingForm(){
 
@@ -75438,7 +75504,325 @@ Cancel
 </div>
 
 </div>
-  
+  <!-- ========================================================= -->
+<!-- 🐅 WILDLIFE SIGHTING MODAL -->
+<!-- ========================================================= -->
+
+<div id="wildlife-form-modal"
+style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.9);
+z-index:5100;
+overflow-y:auto;
+padding:10px;
+">
+
+<div style="
+background:#f4f4f4;
+border-radius:15px;
+padding:20px;
+max-width:480px;
+margin:10px auto;
+font-family:'Segoe UI';
+border-top:8px solid #1565c0;
+">
+
+<div style="
+display:flex;
+justify-content:space-between;
+">
+
+<h3 style="margin:0;color:#1565c0;">
+🐅 Wildlife Sighting Report
+</h3>
+
+<button
+onclick="closeWildlifeForm()"
+style="
+font-size:24px;
+border:none;
+background:none;
+">
+&times;
+</button>
+
+</div>
+
+<hr>
+
+<form id="wildlifeForm">
+
+<input type="hidden" id="w-lat">
+<input type="hidden" id="w-lon">
+
+<!-- ====================================== -->
+<!-- BEAT -->
+<!-- ====================================== -->
+
+<label><b>Beat</b></label>
+
+<select
+id="w-beat"
+required
+onchange="updateWildlifeCompt()"
+style="
+width:100%;
+padding:8px;
+border:1px solid #ccc;
+border-radius:6px;
+">
+
+<option value="">
+-- Select Beat --
+</option>
+
+</select>
+
+<!-- ====================================== -->
+<!-- BLOCK -->
+<!-- ====================================== -->
+
+<label><b>Forest Block</b></label>
+
+<select
+id="w-block"
+required
+onchange="updateWildlifeCompt()">
+
+<option value="">
+-- Select Block --
+</option>
+
+</select>
+
+<!-- ====================================== -->
+<!-- COMPARTMENT -->
+<!-- ====================================== -->
+
+<label><b>Compartment</b></label>
+
+<input
+id="w-compt"
+list="w-compt-list"
+required
+placeholder="Select Compartment">
+
+<datalist id="w-compt-list">
+
+</datalist>
+
+<!-- ====================================== -->
+<!-- TIME -->
+<!-- ====================================== -->
+
+<label><b>Time</b></label>
+
+<input
+type="time"
+id="w-time"
+required>
+
+<!-- ====================================== -->
+<!-- ANIMAL -->
+<!-- ====================================== -->
+
+<label><b>Animal</b></label>
+
+<select
+id="w-animal"
+required>
+
+<option value="">
+Select Animal
+</option>
+
+<option>Tiger</option>
+
+<option>Leopard</option>
+
+<option>Clouded Leopard</option>
+
+<option>Fishing Cat</option>
+
+<option>Jungle Cat</option>
+
+<option>Leopard Cat</option>
+
+<option>Rhino</option>
+
+<option>Gaur</option>
+
+<option>Wild Buffalo</option>
+
+<option>Sambar Deer</option>
+
+<option>Spotted Deer</option>
+
+<option>Hog Deer</option>
+
+<option>Barking Deer</option>
+
+<option>Wild Boar</option>
+
+<option>Himalayan Black Bear</option>
+
+<option>Sloth Bear</option>
+
+<option>Python</option>
+
+<option>King Cobra</option>
+
+<option>Monitor Lizard</option>
+
+<option>Peacock</option>
+
+<option>Hornbill</option>
+
+<option>Vulture</option>
+
+<option>Monkey</option>
+
+<option>Langur</option>
+
+<option>Pangolin</option>
+
+<option>Otter</option>
+
+<option>Other</option>
+
+</select>
+
+<!-- ====================================== -->
+<!-- COUNT -->
+<!-- ====================================== -->
+
+<label><b>No. Seen</b></label>
+
+<input
+type="number"
+id="w-count"
+value="1"
+min="1">
+
+<!-- ====================================== -->
+<!-- BEHAVIOUR -->
+<!-- ====================================== -->
+
+<label><b>Behaviour</b></label>
+
+<select id="w-behaviour">
+
+<option>Moving</option>
+
+<option>Resting</option>
+
+<option>Feeding</option>
+
+<option>Drinking</option>
+
+<option>Crossing Road</option>
+
+<option>Calling</option>
+
+<option>Inside Forest</option>
+
+<option>Near Waterbody</option>
+
+<option>Injured</option>
+
+<option>Dead</option>
+
+<option>Other</option>
+
+</select>
+
+<!-- ====================================== -->
+<!-- DIRECTION -->
+<!-- ====================================== -->
+
+<label><b>Direction</b></label>
+
+<select id="w-dir">
+
+<option value="N">North</option>
+
+<option value="NE">North-East</option>
+
+<option value="E">East</option>
+
+<option value="SE">South-East</option>
+
+<option value="S">South</option>
+
+<option value="SW">South-West</option>
+
+<option value="W">West</option>
+
+<option value="NW">North-West</option>
+
+</select>
+
+<!-- ====================================== -->
+<!-- TEAM -->
+<!-- ====================================== -->
+
+<label><b>Team Leader</b></label>
+
+<input
+id="w-team"
+readonly>
+
+<!-- ====================================== -->
+<!-- LOCATION -->
+<!-- ====================================== -->
+
+<label><b>Location</b></label>
+
+<input
+id="w-location"
+readonly>
+
+<!-- ====================================== -->
+<!-- PHOTO -->
+<!-- ====================================== -->
+
+<label><b>Photo</b></label>
+
+<input
+type="file"
+id="w-photo">
+
+<!-- ====================================== -->
+<!-- REMARKS -->
+<!-- ====================================== -->
+
+<label><b>Remarks</b></label>
+
+<textarea
+id="w-remarks"
+rows="3"></textarea>
+
+<br><br>
+
+<button
+type="button"
+id="wildlifeSubmitBtn"
+onclick="submitWildlifeForm()">
+
+📤 SUBMIT
+
+</button>
+
+</form>
+
+</div>
+
+</div>
   
   <!-- 🔥 DUTY MODAL -->
   <div id="duty-modal" style="
