@@ -69218,58 +69218,241 @@ document
 // WILDLIFE SUBMIT
 // ======================================================
 
+// =====================================================
+// 🐅 SUBMIT WILDLIFE
+// =====================================================
+
 async function submitWildlifeForm(){
 
     try{
 
-        // ------------------------------------------
-        // Tell Elephant code this is Wildlife
-        // ------------------------------------------
+        setSubmitLoading(true);
 
-        window.currentObservationType =
+        // =================================================
+        // OBSERVATION TYPE
+        // =================================================
 
-            "WILDLIFE";
+        window.currentObservationType = "WILDLIFE";
 
-        // ------------------------------------------
-        // Copy Wildlife form values into
-        // Elephant controls temporarily
-        // ------------------------------------------
-
-        document.getElementById("f-beat").value =
-            document.getElementById("w-beat").value;
-
-        document.getElementById("f-block").value =
-            document.getElementById("w-block").value;
-
-        document.getElementById("f-compt").value =
-            document.getElementById("w-compt").value;
-
-        // ------------------------------------------
+        // =================================================
         // GPS
-        // ------------------------------------------
+        // =================================================
 
-        document.getElementById("f-lat").value =
-            document.getElementById("w-lat").value;
+        const gps =
+            window.latestGPS ||
+            window.latestGps ||
+            {};
 
-        document.getElementById("f-lon").value =
-            document.getElementById("w-lon").value;
+        const lat =
+            Number(
+                gps.lat ??
+                gps.latitude ??
+                0
+            );
 
-        // ------------------------------------------
-        // Call existing submission
-        // ------------------------------------------
+        const lon =
+            Number(
+                gps.lng ??
+                gps.lon ??
+                gps.longitude ??
+                0
+            );
 
-        await submitSightingForm();
+        if(!lat || !lon){
+
+            alert("GPS not available.");
+
+            setSubmitLoading(false);
+
+            return;
+
+        }
+
+        // =================================================
+        // ANIMAL
+        // =================================================
+
+        let animal =
+            document.getElementById("w-animal").value;
+
+        if(animal==="Other"){
+
+            animal =
+                document
+                .getElementById("w-otherAnimal")
+                .value
+                .trim();
+
+        }
+
+        // =================================================
+        // PAYLOAD
+        // =================================================
+
+        const payload = {
+
+            observation_type : "WILDLIFE",
+
+            animal : animal,
+
+            count :
+                Number(
+                    document.getElementById("w-count").value
+                ),
+
+            sex :
+                document.getElementById("w-sex").value,
+
+            age :
+                document.getElementById("w-age").value,
+
+            behaviour :
+                document.getElementById("w-behaviour").value,
+
+            direction :
+                document.getElementById("w-dir").value,
+
+            remarks :
+                document.getElementById("w-remarks").value,
+
+            injured :
+                document.getElementById("w-injured").checked,
+
+            dead :
+                document.getElementById("w-dead").checked,
+
+            conflict :
+                document.getElementById("w-conflict").checked,
+
+            rescue :
+                document.getElementById("w-rescue").checked,
+
+            vet :
+                document.getElementById("w-vet").checked,
+
+            leader :
+                window.userProfile?.rawName ||
+
+                window.userProfile?.name ||
+
+                "",
+
+            phone :
+                window.userProfile?.phone ||
+
+                "",
+
+            designation :
+                window.userProfile?.designation ||
+
+                "",
+
+            staff :
+                window.userProfile?.cleanName ||
+
+                "",
+
+            lat : lat,
+
+            lon : lon,
+
+            location :
+                lat + "," + lon
+
+        };
+
+        // =================================================
+        // PHOTO
+        // =================================================
+
+        const file =
+
+            document
+            .getElementById("w-photo")
+            .files[0];
+
+        if(file){
+
+            const reader =
+
+                new FileReader();
+
+            reader.onloadend =
+
+                async function(){
+
+                    payload.photo =
+                        reader.result;
+
+                    await saveWildlifePayload(
+                        payload
+                    );
+
+                };
+
+            reader.readAsDataURL(file);
+
+        }
+
+        else{
+
+            payload.photo = "";
+
+            await saveWildlifePayload(
+                payload
+            );
+
+        }
 
     }
 
-    finally{
+    catch(err){
 
-        window.currentObservationType =
+        console.error(err);
 
-            "ELEPHANT";
+        alert(err.message);
+
+        setSubmitLoading(false);
 
     }
 
+}
+
+    async function saveWildlifePayload(payload){
+
+    const firestoreResult =
+
+        await saveSightingToFirestore(payload);
+
+    payload.sighting_id =
+        firestoreResult.sightingId;
+
+    payload.firestore_id =
+        firestoreResult.firestoreId;
+
+    payload.financial_year =
+        firestoreResult.financialYear;
+
+    payload.range_sighting_no =
+        firestoreResult.rangeCount;
+
+    payload.division_sighting_no =
+        firestoreResult.divisionCount;
+
+    await callBackend(
+        "saveWildlifeSighting",
+        payload
+    );
+
+    setSubmitLoading(false);
+
+    closeWildlifeForm();
+
+    document
+        .getElementById("wildlifeForm")
+        .reset();
+
+    alert("✅ Wildlife sighting submitted.");
 }
           function updateWildlifeCompt(){
 
