@@ -69246,7 +69246,843 @@ document
     // ======================================================
 // WILDLIFE SUBMIT
 // ======================================================
+// =========================================================
+// GIS ENTITIES REFACTORED FUNCTIONS
+// =========================================================
 
+function findCompartmentAtPoint(
+    lat,
+    lon
+) {
+
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
+
+
+    if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ) {
+
+        return null;
+
+    }
+
+
+    if (
+        !window.turf ||
+        typeof window.turf.booleanPointInPolygon !==
+            "function"
+    ) {
+
+        console.warn(
+            "⚠ Turf unavailable for compartment lookup"
+        );
+
+        return null;
+
+    }
+
+
+    const point =
+        window.turf.point([
+            lon,
+            lat
+        ]);
+
+
+    const features =
+        window.allCompartmentFeatures ||
+        [];
+
+
+    for (
+        const feature of features
+    ) {
+
+        if (
+            !feature ||
+            !feature.geometry
+        ) {
+
+            continue;
+
+        }
+
+
+        try {
+
+            if (
+                window.turf.booleanPointInPolygon(
+                    point,
+                    feature
+                )
+            ) {
+
+                const p =
+                    feature.properties ||
+                    {};
+
+
+                return {
+
+                    feature:
+                        feature,
+
+                    compartment:
+                        p.compartment ||
+                        p.name ||
+                        "",
+
+                    beat:
+                        p.beat ||
+                        "",
+
+                    range:
+                        p.range ||
+                        "",
+
+                    division:
+                        p.division ||
+                        "",
+
+                    properties:
+                        p
+
+                };
+
+            }
+
+        }
+
+        catch (err) {
+
+            console.warn(
+                "Compartment polygon test failed",
+                err
+            );
+
+        }
+
+    }
+
+
+    return null;
+
+};
+
+
+// =========================================================
+// FIND VILLAGE AT GPS POINT
+// =========================================================
+
+function findVillageAtPoint(
+    lat,
+    lon
+){
+
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
+
+
+    // ========================================================
+    // VALIDATE GPS
+    // ========================================================
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+
+        return null;
+
+    }
+
+
+    // ========================================================
+    // TURF
+    // ========================================================
+
+    if(
+        !window.turf ||
+        typeof turf.booleanPointInPolygon !==
+            "function"
+    ){
+
+        return null;
+
+    }
+
+
+    // ========================================================
+    // RAW AUTHORITATIVE VILLAGE POLYGONS
+    // ========================================================
+
+    const geojson =
+        window.__villageBoundaryGeoJSON;
+
+    const features =
+        Array.isArray(
+            geojson?.features
+        )
+        ? geojson.features
+        : [];
+
+
+    if(
+        !features.length
+    ){
+
+        return null;
+
+    }
+
+
+    // ========================================================
+    // GPS → TURF POINT
+    // ========================================================
+
+    const point =
+        turf.point([
+            lon,
+            lat
+        ]);
+
+
+    // ========================================================
+    // POINT-IN-POLYGON
+    // ========================================================
+
+    for(
+        const feature
+        of features
+    ){
+
+        if(
+            !feature ||
+            !feature.geometry
+        ){
+
+            continue;
+
+        }
+
+
+        const geometryType =
+            feature.geometry.type;
+
+
+        if(
+            geometryType !== "Polygon" &&
+            geometryType !== "MultiPolygon"
+        ){
+
+            continue;
+
+        }
+
+
+        let inside =
+            false;
+
+
+        try{
+
+            inside =
+                turf.booleanPointInPolygon(
+                    point,
+                    feature
+                );
+
+        }
+        catch(err){
+
+            continue;
+
+        }
+
+
+        if(
+            !inside
+        ){
+
+            continue;
+
+        }
+
+
+        // ====================================================
+        // FOUND ACTUAL CONTAINING VILLAGE
+        // ====================================================
+
+        const p =
+            feature.properties ||
+            {};
+
+
+        const village =
+            String(
+                p.Vill_name ||
+                p.Vill_Name ||
+                p.Village_Name ||
+                p.villageName ||
+                p.village_name ||
+                p.name ||
+                ""
+            ).trim();
+
+
+        const block =
+            String(
+                p.Sub_dist ||
+                p.Block ||
+                p.block ||
+                p.blockName ||
+                p.block_name ||
+                ""
+            ).trim();
+
+
+        const district =
+            String(
+                p.District ||
+                p.district ||
+                p.districtName ||
+                ""
+            ).trim();
+
+
+        const villageCode =
+            String(
+                p.Vill_LGD ||
+                p.villageCode ||
+                p.village_code ||
+                p.LGD_CODE ||
+                ""
+            ).trim();
+
+
+        return {
+
+            type:
+                "VILLAGE",
+
+            village,
+
+            name:
+                village,
+
+            block,
+
+            district,
+
+            villageCode,
+
+            latitude:
+                lat,
+
+            longitude:
+                lon,
+
+            properties:
+                p,
+
+            feature:
+                feature
+
+        };
+
+    }
+
+
+    // ========================================================
+    // NOT INSIDE ANY VILLAGE POLYGON
+    // ========================================================
+
+    return null;
+
+};
+
+
+// =========================================================
+// FIND NEAREST VILLAGE POINT
+// =========================================================
+
+function findNearestVillagePoint(
+    lat,
+    lon
+){
+
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
+
+    if(
+
+        !Number.isFinite(lat) ||
+
+        !Number.isFinite(lon)
+
+    ){
+
+        return null;
+
+    }
+
+    // =====================================================
+    // ENSURE CACHE (NON-BLOCKING)
+    // =====================================================
+
+    if(
+
+        !Array.isArray(
+            window.__villageLocationCache
+        ) ||
+
+        !window.__villageLocationCache.length
+
+    ){
+
+        if(
+
+            !window.__VILLAGE_LOCATION_LOADING__
+
+        ){
+
+            window.__VILLAGE_LOCATION_LOADING__ = true;
+
+            Promise.resolve(
+
+                loadVillageLocations()
+
+            )
+
+            .catch(function(err){
+
+                console.error(
+
+                    "❌ loadVillageLocations failed",
+
+                    err
+
+                );
+
+            })
+
+            .finally(function(){
+
+                window.__VILLAGE_LOCATION_LOADING__ = false;
+
+            });
+
+        }
+
+        return null;
+
+    }
+
+    // =====================================================
+    // CACHE READY
+    // =====================================================
+
+    const locations =
+
+        window.__villageLocationCache;
+
+    if(
+
+        !Array.isArray(locations) ||
+
+        !locations.length
+
+    ){
+
+        return null;
+
+    }
+
+    // =====================================================
+    // ORIGIN
+    // =====================================================
+
+    const origin =
+
+        L.latLng(
+            lat,
+            lon
+        );
+
+    let nearest =
+
+        null;
+
+    let bestDistance =
+
+        Infinity;
+
+    // =====================================================
+    // SEARCH
+    // =====================================================
+
+    locations.forEach(
+
+        function(point){
+
+            const plat =
+
+                Number(
+
+                    point.lat ??
+
+                    point.location?.lat
+
+                );
+
+            const plon =
+
+                Number(
+
+                    point.lon ??
+
+                    point.location?.lon
+
+                );
+
+            if(
+
+                !Number.isFinite(plat) ||
+
+                !Number.isFinite(plon)
+
+            ){
+
+                return;
+
+            }
+
+            const distance =
+
+                origin.distanceTo(
+
+                    L.latLng(
+
+                        plat,
+
+                        plon
+
+                    )
+
+                );
+
+            if(
+
+                distance >=
+
+                bestDistance
+
+            ){
+
+                return;
+
+            }
+
+            bestDistance =
+
+                distance;
+
+            nearest = {
+
+                village :
+
+                    point.village ||
+
+                    "",
+
+                pointName :
+
+                    point.pointName ||
+
+                    point.cleanName ||
+
+                    point.village ||
+
+                    point.id ||
+
+                    "",
+
+                villageCode :
+
+                    point.villageCode ||
+
+                    "",
+
+                block :
+
+                    point.block ||
+
+                    "",
+
+                latitude :
+
+                    plat,
+
+                longitude :
+
+                    plon,
+
+                distanceMeters :
+
+                    Math.round(
+                        distance
+                    ),
+
+                raw :
+
+                    point
+
+            };
+
+        }
+
+    );
+
+    return nearest;
+
+};
+
+
+// =========================================================
+// RESOLVE COMPLETE CURRENT LOCATION (RENAMED TO RESOLVE CURRENT GIS)
+// =========================================================
+
+function resolveCurrentGIS(
+    lat,
+    lon
+){
+
+    lat =
+        Number(lat);
+
+    lon =
+        Number(lon);
+
+    if(
+
+        !Number.isFinite(lat) ||
+
+        !Number.isFinite(lon)
+
+    ){
+
+        return null;
+
+    }
+
+    // =====================================================
+    // FIND GIS
+    // =====================================================
+
+    const village =
+
+        findVillageAtPoint(
+            lat,
+            lon
+        );
+
+    const compartment =
+
+        findCompartmentAtPoint(
+            lat,
+            lon
+        );
+
+    const nearest =
+
+        findNearestVillagePoint(
+            lat,
+            lon
+        );
+
+    // =====================================================
+    // DISPLAY VARIABLES
+    // =====================================================
+
+    let displayVillage = "";
+
+    let displayNearestPoint = "";
+
+    let displayCompartment = "";
+
+    let locationText = "";
+
+    // =====================================================
+    // CASE 1
+    // INSIDE VILLAGE POLYGON
+    // =====================================================
+
+    if(
+
+        village?.village
+
+    ){
+
+        displayVillage =
+
+            village.village;
+
+        displayNearestPoint =
+
+            nearest?.pointName ||
+
+            "";
+
+        locationText =
+
+            displayVillage;
+
+    }
+
+    // =====================================================
+    // CASE 2
+    // INSIDE FOREST COMPARTMENT
+    // =====================================================
+
+    else if(
+
+        compartment?.compartment
+
+    ){
+
+        displayCompartment =
+
+            compartment.compartment;
+
+        displayNearestPoint =
+
+            nearest?.pointName ||
+
+            "";
+
+        locationText =
+
+            displayCompartment;
+
+    }
+
+    // =====================================================
+    // CASE 3
+    // OUTSIDE VILLAGE & COMPARTMENT
+    // =====================================================
+
+    else{
+
+        displayNearestPoint =
+
+            nearest?.pointName ||
+
+            "";
+
+        locationText =
+
+            displayNearestPoint ||
+
+            "Unknown Location";
+
+    }
+
+    // =====================================================
+    // RETURN
+    // =====================================================
+
+    return{
+
+        lat :
+
+            lat,
+
+        lon :
+
+            lon,
+
+        compartment :
+
+            displayCompartment,
+
+        beat :
+
+            compartment?.beat ||
+
+            "",
+
+        range :
+
+            compartment?.range ||
+
+            "",
+
+        division :
+
+            compartment?.division ||
+
+            "",
+
+        village :
+
+            displayVillage,
+
+        villageCode :
+
+            village?.villageCode ||
+
+            "",
+
+        block :
+
+            village?.block ||
+
+            "",
+
+        nearestVillage :
+
+            "",
+
+        nearestPoint :
+
+            displayNearestPoint,
+
+        distanceMeters :
+
+            nearest?.distanceMeters ??
+
+            null,
+
+        text :
+
+            locationText,
+
+        compartmentResult :
+
+            compartment,
+
+        villageResult :
+
+            village,
+
+        nearestPointResult :
+
+            nearest
+
+    };
+
+};
 // =====================================================
 // 🐅 SUBMIT WILDLIFE
 // =====================================================
