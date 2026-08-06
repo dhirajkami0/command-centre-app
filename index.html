@@ -69251,6 +69251,10 @@ document
 // 🐅 SUBMIT WILDLIFE
 // =====================================================
 
+// =====================================================
+// 🐅 SUBMIT WILDLIFE FORM
+// =====================================================
+
 async function submitWildlifeForm(){
 
     try{
@@ -69261,39 +69265,93 @@ async function submitWildlifeForm(){
         // OBSERVATION TYPE
         // =================================================
 
-        window.currentObservationType = "WILDLIFE";
+        window.currentObservationType =
+
+            "WILDLIFE";
 
         // =================================================
         // GPS
         // =================================================
 
         const gps =
+
             window.latestGPS ||
+
             window.latestGps ||
+
             {};
 
         const lat =
+
             Number(
+
                 gps.lat ??
+
                 gps.latitude ??
+
                 0
+
             );
 
         const lon =
+
             Number(
+
                 gps.lng ??
+
                 gps.lon ??
+
                 gps.longitude ??
+
                 0
+
             );
 
-        if(!lat || !lon){
+        if(
 
-            alert("GPS not available.");
+            !lat ||
 
-            setSubmitLoading(false);
+            !lon
 
-            return;
+        ){
+
+            throw new Error(
+
+                "GPS location not available."
+
+            );
+
+        }
+
+        // =================================================
+        // GIS RESOLUTION
+        // =================================================
+
+        const gis =
+
+            GISEntities.resolveCurrentLocation(
+
+                lat,
+
+                lon
+
+            );
+
+        if(
+
+            !gis ||
+
+            !gis.division ||
+
+            !gis.range
+
+        ){
+
+            throw new Error(
+
+                "Unable to resolve GIS location."
+
+            );
 
         }
 
@@ -69302,15 +69360,29 @@ async function submitWildlifeForm(){
         // =================================================
 
         let animal =
-            document.getElementById("w-animal").value;
 
-        if(animal==="Other"){
+            document
+                .getElementById(
+                    "w-animal"
+                )
+                .value;
+
+        if(
+
+            animal ===
+
+            "Other"
+
+        ){
 
             animal =
+
                 document
-                .getElementById("w-otherAnimal")
-                .value
-                .trim();
+                    .getElementById(
+                        "w-otherAnimal"
+                    )
+                    .value
+                    .trim();
 
         }
 
@@ -69320,46 +69392,120 @@ async function submitWildlifeForm(){
 
         const payload = {
 
-            observation_type : "WILDLIFE",
+            //------------------------------------------------
+            // OBSERVATION
+            //------------------------------------------------
 
-            animal : animal,
+            observation_type :
+
+                "WILDLIFE",
+
+            animal :
+
+                animal,
 
             count :
+
                 Number(
-                    document.getElementById("w-count").value
+
+                    document
+                        .getElementById(
+                            "w-count"
+                        )
+                        .value
+
                 ),
 
             sex :
-                document.getElementById("w-sex").value,
+
+                document
+                    .getElementById(
+                        "w-sex"
+                    )
+                    .value,
 
             age :
-                document.getElementById("w-age").value,
+
+                document
+                    .getElementById(
+                        "w-age"
+                    )
+                    .value,
 
             behaviour :
-                document.getElementById("w-behaviour").value,
+
+                document
+                    .getElementById(
+                        "w-behaviour"
+                    )
+                    .value,
 
             direction :
-                document.getElementById("w-dir").value,
+
+                document
+                    .getElementById(
+                        "w-dir"
+                    )
+                    .value,
 
             remarks :
-                document.getElementById("w-remarks").value,
+
+                document
+                    .getElementById(
+                        "w-remarks"
+                    )
+                    .value,
+
+            //------------------------------------------------
+            // FLAGS
+            //------------------------------------------------
 
             injured :
-                document.getElementById("w-injured").checked,
+
+                document
+                    .getElementById(
+                        "w-injured"
+                    )
+                    .checked,
 
             dead :
-                document.getElementById("w-dead").checked,
+
+                document
+                    .getElementById(
+                        "w-dead"
+                    )
+                    .checked,
 
             conflict :
-                document.getElementById("w-conflict").checked,
+
+                document
+                    .getElementById(
+                        "w-conflict"
+                    )
+                    .checked,
 
             rescue :
-                document.getElementById("w-rescue").checked,
+
+                document
+                    .getElementById(
+                        "w-rescue"
+                    )
+                    .checked,
 
             vet :
-                document.getElementById("w-vet").checked,
+
+                document
+                    .getElementById(
+                        "w-vet"
+                    )
+                    .checked,
+
+            //------------------------------------------------
+            // STAFF
+            //------------------------------------------------
 
             leader :
+
                 window.userProfile?.rawName ||
 
                 window.userProfile?.name ||
@@ -69367,26 +69513,108 @@ async function submitWildlifeForm(){
                 "",
 
             phone :
+
                 window.userProfile?.phone ||
 
                 "",
 
             designation :
+
                 window.userProfile?.designation ||
+
+                window.userProfile?.role ||
 
                 "",
 
             staff :
+
                 window.userProfile?.cleanName ||
 
                 "",
 
-            lat : lat,
+            //------------------------------------------------
+            // GPS
+            //------------------------------------------------
 
-            lon : lon,
+            lat :
+
+                lat,
+
+            lon :
+
+                lon,
 
             location :
-                lat + "," + lon
+
+                lat + "," + lon,
+
+            //------------------------------------------------
+            // GIS
+            //------------------------------------------------
+
+            gis_division :
+
+                gis.division,
+
+            gis_range :
+
+                gis.range,
+
+            gis_beat :
+
+                gis.beat,
+
+            gis_compartment :
+
+                gis.compartment,
+
+            resolved_location :
+
+                gis.text,
+
+            forest_block :
+
+                gis.compartmentResult?.forestBlock ||
+
+                gis.compartmentResult?.block ||
+
+                "",
+
+            //------------------------------------------------
+            // VILLAGE
+            //------------------------------------------------
+
+            village :
+
+                gis.village,
+
+            village_code :
+
+                gis.villageCode,
+
+            village_lgd :
+
+                gis.villageCode,
+
+            //------------------------------------------------
+            // NEAREST
+            //------------------------------------------------
+
+            nearest_location :
+
+                gis.nearestPoint,
+
+            nearest_village :
+
+                gis.nearestVillage,
+
+            nearest_location_distance_m :
+
+                gis.distanceMeters,
+
+            nearest_village_distance_m :
+
+                gis.distanceMeters
 
         };
 
@@ -69397,10 +69625,16 @@ async function submitWildlifeForm(){
         const file =
 
             document
-            .getElementById("w-photo")
-            .files[0];
+                .getElementById(
+                    "w-photo"
+                )
+                .files[0];
 
-        if(file){
+        if(
+
+            file
+
+        ){
 
             const reader =
 
@@ -69411,15 +69645,36 @@ async function submitWildlifeForm(){
                 async function(){
 
                     payload.photo =
+
                         reader.result;
 
                     await saveWildlifePayload(
+
                         payload
+
                     );
 
                 };
 
-            reader.readAsDataURL(file);
+            reader.onerror =
+
+                function(){
+
+                    payload.photo = "";
+
+                    saveWildlifePayload(
+
+                        payload
+
+                    );
+
+                };
+
+            reader.readAsDataURL(
+
+                file
+
+            );
 
         }
 
@@ -69428,7 +69683,9 @@ async function submitWildlifeForm(){
             payload.photo = "";
 
             await saveWildlifePayload(
+
                 payload
+
             );
 
         }
@@ -69437,11 +69694,23 @@ async function submitWildlifeForm(){
 
     catch(err){
 
-        console.error(err);
+        console.error(
 
-        alert(err.message);
+            err
 
-        setSubmitLoading(false);
+        );
+
+        alert(
+
+            err.message
+
+        );
+
+        setSubmitLoading(
+
+            false
+
+        );
 
     }
 
