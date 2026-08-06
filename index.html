@@ -37816,111 +37816,200 @@ const db = window.db;
 
 let currentLocation =
 {
-  type: "GPS",
+    type : "GPS",
 
-  gps:
-    `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+    gps :
+        `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
 
-  compartment: "",
-  beat: "",
-  range: "",
-  division: "",
+    compartment : "",
 
-  village: "",
-  block: "",
+    beat : "",
 
-  nearestPoint: "",
-  distanceMeters: null
+    range : "",
+
+    division : "",
+
+    village : "",
+
+    block : "",
+
+    nearestPoint : "",
+
+    distanceMeters : null
 };
 
+try{
 
-try {
+    // ==============================================
+    // PRIMARY RESOLVER
+    // ==============================================
 
-  const gis =
-    window.GreenGuardAI
-      ?.GISEntities;
+    let resolved = null;
 
+    const gis =
 
-  if(
-    gis &&
-    typeof gis.resolveCurrentLocation ===
-      "function"
-  ){
+        window.GreenGuardAI
+            ?.GISEntities;
 
-    const resolved =
-      gis.resolveCurrentLocation(
-        lat,
-        lon
-      );
+    if(
 
+        gis &&
 
-    if(resolved){
+        typeof gis.resolveCurrentLocation ===
 
-      currentLocation =
-      {
-        ...currentLocation,
+        "function"
 
-        compartment:
-          resolved.compartment || "",
+    ){
 
-        beat:
-          resolved.beat || "",
+        resolved =
 
-        range:
-          resolved.range || "",
+            gis.resolveCurrentLocation(
 
-        division:
-          resolved.division || "",
+                lat,
 
-        village:
-          resolved.village || "",
+                lon
 
-        block:
-          resolved.block || "",
-
-        nearestPoint:
-          resolved.nearestPoint || "",
-
-        distanceMeters:
-          resolved.distanceMeters ?? null
-      };
-
-
-      // ------------------------------------------
-      // FOREST HAS PRIORITY
-      // ------------------------------------------
-
-      if(
-        currentLocation.compartment ||
-        currentLocation.beat ||
-        currentLocation.range
-      ){
-
-        currentLocation.type =
-          "FOREST";
-
-      }
-
-      else if(
-        currentLocation.village
-      ){
-
-        currentLocation.type =
-          "VILLAGE";
-
-      }
+            );
 
     }
 
-  }
+    // ==============================================
+    // FALLBACK RESOLVER
+    // ==============================================
+
+    if(
+
+        !resolved &&
+
+        typeof window.resolveCurrentGIS ===
+
+        "function"
+
+    ){
+
+        resolved =
+
+            window.resolveCurrentGIS(
+
+                lat,
+
+                lon
+
+            );
+
+    }
+
+    // ==============================================
+    // APPLY RESULT
+    // ==============================================
+
+    if(
+
+        resolved
+
+    ){
+
+        currentLocation =
+
+        {
+
+            ...currentLocation,
+
+            compartment :
+
+                resolved.compartment ||
+
+                "",
+
+            beat :
+
+                resolved.beat ||
+
+                "",
+
+            range :
+
+                resolved.range ||
+
+                "",
+
+            division :
+
+                resolved.division ||
+
+                "",
+
+            village :
+
+                resolved.village ||
+
+                "",
+
+            block :
+
+                resolved.block ||
+
+                "",
+
+            nearestPoint :
+
+                resolved.nearestPoint ||
+
+                "",
+
+            distanceMeters :
+
+                resolved.distanceMeters ??
+
+                null
+
+        };
+
+        // ==========================================
+        // LOCATION TYPE
+        // ==========================================
+
+        if(
+
+            currentLocation.compartment ||
+
+            currentLocation.beat ||
+
+            currentLocation.range
+
+        ){
+
+            currentLocation.type =
+
+                "FOREST";
+
+        }
+
+        else if(
+
+            currentLocation.village
+
+        ){
+
+            currentLocation.type =
+
+                "VILLAGE";
+
+        }
+
+    }
 
 }
+
 catch(err){
 
-  console.warn(
-    "⚠ Elephant current GIS location resolution failed:",
-    err
-  );
+    console.warn(
+
+        "⚠ Current GIS location resolution failed:",
+
+        err
+
+    );
 
 }
 
