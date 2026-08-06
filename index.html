@@ -38786,6 +38786,65 @@ function getWildlifeEmoji(animal){
 // =========================================================
 // 🐅 LOAD WILDLIFE SIGHTINGS (DETERMINISTIC LAYER REFRESH)
 // =========================================================
+// =========================================================
+// 🐅 WILDLIFE EMOJI MAP HELPER
+// =========================================================
+function getWildlifeEmoji(animal){
+    animal = String(animal || "")
+        .trim()
+        .toLowerCase();
+
+    switch(animal){
+        case "tiger":
+            return "🐅";
+        case "leopard":
+            return "🐆";
+        case "elephant":
+            return "🐘";
+        case "gaur":
+            return "🐃";
+        case "rhino":
+            return "🦏";
+        case "bear":
+        case "himalayan black bear":
+        case "sloth bear":
+            return "🐻";
+        case "pangolin":
+            return "🦔";
+        case "python":
+            return "🐍";
+        case "king cobra":
+            return "🐍";
+        case "crocodile":
+            return "🐊";
+        case "monitor lizard":
+            return "🦎";
+        case "hornbill":
+            return "🦜";
+        case "peacock":
+            return "🦚";
+        case "owl":
+            return "🦉";
+        case "eagle":
+            return "🦅";
+        case "monkey":
+        case "langur":
+            return "🐒";
+        case "wild boar":
+            return "🐗";
+        case "sambar deer":
+        case "spotted deer":
+        case "hog deer":
+        case "barking deer":
+            return "🦌";
+        default:
+            return "🐾";
+    }
+}
+
+// =========================================================
+// 🐅 LOAD WILDLIFE SIGHTINGS (100% IDEMPOTENT & INSTANT REFRESH)
+// =========================================================
 async function loadWildlifeSightings(){
     try{
         // =====================================================
@@ -38852,7 +38911,9 @@ async function loadWildlifeSightings(){
             const data = doc.data() || {};
             data.firestore_id = data.firestore_id || doc.id;
 
+            // Notice: Updated check matching actual document schema (active: true)
             if(
+                data.active === false || 
                 data.marker_visible === false || 
                 expiredSet.has(data.firestore_id)
             ){
@@ -38897,17 +38958,13 @@ async function loadWildlifeSightings(){
 
             const html = `
                 <div style="
-                    background: white;
-                    border: 3px solid ${color};
-                    border-radius: 50%;
-                    width: 36px;
-                    height: 36px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-                    font-size: 18px;
-                ">${emoji}</div>
+                    font-size:26px;
+                    line-height:26px;
+                    text-align:center;
+                    text-shadow: 0 0 6px #fff, 0 0 10px #fff;
+                ">
+                    ${emoji}
+                </div>
             `;
 
             let marker = window.wildlifeMarkers[id];
@@ -38918,10 +38975,10 @@ async function loadWildlifeSightings(){
                     {
                         icon: L.divIcon({
                             html: html,
-                            className: "custom-wildlife-marker",
-                            iconSize: [36, 36],
-                            iconAnchor: [18, 18],
-                            popupAnchor: [0, -18]
+                            className: "wildlife-marker",
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15],
+                            popupAnchor: [0, -15]
                         })
                     }
                 );
@@ -38931,10 +38988,10 @@ async function loadWildlifeSightings(){
                 marker.setIcon(
                     L.divIcon({
                         html: html,
-                        className: "custom-wildlife-marker",
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18],
-                        popupAnchor: [0, -18]
+                        className: "wildlife-marker",
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15],
+                        popupAnchor: [0, -15]
                     })
                 );
             }
@@ -38949,38 +39006,95 @@ async function loadWildlifeSightings(){
             marker.sighting = sighting;
 
             // =================================================
-            // PROFESSIONAL POPUP DESIGN
+            // PROFESSIONAL POPUP DESIGN (ALIGNED WITH ELEPHANT)
             // =================================================
-            const animalName = String(sighting.animal || "Wildlife").toUpperCase();
             const signsList = Array.isArray(sighting.movement_signs) ? sighting.movement_signs.join(', ') : (sighting.signs_found || '');
 
             const popup = `
-                <div style="font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-width:240px; font-size:13px; line-height:1.4;">
-                    <div style="display:flex; align-items:center; gap:8px; border-bottom:2px solid ${color}; padding-bottom:6px; margin-bottom:8px;">
-                        <span style="font-size:22px;">${emoji}</span>
-                        <div>
-                            <b style="color:${color}; font-size:14px; display:block;">${animalName}</b>
-                            <span style="font-size:11px; font-weight:bold; color:#555;">${statusText} • ${sighting.observation_type || 'DIRECT'}</span>
-                        </div>
-                    </div>
+                <div style="
+                    min-width:260px;
+                    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size:13px;
+                ">
+                    <h3 style="
+                        margin:0 0 8px 0;
+                        color:#2e7d32;
+                    ">
+                        ${emoji} ${String(sighting.animal || "Wildlife").toUpperCase()}
+                    </h3>
 
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:8px;">
-                        <tr><td style="padding:2px 0; color:#555;"><b>Count:</b></td><td style="padding:2px 0;">${sighting.count || sighting.total_seen || 1}</td></tr>
-                        <tr><td style="padding:2px 0; color:#555;"><b>Sex / Age:</b></td><td style="padding:2px 0;">${sighting.sex || 'Unknown'} / ${sighting.age || sighting.age_class || 'Unknown'}</td></tr>
-                        <tr><td style="padding:2px 0; color:#555;"><b>Behaviour:</b></td><td style="padding:2px 0;">${sighting.behaviour || 'N/A'}</td></tr>
-                        <tr><td style="padding:2px 0; color:#555;"><b>Direction:</b></td><td style="padding:2px 0;">${sighting.direction || 'N/A'}</td></tr>
-                        ${signsList ? `<tr><td style="padding:2px 0; color:#555;"><b>Signs:</b></td><td style="padding:2px 0;">${signsList}</td></tr>` : ''}
-                        <tr><td style="padding:2px 0; color:#555;"><b>Beat / Compt:</b></td><td style="padding:2px 0;">${sighting.gis_beat || sighting.beat || 'N/A'} / ${sighting.gis_compartment || sighting.compt || 'N/A'}</td></tr>
-                        <tr><td style="padding:2px 0; color:#555;"><b>Location:</b></td><td style="padding:2px 0;">${sighting.resolved_location || sighting.location || 'N/A'}</td></tr>
-                        <tr><td style="padding:2px 0; color:#555;"><b>Leader:</b></td><td style="padding:2px 0;">${sighting.leader || 'N/A'}</td></tr>
-                        ${sighting.remarks ? `<tr><td style="padding:2px 0; color:#555;"><b>Remarks:</b></td><td style="padding:2px 0;">${sighting.remarks}</td></tr>` : ''}
+                    <table style="
+                        width:100%;
+                        border-collapse:collapse;
+                    ">
+                        <tr>
+                            <td><b>Status</b></td>
+                            <td>${statusText}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Animal</b></td>
+                            <td>${sighting.animal || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Count</b></td>
+                            <td>${sighting.count ?? sighting.total_seen ?? "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Sex</b></td>
+                            <td>${sighting.sex || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Age</b></td>
+                            <td>${sighting.age || sighting.age_class || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Behaviour</b></td>
+                            <td>${sighting.behaviour || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Direction</b></td>
+                            <td>${sighting.direction || "-"}</td>
+                        </tr>
+                        ${signsList ? `<tr><td><b>Signs</b></td><td>${signsList}</td></tr>` : ''}
+                        <tr>
+                            <td><b>Beat</b></td>
+                            <td>${sighting.gis_beat || sighting.beat || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Compartment</b></td>
+                            <td>${sighting.gis_compartment || sighting.compt || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Location</b></td>
+                            <td>${sighting.resolved_location || sighting.location || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Leader</b></td>
+                            <td>${sighting.leader || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Remarks</b></td>
+                            <td>${sighting.remarks || "-"}</td>
+                        </tr>
                     </table>
 
-                    ${sighting.photo ? `
-                        <div style="margin-top:8px; text-align:center;">
-                            <img src="${sighting.photo}" style="max-width:100%; height:130px; border-radius:6px; object-fit:cover;" alt="Wildlife Photo"/>
+                    ${
+                        sighting.photo
+                        ? `
+                        <div style="
+                            margin-top:10px;
+                            text-align:center;
+                        ">
+                            <img src="${sighting.photo}" style="
+                                max-width:100%;
+                                border-radius:8px;
+                                max-height:180px;
+                                object-fit:cover;
+                            ">
                         </div>
-                    ` : ''}
+                        `
+                        : ""
+                    }
                 </div>
             `;
 
