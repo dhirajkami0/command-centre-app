@@ -47238,43 +47238,53 @@ async function(
     }
 
 
-    /* ========================================================
-       8. RESOLVE COMPLETE GIS LOCATION
-       --------------------------------------------------------
+/* ========================================================
+   8. RESOLVE COMPLETE GIS LOCATION
+   --------------------------------------------------------
 
-       Existing resolver combines:
+   Uses global HTML GIS resolver
 
-       - findCompartmentAtPoint()
-       - findVillageAtPoint()
-       - findNearestVillagePoint()
+       resolveCurrentGIS(lat, lon)
 
-    ======================================================== */
+======================================================== */
 
-    let result =
-        null;
+let result = null;
 
+try{
 
-    try{
+    if(
+
+        typeof window.resolveCurrentGIS ===
+
+        "function"
+
+    ){
 
         result =
-            window.GreenGuardAI
-                ?.GISEntities
-                ?.resolveCurrentLocation?.(
-                    lat,
-                    lng
-                ) ||
-            null;
+
+            window.resolveCurrentGIS(
+
+                lat,
+
+                lng
+
+            );
 
     }
 
-    catch(err){
+}
 
-        console.warn(
-            "⚠ Staff GIS location resolution failed:",
-            err
-        );
+catch(err){
 
-    }
+    console.warn(
+
+        "⚠ Staff GIS location resolution failed:",
+
+        err
+
+    );
+
+}
 
 
     /* ========================================================
