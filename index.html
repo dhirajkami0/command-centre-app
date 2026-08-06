@@ -38814,7 +38814,37 @@ function getWildlifeEmoji(animal){
 async function loadWildlifeSightings(){
 
     try{
+        // =====================================================
+        // ADMIN ONLY
+        // =====================================================
 
+        const role =
+
+            String(
+
+                window.userProfile?.role ||
+
+                ""
+
+            )
+
+            .trim()
+
+            .toUpperCase();
+
+        if(
+
+            role !== "ADMIN"
+
+        ){
+
+            wildlifeLayer.clearLayers();
+
+            window.wildlifeMarkers = {};
+
+            return [];
+
+        }
         // =====================================================
         // INIT
         // =====================================================
