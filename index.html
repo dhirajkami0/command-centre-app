@@ -77300,27 +77300,12 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 </div>
 </div>
 
-<!-- 🔥 EXISTING BACKWARD-COMPATIBLE COUNT SECTION -->
-<div style="margin-top:5px; border-top:1px dashed #ccc; padding-top:8px;">
-<label style="font-size:11px; color:#666; display:block; margin-bottom:4px;"><b>Legacy Breakdown Mapping</b></label>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-  <div>
-    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Male</b></label>
-    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
-  </div>
-  <div>
-    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Female</b></label>
-    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
-  </div>
-  <div>
-    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Unknown</b></label>
-    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
-  </div>
-  <div>
-    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Calf</b></label>
-    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
-  </div>
-</div>
+<!-- 🔥 LEGACY BREAKDOWN MAPPING (HIDDEN FROM UI, PRESERVED FOR BACKEND COMPATIBILITY) -->
+<div style="display:none;">
+  <input type="number" id="f-m" value="0" min="0">
+  <input type="number" id="f-f" value="0" min="0">
+  <input type="number" id="f-u" value="0" min="0">
+  <input type="number" id="f-c" value="0" min="0">
 </div>
 
 <label style="display:block; margin-top:8px; font-size:13px;"><b>Total Seen</b></label>
@@ -77615,11 +77600,6 @@ function toggleActiveObservationSubtype() {
 }
 
 function calculateTotal() {
-  const m = parseInt(document.getElementById('f-m').value) || 0;
-  const f = parseInt(document.getElementById('f-f').value) || 0;
-  const u = parseInt(document.getElementById('f-u').value) || 0;
-  const c = parseInt(document.getElementById('f-c').value) || 0;
-  
   const adultTuskers = parseInt(document.getElementById('f-adult-tuskers')?.value) || 0;
   const adultMakhnas = parseInt(document.getElementById('f-adult-makhnas')?.value) || 0;
   const adultFemales = parseInt(document.getElementById('f-adult-females')?.value) || 0;
@@ -77627,12 +77607,38 @@ function calculateTotal() {
   const juveniles = parseInt(document.getElementById('f-juveniles')?.value) || 0;
   const herdCalf = parseInt(document.getElementById('f-calf-herd')?.value) || 0;
 
-  const total = m + f + u + c + adultTuskers + adultMakhnas + adultFemales + subAdults + juveniles + herdCalf;
+  const cat = document.getElementById('f-observation-category')?.value;
+  let total = 0;
+
+  if (cat === 'SINGLE') {
+    total = 1;
+  } else {
+    total = adultTuskers + adultMakhnas + adultFemales + subAdults + juveniles + herdCalf;
+  }
+
   const totalField = document.getElementById('f-total');
   if(totalField) totalField.value = total;
+
+  // Automatically update hidden legacy fields for backward compatibility
+  const mField = document.getElementById('f-m');
+  const fField = document.getElementById('f-f');
+  const cField = document.getElementById('f-c');
+  const uField = document.getElementById('f-u');
+
+  if (cat === 'SINGLE') {
+    const eType = document.getElementById('f-elephant-type')?.value;
+    if(mField) mField.value = (eType === 'Tusker' || eType === 'Makhna') ? 1 : 0;
+    if(fField) fField.value = (eType === 'Female') ? 1 : 0;
+    if(cField) cField.value = (eType === 'Calf') ? 1 : 0;
+    if(uField) uField.value = (eType === 'Unknown' || eType === 'Juvenile') ? 1 : 0;
+  } else {
+    if(mField) mField.value = adultTuskers + adultMakhnas;
+    if(fField) fField.value = adultFemales;
+    if(cField) cField.value = herdCalf;
+    if(uField) uField.value = subAdults + juveniles;
+  }
 }
 </script>
-
 <button
 onclick="openWildlifeForm()"
 style="
