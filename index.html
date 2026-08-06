@@ -77671,78 +77671,284 @@ document.head.appendChild(
   
   </script>
 
+<!-- ========================================================= -->
+<!-- 🐘 ELEPHANT SIGHTING MODAL (REDESIGNED INCIDENT LIFECYCLE) -->
+<!-- ========================================================= -->
+
 <div id="form-modal"
 style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
 
 <div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI'; border-top:8px solid #1b5e20;">
 
-<div style="display:flex; justify-content:space-between;">
+<div style="display:flex; justify-content:space-between; align-items:center;">
 <h3 style="margin:0;color:#1b5e20;">🐘 Elephant Sighting Report</h3>
-<button onclick="closeSightingForm()" style="font-size:24px;border:none;background:none;">&times;</button>
+<button onclick="closeSightingForm()" style="font-size:24px;border:none;background:none;cursor:pointer;">&times;</button>
 </div>
 
-<hr>
+<hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
 
-<form id="elephantForm">
+<form id="elephantForm" onsubmit="event.preventDefault();">
 
+<!-- Existing Hidden Fields (Preserved 100%) -->
 <input type="hidden" id="f-lat">
 <input type="hidden" id="f-lon">
 
-<label><b>Time</b></label>
-<input type="time" id="f-time" required>
-
-<!-- 🔥 UPDATED COUNT SECTION -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px; margin-top:10px;">
-
-  <div>
-    <label style="font-size:12px;color:#333;"><b>Male</b></label>
-    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
-  </div>
-
-  <div>
-    <label style="font-size:12px;color:#333;"><b>Female</b></label>
-    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
-  </div>
-
-  <div>
-    <label style="font-size:12px;color:#333;"><b>Unknown</b></label>
-    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
-  </div>
-
-  <div>
-    <label style="font-size:12px;color:#333;"><b>Calf</b></label>
-    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
-  </div>
-
+<!-- ====================================================== -->
+<!-- LIFECYCLE STATUS SELECTION -->
+<!-- ====================================================== -->
+<div style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #1b5e20;">
+<label style="display:block; margin-bottom:6px;"><b>🐘 Elephant Status *</b></label>
+<select id="f-report-type" onchange="toggleElephantReportFlow()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<option value="ACTIVE">🔴 ACTIVE (Elephants currently present)</option>
+<option value="MOVED">🟢 MOVED / SIGNS FOUND</option>
+</select>
 </div>
 
-<label>Total Seen</label>
-<input type="number" id="f-total" readonly>
+<!-- ====================================================== -->
+<!-- 🔴 ACTIVE FLOW SECTION -->
+<!-- ====================================================== -->
+<div id="active-flow-section" style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #d32f2f;">
+<h4 style="margin:0 0 10px 0; color:#d32f2f;">🔴 Active Flow Details</h4>
 
-<label><b>Driving Status / Remarks</b></label>
-
-<select id="f-remarks">
-
-  <option value="Active">
-    🔴 Active
-  </option>
-
-  <option value="Moved">
-    🟢 Moved
-  </option>
-
+<label style="display:block; margin-bottom:4px;"><b>1. Observation Type *</b></label>
+<select id="f-observation-category" onchange="toggleActiveObservationSubtype()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="SINGLE">Single Elephant</option>
+<option value="HERD">Herd</option>
+<option value="MOTHER_WITH_CALF">Mother with Calf</option>
+<option value="BULL_GROUP">Bull Group</option>
+<option value="UNKNOWN">Unknown</option>
 </select>
+
+<!-- Single Elephant Section -->
+<div id="single-elephant-options" style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px;">
+<label style="display:block; margin-bottom:4px;"><b>Elephant Type *</b></label>
+<select id="f-elephant-type" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="Tusker">Tusker</option>
+<option value="Makhna">Makhna</option>
+<option value="Female">Female</option>
+<option value="Juvenile">Juvenile</option>
+<option value="Calf">Calf</option>
+<option value="Unknown">Unknown</option>
+</select>
+
+<label style="display:block; margin-bottom:4px;"><b>Age Class</b></label>
+<select id="f-age-class" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="Adult">Adult</option>
+<option value="Sub-adult">Sub-adult</option>
+<option value="Juvenile">Juvenile</option>
+<option value="Calf">Calf</option>
+<option value="Unknown">Unknown</option>
+</select>
+
+<label style="display:block; margin-bottom:4px;"><b>Tusk Condition</b></label>
+<select id="f-tusk-condition" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<option value="Both Tusks">Both Tusks</option>
+<option value="Single Left">Single Left</option>
+<option value="Single Right">Single Right</option>
+<option value="Broken">Broken</option>
+<option value="No Tusks">No Tusks</option>
+<option value="Unknown">Unknown</option>
+</select>
+</div>
+
+<!-- Herd Details Section -->
+<div id="herd-composition-options" style="display:none; margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px;">
+<label style="display:block; margin-bottom:6px;"><b>Herd Composition</b></label>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+<div>
+<label style="font-size:11px; color:#333;"><b>Adult Tuskers</b></label>
+<input type="number" id="f-adult-tuskers" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+<div>
+<label style="font-size:11px; color:#333;"><b>Adult Makhnas</b></label>
+<input type="number" id="f-adult-makhnas" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+<div>
+<label style="font-size:11px; color:#333;"><b>Adult Females</b></label>
+<input type="number" id="f-adult-females" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+<div>
+<label style="font-size:11px; color:#333;"><b>Sub-adults</b></label>
+<input type="number" id="f-sub-adults" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+<div>
+<label style="font-size:11px; color:#333;"><b>Juveniles</b></label>
+<input type="number" id="f-juveniles" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+<div>
+<label style="font-size:11px; color:#333;"><b>Calves</b></label>
+<input type="number" id="f-calf-herd" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+</div>
+</div>
+</div>
+
+<!-- 🔥 EXISTING BACKWARD-COMPATIBLE COUNT SECTION -->
+<div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:8px;">
+<label style="font-size:11px; color:#666; display:block; margin-bottom:4px;"><b>Legacy Breakdown Mapping</b></label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Male</b></label>
+    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+  </div>
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Female</b></label>
+    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+  </div>
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Unknown</b></label>
+    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+  </div>
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Calf</b></label>
+    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+  </div>
+</div>
+</div>
+
+<label style="display:block; margin-top:10px;"><b>Total Seen</b></label>
+<input type="number" id="f-total" readonly style="width:100%; padding:8px; background:#e0e0e0; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+
+<label style="display:block; margin-top:10px;"><b>4. Behaviour</b></label>
+<select id="f-behaviour" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<option value="Walking">Walking</option>
+<option value="Running">Running</option>
+<option value="Feeding">Feeding</option>
+<option value="Drinking">Drinking</option>
+<option value="Bathing">Bathing</option>
+<option value="Resting">Resting</option>
+<option value="Playing">Playing</option>
+<option value="Crop Raiding">Crop Raiding</option>
+<option value="Entering Village">Entering Village</option>
+<option value="Leaving Village">Leaving Village</option>
+<option value="Crossing Road">Crossing Road</option>
+<option value="Crossing Railway">Crossing Railway</option>
+<option value="Crossing River">Crossing River</option>
+<option value="Moving to Forest">Moving to Forest</option>
+<option value="Damaging House">Damaging House</option>
+<option value="Damaging Crop">Damaging Crop</option>
+<option value="Trumpeting">Trumpeting</option>
+<option value="Aggressive">Aggressive</option>
+<option value="Charging">Charging</option>
+<option value="Stationary">Stationary</option>
+<option value="Sleeping">Sleeping</option>
+<option value="Other">Other</option>
+</select>
+
+<label style="display:block; margin-top:10px;"><b>5. Conflict Status</b></label>
+<select id="f-conflict-status" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<option value="No Conflict">No Conflict</option>
+<option value="Near Village">Near Village</option>
+<option value="Crop Damage">Crop Damage</option>
+<option value="House Damage">House Damage</option>
+<option value="Human Injury">Human Injury</option>
+<option value="Human Death">Human Death</option>
+<option value="Property Damage">Property Damage</option>
+<option value="Road Crossing">Road Crossing</option>
+<option value="Railway Crossing">Railway Crossing</option>
+<option value="Traffic Block">Traffic Block</option>
+<option value="Other">Other</option>
+</select>
+</div>
+
+<!-- ====================================================== -->
+<!-- 🟢 MOVED / SIGNS FOUND FLOW SECTION -->
+<!-- ====================================================== -->
+<div id="moved-flow-section" style="display:none; background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #2e7d32;">
+<h4 style="margin:0 0 10px 0; color:#2e7d32;">🟢 Signs & Movement Flow Details</h4>
+
+<label style="display:block; margin-bottom:6px;"><b>1. Signs Found (Multiple Selection)</b></label>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; font-size:13px;">
+<label><input type="checkbox" class="f-sign-check" value="Fresh Dung"> Fresh Dung</label>
+<label><input type="checkbox" class="f-sign-check" value="Old Dung"> Old Dung</label>
+<label><input type="checkbox" class="f-sign-check" value="Fresh Footprints"> Fresh Footprints</label>
+<label><input type="checkbox" class="f-sign-check" value="Old Footprints"> Old Footprints</label>
+<label><input type="checkbox" class="f-sign-check" value="Broken Bamboo"> Broken Bamboo</label>
+<label><input type="checkbox" class="f-sign-check" value="Broken Branches"> Broken Branches</label>
+<label><input type="checkbox" class="f-sign-check" value="Feeding Signs"> Feeding Signs</label>
+<label><input type="checkbox" class="f-sign-check" value="Mud Wallow"> Mud Wallow</label>
+<label><input type="checkbox" class="f-sign-check" value="Trumpeting Heard"> Trumpeting Heard</label>
+<label><input type="checkbox" class="f-sign-check" value="Camera Trap Image"> Camera Trap Image</label>
+<label><input type="checkbox" class="f-sign-check" value="Direct Visual"> Direct Visual (Left)</label>
+<label><input type="checkbox" class="f-sign-check" value="Villager Information"> Villager Info</label>
+<label><input type="checkbox" class="f-sign-check" value="Other"> Other</label>
+</div>
+
+<label style="display:block; margin-bottom:4px;"><b>2. Freshness</b></label>
+<select id="f-sign-freshness" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="Fresh (<6 hours)">Fresh (&lt;6 hours)</option>
+<option value="Today">Today</option>
+<option value="Yesterday">Yesterday</option>
+<option value="2-3 Days">2–3 Days</option>
+<option value="Old">Old</option>
+<option value="Unknown">Unknown</option>
+</select>
+
+<label style="display:block; margin-bottom:4px;"><b>3. Estimated Herd Size</b></label>
+<select id="f-estimated-herd" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="Unknown">Unknown</option>
+<option value="1">1</option>
+<option value="2-5">2–5</option>
+<option value="6-10">6–10</option>
+<option value="11-20">11–20</option>
+<option value="20+">20+</option>
+</select>
+
+<label style="display:block; margin-bottom:4px;"><b>4. Estimated Movement</b></label>
+<select id="f-movement-type" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<option value="Into Forest">Into Forest</option>
+<option value="Towards Village">Towards Village</option>
+<option value="Towards Tea Garden">Towards Tea Garden</option>
+<option value="Towards River">Towards River</option>
+<option value="Towards Agriculture Field">Towards Agriculture Field</option>
+<option value="Crossed Road">Crossed Road</option>
+<option value="Crossed Railway">Crossed Railway</option>
+<option value="Unknown">Unknown</option>
+</select>
+
+<label style="display:block; margin-bottom:4px;"><b>7. Conflict Evidence</b></label>
+<select id="f-conflict-evidence" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<option value="No Damage">No Damage</option>
+<option value="Crop Damage">Crop Damage</option>
+<option value="House Damage">House Damage</option>
+<option value="Fence Damage">Fence Damage</option>
+<option value="Property Damage">Property Damage</option>
+<option value="Human Injury">Human Injury</option>
+<option value="Human Death">Human Death</option>
+<option value="Livestock Damage">Livestock Damage</option>
+<option value="Unknown">Unknown</option>
+</select>
+</div>
+
+<!-- ====================================================== -->
+<!-- GENERAL COMMON FIELDS (TIME, DIRECTION, REMARKS) -->
+<!-- ====================================================== -->
+<div style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #1b5e20;">
+<label><b>Time</b></label>
+<input type="time" id="f-time" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+
+<label><b>Driving Status / Remarks Prefix</b></label>
+<select id="f-remarks" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+  <option value="Active">🔴 Active</option>
+  <option value="Moved">🟢 Moved</option>
+</select>
+
 <label><b>Team Leader</b></label>
-<input type="text" id="f-team" readonly>
+<input type="text" id="f-team" readonly style="width:100%; padding:8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
 
 <label><b>Location</b></label>
-<input type="text" id="f-location" readonly>
+<input type="text" id="f-location" readonly style="width:100%; padding:8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
 
 <label>Photo</label>
-<input type="file" id="f-photo">
+<input type="file" id="f-photo" accept="image/*" style="width:100%; margin-bottom:10px;">
+
+<label>Video (Optional)</label>
+<input type="file" id="f-video" accept="video/*" style="width:100%; margin-bottom:10px;">
+
+<label>Audio (Optional)</label>
+<input type="file" id="f-audio" accept="audio/*" style="width:100%; margin-bottom:10px;">
 
 <label><b>Direction</b></label>
-<select id="f-dir">
+<select id="f-dir" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
 <option value="N">North</option>
 <option value="NE">North-East</option>
 <option value="E">East</option>
@@ -77751,46 +77957,51 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="SW">South-West</option>
 <option value="W">West</option>
 <option value="NW">North-West</option>
+<option value="Stationary">Stationary</option>
+<option value="Unknown">Unknown</option>
 </select>
 
-<button type="button" id="submitBtn" onclick="submitSightingForm()">
+<label><b>Remarks</b></label>
+<textarea id="f-remarks-multiline" rows="3" placeholder="Herd feeding near river. Driving operation started." style="width:100%; resize:vertical; padding:8px; border:1px solid #ccc; border-radius:6px;"></textarea>
+</div>
+
+<button type="button" id="submitBtn" onclick="submitSightingForm()" style="width:100%; background:#1b5e20; color:white; padding:12px; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">
   📤 SUBMIT
 </button>
 
 </form>
 </div>
 </div>
-  <!-- 🔥 INSTALL APP BUTTON -->
-  <div id="installContainer" style="
-  position:fixed;
-  bottom:30px;
-  right:20px;
-  z-index:5000;
-  display:none;
+
+<!-- ========================================================= -->
+<!-- OTHER UI COMPONENTS (PRESERVED) -->
+<!-- ========================================================= -->
+
+<!-- 🔥 INSTALL APP BUTTON -->
+<div id="installContainer" style="
+position:fixed;
+bottom:30px;
+right:20px;
+z-index:5000;
+display:none;
 ">
-    <button id="installBtn" style="
-    background:#2e7d32;
-    color:white;
-    padding:12px 16px;
-    border:none;
-    border-radius:8px;
-    font-weight:bold;
-    box-shadow:0 4px 10px rgba(0,0,0,0.4);
-    cursor:pointer;
+  <button id="installBtn" style="
+  background:#2e7d32;
+  color:white;
+  padding:12px 16px;
+  border:none;
+  border-radius:8px;
+  font-weight:bold;
+  box-shadow:0 4px 10px rgba(0,0,0,0.4);
+  cursor:pointer;
   ">
-      📲 Install App
-    </button>
-  </div>
-  
-  <!-- 🔥 DUTY BUTTON -->
-  <!-- 🟢 SINGLE DUTY BUTTON -->
+    📲 Install App
+  </button>
+</div>
 
-
- 
-  </div>
+<!-- MOVE FORM MODAL -->
 <div id="move-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999999; align-items:center; justify-content:center;">
   <div style="background:#fff;padding:20px;border-radius:12px;width:320px">
-
     <h3>Update Sighting</h3>
 
     <input type="hidden" id="move-id">
@@ -77804,7 +78015,6 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     <label>Driving</label>
     <input type="text" id="move-driving">
 
-    <!-- 🔥 NEW FIELD ADDED -->
     <label><b>Direction</b></label>
     <select id="move-dir" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
       <option value="">Select Direction</option>
@@ -77819,78 +78029,81 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     </select>
 
     <label>Remarks</label>
-    <select
-  id="move-remarks"
-  style="
-    width:100%;
-    padding:8px;
-    margin-top:5px;
-    border-radius:6px;
-  "
->
+    <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+      <option value="Moved">🟢 Moved</option>
+      <option value="Resolved">Resolved</option>
+    </select>
 
-  <option value="Moved">
-    🟢 Moved
-  </option>
-
-  <option value="Resolved">
-    Resolved
-  </option>
-
-</select>
     <button id="moveConfirmBtn" onclick="submitMoveForm()">✅ Confirm</button>
-<button onclick="closeMoveForm()">❌ Cancel</button>
+    <button onclick="closeMoveForm()">❌ Cancel</button>
   </div>
-</div> 
+</div>
+
 <!-- ========================================================= -->
 <!-- WILDLIFE TYPE SELECTOR -->
 <!-- ========================================================= -->
+<div id="sighting-selector-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:6000; align-items:center; justify-content:center;">
+  <div style="background:#fff; width:330px; border-radius:14px; padding:20px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <h3 style="margin-top:0; color:#1b5e20;">Select Sighting Type</h3>
+    <button onclick="openElephantSighting()" style="width:100%; padding:14px; margin-top:10px; font-size:18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:pointer;">
+      🐘 Elephant
+    </button>
+  </div>
+</div>
 
-<div
-id="sighting-selector-modal"
-style="
-display:none;
-position:fixed;
-inset:0;
-background:rgba(0,0,0,.65);
-z-index:6000;
-align-items:center;
-justify-content:center;
-">
+<script>
+function toggleElephantReportFlow() {
+  const reportType = document.getElementById('f-report-type').value;
+  const activeSec = document.getElementById('active-flow-section');
+  const movedSec = document.getElementById('moved-flow-section');
+  const remarksStatus = document.getElementById('f-remarks');
 
-<div
-style="
-background:#fff;
-width:330px;
-border-radius:14px;
-padding:20px;
-text-align:center;
-box-shadow:0 4px 20px rgba(0,0,0,0.3);
-">
+  if (reportType === 'ACTIVE') {
+    activeSec.style.display = 'block';
+    movedSec.style.display = 'none';
+    if(remarksStatus) remarksStatus.value = 'Active';
+  } else {
+    activeSec.style.display = 'none';
+    movedSec.style.display = 'block';
+    if(remarksStatus) remarksStatus.value = 'Moved';
+  }
+}
 
-<h3
-style="
-margin-top:0;
-color:#1b5e20;
-">
-Select Sighting Type
-</h3>
+function toggleActiveObservationSubtype() {
+  const cat = document.getElementById('f-observation-category').value;
+  const singleOpt = document.getElementById('single-elephant-options');
+  const herdOpt = document.getElementById('herd-composition-options');
 
-<button
-onclick="openElephantSighting()"
-style="
-width:100%;
-padding:14px;
-margin-top:10px;
-font-size:18px;
-background:#2e7d32;
-color:#fff;
-border:none;
-border-radius:8px;
-cursor:pointer;
-">
-🐘 Elephant
-</button>
+  if (cat === 'SINGLE') {
+    singleOpt.style.display = 'block';
+    herdOpt.style.display = 'none';
+  } else if (cat === 'HERD' || cat === 'MOTHER_WITH_CALF' || cat === 'BULL_GROUP') {
+    singleOpt.style.display = 'none';
+    herdOpt.style.display = 'block';
+  } else {
+    singleOpt.style.display = 'none';
+    herdOpt.style.display = 'none';
+  }
+}
+
+function calculateTotal() {
+  const m = parseInt(document.getElementById('f-m').value) || 0;
+  const f = parseInt(document.getElementById('f-f').value) || 0;
+  const u = parseInt(document.getElementById('f-u').value) || 0;
+  const c = parseInt(document.getElementById('f-c').value) || 0;
+  
+  const adultTuskers = parseInt(document.getElementById('f-adult-tuskers')?.value) || 0;
+  const adultMakhnas = parseInt(document.getElementById('f-adult-makhnas')?.value) || 0;
+  const adultFemales = parseInt(document.getElementById('f-adult-females')?.value) || 0;
+  const subAdults = parseInt(document.getElementById('f-sub-adults')?.value) || 0;
+  const juveniles = parseInt(document.getElementById('f-juveniles')?.value) || 0;
+  const herdCalf = parseInt(document.getElementById('f-calf-herd')?.value) || 0;
+
+  const total = m + f + u + c + adultTuskers + adultMakhnas + adultFemales + subAdults + juveniles + herdCalf;
+  const totalField = document.getElementById('f-total');
+  if(totalField) totalField.value = total;
+}
+</script>
 
 <button
 onclick="openWildlifeForm()"
