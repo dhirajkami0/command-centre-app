@@ -38784,12 +38784,12 @@ function getWildlifeEmoji(animal){
 }
 
 // =========================================================
-// 🐅 LOAD WILDLIFE SIGHTINGS (PROFESSIONALLY ALIGNED & INSTANT UI REFRESH)
+// 🐅 LOAD WILDLIFE SIGHTINGS (INSTANT UI REFRESH FIX)
 // =========================================================
 async function loadWildlifeSightings(){
     try{
         // =====================================================
-        // INIT WILDLIFE LAYER
+        // INIT WILDLIFE LAYER (ENSURE ATTACHED TO MAP)
         // =====================================================
         if(!window.wildlifeLayer){
             if(typeof map !== 'undefined'){
@@ -38797,6 +38797,11 @@ async function loadWildlifeSightings(){
             } else {
                 console.warn("⚠ Map instance not found for wildlife layer.");
                 return [];
+            }
+        } else {
+            // Ensure layer is on the map if map reinitialized
+            if(typeof map !== 'undefined' && !map.hasLayer(window.wildlifeLayer)){
+                window.wildlifeLayer.addTo(map);
             }
         }
 
@@ -38823,28 +38828,33 @@ async function loadWildlifeSightings(){
         );
 
         // =====================================================
-        // FIRESTORE FETCH
+        // FIRESTORE FETCH (NON-BLOCKING FALLBACK FOR SDK)
         // =====================================================
-        const { collection, getDocs } = window.fb || {};
+        let snapshot;
         const db = window.db;
-
-        if(!db || !collection || !getDocs){
-            console.warn("⚠ Firestore modular SDK or db reference missing.");
-            return [];
-        }
 
         console.log("🐅 Loading wildlife_sightings...");
 
-        const snapshot = await getDocs(collection(db, "wildlife_sightings"));
+        if (window.fb && typeof window.fb.collection === 'function' && typeof window.fb.getDocs === 'function') {
+            const { collection, getDocs } = window.fb;
+            snapshot = await getDocs(collection(db, "wildlife_sightings"));
+        } else if (db && typeof db.collection === 'function') {
+            snapshot = await db.collection("wildlife_sightings").get();
+        } else if (typeof firebase !== 'undefined' && firebase.firestore) {
+            snapshot = await firebase.firestore().collection("wildlife_sightings").get();
+        } else {
+            console.warn("⚠ Firestore reference missing in loadWildlifeSightings.");
+            return [];
+        }
+
         const wildlife = [];
 
         snapshot.forEach(doc => {
             const data = doc.data() || {};
             data.firestore_id = data.firestore_id || doc.id;
 
-            // Skip inactive, hidden, or expired
+            // Skip expired or explicitly hidden markers
             if(
-                data.active === false || 
                 data.marker_visible === false || 
                 expiredSet.has(data.firestore_id)
             ){
@@ -38922,7 +38932,7 @@ async function loadWildlifeSightings(){
             marker.sighting = sighting;
 
             // =================================================
-            // PROFESSIONAL POPUP DESIGN (ALIGNED WITH ELEPHANT)
+            // PROFESSIONAL POPUP DESIGN
             // =================================================
             const animalName = String(sighting.animal || "Wildlife").toUpperCase();
             const signsList = Array.isArray(sighting.movement_signs) ? sighting.movement_signs.join(', ') : (sighting.signs_found || '');
