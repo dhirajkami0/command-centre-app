@@ -77648,43 +77648,10 @@ function calculateTotal() {
   }
 }
 </script>
-<button
-onclick="openWildlifeForm()"
-style="
-width:100%;
-padding:14px;
-margin-top:12px;
-font-size:18px;
-background:#1565c0;
-color:#fff;
-border:none;
-border-radius:8px;
-cursor:pointer;
-">
-🐅 Other Wildlife
-</button>
 
-<button
-onclick="closeSightingSelector()"
-style="
-width:100%;
-padding:12px;
-margin-top:18px;
-border:none;
-background:#666;
-color:white;
-border-radius:8px;
-cursor:pointer;
-">
-Cancel
-</button>
-
-</div>
-
-</div>
 
 <!-- ========================================================= -->
-<!-- 🐅 WILDLIFE SIGHTING MODAL -->
+<!-- 🐅 WILDLIFE SIGHTING MODAL (REDESIGNED LIFECYCLE) -->
 <!-- ========================================================= -->
 
 <div id="wildlife-form-modal"
@@ -77695,10 +77662,13 @@ top:0;
 left:0;
 width:100%;
 height:100%;
-background:rgba(0,0,0,.9);
+background:rgba(0,0,0,0.85);
+backdrop-filter: blur(4px);
+-webkit-backdrop-filter: blur(4px);
 z-index:5100;
 overflow-y:auto;
 padding:10px;
+-webkit-overflow-scrolling: touch;
 ">
 
 <div style="
@@ -77706,10 +77676,11 @@ background:#f4f4f4;
 border-radius:15px;
 padding:20px;
 max-width:480px;
-margin:10px auto;
-font-family:'Segoe UI';
+margin:20px auto;
+font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 border-top:8px solid #1565c0;
-box-shadow:0 4px 25px rgba(0,0,0,0.4);
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
+box-sizing: border-box;
 ">
 
 <div style="
@@ -77718,18 +77689,20 @@ justify-content:space-between;
 align-items:center;
 ">
 
-<h3 style="margin:0;color:#1565c0;">
+<h3 style="margin:0; color:#1565c0; font-size:18px;">
 🐅 Wildlife Sighting Report
 </h3>
 
 <button
+type="button"
 onclick="closeWildlifeForm()"
 style="
 font-size:24px;
 border:none;
 background:none;
 cursor:pointer;
-color:#333;
+padding:5px;
+color:#555;
 ">
 &times;
 </button>
@@ -77738,7 +77711,7 @@ color:#333;
 
 <hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
 
-<form id="wildlifeForm" onsubmit="event.preventDefault();">
+<form id="wildlifeForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 10px;">
 
 <!-- ====================================================== -->
 <!-- AUTO FIELDS -->
@@ -77748,25 +77721,37 @@ color:#333;
 <input type="hidden" id="w-lon">
 
 <!-- ====================================================== -->
-<!-- ANIMAL INFORMATION -->
+<!-- OBSERVATION STATUS / LIFECYCLE SELECTION -->
+<!-- ====================================================== -->
+<div style="background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #1565c0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<label style="display:block; margin-bottom:6px; font-size:13px;"><b>🐅 Observation Status *</b></label>
+<select id="w-report-type" onchange="toggleWildlifeReportFlow()" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
+<option value="DIRECT">🔴 DIRECT SIGHTING (Animal Present)</option>
+<option value="INDIRECT">🟢 INDIRECT / SIGNS FOUND</option>
+</select>
+</div>
+
+<!-- ====================================================== -->
+<!-- ANIMAL INFORMATION SECTION -->
 <!-- ====================================================== -->
 
 <div style="
 background:#ffffff;
 padding:12px;
 border-radius:10px;
-margin-bottom:12px;
 border-left:5px solid #1565c0;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 ">
 
 <h4 style="
 margin:0 0 10px 0;
 color:#1565c0;
+font-size:15px;
 ">
-🐅 Wildlife Information
+🐾 Animal Selection & Details
 </h4>
 
-<label><b>Animal *</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Animal *</b></label>
 
 <select
 id="w-animal"
@@ -77774,14 +77759,16 @@ required
 onchange="toggleOtherAnimal()"
 style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
 <option value="">
--- Select Animal --
+-- Select or Search Animal --
 </option>
 
 <option>Tiger</option>
@@ -77821,7 +77808,7 @@ margin-top:4px;
 id="otherAnimalDiv"
 style="display:none; margin-top:10px;">
 
-<label><b>Other Animal *</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Other Animal Name *</b></label>
 
 <input
 type="text"
@@ -77829,18 +77816,21 @@ id="w-otherAnimal"
 placeholder="Enter Animal Name"
 style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+box-sizing: border-box;
+font-size:14px;
 ">
 
 </div>
 
 <label style="
 margin-top:10px;
-display:block;">
-<b>Number Seen *</b>
+display:block;
+font-size:13px;
+">
+<b>Number Seen / Estimated Count *</b>
 </label>
 
 <input
@@ -77851,13 +77841,15 @@ value="1"
 required
 style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
-<div style="
+<div id="direct-sex-age-container" style="
 display:grid;
 grid-template-columns:1fr 1fr;
 gap:10px;
@@ -77866,14 +77858,16 @@ margin-top:10px;
 
 <div>
 
-<label><b>Sex</b></label>
+<label style="font-size:13px; display:block; margin-bottom:4px;"><b>Sex</b></label>
 
 <select id="w-sex" style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
 <option>Unknown</option>
@@ -77887,14 +77881,16 @@ margin-top:4px;
 
 <div>
 
-<label><b>Age Class</b></label>
+<label style="font-size:13px; display:block; margin-bottom:4px;"><b>Age Class</b></label>
 
 <select id="w-age" style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
 <option>Unknown</option>
@@ -77911,37 +77907,113 @@ margin-top:4px;
 
 </div>
 
-
-
 <!-- ====================================================== -->
-<!-- OBSERVATION -->
+<!-- INDIRECT / SIGNS FOUND SECTION (CONDITIONAL) -->
 <!-- ====================================================== -->
 
-<div style="
+<div id="indirect-signs-container" style="
+display:none;
 background:#ffffff;
 padding:12px;
 border-radius:10px;
-margin-bottom:12px;
+border-left:5px solid #2e7d32;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+">
+
+<h4 style="
+margin:0 0 10px 0;
+color:#2e7d32;
+font-size:15px;
+">
+🐾 Signs & Indirect Details
+</h4>
+
+<label style="display:block; margin-bottom:6px; font-size:13px;"><b>Signs Found *</b></label>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; font-size:13px;">
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Footprint"> Footprint</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Scat / Droppings"> Scat / Droppings</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Scratch Marks"> Scratch Marks</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Claw Marks"> Claw Marks</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Feeding Signs"> Feeding Signs</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Kill Site"> Kill Site</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Nest"> Nest</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Burrow"> Burrow</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Calls Heard"> Calls Heard</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Camera Trap"> Camera Trap</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Hair / Fur"> Hair / Fur</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Feathers"> Feathers</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="w-sign-check" value="Other"> Other</label>
+</div>
+
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Sign Freshness</b></label>
+<select id="w-sign-freshness" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
+<option value="Fresh">Fresh</option>
+<option value="Recent">Recent</option>
+<option value="Old">Old</option>
+<option value="Unknown">Unknown</option>
+</select>
+
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Estimated Animal</b></label>
+<select id="w-estimated-animal" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
+<option value="Tiger">Tiger</option>
+<option value="Leopard">Leopard</option>
+<option value="Elephant">Elephant</option>
+<option value="Bear">Bear</option>
+<option value="Gaur">Gaur</option>
+<option value="Wild Boar">Wild Boar</option>
+<option value="Rhino">Rhino</option>
+<option value="Unknown">Unknown</option>
+<option value="Other">Other</option>
+</select>
+
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Estimated Direction</b></label>
+<select id="w-estimated-direction" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
+<option value="North">North</option>
+<option value="North-East">North-East</option>
+<option value="East">East</option>
+<option value="South-East">South-East</option>
+<option value="South">South</option>
+<option value="South-West">South-West</option>
+<option value="West">West</option>
+<option value="North-West">North-West</option>
+<option value="Unknown">Unknown</option>
+</select>
+</div>
+
+
+
+<!-- ====================================================== -->
+<!-- OBSERVATION / BEHAVIOUR SECTION -->
+<!-- ====================================================== -->
+
+<div id="direct-behaviour-container" style="
+background:#ffffff;
+padding:12px;
+border-radius:10px;
 border-left:5px solid #ff9800;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 ">
 
 <h4 style="
 margin:0 0 10px 0;
 color:#ff9800;
+font-size:15px;
 ">
-👀 Observation
+👀 Behaviour & Movement
 </h4>
 
-<label><b>Behaviour</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Behaviour</b></label>
 
 <select
 id="w-behaviour"
 style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
 <option>Walking</option>
@@ -77971,6 +78043,7 @@ margin-top:4px;
 <label style="
 margin-top:10px;
 display:block;
+font-size:13px;
 ">
 <b>Direction</b>
 </label>
@@ -77979,10 +78052,12 @@ display:block;
 id="w-dir"
 style="
 width:100%;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
-margin-top:4px;
+background:#fff;
+font-size:14px;
+box-sizing: border-box;
 ">
 
 <option value="N">North</option>
@@ -78000,62 +78075,64 @@ margin-top:4px;
 </div>
 
 <!-- ====================================================== -->
-<!-- EVIDENCE -->
+<!-- EVIDENCE SECTION -->
 <!-- ====================================================== -->
 
 <div style="
 background:#ffffff;
 padding:12px;
 border-radius:10px;
-margin-bottom:12px;
 border-left:5px solid #8e24aa;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 ">
 
 <h4 style="
 margin:0 0 10px 0;
 color:#8e24aa;
+font-size:15px;
 ">
-📷 Evidence
+📷 Evidence Media
 </h4>
 
-<label style="display:block; margin-bottom:4px;"><b>Photo</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Photo</b></label>
 <input
 type="file"
 id="w-photo"
 accept="image/*"
-style="display:block; margin-bottom:10px;">
+style="display:block; margin-bottom:10px; font-size:13px;">
 
-<label style="display:block; margin-bottom:4px;"><b>Video (Optional)</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Video (Optional)</b></label>
 <input
 type="file"
 id="w-video"
 accept="video/*"
-style="display:block; margin-bottom:10px;">
+style="display:block; margin-bottom:10px; font-size:13px;">
 
-<label style="display:block; margin-bottom:4px;"><b>Audio (Optional)</b></label>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Audio (Optional)</b></label>
 <input
 type="file"
 id="w-audio"
 accept="audio/*"
-style="display:block;">
+style="display:block; font-size:13px;">
 
 </div>
 
 <!-- ====================================================== -->
-<!-- REMARKS -->
+<!-- REMARKS SECTION -->
 <!-- ====================================================== -->
 
 <div style="
 background:#ffffff;
 padding:12px;
 border-radius:10px;
-margin-bottom:12px;
 border-left:5px solid #546e7a;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 ">
 
 <h4 style="
 margin:0 0 10px 0;
 color:#546e7a;
+font-size:15px;
 ">
 📝 Remarks
 </h4>
@@ -78066,62 +78143,67 @@ rows="3"
 style="
 width:100%;
 resize:vertical;
-padding:8px;
+padding:10px;
 border:1px solid #ccc;
 border-radius:6px;
+font-family:inherit;
+font-size:14px;
+box-sizing: border-box;
 "
-placeholder="Wildlife movement, crossing road, feeding, etc."></textarea>
+placeholder="Wildlife movement, crossing road, feeding, signs found, etc."></textarea>
 
 </div>
 
 <!-- ====================================================== -->
-<!-- SPECIAL FLAGS -->
+<!-- SPECIAL FLAGS SECTION (DIRECT ONLY) -->
 <!-- ====================================================== -->
 
-<div style="
+<div id="direct-flags-container" style="
 background:#ffffff;
 padding:12px;
 border-radius:10px;
-margin-bottom:15px;
 border-left:5px solid #d32f2f;
+box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 ">
 
 <h4 style="
 margin:0 0 10px 0;
 color:#d32f2f;
+font-size:15px;
 ">
 🚨 Special Flags
 </h4>
 
-<label style="display:block; margin-bottom:6px; cursor:pointer;">
+<label style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer; font-size:13px;">
 <input type="checkbox" id="w-injured"> Injured Animal
 </label>
 
-<label style="display:block; margin-bottom:6px; cursor:pointer;">
+<label style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer; font-size:13px;">
 <input type="checkbox" id="w-dead"> Dead Animal
 </label>
 
-<label style="display:block; margin-bottom:6px; cursor:pointer;">
+<label style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer; font-size:13px;">
 <input type="checkbox" id="w-conflict"> Conflict Animal
 </label>
 
-<label style="display:block; margin-bottom:6px; cursor:pointer;">
+<label style="display:flex; align-items:center; gap:6px; margin-bottom:8px; cursor:pointer; font-size:13px;">
 <input type="checkbox" id="w-rescue"> Rescue Required
 </label>
 
-<label style="display:block; cursor:pointer;">
+<label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
 <input type="checkbox" id="w-vet"> Veterinary Assistance Required
 </label>
 
 </div>
 
 <!-- ====================================================== -->
-<!-- BUTTONS -->
+<!-- BUTTONS CONTAINER -->
 <!-- ====================================================== -->
 
 <div style="
 display:flex;
 gap:10px;
+margin-top:5px;
 ">
 
 <button
@@ -78134,8 +78216,10 @@ color:white;
 padding:12px;
 border:none;
 border-radius:8px;
-font-size:16px;
+font-size:15px;
+font-weight:bold;
 cursor:pointer;
+box-sizing: border-box;
 ">
 ❌ Cancel
 </button>
@@ -78151,8 +78235,10 @@ color:white;
 padding:12px;
 border:none;
 border-radius:8px;
-font-size:16px;
+font-size:15px;
+font-weight:bold;
 cursor:pointer;
+box-sizing: border-box;
 ">
 📤 Submit
 </button>
@@ -78164,6 +78250,47 @@ cursor:pointer;
 </div>
 
 </div>
+
+<script>
+function toggleWildlifeReportFlow() {
+  const reportType = document.getElementById('w-report-type')?.value;
+  const sexAgeContainer = document.getElementById('direct-sex-age-container');
+  const indirectSignsContainer = document.getElementById('indirect-signs-container');
+  const directBehaviourContainer = document.getElementById('direct-behaviour-container');
+  const directFlagsContainer = document.getElementById('direct-flags-container');
+  const remarksText = document.getElementById('w-remarks');
+
+  if (reportType === 'DIRECT') {
+    if(sexAgeContainer) sexAgeContainer.style.display = 'grid';
+    if(indirectSignsContainer) indirectSignsContainer.style.display = 'none';
+    if(directBehaviourContainer) directBehaviourContainer.style.display = 'block';
+    if(directFlagsContainer) directFlagsContainer.style.display = 'block';
+    if(remarksText && !remarksText.value.includes('Direct Sighting')) {
+      remarksText.placeholder = "Direct wildlife sighting observation details...";
+    }
+  } else {
+    if(sexAgeContainer) sexAgeContainer.style.display = 'none';
+    if(indirectSignsContainer) indirectSignsContainer.style.display = 'block';
+    if(directBehaviourContainer) directBehaviourContainer.style.display = 'none';
+    if(directFlagsContainer) directFlagsContainer.style.display = 'none';
+    if(remarksText) {
+      remarksText.placeholder = "Signs found: pugmarks, scat, scratch marks, calls heard, etc.";
+    }
+  }
+}
+
+function toggleOtherAnimal() {
+  const animalSelect = document.getElementById('w-animal');
+  const otherDiv = document.getElementById('otherAnimalDiv');
+  if(animalSelect && otherDiv) {
+    if(animalSelect.value === 'Other') {
+      otherDiv.style.display = 'block';
+    } else {
+      otherDiv.style.display = 'none';
+    }
+  }
+}
+</script>
   
   <!-- 🔥 DUTY MODAL -->
   <div id="duty-modal" style="
