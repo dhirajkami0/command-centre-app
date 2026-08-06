@@ -77677,161 +77677,60 @@ document.head.appendChild(
 <input type="hidden" id="f-lon">
 
 <label><b>Time</b></label>
-
-<input
-type="time"
-id="f-time"
-required>
+<input type="time" id="f-time" required>
 
 <!-- 🔥 UPDATED COUNT SECTION -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px; margin-top:10px;">
 
-<div style="
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-margin-top:10px;
-">
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Male</b></label>
+    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
+  </div>
 
-<div>
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Female</b></label>
+    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
+  </div>
 
-<label style="font-size:12px;color:#333;">
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Unknown</b></label>
+    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
+  </div>
 
-<b>Male</b>
-
-</label>
-
-<input
-type="number"
-id="f-m"
-value="0"
-min="0"
-oninput="calculateTotal()"
-style="width:100%;">
+  <div>
+    <label style="font-size:12px;color:#333;"><b>Calf</b></label>
+    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%;">
+  </div>
 
 </div>
 
-<div>
+<label>Total Seen</label>
+<input type="number" id="f-total" readonly>
 
-<label style="font-size:12px;color:#333;">
-
-<b>Female</b>
-
-</label>
-
-<input
-type="number"
-id="f-f"
-value="0"
-min="0"
-oninput="calculateTotal()"
-style="width:100%;">
-
-</div>
-
-<div>
-
-<label style="font-size:12px;color:#333;">
-
-<b>Unknown</b>
-
-</label>
-
-<input
-type="number"
-id="f-u"
-value="0"
-min="0"
-oninput="calculateTotal()"
-style="width:100%;">
-
-</div>
-
-<div>
-
-<label style="font-size:12px;color:#333;">
-
-<b>Calf</b>
-
-</label>
-
-<input
-type="number"
-id="f-c"
-value="0"
-min="0"
-oninput="calculateTotal()"
-style="width:100%;">
-
-</div>
-
-</div>
-
-<label>
-
-<b>Total Seen</b>
-
-</label>
-
-<input
-type="number"
-id="f-total"
-readonly>
-
-<label>
-
-<b>Driving Status / Remarks</b>
-
-</label>
+<label><b>Driving Status / Remarks</b></label>
 
 <select id="f-remarks">
 
-<option value="Active">
-🔴 Active
-</option>
+  <option value="Active">
+    🔴 Active
+  </option>
 
-<option value="Moved">
-🟢 Moved
-</option>
+  <option value="Moved">
+    🟢 Moved
+  </option>
 
 </select>
 
-<label>
+<label><b>Team Leader</b></label>
+<input type="text" id="f-team" readonly>
 
-<b>Team Leader</b>
+<label><b>Location</b></label>
+<input type="text" id="f-location" readonly>
 
-</label>
+<label>Photo</label>
+<input type="file" id="f-photo">
 
-<input
-type="text"
-id="f-team"
-readonly>
-
-<label>
-
-<b>Location</b>
-
-</label>
-
-<input
-type="text"
-id="f-location"
-readonly>
-
-<label>
-
-<b>Photo</b>
-
-</label>
-
-<input
-type="file"
-id="f-photo">
-
-<label>
-
-<b>Direction</b>
-
-</label>
+<label><b>Direction</b></label>
 
 <select id="f-dir">
 
@@ -77855,7 +77754,8 @@ onclick="submitSightingForm()">
 
 </button>
 
-</form><!-- 🔥 INSTALL APP BUTTON -->
+</form>
+  <!-- 🔥 INSTALL APP BUTTON -->
   <div id="installContainer" style="
   position:fixed;
   bottom:30px;
