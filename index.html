@@ -53755,7 +53755,7 @@ async function submitSightingForm(event){
     // =====================================================
     // DETERMINE OBSERVATION TYPE
     // =====================================================
-    const observationType = window.currentObservationType  || "ELEPHANT";
+    const observationType = window.currentObservationType || "ELEPHANT";
 
 
     // =====================================================
@@ -53787,7 +53787,7 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // COUNTS & VALUES (CONDITIONAL BY TYPE)
+    // COUNTS & VALUES (CONDITIONAL BY TYPE / LIFECYCLE)
     // =====================================================
 
     let m = 0, f = 0, uni = 0, calf = 0, total = 0;
@@ -53798,6 +53798,21 @@ async function submitSightingForm(event){
     let behaviourVal = "";
     let directionVal = "";
     let remarksVal = "";
+
+    // New Lifecycle Fields Mapping
+    let reportType = "ACTIVE";
+    let observationCategory = "SINGLE";
+    let elephantType = "Tusker";
+    let ageClass = "Adult";
+    let tuskCondition = "Both Tusks";
+    let conflictStatus = "No Conflict";
+    
+    // Moved / Signs Specific Fields
+    let signFreshness = "";
+    let estimatedHerd = "";
+    let movementType = "";
+    let conflictEvidence = "";
+    let movementSigns = [];
 
     if(observationType === "WILDLIFE"){
       animalVal = String(document.getElementById("w-animal")?.value || "").trim();
@@ -53813,47 +53828,70 @@ async function submitSightingForm(event){
       remarksVal = document.getElementById("w-remarks")?.value || "";
     }
     else{
-      m =
-        parseInt(
-          document.getElementById(
-            "f-m"
-          )?.value
-        ) || 0;
+      // Elephant Lifecycle Form Inputs
+      reportType = document.getElementById("f-report-type")?.value || "ACTIVE";
+      observationCategory = document.getElementById("f-observation-category")?.value || "SINGLE";
+      elephantType = document.getElementById("f-elephant-type")?.value || "Tusker";
+      ageClass = document.getElementById("f-age-class")?.value || "Adult";
+      tuskCondition = document.getElementById("f-tusk-condition")?.value || "Both Tusks";
+      behaviourVal = document.getElementById("f-behaviour")?.value || "";
+      conflictStatus = document.getElementById("f-conflict-status")?.value || "No Conflict";
+      directionVal = document.getElementById("f-dir")?.value || "";
+      
+      const remarksPrefix = document.getElementById("f-remarks")?.value || "Active";
+      const remarksMultiline = document.getElementById("f-remarks-multiline")?.value || "";
+      remarksVal = remarksPrefix + (remarksMultiline ? " - " + remarksMultiline : "");
 
+      // Herd / Composition Counts
+      const adultTuskers = parseInt(document.getElementById("f-adult-tuskers")?.value) || 0;
+      const adultMakhnas = parseInt(document.getElementById("f-adult-makhnas")?.value) || 0;
+      const adultFemales = parseInt(document.getElementById("f-adult-females")?.value) || 0;
+      const subAdults = parseInt(document.getElementById("f-sub-adults")?.value) || 0;
+      const juveniles = parseInt(document.getElementById("f-juveniles")?.value) || 0;
+      const herdCalf = parseInt(document.getElementById("f-calf-herd")?.value) || 0;
 
-      f =
-        parseInt(
-          document.getElementById(
-            "f-f"
-          )?.value
-        ) || 0;
+      // Legacy/Compat inputs
+      m = parseInt(document.getElementById("f-m")?.value) || 0;
+      f = parseInt(document.getElementById("f-f")?.value) || 0;
+      uni = parseInt(document.getElementById("f-u")?.value) || 0;
+      calf = parseInt(document.getElementById("f-c")?.value) || 0;
 
+      // Collect Checked Signs if MOVED
+      if(reportType === "MOVED"){
+        signFreshness = document.getElementById("f-sign-freshness")?.value || "";
+        estimatedHerd = document.getElementById("f-estimated-herd")?.value || "Unknown";
+        movementType = document.getElementById("f-movement-type")?.value || "";
+        conflictEvidence = document.getElementById("f-conflict-evidence")?.value || "";
+        
+        const signCheckboxes = document.querySelectorAll(".f-sign-check:checked");
+        movementSigns = Array.from(signCheckboxes).map(cb => cb.value);
+      }
 
-      uni =
-        parseInt(
-          document.getElementById(
-            "f-u"
-          )?.value
-        ) || 0;
+      // Total Calculation
+      const computedTotalInput = parseInt(document.getElementById("f-total")?.value);
+      if(!isNaN(computedTotalInput) && computedTotalInput > 0){
+        total = computedTotalInput;
+      } else {
+        total = m + f + uni + calf + adultTuskers + adultMakhnas + adultFemales + subAdults + juveniles + herdCalf;
+        if(total === 0 && reportType === "MOVED" && estimatedHerd !== "Unknown"){
+          total = parseInt(estimatedHerd) || 1;
+        } else if(total === 0){
+          total = 1;
+        }
+      }
 
-
-      calf =
-        parseInt(
-          document.getElementById(
-            "f-c"
-          )?.value
-        ) || 0;
-
-
-      total =
-        m +
-        f +
-        uni +
-        calf;
+      // Map back legacy counters for 100% non-breaking Firestore schemas
+      if(adultTuskers > 0 || adultMakhnas > 0){
+        m = m || (adultTuskers + adultMakhnas);
+      }
+      if(adultFemales > 0){
+        f = f || adultFemales;
+      }
+      if(herdCalf > 0){
+        calf = calf || herdCalf;
+      }
 
       animalVal = "Elephant";
-      directionVal = document.getElementById("f-dir")?.value || "";
-      remarksVal = document.getElementById("f-remarks")?.value || "";
     }
 
 
@@ -53969,110 +54007,10 @@ async function submitSightingForm(event){
 
 
     const time =
+      document.getElementById("f-time")?.value ||
       now.toLocaleTimeString(
         "en-IN"
       );
-
-
-    // =====================================================
-    // FORM VALUES
-    // =====================================================
-
-    const beatPrefix = observationType === "WILDLIFE" ? "w-" : "f-";
-
-    const beat =
-      String(
-        document.getElementById(
-          beatPrefix + "beat"
-        )?.value || ""
-      ).trim();
-
-
-    const forestBlock =
-      String(
-        document.getElementById(
-          beatPrefix + "block"
-        )?.value || ""
-      ).trim();
-
-
-    const compt =
-      String(
-        document.getElementById(
-          beatPrefix + "compt"
-        )?.value || ""
-      ).trim();
-
-
-    if(
-      !beat ||
-      !compt
-    ){
-
-      alert(
-        "❌ Select Beat & Compartment"
-      );
-
-      setSubmitLoading(
-        false
-      );
-
-      return;
-
-    }
-
-
-    // =====================================================
-    // SAVE NEW CUSTOM VILLAGE
-    // =====================================================
-
-    if(
-      forestBlock ===
-      "VILLAGE"
-    ){
-
-      try{
-
-        const customVillages =
-          JSON.parse(
-            localStorage.getItem(
-              "customVillages"
-            ) || "[]"
-          );
-
-
-        if(
-          compt &&
-          !customVillages.includes(
-            compt
-          )
-        ){
-
-          customVillages.push(
-            compt
-          );
-
-
-          localStorage.setItem(
-            "customVillages",
-            JSON.stringify(
-              customVillages
-            )
-          );
-
-        }
-
-      }
-      catch(err){
-
-        console.warn(
-          "Village save failed",
-          err
-        );
-
-      }
-
-    }
 
 
     // =====================================================
@@ -54127,7 +54065,7 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // SPATIAL CONTEXT
+    // SPATIAL CONTEXT & GIS RESOLUTION
     // =====================================================
 
     let spatialCompartment =
@@ -54675,9 +54613,7 @@ async function submitSightingForm(event){
           "BEAT",
           "beat_name",
           "beatName"
-        ) ||
-
-        beat
+        )
 
       );
 
@@ -54697,333 +54633,8 @@ async function submitSightingForm(event){
           "name",
           "Name",
           "NAME"
-        ) ||
+        )
 
-        compt
-
-      );
-
-
-    // =====================================================
-    // SELECTED COMPARTMENT FALLBACK
-    // =====================================================
-
-    let selectedCompartmentFeature =
-      null;
-
-
-    if(
-      Array.isArray(
-        window.allCompartmentFeatures
-      ) &&
-      compt
-    ){
-
-      const wantedCompartment =
-        normalizeGISKey(
-          compt
-        );
-
-
-      const wantedBeat =
-        normalizeGISKey(
-          beat
-        );
-
-
-      selectedCompartmentFeature =
-        window.allCompartmentFeatures
-          .find(
-            feature => {
-
-              const p =
-                getGISProperties(
-                  feature
-                );
-
-
-              const candidateCompartment =
-                getGISValue(
-                  p,
-                  "compartment",
-                  "Compartment",
-                  "COMPARTMENT",
-                  "compt",
-                  "name",
-                  "Name",
-                  "NAME"
-                );
-
-
-              if(
-                !candidateCompartment ||
-                normalizeGISKey(
-                  candidateCompartment
-                ) !==
-                wantedCompartment
-              ){
-
-                return false;
-
-              }
-
-
-              const candidateBeat =
-                getGISValue(
-                  p,
-                  "beat",
-                  "Beat",
-                  "BEAT",
-                  "beat_name",
-                  "beatName"
-                );
-
-
-              if(
-                wantedBeat &&
-                candidateBeat
-              ){
-
-                return (
-                  normalizeGISKey(
-                    candidateBeat
-                  ) ===
-                  wantedBeat
-                );
-
-              }
-
-
-              return true;
-
-            }
-          ) ||
-        null;
-
-    }
-
-
-    const selectedCompartmentProperties =
-      getGISProperties(
-        selectedCompartmentFeature
-      );
-
-
-    if(
-      !resolvedDivision
-    ){
-
-      resolvedDivision =
-        getGISValue(
-          selectedCompartmentProperties,
-          "division",
-          "Division",
-          "DIVISION",
-          "division_name",
-          "divisionName"
-        );
-
-    }
-
-
-    if(
-      !resolvedRange
-    ){
-
-      resolvedRange =
-        getGISValue(
-          selectedCompartmentProperties,
-          "range",
-          "Range",
-          "RANGE",
-          "range_name",
-          "rangeName"
-        );
-
-    }
-
-
-    if(
-      !resolvedBeat
-    ){
-
-      resolvedBeat =
-        getGISValue(
-          selectedCompartmentProperties,
-          "beat",
-          "Beat",
-          "BEAT",
-          "beat_name",
-          "beatName"
-        ) ||
-        beat;
-
-    }
-
-
-    if(
-      !resolvedCompartment
-    ){
-
-      resolvedCompartment =
-        getGISValue(
-          selectedCompartmentProperties,
-          "compartment",
-          "Compartment",
-          "COMPARTMENT",
-          "compt",
-          "name",
-          "Name",
-          "NAME"
-        ) ||
-        compt;
-
-    }
-
-
-    // =====================================================
-    // SELECTED BEAT FALLBACK
-    // =====================================================
-
-    let selectedBeatFeature =
-      null;
-
-
-    if(
-      Array.isArray(
-        window.allGISFeatures
-      ) &&
-      (
-        resolvedBeat ||
-        beat
-      )
-    ){
-
-      const wantedBeat =
-        normalizeGISKey(
-          resolvedBeat ||
-          beat
-        );
-
-
-      selectedBeatFeature =
-        window.allGISFeatures
-          .find(
-            feature => {
-
-              const p =
-                getGISProperties(
-                  feature
-                );
-
-
-              const candidateBeat =
-                getGISValue(
-                  p,
-                  "beat",
-                  "Beat",
-                  "BEAT",
-                  "beat_name",
-                  "beatName"
-                );
-
-
-              return (
-                candidateBeat &&
-                normalizeGISKey(
-                  candidateBeat
-                ) ===
-                wantedBeat
-              );
-
-            }
-          ) ||
-        null;
-
-    }
-
-
-    const selectedBeatProperties =
-      getGISProperties(
-        selectedBeatFeature
-      );
-
-
-    if(
-      !resolvedDivision
-    ){
-
-      resolvedDivision =
-        getGISValue(
-          selectedBeatProperties,
-          "division",
-          "Division",
-          "DIVISION",
-          "division_name",
-          "divisionName"
-        );
-
-    }
-
-
-    if(
-      !resolvedRange
-    ){
-
-      resolvedRange =
-        getGISValue(
-          selectedBeatProperties,
-          "range",
-          "Range",
-          "RANGE",
-          "range_name",
-          "rangeName"
-        );
-
-    }
-
-
-    if(
-      !resolvedBeat
-    ){
-
-      resolvedBeat =
-        getGISValue(
-          selectedBeatProperties,
-          "beat",
-          "Beat",
-          "BEAT",
-          "beat_name",
-          "beatName"
-        ) ||
-        beat;
-
-    }
-
-
-    resolvedDivision =
-      cleanGISValue(
-        resolvedDivision
-      );
-
-
-    resolvedRange =
-      cleanGISValue(
-        resolvedRange
-      );
-
-
-    resolvedBeat =
-      cleanGISValue(
-        resolvedBeat ||
-        beat
-      );
-
-
-    resolvedCompartment =
-      cleanGISValue(
-        resolvedCompartment ||
-        compt
       );
 
 
@@ -55035,8 +54646,6 @@ async function submitSightingForm(event){
       String(
         masterProperties.SID ||
         compartmentProperties.SID ||
-        selectedCompartmentProperties.SID ||
-        selectedBeatProperties.SID ||
         ""
       ).trim();
 
@@ -55045,8 +54654,6 @@ async function submitSightingForm(event){
       String(
         masterProperties.DID ||
         compartmentProperties.DID ||
-        selectedCompartmentProperties.DID ||
-        selectedBeatProperties.DID ||
         ""
       ).trim();
 
@@ -55055,8 +54662,6 @@ async function submitSightingForm(event){
       String(
         masterProperties.RID ||
         compartmentProperties.RID ||
-        selectedCompartmentProperties.RID ||
-        selectedBeatProperties.RID ||
         ""
       ).trim();
 
@@ -55065,8 +54670,6 @@ async function submitSightingForm(event){
       String(
         masterProperties.BID ||
         compartmentProperties.BID ||
-        selectedCompartmentProperties.BID ||
-        selectedBeatProperties.BID ||
         ""
       ).trim();
 
@@ -55091,19 +54694,7 @@ async function submitSightingForm(event){
           .Vill_name ||
 
         officialVillageProperties
-          .Vill_Name ||
-
-        officialVillageProperties
           .villageName ||
-
-        officialVillageProperties
-          .village_name ||
-
-        officialVillageProperties
-          .NAME ||
-
-        officialVillageProperties
-          .Name ||
 
         officialVillageProperties
           .name ||
@@ -55123,19 +54714,7 @@ async function submitSightingForm(event){
           .Village_Code ||
 
         officialVillageProperties
-          .VillageCode ||
-
-        officialVillageProperties
-          .villageCode ||
-
-        officialVillageProperties
           .village_code ||
-
-        officialVillageProperties
-          .LGD_CODE ||
-
-        officialVillageProperties
-          .lgd_code ||
 
         ""
 
@@ -55151,9 +54730,6 @@ async function submitSightingForm(event){
         officialVillageProperties
           .district ||
 
-        officialVillageProperties
-          .District ||
-
         ""
 
       ).trim();
@@ -55167,15 +54743,6 @@ async function submitSightingForm(event){
 
         officialVillageProperties
           .subdistrict ||
-
-        officialVillageProperties
-          .Subdistrict ||
-
-        officialVillageProperties
-          .block ||
-
-        officialVillageProperties
-          .Block ||
 
         ""
 
@@ -55191,9 +54758,6 @@ async function submitSightingForm(event){
         officialVillageProperties
           .PINCODE ||
 
-        officialVillageProperties
-          .Pincode ||
-
         ""
 
       ).trim();
@@ -55207,7 +54771,6 @@ async function submitSightingForm(event){
       String(
         nearestVillage?.village ||
         nearestVillage?.name ||
-        nearestVillage?.cleanName ||
         ""
       ).trim();
 
@@ -55304,62 +54867,6 @@ async function submitSightingForm(event){
 
 
     // =====================================================
-    // FINAL GIS DEBUG
-    // =====================================================
-
-    console.table([
-      {
-
-        GPS:
-          location,
-
-        division:
-          resolvedDivision,
-
-        range:
-          resolvedRange,
-
-        beat:
-          resolvedBeat,
-
-        compartment:
-          resolvedCompartment,
-
-        SID:
-          resolvedSID,
-
-        DID:
-          resolvedDID,
-
-        RID:
-          resolvedRID,
-
-        BID:
-          resolvedBID,
-
-        officialVillage:
-          officialVillageName,
-
-        villageLGD:
-          officialVillageCode,
-
-        nearestLocation:
-          nearestVillageName,
-
-        distanceMeters:
-          nearestVillageDistance,
-
-        risk:
-          nearestVillageRisk,
-
-        conflictHistory:
-          nearestVillageConflictHistory
-
-      }
-    ]);
-
-
-    // =====================================================
     // PAYLOAD (CONDITIONAL SWITCH)
     // =====================================================
 
@@ -55372,9 +54879,9 @@ async function submitSightingForm(event){
         observation_type: "WILDLIFE",
         animal: animalVal,
         other_animal: otherAnimalVal,
-        beat: beat,
-        forest_block: forestBlock,
-        compt: compt,
+        beat: resolvedBeat,
+        forest_block: "",
+        compt: resolvedCompartment,
         time: time,
         total_seen: Number(total),
         sex: sexVal,
@@ -55433,13 +54940,13 @@ async function submitSightingForm(event){
           "",
 
         beat:
-          beat,
+          resolvedBeat,
 
         forest_block:
-          forestBlock,
+          "",
 
         compt:
-          compt,
+          resolvedCompartment,
 
         time:
           time,
@@ -55495,6 +55002,27 @@ async function submitSightingForm(event){
 
         direction:
           directionVal,
+
+        // ===================================================
+        // NEW ELEPHANT LIFECYCLE FIELDS
+        // ===================================================
+
+        observation_type: "ELEPHANT",
+        report_type: reportType,
+        observation_category: observationCategory,
+        elephant_type: elephantType,
+        age_class: ageClass,
+        tusk_condition: tuskCondition,
+        conflict_status: conflictStatus,
+        sign_freshness: signFreshness,
+        estimated_herd_size: estimatedHerd,
+        movement_type: movementType,
+        conflict_evidence: conflictEvidence,
+        movement_signs: movementSigns,
+        status: reportType === "ACTIVE" ? "ACTIVE" : "MOVED",
+        active: reportType === "ACTIVE",
+        marker_visible: true,
+        resolved: false,
 
 
         // ===================================================
@@ -55744,12 +55272,6 @@ async function submitSightingForm(event){
           sightingID =
             firestoreResult.sightingId;
 
-
-          console.log(
-            "🔥 Firestore sighting saved:",
-            firestoreResult
-          );
-
         }
         else{
 
@@ -55767,10 +55289,12 @@ async function submitSightingForm(event){
 
           const backendMethod = observationType === "WILDLIFE" ? "saveWildlifeSighting" : "saveElephantSighting";
 
-          await callBackend(
-            backendMethod,
-            finalPayload
-          );
+          if(typeof callBackend === "function"){
+            await callBackend(
+              backendMethod,
+              finalPayload
+            );
+          }
 
 
           alert(
@@ -55833,12 +55357,6 @@ async function submitSightingForm(event){
 
         }
         catch(backendErr){
-
-          /*
-           * FIRESTORE HAS ALREADY SAVED.
-           * Backend failure must NOT be treated as
-           * Firestore failure.
-           */
 
           console.error(
             "❌ Background backend failed:",
