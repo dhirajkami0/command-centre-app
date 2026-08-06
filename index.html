@@ -38784,7 +38784,7 @@ function getWildlifeEmoji(animal){
 }
 
 // =========================================================
-// 🐅 LOAD WILDLIFE SIGHTINGS (INSTANT UI REFRESH FIX)
+// 🐅 LOAD WILDLIFE SIGHTINGS (DETERMINISTIC LAYER REFRESH)
 // =========================================================
 async function loadWildlifeSightings(){
     try{
@@ -38799,7 +38799,6 @@ async function loadWildlifeSightings(){
                 return [];
             }
         } else {
-            // Ensure layer is on the map if map reinitialized
             if(typeof map !== 'undefined' && !map.hasLayer(window.wildlifeLayer)){
                 window.wildlifeLayer.addTo(map);
             }
@@ -38828,7 +38827,7 @@ async function loadWildlifeSightings(){
         );
 
         // =====================================================
-        // FIRESTORE FETCH (NON-BLOCKING FALLBACK FOR SDK)
+        // FIRESTORE FETCH
         // =====================================================
         let snapshot;
         const db = window.db;
@@ -38853,7 +38852,6 @@ async function loadWildlifeSightings(){
             const data = doc.data() || {};
             data.firestore_id = data.firestore_id || doc.id;
 
-            // Skip expired or explicitly hidden markers
             if(
                 data.marker_visible === false || 
                 expiredSet.has(data.firestore_id)
@@ -38881,13 +38879,15 @@ async function loadWildlifeSightings(){
         });
 
         // =====================================================
-        // CREATE / UPDATE MARKERS
+        // CLEAR LAYER COMPLETELY FOR DETERMINISTIC REFRESH
         // =====================================================
-        const liveIds = new Set();
+        window.wildlifeLayer.clearLayers();
 
+        // =====================================================
+        // CREATE / UPDATE MARKERS & RE-ATTACH
+        // =====================================================
         for(const sighting of wildlife){
             const id = sighting.firestore_id || sighting.sighting_id;
-            liveIds.add(id);
 
             const lat = Number(sighting.lat);
             const lon = Number(sighting.lon);
@@ -38913,20 +38913,37 @@ async function loadWildlifeSightings(){
             let marker = window.wildlifeMarkers[id];
 
             if(!marker){
-                marker = L.marker([lat, lon], {
-                    icon: L.divIcon({
-                        html,
+                marker = L.marker(
+                    [lat, lon],
+                    {
+                        icon: L.divIcon({
+                            html: html,
+                            className: "custom-wildlife-marker",
+                            iconSize: [36, 36],
+                            iconAnchor: [18, 18],
+                            popupAnchor: [0, -18]
+                        })
+                    }
+                );
+                window.wildlifeMarkers[id] = marker;
+            } else {
+                marker.setLatLng([lat, lon]);
+                marker.setIcon(
+                    L.divIcon({
+                        html: html,
                         className: "custom-wildlife-marker",
                         iconSize: [36, 36],
                         iconAnchor: [18, 18],
                         popupAnchor: [0, -18]
                     })
-                });
+                );
+            }
 
+            // ========================================
+            // ALWAYS ENSURE MARKER IS ON LAYER
+            // ========================================
+            if(!window.wildlifeLayer.hasLayer(marker)){
                 marker.addTo(window.wildlifeLayer);
-                window.wildlifeMarkers[id] = marker;
-            } else {
-                marker.setLatLng([lat, lon]);
             }
 
             marker.sighting = sighting;
@@ -38968,19 +38985,6 @@ async function loadWildlifeSightings(){
             `;
 
             marker.bindPopup(popup, { maxWidth: 320 });
-        }
-
-        // =====================================================
-        // REMOVE STALE MARKERS
-        // =====================================================
-        for(const id in window.wildlifeMarkers){
-            if(!liveIds.has(id)){
-                const marker = window.wildlifeMarkers[id];
-                if(marker){
-                    window.wildlifeLayer.removeLayer(marker);
-                }
-                delete window.wildlifeMarkers[id];
-            }
         }
 
         console.log("✅ Wildlife markers on map:", Object.keys(window.wildlifeMarkers).length);
