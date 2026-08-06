@@ -39236,7 +39236,10 @@ async function loadWildlifeSightings(){
                     wildlifeLayer
 
                 );
-
+console.log(
+    "Layer count:",
+    Object.keys(wildlifeLayer._layers).length
+);
                 window.wildlifeMarkers[id] =
 
                     marker;
