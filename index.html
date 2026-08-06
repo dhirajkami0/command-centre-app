@@ -70165,7 +70165,7 @@ async function submitWildlifeForm(){
 
         const gis =
 
-            GISEntities.resolveCurrentLocation(
+            resolveCurrentGIS(
 
                 lat,
 
@@ -70408,13 +70408,19 @@ async function submitWildlifeForm(){
 
                 gis.text,
 
-            forest_block :
+forest_block :
 
-                gis.compartmentResult?.forestBlock ||
+    gis.compartmentResult?.forestBlock ||
 
-                gis.compartmentResult?.block ||
+    gis.compartmentResult?.forest_block ||
 
-                "",
+    gis.compartmentResult?.block ||
+
+    gis.compartmentResult?.feature?.properties?.forest_block ||
+
+    gis.compartmentResult?.feature?.properties?.block ||
+
+    "",
 
             //------------------------------------------------
             // VILLAGE
