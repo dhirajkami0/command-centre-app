@@ -77676,18 +77676,18 @@ document.head.appendChild(
 <!-- ========================================================= -->
 
 <div id="form-modal"
-style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
+style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:5000; overflow-y:auto; padding:10px; -webkit-overflow-scrolling: touch;">
 
-<div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI'; border-top:8px solid #1b5e20;">
+<div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:20px auto; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border-top:8px solid #1b5e20; box-shadow:0 10px 25px rgba(0,0,0,0.3); box-sizing: border-box;">
 
 <div style="display:flex; justify-content:space-between; align-items:center;">
-<h3 style="margin:0;color:#1b5e20;">🐘 Elephant Sighting Report</h3>
-<button onclick="closeSightingForm()" style="font-size:24px;border:none;background:none;cursor:pointer;">&times;</button>
+<h3 style="margin:0; color:#1b5e20; font-size:18px;">🐘 Elephant Sighting Report</h3>
+<button type="button" onclick="closeSightingForm()" style="font-size:24px; border:none; background:none; cursor:pointer; padding:5px; color:#555;">&times;</button>
 </div>
 
 <hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
 
-<form id="elephantForm" onsubmit="event.preventDefault();">
+<form id="elephantForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 10px;">
 
 <!-- Existing Hidden Fields (Preserved 100%) -->
 <input type="hidden" id="f-lat">
@@ -77696,9 +77696,9 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <!-- ====================================================== -->
 <!-- LIFECYCLE STATUS SELECTION -->
 <!-- ====================================================== -->
-<div style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #1b5e20;">
-<label style="display:block; margin-bottom:6px;"><b>🐘 Elephant Status *</b></label>
-<select id="f-report-type" onchange="toggleElephantReportFlow()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<div style="background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #1b5e20; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<label style="display:block; margin-bottom:6px; font-size:13px;"><b>🐘 Elephant Status *</b></label>
+<select id="f-report-type" onchange="toggleElephantReportFlow()" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="ACTIVE">🔴 ACTIVE (Elephants currently present)</option>
 <option value="MOVED">🟢 MOVED / SIGNS FOUND</option>
 </select>
@@ -77707,11 +77707,11 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <!-- ====================================================== -->
 <!-- 🔴 ACTIVE FLOW SECTION -->
 <!-- ====================================================== -->
-<div id="active-flow-section" style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #d32f2f;">
-<h4 style="margin:0 0 10px 0; color:#d32f2f;">🔴 Active Flow Details</h4>
+<div id="active-flow-section" style="background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #d32f2f; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<h4 style="margin:0 0 10px 0; color:#d32f2f; font-size:15px;">🔴 Active Flow Details</h4>
 
-<label style="display:block; margin-bottom:4px;"><b>1. Observation Type *</b></label>
-<select id="f-observation-category" onchange="toggleActiveObservationSubtype()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>1. Observation Type *</b></label>
+<select id="f-observation-category" onchange="toggleActiveObservationSubtype()" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="SINGLE">Single Elephant</option>
 <option value="HERD">Herd</option>
 <option value="MOTHER_WITH_CALF">Mother with Calf</option>
@@ -77720,9 +77720,9 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 </select>
 
 <!-- Single Elephant Section -->
-<div id="single-elephant-options" style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px;">
-<label style="display:block; margin-bottom:4px;"><b>Elephant Type *</b></label>
-<select id="f-elephant-type" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<div id="single-elephant-options" style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #eee;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Elephant Type *</b></label>
+<select id="f-elephant-type" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Tusker">Tusker</option>
 <option value="Makhna">Makhna</option>
 <option value="Female">Female</option>
@@ -77731,8 +77731,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Unknown">Unknown</option>
 </select>
 
-<label style="display:block; margin-bottom:4px;"><b>Age Class</b></label>
-<select id="f-age-class" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Age Class</b></label>
+<select id="f-age-class" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Adult">Adult</option>
 <option value="Sub-adult">Sub-adult</option>
 <option value="Juvenile">Juvenile</option>
@@ -77740,8 +77740,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Unknown">Unknown</option>
 </select>
 
-<label style="display:block; margin-bottom:4px;"><b>Tusk Condition</b></label>
-<select id="f-tusk-condition" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Tusk Condition</b></label>
+<select id="f-tusk-condition" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Both Tusks">Both Tusks</option>
 <option value="Single Left">Single Left</option>
 <option value="Single Right">Single Right</option>
@@ -77752,64 +77752,64 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 </div>
 
 <!-- Herd Details Section -->
-<div id="herd-composition-options" style="display:none; margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px;">
-<label style="display:block; margin-bottom:6px;"><b>Herd Composition</b></label>
+<div id="herd-composition-options" style="display:none; margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #eee;">
+<label style="display:block; margin-bottom:6px; font-size:13px;"><b>Herd Composition</b></label>
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
 <div>
-<label style="font-size:11px; color:#333;"><b>Adult Tuskers</b></label>
-<input type="number" id="f-adult-tuskers" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Adult Tuskers</b></label>
+<input type="number" id="f-adult-tuskers" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 <div>
-<label style="font-size:11px; color:#333;"><b>Adult Makhnas</b></label>
-<input type="number" id="f-adult-makhnas" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Adult Makhnas</b></label>
+<input type="number" id="f-adult-makhnas" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 <div>
-<label style="font-size:11px; color:#333;"><b>Adult Females</b></label>
-<input type="number" id="f-adult-females" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Adult Females</b></label>
+<input type="number" id="f-adult-females" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 <div>
-<label style="font-size:11px; color:#333;"><b>Sub-adults</b></label>
-<input type="number" id="f-sub-adults" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Sub-adults</b></label>
+<input type="number" id="f-sub-adults" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 <div>
-<label style="font-size:11px; color:#333;"><b>Juveniles</b></label>
-<input type="number" id="f-juveniles" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Juveniles</b></label>
+<input type="number" id="f-juveniles" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 <div>
-<label style="font-size:11px; color:#333;"><b>Calves</b></label>
-<input type="number" id="f-calf-herd" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+<label style="font-size:11px; color:#333; display:block; margin-bottom:2px;"><b>Calves</b></label>
+<input type="number" id="f-calf-herd" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
 </div>
 </div>
 </div>
 
 <!-- 🔥 EXISTING BACKWARD-COMPATIBLE COUNT SECTION -->
-<div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:8px;">
+<div style="margin-top:5px; border-top:1px dashed #ccc; padding-top:8px;">
 <label style="font-size:11px; color:#666; display:block; margin-bottom:4px;"><b>Legacy Breakdown Mapping</b></label>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
   <div>
-    <label style="font-size:12px;color:#333;"><b>Male</b></label>
-    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Male</b></label>
+    <input type="number" id="f-m" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
   </div>
   <div>
-    <label style="font-size:12px;color:#333;"><b>Female</b></label>
-    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Female</b></label>
+    <input type="number" id="f-f" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
   </div>
   <div>
-    <label style="font-size:12px;color:#333;"><b>Unknown</b></label>
-    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Unknown</b></label>
+    <input type="number" id="f-u" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
   </div>
   <div>
-    <label style="font-size:12px;color:#333;"><b>Calf</b></label>
-    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:6px; border:1px solid #ccc; border-radius:4px;">
+    <label style="font-size:12px;color:#333; display:block; margin-bottom:2px;"><b>Calf</b></label>
+    <input type="number" id="f-c" value="0" min="0" oninput="calculateTotal()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing: border-box;">
   </div>
 </div>
 </div>
 
-<label style="display:block; margin-top:10px;"><b>Total Seen</b></label>
-<input type="number" id="f-total" readonly style="width:100%; padding:8px; background:#e0e0e0; border:1px solid #ccc; border-radius:6px; font-weight:bold;">
+<label style="display:block; margin-top:8px; font-size:13px;"><b>Total Seen</b></label>
+<input type="number" id="f-total" readonly style="width:100%; padding:10px; background:#e9ecef; border:1px solid #ccc; border-radius:6px; font-weight:bold; box-sizing: border-box;">
 
-<label style="display:block; margin-top:10px;"><b>4. Behaviour</b></label>
-<select id="f-behaviour" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<label style="display:block; margin-top:8px; font-size:13px;"><b>4. Behaviour</b></label>
+<select id="f-behaviour" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Walking">Walking</option>
 <option value="Running">Running</option>
 <option value="Feeding">Feeding</option>
@@ -77834,8 +77834,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Other">Other</option>
 </select>
 
-<label style="display:block; margin-top:10px;"><b>5. Conflict Status</b></label>
-<select id="f-conflict-status" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<label style="display:block; margin-top:8px; font-size:13px;"><b>5. Conflict Status</b></label>
+<select id="f-conflict-status" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="No Conflict">No Conflict</option>
 <option value="Near Village">Near Village</option>
 <option value="Crop Damage">Crop Damage</option>
@@ -77853,28 +77853,28 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <!-- ====================================================== -->
 <!-- 🟢 MOVED / SIGNS FOUND FLOW SECTION -->
 <!-- ====================================================== -->
-<div id="moved-flow-section" style="display:none; background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #2e7d32;">
-<h4 style="margin:0 0 10px 0; color:#2e7d32;">🟢 Signs & Movement Flow Details</h4>
+<div id="moved-flow-section" style="display:none; background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #2e7d32; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<h4 style="margin:0 0 10px 0; color:#2e7d32; font-size:15px;">🟢 Signs & Movement Flow Details</h4>
 
-<label style="display:block; margin-bottom:6px;"><b>1. Signs Found (Multiple Selection)</b></label>
+<label style="display:block; margin-bottom:6px; font-size:13px;"><b>1. Signs Found (Multiple Selection)</b></label>
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; font-size:13px;">
-<label><input type="checkbox" class="f-sign-check" value="Fresh Dung"> Fresh Dung</label>
-<label><input type="checkbox" class="f-sign-check" value="Old Dung"> Old Dung</label>
-<label><input type="checkbox" class="f-sign-check" value="Fresh Footprints"> Fresh Footprints</label>
-<label><input type="checkbox" class="f-sign-check" value="Old Footprints"> Old Footprints</label>
-<label><input type="checkbox" class="f-sign-check" value="Broken Bamboo"> Broken Bamboo</label>
-<label><input type="checkbox" class="f-sign-check" value="Broken Branches"> Broken Branches</label>
-<label><input type="checkbox" class="f-sign-check" value="Feeding Signs"> Feeding Signs</label>
-<label><input type="checkbox" class="f-sign-check" value="Mud Wallow"> Mud Wallow</label>
-<label><input type="checkbox" class="f-sign-check" value="Trumpeting Heard"> Trumpeting Heard</label>
-<label><input type="checkbox" class="f-sign-check" value="Camera Trap Image"> Camera Trap Image</label>
-<label><input type="checkbox" class="f-sign-check" value="Direct Visual"> Direct Visual (Left)</label>
-<label><input type="checkbox" class="f-sign-check" value="Villager Information"> Villager Info</label>
-<label><input type="checkbox" class="f-sign-check" value="Other"> Other</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Fresh Dung"> Fresh Dung</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Old Dung"> Old Dung</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Fresh Footprints"> Fresh Footprints</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Old Footprints"> Old Footprints</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Broken Bamboo"> Broken Bamboo</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Broken Branches"> Broken Branches</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Feeding Signs"> Feeding Signs</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Mud Wallow"> Mud Wallow</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Trumpeting Heard"> Trumpeting Heard</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Camera Trap Image"> Camera Trap Image</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Direct Visual"> Direct Visual (Left)</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Villager Information"> Villager Info</label>
+<label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="f-sign-check" value="Other"> Other</label>
 </div>
 
-<label style="display:block; margin-bottom:4px;"><b>2. Freshness</b></label>
-<select id="f-sign-freshness" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>2. Freshness</b></label>
+<select id="f-sign-freshness" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Fresh (<6 hours)">Fresh (&lt;6 hours)</option>
 <option value="Today">Today</option>
 <option value="Yesterday">Yesterday</option>
@@ -77883,8 +77883,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Unknown">Unknown</option>
 </select>
 
-<label style="display:block; margin-bottom:4px;"><b>3. Estimated Herd Size</b></label>
-<select id="f-estimated-herd" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>3. Estimated Herd Size</b></label>
+<select id="f-estimated-herd" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Unknown">Unknown</option>
 <option value="1">1</option>
 <option value="2-5">2–5</option>
@@ -77893,8 +77893,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="20+">20+</option>
 </select>
 
-<label style="display:block; margin-bottom:4px;"><b>4. Estimated Movement</b></label>
-<select id="f-movement-type" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>4. Estimated Movement</b></label>
+<select id="f-movement-type" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="Into Forest">Into Forest</option>
 <option value="Towards Village">Towards Village</option>
 <option value="Towards Tea Garden">Towards Tea Garden</option>
@@ -77905,8 +77905,8 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Unknown">Unknown</option>
 </select>
 
-<label style="display:block; margin-bottom:4px;"><b>7. Conflict Evidence</b></label>
-<select id="f-conflict-evidence" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>7. Conflict Evidence</b></label>
+<select id="f-conflict-evidence" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="No Damage">No Damage</option>
 <option value="Crop Damage">Crop Damage</option>
 <option value="House Damage">House Damage</option>
@@ -77922,33 +77922,33 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <!-- ====================================================== -->
 <!-- GENERAL COMMON FIELDS (TIME, DIRECTION, REMARKS) -->
 <!-- ====================================================== -->
-<div style="background:#ffffff; padding:12px; border-radius:10px; margin-bottom:12px; border-left:5px solid #1b5e20;">
-<label><b>Time</b></label>
-<input type="time" id="f-time" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<div style="background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #1b5e20; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Time *</b></label>
+<input type="time" id="f-time" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 
-<label><b>Driving Status / Remarks Prefix</b></label>
-<select id="f-remarks" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Driving Status / Remarks Prefix</b></label>
+<select id="f-remarks" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
   <option value="Active">🔴 Active</option>
   <option value="Moved">🟢 Moved</option>
 </select>
 
-<label><b>Team Leader</b></label>
-<input type="text" id="f-team" readonly style="width:100%; padding:8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Team Leader</b></label>
+<input type="text" id="f-team" readonly style="width:100%; padding:10px; background:#e9ecef; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; font-size:14px; box-sizing: border-box;">
 
-<label><b>Location</b></label>
-<input type="text" id="f-location" readonly style="width:100%; padding:8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Location</b></label>
+<input type="text" id="f-location" readonly style="width:100%; padding:10px; background:#e9ecef; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; font-size:14px; box-sizing: border-box;">
 
-<label>Photo</label>
-<input type="file" id="f-photo" accept="image/*" style="width:100%; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;">Photo</label>
+<input type="file" id="f-photo" accept="image/*" style="width:100%; margin-bottom:10px; font-size:13px;">
 
-<label>Video (Optional)</label>
-<input type="file" id="f-video" accept="video/*" style="width:100%; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;">Video (Optional)</label>
+<input type="file" id="f-video" accept="video/*" style="width:100%; margin-bottom:10px; font-size:13px;">
 
-<label>Audio (Optional)</label>
-<input type="file" id="f-audio" accept="audio/*" style="width:100%; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;">Audio (Optional)</label>
+<input type="file" id="f-audio" accept="audio/*" style="width:100%; margin-bottom:10px; font-size:13px;">
 
-<label><b>Direction</b></label>
-<select id="f-dir" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px;">
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Direction</b></label>
+<select id="f-dir" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 <option value="N">North</option>
 <option value="NE">North-East</option>
 <option value="E">East</option>
@@ -77961,13 +77961,21 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <option value="Unknown">Unknown</option>
 </select>
 
-<label><b>Remarks</b></label>
-<textarea id="f-remarks-multiline" rows="3" placeholder="Herd feeding near river. Driving operation started." style="width:100%; resize:vertical; padding:8px; border:1px solid #ccc; border-radius:6px;"></textarea>
+<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Remarks</b></label>
+<textarea id="f-remarks-multiline" rows="3" placeholder="Herd feeding near river. Driving operation started." style="width:100%; resize:vertical; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; font-size:14px; box-sizing: border-box;"></textarea>
 </div>
 
-<button type="button" id="submitBtn" onclick="submitSightingForm()" style="width:100%; background:#1b5e20; color:white; padding:12px; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">
+<!-- ====================================================== -->
+<!-- BUTTONS CONTAINER -->
+<!-- ====================================================== -->
+<div style="display:flex; gap:10px; margin-top:5px;">
+<button type="button" onclick="closeSightingForm()" style="flex:1; background:#757575; color:white; padding:12px; border:none; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; box-sizing: border-box;">
+  ❌ Cancel
+</button>
+<button type="button" id="submitBtn" onclick="submitSightingForm()" style="flex:1; background:#1b5e20; color:white; padding:12px; border:none; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; box-sizing: border-box;">
   📤 SUBMIT
 </button>
+</div>
 
 </form>
 </div>
@@ -78000,23 +78008,23 @@ display:none;
 </div>
 
 <!-- MOVE FORM MODAL -->
-<div id="move-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999999; align-items:center; justify-content:center;">
-  <div style="background:#fff;padding:20px;border-radius:12px;width:320px">
-    <h3>Update Sighting</h3>
+<div id="move-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index:999999; align-items:center; justify-content:center; padding: 15px;">
+  <div style="background:#fff; padding:20px; border-radius:12px; width:100%; max-width:320px; box-sizing: border-box; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+    <h3 style="margin-top:0; font-size:18px; color:#1b5e20;">Update Sighting</h3>
 
     <input type="hidden" id="move-id">
 
-    <label>Depredation</label>
-    <input type="text" id="move-depredation">
+    <label style="font-size:13px; font-weight:bold; display:block; margin-top:8px;">Depredation</label>
+    <input type="text" id="move-depredation" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box;">
 
-    <label>Involved</label>
-    <input type="text" id="move-involved">
+    <label style="font-size:13px; font-weight:bold; display:block; margin-top:8px;">Involved</label>
+    <input type="text" id="move-involved" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box;">
 
-    <label>Driving</label>
-    <input type="text" id="move-driving">
+    <label style="font-size:13px; font-weight:bold; display:block; margin-top:8px;">Driving</label>
+    <input type="text" id="move-driving" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box;">
 
-    <label><b>Direction</b></label>
-    <select id="move-dir" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+    <label style="font-size:13px; font-weight:bold; display:block; margin-top:8px;"><b>Direction</b></label>
+    <select id="move-dir" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; background:#fff; box-sizing: border-box;">
       <option value="">Select Direction</option>
       <option value="N">North</option>
       <option value="NE">North-East</option>
@@ -78028,24 +78036,26 @@ display:none;
       <option value="NW">North-West</option>
     </select>
 
-    <label>Remarks</label>
-    <select id="move-remarks" style="width:100%; padding:8px; margin-top:5px; border-radius:6px;">
+    <label style="font-size:13px; font-weight:bold; display:block; margin-top:8px;">Remarks</label>
+    <select id="move-remarks" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; background:#fff; box-sizing: border-box;">
       <option value="Moved">🟢 Moved</option>
       <option value="Resolved">Resolved</option>
     </select>
 
-    <button id="moveConfirmBtn" onclick="submitMoveForm()">✅ Confirm</button>
-    <button onclick="closeMoveForm()">❌ Cancel</button>
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button type="button" onclick="closeMoveForm()" style="flex:1; background:#757575; color:white; padding:10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">❌ Cancel</button>
+      <button type="button" id="moveConfirmBtn" onclick="submitMoveForm()" style="flex:1; background:#1b5e20; color:white; padding:10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">✅ Confirm</button>
+    </div>
   </div>
 </div>
 
 <!-- ========================================================= -->
 <!-- WILDLIFE TYPE SELECTOR -->
 <!-- ========================================================= -->
-<div id="sighting-selector-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:6000; align-items:center; justify-content:center;">
-  <div style="background:#fff; width:330px; border-radius:14px; padding:20px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
-    <h3 style="margin-top:0; color:#1b5e20;">Select Sighting Type</h3>
-    <button onclick="openElephantSighting()" style="width:100%; padding:14px; margin-top:10px; font-size:18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:pointer;">
+<div id="sighting-selector-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter: blur(4px); z-index:6000; align-items:center; justify-content:center; padding: 15px;">
+  <div style="background:#fff; width:100%; max-width:330px; border-radius:14px; padding:20px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
+    <h3 style="margin-top:0; color:#1b5e20; font-size:18px;">Select Sighting Type</h3>
+    <button type="button" onclick="openElephantSighting()" style="width:100%; padding:14px; margin-top:10px; font-size:18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
       🐘 Elephant
     </button>
   </div>
