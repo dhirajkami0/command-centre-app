@@ -26953,7 +26953,41 @@ window.helpContact = {
 // ============================================================
 
 window.helpCallStarted = false;
+// =====================================================
+// 🐅 WILDLIFE GLOBALS
+// =====================================================
 
+window.wildlifeLayer =
+
+    window.wildlifeLayer ||
+
+    L.layerGroup().addTo(map);
+
+window.wildlifeMarkers =
+
+    window.wildlifeMarkers ||
+
+    {};
+
+window.wildlifeInitialized =
+
+    false;
+
+window.expiredWildlife =
+
+    window.expiredWildlife ||
+
+    JSON.parse(
+
+        localStorage.getItem(
+
+            "expiredWildlife"
+
+        ) ||
+
+        "[]"
+
+    );
 // ============================================================
 // HEC MAP
 // ============================================================
@@ -38749,315 +38783,808 @@ function getWildlifeEmoji(animal){
     }
 }
 
-// =========================================================
-// 🐅 LOAD WILDLIFE SIGHTINGS (SEPARATE FROM ELEPHANT LAYER)
-// =========================================================
+// =====================================================
+// 🐅 LOAD WILDLIFE SIGHTINGS
+// =====================================================
+
 async function loadWildlifeSightings(){
-    try {
-        // Initialize wildlife map layer if not already present
-        if(!window.wildlifeLayer){
-            if(typeof map !== 'undefined'){
-                window.wildlifeLayer = L.layerGroup().addTo(map);
-            } else {
-                console.warn("⚠ Map instance not found for wildlife layer.");
-                return;
-            }
-        }
-
-        // Clear existing markers on the wildlife layer
-        window.wildlifeLayer.clearLayers();
-
-        // Fetch from Firestore 'wildlife_sightings' collection
-        let snapshot;
-        if(typeof db !== 'undefined' && typeof db.collection === 'function'){
-            snapshot = await db.collection("wildlife_sightings").get();
-        } else if(window.firestoreDB && typeof window.firestoreDB.collection === 'function'){
-            snapshot = await window.firestoreDB.collection("wildlife_sightings").get();
-        } else {
-            console.warn("⚠ Firestore database reference not found.");
-            return;
-        }
-
-        if(!snapshot || snapshot.empty){
-            console.log("ℹ No wildlife sightings found.");
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const e = doc.data();
-            
-            const lat = Number(e.lat);
-            const lon = Number(e.lon);
-
-            if(!Number.isFinite(lat) || !Number.isFinite(lon)){
-                return; // Skip invalid coordinates
-            }
-
-            const emoji = getWildlifeEmoji(e.animal);
-            const animalName = String(e.animal || "Wildlife").toUpperCase();
-            const statusText = String(e.status || "ACTIVE").toUpperCase();
-            
-            // Dynamic Marker Styling
-            const color = statusText === "ACTIVE" ? "#d32f2f" : "#2e7d32";
-            
-            const customIcon = L.divIcon({
-                className: 'custom-wildlife-marker',
-                html: `<div style="
-                    background: white;
-                    border: 3px solid ${color};
-                    border-radius: 50%;
-                    width: 36px;
-                    height: 36px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-                    font-size: 18px;
-                ">${emoji}</div>`,
-                iconSize: [36, 36],
-                iconAnchor: [18, 18],
-                popupAnchor: [0, -18]
-            });
-
-            const marker = L.marker([lat, lon], { icon: customIcon });
-
-            // Constructing Popup Content as Requested
-            const photoHtml = e.photo ? `
-                <div style="margin-top:8px; text-align:center;">
-                    <img src="${e.photo}" style="max-width:100%; height:120px; border-radius:6px; object-fit:cover;" alt="Wildlife Photo"/>
-                </div>
-            ` : '';
-
-            const popupContent = `
-                <div style="font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-width:200px; font-size:13px; line-height:1.4;">
-                    <div style="display:flex; align-items:center; gap:6px; border-bottom:2px solid ${color}; padding-bottom:6px; margin-bottom:8px;">
-                        <span style="font-size:20px;">${emoji}</span>
-                        <div>
-                            <b style="color:${color}; font-size:14px; display:block;">${animalName}</b>
-                            <span style="font-size:11px; font-weight:bold; color:#555;">${statusText}</span>
-                        </div>
-                    </div>
-                    <div style="display:grid; grid-template-columns:auto 1fr; gap:4px 8px;">
-                        <span><b>Count:</b></span><span>${e.count || 1}</span>
-                        <span><b>Behaviour:</b></span><span>${e.behaviour || 'N/A'}</span>
-                        <span><b>Direction:</b></span><span>${e.direction || 'N/A'}</span>
-                        <span><b>Age:</b></span><span>${e.age || 'Unknown'}</span>
-                        <span><b>Sex:</b></span><span>${e.sex || 'Unknown'}</span>
-                        <span><b>Leader:</b></span><span>${e.leader || 'N/A'}</span>
-                        <span><b>Location:</b></span><span>${e.resolved_location || e.location || 'N/A'}</span>
-                    </div>
-                    ${photoHtml}
-                </div>
-            `;
-
-            marker.bindPopup(popupContent);
-            window.wildlifeLayer.addLayer(marker);
-        });
-
-        console.log("✅ Wildlife sightings loaded successfully onto separate layer.");
-
-    } catch(err) {
-        console.error("❌ Error loading wildlife sightings:", err);
-    }
-}
-  /* ===============================
-   🧠 ADVANCED HERD MATCH SCORE (WITH ELEPHANT COUNT)
-=============================== */
-
-/* ===============================
-   🧠 ADVANCED HERD MATCH SCORE (REBALANCED)
-=============================== */
-
-  
-  window.openMoveForm = function(id){
-
-  console.log(
-    "🔥 openMoveForm CALLED with ID:",
-    id
-  );
-
-  // 🔥 NEW
-  populateMoveRemarks();
-
-  const modal =
-    document.getElementById(
-      "move-form-modal"
-    );
-
-  if(!modal){
-
-    console.error(
-      "❌ move-form-modal NOT FOUND"
-    );
-
-    return;
-  }
-
-  setMoveLoading("reset");
-
-  document.getElementById(
-    "move-id"
-  ).value = id;
-
-  document.getElementById(
-    "move-depredation"
-  ).value = "";
-
-  document.getElementById(
-    "move-involved"
-  ).value = "";
-
-  document.getElementById(
-    "move-driving"
-  ).value = "";
-
-  modal.style.display = "flex";
-
-}; /* 🔥 STATUS UPDATE */
-
-function populateMoveRemarks(){
-
-  const remarks =
-    document.getElementById(
-      "move-remarks"
-    );
-
-  if(!remarks){
-    return;
-  }
-
-  // =====================================
-  // RESET DEFAULT OPTIONS
-  // =====================================
-
-  remarks.innerHTML = `
-
-    <option value="Moved">
-      🟢 Moved
-    </option>
-
-    <option value="Resolved">
-      Resolved
-    </option>
-
-  `;
-
-  // =====================================
-  // USER RANGE
-  // =====================================
-
-  const userRange =
-    String(
-      window.userProfile?.range || ""
-    ).trim();
-
-  const isAdmin =
-    !userRange;
-
-  // =====================================
-  // COLLECT COMPARTMENTS
-  // =====================================
-
-  const compartments =
-    new Set();
-
-  (
-    window.allCompartmentFeatures || []
-  )
-  .forEach(f => {
 
     try{
 
-      const props =
-        f.properties || {};
+        // =====================================================
+        // INIT
+        // =====================================================
 
-      const featureRange =
-        String(
+        if(
 
-          props.range ||
+            !window.wildlifeInitialized
 
-          props.Range ||
+        ){
 
-          ""
+            wildlifeLayer.clearLayers();
 
-        ).trim();
+            window.wildlifeInitialized =
 
-      // ================================
-      // RANGE FILTER
-      // ================================
+                true;
 
-      if(
-        !isAdmin &&
-        featureRange !== userRange
-      ){
-        return;
-      }
+        }
 
-      const compartment =
-        String(
+        else{
 
-          props.compartment ||
+            console.log(
 
-          props.ID ||
+                "⏸ Keeping existing wildlife markers"
 
-          ""
+            );
 
-        ).trim();
+        }
 
-      if(compartment){
+        // =====================================================
+        // CACHE
+        // =====================================================
 
-        compartments.add(
-          compartment
+        window.wildlifeMarkers =
+
+            window.wildlifeMarkers ||
+
+            {};
+
+        // =====================================================
+        // EXPIRED CACHE
+        // =====================================================
+
+        window.expiredWildlife =
+
+            window.expiredWildlife ||
+
+            JSON.parse(
+
+                localStorage.getItem(
+
+                    "expiredWildlife"
+
+                ) ||
+
+                "[]"
+
+            );
+
+        // =====================================================
+        // CLEAN EXPIRED CACHE
+        // =====================================================
+
+        const nowCleanup =
+
+            Date.now();
+
+        window.expiredWildlife =
+
+            window.expiredWildlife.filter(
+
+                function(obj){
+
+                    if(
+
+                        typeof obj ===
+
+                        "string"
+
+                    ){
+
+                        return false;
+
+                    }
+
+                    if(
+
+                        !obj?.id ||
+
+                        !obj?.ts
+
+                    ){
+
+                        return false;
+
+                    }
+
+                    return (
+
+                        nowCleanup -
+
+                        obj.ts
+
+                        <
+
+                        7 *
+
+                        24 *
+
+                        60 *
+
+                        60 *
+
+                        1000
+
+                    );
+
+                }
+
+            );
+
+        localStorage.setItem(
+
+            "expiredWildlife",
+
+            JSON.stringify(
+
+                window.expiredWildlife
+
+            )
+
         );
 
-      }
+        const expiredSet =
 
+            new Set(
+
+                window.expiredWildlife
+
+                    .map(
+
+                        obj =>
+
+                            typeof obj ===
+
+                            "string"
+
+                            ? obj
+
+                            : obj.id
+
+                    )
+
+                    .filter(Boolean)
+
+            );
+
+        // =====================================================
+        // FIRESTORE
+        // =====================================================
+
+        const {
+
+            collection,
+
+            getDocs
+
+        } = window.fb;
+
+        const db =
+
+            window.db;
+
+        console.log(
+
+            "🐅 Loading wildlife_sightings..."
+
+        );
+
+        // =====================================================
+        // PART 3 STARTS HERE
+        // =====================================================
+// =====================================================
+// FETCH WILDLIFE
+// =====================================================
+
+const snapshot =
+
+    await getDocs(
+
+        collection(
+
+            db,
+
+            "wildlife_sightings"
+
+        )
+
+    );
+
+const wildlife =
+
+    [];
+
+snapshot.forEach(
+
+    doc=>{
+
+        const data =
+
+            doc.data() ||
+
+            {};
+
+        data.firestore_id =
+
+            data.firestore_id ||
+
+            doc.id;
+
+        // ============================================
+        // SKIP INVALID
+        // ============================================
+
+        if(
+
+            !data.active ||
+
+            data.marker_visible === false ||
+
+            expiredSet.has(
+
+                data.firestore_id
+
+            )
+
+        ){
+
+            return;
+
+        }
+
+        if(
+
+            !Number.isFinite(
+
+                Number(data.lat)
+
+            ) ||
+
+            !Number.isFinite(
+
+                Number(data.lon)
+
+            )
+
+        ){
+
+            return;
+
+        }
+
+        wildlife.push(
+
+            data
+
+        );
+
+    }
+
+);
+
+console.log(
+
+    "🐅 Wildlife sightings loaded:",
+
+    wildlife.length
+
+);
+
+// =====================================================
+// SORT LATEST FIRST
+// =====================================================
+
+wildlife.sort(
+
+    function(
+
+        a,
+
+        b
+
+    ){
+
+        const ta =
+
+            a.updated_at?.seconds ||
+
+            a.created_at?.seconds ||
+
+            0;
+
+        const tb =
+
+            b.updated_at?.seconds ||
+
+            b.created_at?.seconds ||
+
+            0;
+
+        return tb - ta;
+
+    }
+
+);
+
+// =====================================================
+// PART 4 STARTS HERE
+// =====================================================
+
+
+      // =====================================================
+// CREATE / UPDATE MARKERS
+// =====================================================
+
+for(
+
+    const sighting of wildlife
+
+){
+
+    const id =
+
+        sighting.firestore_id ||
+
+        sighting.sighting_id;
+
+    // =================================================
+    // LOCATION
+    // =================================================
+
+    const lat =
+
+        Number(
+
+            sighting.lat
+
+        );
+
+    const lon =
+
+        Number(
+
+            sighting.lon
+
+        );
+
+    // =================================================
+    // ICON
+    // =================================================
+
+    const emoji =
+
+        getWildlifeEmoji(
+
+            sighting.animal
+
+        );
+
+    const html =
+
+        `
+        <div
+        style="
+        font-size:26px;
+        line-height:26px;
+        text-align:center;
+        text-shadow:
+            0 0 6px #fff,
+            0 0 10px #fff;
+        ">
+            ${emoji}
+        </div>
+        `;
+
+    // =================================================
+    // EXISTING MARKER
+    // =================================================
+
+    let marker =
+
+        window.wildlifeMarkers[id];
+
+    // =================================================
+    // CREATE
+    // =================================================
+
+    if(
+
+        !marker
+
+    ){
+
+        marker =
+
+            L.marker(
+
+                [
+
+                    lat,
+
+                    lon
+
+                ],
+
+                {
+
+                    icon:
+
+                        L.divIcon({
+
+                            html,
+
+                            className:
+
+                                "wildlife-marker",
+
+                            iconSize:
+
+                                [
+
+                                    30,
+
+                                    30
+
+                                ],
+
+                            iconAnchor:
+
+                                [
+
+                                    15,
+
+                                    15
+
+                                ]
+
+                        })
+
+                }
+
+            );
+
+        marker.addTo(
+
+            wildlifeLayer
+
+        );
+
+        window.wildlifeMarkers[id] =
+
+            marker;
+
+    }
+
+    // =================================================
+    // UPDATE POSITION
+    // =================================================
+
+    else{
+
+        marker.setLatLng(
+
+            [
+
+                lat,
+
+                lon
+
+            ]
+
+        );
+
+    }
+
+    // =================================================
+    // SAVE DATA
+    // =================================================
+
+    marker.sighting =
+
+        sighting;
+
+}
+
+console.log(
+
+    "🐅 Wildlife markers:",
+
+    Object.keys(
+
+        window.wildlifeMarkers
+
+    ).length
+
+);
+
+// =====================================================
+// PART 5 STARTS HERE
+// =====================================================
+// =====================================================
+// WILDLIFE POPUP
+// =====================================================
+
+for(
+
+    const id in
+
+    window.wildlifeMarkers
+
+){
+
+    const marker =
+
+        window.wildlifeMarkers[id];
+
+    const s =
+
+        marker.sighting;
+
+    if(
+
+        !s
+
+    ){
+
+        continue;
+
+    }
+
+    const emoji =
+
+        getWildlifeEmoji(
+
+            s.animal
+
+        );
+
+    const popup =
+
+`
+<div
+style="
+min-width:260px;
+font-family:Segoe UI;
+font-size:13px;
+">
+
+<h3 style="
+margin:0 0 8px 0;
+color:#2e7d32;
+">
+
+${emoji}
+${String(s.animal || "Wildlife").toUpperCase()}
+
+</h3>
+
+<table
+style="
+width:100%;
+border-collapse:collapse;
+">
+
+<tr>
+<td><b>Status</b></td>
+<td>${s.status || "ACTIVE"}</td>
+</tr>
+
+<tr>
+<td><b>Animal</b></td>
+<td>${s.animal || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Count</b></td>
+<td>${s.count ?? "-"}</td>
+</tr>
+
+<tr>
+<td><b>Sex</b></td>
+<td>${s.sex || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Age</b></td>
+<td>${s.age || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Behaviour</b></td>
+<td>${s.behaviour || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Direction</b></td>
+<td>${s.direction || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Beat</b></td>
+<td>${s.gis_beat || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Compartment</b></td>
+<td>${s.gis_compartment || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Location</b></td>
+<td>${s.resolved_location || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Leader</b></td>
+<td>${s.leader || "-"}</td>
+</tr>
+
+<tr>
+<td><b>Remarks</b></td>
+<td>${s.remarks || "-"}</td>
+</tr>
+
+</table>
+
+${
+s.photo
+
+?
+
+`
+<div
+style="
+margin-top:10px;
+text-align:center;
+">
+
+<img
+
+src="${s.photo}"
+
+style="
+max-width:100%;
+border-radius:8px;
+max-height:180px;
+">
+
+</div>
+`
+
+:
+
+""
+
+}
+
+</div>
+`;
+
+    marker.bindPopup(
+
+        popup,
+
+        {
+
+            maxWidth:
+
+                320
+
+        }
+
+    );
+
+}
+
+console.log(
+
+    "✅ Wildlife popups ready."
+
+);
+
+// =====================================================
+// PART 6 STARTS HERE
+// =====================================================
+// =====================================================
+// REMOVE STALE MARKERS
+// =====================================================
+
+const liveIds =
+
+    new Set(
+
+        wildlife.map(
+
+            s =>
+
+                s.firestore_id ||
+
+                s.sighting_id
+
+        )
+
+    );
+
+for(
+
+    const id in
+
+    window.wildlifeMarkers
+
+){
+
+    if(
+
+        liveIds.has(id)
+
+    ){
+
+        continue;
+
+    }
+
+    const marker =
+
+        window.wildlifeMarkers[id];
+
+    if(
+
+        marker
+
+    ){
+
+        wildlifeLayer.removeLayer(
+
+            marker
+
+        );
+
+    }
+
+    delete
+
+        window.wildlifeMarkers[id];
+
+}
+
+// =====================================================
+// SUMMARY
+// =====================================================
+
+console.log(
+
+    "🐅 Wildlife markers on map:",
+
+    Object.keys(
+
+        window.wildlifeMarkers
+
+    ).length
+
+);
+
+// =====================================================
+// RETURN
+// =====================================================
+
+return wildlife;      
     }
 
     catch(err){
 
-      console.warn(
-        "Move remarks parse failed",
-        err
-      );
+        console.error(
+
+            "❌ loadWildlifeSightings failed:",
+
+            err
+
+        );
+
+        return [];
 
     }
 
-  });
-
-  // =====================================
-  // ADD DRIVEN TO OPTIONS
-  // =====================================
-
-  [...compartments]
-  .sort()
-  .forEach(comp => {
-
-    const opt =
-      document.createElement(
-        "option"
-      );
-
-    opt.value =
-      `Driven to ${comp}`;
-
-    opt.textContent =
-      `Driven to ${comp}`;
-
-    remarks.appendChild(
-      opt
-    );
-
-  });
-
-  console.log(
-    "✅ Move Remarks Loaded:",
-    compartments.size,
-    "| Range:",
-    userRange || "ADMIN"
-  );
-
-}  /* 🔥 STATUS UPDATE */
+} /* 🔥 STATUS UPDATE */
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
 }
