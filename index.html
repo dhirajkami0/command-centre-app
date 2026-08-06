@@ -37843,12 +37843,12 @@ try {
 
   if(
     gis &&
-    typeof gis.resolveCurrentLocation ===
+    typeof gis.    window.resolveCurrentGIS ===
       "function"
   ){
 
     const resolved =
-      gis.resolveCurrentLocation(
+      gis.    window.resolveCurrentGIS(
         lat,
         lon
       );
@@ -42660,7 +42660,7 @@ console.log("RAW LONGITUDE =", live.longitude);
 
             if(
 
-                window.GreenGuardAI?.GISEntities?.resolveCurrentLocation
+                window.GreenGuardAI?.GISEntities?.    window.resolveCurrentGIS
 
             ){
 
@@ -42670,7 +42670,7 @@ console.log("RAW LONGITUDE =", live.longitude);
 
                     .GISEntities
 
-                    .resolveCurrentLocation(
+                    .    window.resolveCurrentGIS(
 
                         result.lat,
 
@@ -42682,7 +42682,7 @@ console.log("RAW LONGITUDE =", live.longitude);
 
             else if(
 
-                typeof window.resolveCurrentLocation ===
+                typeof window.    window.resolveCurrentGIS ===
 
                 "function"
 
@@ -42690,7 +42690,7 @@ console.log("RAW LONGITUDE =", live.longitude);
 
                 resolved =
 
-                    await window.resolveCurrentLocation(
+                    await window.    window.resolveCurrentGIS(
 
                         result.lat,
 
@@ -46489,7 +46489,7 @@ async function(
         result =
             window.GreenGuardAI
                 ?.GISEntities
-                ?.resolveCurrentLocation?.(
+                ?.    window.resolveCurrentGIS?.(
                     lat,
                     lng
                 ) ||
@@ -49670,7 +49670,7 @@ if(
 
     gis &&
 
-    typeof gis.resolveCurrentLocation ===
+    typeof gis.    window.resolveCurrentGIS ===
         "function"
 
 ){
@@ -49678,7 +49678,7 @@ if(
    try{
 
     const resolved =
-        gis.resolveCurrentLocation(
+        gis.    window.resolveCurrentGIS(
             lat,
             lon
         );
@@ -66977,7 +66977,7 @@ try{
 
         await window.GreenGuardAI
             .GISEntities
-            .resolveCurrentLocation(
+            .    window.resolveCurrentGIS(
 
                 reporterLat,
 
@@ -67019,7 +67019,7 @@ try{
 
             await window.GreenGuardAI
                 .GISEntities
-                .resolveCurrentLocation(
+                .    window.resolveCurrentGIS(
 
                     incidentLat,
 
@@ -67043,7 +67043,7 @@ try{
 
             await window.GreenGuardAI
                 .GISEntities
-                .resolveCurrentLocation(
+                .    window.resolveCurrentGIS(
 
                     incidentLat,
 
@@ -70171,7 +70171,7 @@ async function submitWildlifeForm(){
 
         const gis =
 
-            GISEntities.resolveCurrentLocation(
+                window.resolveCurrentGIS(
 
                 lat,
 
