@@ -77671,6 +77671,18 @@ document.head.appendChild(
   
   </script>
 
+<div id="form-modal"
+style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000; overflow-y:auto; padding:10px;">
+
+<div style="background:#f4f4f4; border-radius:15px; padding:20px; max-width:480px; margin:10px auto; font-family:'Segoe UI'; border-top:8px solid #1b5e20;">
+
+<div style="display:flex; justify-content:space-between;">
+<h3 style="margin:0;color:#1b5e20;">🐘 Elephant Sighting Report</h3>
+<button onclick="closeSightingForm()" style="font-size:24px;border:none;background:none;">&times;</button>
+</div>
+
+<hr>
+
 <form id="elephantForm">
 
 <input type="hidden" id="f-lat">
@@ -77720,7 +77732,6 @@ document.head.appendChild(
   </option>
 
 </select>
-
 <label><b>Team Leader</b></label>
 <input type="text" id="f-team" readonly>
 
@@ -77731,9 +77742,7 @@ document.head.appendChild(
 <input type="file" id="f-photo">
 
 <label><b>Direction</b></label>
-
 <select id="f-dir">
-
 <option value="N">North</option>
 <option value="NE">North-East</option>
 <option value="E">East</option>
@@ -77742,19 +77751,15 @@ document.head.appendChild(
 <option value="SW">South-West</option>
 <option value="W">West</option>
 <option value="NW">North-West</option>
-
 </select>
 
-<button
-type="button"
-id="submitBtn"
-onclick="submitSightingForm()">
-
-📤 SUBMIT
-
+<button type="button" id="submitBtn" onclick="submitSightingForm()">
+  📤 SUBMIT
 </button>
 
 </form>
+</div>
+</div>
   <!-- 🔥 INSTALL APP BUTTON -->
   <div id="installContainer" style="
   position:fixed;
