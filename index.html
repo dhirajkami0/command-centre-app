@@ -68863,6 +68863,10 @@ openSightingForm();
 // 🐅 OPEN WILDLIFE FORM
 // ======================================================
 
+// =====================================================
+// 🐅 OPEN WILDLIFE FORM
+// =====================================================
+
 async function openWildlifeForm(){
 
     // ==================================================
@@ -68875,11 +68879,17 @@ async function openWildlifeForm(){
     // NEW OBSERVATION
     // ==================================================
 
-    window.currentObservationType = "WILDLIFE";
+    window.currentObservationType =
 
-    window.isEditingSighting = false;
+        "WILDLIFE";
 
-    window.currentSightingId = null;
+    window.isEditingSighting =
+
+        false;
+
+    window.currentSightingId =
+
+        null;
 
     // ==================================================
     // RESET FORM
@@ -68908,15 +68918,17 @@ async function openWildlifeForm(){
         .style.display = "block";
 
     // ==================================================
-    // CURRENT USER
+    // USER
     // ==================================================
 
     const user =
 
-        window.userProfile || {};
+        window.userProfile ||
+
+        {};
 
     // ==================================================
-    // CURRENT GPS
+    // GPS
     // ==================================================
 
     const gps =
@@ -68931,66 +68943,20 @@ async function openWildlifeForm(){
     // DATE & TIME
     // ==================================================
 
-    const now = new Date();
+    const now =
 
-    const hh =
+        new Date();
 
-        String(
-            now.getHours()
-        ).padStart(2,"0");
+    window.wildlifeDate =
 
-    const mm =
-
-        String(
-            now.getMinutes()
-        ).padStart(2,"0");
-
-    // ==================================================
-    // SAVE FOR SUBMISSION
-    // ==================================================
-
-    window.wildlifeDate = now;
+        now;
 
     window.wildlifeTime =
 
-        hh + ":" + mm;
+        now.toLocaleTimeString();
 
     // ==================================================
-    // COPY ELEPHANT DROPDOWNS
-    // ==================================================
-
-    document.getElementById("w-beat").innerHTML =
-
-        document.getElementById("f-beat").innerHTML;
-
-    document.getElementById("w-block").innerHTML =
-
-        document.getElementById("f-block").innerHTML;
-
-    document.getElementById("w-compt-list").innerHTML =
-
-        document.getElementById("f-compt-list").innerHTML;
-
-    // ==================================================
-    // AUTO SELECT USER BEAT
-    // ==================================================
-
-    if(user.beat){
-
-        document.getElementById("w-beat").value =
-
-            user.beat;
-
-    }
-
-    // ==================================================
-    // REFRESH BLOCK / COMPARTMENT
-    // ==================================================
-
-    updateWildlifeCompt();
-
-    // ==================================================
-    // STORE REPORTER DETAILS
+    // STORE REPORTER
     // ==================================================
 
     window.wildlifeReporter = {
@@ -69010,6 +68976,8 @@ async function openWildlifeForm(){
             "",
 
         designation :
+
+            user.designation ||
 
             user.role ||
 
@@ -69048,10 +69016,14 @@ async function openWildlifeForm(){
     };
 
     // ==================================================
-    // GPS
+    // STORE GPS
     // ==================================================
 
-    const lat =
+    document
+        .getElementById(
+            "w-lat"
+        )
+        .value =
 
         gps.lat ??
 
@@ -69059,7 +69031,11 @@ async function openWildlifeForm(){
 
         "";
 
-    const lon =
+    document
+        .getElementById(
+            "w-lon"
+        )
+        .value =
 
         gps.lng ??
 
@@ -69069,25 +69045,45 @@ async function openWildlifeForm(){
 
         "";
 
-    document.getElementById("w-lat").value = lat;
-
-    document.getElementById("w-lon").value = lon;
-
     // ==================================================
-    // DEFAULT VALUES
+    // DEFAULTS
     // ==================================================
 
-    document.getElementById("w-count").value = 1;
+    document
+        .getElementById(
+            "w-count"
+        )
+        .value = 1;
 
-    document.getElementById("w-animal").selectedIndex = 0;
+    document
+        .getElementById(
+            "w-animal"
+        )
+        .selectedIndex = 0;
 
-    document.getElementById("w-age").selectedIndex = 0;
+    document
+        .getElementById(
+            "w-age"
+        )
+        .selectedIndex = 0;
 
-    document.getElementById("w-sex").selectedIndex = 0;
+    document
+        .getElementById(
+            "w-sex"
+        )
+        .selectedIndex = 0;
 
-    document.getElementById("w-behaviour").selectedIndex = 0;
+    document
+        .getElementById(
+            "w-behaviour"
+        )
+        .selectedIndex = 0;
 
-    document.getElementById("w-dir").selectedIndex = 0;
+    document
+        .getElementById(
+            "w-dir"
+        )
+        .selectedIndex = 0;
 
     // ==================================================
     // OTHER ANIMAL
@@ -69123,28 +69119,56 @@ async function openWildlifeForm(){
     // REMARKS
     // ==================================================
 
-    document.getElementById("w-remarks").value = "";
+    document
+        .getElementById(
+            "w-remarks"
+        )
+        .value = "";
 
     // ==================================================
-    // FILES
+    // PHOTO
     // ==================================================
 
-    document.getElementById("w-photo").value = "";
+    document
+        .getElementById(
+            "w-photo"
+        )
+        .value = "";
 
-    if(document.getElementById("w-video")){
+    if(
 
-        document.getElementById("w-video").value = "";
+        document.getElementById(
+            "w-video"
+        )
+
+    ){
+
+        document
+            .getElementById(
+                "w-video"
+            )
+            .value = "";
 
     }
 
-    if(document.getElementById("w-audio")){
+    if(
 
-        document.getElementById("w-audio").value = "";
+        document.getElementById(
+            "w-audio"
+        )
+
+    ){
+
+        document
+            .getElementById(
+                "w-audio"
+            )
+            .value = "";
 
     }
 
     // ==================================================
-    // RESET FLAGS
+    // FLAGS
     // ==================================================
 
     [
@@ -69161,11 +69185,13 @@ async function openWildlifeForm(){
 
     ]
 
-    .forEach(id=>{
+    .forEach(function(id){
 
         const el =
 
-            document.getElementById(id);
+            document.getElementById(
+                id
+            );
 
         if(el){
 
@@ -69176,7 +69202,7 @@ async function openWildlifeForm(){
     });
 
     // ==================================================
-    // RESET SUBMIT BUTTON
+    // SUBMIT BUTTON
     // ==================================================
 
     if(
@@ -69187,7 +69213,11 @@ async function openWildlifeForm(){
 
     ){
 
-        setSubmitLoading(false);
+        setSubmitLoading(
+
+            false
+
+        );
 
     }
 
@@ -69202,7 +69232,6 @@ async function openWildlifeForm(){
         .focus();
 
 }
-
 function closeWildlifeForm(){
 
 document
