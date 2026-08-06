@@ -39237,6 +39237,15 @@ className:
                     wildlifeLayer
 
                 );
+              marker.setZIndexOffset(1000);
+
+requestAnimationFrame(() => {
+
+    marker.setLatLng(marker.getLatLng());
+
+    marker.update();
+
+});
 console.log(
     "Layer count:",
     Object.keys(wildlifeLayer._layers).length
@@ -39314,7 +39323,15 @@ marker.setIcon(
             ).length
 
         );
+wildlifeLayer.eachLayer(function(m){
 
+    if(m.update){
+
+        m.update();
+
+    }
+
+});
         // =====================================================
         // WILDLIFE POPUP
         // =====================================================
