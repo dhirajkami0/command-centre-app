@@ -77753,10 +77753,14 @@ font-size:15px;
 
 <label style="display:block; margin-bottom:4px; font-size:13px;"><b>Animal *</b></label>
 
-<select
+<!-- 🔥 REPLACED <select> WITH SEARCHABLE TEXT INPUT + DATALIST -->
+<input
+type="text"
 id="w-animal"
+list="animal-options-list"
+placeholder="Type or select animal name..."
 required
-onchange="toggleOtherAnimal()"
+autocomplete="off"
 style="
 width:100%;
 padding:10px;
@@ -77767,63 +77771,37 @@ font-size:14px;
 box-sizing: border-box;
 ">
 
-<option value="">
--- Select or Search Animal --
-</option>
-
-<option>Tiger</option>
-<option>Leopard</option>
-<option>Clouded Leopard</option>
-<option>Fishing Cat</option>
-<option>Leopard Cat</option>
-<option>Jungle Cat</option>
-<option>Rhino</option>
-<option>Gaur</option>
-<option>Wild Buffalo</option>
-<option>Sambar Deer</option>
-<option>Spotted Deer</option>
-<option>Hog Deer</option>
-<option>Barking Deer</option>
-<option>Wild Boar</option>
-<option>Himalayan Black Bear</option>
-<option>Sloth Bear</option>
-<option>Pangolin</option>
-<option>Otter</option>
-<option>Monkey</option>
-<option>Langur</option>
-<option>Python</option>
-<option>King Cobra</option>
-<option>Monitor Lizard</option>
-<option>Peacock</option>
-<option>Hornbill</option>
-<option>Eagle</option>
-<option>Owl</option>
-<option>Turtle</option>
-<option>Crocodile</option>
-<option value="Other">Other</option>
-
-</select>
-
-<div
-id="otherAnimalDiv"
-style="display:none; margin-top:10px;">
-
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Other Animal Name *</b></label>
-
-<input
-type="text"
-id="w-otherAnimal"
-placeholder="Enter Animal Name"
-style="
-width:100%;
-padding:10px;
-border:1px solid #ccc;
-border-radius:6px;
-box-sizing: border-box;
-font-size:14px;
-">
-
-</div>
+<datalist id="animal-options-list">
+<option value="Tiger">
+<option value="Leopard">
+<option value="Clouded Leopard">
+<option value="Fishing Cat">
+<option value="Leopard Cat">
+<option value="Jungle Cat">
+<option value="Rhino">
+<option value="Gaur">
+<option value="Wild Buffalo">
+<option value="Sambar Deer">
+<option value="Spotted Deer">
+<option value="Hog Deer">
+<option value="Barking Deer">
+<option value="Wild Boar">
+<option value="Himalayan Black Bear">
+<option value="Sloth Bear">
+<option value="Pangolin">
+<option value="Otter">
+<option value="Monkey">
+<option value="Langur">
+<option value="Python">
+<option value="King Cobra">
+<option value="Monitor Lizard">
+<option value="Peacock">
+<option value="Hornbill">
+<option value="Eagle">
+<option value="Owl">
+<option value="Turtle">
+<option value="Crocodile">
+</datalist>
 
 <label style="
 margin-top:10px;
@@ -77905,7 +77883,7 @@ box-sizing: border-box;
 
 </div>
 
-</div>
+</div>>
 
 <!-- ====================================================== -->
 <!-- INDIRECT / SIGNS FOUND SECTION (CONDITIONAL) -->
