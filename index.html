@@ -77558,11 +77558,17 @@ display:none;
 <div id="sighting-selector-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter: blur(4px); z-index:6000; align-items:center; justify-content:center; padding: 15px;">
   <div style="background:#fff; width:100%; max-width:330px; border-radius:14px; padding:20px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
     <h3 style="margin-top:0; color:#1b5e20; font-size:18px;">Select Sighting Type</h3>
+    
     <button type="button" onclick="openElephantSighting()" style="width:100%; padding:14px; margin-top:10px; font-size:18px; background:#2e7d32; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
       🐘 Elephant
     </button>
-    <button type="button" onclick="openWildlifeSighting()" style="width:100%; padding:14px; margin-top:10px; font-size:18px; background:#1565c0; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
+    
+    <button type="button" onclick="openWildlifeForm()" style="width:100%; padding:14px; margin-top:12px; font-size:18px; background:#1565c0; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
       🐅 Other Wildlife
+    </button>
+
+    <button type="button" onclick="closeSightingSelector()" style="width:100%; padding:12px; margin-top:18px; border:none; background:#666; color:white; border-radius:8px; cursor:pointer; font-weight:bold;">
+      Cancel
     </button>
   </div>
 </div>
