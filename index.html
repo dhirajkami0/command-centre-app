@@ -9667,7 +9667,35 @@ setTimeout(() => {
         console.log(
           "✅ Sightings loaded"
         );
+// ==============================================
+// 🐅 LOAD WILDLIFE SIGHTINGS
+// ==============================================
 
+if(
+
+    typeof loadWildlifeSightings ===
+    "function"
+
+){
+
+    console.log(
+        "🐅 Loading wildlife sightings..."
+    );
+
+    await loadWildlifeSightings();
+
+    console.log(
+        "✅ Wildlife sightings loaded"
+    );
+
+}
+else{
+
+    console.warn(
+        "⚠ loadWildlifeSightings() unavailable"
+    );
+
+}
 // ==============================================
 // 🚨 LOAD HEC
 // Visible to:
