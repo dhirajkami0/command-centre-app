@@ -38727,7 +38727,7 @@ else {
   }
 
 }   
- // =========================================================
+// =========================================================
 // 🐅 WILDLIFE EMOJI MAP HELPER
 // =========================================================
 function getWildlifeEmoji(animal){
@@ -38783,808 +38783,204 @@ function getWildlifeEmoji(animal){
     }
 }
 
-// =====================================================
-// 🐅 LOAD WILDLIFE SIGHTINGS
-// =====================================================
-
+// =========================================================
+// 🐅 LOAD WILDLIFE SIGHTINGS (PROFESSIONALLY ALIGNED & INSTANT UI REFRESH)
+// =========================================================
 async function loadWildlifeSightings(){
-
     try{
-
         // =====================================================
-        // INIT
+        // INIT WILDLIFE LAYER
         // =====================================================
-
-        if(
-
-            !window.wildlifeInitialized
-
-        ){
-
-            wildlifeLayer.clearLayers();
-
-            window.wildlifeInitialized =
-
-                true;
-
-        }
-
-        else{
-
-            console.log(
-
-                "⏸ Keeping existing wildlife markers"
-
-            );
-
+        if(!window.wildlifeLayer){
+            if(typeof map !== 'undefined'){
+                window.wildlifeLayer = L.layerGroup().addTo(map);
+            } else {
+                console.warn("⚠ Map instance not found for wildlife layer.");
+                return [];
+            }
         }
 
         // =====================================================
-        // CACHE
+        // CACHE & EXPIRED SETS
         // =====================================================
+        window.wildlifeMarkers = window.wildlifeMarkers || {};
 
-        window.wildlifeMarkers =
+        window.expiredWildlife = window.expiredWildlife || JSON.parse(
+            localStorage.getItem("expiredWildlife") || "[]"
+        );
 
-            window.wildlifeMarkers ||
+        const nowCleanup = Date.now();
+        window.expiredWildlife = window.expiredWildlife.filter(function(obj){
+            if(typeof obj === "string"){ return false; }
+            if(!obj?.id || !obj?.ts){ return false; }
+            return (nowCleanup - obj.ts < 7 * 24 * 60 * 60 * 1000);
+        });
 
-            {};
+        localStorage.setItem("expiredWildlife", JSON.stringify(window.expiredWildlife));
 
-        // =====================================================
-        // EXPIRED CACHE
-        // =====================================================
-
-        window.expiredWildlife =
-
-            window.expiredWildlife ||
-
-            JSON.parse(
-
-                localStorage.getItem(
-
-                    "expiredWildlife"
-
-                ) ||
-
-                "[]"
-
-            );
+        const expiredSet = new Set(
+            window.expiredWildlife.map(obj => typeof obj === "string" ? obj : obj.id).filter(Boolean)
+        );
 
         // =====================================================
-        // CLEAN EXPIRED CACHE
+        // FIRESTORE FETCH
         // =====================================================
+        const { collection, getDocs } = window.fb || {};
+        const db = window.db;
 
-        const nowCleanup =
+        if(!db || !collection || !getDocs){
+            console.warn("⚠ Firestore modular SDK or db reference missing.");
+            return [];
+        }
 
-            Date.now();
+        console.log("🐅 Loading wildlife_sightings...");
 
-        window.expiredWildlife =
+        const snapshot = await getDocs(collection(db, "wildlife_sightings"));
+        const wildlife = [];
 
-            window.expiredWildlife.filter(
+        snapshot.forEach(doc => {
+            const data = doc.data() || {};
+            data.firestore_id = data.firestore_id || doc.id;
 
-                function(obj){
+            // Skip inactive, hidden, or expired
+            if(
+                data.active === false || 
+                data.marker_visible === false || 
+                expiredSet.has(data.firestore_id)
+            ){
+                return;
+            }
 
-                    if(
+            const lat = Number(data.lat);
+            const lon = Number(data.lon);
 
-                        typeof obj ===
+            if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+                return;
+            }
 
-                        "string"
+            wildlife.push(data);
+        });
 
-                    ){
+        console.log("🐅 Wildlife sightings loaded:", wildlife.length);
 
-                        return false;
+        // Sort latest first
+        wildlife.sort(function(a, b){
+            const ta = a.updated_at?.seconds || a.created_at?.seconds || 0;
+            const tb = b.updated_at?.seconds || b.created_at?.seconds || 0;
+            return tb - ta;
+        });
 
-                    }
+        // =====================================================
+        // CREATE / UPDATE MARKERS
+        // =====================================================
+        const liveIds = new Set();
 
-                    if(
+        for(const sighting of wildlife){
+            const id = sighting.firestore_id || sighting.sighting_id;
+            liveIds.add(id);
 
-                        !obj?.id ||
+            const lat = Number(sighting.lat);
+            const lon = Number(sighting.lon);
+            const emoji = getWildlifeEmoji(sighting.animal);
+            const statusText = String(sighting.status || "ACTIVE").toUpperCase();
+            const color = statusText === "ACTIVE" ? "#d32f2f" : "#2e7d32";
 
-                        !obj?.ts
+            const html = `
+                <div style="
+                    background: white;
+                    border: 3px solid ${color};
+                    border-radius: 50%;
+                    width: 36px;
+                    height: 36px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+                    font-size: 18px;
+                ">${emoji}</div>
+            `;
 
-                    ){
+            let marker = window.wildlifeMarkers[id];
 
-                        return false;
+            if(!marker){
+                marker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        html,
+                        className: "custom-wildlife-marker",
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18],
+                        popupAnchor: [0, -18]
+                    })
+                });
 
-                    }
+                marker.addTo(window.wildlifeLayer);
+                window.wildlifeMarkers[id] = marker;
+            } else {
+                marker.setLatLng([lat, lon]);
+            }
 
-                    return (
+            marker.sighting = sighting;
 
-                        nowCleanup -
+            // =================================================
+            // PROFESSIONAL POPUP DESIGN (ALIGNED WITH ELEPHANT)
+            // =================================================
+            const animalName = String(sighting.animal || "Wildlife").toUpperCase();
+            const signsList = Array.isArray(sighting.movement_signs) ? sighting.movement_signs.join(', ') : (sighting.signs_found || '');
 
-                        obj.ts
+            const popup = `
+                <div style="font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-width:240px; font-size:13px; line-height:1.4;">
+                    <div style="display:flex; align-items:center; gap:8px; border-bottom:2px solid ${color}; padding-bottom:6px; margin-bottom:8px;">
+                        <span style="font-size:22px;">${emoji}</span>
+                        <div>
+                            <b style="color:${color}; font-size:14px; display:block;">${animalName}</b>
+                            <span style="font-size:11px; font-weight:bold; color:#555;">${statusText} • ${sighting.observation_type || 'DIRECT'}</span>
+                        </div>
+                    </div>
 
-                        <
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:8px;">
+                        <tr><td style="padding:2px 0; color:#555;"><b>Count:</b></td><td style="padding:2px 0;">${sighting.count || sighting.total_seen || 1}</td></tr>
+                        <tr><td style="padding:2px 0; color:#555;"><b>Sex / Age:</b></td><td style="padding:2px 0;">${sighting.sex || 'Unknown'} / ${sighting.age || sighting.age_class || 'Unknown'}</td></tr>
+                        <tr><td style="padding:2px 0; color:#555;"><b>Behaviour:</b></td><td style="padding:2px 0;">${sighting.behaviour || 'N/A'}</td></tr>
+                        <tr><td style="padding:2px 0; color:#555;"><b>Direction:</b></td><td style="padding:2px 0;">${sighting.direction || 'N/A'}</td></tr>
+                        ${signsList ? `<tr><td style="padding:2px 0; color:#555;"><b>Signs:</b></td><td style="padding:2px 0;">${signsList}</td></tr>` : ''}
+                        <tr><td style="padding:2px 0; color:#555;"><b>Beat / Compt:</b></td><td style="padding:2px 0;">${sighting.gis_beat || sighting.beat || 'N/A'} / ${sighting.gis_compartment || sighting.compt || 'N/A'}</td></tr>
+                        <tr><td style="padding:2px 0; color:#555;"><b>Location:</b></td><td style="padding:2px 0;">${sighting.resolved_location || sighting.location || 'N/A'}</td></tr>
+                        <tr><td style="padding:2px 0; color:#555;"><b>Leader:</b></td><td style="padding:2px 0;">${sighting.leader || 'N/A'}</td></tr>
+                        ${sighting.remarks ? `<tr><td style="padding:2px 0; color:#555;"><b>Remarks:</b></td><td style="padding:2px 0;">${sighting.remarks}</td></tr>` : ''}
+                    </table>
 
-                        7 *
+                    ${sighting.photo ? `
+                        <div style="margin-top:8px; text-align:center;">
+                            <img src="${sighting.photo}" style="max-width:100%; height:130px; border-radius:6px; object-fit:cover;" alt="Wildlife Photo"/>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
 
-                        24 *
+            marker.bindPopup(popup, { maxWidth: 320 });
+        }
 
-                        60 *
-
-                        60 *
-
-                        1000
-
-                    );
-
+        // =====================================================
+        // REMOVE STALE MARKERS
+        // =====================================================
+        for(const id in window.wildlifeMarkers){
+            if(!liveIds.has(id)){
+                const marker = window.wildlifeMarkers[id];
+                if(marker){
+                    window.wildlifeLayer.removeLayer(marker);
                 }
-
-            );
-
-        localStorage.setItem(
-
-            "expiredWildlife",
-
-            JSON.stringify(
-
-                window.expiredWildlife
-
-            )
-
-        );
-
-        const expiredSet =
-
-            new Set(
-
-                window.expiredWildlife
-
-                    .map(
-
-                        obj =>
-
-                            typeof obj ===
-
-                            "string"
-
-                            ? obj
-
-                            : obj.id
-
-                    )
-
-                    .filter(Boolean)
-
-            );
-
-        // =====================================================
-        // FIRESTORE
-        // =====================================================
-
-        const {
-
-            collection,
-
-            getDocs
-
-        } = window.fb;
-
-        const db =
-
-            window.db;
-
-        console.log(
-
-            "🐅 Loading wildlife_sightings..."
-
-        );
-
-        // =====================================================
-        // PART 3 STARTS HERE
-        // =====================================================
-// =====================================================
-// FETCH WILDLIFE
-// =====================================================
-
-const snapshot =
-
-    await getDocs(
-
-        collection(
-
-            db,
-
-            "wildlife_sightings"
-
-        )
-
-    );
-
-const wildlife =
-
-    [];
-
-snapshot.forEach(
-
-    doc=>{
-
-        const data =
-
-            doc.data() ||
-
-            {};
-
-        data.firestore_id =
-
-            data.firestore_id ||
-
-            doc.id;
-
-        // ============================================
-        // SKIP INVALID
-        // ============================================
-
-        if(
-
-            !data.active ||
-
-            data.marker_visible === false ||
-
-            expiredSet.has(
-
-                data.firestore_id
-
-            )
-
-        ){
-
-            return;
-
+                delete window.wildlifeMarkers[id];
+            }
         }
 
-        if(
-
-            !Number.isFinite(
-
-                Number(data.lat)
-
-            ) ||
-
-            !Number.isFinite(
-
-                Number(data.lon)
-
-            )
-
-        ){
-
-            return;
-
-        }
-
-        wildlife.push(
-
-            data
-
-        );
-
-    }
-
-);
-
-console.log(
-
-    "🐅 Wildlife sightings loaded:",
-
-    wildlife.length
-
-);
-
-// =====================================================
-// SORT LATEST FIRST
-// =====================================================
-
-wildlife.sort(
-
-    function(
-
-        a,
-
-        b
-
-    ){
-
-        const ta =
-
-            a.updated_at?.seconds ||
-
-            a.created_at?.seconds ||
-
-            0;
-
-        const tb =
-
-            b.updated_at?.seconds ||
-
-            b.created_at?.seconds ||
-
-            0;
-
-        return tb - ta;
-
-    }
-
-);
-
-// =====================================================
-// PART 4 STARTS HERE
-// =====================================================
-
-
-      // =====================================================
-// CREATE / UPDATE MARKERS
-// =====================================================
-
-for(
-
-    const sighting of wildlife
-
-){
-
-    const id =
-
-        sighting.firestore_id ||
-
-        sighting.sighting_id;
-
-    // =================================================
-    // LOCATION
-    // =================================================
-
-    const lat =
-
-        Number(
-
-            sighting.lat
-
-        );
-
-    const lon =
-
-        Number(
-
-            sighting.lon
-
-        );
-
-    // =================================================
-    // ICON
-    // =================================================
-
-    const emoji =
-
-        getWildlifeEmoji(
-
-            sighting.animal
-
-        );
-
-    const html =
-
-        `
-        <div
-        style="
-        font-size:26px;
-        line-height:26px;
-        text-align:center;
-        text-shadow:
-            0 0 6px #fff,
-            0 0 10px #fff;
-        ">
-            ${emoji}
-        </div>
-        `;
-
-    // =================================================
-    // EXISTING MARKER
-    // =================================================
-
-    let marker =
-
-        window.wildlifeMarkers[id];
-
-    // =================================================
-    // CREATE
-    // =================================================
-
-    if(
-
-        !marker
-
-    ){
-
-        marker =
-
-            L.marker(
-
-                [
-
-                    lat,
-
-                    lon
-
-                ],
-
-                {
-
-                    icon:
-
-                        L.divIcon({
-
-                            html,
-
-                            className:
-
-                                "wildlife-marker",
-
-                            iconSize:
-
-                                [
-
-                                    30,
-
-                                    30
-
-                                ],
-
-                            iconAnchor:
-
-                                [
-
-                                    15,
-
-                                    15
-
-                                ]
-
-                        })
-
-                }
-
-            );
-
-        marker.addTo(
-
-            wildlifeLayer
-
-        );
-
-        window.wildlifeMarkers[id] =
-
-            marker;
-
-    }
-
-    // =================================================
-    // UPDATE POSITION
-    // =================================================
-
-    else{
-
-        marker.setLatLng(
-
-            [
-
-                lat,
-
-                lon
-
-            ]
-
-        );
-
-    }
-
-    // =================================================
-    // SAVE DATA
-    // =================================================
-
-    marker.sighting =
-
-        sighting;
-
-}
-
-console.log(
-
-    "🐅 Wildlife markers:",
-
-    Object.keys(
-
-        window.wildlifeMarkers
-
-    ).length
-
-);
-
-// =====================================================
-// PART 5 STARTS HERE
-// =====================================================
-// =====================================================
-// WILDLIFE POPUP
-// =====================================================
-
-for(
-
-    const id in
-
-    window.wildlifeMarkers
-
-){
-
-    const marker =
-
-        window.wildlifeMarkers[id];
-
-    const s =
-
-        marker.sighting;
-
-    if(
-
-        !s
-
-    ){
-
-        continue;
-
-    }
-
-    const emoji =
-
-        getWildlifeEmoji(
-
-            s.animal
-
-        );
-
-    const popup =
-
-`
-<div
-style="
-min-width:260px;
-font-family:Segoe UI;
-font-size:13px;
-">
-
-<h3 style="
-margin:0 0 8px 0;
-color:#2e7d32;
-">
-
-${emoji}
-${String(s.animal || "Wildlife").toUpperCase()}
-
-</h3>
-
-<table
-style="
-width:100%;
-border-collapse:collapse;
-">
-
-<tr>
-<td><b>Status</b></td>
-<td>${s.status || "ACTIVE"}</td>
-</tr>
-
-<tr>
-<td><b>Animal</b></td>
-<td>${s.animal || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Count</b></td>
-<td>${s.count ?? "-"}</td>
-</tr>
-
-<tr>
-<td><b>Sex</b></td>
-<td>${s.sex || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Age</b></td>
-<td>${s.age || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Behaviour</b></td>
-<td>${s.behaviour || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Direction</b></td>
-<td>${s.direction || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Beat</b></td>
-<td>${s.gis_beat || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Compartment</b></td>
-<td>${s.gis_compartment || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Location</b></td>
-<td>${s.resolved_location || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Leader</b></td>
-<td>${s.leader || "-"}</td>
-</tr>
-
-<tr>
-<td><b>Remarks</b></td>
-<td>${s.remarks || "-"}</td>
-</tr>
-
-</table>
-
-${
-s.photo
-
-?
-
-`
-<div
-style="
-margin-top:10px;
-text-align:center;
-">
-
-<img
-
-src="${s.photo}"
-
-style="
-max-width:100%;
-border-radius:8px;
-max-height:180px;
-">
-
-</div>
-`
-
-:
-
-""
-
-}
-
-</div>
-`;
-
-    marker.bindPopup(
-
-        popup,
-
-        {
-
-            maxWidth:
-
-                320
-
-        }
-
-    );
-
-}
-
-console.log(
-
-    "✅ Wildlife popups ready."
-
-);
-
-// =====================================================
-// PART 6 STARTS HERE
-// =====================================================
-// =====================================================
-// REMOVE STALE MARKERS
-// =====================================================
-
-const liveIds =
-
-    new Set(
-
-        wildlife.map(
-
-            s =>
-
-                s.firestore_id ||
-
-                s.sighting_id
-
-        )
-
-    );
-
-for(
-
-    const id in
-
-    window.wildlifeMarkers
-
-){
-
-    if(
-
-        liveIds.has(id)
-
-    ){
-
-        continue;
-
-    }
-
-    const marker =
-
-        window.wildlifeMarkers[id];
-
-    if(
-
-        marker
-
-    ){
-
-        wildlifeLayer.removeLayer(
-
-            marker
-
-        );
-
-    }
-
-    delete
-
-        window.wildlifeMarkers[id];
-
-}
-
-// =====================================================
-// SUMMARY
-// =====================================================
-
-console.log(
-
-    "🐅 Wildlife markers on map:",
-
-    Object.keys(
-
-        window.wildlifeMarkers
-
-    ).length
-
-);
-
-// =====================================================
-// RETURN
-// =====================================================
-
-return wildlife;      
-    }
-
-    catch(err){
-
-        console.error(
-
-            "❌ loadWildlifeSightings failed:",
-
-            err
-
-        );
-
+        console.log("✅ Wildlife markers on map:", Object.keys(window.wildlifeMarkers).length);
+        return wildlife;
+
+    } catch(err){
+        console.error("❌ loadWildlifeSightings failed:", err);
         return [];
-
     }
-
-} /* 🔥 STATUS UPDATE */
+}/* 🔥 STATUS UPDATE */
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
 }
