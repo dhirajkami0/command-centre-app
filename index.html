@@ -69843,37 +69843,96 @@ async function submitWildlifeForm(){
 
         }
 
-        // =================================================
-        // GIS RESOLUTION
-        // =================================================
+// =================================================
+// GIS RESOLUTION
+// =================================================
 
-        const gis =
+const gis =
 
-            resolveCurrentGIS(
+    window.resolveCurrentGIS
+        ? window.resolveCurrentGIS(
+            lat,
+            lon
+        )
+        : null;
 
-                lat,
+if(
 
-                lon
+    !gis
 
-            );
+){
 
-        if(
+    throw new Error(
 
-            !gis ||
+        "Unable to resolve GIS location."
 
-            !gis.division ||
+    );
 
-            !gis.range
+}
 
-        ){
+// =================================================
+// FALLBACK VALUES
+// =================================================
 
-            throw new Error(
+gis.division =
 
-                "Unable to resolve GIS location."
+    gis.division ||
 
-            );
+    "";
 
-        }
+gis.range =
+
+    gis.range ||
+
+    "";
+
+gis.beat =
+
+    gis.beat ||
+
+    "";
+
+gis.compartment =
+
+    gis.compartment ||
+
+    "";
+
+gis.text =
+
+    gis.text ||
+
+    "";
+
+gis.village =
+
+    gis.village ||
+
+    "";
+
+gis.villageCode =
+
+    gis.villageCode ||
+
+    "";
+
+gis.nearestVillage =
+
+    gis.nearestVillage ||
+
+    "";
+
+gis.nearestPoint =
+
+    gis.nearestPoint ||
+
+    "";
+
+gis.distanceMeters =
+
+    gis.distanceMeters ??
+
+    null;
 
         // =================================================
         // ANIMAL
