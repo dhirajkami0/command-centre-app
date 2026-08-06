@@ -39202,9 +39202,9 @@ ${emoji}
 
                                     html,
 
-                                    className:
+className:
 
-                                        "wildlife-marker",
+    "",
 
                                     iconSize:
 
@@ -39266,7 +39266,33 @@ console.log(
                 );
 
             }
+marker.setIcon(
 
+    L.divIcon({
+
+        html: html,
+
+        className: "",
+
+        iconSize: [
+
+            40,
+
+            40
+
+        ],
+
+        iconAnchor: [
+
+            20,
+
+            20
+
+        ]
+
+    })
+
+);
             // =================================================
             // SAVE DATA
             // =================================================
