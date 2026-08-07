@@ -39434,7 +39434,49 @@ async function loadWildlifeSightings(){
                 sighting.firestore_id ||
 
                 sighting.sighting_id;
+// =================================================
+// 24 HOUR MARKER LIFE
+// =================================================
 
+const now = Date.now();
+
+const createdTs =
+    sighting.updated_at?.toDate?.().getTime() ??
+    (sighting.updated_at?.seconds
+        ? sighting.updated_at.seconds * 1000
+        : null) ??
+    sighting.created_at?.toDate?.().getTime() ??
+    (sighting.created_at?.seconds
+        ? sighting.created_at.seconds * 1000
+        : now);
+
+const ageMinutes =
+    Math.floor((now - createdTs) / 60000);
+
+// Remove after 24 hours
+if (ageMinutes >= 1440) {
+
+    if (window.wildlifeMarkers[id]) {
+        wildlifeLayer.removeLayer(window.wildlifeMarkers[id]);
+        delete window.wildlifeMarkers[id];
+    }
+
+    expiredSet.add(id);
+
+    if (!window.expiredWildlife.some(x => x.id === id)) {
+        window.expiredWildlife.push({
+            id: id,
+            ts: Date.now()
+        });
+
+        localStorage.setItem(
+            "expiredWildlife",
+            JSON.stringify(window.expiredWildlife)
+        );
+    }
+
+    continue;
+}
             // =================================================
             // LOCATION
             // =================================================
