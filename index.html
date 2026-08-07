@@ -70546,21 +70546,15 @@ async function submitWildlifeForm(){
 
             "WILDLIFE";
 
-        // =================================================
-        // GPS
-        // =================================================
-
 // =================================================
 // GPS
 // =================================================
 
-const gps =
+let gps =
 
     window.latestGps;
 
-console.log("latestGps:", gps);
-
-const lat =
+let lat =
 
     Number(
 
@@ -70572,7 +70566,7 @@ const lat =
 
     );
 
-const lon =
+let lon =
 
     Number(
 
@@ -70586,19 +70580,95 @@ const lon =
 
     );
 
+// =================================================
+// GET LIVE GPS IF CACHE EMPTY
+// =================================================
+
 if(
 
-    !lat ||
+    !Number.isFinite(lat) ||
 
-    !lon
+    !Number.isFinite(lon) ||
+
+    lat === 0 ||
+
+    lon === 0
 
 ){
 
-    throw new Error(
+    try{
 
-        "GPS location not available."
+        const position =
 
-    );
+            await new Promise(
+
+                (resolve,reject)=>{
+
+                    navigator.geolocation.getCurrentPosition(
+
+                        resolve,
+
+                        reject,
+
+                        {
+
+                            enableHighAccuracy:true,
+
+                            timeout:10000,
+
+                            maximumAge:0
+
+                        }
+
+                    );
+
+                }
+
+            );
+
+        lat =
+
+            position.coords.latitude;
+
+        lon =
+
+            position.coords.longitude;
+
+        window.latestGps = {
+
+            lat,
+
+            lng:lon,
+
+            accuracy:
+
+                position.coords.accuracy,
+
+            speed:
+
+                position.coords.speed,
+
+            heading:
+
+                position.coords.heading,
+
+            timestamp:
+
+                Date.now()
+
+        };
+
+    }
+
+    catch(err){
+
+        throw new Error(
+
+            "GPS location not available."
+
+        );
+
+    }
 
 }
 // =================================================
