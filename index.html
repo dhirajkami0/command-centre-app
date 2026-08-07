@@ -38817,9 +38817,14 @@ function getWildlifeIcon(animal){
         // FALLBACK
         // =====================================================
 
-        default:
+default:
 
-            return null;
+    console.warn(
+        "❌ Missing wildlife icon mapping:",
+        "[" + animal + "]"
+    );
+
+    return null;
 
     }
 
