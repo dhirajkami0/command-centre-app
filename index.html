@@ -38798,33 +38798,222 @@ function getWildlifeIcon(animal){
 
     switch(animal){
 
+        // =====================================================
+        // BIG CATS
+        // =====================================================
+
         case "tiger":
             return "images/wildlife/tiger.png";
 
         case "leopard":
             return "images/wildlife/leopard.png";
 
+        case "clouded leopard":
+            return "images/wildlife/Clouded_Leopard.png";
+
+        case "fishing cat":
+            return "images/wildlife/Fishing_Cat.png";
+
+        case "leopard cat":
+            return "images/wildlife/Leopard_Cat.png";
+
+        case "jungle cat":
+            return "images/wildlife/JungleCat.png";
+
+
+        // =====================================================
+        // LARGE MAMMALS
+        // =====================================================
+
         case "gaur":
             return "images/wildlife/gaur.png";
 
-        case "peacock":
-            return "images/wildlife/peacock.png";
+        case "sloth bear":
+        case "bear":
+            return "images/wildlife/Sloth_Bear.png";
+
+        case "indian pangolin":
+        case "pangolin":
+            return "images/wildlife/Indian_Pangolin.png";
+
+        case "porcupine":
+            return "images/wildlife/Porcupine.png";
+
+        case "indian crested porcupine":
+            return "images/wildlife/Indian_Crested_Porcupine.png";
+
+        case "indian hare":
+            return "images/wildlife/Indian_Hare.png";
+
+
+        // =====================================================
+        // DEER
+        // =====================================================
 
         case "spotted deer":
+        case "chital":
             return "images/wildlife/spotted_deer.png";
+
+        case "barking deer":
+            return "images/wildlife/Barking_Deer.png";
+
+        case "hog deer":
+            return "images/wildlife/Hog_Deer.png";
+
+        case "sambar":
+        case "sambar deer":
+            return "images/wildlife/Sambar.png";
+
+
+        // =====================================================
+        // PRIMATES
+        // =====================================================
+
+        case "rhesus macaque":
+        case "monkey":
+            return "images/wildlife/Rhesus_Macaque.png";
+
+        case "langur":
+            return "images/wildlife/wildlife.png";
+
+
+        // =====================================================
+        // CANIDS
+        // =====================================================
+
+        case "golden jackal":
+        case "jackal":
+            return "images/wildlife/Golden_Jackal.png";
+
+        case "bengal fox":
+        case "fox":
+            return "images/wildlife/Bengal_Fox.png";
+
+
+        // =====================================================
+        // CIVETS
+        // =====================================================
+
+        case "large indian civet":
+            return "images/wildlife/Large_Indian_Civet.png";
+
+        case "small indian civet":
+            return "images/wildlife/Small_Indian_Civet.png";
+
+
+        // =====================================================
+        // REPTILES
+        // =====================================================
+
+        case "banded krait":
+            return "images/wildlife/Banded_Krati.png";
+
+        case "spectacled cobra":
+            return "images/wildlife/Spectacled_Cobra.png";
+
+        case "monocled cobra":
+            return "images/wildlife/Monocled_Cobra.png";
+
+        case "king cobra":
+            return "images/wildlife/wildlife.png";
+
+        case "rat snake":
+            return "images/wildlife/Rat_Snake.png";
+
+        case "reticulated python":
+        case "python":
+            return "images/wildlife/Reticulated_Python.png";
+
+        case "monitor lizard":
+            return "images/wildlife/Monitor_Lizard.png";
+
+        case "crocodile":
+            return "images/wildlife/Crocodile.png";
+
+        case "gharial":
+            return "images/wildlife/Gharial.png";
+
+
+        // =====================================================
+        // BIRDS
+        // =====================================================
+
+        case "peacock":
+        case "peafowl":
+            return "images/wildlife/peacock.png";
+
+        case "great hornbill":
+        case "hornbill":
+            return "images/wildlife/Great_Hornbil.png";
+
+        case "oriental pied hornbill":
+            return "images/wildlife/Oriental_Pied_Hornbill.png";
+
+        case "rufous necked hornbill":
+        case "rufous-necked hornbill":
+            return "images/wildlife/Rufous_Necked_Hornbill.png";
+
+        case "red junglefowl":
+            return "images/wildlife/Red_Junglefowl.png";
+
+        case "kalij pheasant":
+            return "images/wildlife/Kalij_Pheasant.png";
+
+        case "himalayan monal":
+            return "images/wildlife/Himalayan_Monal.png";
+
+        case "crested serpent eagle":
+            return "images/wildlife/Crested_Serpent_Eagle.png";
+
+        case "changeable hawk eagle":
+        case "changeable hawk-eagle":
+            return "images/wildlife/Changeable_hawk_Eagle.png";
+
+        case "black eagle":
+            return "images/wildlife/Black_Eagle.png";
+
+        case "brown eagle":
+            return "images/wildlife/Brown_Eagle.png";
+
+        case "indian eagle":
+        case "eagle":
+            return "images/wildlife/Indian_Eagle.png";
+
+        case "indian eagle owl":
+        case "owl":
+            return "images/wildlife/Indian_Eagle_Owl.png";
+
+
+        // =====================================================
+        // COMMON SPECIES WITHOUT SPECIFIC PNG
+        // =====================================================
+
+        case "rhino":
+        case "rhinoceros":
+
+        case "elephant":
+
+        case "wild buffalo":
+
+        case "otter":
+
+        case "turtle":
+
+            return "images/wildlife/wildlife.png";
+
 
         // =====================================================
         // FALLBACK
         // =====================================================
 
-default:
+        default:
 
-    console.warn(
-        "❌ Missing wildlife icon mapping:",
-        "[" + animal + "]"
-    );
+            console.warn(
+                "❌ Missing wildlife icon mapping:",
+                animal
+            );
 
-    return null;
+            return "images/wildlife/wildlife.png";
 
     }
 
