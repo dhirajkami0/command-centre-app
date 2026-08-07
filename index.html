@@ -70550,56 +70550,57 @@ async function submitWildlifeForm(){
         // GPS
         // =================================================
 
-        const gps =
+// =================================================
+// GPS
+// =================================================
 
-            window.latestGPS ||
+const gps =
 
-            window.latestGps ||
+    window.latestGps;
 
-            {};
+console.log("latestGps:", gps);
 
-        const lat =
+const lat =
 
-            Number(
+    Number(
 
-                gps.lat ??
+        gps?.lat ??
 
-                gps.latitude ??
+        gps?.latitude ??
 
-                0
+        0
 
-            );
+    );
 
-        const lon =
+const lon =
 
-            Number(
+    Number(
 
-                gps.lng ??
+        gps?.lng ??
 
-                gps.lon ??
+        gps?.lon ??
 
-                gps.longitude ??
+        gps?.longitude ??
 
-                0
+        0
 
-            );
+    );
 
-        if(
+if(
 
-            !lat ||
+    !lat ||
 
-            !lon
+    !lon
 
-        ){
+){
 
-            throw new Error(
+    throw new Error(
 
-                "GPS location not available."
+        "GPS location not available."
 
-            );
+    );
 
-        }
-
+}
 // =================================================
 // GIS RESOLUTION
 // =================================================
