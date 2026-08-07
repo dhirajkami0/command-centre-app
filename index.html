@@ -45822,133 +45822,130 @@ window.wildlifeListener =
 
     null;
 
-function startWildlifeListener(){
+async function startWildlifeListener(){
 
-    // =================================================
-    // ALREADY RUNNING
-    // =================================================
+    try{
 
-    if(
+        // =================================================
+        // ADMIN ONLY
+        // =================================================
 
-        window.wildlifeListener
+        const role =
 
-    ){
+            String(
+
+                window.userProfile?.role ||
+
+                ""
+
+            )
+
+            .trim()
+            .toUpperCase();
+
+        if(
+
+            role !== "ADMIN"
+
+        ){
+
+            return;
+
+        }
+
+        // =================================================
+        // ALREADY RUNNING
+        // =================================================
+
+        if(
+
+            window.wildlifeListener
+
+        ){
+
+            console.log(
+
+                "Wildlife Listener already running"
+
+            );
+
+            return;
+
+        }
 
         console.log(
 
-            "⏸ Wildlife listener already active"
+            "🐅 Starting Wildlife Listener..."
 
         );
 
-        return;
+        const {
 
-    }
+            collection,
 
-    // =================================================
-    // FIREBASE READY
-    // =================================================
+            onSnapshot
 
-    if(
+        } = window.fb;
 
-        !window.db
+        // =================================================
+        // START LISTENER
+        // =================================================
 
-    ){
+        window.wildlifeListener =
 
-        console.warn(
+            onSnapshot(
 
-            "⚠ Wildlife listener: Firestore unavailable"
+                collection(
 
-        );
+                    window.db,
 
-        return;
+                    "wildlife_sightings"
 
-    }
+                ),
 
-    console.log(
+                async function(){
 
-        "🐅 Starting wildlife realtime listener..."
-
-    );
-
-    // =================================================
-    // REALTIME LISTENER
-    // =================================================
-
-    window.wildlifeListener =
-
-        db
-
-        .collection(
-
-            "wildlife_sightings"
-
-        )
-
-        .onSnapshot(
-
-            async(
-
-                snapshot
-
-            )=>{
-
-                try{
-
-                    console.log(
-
-                        "🐅 Wildlife changed:",
-
-                        snapshot.docChanges().length
-
-                    );
-
-                    if(
-
-                        typeof loadWildlifeSightings ===
-
-                        "function"
-
-                    ){
+                    try{
 
                         await loadWildlifeSightings();
 
                     }
 
+                    catch(err){
+
+                        console.error(
+
+                            "Wildlife refresh failed",
+
+                            err
+
+                        );
+
+                    }
+
                 }
 
-                catch(err){
+            );
 
-                    console.error(
+        console.log(
 
-                        "❌ Wildlife refresh failed:",
-
-                        err
-
-                    );
-
-                }
-
-            },
-
-            function(error){
-
-                console.error(
-
-                    "❌ Wildlife listener error:",
-
-                    error
-
-                );
-
-            }
+            "✅ Wildlife Listener Started"
 
         );
 
-    console.log(
+    }
 
-        "✅ Wildlife realtime active"
+    catch(err){
 
-    );
+        console.error(
+
+            "Wildlife Listener Error",
+
+            err
+
+        );
+
+    }
 
 }
 // =====================================================
