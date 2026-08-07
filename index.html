@@ -27012,35 +27012,15 @@ window.helpCallStarted = false;
 // 🐅 WILDLIFE LAYER (ADMIN ONLY)
 // =====================================================
 
-const wildlifeRole =
-
-    String(
-
-        window.userProfile?.role ||
-
-        ""
-
-    )
-
-    .trim()
-
-    .toUpperCase();
+// =====================================================
+// 🐅 WILDLIFE GLOBALS
+// =====================================================
 
 window.wildlifeLayer =
 
     window.wildlifeLayer ||
 
     L.layerGroup();
-
-if(
-
-    wildlifeRole === "ADMIN"
-
-){
-
-    window.wildlifeLayer.addTo(map);
-
-}
 
 window.wildlifeMarkers =
 
