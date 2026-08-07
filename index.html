@@ -39745,7 +39745,196 @@ box-shadow:0 2px 4px rgba(0,0,0,0.1);
 
 } 
     
-    
+      
+  window.openMoveForm = function(id){
+
+  console.log(
+    "🔥 openMoveForm CALLED with ID:",
+    id
+  );
+
+  // 🔥 NEW
+  populateMoveRemarks();
+
+  const modal =
+    document.getElementById(
+      "move-form-modal"
+    );
+
+  if(!modal){
+
+    console.error(
+      "❌ move-form-modal NOT FOUND"
+    );
+
+    return;
+  }
+
+  setMoveLoading("reset");
+
+  document.getElementById(
+    "move-id"
+  ).value = id;
+
+  document.getElementById(
+    "move-depredation"
+  ).value = "";
+
+  document.getElementById(
+    "move-involved"
+  ).value = "";
+
+  document.getElementById(
+    "move-driving"
+  ).value = "";
+
+  modal.style.display = "flex";
+
+}; /* 🔥 STATUS UPDATE */
+
+function populateMoveRemarks(){
+
+  const remarks =
+    document.getElementById(
+      "move-remarks"
+    );
+
+  if(!remarks){
+    return;
+  }
+
+  // =====================================
+  // RESET DEFAULT OPTIONS
+  // =====================================
+
+  remarks.innerHTML = `
+
+    <option value="Moved">
+      🟢 Moved
+    </option>
+
+    <option value="Resolved">
+      Resolved
+    </option>
+
+  `;
+
+  // =====================================
+  // USER RANGE
+  // =====================================
+
+  const userRange =
+    String(
+      window.userProfile?.range || ""
+    ).trim();
+
+  const isAdmin =
+    !userRange;
+
+  // =====================================
+  // COLLECT COMPARTMENTS
+  // =====================================
+
+  const compartments =
+    new Set();
+
+  (
+    window.allCompartmentFeatures || []
+  )
+  .forEach(f => {
+
+    try{
+
+      const props =
+        f.properties || {};
+
+      const featureRange =
+        String(
+
+          props.range ||
+
+          props.Range ||
+
+          ""
+
+        ).trim();
+
+      // ================================
+      // RANGE FILTER
+      // ================================
+
+      if(
+        !isAdmin &&
+        featureRange !== userRange
+      ){
+        return;
+      }
+
+      const compartment =
+        String(
+
+          props.compartment ||
+
+          props.ID ||
+
+          ""
+
+        ).trim();
+
+      if(compartment){
+
+        compartments.add(
+          compartment
+        );
+
+      }
+
+    }
+
+    catch(err){
+
+      console.warn(
+        "Move remarks parse failed",
+        err
+      );
+
+    }
+
+  });
+
+  // =====================================
+  // ADD DRIVEN TO OPTIONS
+  // =====================================
+
+  [...compartments]
+  .sort()
+  .forEach(comp => {
+
+    const opt =
+      document.createElement(
+        "option"
+      );
+
+    opt.value =
+      `Driven to ${comp}`;
+
+    opt.textContent =
+      `Driven to ${comp}`;
+
+    remarks.appendChild(
+      opt
+    );
+
+  });
+
+  console.log(
+    "✅ Move Remarks Loaded:",
+    compartments.size,
+    "| Range:",
+    userRange || "ADMIN"
+  );
+
+} 
     
     function closeMoveForm(){
   document.getElementById("move-form-modal").style.display = "none";
