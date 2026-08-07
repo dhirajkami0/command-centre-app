@@ -53986,105 +53986,71 @@ async function flushAnalyticsBuffer(){
     console.groupEnd();
   }
 }
-function setSubmitLoading(
+function setSubmitLoading(isLoading){
 
-    buttonId,
+    const buttonId =
 
-    isLoading
+        window.currentObservationType === "WILDLIFE"
 
-){
+            ? "wildlifeSubmitBtn"
+
+            : "submitBtn";
 
     const btn =
 
-        document.getElementById(
+        document.getElementById(buttonId);
 
-            buttonId
-
-        );
-
-    if(
-
-        !btn
-
-    ){
+    if(!btn){
 
         return;
 
     }
 
-    if(
+    if(isLoading){
 
-        isLoading
+        btn.innerText = "⏳ Submitting...";
 
-    ){
+        btn.disabled = true;
 
-        btn.innerText =
+        btn.style.backgroundColor = "#ff9800";
 
-            "⏳ Submitting...";
+        btn.style.color = "#ffffff";
 
-        btn.disabled =
+        btn.style.fontWeight = "bold";
 
-            true;
+        btn.style.border = "none";
 
-        btn.style.backgroundColor =
+        btn.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
 
-            "#ff9800";
+        btn.style.opacity = "1";
 
-        btn.style.color =
-
-            "#ffffff";
-
-        btn.style.fontWeight =
-
-            "bold";
-
-        btn.style.border =
-
-            "none";
-
-        btn.style.boxShadow =
-
-            "0 0 10px rgba(0,0,0,0.3)";
-
-        btn.style.opacity =
-
-            "1";
-
-        btn.style.cursor =
-
-            "not-allowed";
+        btn.style.cursor = "not-allowed";
 
     }
 
     else{
 
-        btn.innerText =
+        btn.innerText = "📤 SUBMIT";
 
-            "📤 SUBMIT";
-
-        btn.disabled =
-
-            false;
+        btn.disabled = false;
 
         btn.style.backgroundColor =
 
-            "#1976d2";
+            window.currentObservationType === "WILDLIFE"
 
-        btn.style.color =
+                ? "#1565c0"
 
-            "#ffffff";
+                : "#1b5e20";
 
-        btn.style.fontWeight =
+        btn.style.color = "#ffffff";
 
-            "normal";
+        btn.style.fontWeight = "bold";
 
-        btn.style.boxShadow =
+        btn.style.boxShadow = "none";
 
-            "none";
+        btn.style.opacity = "1";
 
-        btn.style.cursor =
-
-            "pointer";
+        btn.style.cursor = "pointer";
 
     }
 
@@ -54907,13 +54873,7 @@ async function submitSightingForm(event){
     event.preventDefault();
   }
 
-setSubmitLoading(
-
-    "submitBtn",
-
-    true
-
-);
+setSubmitLoading(true);
   try{
 
     // =====================================================
@@ -55141,13 +55101,7 @@ setSubmitLoading(
         "❌ Location missing"
       );
 
-setSubmitLoading(
-
-    "submitBtn",
-
-    false
-
-);
+setSubmitLoading(false);
 
       return;
 
@@ -70892,13 +70846,7 @@ async function submitWildlifeForm(){
 
     try{
 
-setSubmitLoading(
-
-    "wildlifeSubmitBtn",
-
-    true
-
-);
+setSubmitLoading(true);
         // =================================================
         // OBSERVATION TYPE
         // =================================================
@@ -71480,13 +71428,7 @@ forest_block :
 
         );
 
-setSubmitLoading(
-
-    "wildlifeSubmitBtn",
-
-    false
-
-);
+setSubmitLoading(false);
 
     }
 
