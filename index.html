@@ -27008,11 +27008,39 @@ window.helpCallStarted = false;
 // 🐅 WILDLIFE GLOBALS
 // =====================================================
 
+// =====================================================
+// 🐅 WILDLIFE LAYER (ADMIN ONLY)
+// =====================================================
+
+const wildlifeRole =
+
+    String(
+
+        window.userProfile?.role ||
+
+        ""
+
+    )
+
+    .trim()
+
+    .toUpperCase();
+
 window.wildlifeLayer =
 
     window.wildlifeLayer ||
 
-    L.layerGroup().addTo(map);
+    L.layerGroup();
+
+if(
+
+    wildlifeRole === "ADMIN"
+
+){
+
+    window.wildlifeLayer.addTo(map);
+
+}
 
 window.wildlifeMarkers =
 
@@ -62679,7 +62707,17 @@ if(
     ] =
         predictionLayer;
 
+// --------------------------------------------------------
+// 🐅 WILDLIFE
+// --------------------------------------------------------
 
+layerControlOverlays[
+
+    "🐅 Wildlife"
+
+] =
+
+    window.wildlifeLayer;
     /* --------------------------------------------------------
        📍 VILLAGE GPS POINTS
     -------------------------------------------------------- */
@@ -63370,7 +63408,98 @@ map.on(
 
       }
 
+  /* ========================================================
+     🐅 WILDLIFE
+     --------------------------------------------------------
+     ADMIN only.
 
+     First enable:
+     - Loads all wildlife sightings.
+     - Existing markers are reused.
+     - Realtime listener keeps layer synchronized.
+
+     Next enable:
+     - Existing markers reload.
+     - Listener already active.
+  ======================================================== */
+
+  if(
+
+    layerName ===
+
+    "🐅 Wildlife"
+
+  ){
+
+    const currentRole =
+
+      String(
+
+        window.userProfile?.role ||
+
+        ""
+
+      )
+
+      .trim()
+
+      .toUpperCase();
+
+    if(
+
+      currentRole !==
+
+      "ADMIN"
+
+    ){
+
+      console.warn(
+
+        "🔒 Wildlife access denied:",
+
+        currentRole ||
+
+        "UNKNOWN"
+
+      );
+
+      if(
+
+        window.wildlifeLayer &&
+
+        map.hasLayer(
+
+          window.wildlifeLayer
+
+        )
+
+      ){
+
+        map.removeLayer(
+
+          window.wildlifeLayer
+
+        );
+
+      }
+
+      return;
+
+    }
+
+    await loadWildlifeSightings?.();
+
+    startWildlifeListener?.();
+
+    console.log(
+
+      "🐅 Wildlife Enabled"
+
+    );
+
+    return;
+
+  }
       /* ========================================================
          🌱 PLANTATION
          --------------------------------------------------------
@@ -63679,7 +63808,38 @@ map.on(
         return;
 
       }
+/* ========================================================
+   🐅 WILDLIFE OFF
+   ======================================================== */
 
+if(
+
+    layerName ===
+
+    "🐅 Wildlife"
+
+){
+
+    window.wildlifeLayer
+        ?.clearLayers?.();
+
+    window.wildlifeMarkers =
+
+        {};
+
+    window.wildlifeInitialized =
+
+        false;
+
+    console.log(
+
+        "🐅 Wildlife Disabled"
+
+    );
+
+    return;
+
+}
 
       /* ========================================================
          🌱 PLANTATION OFF
