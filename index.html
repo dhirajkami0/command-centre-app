@@ -62624,407 +62624,386 @@ async function loadVillageBoundaryLayer() {
 }
 
 /* ============================================================
-   🎛 LAYER CONTROL
-   ------------------------------------------------------------
-   VISIBILITY:
-
-   ALL USERS:
-   - 👮 Staff
-   - 🐘 Elephants
-
-   ADMIN ONLY:
-   - 🚨 Alerts
-   - 📡 Prediction
-   - 📍 Village Locations
-   - 🏡 Village Boundaries
-   - 🌱 Plantation
-   - 🟩 Coverage Grid
-
-   IMPORTANT:
-   This controls Layer Control visibility only.
-   Existing layer logic remains unchanged.
+    🎛 LAYER CONTROL INITIALIZATION (DEFERRED ARCHITECTURE)
+    ------------------------------------------------------------
+    Ensures userProfile and user role are fully resolved before
+    constructing the Leaflet Layer Control.
 ============================================================ */
 
+(function() {
+    'use strict';
 
-/* ============================================================
-   👤 CURRENT USER ROLE
-============================================================ */
-
-const layerControlUserRole =
-    String(
-        window.userProfile?.role || ""
-    )
-    .trim()
-    .toUpperCase();
-
-
-const layerControlIsAdmin =
-    layerControlUserRole ===
-    "ADMIN";
-
-
-/* ============================================================
-   📍 OVERLAYS AVAILABLE TO EVERY LOGGED-IN USER
-============================================================ */
-
-const layerControlOverlays = {
-
-    // 👮 STAFF
-    "👮 Staff":
-        staffLayer,
-
-    // 🐘 ELEPHANTS
-    "🐘 Elephants":
-        elephantLayer
-
-};
-
-
-/* ============================================================
-   👑 ADMIN-ONLY OVERLAYS
-============================================================ */
-
-if(
-    layerControlIsAdmin
-){
-
-    /* --------------------------------------------------------
-       🚨 INCIDENTS / ALERTS
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "🚨 Alerts"
-    ] =
-        incidentLayer;
-
-
-    /* --------------------------------------------------------
-       📡 PREDICTION
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "📡 Prediction"
-    ] =
-        predictionLayer;
-
-// --------------------------------------------------------
-// 🐅 WILDLIFE
-// --------------------------------------------------------
-
-layerControlOverlays[
-
-    "🐅 Wildlife"
-
-] =
-
-    window.wildlifeLayer;
-    /* --------------------------------------------------------
-       📍 VILLAGE GPS POINTS
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "📍 Village Locations"
-    ] =
-        villageLayer;
-
-
-    /* --------------------------------------------------------
-       🏡 VILLAGE POLYGONS
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "🏡 Village Boundaries"
-    ] =
-        villageBoundaryLayer;
-
-
-    /* --------------------------------------------------------
-       🌱 PLANTATION
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "🌱 Plantation"
-    ] =
-        plantationLayer;
-
-
-    /* --------------------------------------------------------
-       🟩 COVERAGE GRID
-    -------------------------------------------------------- */
-
-    layerControlOverlays[
-        "🟩 Coverage Grid"
-    ] =
-        window.gridRootLayer;
-
-}
-
-
-/* ============================================================
-   🎛 CREATE LEAFLET LAYER CONTROL
-   ------------------------------------------------------------
-   DESIGN
-
-   BASE MAPS
-   ✓ Available to everyone.
-
-   EXISTING OVERLAYS
-   ✓ Preserved exactly through layerControlOverlays.
-
-   VILLAGE BOUNDARIES
-   ✓ ADMIN only in Layer Control.
-   ✓ Starts OFF.
-   ✓ Lazy loads only when ADMIN enables it.
-   ✓ Existing overlayadd / overlayremove behavior preserved.
-   ✓ Non-admin cannot see Village Boundaries option.
-   ✓ Does NOT create another Leaflet Layer Control.
-============================================================ */
-
-
-/* ============================================================
-   🏡 REGISTER ADMIN-ONLY VILLAGE BOUNDARY OVERLAY
-   ------------------------------------------------------------
-   IMPORTANT:
-
-   This modifies ONLY layerControlOverlays BEFORE the existing
-   Leaflet control is created.
-
-   It does NOT:
-   - remove Staff
-   - remove Elephants
-   - remove Plantation
-   - remove any existing overlay
-   - change Staff Tracks
-   - add Village Boundaries to the map automatically
-   - load Village GeoJSON at startup
-============================================================ */
-
-try {
-
-    const villageBoundaryRole =
-        String(
+    // Helper to extract and normalize role safely
+    function getResolvedRole() {
+        return String(
             window.userProfile?.role ||
             window.currentRole ||
             ""
-        )
-        .trim()
-        .toUpperCase();
-
-
-    const villageBoundaryIsAdmin =
-        villageBoundaryRole ===
-        "ADMIN";
-
-
-    if (
-        villageBoundaryIsAdmin &&
-        window.villageBoundaryLayer
-    ) {
-
-        layerControlOverlays[
-            "🏡 Village Boundaries"
-        ] =
-            window.villageBoundaryLayer;
-
-
-        console.log(
-            "🔓 ADMIN — Village Boundaries registered in Layer Control"
-        );
-
+        ).trim().toUpperCase();
     }
 
-    else {
+    // Initialization routine
+    function initializeLayerControlSystem() {
+        const layerControlUserRole = getResolvedRole();
+        const layerControlIsAdmin = (layerControlUserRole === "ADMIN");
 
-        /*
-         * Defensive cleanup only for Village Boundaries.
-         *
-         * No other layerControlOverlays entry is touched.
-         */
+        console.log("🎛 Initializing Layer Control with Role:", layerControlUserRole || "GUEST/UNKNOWN");
 
-        if (
-            Object.prototype
-                .hasOwnProperty
-                .call(
-                    layerControlOverlays,
-                    "🏡 Village Boundaries"
-                )
-        ) {
+        /* ============================================================
+            📍 OVERLAYS AVAILABLE TO EVERY LOGGED-IN USER
+        ============================================================ */
+        const layerControlOverlays = {
+            // 👮 STAFF
+            "👮 Staff": window.staffLayer || staffLayer,
 
-            delete layerControlOverlays[
-                "🏡 Village Boundaries"
-            ];
+            // 🐘 ELEPHANTS
+            "🐘 Elephants": window.elephantLayer || elephantLayer
+        };
 
+        /* ============================================================
+            👑 ADMIN-ONLY OVERLAYS
+        ============================================================ */
+        if (layerControlIsAdmin) {
+            // 🚨 INCIDENTS / ALERTS
+            if (typeof window.incidentLayer !== 'undefined' || typeof incidentLayer !== 'undefined') {
+                layerControlOverlays["🚨 Alerts"] = window.incidentLayer || incidentLayer;
+            }
+
+            // 📡 PREDICTION
+            if (typeof window.predictionLayer !== 'undefined' || typeof predictionLayer !== 'undefined') {
+                layerControlOverlays["📡 Prediction"] = window.predictionLayer || predictionLayer;
+            }
+
+            // 🐅 WILDLIFE
+            if (typeof window.wildlifeLayer !== 'undefined') {
+                layerControlOverlays["🐅 Wildlife"] = window.wildlifeLayer;
+            }
+
+            // 📍 VILLAGE GPS POINTS
+            if (typeof window.villageLayer !== 'undefined' || typeof villageLayer !== 'undefined') {
+                layerControlOverlays["📍 Village Locations"] = window.villageLayer || villageLayer;
+            }
+
+            // 🏡 VILLAGE POLYGONS
+            if (typeof window.villageBoundaryLayer !== 'undefined' || typeof villageBoundaryLayer !== 'undefined') {
+                layerControlOverlays["🏡 Village Boundaries"] = window.villageBoundaryLayer || villageBoundaryLayer;
+            }
+
+            // 🌱 PLANTATION
+            if (typeof window.plantationLayer !== 'undefined' || typeof plantationLayer !== 'undefined') {
+                layerControlOverlays["🌱 Plantation"] = window.plantationLayer || plantationLayer;
+            }
+
+            // 🟩 COVERAGE GRID
+            if (typeof window.gridRootLayer !== 'undefined') {
+                layerControlOverlays["🟩 Coverage Grid"] = window.gridRootLayer;
+            }
         }
 
+        /* ============================================================
+            🎛 CREATE LEAFLET LAYER CONTROL
+        ============================================================ */
+        const baseMaps = {
+            "🛰 Satellite": typeof window.esriSat !== 'undefined' ? window.esriSat : esriSat,
+            "🗺 Google Hybrid": typeof window.googleHybrid !== 'undefined' ? window.googleHybrid : googleHybrid
+        };
 
-        /*
-         * If a previous ADMIN session left the layer attached
-         * to the same running map instance, remove ONLY the
-         * village boundary layer.
-         */
+        // Prevent duplicate global control creation if already instantiated
+        if (window.layerControl && typeof map !== 'undefined' && map.removeControl) {
+            try {
+                map.removeControl(window.layerControl);
+            } catch (e) {}
+        }
 
+        var layerControl = L.control.layers(
+            baseMaps,
+            layerControlOverlays,
+            { collapsed: true }
+        ).addTo(window.map || map);
+
+        // Expose globally for subsequent additions (like Staff Tracks)
+        window.layerControl = layerControl;
+
+        /* ============================================================
+            🛣 REGISTER STAFF TRACKS OVERLAY
+        ============================================================ */
         if (
-            window.map &&
-            window.villageBoundaryLayer &&
-            typeof window.map.hasLayer ===
-                "function" &&
-            window.map.hasLayer(
-                window.villageBoundaryLayer
-            )
+            layerControl &&
+            window.bulkStaffTrackLayer &&
+            window.bulkStaffTrackLayer.__staffTracksControlRegistered !== true
         ) {
-
-            window.map.removeLayer(
-                window.villageBoundaryLayer
+            layerControl.addOverlay(
+                window.bulkStaffTrackLayer,
+                "🛣 Staff Tracks"
             );
 
+            window.bulkStaffTrackLayer.__staffTracksControlRegistered = true;
+            console.log("✅ Staff Tracks layer control registered");
         }
 
+        /* ============================================================
+            🔥 GLOBAL GRID VISIBILITY FLAG
+        ============================================================ */
+        window.gridVisible = false;
 
+        /* ============================================================
+            🔐 DEBUG LOG
+        ============================================================ */
         console.log(
-            "🔒 Village Boundaries hidden from Layer Control —",
-            villageBoundaryRole ||
-            "ROLE NOT AVAILABLE"
+            "🎛 Layer Control Initialized Successfully",
+            {
+                role: layerControlUserRole,
+                admin: layerControlIsAdmin,
+                overlays: Object.keys(layerControlOverlays)
+            }
         );
-
     }
 
-}
-catch (
-    error
-) {
-
-    console.error(
-        "❌ Village Boundary role registration failed:",
-        error
-    );
-
-}
-
-
-
-/* ============================================================
-   🎛 CREATE LEAFLET LAYER CONTROL
-============================================================ */
-
-var layerControl =
-    L.control.layers(
-
-        /* =====================================================
-           🛰 BASE MAPS
-           -----------------------------------------------------
-           Available to everyone.
-        ===================================================== */
-
-        {
-
-            "🛰 Satellite":
-                esriSat,
-
-            "🗺 Google Hybrid":
-                googleHybrid
-
-        },
-
-
-        /* =====================================================
-           📍 ROLE-FILTERED OVERLAYS
-
-           Existing overlays remain unchanged.
-
-           ADMIN additionally receives:
-           🏡 Village Boundaries
-        ===================================================== */
-
-        layerControlOverlays,
-
-
-        /* =====================================================
-           ⚙ CONTROL OPTIONS
-        ===================================================== */
-
-        {
-
-            collapsed:
-                true
-
+    /* ============================================================
+        ⚡ DEFERRED EXECUTION CONTROLLER
+        Waits for window.userProfile / role availability before building
+    ============================================================ */
+    function checkAndInit() {
+        // If userProfile exists and role is populated, or if a global flag/event signals readiness, build immediately.
+        if (window.userProfile && window.userProfile.role !== undefined) {
+            initializeLayerControlSystem();
+            return true;
         }
-
-    )
-    .addTo(
-        map
-    );
-
-
-
-/* ============================================================
-   🛣 REGISTER STAFF TRACKS OVERLAY
-   ------------------------------------------------------------
-   Uses the EXISTING role-filtered layer control.
-
-   IMPORTANT:
-   - Does NOT create another Leaflet control.
-   - Does NOT automatically add tracks to map.
-   - Staff Tracks therefore starts OFF.
-   - Registration is protected against duplication.
-============================================================ */
-
-if(
-    layerControl &&
-    window.bulkStaffTrackLayer &&
-    window.bulkStaffTrackLayer
-        .__staffTracksControlRegistered !== true
-){
-
-    layerControl.addOverlay(
-
-        window.bulkStaffTrackLayer,
-
-        "🛣 Staff Tracks"
-
-    );
-
-
-    window.bulkStaffTrackLayer
-        .__staffTracksControlRegistered =
-        true;
-
-
-    console.log(
-        "✅ Staff Tracks layer control registered"
-    );
-
-}
-
-
-/* ============================================================
-   🔥 GLOBAL GRID VISIBILITY FLAG
-============================================================ */
-
-window.gridVisible =
-    false;
-
-
-/* ============================================================
-   🔐 DEBUG
-============================================================ */
-
-console.log(
-    "🎛 Layer Control Initialized",
-    {
-
-        role:
-            layerControlUserRole,
-
-        admin:
-            layerControlIsAdmin,
-
-        overlays:
-            Object.keys(
-                layerControlOverlays
-            )
-
+        if (window.currentRole !== undefined) {
+            initializeLayerControlSystem();
+            return true;
+        }
+        return false;
     }
-);
+
+    // Try immediately
+    if (!checkAndInit()) {
+        // Otherwise, poll safely or listen to standard profile-ready triggers
+        let attempts = 0;
+        const maxAttempts = 30; // 3 seconds max fallback polling
+        const interval = setInterval(() => {
+            attempts++;
+            if (checkAndInit() || attempts >= maxAttempts) {
+                clearInterval(interval);
+                // Fallback initialization if profile is persistently missing after timeout
+                if (attempts >= maxAttempts && !window.layerControl) {
+                    console.warn("⚠ User profile role load timed out. Initializing Layer Control as GUEST.");
+                    initializeLayerControlSystem();
+                }
+            }
+        }, 100);
+
+        // Also listen to custom events if dispatched by app architecture
+        window.addEventListener('userProfileLoaded', function handler() {
+            clearInterval(interval);
+            window.removeEventListener('userProfileLoaded', handler);
+            if (!window.layerControl) {
+                initializeLayerControlSystem();
+            }
+        });
+    }
+
+})();
+
+
+/* ============================================================
+    🗺 MAP EVENT LISTENERS: OVERLAY ADD & REMOVE
+============================================================ */
+
+if (typeof map !== 'undefined') {
+
+    /* ============================================================
+        🧭 OVERLAY ADD HANDLER
+    ============================================================ */
+    map.on(
+        "overlayadd",
+        async function(e) {
+            try {
+                if (!e || !e.name) return;
+
+                const layerName = String(e.name);
+
+                if (typeof GRID_DEBUG !== 'undefined' && GRID_DEBUG) {
+                    console.log("🧭 Layer Enabled:", layerName);
+                }
+
+                // 👮 STAFF
+                if (layerName === "👮 Staff") {
+                    typeof loadStaff === 'function' && loadStaff();
+                    return;
+                }
+
+                // 🛣 STAFF TRACKS ON
+                if (layerName === "🛣 Staff Tracks") {
+                    const state = window.staffTrackState;
+                    if (!state) {
+                        console.warn("⚠ staffTrackState unavailable");
+                        return;
+                    }
+
+                    state.requestId = (state.requestId || 0) + 1;
+                    state.bulkEnabled = true;
+                    state.loading = false;
+                    state.bulkScopeKey = null;
+
+                    window.clearSelectedStaffTrack?.();
+
+                    Object.values(window.staffMarkers || {}).forEach(marker => {
+                        try {
+                            if (marker?.isPopupOpen?.()) {
+                                marker.closePopup();
+                            }
+                        } catch (err) {}
+                    });
+
+                    state.selectedStaff = null;
+                    console.log("🛣 STAFF TRACKS ON — request:", state.requestId);
+
+                    await window.loadBulkVisibleStaffTracks?.();
+                    return;
+                }
+
+                // 🏡 VILLAGE BOUNDARIES ON — ADMIN ONLY
+                if (layerName === "🏡 Village Boundaries") {
+                    const currentVillageRole = String(
+                        window.userProfile?.role ||
+                        window.currentRole ||
+                        ""
+                    ).trim().toUpperCase();
+
+                    if (currentVillageRole !== "ADMIN") {
+                        console.warn("🔒 Village Boundary access denied:", currentVillageRole || "UNKNOWN");
+                        if (window.villageBoundaryLayer && map.hasLayer(window.villageBoundaryLayer)) {
+                            map.removeLayer(window.villageBoundaryLayer);
+                        }
+                        return;
+                    }
+
+                    if (typeof loadVillageBoundaryLayer === 'function') {
+                        await loadVillageBoundaryLayer();
+                    }
+
+                    if (typeof setVillageInteractionMode === 'function') {
+                        setVillageInteractionMode(true);
+                    }
+
+                    console.log("🏡 Village Boundaries Enabled — ADMIN");
+                    return;
+                }
+
+                // 🐅 WILDLIFE ON — ADMIN ONLY
+                if (layerName === "🐅 Wildlife") {
+                    const currentRole = String(
+                        window.userProfile?.role ||
+                        window.currentRole ||
+                        ""
+                    ).trim().toUpperCase();
+
+                    if (currentRole !== "ADMIN") {
+                        console.warn("🔒 Wildlife access denied:", currentRole || "UNKNOWN");
+                        if (window.wildlifeLayer && map.hasLayer(window.wildlifeLayer)) {
+                            map.removeLayer(window.wildlifeLayer);
+                        }
+                        return;
+                    }
+
+                    typeof loadWildlifeSightings === 'function' && await loadWildlifeSightings();
+                    typeof startWildlifeListener === 'function' && startWildlifeListener();
+                    console.log("🐅 Wildlife Enabled");
+                    return;
+                }
+
+                // 🌱 PLANTATION
+                if (layerName === "🌱 Plantation") {
+                    typeof loadPlantationLayer === 'function' && loadPlantationLayer();
+                    return;
+                }
+
+            } catch (err) {
+                console.error("🔥 overlayadd crash:", err);
+            }
+        }
+    );
+
+
+    /* ============================================================
+        🧹 OVERLAY REMOVE HANDLER
+    ============================================================ */
+    map.on(
+        "overlayremove",
+        function(e) {
+            try {
+                if (!e || !e.name) return;
+
+                const layerName = String(e.name);
+
+                if (typeof GRID_DEBUG !== 'undefined' && GRID_DEBUG) {
+                    console.log("🧹 Layer Disabled:", layerName);
+                }
+
+                // 🛣 STAFF TRACKS OFF
+                if (layerName === "🛣 Staff Tracks") {
+                    const state = window.staffTrackState;
+                    if (state) {
+                        state.requestId = (state.requestId || 0) + 1;
+                        state.bulkEnabled = false;
+                        state.loading = false;
+                        state.bulkScopeKey = null;
+                    }
+
+                    window.clearBulkStaffTracks?.();
+                    window.clearSelectedStaffTrack?.();
+
+                    Object.values(window.staffMarkers || {}).forEach(marker => {
+                        try {
+                            if (marker?.isPopupOpen?.()) {
+                                marker.closePopup();
+                            }
+                        } catch (err) {}
+                    });
+
+                    if (state) {
+                        state.selectedStaff = null;
+                    }
+
+                    console.log("🛣 STAFF TRACKS OFF — request:", state?.requestId);
+                    return;
+                }
+
+                // 🏡 VILLAGE BOUNDARIES OFF
+                if (layerName === "🏡 Village Boundaries") {
+                    if (typeof setVillageInteractionMode === 'function') {
+                        setVillageInteractionMode(false);
+                    }
+                    console.log("🌲 Village Boundaries Disabled — BTR Interaction Restored");
+                    return;
+                }
+
+                // 🐅 WILDLIFE OFF
+                if (layerName === "🐅 Wildlife") {
+                    window.wildlifeLayer?.clearLayers?.();
+                    window.wildlifeMarkers = {};
+                    window.wildlifeInitialized = false;
+                    console.log("🐅 Wildlife Disabled");
+                    return;
+                }
+
+                // 🌱 PLANTATION OFF
+                if (layerName === "🌱 Plantation") {
+                    if (typeof plantationLayer !== 'undefined') {
+                        plantationLayer?.clearLayers?.();
+                    } else if (window.plantationLayer) {
+                        window.plantationLayer?.clearLayers?.();
+                    }
+                    return;
+                }
+
+            } catch (err) {
+                console.error("🔥 overlayremove crash:", err);
+            }
+        }
+    );
+}
 
 
 
