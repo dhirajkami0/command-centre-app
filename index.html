@@ -36875,7 +36875,440 @@ function openStatsPopup(name, latlng) {
   // 🔥 START RENDER
   // =====================================================
   renderBatch();
+}   // ============================================================
+// 🎬 ELEPHANT SIGHTING MEDIA POPUP
+// ============================================================
+
+function buildSightingMediaPopup(s){
+
+    const photoUrl =
+        String(
+            s?.photo_url ||
+            s?.photo ||
+            ""
+        ).trim();
+
+
+    const videoUrl =
+        String(
+            s?.video_url ||
+            s?.video ||
+            ""
+        ).trim();
+
+
+    const audioUrl =
+        String(
+            s?.audio_url ||
+            s?.audio ||
+            ""
+        ).trim();
+
+
+    // ========================================================
+    // NO MEDIA
+    // ========================================================
+
+    if(
+        !photoUrl &&
+        !videoUrl &&
+        !audioUrl
+    ){
+
+        return "";
+    }
+
+
+    // ========================================================
+    // 📷 PHOTO
+    // ========================================================
+
+    const photoHtml =
+        photoUrl
+        ?
+
+        `
+        <div
+            style="
+                margin-top:12px;
+                padding-top:10px;
+                border-top:1px solid #e5e5e5;
+            "
+        >
+
+            <div
+                style="
+                    font-size:12px;
+                    font-weight:700;
+                    color:#333;
+                    margin-bottom:7px;
+                "
+            >
+                📷 PHOTO
+            </div>
+
+
+            <div
+                style="
+                    width:100%;
+                    background:#f7f7f7;
+                    border:1px solid #ddd;
+                    border-radius:7px;
+                    padding:5px;
+                    box-sizing:border-box;
+                    text-align:center;
+                "
+            >
+
+                <img
+                    src="${photoUrl}"
+                    alt="Elephant sighting photo"
+                    loading="lazy"
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        object-fit:contain;
+                        border-radius:5px;
+                        background:#fff;
+                    "
+                >
+
+            </div>
+
+
+            <div
+                style="
+                    display:flex;
+                    gap:7px;
+                    margin-top:8px;
+                "
+            >
+
+                <a
+                    href="${photoUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${photoUrl}"
+                    download
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Download Photo
+                </a>
+
+            </div>
+
+        </div>
+        `
+
+        :
+
+        "";
+
+
+    // ========================================================
+    // 🎥 VIDEO
+    // ========================================================
+
+    const videoHtml =
+        videoUrl
+        ?
+
+        `
+        <div
+            style="
+                margin-top:12px;
+                padding-top:10px;
+                border-top:1px solid #e5e5e5;
+            "
+        >
+
+            <div
+                style="
+                    font-size:12px;
+                    font-weight:700;
+                    color:#333;
+                    margin-bottom:7px;
+                "
+            >
+                🎥 VIDEO
+            </div>
+
+
+            <div
+                style="
+                    width:100%;
+                    background:#000;
+                    border-radius:7px;
+                    overflow:hidden;
+                "
+            >
+
+                <video
+                    controls
+                    preload="metadata"
+                    playsinline
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        background:#000;
+                    "
+                >
+
+                    <source
+                        src="${videoUrl}"
+                        type="video/mp4"
+                    >
+
+                    Your browser does not support video playback.
+
+                </video>
+
+            </div>
+
+
+            <div
+                style="
+                    display:flex;
+                    gap:7px;
+                    margin-top:8px;
+                "
+            >
+
+                <a
+                    href="${videoUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${videoUrl}"
+                    download
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Download Video
+                </a>
+
+            </div>
+
+        </div>
+        `
+
+        :
+
+        "";
+
+
+    // ========================================================
+    // 🎙 AUDIO
+    // ========================================================
+
+    const audioHtml =
+        audioUrl
+        ?
+
+        `
+        <div
+            style="
+                margin-top:12px;
+                padding-top:10px;
+                border-top:1px solid #e5e5e5;
+            "
+        >
+
+            <div
+                style="
+                    font-size:12px;
+                    font-weight:700;
+                    color:#333;
+                    margin-bottom:7px;
+                "
+            >
+                🎙 AUDIO
+            </div>
+
+
+            <div
+                style="
+                    width:100%;
+                    background:#f7f7f7;
+                    border:1px solid #ddd;
+                    border-radius:7px;
+                    padding:7px;
+                    box-sizing:border-box;
+                "
+            >
+
+                <audio
+                    controls
+                    preload="metadata"
+                    style="
+                        display:block;
+                        width:100%;
+                    "
+                >
+
+                    <source
+                        src="${audioUrl}"
+                        type="audio/mp4"
+                    >
+
+                    Your browser does not support audio playback.
+
+                </audio>
+
+            </div>
+
+
+            <div
+                style="
+                    display:flex;
+                    gap:7px;
+                    margin-top:8px;
+                "
+            >
+
+                <a
+                    href="${audioUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${audioUrl}"
+                    download
+                    style="
+                        flex:1;
+                        display:block;
+                        box-sizing:border-box;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 6px;
+                        border-radius:6px;
+                        font-size:11px;
+                        font-weight:700;
+                    "
+                >
+                    Download Audio
+                </a>
+
+            </div>
+
+        </div>
+        `
+
+        :
+
+        "";
+
+
+    // ========================================================
+    // RETURN MEDIA SECTION
+    // ========================================================
+
+    return `
+
+        <div
+            style="
+                margin-top:4px;
+                padding-bottom:4px;
+            "
+        >
+
+            ${photoHtml}
+
+            ${videoHtml}
+
+            ${audioHtml}
+
+        </div>
+
+    `;
 }
+
+
+// ============================================================
+// EXISTING FUNCTION
+// ============================================================
+
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
@@ -38878,6 +39311,9 @@ else {
   </div>
 
 </div>
+
+            ${buildSightingMediaPopup(e)}
+
             <div
               style="
                 margin-top:10px;
@@ -39393,6 +39829,379 @@ function getWildlifeEmoji(animal){
             return "🐾";
     }
 }
+// ============================================================
+// 🎬 SIGHTING MEDIA POPUP
+// ============================================================
+
+function buildSightingMediaPopup(s){
+
+    const photoUrl =
+        s?.photo_url ||
+        s?.photo ||
+        "";
+
+    const videoUrl =
+        s?.video_url ||
+        s?.video ||
+        "";
+
+    const audioUrl =
+        s?.audio_url ||
+        s?.audio ||
+        "";
+
+
+    // ========================================================
+    // NO MEDIA
+    // ========================================================
+
+    if(
+        !photoUrl &&
+        !videoUrl &&
+        !audioUrl
+    ){
+
+        return "";
+    }
+
+
+    // ========================================================
+    // PHOTO
+    // ========================================================
+
+    const photoHtml =
+        photoUrl
+            ? `
+
+        <div style="
+            margin-top:14px;
+            border-top:1px solid #e5e5e5;
+            padding-top:12px;
+        ">
+
+            <div style="
+                font-weight:700;
+                font-size:13px;
+                margin-bottom:7px;
+            ">
+                📷 PHOTO
+            </div>
+
+
+            <div style="
+                width:100%;
+                background:#f7f7f7;
+                border:1px solid #ddd;
+                border-radius:7px;
+                padding:5px;
+                box-sizing:border-box;
+                text-align:center;
+            ">
+
+                <img
+                    src="${photoUrl}"
+                    alt="Sighting photo"
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        object-fit:contain;
+                        border-radius:5px;
+                        background:#fff;
+                    "
+                    loading="lazy"
+                >
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                gap:7px;
+                margin-top:8px;
+            ">
+
+                <a
+                    href="${photoUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${photoUrl}"
+                    download
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Download Photo
+                </a>
+
+            </div>
+
+        </div>
+
+        `
+            : "";
+
+
+    // ========================================================
+    // VIDEO
+    // ========================================================
+
+    const videoHtml =
+        videoUrl
+            ? `
+
+        <div style="
+            margin-top:14px;
+            border-top:1px solid #e5e5e5;
+            padding-top:12px;
+        ">
+
+            <div style="
+                font-weight:700;
+                font-size:13px;
+                margin-bottom:7px;
+            ">
+                🎥 VIDEO
+            </div>
+
+
+            <div style="
+                width:100%;
+                background:#000;
+                border-radius:7px;
+                overflow:hidden;
+            ">
+
+                <video
+                    controls
+                    preload="metadata"
+                    playsinline
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        background:#000;
+                    "
+                >
+                    <source
+                        src="${videoUrl}"
+                        type="video/mp4"
+                    >
+
+                    Your browser does not support video playback.
+                </video>
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                gap:7px;
+                margin-top:8px;
+            ">
+
+                <a
+                    href="${videoUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${videoUrl}"
+                    download
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Download Video
+                </a>
+
+            </div>
+
+        </div>
+
+        `
+            : "";
+
+
+    // ========================================================
+    // AUDIO
+    // ========================================================
+
+    const audioHtml =
+        audioUrl
+            ? `
+
+        <div style="
+            margin-top:14px;
+            border-top:1px solid #e5e5e5;
+            padding-top:12px;
+        ">
+
+            <div style="
+                font-weight:700;
+                font-size:13px;
+                margin-bottom:7px;
+            ">
+                🎙 AUDIO
+            </div>
+
+
+            <div style="
+                width:100%;
+                background:#f7f7f7;
+                border:1px solid #ddd;
+                border-radius:7px;
+                padding:7px;
+                box-sizing:border-box;
+            ">
+
+                <audio
+                    controls
+                    preload="metadata"
+                    style="
+                        width:100%;
+                        display:block;
+                    "
+                >
+
+                    <source
+                        src="${audioUrl}"
+                        type="audio/mp4"
+                    >
+
+                    Your browser does not support audio playback.
+
+                </audio>
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                gap:7px;
+                margin-top:8px;
+            ">
+
+                <a
+                    href="${audioUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#2e7d32;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Open
+                </a>
+
+
+                <a
+                    href="${audioUrl}"
+                    download
+                    style="
+                        flex:1;
+                        text-align:center;
+                        text-decoration:none;
+                        background:#1565c0;
+                        color:#fff;
+                        padding:7px 8px;
+                        border-radius:5px;
+                        font-size:12px;
+                        font-weight:600;
+                    "
+                >
+                    Download Audio
+                </a>
+
+            </div>
+
+        </div>
+
+        `
+            : "";
+
+
+    // ========================================================
+    // RETURN
+    // ========================================================
+
+    return `
+
+        <div style="
+            margin-top:4px;
+            padding-bottom:4px;
+        ">
+
+            ${photoHtml}
+
+            ${videoHtml}
+
+            ${audioHtml}
+
+        </div>
+
+    `;
+}
+
+
+// ============================================================
+// EXISTING WILDLIFE LOADER
+// ============================================================
 
 async function loadWildlifeSightings(){
 
@@ -40140,40 +40949,7 @@ margin-bottom:8px;
 
 </table>
 
-${
-s.photo
-
-?
-
-`
-<div
-style="
-margin-top:12px;
-text-align:center;
-border-top:1px solid #eee;
-padding-top:10px;
-">
-
-<img
-
-src="${s.photo}"
-
-style="
-max-width:100%;
-border-radius:6px;
-max-height:180px;
-object-fit:cover;
-box-shadow:0 2px 4px rgba(0,0,0,0.1);
-">
-
-</div>
-`
-
-:
-
-""
-
-}
+${buildSightingMediaPopup(s)}
 
 </div>
 `;
