@@ -57173,11 +57173,10 @@ setSubmitLoading(false);
     //
     // =====================================================
 
-    await submitToServer(
-
-      payload
-
-    );
+await submitToServer(
+    observationType,
+    payload
+);
 
 
   }
@@ -58228,8 +58227,32 @@ function createFirestoreSafeSightingPayload(
     // =====================================================
 
 async function submitToServer(
-  finalPayload
+    observationType,
+    finalPayload
 ){
+    // ===================================================
+    // VALIDATE OBSERVATION TYPE
+    // ===================================================
+
+    observationType =
+        String(
+            observationType || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    if(
+        observationType !== "WILDLIFE" &&
+        observationType !== "ELEPHANT"
+    ){
+
+        throw new Error(
+            "Invalid observation type: " +
+            observationType
+        );
+
+    }
 
   // ===================================================
   // OFFLINE
