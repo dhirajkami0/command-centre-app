@@ -71866,6 +71866,10 @@ function previewVideo(
 // 7. AUDIO PREVIEW
 // ============================================================
 
+// ============================================================
+// 🎙 PREVIEW SIGHTING AUDIO
+// ============================================================
+
 function previewAudio(
     type,
     input
@@ -71873,9 +71877,9 @@ function previewAudio(
 
     try{
 
-        // ----------------------------------------------------
-        // Validate type
-        // ----------------------------------------------------
+        // ========================================================
+        // VALIDATE TYPE
+        // ========================================================
 
         if(
             !isValidSightingMediaType(type)
@@ -71891,9 +71895,9 @@ function previewAudio(
         }
 
 
-        // ----------------------------------------------------
-        // Get file
-        // ----------------------------------------------------
+        // ========================================================
+        // GET FILE
+        // ========================================================
 
         const file =
             input?.files?.[0];
@@ -71906,9 +71910,9 @@ function previewAudio(
         }
 
 
-        // ----------------------------------------------------
-        // Validate MIME type
-        // ----------------------------------------------------
+        // ========================================================
+        // VALIDATE MIME TYPE
+        // ========================================================
 
         if(
             !file.type ||
@@ -71921,16 +71925,17 @@ function previewAudio(
                 "Please select a valid audio file."
             );
 
-            input.value = "";
+            input.value =
+                "";
 
             return;
 
         }
 
 
-        // ----------------------------------------------------
-        // Validate size
-        // ----------------------------------------------------
+        // ========================================================
+        // VALIDATE SIZE
+        // ========================================================
 
         if(
             file.size >
@@ -71942,16 +71947,17 @@ function previewAudio(
                 "Maximum allowed size is 10 MB."
             );
 
-            input.value = "";
+            input.value =
+                "";
 
             return;
 
         }
 
 
-        // ----------------------------------------------------
-        // Prefix
-        // ----------------------------------------------------
+        // ========================================================
+        // PREFIX
+        // ========================================================
 
         const prefix =
             getSightingMediaPrefix(
@@ -71959,9 +71965,9 @@ function previewAudio(
             );
 
 
-        // ----------------------------------------------------
-        // Preview elements
-        // ----------------------------------------------------
+        // ========================================================
+        // PREVIEW ELEMENTS
+        // ========================================================
 
         const preview =
             document.getElementById(
@@ -71991,17 +71997,41 @@ function previewAudio(
         }
 
 
-        // ----------------------------------------------------
-        // Store media
-        // ----------------------------------------------------
+        // ========================================================
+        // REVOKE PREVIOUS OBJECT URL
+        // ========================================================
+
+        if(
+            window.sightingMedia[type]
+                .audioObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    window.sightingMedia[type]
+                        .audioObjectUrl
+                );
+
+            }
+            catch(_){
+
+            }
+
+        }
+
+
+        // ========================================================
+        // STORE FILE
+        // ========================================================
 
         window.sightingMedia[type].audio =
             file;
 
 
-        // ----------------------------------------------------
-        // Create temporary URL
-        // ----------------------------------------------------
+        // ========================================================
+        // CREATE TEMPORARY URL
+        // ========================================================
 
         const objectUrl =
             URL.createObjectURL(
@@ -72009,34 +72039,54 @@ function previewAudio(
             );
 
 
+        window.sightingMedia[type]
+            .audioObjectUrl =
+                objectUrl;
+
+
+        // ========================================================
+        // SET PLAYER
+        // ========================================================
+
         player.src =
             objectUrl;
 
 
-        // ----------------------------------------------------
-        // Load audio
-        // ----------------------------------------------------
-
         player.load();
 
 
-        // ----------------------------------------------------
-        // Show preview
-        // ----------------------------------------------------
+        // ========================================================
+        // SHOW PREVIEW
+        // ========================================================
 
         preview.style.display =
             "block";
 
 
+        // ========================================================
+        // LOG
+        // ========================================================
+
         console.log(
             "🎙 AUDIO READY",
             {
-                type: type,
-                name: file.name,
-                mime: file.type,
-                size: file.size
+                type:
+                    type,
+
+                name:
+                    file.name,
+
+                mime:
+                    file.type,
+
+                size:
+                    file.size,
+
+                source:
+                    "FILE_INPUT"
             }
         );
+
 
     }
     catch(error){
@@ -72283,14 +72333,17 @@ function removeVideo(
 // 10. REMOVE AUDIO
 // ============================================================
 
-function removeAudio(
-    type
-){
+// ============================================================
+// 🗑 REMOVE SIGHTING AUDIO
+// ============================================================
+
+function removeAudio(type){
 
     try{
 
         if(
-            !isValidSightingMediaType(type)
+            type !== "wildlife" &&
+            type !== "elephant"
         ){
 
             return;
@@ -72299,9 +72352,9 @@ function removeAudio(
 
 
         const prefix =
-            getSightingMediaPrefix(
-                type
-            );
+            type === "wildlife"
+                ? "w"
+                : "f";
 
 
         const input =
@@ -72310,11 +72363,13 @@ function removeAudio(
                 "-audio"
             );
 
+
         const preview =
             document.getElementById(
                 prefix +
                 "-audio-preview"
             );
+
 
         const player =
             document.getElementById(
@@ -72322,10 +72377,6 @@ function removeAudio(
                 "-audio-preview-player"
             );
 
-
-        // ----------------------------------------------------
-        // Clear input
-        // ----------------------------------------------------
 
         if(input){
 
@@ -72335,17 +72386,9 @@ function removeAudio(
         }
 
 
-        // ----------------------------------------------------
-        // Clear state
-        // ----------------------------------------------------
-
         window.sightingMedia[type].audio =
             null;
 
-
-        // ----------------------------------------------------
-        // Stop playback
-        // ----------------------------------------------------
 
         if(player){
 
@@ -72355,8 +72398,6 @@ function removeAudio(
 
             }
             catch(_){
-
-                // Ignore
 
             }
 
@@ -72370,10 +72411,6 @@ function removeAudio(
         }
 
 
-        // ----------------------------------------------------
-        // Hide preview
-        // ----------------------------------------------------
-
         if(preview){
 
             preview.style.display =
@@ -72383,15 +72420,16 @@ function removeAudio(
 
 
         console.log(
-            "🗑 AUDIO REMOVED:",
+            "🗑 Audio removed:",
             type
         );
+
 
     }
     catch(error){
 
         console.error(
-            "❌ Remove audio failed:",
+            "❌ Audio remove failed:",
             error
         );
 
@@ -72483,9 +72521,17 @@ function readFileAsDataURL(
 // It only reads the currently selected files.
 // ============================================================
 
+// ============================================================
+// 📦 COLLECT SIGHTING MEDIA
+// ============================================================
+
 async function collectSightingMedia(
     type
 ){
+
+    // ========================================================
+    // VALIDATE MEDIA TYPE
+    // ========================================================
 
     if(
         !isValidSightingMediaType(type)
@@ -72498,9 +72544,26 @@ async function collectSightingMedia(
     }
 
 
+    // ========================================================
+    // GET MEDIA STATE
+    // ========================================================
+
     const media =
         window.sightingMedia[type];
 
+
+    if(!media){
+
+        throw new Error(
+            "Sighting media state is not available."
+        );
+
+    }
+
+
+    // ========================================================
+    // RESULT
+    // ========================================================
 
     const result = {
 
@@ -72514,51 +72577,152 @@ async function collectSightingMedia(
 
 
     // ========================================================
-    // PHOTO
+    // 📷 PHOTO
     // ========================================================
 
     if(media.photo){
 
-        result.photo =
-            await readFileAsDataURL(
-                media.photo
+        try{
+
+            result.photo =
+                await readFileAsDataURL(
+                    media.photo
+                );
+
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Failed to collect photo:",
+                error
             );
+
+            throw new Error(
+                "Unable to process the selected photo."
+            );
+
+        }
 
     }
 
 
     // ========================================================
-    // VIDEO
+    // 🎥 VIDEO
     // ========================================================
 
     if(media.video){
 
-        result.video =
-            await readFileAsDataURL(
-                media.video
+        try{
+
+            result.video =
+                await readFileAsDataURL(
+                    media.video
+                );
+
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Failed to collect video:",
+                error
             );
+
+            throw new Error(
+                "Unable to process the selected video."
+            );
+
+        }
 
     }
 
 
     // ========================================================
-    // AUDIO
+    // 🎙 AUDIO
     // ========================================================
 
     if(media.audio){
 
-        result.audio =
-            await readFileAsDataURL(
-                media.audio
+        try{
+
+            // ------------------------------------------------
+            // NATIVE ANDROID AUDIO
+            // ------------------------------------------------
+            //
+            // AudioActivity returns:
+            //
+            // {
+            //     nativeUri: "content://..."
+            // }
+            //
+            // Do NOT pass this object to FileReader.
+            // ------------------------------------------------
+
+            if(
+                typeof media.audio ===
+                    "object" &&
+                media.audio !== null &&
+                media.audio.nativeUri
+            ){
+
+                result.audio =
+                    media.audio.nativeUri;
+
+
+                console.log(
+                    "🎙 Native Android audio collected:",
+                    result.audio
+                );
+
+            }
+
+            // ------------------------------------------------
+            // NORMAL HTML AUDIO FILE
+            // ------------------------------------------------
+
+            else{
+
+                result.audio =
+                    await readFileAsDataURL(
+                        media.audio
+                    );
+
+
+                console.log(
+                    "🎙 File-input audio collected"
+                );
+
+            }
+
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Failed to collect audio:",
+                error
             );
+
+            throw new Error(
+                "Unable to process the audio recording."
+            );
+
+        }
 
     }
 
 
+    // ========================================================
+    // DEBUG
+    // ========================================================
+
     console.log(
         "📦 SIGHTING MEDIA COLLECTED",
         {
-            type: type,
+
+            type:
+                type,
 
             photo:
                 !!result.photo,
@@ -72567,10 +72731,27 @@ async function collectSightingMedia(
                 !!result.video,
 
             audio:
-                !!result.audio
+                !!result.audio,
+
+            audioSource:
+                media.audio &&
+                typeof media.audio ===
+                    "object" &&
+                media.audio.nativeUri
+                    ? "NATIVE_ANDROID"
+                    : (
+                        media.audio
+                            ? "FILE_INPUT"
+                            : "NONE"
+                    )
+
         }
     );
 
+
+    // ========================================================
+    // RETURN
+    // ========================================================
 
     return result;
 
@@ -72654,30 +72835,142 @@ function captureVideo(
 
 }
 
+// ============================================================
+// 🎙 RECORD SIGHTING AUDIO
+// ============================================================
 
-function recordAudio(
-    type
-){
+function recordAudio(type){
 
     if(
-        !isValidSightingMediaType(type)
+        type !== "wildlife" &&
+        type !== "elephant"
     ){
 
-        return;
-
-    }
-
-
-    const prefix =
-        getSightingMediaPrefix(
+        console.error(
+            "❌ Invalid audio type:",
             type
         );
 
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Tell Android which form is requesting recording.
+    // The native AudioActivity returns the recorded file
+    // through the existing WebView file chooser callback.
+    // --------------------------------------------------------
+
+    window.currentSightingAudioType =
+        type;
+
+
+    console.log(
+        "🎙 Requesting native audio recorder:",
+        type
+    );
+
+
+    if(
+        window.Android &&
+        typeof Android.startVoiceRecorder ===
+            "function"
+    ){
+
+        Android.startVoiceRecorder();
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Fallback
+    // --------------------------------------------------------
+    //
+    // If the Android bridge isn't available, retain the
+    // normal browser/file-input behavior.
+    //
+    // This prevents the web version from breaking.
+    // --------------------------------------------------------
 
     const input =
         document.getElementById(
-            prefix +
-            "-audio"
+            type === "wildlife"
+                ? "w-audio"
+                : "f-audio"
+        );
+
+
+    if(input){
+
+        input.click();
+
+    }
+
+}
+// ============================================================
+// 🎙 RECORD SIGHTING AUDIO
+// ============================================================
+
+function recordAudio(type){
+
+    if(
+        type !== "wildlife" &&
+        type !== "elephant"
+    ){
+
+        console.error(
+            "❌ Invalid audio type:",
+            type
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Tell Android which form is requesting recording.
+    // The native AudioActivity returns the recorded file
+    // through the existing WebView file chooser callback.
+    // --------------------------------------------------------
+
+    window.currentSightingAudioType =
+        type;
+
+
+    console.log(
+        "🎙 Requesting native audio recorder:",
+        type
+    );
+
+
+    if(
+        window.Android &&
+        typeof Android.startVoiceRecorder ===
+            "function"
+    ){
+
+        Android.startVoiceRecorder();
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Fallback
+    // --------------------------------------------------------
+    //
+    // If the Android bridge isn't available, retain the
+    // normal browser/file-input behavior.
+    //
+    // This prevents the web version from breaking.
+    // --------------------------------------------------------
+
+    const input =
+        document.getElementById(
+            type === "wildlife"
+                ? "w-audio"
+                : "f-audio"
         );
 
 
@@ -81220,119 +81513,138 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
     </div>
 
 
-    <!-- ================================================== -->
-    <!-- 🎙 AUDIO -->
-    <!-- ================================================== -->
+<!-- ================================================== -->
+<!-- 🎙 ELEPHANT AUDIO -->
+<!-- ================================================== -->
 
-    <label style="
-        display:block;
-        margin-bottom:6px;
+<label style="
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+">
+    <b>🎙 Audio (Optional)</b>
+</label>
+
+
+<!-- ================================================== -->
+<!-- HIDDEN FILE INPUT -->
+<!-- ================================================== -->
+
+<input
+    type="file"
+    id="f-audio"
+    accept="audio/*"
+    style="display:none;"
+    onchange="previewAudio('elephant', this)"
+>
+
+
+<!-- ================================================== -->
+<!-- RECORD AUDIO -->
+<!-- ================================================== -->
+
+<button
+    type="button"
+    onclick="recordAudio('elephant')"
+    style="
+        width:100%;
+        padding:11px;
+        background:#6a1b9a;
+        color:#ffffff;
+        border:none;
+        border-radius:7px;
+        font-size:14px;
+        font-weight:bold;
+        cursor:pointer;
+    "
+>
+    🎙 RECORD AUDIO
+</button>
+
+
+<!-- ================================================== -->
+<!-- AUDIO PREVIEW -->
+<!-- ================================================== -->
+
+<div
+    id="f-audio-preview"
+    style="
+        display:none;
+        margin-top:10px;
+        padding:10px;
+        background:#fafafa;
+        border:1px solid #e0e0e0;
+        border-radius:10px;
+    "
+>
+
+    <div style="
         font-size:13px;
+        font-weight:600;
+        color:#2e7d32;
+        margin-bottom:8px;
+        text-align:center;
     ">
-        <b>🎙 Audio (Optional)</b>
-    </label>
+        ✅ Audio Ready
+    </div>
 
-    <input
-        type="file"
-        id="f-audio"
-        accept="audio/*"
-        capture
-        onchange="previewAudio('elephant', this)"
+
+    <audio
+        id="f-audio-preview-player"
+        controls
+        preload="metadata"
         style="
             display:block;
             width:100%;
-            box-sizing:border-box;
-            margin-bottom:8px;
-            font-size:13px;
         "
-    >
+    ></audio>
 
 
-    <!-- ================================================== -->
-    <!-- AUDIO PREVIEW -->
-    <!-- ================================================== -->
+    <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        margin-top:10px;
+    ">
 
-    <div
-        id="f-audio-preview"
-        style="
-            display:none;
-            margin-top:8px;
-            margin-bottom:14px;
-            padding:10px;
-            background:#fafafa;
-            border:1px solid #e0e0e0;
-            border-radius:10px;
-        "
-    >
-
-        <div style="
-            font-size:13px;
-            font-weight:600;
-            color:#2e7d32;
-            margin-bottom:8px;
-            text-align:center;
-        ">
-            ✅ Audio Ready
-        </div>
-
-        <audio
-            id="f-audio-preview-player"
-            controls
-            preload="metadata"
+        <button
+            type="button"
+            onclick="recordAudio('elephant')"
             style="
-                display:block;
-                width:100%;
+                background:#1976d2;
+                color:#ffffff;
+                border:none;
+                padding:10px;
+                border-radius:7px;
+                font-size:13px;
+                font-weight:bold;
+                cursor:pointer;
             "
-        ></audio>
+        >
+            🔄 Record Again
+        </button>
 
-        <div style="
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:8px;
-            margin-top:10px;
-        ">
 
-            <button
-                type="button"
-                onclick="
-                    document
-                        .getElementById('f-audio')
-                        .click();
-                "
-                style="
-                    background:#1976d2;
-                    color:#ffffff;
-                    border:none;
-                    padding:10px;
-                    border-radius:7px;
-                    font-size:13px;
-                    font-weight:bold;
-                    cursor:pointer;
-                "
-            >
-                🔄 Change Audio
-            </button>
-
-            <button
-                type="button"
-                onclick="removeAudio('elephant')"
-                style="
-                    background:#d32f2f;
-                    color:#ffffff;
-                    border:none;
-                    padding:10px;
-                    border-radius:7px;
-                    font-size:13px;
-                    font-weight:bold;
-                    cursor:pointer;
-                "
-            >
-                🗑 Remove
-            </button>
-
-        </div>
+        <button
+            type="button"
+            onclick="removeAudio('elephant')"
+            style="
+                background:#d32f2f;
+                color:#ffffff;
+                border:none;
+                padding:10px;
+                border-radius:7px;
+                font-size:13px;
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
+            🗑 Remove
+        </button>
 
     </div>
+
+</div>
 
 
     <!-- ================================================== -->
@@ -82342,132 +82654,138 @@ box-sizing: border-box;
     </div>
 
 
-    <!-- ================================================== -->
-    <!-- AUDIO -->
-    <!-- ================================================== -->
+<!-- ================================================== -->
+<!-- 🎙 ELEPHANT AUDIO -->
+<!-- ================================================== -->
+
+<label style="
+    display:block;
+    margin-bottom:6px;
+    font-size:13px;
+">
+    <b>🎙 Audio (Optional)</b>
+</label>
+
+
+<!-- ================================================== -->
+<!-- HIDDEN FILE INPUT -->
+<!-- ================================================== -->
+
+<input
+    type="file"
+    id="f-audio"
+    accept="audio/*"
+    style="display:none;"
+    onchange="previewAudio('elephant', this)"
+>
+
+
+<!-- ================================================== -->
+<!-- RECORD AUDIO -->
+<!-- ================================================== -->
+
+<button
+    type="button"
+    onclick="recordAudio('elephant')"
+    style="
+        width:100%;
+        padding:11px;
+        background:#6a1b9a;
+        color:#ffffff;
+        border:none;
+        border-radius:7px;
+        font-size:14px;
+        font-weight:bold;
+        cursor:pointer;
+    "
+>
+    🎙 RECORD AUDIO
+</button>
+
+
+<!-- ================================================== -->
+<!-- AUDIO PREVIEW -->
+<!-- ================================================== -->
+
+<div
+    id="f-audio-preview"
+    style="
+        display:none;
+        margin-top:10px;
+        padding:10px;
+        background:#fafafa;
+        border:1px solid #e0e0e0;
+        border-radius:10px;
+    "
+>
 
     <div style="
-        margin-bottom:4px;
+        font-size:13px;
+        font-weight:600;
+        color:#2e7d32;
+        margin-bottom:8px;
+        text-align:center;
+    ">
+        ✅ Audio Ready
+    </div>
+
+
+    <audio
+        id="f-audio-preview-player"
+        controls
+        preload="metadata"
+        style="
+            display:block;
+            width:100%;
+        "
+    ></audio>
+
+
+    <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        margin-top:10px;
     ">
 
-        <label style="
-            display:block;
-            margin-bottom:6px;
-            font-size:13px;
-            font-weight:600;
-            color:#333;
-        ">
-            🎙 Audio <span style="font-weight:400;">(Optional)</span>
-        </label>
-
-
-        <input
-            type="file"
-            id="w-audio"
-            accept="audio/*"
-            capture
+        <button
+            type="button"
+            onclick="recordAudio('elephant')"
             style="
-                display:block;
-                width:100%;
-                box-sizing:border-box;
-                margin-bottom:8px;
-                font-size:13px;
-            "
-            onchange="previewAudio('wildlife', this)"
-        >
-
-
-        <!-- ============================================== -->
-        <!-- AUDIO PREVIEW -->
-        <!-- ============================================== -->
-
-        <div
-            id="w-audio-preview"
-            style="
-                display:none;
-                margin-top:8px;
+                background:#1976d2;
+                color:#ffffff;
+                border:none;
                 padding:10px;
-                background:#fafafa;
-                border:1px solid #e0e0e0;
-                border-radius:10px;
+                border-radius:7px;
+                font-size:13px;
+                font-weight:bold;
+                cursor:pointer;
             "
         >
+            🔄 Record Again
+        </button>
 
-            <div style="
+
+        <button
+            type="button"
+            onclick="removeAudio('elephant')"
+            style="
+                background:#d32f2f;
+                color:#ffffff;
+                border:none;
+                padding:10px;
+                border-radius:7px;
                 font-size:13px;
-                font-weight:600;
-                color:#2e7d32;
-                margin-bottom:8px;
-                text-align:center;
-            ">
-                ✅ Audio Ready
-            </div>
+                font-weight:bold;
+                cursor:pointer;
+            "
+        >
+            🗑 Remove
+        </button>
 
+    </div>
 
-            <audio
-                id="w-audio-preview-player"
-                controls
-                preload="metadata"
-                style="
-                    display:block;
-                    width:100%;
-                "
-            ></audio>
-
-
-            <!-- ========================================== -->
-            <!-- AUDIO ACTIONS -->
-            <!-- ========================================== -->
-
-            <div style="
-                display:grid;
-                grid-template-columns:1fr 1fr;
-                gap:8px;
-                margin-top:10px;
-            ">
-
-                <button
-                    type="button"
-                    onclick="
-                        document
-                            .getElementById('w-audio')
-                            .click();
-                    "
-                    style="
-                        background:#1976d2;
-                        color:#ffffff;
-                        border:none;
-                        padding:10px;
-                        border-radius:7px;
-                        font-size:13px;
-                        font-weight:bold;
-                        cursor:pointer;
-                    "
-                >
-                    🔄 Change Audio
-                </button>
-
-
-                <button
-                    type="button"
-                    onclick="removeAudio('wildlife')"
-                    style="
-                        background:#d32f2f;
-                        color:#ffffff;
-                        border:none;
-                        padding:10px;
-                        border-radius:7px;
-                        font-size:13px;
-                        font-weight:bold;
-                        cursor:pointer;
-                    "
-                >
-                    🗑 Remove
-                </button>
-
-            </div>
-
-        </div>
+</div>
 
     </div>
 
