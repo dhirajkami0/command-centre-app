@@ -57008,19 +57008,216 @@ setSubmitLoading(false);
 
 
     // =====================================================
-    // FILE
+    // 📦 MEDIA STATE
+    // =====================================================
+    //
+    // KEEP THE EXISTING MEDIA PIPELINE.
+    //
+    // Camera / video / audio handlers already place
+    // their files into window.sightingMedia.
+    //
+    // Normal photo input is also synchronized here.
+    //
+    // =====================================================
+
+    const mediaType =
+      observationType === "WILDLIFE"
+        ? "wildlife"
+        : "elephant";
+
+
+    // =====================================================
+    // 🛡 ENSURE MEDIA ROOT EXISTS
+    // =====================================================
+
+    if(
+      !window.sightingMedia
+    ){
+
+      window.sightingMedia = {};
+
+    }
+
+
+    // =====================================================
+    // 🛡 ENSURE CURRENT MEDIA OBJECT EXISTS
+    // =====================================================
+
+    if(
+      !window.sightingMedia[mediaType]
+    ){
+
+      window.sightingMedia[mediaType] = {
+
+        photo:
+          null,
+
+        video:
+          null,
+
+        audio:
+          null
+
+      };
+
+    }
+
+
+    // =====================================================
+    // 📷 NORMAL PHOTO INPUT
     // =====================================================
 
     const fileInput =
       document.getElementById(
-        observationType === "WILDLIFE" ? "w-photo" : "f-photo"
+
+        observationType === "WILDLIFE"
+          ? "w-photo"
+          : "f-photo"
+
       );
 
 
-    const file =
-      fileInput
-        ? fileInput.files[0]
-        : null;
+    const selectedPhotoFile =
+      fileInput?.files?.[0] ||
+      null;
+
+
+    // =====================================================
+    // 📷 KEEP NORMAL PHOTO INPUT COMPATIBLE
+    // =====================================================
+
+    if(
+
+      selectedPhotoFile &&
+
+      !window
+        .sightingMedia[
+          mediaType
+        ]
+        .photo
+
+    ){
+
+      window
+        .sightingMedia[
+          mediaType
+        ]
+        .photo =
+          selectedPhotoFile;
+
+    }
+
+
+    // =====================================================
+    // 📦 MEDIA DEBUG
+    // =====================================================
+
+    console.log(
+
+      "📦 SIGHTING MEDIA READY:",
+
+      {
+
+        type:
+          mediaType,
+
+        photo:
+          !!window
+            .sightingMedia[
+              mediaType
+            ]
+            .photo,
+
+        video:
+          !!window
+            .sightingMedia[
+              mediaType
+            ]
+            .video,
+
+        audio:
+          !!window
+            .sightingMedia[
+              mediaType
+            ]
+            .audio
+
+      }
+
+    );
+
+
+    // =====================================================
+    // 🚀 SINGLE SUBMIT ROUTER
+    // =====================================================
+    //
+    // submitToServer() is now the ONLY submission owner.
+    //
+    // FLOW:
+    //
+    // FORM
+    //   ↓
+    // submitToServer(payload)
+    //   ↓
+    // Firestore metadata
+    //   ↓
+    // Firebase Storage media
+    //   ↓
+    // Storage URLs
+    //   ↓
+    // SAME Firestore document updated
+    //   ↓
+    // Existing backend
+    //
+    // DO NOT add another Firestore write here.
+    //
+    // =====================================================
+
+    await submitToServer(
+
+      payload
+
+    );
+
+
+  }
+
+  // =====================================================
+  // ❌ OUTER FORM ERROR HANDLER
+  // =====================================================
+
+  catch(e){
+
+    console.error(
+
+      "❌ Sighting form submission failed:",
+
+      e
+
+    );
+
+
+    alert(
+
+      "❌ Form error: " +
+
+      (
+        e?.message ||
+        "Unable to submit sighting."
+      )
+
+    );
+
+
+    setSubmitLoading(
+
+      false
+
+    );
+
+  }
+
+}
 // ============================================================
 // 🔥 SIGHTING MEDIA → FIREBASE STORAGE
 // ============================================================
