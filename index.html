@@ -43678,23 +43678,102 @@ async function loadWildlifeSightings(){
             // EXISTING POPUP
             // =================================================
             //
-            // CRITICAL:
+            // IMPORTANT:
             //
-            // DO NOT call bindPopup() again.
+            // DO NOT rebuild an OPEN popup during a Firestore
+            // refresh.
             //
-            // Rebinding the popup on every refresh is what
-            // causes the popup to disappear / flicker.
+            // The popup may currently contain:
             //
-            // Update the existing popup in-place instead.
+            // - scroll position
+            // - Preview buttons
+            // - media viewer interaction
+            // - touch interaction
+            // - video/audio controls
+            //
+            // Replacing popup content while the user is
+            // interacting with it can cause:
+            //
+            // - flicker
+            // - button freeze
+            // - scroll jump
+            // - popup disappearance
+            // - media interaction interruption
+            //
+            // Therefore:
+            //
+            // CLOSED popup  → update normally
+            // OPEN popup    → leave DOM untouched
+            //
             // =================================================
 
             else{
 
-                marker.setPopupContent(
+                const popupIsOpen =
+                    marker.isPopupOpen();
 
-                    popup
 
-                );
+                const popupChanged =
+                    marker.__ggWildlifePopupHtml !==
+                    popup;
+
+
+                // =================================================
+                // CLOSED POPUP
+                // =================================================
+                //
+                // Safe to update.
+                //
+                // =================================================
+
+                if(
+                    !popupIsOpen &&
+                    popupChanged
+                ){
+
+                    marker.setPopupContent(
+                        popup
+                    );
+
+                }
+
+
+                // =================================================
+                // REMEMBER LATEST POPUP HTML
+                // =================================================
+                //
+                // This lets the next refresh know whether the
+                // generated popup actually changed.
+                //
+                // =================================================
+
+                marker.__ggWildlifePopupHtml =
+                    popup;
+
+
+                // =================================================
+                // OPEN POPUP
+                // =================================================
+                //
+                // DO NOT replace its DOM.
+                //
+                // Keep the currently displayed popup exactly
+                // as the user sees it.
+                //
+                // =================================================
+
+                if(
+                    popupIsOpen
+                ){
+
+                    window.activeWildlifePopupId =
+                        id;
+
+
+                    window.activeWildlifePopupMarker =
+                        marker;
+
+                }
 
             }
 
