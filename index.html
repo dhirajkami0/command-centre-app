@@ -85019,8 +85019,6 @@ font-size:15px;
 </select>
 </div>
 
-
-
 <!-- ====================================================== -->
 <!-- OBSERVATION / BEHAVIOUR SECTION -->
 <!-- ====================================================== -->
@@ -85125,10 +85123,7 @@ box-sizing: border-box;
     box-shadow:0 1px 3px rgba(0,0,0,0.05);
 ">
 
-    <!-- ================================================== -->
     <!-- HEADER -->
-    <!-- ================================================== -->
-
     <h4 style="
         margin:0 0 14px 0;
         color:#8e24aa;
@@ -85138,15 +85133,8 @@ box-sizing: border-box;
         📷 Evidence Media
     </h4>
 
-
-    <!-- ================================================== -->
     <!-- PHOTO -->
-    <!-- ================================================== -->
-
-    <div style="
-        margin-bottom:16px;
-    ">
-
+    <div style="margin-bottom:16px;">
         <label style="
             display:block;
             margin-bottom:6px;
@@ -85172,11 +85160,7 @@ box-sizing: border-box;
             onchange="previewPhoto('wildlife', this)"
         >
 
-
-        <!-- ============================================== -->
         <!-- PHOTO PREVIEW -->
-        <!-- ============================================== -->
-
         <div
             id="w-photo-preview"
             style="
@@ -85188,7 +85172,6 @@ box-sizing: border-box;
                 border-radius:10px;
             "
         >
-
             <div style="
                 font-size:13px;
                 font-weight:600;
@@ -85198,7 +85181,6 @@ box-sizing: border-box;
             ">
                 ✅ Photo Ready
             </div>
-
 
             <img
                 id="w-photo-preview-img"
@@ -85214,25 +85196,15 @@ box-sizing: border-box;
                 "
             >
 
-
-            <!-- ========================================== -->
-            <!-- PHOTO ACTIONS -->
-            <!-- ========================================== -->
-
             <div style="
                 display:grid;
                 grid-template-columns:1fr 1fr;
                 gap:8px;
                 margin-top:10px;
             ">
-
                 <button
                     type="button"
-                    onclick="
-                        document
-                            .getElementById('w-photo')
-                            .click();
-                    "
+                    onclick="document.getElementById('w-photo').click();"
                     style="
                         background:#1976d2;
                         color:#ffffff;
@@ -85246,7 +85218,6 @@ box-sizing: border-box;
                 >
                     🔄 Change Photo
                 </button>
-
 
                 <button
                     type="button"
@@ -85264,22 +85235,12 @@ box-sizing: border-box;
                 >
                     🗑 Remove
                 </button>
-
             </div>
-
         </div>
-
     </div>
 
-
-    <!-- ================================================== -->
     <!-- VIDEO -->
-    <!-- ================================================== -->
-
-    <div style="
-        margin-bottom:16px;
-    ">
-
+    <div style="margin-bottom:16px;">
         <label style="
             display:block;
             margin-bottom:6px;
@@ -85289,7 +85250,6 @@ box-sizing: border-box;
         ">
             🎥 Video <span style="font-weight:400;">(Optional)</span>
         </label>
-
 
         <input
             type="file"
@@ -85306,11 +85266,7 @@ box-sizing: border-box;
             onchange="previewVideo('wildlife', this)"
         >
 
-
-        <!-- ============================================== -->
         <!-- VIDEO PREVIEW -->
-        <!-- ============================================== -->
-
         <div
             id="w-video-preview"
             style="
@@ -85322,7 +85278,6 @@ box-sizing: border-box;
                 border-radius:10px;
             "
         >
-
             <div style="
                 font-size:13px;
                 font-weight:600;
@@ -85332,7 +85287,6 @@ box-sizing: border-box;
             ">
                 ✅ Video Ready
             </div>
-
 
             <video
                 id="w-video-preview-player"
@@ -85348,25 +85302,15 @@ box-sizing: border-box;
                 "
             ></video>
 
-
-            <!-- ========================================== -->
-            <!-- VIDEO ACTIONS -->
-            <!-- ========================================== -->
-
             <div style="
                 display:grid;
                 grid-template-columns:1fr 1fr;
                 gap:8px;
                 margin-top:10px;
             ">
-
                 <button
                     type="button"
-                    onclick="
-                        document
-                            .getElementById('w-video')
-                            .click();
-                    "
+                    onclick="document.getElementById('w-video').click();"
                     style="
                         background:#1976d2;
                         color:#ffffff;
@@ -85380,7 +85324,6 @@ box-sizing: border-box;
                 >
                     🔄 Change Video
                 </button>
-
 
                 <button
                     type="button"
@@ -85398,147 +85341,114 @@ box-sizing: border-box;
                 >
                     🗑 Remove
                 </button>
-
             </div>
+        </div>
+    </div>
 
+    <!-- AUDIO -->
+    <label style="display:block; margin-bottom:6px; font-size:13px;">
+        <b>🎙 Audio (Optional)</b>
+    </label>
+
+    <input
+        type="file"
+        id="f-audio"
+        accept="audio/*"
+        style="display:none;"
+        onchange="previewAudio('elephant', this)"
+    >
+
+    <button
+        type="button"
+        onclick="recordAudio('elephant')"
+        style="
+            width:100%;
+            padding:11px;
+            background:#6a1b9a;
+            color:#ffffff;
+            border:none;
+            border-radius:7px;
+            font-size:14px;
+            font-weight:bold;
+            cursor:pointer;
+            box-sizing:border-box;
+        "
+    >
+        🎙 RECORD AUDIO
+    </button>
+
+    <!-- AUDIO PREVIEW -->
+    <div
+        id="f-audio-preview"
+        style="
+            display:none;
+            margin-top:10px;
+            padding:10px;
+            background:#fafafa;
+            border:1px solid #e0e0e0;
+            border-radius:10px;
+        "
+    >
+        <div style="
+            font-size:13px;
+            font-weight:600;
+            color:#2e7d32;
+            margin-bottom:8px;
+            text-align:center;
+        ">
+            ✅ Audio Ready
         </div>
 
-    </div>
-
-
-<!-- ================================================== -->
-<!-- 🎙 ELEPHANT AUDIO -->
-<!-- ================================================== -->
-
-<label style="
-    display:block;
-    margin-bottom:6px;
-    font-size:13px;
-">
-    <b>🎙 Audio (Optional)</b>
-</label>
-
-
-<!-- ================================================== -->
-<!-- HIDDEN FILE INPUT -->
-<!-- ================================================== -->
-
-<input
-    type="file"
-    id="f-audio"
-    accept="audio/*"
-    style="display:none;"
-    onchange="previewAudio('elephant', this)"
->
-
-
-<!-- ================================================== -->
-<!-- RECORD AUDIO -->
-<!-- ================================================== -->
-
-<button
-    type="button"
-    onclick="recordAudio('elephant')"
-    style="
-        width:100%;
-        padding:11px;
-        background:#6a1b9a;
-        color:#ffffff;
-        border:none;
-        border-radius:7px;
-        font-size:14px;
-        font-weight:bold;
-        cursor:pointer;
-    "
->
-    🎙 RECORD AUDIO
-</button>
-
-
-<!-- ================================================== -->
-<!-- AUDIO PREVIEW -->
-<!-- ================================================== -->
-
-<div
-    id="f-audio-preview"
-    style="
-        display:none;
-        margin-top:10px;
-        padding:10px;
-        background:#fafafa;
-        border:1px solid #e0e0e0;
-        border-radius:10px;
-    "
->
-
-    <div style="
-        font-size:13px;
-        font-weight:600;
-        color:#2e7d32;
-        margin-bottom:8px;
-        text-align:center;
-    ">
-        ✅ Audio Ready
-    </div>
-
-
-    <audio
-        id="f-audio-preview-player"
-        controls
-        preload="metadata"
-        style="
-            display:block;
-            width:100%;
-        "
-    ></audio>
-
-
-    <div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:8px;
-        margin-top:10px;
-    ">
-
-        <button
-            type="button"
-            onclick="recordAudio('elephant')"
+        <audio
+            id="f-audio-preview-player"
+            controls
+            preload="metadata"
             style="
-                background:#1976d2;
-                color:#ffffff;
-                border:none;
-                padding:10px;
-                border-radius:7px;
-                font-size:13px;
-                font-weight:bold;
-                cursor:pointer;
+                display:block;
+                width:100%;
             "
-        >
-            🔄 Record Again
-        </button>
+        ></audio>
 
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:10px;
+        ">
+            <button
+                type="button"
+                onclick="recordAudio('elephant')"
+                style="
+                    background:#1976d2;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🔄 Record Again
+            </button>
 
-        <button
-            type="button"
-            onclick="removeAudio('elephant')"
-            style="
-                background:#d32f2f;
-                color:#ffffff;
-                border:none;
-                padding:10px;
-                border-radius:7px;
-                font-size:13px;
-                font-weight:bold;
-                cursor:pointer;
-            "
-        >
-            🗑 Remove
-        </button>
-
-    </div>
-
-</div>
-
+            <button
+                type="button"
+                onclick="removeAudio('elephant')"
+                style="
+                    background:#d32f2f;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🗑 Remove
+            </button>
+        </div>
     </div>
 
 </div>
@@ -85623,21 +85533,14 @@ font-size:15px;
 </div>
 
 <!-- ====================================================== -->
-<!-- BUTTONS CONTAINER -->
+<!-- BUTTONS CONTAINER (Aligned with Elephant Modal Layout) -->
 <!-- ====================================================== -->
 
 <div style="
 display:flex;
 gap:10px;
-margin-top:15px;
-position:sticky;
-bottom:0;
-background:#f4f4f4;
-padding-top:10px;
-padding-bottom:5px;
-z-index:100;
-border-top:1px solid #e0e0e0;
-box-sizing:border-box;
+margin-top:10px;
+padding-bottom:10px;
 ">
 
 <button
