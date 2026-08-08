@@ -57174,7 +57174,7 @@ setSubmitLoading(false);
     // =====================================================
 
 await submitToServer(
-    observationType,
+    "ELEPHANT",
     payload
 );
 
@@ -58226,13 +58226,100 @@ function createFirestoreSafeSightingPayload(
     // SUBMIT
     // =====================================================
 
+// ============================================================
+// 🚀 UNIVERSAL SIGHTING SUBMISSION
+// ============================================================
+// Supports:
+//
+// Wildlife:
+// submitToServer("WILDLIFE", payload)
+//
+// Elephant:
+// submitToServer("ELEPHANT", payload)
+//
+// Also safely supports the old form:
+//
+// submitToServer(payload)
+//
+// FLOW:
+//
+// Form
+//   ↓
+// Validate / normalize observation type
+//   ↓
+// Offline check
+//   ↓
+// Firestore metadata
+//   ↓
+// Firebase Storage photo/video/audio
+//   ↓
+// Update SAME Firestore document with Storage URLs
+//   ↓
+// Existing Command Centre backend
+//   ↓
+// Close + reset correct form
+//
+// ============================================================
+
 async function submitToServer(
     observationType,
     finalPayload
 ){
-    // ===================================================
-    // VALIDATE OBSERVATION TYPE
-    // ===================================================
+
+    // ========================================================
+    // 🔄 BACKWARD-COMPATIBLE ARGUMENT NORMALIZATION
+    // ========================================================
+    //
+    // OLD:
+    //
+    // submitToServer(payload)
+    //
+    // NEW:
+    //
+    // submitToServer("WILDLIFE", payload)
+    //
+    // submitToServer("ELEPHANT", payload)
+    //
+    // ========================================================
+
+    if(
+        finalPayload === undefined &&
+        observationType &&
+        typeof observationType === "object"
+    ){
+
+        finalPayload =
+            observationType;
+
+
+        observationType =
+            finalPayload.observation_type ||
+            finalPayload.observationType ||
+            window.currentObservationType ||
+            "";
+
+    }
+
+
+    // ========================================================
+    // VALIDATE PAYLOAD
+    // ========================================================
+
+    if(
+        !finalPayload ||
+        typeof finalPayload !== "object"
+    ){
+
+        throw new Error(
+            "Sighting payload is missing."
+        );
+
+    }
+
+
+    // ========================================================
+    // NORMALIZE OBSERVATION TYPE
+    // ========================================================
 
     observationType =
         String(
@@ -58241,6 +58328,47 @@ async function submitToServer(
         .trim()
         .toUpperCase();
 
+
+    // ========================================================
+    // SECONDARY PAYLOAD FALLBACK
+    // ========================================================
+    //
+    // If an old caller did not provide observationType,
+    // try the payload one more time.
+    //
+    // ========================================================
+
+    if(
+        observationType !== "WILDLIFE" &&
+        observationType !== "ELEPHANT"
+    ){
+
+        const payloadType =
+            String(
+                finalPayload.observation_type ||
+                finalPayload.observationType ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        if(
+            payloadType === "WILDLIFE" ||
+            payloadType === "ELEPHANT"
+        ){
+
+            observationType =
+                payloadType;
+
+        }
+
+    }
+
+
+    // ========================================================
+    // FINAL OBSERVATION TYPE VALIDATION
+    // ========================================================
 
     if(
         observationType !== "WILDLIFE" &&
@@ -58254,578 +58382,742 @@ async function submitToServer(
 
     }
 
-  // ===================================================
-  // OFFLINE
-  // ===================================================
 
-  if(
-    !navigator.onLine
-  ){
+    // ========================================================
+    // KEEP PAYLOAD TYPE ALIGNED
+    // ========================================================
 
-    saveSightingOffline(
-      finalPayload
+    finalPayload.observation_type =
+        observationType;
+
+
+    // ========================================================
+    // DEBUG
+    // ========================================================
+
+    console.log(
+        "🚀 SIGHTING SUBMISSION ROUTED",
+        {
+            observationType:
+                observationType,
+
+            hasPayload:
+                !!finalPayload,
+
+            photo:
+                !!finalPayload.photo,
+
+            video:
+                !!finalPayload.video,
+
+            audio:
+                !!finalPayload.audio
+        }
     );
 
 
-    alert(
-      "📴 Saved offline. Will sync automatically."
-    );
-
-
-    setSubmitLoading(
-      false
-    );
-
-
-    return;
-
-  }
-
-
-  // ===================================================
-  // FIRESTORE + STORAGE
-  // ===================================================
-
-  try{
-
-    // =================================================
-    // NEW SIGHTING
-    // =================================================
+    // ========================================================
+    // OFFLINE
+    // ========================================================
 
     if(
-      !window.isEditingSighting
+        !navigator.onLine
     ){
 
-      // =================================================
-      // FIND FIRESTORE SAVE FUNCTION
-      // =================================================
-
-      const firestoreSaveFunction =
-
-        typeof
-        window.saveSightingToFirestore ===
-        "function"
-
-          ? window.saveSightingToFirestore
-
-          : typeof
-            saveSightingToFirestore ===
-            "function"
-
-              ? saveSightingToFirestore
-
-              : null;
-
-
-      // =================================================
-      // VALIDATE FIRESTORE FUNCTION
-      // =================================================
-
-      if(
-        !firestoreSaveFunction
-      ){
-
-        throw new Error(
-          "saveSightingToFirestore() is not available"
-        );
-
-      }
-
-
-      // =================================================
-      // FIRESTORE SAFE PAYLOAD
-      // =================================================
-      //
-      // IMPORTANT:
-      //
-      // Firestore receives metadata only.
-      //
-      // Large photo/video/audio data is NOT written
-      // into Firestore.
-      //
-      // =================================================
-
-      const firestorePayload =
-        createFirestoreSafeSightingPayload(
-          finalPayload
+        console.warn(
+            "📴 No internet connection."
         );
 
 
-      // =================================================
-      // FIRESTORE FIRST
-      // =================================================
-
-      const firestoreResult =
-        await firestoreSaveFunction(
-          firestorePayload
-        );
-
-
-      // =================================================
-      // VALIDATE FIRESTORE RESULT
-      // =================================================
-
-      if(
-        !firestoreResult ||
-        !firestoreResult.sightingId
-      ){
-
-        throw new Error(
-          "Firestore returned no sighting ID"
-        );
-
-      }
-
-
-      // =================================================
-      // RESTORE IDENTIFIERS INTO ORIGINAL PAYLOAD
-      // =================================================
-
-      finalPayload.sighting_id =
-        firestoreResult.sightingId;
-
-
-      finalPayload.firestore_id =
-        firestoreResult.firestoreId ||
-        firestoreResult.sightingId;
-
-
-      finalPayload.financial_year =
-        firestoreResult.financialYear ||
-        "";
-
-
-      finalPayload.division_code =
-        firestoreResult.divisionCode ||
-        "";
-
-
-      finalPayload.range_code =
-        firestoreResult.rangeCode ||
-        "";
-
-
-      finalPayload.range_sighting_no =
-        firestoreResult.rangeCount ??
-        null;
-
-
-      finalPayload.division_sighting_no =
-        firestoreResult.divisionCount ??
-        null;
-
-
-      sightingID =
-        firestoreResult.sightingId;
-
-
-      // =================================================
-      // FIREBASE STORAGE
-      // =================================================
-      //
-      // Actual media is uploaded to Firebase Storage.
-      //
-      // =================================================
-
-      console.log(
-        "📦 Starting sighting media Storage upload..."
-      );
-
-
-      const mediaResult =
-        await uploadSightingMediaToStorage(
-          observationType,
-          finalPayload
-        );
-
-
-      // =================================================
-      // UPDATE SAME FIRESTORE DOCUMENT
-      // =================================================
-      //
-      // Storage URLs are written back to the exact
-      // Firestore document created above.
-      //
-      // =================================================
-
-      await updateSightingMediaInFirestore(
-
-        observationType,
-
-        firestoreResult.firestoreId ||
-          firestoreResult.sightingId,
-
-        mediaResult
-
-      );
-
-
-      // =================================================
-      // ADD MEDIA INFORMATION TO ORIGINAL PAYLOAD
-      // =================================================
-
-      finalPayload.photo_url =
-        mediaResult.photo_url ||
-        "";
-
-
-      finalPayload.video_url =
-        mediaResult.video_url ||
-        "";
-
-
-      finalPayload.audio_url =
-        mediaResult.audio_url ||
-        "";
-
-
-      finalPayload.photo_storage_path =
-        mediaResult.photo_storage_path ||
-        "";
-
-
-      finalPayload.video_storage_path =
-        mediaResult.video_storage_path ||
-        "";
-
-
-      finalPayload.audio_storage_path =
-        mediaResult.audio_storage_path ||
-        "";
-
-
-      finalPayload.media_status =
-        mediaResult.media_status ||
-        "NONE";
-
-
-      // =================================================
-      // DEBUG
-      // =================================================
-
-      console.log(
-        "✅ Firestore + Storage completed:",
-        {
-          sightingId:
-            finalPayload.sighting_id,
-
-          firestoreId:
-            finalPayload.firestore_id,
-
-          photo:
-            !!finalPayload.photo_url,
-
-          video:
-            !!finalPayload.video_url,
-
-          audio:
-            !!finalPayload.audio_url,
-
-          mediaStatus:
-            finalPayload.media_status
-        }
-      );
-
-    }
-
-
-    // =================================================
-    // EDITING EXISTING SIGHTING
-    // =================================================
-    //
-    // IMPORTANT:
-    //
-    // Existing editing behavior is preserved.
-    //
-    // We do NOT create a new Firestore counter/ID
-    // when editing.
-    //
-    // =================================================
-
-    else{
-
-      finalPayload.sighting_id =
-        sightingID;
-
-
-      // =================================================
-      // IF EDITING HAS AN EXISTING FIRESTORE ID,
-      // WE CAN STILL UPLOAD NEW MEDIA.
-      // =================================================
-
-      if(
-        finalPayload.firestore_id ||
-        finalPayload.sighting_id
-      ){
-
-        console.log(
-          "✏️ Existing sighting edit detected."
-        );
-
-
-        // =================================================
-        // STORAGE MEDIA
-        // =================================================
-
-        const mediaResult =
-          await uploadSightingMediaToStorage(
-            observationType,
+        saveSightingOffline(
             finalPayload
-          );
+        );
 
 
-        // =================================================
-        // ONLY UPDATE FIRESTORE MEDIA IF MEDIA EXISTS
-        // =================================================
-
-        if(
-          mediaResult &&
-          mediaResult.media_status !==
-          "NONE"
-        ){
-
-          await updateSightingMediaInFirestore(
-
-            observationType,
-
-            finalPayload.firestore_id ||
-              finalPayload.sighting_id,
-
-            mediaResult
-
-          );
+        alert(
+            "📴 Saved offline. Will sync automatically."
+        );
 
 
-          // =============================================
-          // ADD MEDIA URLS TO BACKEND PAYLOAD
-          // =============================================
-
-          finalPayload.photo_url =
-            mediaResult.photo_url ||
-            "";
+        setSubmitLoading(
+            false
+        );
 
 
-          finalPayload.video_url =
-            mediaResult.video_url ||
-            "";
-
-
-          finalPayload.audio_url =
-            mediaResult.audio_url ||
-            "";
-
-
-          finalPayload.photo_storage_path =
-            mediaResult.photo_storage_path ||
-            "";
-
-
-          finalPayload.video_storage_path =
-            mediaResult.video_storage_path ||
-            "";
-
-
-          finalPayload.audio_storage_path =
-            mediaResult.audio_storage_path ||
-            "";
-
-
-          finalPayload.media_status =
-            mediaResult.media_status ||
-            "NONE";
-
-        }
-
-      }
+        return;
 
     }
 
 
-    // =================================================
-    // EXISTING BACKEND
-    // =================================================
-    //
-    // DO NOT REMOVE.
-    //
-    // Existing backend remains responsible for the
-    // existing Command Centre / Apps Script workflow.
-    //
-    // =================================================
+    // ========================================================
+    // FIRESTORE + STORAGE PIPELINE
+    // ========================================================
 
     try{
 
-      const backendMethod =
-        observationType === "WILDLIFE"
-          ? "saveWildlifeSighting"
-          : "saveElephantSighting";
+
+        // ====================================================
+        // 🆕 NEW SIGHTING
+        // ====================================================
+
+        if(
+            !window.isEditingSighting
+        ){
+
+            // ==================================================
+            // FIND FIRESTORE SAVE FUNCTION
+            // ==================================================
+
+            const firestoreSaveFunction =
+
+                typeof
+                window.saveSightingToFirestore ===
+                "function"
+
+                    ? window.saveSightingToFirestore
+
+                    : typeof
+                      saveSightingToFirestore ===
+                      "function"
+
+                        ? saveSightingToFirestore
+
+                        : null;
 
 
-      if(
-        typeof callBackend ===
-        "function"
-      ){
+            // ==================================================
+            // VALIDATE FIRESTORE FUNCTION
+            // ==================================================
 
-        await callBackend(
-          backendMethod,
-          finalPayload
-        );
+            if(
+                !firestoreSaveFunction
+            ){
 
-      }
+                throw new Error(
+                    "saveSightingToFirestore() is not available"
+                );
 
-
-      // =================================================
-      // SUCCESS
-      // =================================================
-
-      alert(
-        "✅ Submitted to Command Centre"
-      );
+            }
 
 
-      setSubmitLoading(
-        false
-      );
+            // ==================================================
+            // CREATE FIRESTORE-SAFE PAYLOAD
+            // ==================================================
+            //
+            // IMPORTANT:
+            //
+            // Firestore receives metadata only.
+            //
+            // Photo/video/audio are NOT placed into
+            // Firestore as large binary data.
+            //
+            // ==================================================
+
+            const firestorePayload =
+                createFirestoreSafeSightingPayload(
+                    finalPayload
+                );
 
 
-      // =================================================
-      // CURRENT SIGHTING ID
-      // =================================================
+            // ==================================================
+            // FIRESTORE FIRST
+            // ==================================================
 
-      if(
-        window.isEditingSighting
-      ){
-
-        window.currentSightingId =
-          sightingID;
-
-      }
-      else{
-
-        window.currentSightingId =
-          null;
-
-      }
+            console.log(
+                "🔥 Creating Firestore sighting:",
+                observationType
+            );
 
 
-      // =================================================
-      // EXIT EDIT MODE
-      // =================================================
-
-      window.isEditingSighting =
-        false;
+            const firestoreResult =
+                await firestoreSaveFunction(
+                    firestorePayload
+                );
 
 
-      // =================================================
-      // CLOSE FORM
-      // =================================================
+            // ==================================================
+            // VALIDATE FIRESTORE RESULT
+            // ==================================================
 
-      if(
-        observationType === "WILDLIFE" &&
-        typeof closeWildlifeForm ===
-        "function"
-      ){
+            if(
+                !firestoreResult ||
+                !firestoreResult.sightingId
+            ){
 
-        closeWildlifeForm();
+                throw new Error(
+                    "Firestore returned no sighting ID"
+                );
 
-      }
-
-      else if(
-        typeof closeSightingForm ===
-        "function"
-      ){
-
-        closeSightingForm();
-
-      }
+            }
 
 
-      // =================================================
-      // RESET FORM
-      // =================================================
+            // ==================================================
+            // RESTORE FIRESTORE IDENTIFIERS
+            // ==================================================
 
-      const form =
-        document.getElementById(
-          observationType === "WILDLIFE"
-            ? "wildlifeForm"
-            : "elephantForm"
-        );
+            finalPayload.sighting_id =
+                firestoreResult.sightingId;
 
 
-      if(
-        form
-      ){
+            finalPayload.firestore_id =
+                firestoreResult.firestoreId ||
+                firestoreResult.sightingId;
 
-        form.reset();
 
-      }
+            finalPayload.financial_year =
+                firestoreResult.financialYear ||
+                "";
+
+
+            finalPayload.division_code =
+                firestoreResult.divisionCode ||
+                "";
+
+
+            finalPayload.range_code =
+                firestoreResult.rangeCode ||
+                "";
+
+
+            finalPayload.range_sighting_no =
+                firestoreResult.rangeCount ??
+                null;
+
+
+            finalPayload.division_sighting_no =
+                firestoreResult.divisionCount ??
+                null;
+
+
+            sightingID =
+                firestoreResult.sightingId;
+
+
+            console.log(
+                "🔥 Firestore sighting saved:",
+                {
+                    observationType:
+                        observationType,
+
+                    firestoreId:
+                        finalPayload.firestore_id,
+
+                    sightingId:
+                        finalPayload.sighting_id,
+
+                    financialYear:
+                        finalPayload.financial_year,
+
+                    rangeNo:
+                        finalPayload.range_sighting_no,
+
+                    divisionNo:
+                        finalPayload.division_sighting_no
+                }
+            );
+
+
+            // ==================================================
+            // 📦 FIREBASE STORAGE
+            // ==================================================
+            //
+            // Upload actual:
+            //
+            // photo
+            // video
+            // audio
+            //
+            // ==================================================
+
+            console.log(
+                "📦 Starting sighting media Storage upload...",
+                observationType
+            );
+
+
+            const mediaResult =
+                await uploadSightingMediaToStorage(
+                    observationType,
+                    finalPayload
+                );
+
+
+            // ==================================================
+            // 🔗 UPDATE SAME FIRESTORE DOCUMENT
+            // ==================================================
+            //
+            // Storage URLs are written back into the exact
+            // Firestore document created above.
+            //
+            // ==================================================
+
+            await updateSightingMediaInFirestore(
+
+                observationType,
+
+                finalPayload.firestore_id ||
+                    finalPayload.sighting_id,
+
+                mediaResult
+
+            );
+
+
+            // ==================================================
+            // ADD STORAGE INFORMATION TO ORIGINAL PAYLOAD
+            // ==================================================
+
+            finalPayload.photo_url =
+                mediaResult &&
+                mediaResult.photo_url
+                    ? mediaResult.photo_url
+                    : "";
+
+
+            finalPayload.video_url =
+                mediaResult &&
+                mediaResult.video_url
+                    ? mediaResult.video_url
+                    : "";
+
+
+            finalPayload.audio_url =
+                mediaResult &&
+                mediaResult.audio_url
+                    ? mediaResult.audio_url
+                    : "";
+
+
+            finalPayload.photo_storage_path =
+                mediaResult &&
+                mediaResult.photo_storage_path
+                    ? mediaResult.photo_storage_path
+                    : "";
+
+
+            finalPayload.video_storage_path =
+                mediaResult &&
+                mediaResult.video_storage_path
+                    ? mediaResult.video_storage_path
+                    : "";
+
+
+            finalPayload.audio_storage_path =
+                mediaResult &&
+                mediaResult.audio_storage_path
+                    ? mediaResult.audio_storage_path
+                    : "";
+
+
+            finalPayload.media_status =
+                mediaResult &&
+                mediaResult.media_status
+                    ? mediaResult.media_status
+                    : "NONE";
+
+
+            // ==================================================
+            // COMPLETE PIPELINE LOG
+            // ==================================================
+
+            console.log(
+                "✅ FIRESTORE + STORAGE COMPLETED",
+                {
+
+                    observationType:
+                        observationType,
+
+                    sightingId:
+                        finalPayload.sighting_id,
+
+                    firestoreId:
+                        finalPayload.firestore_id,
+
+                    photo:
+                        !!finalPayload.photo_url,
+
+                    video:
+                        !!finalPayload.video_url,
+
+                    audio:
+                        !!finalPayload.audio_url,
+
+                    mediaStatus:
+                        finalPayload.media_status
+
+                }
+            );
+
+        }
+
+
+        // ====================================================
+        // ✏️ EXISTING SIGHTING / EDIT MODE
+        // ====================================================
+
+        else{
+
+            finalPayload.sighting_id =
+                sightingID;
+
+
+            // ==================================================
+            // EXISTING FIRESTORE ID AVAILABLE
+            // ==================================================
+
+            if(
+                finalPayload.firestore_id ||
+                finalPayload.sighting_id
+            ){
+
+                console.log(
+                    "✏️ Existing sighting edit detected:",
+                    {
+                        observationType:
+                            observationType,
+
+                        sightingId:
+                            finalPayload.sighting_id,
+
+                        firestoreId:
+                            finalPayload.firestore_id ||
+                            finalPayload.sighting_id
+                    }
+                );
+
+
+                // ==============================================
+                // STORAGE MEDIA
+                // ==============================================
+
+                const mediaResult =
+                    await uploadSightingMediaToStorage(
+                        observationType,
+                        finalPayload
+                    );
+
+
+                // ==============================================
+                // ONLY UPDATE FIRESTORE WHEN MEDIA EXISTS
+                // ==============================================
+
+                if(
+                    mediaResult &&
+                    mediaResult.media_status !==
+                        "NONE"
+                ){
+
+                    await updateSightingMediaInFirestore(
+
+                        observationType,
+
+                        finalPayload.firestore_id ||
+                            finalPayload.sighting_id,
+
+                        mediaResult
+
+                    );
+
+
+                    // ==========================================
+                    // STORE MEDIA URLS
+                    // ==========================================
+
+                    finalPayload.photo_url =
+                        mediaResult.photo_url ||
+                        "";
+
+
+                    finalPayload.video_url =
+                        mediaResult.video_url ||
+                        "";
+
+
+                    finalPayload.audio_url =
+                        mediaResult.audio_url ||
+                        "";
+
+
+                    finalPayload.photo_storage_path =
+                        mediaResult.photo_storage_path ||
+                        "";
+
+
+                    finalPayload.video_storage_path =
+                        mediaResult.video_storage_path ||
+                        "";
+
+
+                    finalPayload.audio_storage_path =
+                        mediaResult.audio_storage_path ||
+                        "";
+
+
+                    finalPayload.media_status =
+                        mediaResult.media_status ||
+                        "NONE";
+
+
+                    console.log(
+                        "✅ Existing sighting media updated:",
+                        {
+                            observationType:
+                                observationType,
+
+                            photo:
+                                !!finalPayload.photo_url,
+
+                            video:
+                                !!finalPayload.video_url,
+
+                            audio:
+                                !!finalPayload.audio_url,
+
+                            mediaStatus:
+                                finalPayload.media_status
+                        }
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        // ====================================================
+        // 📤 EXISTING BACKEND
+        // ====================================================
+        //
+        // DO NOT REMOVE.
+        //
+        // Wildlife:
+        // saveWildlifeSighting
+        //
+        // Elephant:
+        // saveElephantSighting
+        //
+        // ====================================================
+
+        try{
+
+            const backendMethod =
+                observationType === "WILDLIFE"
+                    ? "saveWildlifeSighting"
+                    : "saveElephantSighting";
+
+
+            console.log(
+                "📤 Sending existing backend:",
+                backendMethod
+            );
+
+
+            if(
+                typeof callBackend ===
+                    "function"
+            ){
+
+                await callBackend(
+                    backendMethod,
+                    finalPayload
+                );
+
+            }
+
+
+            // ==================================================
+            // SUCCESS
+            // ==================================================
+
+            console.log(
+                "🎉 COMPLETE SIGHTING SUBMISSION:",
+                {
+                    observationType:
+                        observationType,
+
+                    sightingId:
+                        finalPayload.sighting_id,
+
+                    firestoreId:
+                        finalPayload.firestore_id,
+
+                    photo:
+                        !!finalPayload.photo_url,
+
+                    video:
+                        !!finalPayload.video_url,
+
+                    audio:
+                        !!finalPayload.audio_url
+                }
+            );
+
+
+            alert(
+                "✅ Submitted to Command Centre"
+            );
+
+
+            setSubmitLoading(
+                false
+            );
+
+
+            // ==================================================
+            // CURRENT SIGHTING ID
+            // ==================================================
+
+            if(
+                window.isEditingSighting
+            ){
+
+                window.currentSightingId =
+                    sightingID;
+
+            }
+
+            else{
+
+                window.currentSightingId =
+                    null;
+
+            }
+
+
+            // ==================================================
+            // EXIT EDIT MODE
+            // ==================================================
+
+            window.isEditingSighting =
+                false;
+
+
+            // ==================================================
+            // CLOSE CORRECT FORM
+            // ==================================================
+
+            if(
+                observationType === "WILDLIFE" &&
+                typeof closeWildlifeForm ===
+                    "function"
+            ){
+
+                closeWildlifeForm();
+
+            }
+
+            else if(
+                observationType === "ELEPHANT" &&
+                typeof closeSightingForm ===
+                    "function"
+            ){
+
+                closeSightingForm();
+
+            }
+
+
+            // ==================================================
+            // RESET CORRECT FORM
+            // ==================================================
+
+            const form =
+                document.getElementById(
+
+                    observationType === "WILDLIFE"
+
+                        ? "wildlifeForm"
+
+                        : "elephantForm"
+
+                );
+
+
+            if(
+                form
+            ){
+
+                form.reset();
+
+            }
+
+        }
+
+
+        // ====================================================
+        // BACKEND FAILURE
+        // ====================================================
+
+        catch(
+            backendErr
+        ){
+
+            console.error(
+                "❌ Background backend failed:",
+                backendErr
+            );
+
+
+            // ==================================================
+            // IMPORTANT
+            // ==================================================
+            //
+            // Firestore + Storage have already succeeded.
+            //
+            // Preserve complete payload for background sync.
+            //
+            // ==================================================
+
+            saveSightingOffline(
+                finalPayload
+            );
+
+
+            alert(
+                "✅ Sighting saved. Background sync pending."
+            );
+
+
+            setSubmitLoading(
+                false
+            );
+
+        }
 
     }
 
 
-    // =================================================
-    // BACKEND FAILURE
-    // =================================================
+    // ========================================================
+    // ❌ FIRESTORE / STORAGE FAILURE
+    // ========================================================
 
     catch(
-      backendErr
+        firestoreErr
     ){
 
-      console.error(
-        "❌ Background backend failed:",
-        backendErr
-      );
+        console.error(
+            "❌ Firestore / Storage sighting save failed:",
+            firestoreErr
+        );
 
 
-      // =================================================
-      // FIRESTORE + STORAGE HAVE ALREADY SUCCEEDED.
-      //
-      // Keep the complete payload for background sync.
-      // =================================================
-
-      saveSightingOffline(
-        finalPayload
-      );
-
-
-      alert(
-        "✅ Sighting saved. Background sync pending."
-      );
+        alert(
+            "❌ Sighting submission failed.\n\n" +
+            (
+                firestoreErr &&
+                firestoreErr.message
+                    ? firestoreErr.message
+                    : "Please try again."
+            )
+        );
 
 
-      setSubmitLoading(
-        false
-      );
+        setSubmitLoading(
+            false
+        );
 
     }
-
-  }
-
-
-  // ===================================================
-  // FIRESTORE / STORAGE FAILURE
-  // ===================================================
-
-  catch(
-    firestoreErr
-  ){
-
-    console.error(
-      "❌ Firestore / Storage sighting save failed:",
-      firestoreErr
-    );
-
-
-    alert(
-      "❌ Sighting submission failed.\n" +
-      "Please try again."
-    );
-
-
-    setSubmitLoading(
-      false
-    );
-
-  }
 
 }
     // ============================================================
@@ -76059,10 +76351,14 @@ async function submitWildlifeForm(){
         //
         // =================================================
 
-        await submitToServer(
-            payload
-        );
+// ========================================================
+// 🚀 SUBMIT WILDLIFE
+// ========================================================
 
+await submitToServer(
+    "WILDLIFE",
+    payload
+);
 
     }
     catch(err){
