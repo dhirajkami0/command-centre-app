@@ -72337,25 +72337,45 @@ function removeVideo(
 // 🗑 REMOVE SIGHTING AUDIO
 // ============================================================
 
+// ============================================================
+// 🗑 REMOVE SIGHTING AUDIO
+// ============================================================
+
 function removeAudio(type){
 
     try{
+
+        // ====================================================
+        // VALIDATE TYPE
+        // ====================================================
 
         if(
             type !== "wildlife" &&
             type !== "elephant"
         ){
 
-            return;
+            console.error(
+                "❌ Invalid audio type:",
+                type
+            );
 
+            return;
         }
 
+
+        // ====================================================
+        // PREFIX
+        // ====================================================
 
         const prefix =
             type === "wildlife"
                 ? "w"
                 : "f";
 
+
+        // ====================================================
+        // ELEMENTS
+        // ====================================================
 
         const input =
             document.getElementById(
@@ -72378,6 +72398,28 @@ function removeAudio(type){
             );
 
 
+        // ====================================================
+        // MEDIA STATE CHECK
+        // ====================================================
+
+        if(
+            !window.sightingMedia ||
+            !window.sightingMedia[type]
+        ){
+
+            console.warn(
+                "⚠ Audio media state not available:",
+                type
+            );
+
+            return;
+        }
+
+
+        // ====================================================
+        // CLEAR HTML FILE INPUT
+        // ====================================================
+
         if(input){
 
             input.value =
@@ -72386,9 +72428,9 @@ function removeAudio(type){
         }
 
 
-        window.sightingMedia[type].audio =
-            null;
-
+        // ====================================================
+        // STOP AUDIO PLAYER
+        // ====================================================
 
         if(player){
 
@@ -72411,6 +72453,46 @@ function removeAudio(type){
         }
 
 
+        // ====================================================
+        // REVOKE BROWSER OBJECT URL
+        // ====================================================
+
+        if(
+            window.sightingMedia[type]
+                .audioObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    window.sightingMedia[type]
+                        .audioObjectUrl
+                );
+
+            }
+            catch(_){
+
+            }
+
+            window.sightingMedia[type]
+                .audioObjectUrl =
+                    null;
+
+        }
+
+
+        // ====================================================
+        // CLEAR AUDIO
+        // ====================================================
+
+        window.sightingMedia[type].audio =
+            null;
+
+
+        // ====================================================
+        // HIDE PREVIEW
+        // ====================================================
+
         if(preview){
 
             preview.style.display =
@@ -72418,6 +72500,25 @@ function removeAudio(type){
 
         }
 
+
+        // ====================================================
+        // CLEAR CURRENT AUDIO TYPE
+        // ====================================================
+
+        if(
+            window.currentSightingAudioType ===
+                type
+        ){
+
+            window.currentSightingAudioType =
+                null;
+
+        }
+
+
+        // ====================================================
+        // LOG
+        // ====================================================
 
         console.log(
             "🗑 Audio removed:",
@@ -72519,6 +72620,10 @@ function readFileAsDataURL(
 // This does NOT automatically upload anything.
 //
 // It only reads the currently selected files.
+// ============================================================
+
+// ============================================================
+// 📦 COLLECT SIGHTING MEDIA
 // ============================================================
 
 // ============================================================
@@ -72650,18 +72755,48 @@ async function collectSightingMedia(
             // NATIVE ANDROID AUDIO
             // ------------------------------------------------
             //
-            // AudioActivity returns:
+            // AudioActivity returns a FileProvider URI:
+            //
+            // content://com.commandcentre.app.provider/...
+            //
+            // recordAudio() stores this URI directly in:
+            //
+            // window.sightingMedia[type].audio
+            //
+            // Therefore a native URI is already a STRING.
+            //
+            // Do NOT pass it to FileReader.
+            // ------------------------------------------------
+
+            if(
+                typeof media.audio === "string"
+            ){
+
+                result.audio =
+                    media.audio;
+
+
+                console.log(
+                    "🎙 Native Android audio collected:",
+                    result.audio
+                );
+
+            }
+
+            // ------------------------------------------------
+            // LEGACY / OBJECT NATIVE AUDIO
+            // ------------------------------------------------
+            //
+            // Keep compatibility in case another existing
+            // part of the application stores:
             //
             // {
             //     nativeUri: "content://..."
             // }
-            //
-            // Do NOT pass this object to FileReader.
             // ------------------------------------------------
 
-            if(
-                typeof media.audio ===
-                    "object" &&
+            else if(
+                typeof media.audio === "object" &&
                 media.audio !== null &&
                 media.audio.nativeUri
             ){
@@ -72671,7 +72806,7 @@ async function collectSightingMedia(
 
 
                 console.log(
-                    "🎙 Native Android audio collected:",
+                    "🎙 Native Android audio object collected:",
                     result.audio
                 );
 
@@ -72734,15 +72869,28 @@ async function collectSightingMedia(
                 !!result.audio,
 
             audioSource:
+
                 media.audio &&
-                typeof media.audio ===
-                    "object" &&
-                media.audio.nativeUri
+                typeof media.audio === "string"
+
                     ? "NATIVE_ANDROID"
+
                     : (
-                        media.audio
-                            ? "FILE_INPUT"
-                            : "NONE"
+
+                        media.audio &&
+                        typeof media.audio === "object" &&
+                        media.audio.nativeUri
+
+                            ? "NATIVE_ANDROID_OBJECT"
+
+                            : (
+
+                                media.audio
+                                    ? "FILE_INPUT"
+                                    : "NONE"
+
+                            )
+
                     )
 
         }
@@ -72839,81 +72987,16 @@ function captureVideo(
 // 🎙 RECORD SIGHTING AUDIO
 // ============================================================
 
-function recordAudio(type){
-
-    if(
-        type !== "wildlife" &&
-        type !== "elephant"
-    ){
-
-        console.error(
-            "❌ Invalid audio type:",
-            type
-        );
-
-        return;
-    }
-
-
-    // --------------------------------------------------------
-    // Tell Android which form is requesting recording.
-    // The native AudioActivity returns the recorded file
-    // through the existing WebView file chooser callback.
-    // --------------------------------------------------------
-
-    window.currentSightingAudioType =
-        type;
-
-
-    console.log(
-        "🎙 Requesting native audio recorder:",
-        type
-    );
-
-
-    if(
-        window.Android &&
-        typeof Android.startVoiceRecorder ===
-            "function"
-    ){
-
-        Android.startVoiceRecorder();
-
-        return;
-    }
-
-
-    // --------------------------------------------------------
-    // Fallback
-    // --------------------------------------------------------
-    //
-    // If the Android bridge isn't available, retain the
-    // normal browser/file-input behavior.
-    //
-    // This prevents the web version from breaking.
-    // --------------------------------------------------------
-
-    const input =
-        document.getElementById(
-            type === "wildlife"
-                ? "w-audio"
-                : "f-audio"
-        );
-
-
-    if(input){
-
-        input.click();
-
-    }
-
-}
 // ============================================================
 // 🎙 RECORD SIGHTING AUDIO
 // ============================================================
 
 function recordAudio(type){
 
+    // ========================================================
+    // VALIDATE SIGHTING TYPE
+    // ========================================================
+
     if(
         type !== "wildlife" &&
         type !== "elephant"
@@ -72928,43 +73011,48 @@ function recordAudio(type){
     }
 
 
-    // --------------------------------------------------------
-    // Tell Android which form is requesting recording.
-    // The native AudioActivity returns the recorded file
-    // through the existing WebView file chooser callback.
-    // --------------------------------------------------------
+    // ========================================================
+    // REMEMBER WHICH FORM REQUESTED AUDIO
+    // ========================================================
 
     window.currentSightingAudioType =
         type;
 
 
     console.log(
-        "🎙 Requesting native audio recorder:",
+        "🎙 Requesting audio recorder:",
         type
     );
 
 
+    // ========================================================
+    // NATIVE ANDROID AUDIO RECORDER
+    // ========================================================
+
     if(
-        window.Android &&
-        typeof Android.startVoiceRecorder ===
+        typeof window.Android !== "undefined" &&
+        typeof window.Android.startVoiceRecorder ===
             "function"
     ){
 
-        Android.startVoiceRecorder();
+        console.log(
+            "🎙 Launching native AudioActivity"
+        );
+
+        window.Android.startVoiceRecorder();
 
         return;
     }
 
 
-    // --------------------------------------------------------
-    // Fallback
-    // --------------------------------------------------------
-    //
-    // If the Android bridge isn't available, retain the
-    // normal browser/file-input behavior.
-    //
-    // This prevents the web version from breaking.
-    // --------------------------------------------------------
+    // ========================================================
+    // BROWSER FALLBACK
+    // ========================================================
+
+    console.warn(
+        "⚠ Native Android audio bridge unavailable."
+    );
+
 
     const input =
         document.getElementById(
@@ -72976,12 +73064,255 @@ function recordAudio(type){
 
     if(input){
 
+        console.log(
+            "🎙 Opening browser audio input"
+        );
+
         input.click();
+
+        return;
+    }
+
+
+    // ========================================================
+    // NO AUDIO INPUT AVAILABLE
+    // ========================================================
+
+    console.error(
+        "❌ Audio input element not found for:",
+        type
+    );
+
+}
+// ============================================================
+// 🎙 NATIVE AUDIO RESULT
+// ============================================================
+//
+// Android MainActivity calls:
+//
+// window.onNativeAudioRecorded(uri)
+//
+// after AudioActivity finishes recording.
+//
+// ============================================================
+
+// ============================================================
+// 🎙 NATIVE AUDIO RESULT
+// ============================================================
+
+window.onNativeAudioRecorded =
+function(uri){
+
+    try{
+
+        console.log(
+            "🎙 Native audio result received:",
+            uri
+        );
+
+
+        // ====================================================
+        // RECORDING CANCELLED / FAILED
+        // ====================================================
+
+        if(
+            !uri
+        ){
+
+            console.warn(
+                "⚠ Native audio recording cancelled or failed"
+            );
+
+            return;
+        }
+
+
+        // ====================================================
+        // GET REQUESTING FORM
+        // ====================================================
+
+        const type =
+            window.currentSightingAudioType;
+
+
+        if(
+            type !== "wildlife" &&
+            type !== "elephant"
+        ){
+
+            console.error(
+                "❌ Invalid current audio type:",
+                type
+            );
+
+            return;
+        }
+
+
+        // ====================================================
+        // INITIALIZE MEDIA STATE
+        // ====================================================
+
+        if(
+            !window.sightingMedia
+        ){
+
+            window.sightingMedia = {};
+        }
+
+
+        if(
+            !window.sightingMedia[type]
+        ){
+
+            window.sightingMedia[type] = {
+
+                photo: null,
+
+                video: null,
+
+                audio: null,
+
+                audioObjectUrl: null
+            };
+
+        }
+
+
+        // ====================================================
+        // RELEASE OLD BROWSER AUDIO URL
+        // ====================================================
+
+        if(
+            window.sightingMedia[type]
+                .audioObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    window.sightingMedia[type]
+                        .audioObjectUrl
+                );
+
+            }
+            catch(_){
+
+            }
+
+            window.sightingMedia[type]
+                .audioObjectUrl =
+                    null;
+        }
+
+
+        // ====================================================
+        // STORE NATIVE AUDIO URI
+        // ====================================================
+
+        window.sightingMedia[type].audio =
+            uri;
+
+
+        console.log(
+            "✅ Native Android audio stored:",
+            {
+                type:
+                    type,
+
+                uri:
+                    uri
+            }
+        );
+
+
+        // ====================================================
+        // GET PREFIX
+        // ====================================================
+
+        const prefix =
+            typeof getSightingMediaPrefix ===
+                "function"
+
+                ? getSightingMediaPrefix(
+                    type
+                )
+
+                : (
+                    type === "wildlife"
+                        ? "w"
+                        : "f"
+                );
+
+
+        // ====================================================
+        // PREVIEW ELEMENTS
+        // ====================================================
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-audio-preview"
+            );
+
+
+        const player =
+            document.getElementById(
+                prefix +
+                "-audio-preview-player"
+            );
+
+
+        // ====================================================
+        // UPDATE AUDIO PLAYER
+        // ====================================================
+
+        if(
+            player
+        ){
+
+            player.src =
+                uri;
+
+            player.load();
+
+        }
+
+
+        // ====================================================
+        // SHOW PREVIEW
+        // ====================================================
+
+        if(
+            preview
+        ){
+
+            preview.style.display =
+                "block";
+
+        }
+
+
+        // ====================================================
+        // LOG
+        // ====================================================
+
+        console.log(
+            "✅ Native audio preview ready"
+        );
+
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Native audio result processing failed:",
+            error
+        );
 
     }
 
-}
-
+};
 
 // ============================================================
 // 14. CLEAR ALL MEDIA
