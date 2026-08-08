@@ -36919,17 +36919,28 @@ function escapeSightingMediaHtml(value){
 
 function getSightingMediaViewer(){
 
+    // ========================================================
+    // RETURN EXISTING VIEWER
+    // ========================================================
+
     let viewer =
         document.getElementById(
             "ggSightingMediaViewer"
         );
 
 
-    if(viewer){
+    if(
+        viewer
+    ){
 
         return viewer;
+
     }
 
+
+    // ========================================================
+    // CREATE VIEWER
+    // ========================================================
 
     viewer =
         document.createElement(
@@ -36943,16 +36954,69 @@ function getSightingMediaViewer(){
 
     viewer.style.cssText = `
         position:fixed;
+
         inset:0;
+
+        width:100%;
+        height:100vh;
+        height:100dvh;
+
         z-index:999999;
+
         display:none;
+
         align-items:center;
         justify-content:center;
-        background:rgba(0,0,0,0.82);
-        padding:16px;
+
         box-sizing:border-box;
+
+        padding:
+            max(
+                8px,
+                env(
+                    safe-area-inset-top
+                )
+            )
+            max(
+                8px,
+                env(
+                    safe-area-inset-right
+                )
+            )
+            max(
+                8px,
+                env(
+                    safe-area-inset-bottom
+                )
+            )
+            max(
+                8px,
+                env(
+                    safe-area-inset-left
+                )
+            );
+
+        background:
+            rgba(
+                0,
+                0,
+                0,
+                0.86
+            );
+
+        overflow:hidden;
+
+        overscroll-behavior:none;
+
+        -webkit-overflow-scrolling:touch;
+
+        touch-action:auto;
     `;
 
+
+    // ========================================================
+    // VIEWER HTML
+    // ========================================================
 
     viewer.innerHTML = `
 
@@ -36960,36 +37024,123 @@ function getSightingMediaViewer(){
             id="ggSightingMediaPanel"
             style="
                 position:relative;
-                width:min(92vw,900px);
-                max-height:92vh;
+
+                width:min(
+                    94vw,
+                    900px
+                );
+
+                max-width:900px;
+
+                max-height:
+                    calc(
+                        100dvh - 16px
+                    );
+
                 background:#111;
+
                 border-radius:14px;
+
                 overflow:hidden;
-                box-shadow:0 12px 40px rgba(0,0,0,0.45);
+
+                box-shadow:
+                    0 12px 40px
+                    rgba(
+                        0,
+                        0,
+                        0,
+                        0.55
+                    );
+
                 display:flex;
+
                 flex-direction:column;
+
+                box-sizing:border-box;
+
+                min-width:0;
+                min-height:0;
+
+                font-family:
+                    Segoe UI,
+                    Arial,
+                    sans-serif;
             "
         >
 
+            <!-- HEADER -->
+
             <div
+                id="ggSightingMediaHeader"
                 style="
-                    height:48px;
+                    flex:
+                        0 0 auto;
+
                     min-height:48px;
+                    height:48px;
+
                     display:flex;
+
                     align-items:center;
+
                     justify-content:space-between;
-                    padding:0 12px 0 16px;
+
+                    gap:10px;
+
+                    padding:
+                        0
+                        max(
+                            10px,
+                            env(
+                                safe-area-inset-right
+                            )
+                        )
+                        0
+                        max(
+                            14px,
+                            env(
+                                safe-area-inset-left
+                            )
+                        );
+
                     box-sizing:border-box;
+
                     background:#1b1b1b;
+
                     color:#fff;
-                    font-family:Segoe UI,Arial,sans-serif;
-                    font-size:13px;
-                    font-weight:700;
+
+                    border-bottom:
+                        1px solid
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.08
+                        );
+
+                    user-select:none;
+
+                    -webkit-user-select:none;
                 "
             >
 
                 <span
                     id="ggSightingMediaTitle"
+                    style="
+                        min-width:0;
+
+                        overflow:hidden;
+
+                        text-overflow:ellipsis;
+
+                        white-space:nowrap;
+
+                        font-size:14px;
+
+                        font-weight:700;
+
+                        line-height:1.2;
+                    "
                 >
                     Sighting Media
                 </span>
@@ -36998,16 +37149,48 @@ function getSightingMediaViewer(){
                 <button
                     type="button"
                     id="ggSightingMediaClose"
+                    aria-label="Close media viewer"
+                    title="Close"
                     style="
-                        width:34px;
-                        height:34px;
+                        flex:
+                            0 0 auto;
+
+                        width:40px;
+                        height:40px;
+
+                        min-width:40px;
+                        min-height:40px;
+
                         border:none;
+
                         border-radius:50%;
+
                         background:#333;
+
                         color:#fff;
-                        font-size:20px;
-                        line-height:34px;
+
+                        font-size:24px;
+
+                        line-height:40px;
+
+                        padding:0;
+
+                        margin:0;
+
                         cursor:pointer;
+
+                        display:flex;
+
+                        align-items:center;
+                        justify-content:center;
+
+                        box-sizing:border-box;
+
+                        -webkit-tap-highlight-color:
+                            transparent;
+
+                        touch-action:
+                            manipulation;
                     "
                 >
                     ×
@@ -37016,18 +37199,41 @@ function getSightingMediaViewer(){
             </div>
 
 
+            <!-- CONTENT -->
+
             <div
                 id="ggSightingMediaContent"
                 style="
-                    flex:1;
+                    flex:
+                        1 1 auto;
+
+                    width:100%;
+
+                    min-width:0;
                     min-height:0;
+
+                    box-sizing:border-box;
+
                     display:flex;
+
                     align-items:center;
                     justify-content:center;
-                    padding:14px;
-                    box-sizing:border-box;
+
+                    padding:12px;
+
                     overflow:auto;
+
+                    overflow-x:hidden;
+
+                    overflow-y:auto;
+
                     background:#000;
+
+                    overscroll-behavior:contain;
+
+                    -webkit-overflow-scrolling:touch;
+
+                    touch-action:auto;
                 "
             ></div>
 
@@ -37036,32 +37242,79 @@ function getSightingMediaViewer(){
     `;
 
 
+    // ========================================================
+    // ADD TO DOCUMENT
+    // ========================================================
+
     document.body.appendChild(
         viewer
     );
 
 
     // ========================================================
-    // CLOSE
+    // GET ELEMENTS
     // ========================================================
 
-    viewer
-        .querySelector(
+    const panel =
+        viewer.querySelector(
+            "#ggSightingMediaPanel"
+        );
+
+
+    const closeButton =
+        viewer.querySelector(
             "#ggSightingMediaClose"
-        )
-        .onclick =
-        function(){
-
-            closeSightingMediaViewer();
-
-        };
+        );
 
 
     // ========================================================
-    // CLICK BACKDROP TO CLOSE
+    // CLOSE BUTTON
     // ========================================================
 
-    viewer.onclick =
+    if(
+        closeButton
+    ){
+
+        closeButton.onclick =
+            function(event){
+
+                event.preventDefault();
+
+                event.stopPropagation();
+
+                closeSightingMediaViewer();
+
+            };
+
+    }
+
+
+    // ========================================================
+    // PANEL MUST NOT CLOSE VIEWER
+    // ========================================================
+
+    if(
+        panel
+    ){
+
+        panel.addEventListener(
+            "click",
+            function(event){
+
+                event.stopPropagation();
+
+            }
+        );
+
+    }
+
+
+    // ========================================================
+    // BACKDROP CLICK
+    // ========================================================
+
+    viewer.addEventListener(
+        "click",
         function(event){
 
             if(
@@ -37072,31 +37325,72 @@ function getSightingMediaViewer(){
 
             }
 
-        };
-
-
-    // ========================================================
-    // ESC KEY
-    // ========================================================
-
-    document.addEventListener(
-        "keydown",
-        function(event){
-
-            if(
-                event.key === "Escape" &&
-                viewer.style.display !== "none"
-            ){
-
-                closeSightingMediaViewer();
-
-            }
-
         }
     );
 
 
+    // ========================================================
+    // ESC HANDLER
+    // ========================================================
+
+    viewer.__ggEscapeHandler =
+        function(event){
+
+            if(
+                event.key !==
+                "Escape"
+            ){
+
+                return;
+
+            }
+
+
+            if(
+                viewer.style.display ===
+                "none"
+            ){
+
+                return;
+
+            }
+
+
+            event.preventDefault();
+
+            closeSightingMediaViewer();
+
+        };
+
+
+    document.addEventListener(
+        "keydown",
+        viewer.__ggEscapeHandler
+    );
+
+
+    // ========================================================
+    // STATE
+    // ========================================================
+
+    viewer.__ggActiveMediaElement =
+        null;
+
+
+    viewer.__ggPreviousBodyOverflow =
+        "";
+
+
+    viewer.__ggPreviousHtmlOverflow =
+        "";
+
+
+    // ========================================================
+    // RETURN
+    // ========================================================
+
     return viewer;
+
 }
 
 
@@ -37106,17 +37400,28 @@ function getSightingMediaViewer(){
 
 function closeSightingMediaViewer(){
 
+    // ========================================================
+    // GET VIEWER
+    // ========================================================
+
     const viewer =
         document.getElementById(
             "ggSightingMediaViewer"
         );
 
 
-    if(!viewer){
+    if(
+        !viewer
+    ){
 
         return;
+
     }
 
+
+    // ========================================================
+    // GET CONTENT
+    // ========================================================
 
     const content =
         viewer.querySelector(
@@ -37124,66 +37429,165 @@ function closeSightingMediaViewer(){
         );
 
 
-    if(content){
+    // ========================================================
+    // STOP ACTIVE MEDIA
+    // ========================================================
 
-        const video =
-            content.querySelector(
-                "video"
+    const activeMedia =
+        viewer.__ggActiveMediaElement;
+
+
+    if(
+        activeMedia
+    ){
+
+        try{
+
+            if(
+                typeof activeMedia.pause ===
+                "function"
+            ){
+
+                activeMedia.pause();
+
+            }
+
+        }
+        catch(
+            pauseError
+        ){
+
+            console.warn(
+                "⚠️ Active media pause failed:",
+                pauseError
             );
-
-
-        if(video){
-
-            try{
-
-                video.pause();
-
-            }
-            catch(error){}
-
-
-            try{
-
-                video.removeAttribute(
-                    "src"
-                );
-
-                video.load();
-
-            }
-            catch(error){}
 
         }
 
 
-        const audio =
-            content.querySelector(
-                "audio"
+        try{
+
+            activeMedia.removeAttribute(
+                "src"
+            );
+
+        }
+        catch(
+            sourceError
+        ){
+
+            console.warn(
+                "⚠️ Active media source cleanup failed:",
+                sourceError
+            );
+
+        }
+
+
+        try{
+
+            if(
+                typeof activeMedia.load ===
+                "function"
+            ){
+
+                activeMedia.load();
+
+            }
+
+        }
+        catch(
+            loadError
+        ){
+
+            console.warn(
+                "⚠️ Active media release failed:",
+                loadError
+            );
+
+        }
+
+    }
+
+
+    // ========================================================
+    // SAFETY CLEANUP
+    // ========================================================
+
+    if(
+        content
+    ){
+
+        const mediaElements =
+            content.querySelectorAll(
+                "video, audio"
             );
 
 
-        if(audio){
+        mediaElements.forEach(
+            function(
+                element
+            ){
 
-            try{
+                try{
 
-                audio.pause();
+                    if(
+                        typeof element.pause ===
+                        "function"
+                    ){
+
+                        element.pause();
+
+                    }
+
+                }
+                catch(
+                    error
+                ){
+
+                    // Cleanup must never block close.
+
+                }
+
+
+                try{
+
+                    element.removeAttribute(
+                        "src"
+                    );
+
+                }
+                catch(
+                    error
+                ){
+
+                    // Cleanup must never block close.
+
+                }
+
+
+                try{
+
+                    if(
+                        typeof element.load ===
+                        "function"
+                    ){
+
+                        element.load();
+
+                    }
+
+                }
+                catch(
+                    error
+                ){
+
+                    // Cleanup must never block close.
+
+                }
 
             }
-            catch(error){}
-
-
-            try{
-
-                audio.removeAttribute(
-                    "src"
-                );
-
-                audio.load();
-
-            }
-            catch(error){}
-
-        }
+        );
 
 
         content.innerHTML =
@@ -37192,12 +37596,129 @@ function closeSightingMediaViewer(){
     }
 
 
+    // ========================================================
+    // CLEAR ACTIVE MEDIA
+    // ========================================================
+
+    viewer.__ggActiveMediaElement =
+        null;
+
+
+    // ========================================================
+    // HIDE VIEWER
+    // ========================================================
+
     viewer.style.display =
         "none";
 
 
-    document.body.style.overflow =
-        "";
+    viewer.hidden =
+        true;
+
+
+    // ========================================================
+    // RESTORE BODY SCROLL
+    // ========================================================
+
+    if(
+        typeof viewer.__ggPreviousBodyOverflow ===
+        "string"
+    ){
+
+        document.body.style.overflow =
+            viewer.__ggPreviousBodyOverflow;
+
+    }
+    else{
+
+        document.body.style.overflow =
+            "";
+
+    }
+
+
+    // ========================================================
+    // RESTORE HTML SCROLL
+    // ========================================================
+
+    if(
+        typeof viewer.__ggPreviousHtmlOverflow ===
+        "string"
+    ){
+
+        document.documentElement.style.overflow =
+            viewer.__ggPreviousHtmlOverflow;
+
+    }
+    else{
+
+        document.documentElement.style.overflow =
+            "";
+
+    }
+
+
+    // ========================================================
+    // RESTORE OVERSCROLL
+    // ========================================================
+
+    document.documentElement.style
+        .removeProperty(
+            "overscroll-behavior"
+        );
+
+
+    // ========================================================
+    // RESET CONTENT SCROLL
+    // ========================================================
+
+    if(
+        content
+    ){
+
+        content.scrollTop =
+            0;
+
+        content.scrollLeft =
+            0;
+
+    }
+
+
+    // ========================================================
+    // REMOVE FOCUS
+    // ========================================================
+
+    try{
+
+        if(
+            document.activeElement &&
+            typeof document.activeElement.blur ===
+            "function"
+        ){
+
+            document.activeElement.blur();
+
+        }
+
+    }
+    catch(
+        focusError
+    ){
+
+        // Focus cleanup must never prevent closing.
+
+    }
+
+
+    // ========================================================
+    // DEBUG
+    // ========================================================
+
+    console.log(
+        "✅ SIGHTING MEDIA VIEWER CLOSED"
+    );
+
 }
 
 
@@ -37210,6 +37731,45 @@ function openSightingMediaPreview(
     mediaType
 ){
 
+    // ========================================================
+    // VALIDATE MEDIA TYPE
+    // ========================================================
+
+    const allowedTypes = [
+        "photo",
+        "video",
+        "audio"
+    ];
+
+
+    mediaType =
+        String(
+            mediaType || ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    if(
+        !allowedTypes.includes(
+            mediaType
+        )
+    ){
+
+        console.warn(
+            "⚠️ Invalid sighting media type:",
+            mediaType
+        );
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // GET REGISTRY
+    // ========================================================
+
     const registry =
         window.sightingMediaRegistry ||
         {};
@@ -37221,7 +37781,9 @@ function openSightingMediaPreview(
         ];
 
 
-    if(!media){
+    if(
+        !media
+    ){
 
         console.warn(
             "⚠️ Sighting media not found:",
@@ -37229,8 +37791,13 @@ function openSightingMediaPreview(
         );
 
         return;
+
     }
 
+
+    // ========================================================
+    // GET URL
+    // ========================================================
 
     const url =
         String(
@@ -37238,10 +37805,13 @@ function openSightingMediaPreview(
                 mediaType + "_url"
             ] ||
             ""
-        ).trim();
+        )
+        .trim();
 
 
-    if(!url){
+    if(
+        !url
+    ){
 
         console.warn(
             "⚠️ No media URL:",
@@ -37250,11 +37820,29 @@ function openSightingMediaPreview(
         );
 
         return;
+
     }
 
 
+    // ========================================================
+    // GET VIEWER
+    // ========================================================
+
     const viewer =
         getSightingMediaViewer();
+
+
+    if(
+        !viewer
+    ){
+
+        console.error(
+            "❌ Sighting media viewer unavailable."
+        );
+
+        return;
+
+    }
 
 
     const content =
@@ -37269,8 +37857,168 @@ function openSightingMediaPreview(
         );
 
 
+    if(
+        !content ||
+        !title
+    ){
+
+        console.error(
+            "❌ Sighting media viewer structure missing."
+        );
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // SAVE PAGE SCROLL STATE
+    //
+    // ONLY save when opening a new viewer.
+    //
+    // If user changes Photo -> Video while viewer is already
+    // open, do NOT overwrite the original values.
+    // ========================================================
+
+    const viewerAlreadyOpen =
+        viewer.style.display ===
+        "flex";
+
+
+    if(
+        !viewerAlreadyOpen
+    ){
+
+        viewer.__ggPreviousBodyOverflow =
+            document.body.style.overflow;
+
+
+        viewer.__ggPreviousHtmlOverflow =
+            document.documentElement.style.overflow;
+
+    }
+
+
+    // ========================================================
+    // STOP PREVIOUS MEDIA
+    // ========================================================
+
+    const previousMedia =
+        viewer.__ggActiveMediaElement;
+
+
+    if(
+        previousMedia
+    ){
+
+        try{
+
+            if(
+                typeof previousMedia.pause ===
+                "function"
+            ){
+
+                previousMedia.pause();
+
+            }
+
+        }
+        catch(
+            cleanupError
+        ){
+
+            console.warn(
+                "⚠️ Previous media pause failed:",
+                cleanupError
+            );
+
+        }
+
+
+        try{
+
+            previousMedia.removeAttribute(
+                "src"
+            );
+
+        }
+        catch(
+            cleanupError
+        ){
+
+            console.warn(
+                "⚠️ Previous media source cleanup failed:",
+                cleanupError
+            );
+
+        }
+
+
+        try{
+
+            if(
+                typeof previousMedia.load ===
+                "function"
+            ){
+
+                previousMedia.load();
+
+            }
+
+        }
+        catch(
+            cleanupError
+        ){
+
+            console.warn(
+                "⚠️ Previous media release failed:",
+                cleanupError
+            );
+
+        }
+
+    }
+
+
+    viewer.__ggActiveMediaElement =
+        null;
+
+
+    // ========================================================
+    // CLEAR CONTENT
+    // ========================================================
+
     content.innerHTML =
         "";
+
+
+    content.style.cssText = `
+        width:100%;
+        max-width:100%;
+        min-width:0;
+        min-height:80px;
+
+        box-sizing:border-box;
+
+        display:flex;
+
+        justify-content:center;
+        align-items:center;
+
+        overflow:auto;
+        overflow-x:hidden;
+        overflow-y:auto;
+
+        padding:12px;
+
+        background:#000;
+
+        overscroll-behavior:contain;
+
+        -webkit-overflow-scrolling:touch;
+
+        touch-action:auto;
+    `;
 
 
     // ========================================================
@@ -37278,7 +38026,8 @@ function openSightingMediaPreview(
     // ========================================================
 
     if(
-        mediaType === "photo"
+        mediaType ===
+        "photo"
     ){
 
         title.textContent =
@@ -37296,23 +38045,86 @@ function openSightingMediaPreview(
 
 
         image.alt =
-            "Sighting photo";
+            "Wildlife / elephant sighting photo";
+
+
+        image.decoding =
+            "async";
+
+
+        image.loading =
+            "eager";
 
 
         image.style.cssText = `
             display:block;
+
             max-width:100%;
-            max-height:calc(92vh - 90px);
+
             width:auto;
+
             height:auto;
+
+            max-height:
+                calc(
+                    100dvh - 120px
+                );
+
             object-fit:contain;
+
             border-radius:8px;
+
+            user-select:none;
+
+            -webkit-user-drag:none;
+
+            flex:0 0 auto;
         `;
+
+
+        image.onerror =
+            function(){
+
+                console.error(
+                    "❌ Sighting photo failed to load:",
+                    url
+                );
+
+
+                content.innerHTML = `
+
+                    <div
+                        style="
+                            width:100%;
+
+                            box-sizing:border-box;
+
+                            padding:30px 15px;
+
+                            text-align:center;
+
+                            color:#ff8a80;
+
+                            font-size:14px;
+
+                            font-weight:700;
+                        "
+                    >
+                        ❌ Unable to load photo.
+                    </div>
+
+                `;
+
+            };
 
 
         content.appendChild(
             image
         );
+
+
+        viewer.__ggActiveMediaElement =
+            image;
 
     }
 
@@ -37322,7 +38134,8 @@ function openSightingMediaPreview(
     // ========================================================
 
     else if(
-        mediaType === "video"
+        mediaType ===
+        "video"
     ){
 
         title.textContent =
@@ -37343,8 +38156,29 @@ function openSightingMediaPreview(
             true;
 
 
+        video.setAttribute(
+            "playsinline",
+            ""
+        );
+
+
+        video.setAttribute(
+            "webkit-playsinline",
+            ""
+        );
+
+
+        // ----------------------------------------------------
+        // IMPORTANT
+        //
+        // Do not preload the complete video.
+        // Do not call video.load() here.
+        //
+        // The user controls playback.
+        // ----------------------------------------------------
+
         video.preload =
-            "metadata";
+            "none";
 
 
         video.src =
@@ -37353,12 +38187,57 @@ function openSightingMediaPreview(
 
         video.style.cssText = `
             display:block;
+
             width:100%;
+
             max-width:860px;
-            max-height:calc(92vh - 90px);
+
+            height:auto;
+
+            max-height:
+                calc(
+                    100dvh - 120px
+                );
+
             background:#000;
+
             border-radius:8px;
+
+            object-fit:contain;
+
+            flex:0 0 auto;
         `;
+
+
+        video.addEventListener(
+            "error",
+            function(){
+
+                console.error(
+                    "❌ Sighting video failed to load:",
+                    url
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+
+        video.addEventListener(
+            "play",
+            function(){
+
+                console.log(
+                    "▶️ Sighting video playback started"
+                );
+
+            },
+            {
+                once:true
+            }
+        );
 
 
         content.appendChild(
@@ -37366,12 +38245,8 @@ function openSightingMediaPreview(
         );
 
 
-        // ----------------------------------------------------
-        // Do NOT autoplay.
-        // User presses the native play button.
-        // ----------------------------------------------------
-
-        video.load();
+        viewer.__ggActiveMediaElement =
+            video;
 
     }
 
@@ -37381,7 +38256,8 @@ function openSightingMediaPreview(
     // ========================================================
 
     else if(
-        mediaType === "audio"
+        mediaType ===
+        "audio"
     ){
 
         title.textContent =
@@ -37399,7 +38275,7 @@ function openSightingMediaPreview(
 
 
         audio.preload =
-            "metadata";
+            "none";
 
 
         audio.src =
@@ -37407,9 +38283,47 @@ function openSightingMediaPreview(
 
 
         audio.style.cssText = `
+            display:block;
+
             width:100%;
+
             max-width:700px;
+
+            height:54px;
+
+            flex:0 0 auto;
         `;
+
+
+        audio.addEventListener(
+            "error",
+            function(){
+
+                console.error(
+                    "❌ Sighting audio failed to load:",
+                    url
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+
+        audio.addEventListener(
+            "play",
+            function(){
+
+                console.log(
+                    "▶️ Sighting audio playback started"
+                );
+
+            },
+            {
+                once:true
+            }
+        );
 
 
         content.appendChild(
@@ -37417,7 +38331,8 @@ function openSightingMediaPreview(
         );
 
 
-        audio.load();
+        viewer.__ggActiveMediaElement =
+            audio;
 
     }
 
@@ -37430,17 +38345,103 @@ function openSightingMediaPreview(
 
 
     // ========================================================
-    // SHOW ONLY AFTER CONTENT IS READY
+    // SHOW VIEWER
     // ========================================================
+
+    viewer.hidden =
+        false;
+
+
+    viewer.removeAttribute(
+        "hidden"
+    );
+
 
     viewer.style.display =
         "flex";
 
 
+    // ========================================================
+    // LOCK BACKGROUND SCROLL
+    // ========================================================
+
     document.body.style.overflow =
         "hidden";
-}
 
+
+    document.documentElement.style.overflow =
+        "hidden";
+
+
+    document.documentElement.style
+        .setProperty(
+            "overscroll-behavior",
+            "none"
+        );
+
+
+    // ========================================================
+    // RESET MEDIA SCROLL POSITION
+    // ========================================================
+
+    content.scrollTop =
+        0;
+
+
+    content.scrollLeft =
+        0;
+
+
+    // ========================================================
+    // FOCUS VIEWER
+    // ========================================================
+
+    try{
+
+        viewer.setAttribute(
+            "tabindex",
+            "-1"
+        );
+
+
+        viewer.focus();
+
+    }
+    catch(
+        focusError
+    ){
+
+        console.warn(
+            "⚠️ Media viewer focus failed:",
+            focusError
+        );
+
+    }
+
+
+    // ========================================================
+    // DEBUG
+    // ========================================================
+
+    console.log(
+        "🎬 SIGHTING MEDIA PREVIEW OPENED:",
+        {
+            sightingKey:
+                sightingKey,
+
+            mediaType:
+                mediaType,
+
+            urlAvailable:
+                !!url,
+
+            lazyPlayback:
+                mediaType === "video" ||
+                mediaType === "audio"
+        }
+    );
+
+}
 
 // ============================================================
 // BUILD LIGHTWEIGHT MEDIA CONTROLS
@@ -37451,30 +38452,47 @@ function buildSightingMediaPopup(
     sightingKey
 ){
 
+    // ========================================================
+    // GET MEDIA URLS
+    // ========================================================
+
     const photoUrl =
         String(
             sighting?.photo_url ||
             ""
-        ).trim();
+        )
+        .trim();
 
 
     const videoUrl =
         String(
             sighting?.video_url ||
             ""
-        ).trim();
+        )
+        .trim();
 
 
     const audioUrl =
         String(
             sighting?.audio_url ||
             ""
-        ).trim();
+        )
+        .trim();
 
 
     // ========================================================
     // REGISTER MEDIA
     // ========================================================
+
+    if(
+        !window.sightingMediaRegistry
+    ){
+
+        window.sightingMediaRegistry =
+            {};
+
+    }
+
 
     window.sightingMediaRegistry[
         sightingKey
@@ -37503,11 +38521,67 @@ function buildSightingMediaPopup(
     ){
 
         return "";
+
     }
 
 
     // ========================================================
-    // BUTTON BUILDER
+    // ESCAPE HTML
+    // ========================================================
+
+    function safeHtml(
+        value
+    ){
+
+        if(
+            typeof escapeSightingMediaHtml ===
+            "function"
+        ){
+
+            return escapeSightingMediaHtml(
+                String(
+                    value || ""
+                )
+            );
+
+        }
+
+
+        return String(
+            value || ""
+        )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+    }
+
+
+    const safeKey =
+        safeHtml(
+            sightingKey
+        );
+
+
+    // ========================================================
+    // PREVIEW BUTTON
     // ========================================================
 
     function previewButton(
@@ -37519,44 +38593,67 @@ function buildSightingMediaPopup(
 
             <button
                 type="button"
+                data-gg-media-preview="true"
                 onclick="
+                    event.preventDefault();
                     event.stopPropagation();
+
                     openSightingMediaPreview(
-                        '${escapeSightingMediaHtml(
-                            sightingKey
-                        )}',
+                        '${safeKey}',
                         '${type}'
                     );
                 "
                 style="
-                    flex:1;
+                    flex:1 1 0;
                     min-width:0;
+                    box-sizing:border-box;
+
                     border:none;
-                    border-radius:6px;
+                    border-radius:7px;
+
                     background:#2e7d32;
                     color:#fff;
-                    padding:7px 6px;
+
+                    padding:8px 6px;
+
                     font-size:11px;
                     font-weight:700;
+
                     cursor:pointer;
+
+                    line-height:1.2;
+
+                    touch-action:manipulation;
+                    -webkit-tap-highlight-color:transparent;
                 "
             >
                 ${label}
             </button>
 
         `;
+
     }
 
+
+    // ========================================================
+    // DOWNLOAD BUTTON
+    // ========================================================
 
     function downloadButton(
         url,
         label
     ){
 
+        const safeUrl =
+            safeHtml(
+                url
+            );
+
+
         return `
 
             <a
-                href="${escapeSightingMediaHtml(url)}"
+                href="${safeUrl}"
                 download
                 target="_blank"
                 rel="noopener noreferrer"
@@ -37564,71 +38661,111 @@ function buildSightingMediaPopup(
                     event.stopPropagation();
                 "
                 style="
-                    flex:1;
+                    flex:1 1 0;
                     min-width:0;
+
                     box-sizing:border-box;
+
                     display:block;
+
                     text-align:center;
+
                     text-decoration:none;
-                    border-radius:6px;
+
+                    border-radius:7px;
+
                     background:#1565c0;
                     color:#fff;
-                    padding:7px 6px;
+
+                    padding:8px 6px;
+
                     font-size:11px;
                     font-weight:700;
+
+                    line-height:1.2;
+
+                    cursor:pointer;
+
+                    touch-action:manipulation;
+                    -webkit-tap-highlight-color:transparent;
                 "
             >
                 ${label}
             </a>
 
         `;
+
     }
 
 
     // ========================================================
-    // MEDIA ROWS
+    // MEDIA ROW BUILDER
     // ========================================================
 
-    let rows = "";
+    function mediaRow(
+        icon,
+        title,
+        type,
+        url,
+        downloadLabel
+    ){
 
-
-    if(photoUrl){
-
-        rows += `
+        return `
 
             <div
                 style="
-                    margin-bottom:8px;
+                    width:100%;
+                    box-sizing:border-box;
+                    margin-bottom:9px;
                 "
             >
 
                 <div
                     style="
+                        display:flex;
+                        align-items:center;
+
                         font-size:11px;
                         font-weight:700;
+
                         color:#333;
+
                         margin-bottom:5px;
                     "
                 >
-                    📷 PHOTO
+
+                    <span>
+                        ${icon}
+                    </span>
+
+                    <span
+                        style="
+                            margin-left:4px;
+                        "
+                    >
+                        ${title}
+                    </span>
+
                 </div>
 
 
                 <div
                     style="
+                        width:100%;
                         display:flex;
                         gap:6px;
+                        box-sizing:border-box;
                     "
                 >
 
                     ${previewButton(
-                        "photo",
+                        type,
                         "Preview"
                     )}
 
                     ${downloadButton(
-                        photoUrl,
-                        "Download Photo"
+                        url,
+                        downloadLabel
                     )}
 
                 </div>
@@ -37636,136 +38773,138 @@ function buildSightingMediaPopup(
             </div>
 
         `;
-    }
 
-
-    if(videoUrl){
-
-        rows += `
-
-            <div
-                style="
-                    margin-bottom:8px;
-                "
-            >
-
-                <div
-                    style="
-                        font-size:11px;
-                        font-weight:700;
-                        color:#333;
-                        margin-bottom:5px;
-                    "
-                >
-                    🎥 VIDEO
-                </div>
-
-
-                <div
-                    style="
-                        display:flex;
-                        gap:6px;
-                    "
-                >
-
-                    ${previewButton(
-                        "video",
-                        "Preview"
-                    )}
-
-                    ${downloadButton(
-                        videoUrl,
-                        "Download Video"
-                    )}
-
-                </div>
-
-            </div>
-
-        `;
-    }
-
-
-    if(audioUrl){
-
-        rows += `
-
-            <div
-                style="
-                    margin-bottom:2px;
-                "
-            >
-
-                <div
-                    style="
-                        font-size:11px;
-                        font-weight:700;
-                        color:#333;
-                        margin-bottom:5px;
-                    "
-                >
-                    🎙 AUDIO
-                </div>
-
-
-                <div
-                    style="
-                        display:flex;
-                        gap:6px;
-                    "
-                >
-
-                    ${previewButton(
-                        "audio",
-                        "Preview"
-                    )}
-
-                    ${downloadButton(
-                        audioUrl,
-                        "Download Audio"
-                    )}
-
-                </div>
-
-            </div>
-
-        `;
     }
 
 
     // ========================================================
-    // RETURN LIGHTWEIGHT POPUP HTML
+    // BUILD MEDIA ROWS
+    // ========================================================
+
+    let rows =
+        "";
+
+
+    if(
+        photoUrl
+    ){
+
+        rows +=
+            mediaRow(
+                "📷",
+                "PHOTO",
+                "photo",
+                photoUrl,
+                "Download Photo"
+            );
+
+    }
+
+
+    if(
+        videoUrl
+    ){
+
+        rows +=
+            mediaRow(
+                "🎥",
+                "VIDEO",
+                "video",
+                videoUrl,
+                "Download Video"
+            );
+
+    }
+
+
+    if(
+        audioUrl
+    ){
+
+        rows +=
+            mediaRow(
+                "🎙",
+                "AUDIO",
+                "audio",
+                audioUrl,
+                "Download Audio"
+            );
+
+    }
+
+
+    // ========================================================
+    // RETURN LIGHTWEIGHT MEDIA SECTION
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // No <img>, <video>, or <audio> is created here.
+    //
+    // Actual media is created ONLY after Preview is clicked.
+    //
     // ========================================================
 
     return `
 
         <div
             style="
+                width:100%;
+
+                box-sizing:border-box;
+
                 margin-top:10px;
-                margin-bottom:4px;
-                padding:8px;
+                margin-bottom:5px;
+
+                padding:9px;
+
                 background:#f8faf8;
-                border:1px solid #dfe8df;
+
+                border:
+                    1px solid
+                    #dfe8df;
+
                 border-radius:8px;
+
+                overflow:hidden;
             "
         >
 
             <div
                 style="
+                    display:flex;
+                    align-items:center;
+
                     font-size:11px;
                     font-weight:700;
+
                     color:#1b5e20;
-                    margin-bottom:7px;
+
+                    margin-bottom:8px;
                 "
             >
-                🎬 MEDIA
+
+                <span>
+                    🎬
+                </span>
+
+                <span
+                    style="
+                        margin-left:4px;
+                    "
+                >
+                    MEDIA
+                </span>
+
             </div>
+
 
             ${rows}
 
         </div>
 
     `;
+
 }
 
 
@@ -37778,81 +38917,136 @@ function buildSightingMediaPopup(
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
 async function loadSightings(){
+// =====================================================
+// INIT
+// =====================================================
+try{
 
-  // =====================================================
-  // INIT
-  // =====================================================
+// =====================================================
+// POPUP STATE
+// Keep the currently opened sighting popup stable across
+// periodic Firestore refreshes.
+// =====================================================
 
-  try{
+window.activeSightingPopupKey =
+  window.activeSightingPopupKey ||
+  null;
 
-    // =====================================================
-    // POPUP STATE
-    // Keep the currently opened sighting popup stable across
-    // periodic Firestore refreshes.
-    // =====================================================
+window.activeSightingPopupMarker =
+  window.activeSightingPopupMarker ||
+  null;
 
-    window.activeSightingPopupKey =
-      window.activeSightingPopupKey ||
-      null;
+const popupKeyBeforeRefresh =
+  window.activeSightingPopupKey;
 
-    window.activeSightingPopupMarker =
-      window.activeSightingPopupMarker ||
-      null;
+if(
+  !window.sightingsInitialized
+){
 
-    const popupKeyBeforeRefresh =
-      window.activeSightingPopupKey;
+  elephantLayer.clearLayers();
 
-    if(
-      !window.sightingsInitialized
-    ){
+  window.sightingsInitialized =
+    true;
 
-      elephantLayer.clearLayers();
+}
 
-      window.sightingsInitialized =
-        true;
+else{
 
-    }
+  console.log(
+    "⏸ Keeping existing sighting markers"
+  );
 
-    else{
+}
 
-      console.log(
-        "⏸ Keeping existing sighting markers"
+
+window.sightingMarkers =
+  window.sightingMarkers ||
+  {};
+
+
+// =====================================================
+// EXPIRED CACHE
+// =====================================================
+
+window.expiredSightings =
+  window.expiredSightings ||
+  JSON.parse(
+    localStorage.getItem(
+      "expiredSightings"
+    ) ||
+    "[]"
+  );
+
+
+// =====================================================
+// CLEAN EXPIRED CACHE
+//
+// Keep IDs for 7 days.
+// =====================================================
+
+const nowCleanup =
+  Date.now();
+
+
+window.expiredSightings =
+  window.expiredSightings.filter(
+    function(obj){
+
+      if(
+        typeof obj ===
+        "string"
+      ){
+
+        return false;
+
+      }
+
+
+      if(
+        !obj?.id ||
+        !obj?.ts
+      ){
+
+        return false;
+
+      }
+
+
+      return (
+
+        nowCleanup -
+        obj.ts
+
+        <
+
+        7 *
+        24 *
+        60 *
+        60 *
+        1000
+
       );
 
     }
+  );
 
 
-    window.sightingMarkers =
-      window.sightingMarkers ||
-      {};
+localStorage.setItem(
+
+  "expiredSightings",
+
+  JSON.stringify(
+    window.expiredSightings
+  )
+
+);
 
 
-    // =====================================================
-    // EXPIRED CACHE
-    // =====================================================
+const expiredSet =
+  new Set(
 
-    window.expiredSightings =
-      window.expiredSightings ||
-      JSON.parse(
-        localStorage.getItem(
-          "expiredSightings"
-        ) ||
-        "[]"
-      );
-
-
-    // =====================================================
-    // CLEAN EXPIRED CACHE
-    //
-    // Keep IDs for 7 days.
-    // =====================================================
-
-    const nowCleanup =
-      Date.now();
-
-
-    window.expiredSightings =
-      window.expiredSightings.filter(
+    window.expiredSightings
+      .map(
         function(obj){
 
           if(
@@ -37860,2335 +39054,2095 @@ async function loadSightings(){
             "string"
           ){
 
-            return false;
+            return obj;
 
           }
 
-
-          if(
-            !obj?.id ||
-            !obj?.ts
-          ){
-
-            return false;
-
-          }
-
-
-          return (
-
-            nowCleanup -
-            obj.ts
-
-            <
-
-            7 *
-            24 *
-            60 *
-            60 *
-            1000
-
-          );
+          return obj?.id || "";
 
         }
-      );
-
-
-    localStorage.setItem(
-
-      "expiredSightings",
-
-      JSON.stringify(
-        window.expiredSightings
       )
+      .filter(Boolean)
 
-    );
-
-
-    const expiredSet =
-      new Set(
-
-        window.expiredSightings
-          .map(
-            function(obj){
-
-              if(
-                typeof obj ===
-                "string"
-              ){
-
-                return obj;
-
-              }
-
-              return obj?.id || "";
-
-            }
-          )
-          .filter(Boolean)
-
-      );
+  );
 
 
-    // =====================================================
-    // FIRESTORE MODULES
-    // =====================================================
+// =====================================================
+// FIRESTORE MODULES
+// =====================================================
 
-    const {
+const {
 
-      collection,
-      getDocs
+  collection,
+  getDocs
 
-    } = window.fb;
-
-
-    const db =
-      window.db;
+} = window.fb;
 
 
-    // =====================================================
-    // READ FIRESTORE
-    // =====================================================
-
-    console.log(
-      "🔥 Loading elephant_sightings from Firestore..."
-    );
+const db =
+  window.db;
 
 
-    const snapshot =
-      await getDocs(
+// =====================================================
+// READ FIRESTORE
+// =====================================================
 
-        collection(
-          db,
-          "elephant_sightings"
-        )
-
-      );
+console.log(
+  "🔥 Loading elephant_sightings from Firestore..."
+);
 
 
-    const data =
-      [];
+const snapshot =
+  await getDocs(
+
+    collection(
+      db,
+      "elephant_sightings"
+    )
+
+  );
 
 
-    snapshot.forEach(
-      function(docSnap){
-
-        const d =
-          docSnap.data() ||
-          {};
+const data =
+  [];
 
 
-        data.push({
+snapshot.forEach(
+  function(docSnap){
 
-          ...d,
+    const d =
+      docSnap.data() ||
+      {};
 
-          firestore_id:
-            d.firestore_id ||
-            docSnap.id
 
-        });
+    data.push({
+
+      ...d,
+
+      firestore_id:
+        d.firestore_id ||
+        docSnap.id
+
+    });
+
+  }
+);
+
+
+console.log(
+  "🐘 Firestore sightings loaded:",
+  data.length
+);
+
+
+// =====================================================
+// CURRENT TIME
+// =====================================================
+
+const now =
+  Date.now();
+
+
+// =====================================================
+// PROCESS EACH SIGHTING
+// =====================================================
+
+data.forEach(
+  function(e){
+
+    try{
+
+      // =================================================
+      // GPS
+      // =================================================
+
+      const lat =
+        Number(
+          e.lat
+        );
+
+
+      const lon =
+        Number(
+          e.lon
+        );
+
+
+      if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+      ){
+
+        console.warn(
+          "⚠ Invalid sighting GPS:",
+          e.sighting_id ||
+          e.firestore_id
+        );
+
+        return;
 
       }
-    );
 
 
-    console.log(
-      "🐘 Firestore sightings loaded:",
-      data.length
-    );
+      // =================================================
+      // CANONICAL KEY
+      // =================================================
+
+      const key =
+        String(
+
+          e.sighting_id ||
+          e.id ||
+          e.firestore_id ||
+          ""
+
+        ).trim();
 
 
-    // =====================================================
-    // CURRENT TIME
-    // =====================================================
+      if(
+        !key
+      ){
 
-    const now =
-      Date.now();
+        console.warn(
+          "⚠ Sighting without ID skipped"
+        );
+
+        return;
+
+      }
 
 
-    // =====================================================
-    // PROCESS EACH SIGHTING
-    // =====================================================
+      // =================================================
+      // EXPIRED CHECK
+      // =================================================
 
-    data.forEach(
-      function(e){
+      if(
+        expiredSet.has(key)
+      ){
+
+        if(
+          window.sightingMarkers[key]
+        ){
+
+          if(
+            window.activeSightingPopupKey ===
+            key
+          ){
+
+            window.activeSightingPopupKey =
+              null;
+
+            window.activeSightingPopupMarker =
+              null;
+
+          }
+
+
+          elephantLayer.removeLayer(
+            window.sightingMarkers[key]
+          );
+
+
+          delete window
+            .sightingMarkers[key];
+
+        }
+
+
+        return;
+
+      }
+
+
+      // =================================================
+      // STATUS
+      // =================================================
+
+      const status =
+        String(
+          e.status ||
+          "ACTIVE"
+        )
+        .trim()
+        .toUpperCase();
+
+
+      // =================================================
+      // RESOLVED
+      // =================================================
+
+      if(
+        status ===
+        "RESOLVED"
+      ){
+
+        if(
+          window.sightingMarkers[key]
+        ){
+
+          if(
+            window.activeSightingPopupKey ===
+            key
+          ){
+
+            window.activeSightingPopupKey =
+              null;
+
+            window.activeSightingPopupMarker =
+              null;
+
+          }
+
+
+          elephantLayer.removeLayer(
+            window.sightingMarkers[key]
+          );
+
+
+          delete window
+            .sightingMarkers[key];
+
+        }
+
+
+        return;
+
+      }
+
+
+      // =================================================
+      // TIMESTAMP
+      // =================================================
+
+      let parsedTs =
+        now;
+
+
+      // -------------------------------------------------
+      // FIRESTORE TIMESTAMP
+      // -------------------------------------------------
+
+      const firestoreTime =
+
+        e.sighting_datetime ||
+        e.created_at ||
+        e.createdAt ||
+        null;
+
+
+      if(
+        firestoreTime &&
+        typeof firestoreTime.toDate ===
+        "function"
+      ){
+
+        parsedTs =
+          firestoreTime
+            .toDate()
+            .getTime();
+
+      }
+
+      else if(
+        firestoreTime?.seconds
+      ){
+
+        parsedTs =
+          Number(
+            firestoreTime.seconds
+          ) *
+          1000;
+
+      }
+
+      else if(
+        typeof firestoreTime ===
+        "number"
+      ){
+
+        parsedTs =
+          firestoreTime;
+
+      }
+
+      else if(
+        typeof firestoreTime ===
+        "string"
+      ){
+
+        const test =
+          new Date(
+            firestoreTime
+          );
+
+        if(
+          !isNaN(
+            test.getTime()
+          )
+        ){
+
+          parsedTs =
+            test.getTime();
+
+        }
+
+      }
+
+
+      // =================================================
+      // LEGACY TIME FALLBACK
+      //
+      // Required for older records.
+      // =================================================
+
+      else if(
+        e.time &&
+        typeof e.time ===
+        "string"
+      ){
 
         try{
 
-          // =================================================
-          // GPS
-          // =================================================
-
-          const lat =
-            Number(
-              e.lat
-            );
+          const raw =
+            e.time.trim();
 
 
-          const lon =
-            Number(
-              e.lon
-            );
-
+          // =============================================
+          // FULL DATETIME
+          // =============================================
 
           if(
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lon)
+
+            raw.includes("/") ||
+            raw.includes("-") ||
+            raw.includes("T")
+
           ){
 
-            console.warn(
-              "⚠ Invalid sighting GPS:",
-              e.sighting_id ||
-              e.firestore_id
-            );
-
-            return;
-
-          }
-
-
-          // =================================================
-          // CANONICAL KEY
-          // =================================================
-
-          const key =
-            String(
-
-              e.sighting_id ||
-              e.id ||
-              e.firestore_id ||
-              ""
-
-            ).trim();
-
-
-          if(
-            !key
-          ){
-
-            console.warn(
-              "⚠ Sighting without ID skipped"
-            );
-
-            return;
-
-          }
-
-
-          // =================================================
-          // EXPIRED CHECK
-          // =================================================
-
-          if(
-            expiredSet.has(key)
-          ){
-
-            if(
-              window.sightingMarkers[key]
-            ){
-
-              if(
-                window.activeSightingPopupKey ===
-                key
-              ){
-
-                window.activeSightingPopupKey =
-                  null;
-
-                window.activeSightingPopupMarker =
-                  null;
-
-              }
-
-
-              elephantLayer.removeLayer(
-                window.sightingMarkers[key]
+            const normalized =
+              raw.replace(
+                "T",
+                " "
               );
 
 
-              delete window
-                .sightingMarkers[key];
-
-            }
-
-
-            return;
-
-          }
-
-
-          // =================================================
-          // STATUS
-          // =================================================
-
-          const status =
-            String(
-              e.status ||
-              "ACTIVE"
-            )
-            .trim()
-            .toUpperCase();
-
-
-          // =================================================
-          // RESOLVED
-          // =================================================
-
-          if(
-            status ===
-            "RESOLVED"
-          ){
-
-            if(
-              window.sightingMarkers[key]
-            ){
-
-              if(
-                window.activeSightingPopupKey ===
-                key
-              ){
-
-                window.activeSightingPopupKey =
-                  null;
-
-                window.activeSightingPopupMarker =
-                  null;
-
-              }
-
-
-              elephantLayer.removeLayer(
-                window.sightingMarkers[key]
+            const parts =
+              normalized.split(
+                " "
               );
 
 
-              delete window
-                .sightingMarkers[key];
-
-            }
+            const datePart =
+              parts[0];
 
 
-            return;
+            const timePart =
+              parts[1];
 
-          }
-
-
-          // =================================================
-          // TIMESTAMP
-          // =================================================
-
-          let parsedTs =
-            now;
-
-
-          // -------------------------------------------------
-          // FIRESTORE TIMESTAMP
-          // -------------------------------------------------
-
-          const firestoreTime =
-
-            e.sighting_datetime ||
-            e.created_at ||
-            e.createdAt ||
-            null;
-
-
-          if(
-            firestoreTime &&
-            typeof firestoreTime.toDate ===
-            "function"
-          ){
-
-            parsedTs =
-              firestoreTime
-                .toDate()
-                .getTime();
-
-          }
-
-          else if(
-            firestoreTime?.seconds
-          ){
-
-            parsedTs =
-              Number(
-                firestoreTime.seconds
-              ) *
-              1000;
-
-          }
-
-          else if(
-            typeof firestoreTime ===
-            "number"
-          ){
-
-            parsedTs =
-              firestoreTime;
-
-          }
-
-          else if(
-            typeof firestoreTime ===
-            "string"
-          ){
-
-            const test =
-              new Date(
-                firestoreTime
-              );
 
             if(
-              !isNaN(
-                test.getTime()
-              )
+              datePart &&
+              timePart
             ){
 
-              parsedTs =
-                test.getTime();
-
-            }
-
-          }
+              let year;
+              let month;
+              let day;
 
 
-          // =================================================
-          // LEGACY TIME FALLBACK
-          //
-          // Required for older records.
-          // =================================================
-
-          else if(
-            e.time &&
-            typeof e.time ===
-            "string"
-          ){
-
-            try{
-
-              const raw =
-                e.time.trim();
-
-
-              // =============================================
-              // FULL DATETIME
-              // =============================================
+              // -----------------------------------------
+              // YYYY-MM-DD
+              // -----------------------------------------
 
               if(
-
-                raw.includes("/") ||
-                raw.includes("-") ||
-                raw.includes("T")
-
+                datePart.includes("-")
               ){
 
-                const normalized =
-                  raw.replace(
-                    "T",
-                    " "
-                  );
-
-
-                const parts =
-                  normalized.split(
-                    " "
-                  );
-
-
-                const datePart =
-                  parts[0];
-
-
-                const timePart =
-                  parts[1];
-
-
-                if(
-                  datePart &&
-                  timePart
-                ){
-
-                  let year;
-                  let month;
-                  let day;
-
-
-                  // -----------------------------------------
-                  // YYYY-MM-DD
-                  // -----------------------------------------
-
-                  if(
-                    datePart.includes("-")
-                  ){
-
-                    const dateParts =
-                      datePart
-                        .split("-")
-                        .map(Number);
-
-
-                    if(
-                      dateParts.length ===
-                      3
-                    ){
-
-                      year =
-                        dateParts[0];
-
-                      month =
-                        dateParts[1];
-
-                      day =
-                        dateParts[2];
-
-                    }
-
-                  }
-
-
-                  // -----------------------------------------
-                  // MM/DD/YYYY
-                  // -----------------------------------------
-
-                  else if(
-                    datePart.includes("/")
-                  ){
-
-                    const dateParts =
-                      datePart
-                        .split("/")
-                        .map(Number);
-
-
-                    if(
-                      dateParts.length ===
-                      3
-                    ){
-
-                      month =
-                        dateParts[0];
-
-                      day =
-                        dateParts[1];
-
-                      year =
-                        dateParts[2];
-
-                    }
-
-                  }
-
-
-                  const timeParts =
-                    timePart
-                      .split(":")
-                      .map(Number);
-
-
-                  if(
-
-                    Number.isFinite(year) &&
-                    Number.isFinite(month) &&
-                    Number.isFinite(day) &&
-                    timeParts.length >= 2
-
-                  ){
-
-                    const d =
-                      new Date(
-
-                        year,
-
-                        month - 1,
-
-                        day,
-
-                        timeParts[0],
-
-                        timeParts[1],
-
-                        timeParts[2] || 0,
-
-                        0
-
-                      );
-
-
-                    if(
-                      !isNaN(
-                        d.getTime()
-                      )
-                    ){
-
-                      parsedTs =
-                        d.getTime();
-
-                    }
-
-                  }
-
-                }
-
-              }
-
-
-              // =============================================
-              // AM / PM
-              // =============================================
-
-              else if(
-
-                raw
-                  .toUpperCase()
-                  .includes("AM") ||
-
-                raw
-                  .toUpperCase()
-                  .includes("PM")
-
-              ){
-
-                let t =
-                  raw.toUpperCase();
-
-
-                if(
-                  !t.includes(" ")
-                ){
-
-                  t =
-                    t.replace(
-                      /(AM|PM)/,
-                      " $1"
-                    );
-
-                }
-
-
-                const parts =
-                  t.split(" ");
-
-
-                const timePart =
-                  parts[0];
-
-
-                const ampm =
-                  parts[1];
-
-
-                let timeParts =
-                  timePart
-                    .split(":")
+                const dateParts =
+                  datePart
+                    .split("-")
                     .map(Number);
 
 
-                let hh =
-                  timeParts[0];
-
-
-                const mm =
-                  timeParts[1] || 0;
-
-
                 if(
-                  ampm === "PM" &&
-                  hh !== 12
+                  dateParts.length ===
+                  3
                 ){
 
-                  hh += 12;
+                  year =
+                    dateParts[0];
+
+                  month =
+                    dateParts[1];
+
+                  day =
+                    dateParts[2];
 
                 }
-
-
-                if(
-                  ampm === "AM" &&
-                  hh === 12
-                ){
-
-                  hh = 0;
-
-                }
-
-
-                const d =
-                  new Date();
-
-
-                d.setHours(
-                  hh,
-                  mm,
-                  0,
-                  0
-                );
-
-
-                parsedTs =
-                  d.getTime();
 
               }
 
 
-              // =============================================
-              // HH:MM:SS
-              // =============================================
+              // -----------------------------------------
+              // MM/DD/YYYY
+              // -----------------------------------------
 
               else if(
-                /^\d{1,2}:\d{2}:\d{2}$/
-                  .test(raw)
+                datePart.includes("/")
               ){
 
-                const timeParts =
-                  raw
-                    .split(":")
+                const dateParts =
+                  datePart
+                    .split("/")
                     .map(Number);
 
 
-                const d =
-                  new Date();
+                if(
+                  dateParts.length ===
+                  3
+                ){
 
+                  month =
+                    dateParts[0];
 
-                d.setHours(
+                  day =
+                    dateParts[1];
 
-                  timeParts[0],
+                  year =
+                    dateParts[2];
 
-                  timeParts[1],
-
-                  timeParts[2] || 0,
-
-                  0
-
-                );
-
-
-                parsedTs =
-                  d.getTime();
+                }
 
               }
 
-            }
 
-            catch(
-              timeError
-            ){
+              const timeParts =
+                timePart
+                  .split(":")
+                  .map(Number);
 
-              console.warn(
-                "⚠ Legacy time parse failed:",
-                e.time,
-                timeError
-              );
-
-            }
-
-          }
-
-
-          // =================================================
-          // VALIDATE TIMESTAMP
-          // =================================================
-
-          if(
-            !Number.isFinite(
-              parsedTs
-            )
-          ){
-
-            parsedTs =
-              now;
-
-          }
-
-
-          // =================================================
-          // FUTURE CLOCK DRIFT
-          // =================================================
-
-          const futureDiff =
-            parsedTs -
-            now;
-
-
-          if(
-
-            futureDiff > 0 &&
-
-            futureDiff <
-            6 *
-            60 *
-            60 *
-            1000
-
-          ){
-
-            parsedTs -=
-
-              24 *
-              60 *
-              60 *
-              1000;
-
-          }
-
-
-          // =================================================
-          // AGE
-          // =================================================
-
-          const diffMs =
-            now -
-            parsedTs;
-
-
-          if(
-            diffMs < 0
-          ){
-
-            console.warn(
-              "⚠ Future sighting skipped:",
-              key
-            );
-
-            return;
-
-          }
-
-
-          const minutes =
-            Math.floor(
-
-              diffMs /
-              60000
-
-            );
-
-
-          if(
-            !Number.isFinite(
-              minutes
-            )
-          ){
-
-            return;
-
-          }
-
-
-          // =================================================
-          // HARD REMOVE AFTER 48 HOURS
-          // =================================================
-
-          if(
-            minutes >=
-            2880
-          ){
-
-            console.log(
-              "🗑 Expired sighting:",
-              key
-            );
-
-
-            if(
-              window.sightingMarkers[key]
-            ){
 
               if(
-                window.activeSightingPopupKey ===
-                key
+
+                Number.isFinite(year) &&
+                Number.isFinite(month) &&
+                Number.isFinite(day) &&
+                timeParts.length >= 2
+
               ){
 
-                window.activeSightingPopupKey =
-                  null;
+                const d =
+                  new Date(
 
-                window.activeSightingPopupMarker =
-                  null;
+                    year,
+
+                    month - 1,
+
+                    day,
+
+                    timeParts[0],
+
+                    timeParts[1],
+
+                    timeParts[2] || 0,
+
+                    0
+
+                  );
+
+
+                if(
+                  !isNaN(
+                    d.getTime()
+                  )
+                ){
+
+                  parsedTs =
+                    d.getTime();
+
+                }
 
               }
 
-
-              elephantLayer.removeLayer(
-                window.sightingMarkers[key]
-              );
-
-
-              delete window
-                .sightingMarkers[key];
-
             }
 
-
-            expiredSet.add(
-              key
-            );
+          }
 
 
-            const alreadyExists =
-              window.expiredSightings
-                .some(
-                  function(x){
+          // =============================================
+          // AM / PM
+          // =============================================
 
-                    return (
-                      x?.id ===
-                      key
-                    );
+          else if(
 
-                  }
-                );
+            raw
+              .toUpperCase()
+              .includes("AM") ||
+
+            raw
+              .toUpperCase()
+              .includes("PM")
+
+          ){
+
+            let t =
+              raw.toUpperCase();
 
 
             if(
-              !alreadyExists
+              !t.includes(" ")
             ){
 
-              window.expiredSightings.push({
-
-                id:
-                  key,
-
-                ts:
-                  Date.now()
-
-              });
+              t =
+                t.replace(
+                  /(AM|PM)/,
+                  " $1"
+                );
 
             }
 
 
-            localStorage.setItem(
-
-              "expiredSightings",
-
-              JSON.stringify(
-                window.expiredSightings
-              )
-
-            );
+            const parts =
+              t.split(" ");
 
 
-            return;
-
-          }
-
-
-          // =================================================
-          // MARKER APPEARANCE
-          // =================================================
-
-          let color =
-            "#ff3b30";
+            const timePart =
+              parts[0];
 
 
-          let opacity =
-            1;
+            const ampm =
+              parts[1];
 
 
-          let pulseClass =
-            "";
+            let timeParts =
+              timePart
+                .split(":")
+                .map(Number);
 
 
-          let showPulse =
-            true;
+            let hh =
+              timeParts[0];
 
 
-          if(
-
-            status ===
-            "MOVED" ||
-
-            status.startsWith(
-              "DRIVEN"
-            )
-
-          ){
-
-            showPulse =
-              false;
-
-            color =
-              "#9e9e9e";
-
-            opacity =
-              0.7;
-
-          }
-
-
-          else if(
-            minutes <=
-            120
-          ){
-
-            pulseClass =
-              "riskPulseRed";
-
-          }
-
-
-          else if(
-            minutes <=
-            360
-          ){
-
-            pulseClass =
-              "riskPulseOrange";
-
-          }
-
-
-          else{
-
-            showPulse =
-              false;
+            const mm =
+              timeParts[1] || 0;
 
 
             if(
-              minutes >=
-              1440
+              ampm === "PM" &&
+              hh !== 12
             ){
 
-              color =
-                "#9e9e9e";
-
-              opacity =
-                0.45;
+              hh += 12;
 
             }
 
+
+            if(
+              ampm === "AM" &&
+              hh === 12
+            ){
+
+              hh = 0;
+
+            }
+
+
+            const d =
+              new Date();
+
+
+            d.setHours(
+              hh,
+              mm,
+              0,
+              0
+            );
+
+
+            parsedTs =
+              d.getTime();
+
           }
 
 
-          // =================================================
-          // ICON
-          // =================================================
+          // =============================================
+          // HH:MM:SS
+          // =============================================
 
-          const icon =
-            L.divIcon({
-
-              className:
-                "",
-
-              html:
-                `
-                <div
-                  class="markerWrap"
-                  style="opacity:${opacity};"
-                >
-
-                  ${
-                    showPulse
-                      ? `
-                        <div class="radarPulse ${pulseClass}"></div>
-                        <div class="radarPulse delay1 ${pulseClass}"></div>
-                        <div class="radarPulse delay2 ${pulseClass}"></div>
-                      `
-                      : ""
-                  }
-
-                  <div class="markerCore">
-
-                    <span
-                      style="
-                        font-size:17px;
-                        color:${color};
-                        text-shadow:0 0 5px black;
-                      "
-                    >
-                      🐘
-                    </span>
-
-                  </div>
-
-                </div>
-                `,
-
-              iconSize:
-                [
-                  30,
-                  30
-                ],
-
-              iconAnchor:
-                [
-                  15,
-                  15
-                ]
-
-            });
-
-
-          // =================================================
-          // MOVEMENT
-          // =================================================
-
-          let movementText =
-            "Unknown";
-
-
-          const rawDir =
-            e.Direction ||
-            e.direction ||
-            "";
-
-
-          if(
-            rawDir
+          else if(
+            /^\d{1,2}:\d{2}:\d{2}$/
+              .test(raw)
           ){
 
-            const dirKey =
-              String(
-                rawDir
-              )
-                .trim()
-                .replace(
-                  /\s+/g,
-                  ""
-                )
-                .toUpperCase();
+            const timeParts =
+              raw
+                .split(":")
+                .map(Number);
 
 
-            const dirMap = {
-
-              N:
-                "North",
-
-              NE:
-                "North-East",
-
-              E:
-                "East",
-
-              SE:
-                "South-East",
-
-              S:
-                "South",
-
-              SW:
-                "South-West",
-
-              W:
-                "West",
-
-              NW:
-                "North-West"
-
-            };
+            const d =
+              new Date();
 
 
-            movementText =
-              dirMap[dirKey] ||
-              rawDir;
+            d.setHours(
 
-          }
+              timeParts[0],
 
+              timeParts[1],
 
-          // =================================================
-          // AGE DISPLAY
-          // =================================================
+              timeParts[2] || 0,
 
-          const hrs =
-            Math.floor(
-              minutes /
-              60
-            );
-
-
-          const mins =
-            Math.floor(
-              minutes %
-              60
-            );
-
-
-          const ageFormatted =
-
-            hrs > 0
-
-              ? (
-                  hrs +
-                  " hr " +
-                  mins +
-                  " min"
-                )
-
-              : (
-                  mins +
-                  " min"
-                );
-
-
-          // =================================================
-          // DISPLAY VALUES
-          // =================================================
-
-          const sightingID =
-            String(
-              e.sighting_id ||
-              key
-            );
-
-
-          const herd =
-            Number(
-
-              e.total_seen ??
-              e.herd ??
               0
 
-            ) ||
-            0;
-
-
-          const teamLeader =
-            e.leader ||
-            e.teamLeader ||
-            "Unknown";
-
-
-          const phone =
-            String(
-
-              e.phone ||
-              ""
-
-            ).trim();
-
-
-          const nearestVillage =
-            String(
-
-              e.nearest_village ||
-              e.nearestVillage ||
-              e.village ||
-              ""
-
-            ).trim();
-
-
-          const nearestDistance =
-            Number(
-
-              e.nearest_village_distance ??
-              e.nearestVillageDistance
-
             );
 
 
-          const gisDivision =
-            String(
-              e.gis_division ||
-              ""
-            ).trim();
+            parsedTs =
+              d.getTime();
+
+          }
+
+        }
+
+        catch(
+          timeError
+        ){
+
+          console.warn(
+            "⚠ Legacy time parse failed:",
+            e.time,
+            timeError
+          );
+
+        }
+
+      }
 
 
-          const gisRange =
-            String(
-              e.gis_range ||
-              ""
-            ).trim();
+      // =================================================
+      // VALIDATE TIMESTAMP
+      // =================================================
+
+      if(
+        !Number.isFinite(
+          parsedTs
+        )
+      ){
+
+        parsedTs =
+          now;
+
+      }
 
 
-          const gisBeat =
-            String(
+      // =================================================
+      // FUTURE CLOCK DRIFT
+      // =================================================
 
-              e.gis_beat ||
-              e.beat ||
-              ""
-
-            ).trim();
-
-
-          const gisCompartment =
-            String(
-
-              e.gis_compartment ||
-              e.compt ||
-              ""
-
-            ).trim();
+      const futureDiff =
+        parsedTs -
+        now;
 
 
-          const riskLevel =
-            String(
+      if(
 
-              e.nearest_village_risk ||
-              e.nearestVillageRisk ||
-              ""
+        futureDiff > 0 &&
 
-            ).trim();
+        futureDiff <
+        6 *
+        60 *
+        60 *
+        1000
 
+      ){
 
-          const conflictHistory =
-            Number(
+        parsedTs -=
 
-              e.nearest_village_conflict_history ??
-              e.nearestVillageConflictHistory
+          24 *
+          60 *
+          60 *
+          1000;
 
-            );
-
-
-          // =================================================
-          // 🔐 ELEPHANT SIGHTING VISIBILITY
-          // =================================================
-
-          const normalizeScope =
-            value =>
-              String(value || "")
-                .trim()
-                .toUpperCase()
-                .replace(
-                  /[^A-Z0-9]/g,
-                  ""
-                );
+      }
 
 
-          const viewerRole =
-            String(
-              window.userProfile?.role || ""
-            )
-            .trim()
-            .toUpperCase();
+      // =================================================
+      // AGE
+      // =================================================
+
+      const diffMs =
+        now -
+        parsedTs;
 
 
-          const viewerDivision =
-            normalizeScope(
-              window.userProfile?.division
-            );
+      if(
+        diffMs < 0
+      ){
+
+        console.warn(
+          "⚠ Future sighting skipped:",
+          key
+        );
+
+        return;
+
+      }
 
 
-          const sightingDivision =
-            normalizeScope(
-              gisDivision
-            );
+      const minutes =
+        Math.floor(
+
+          diffMs /
+          60000
+
+        );
 
 
-          // -------------------------------------------------
-          // ADMIN
-          // -------------------------------------------------
+      if(
+        !Number.isFinite(
+          minutes
+        )
+      ){
+
+        return;
+
+      }
+
+
+      // =================================================
+      // HARD REMOVE AFTER 48 HOURS
+      // =================================================
+
+      if(
+        minutes >=
+        2880
+      ){
+
+        console.log(
+          "🗑 Expired sighting:",
+          key
+        );
+
+
+        if(
+          window.sightingMarkers[key]
+        ){
 
           if(
-            viewerRole === "ADMIN"
+            window.activeSightingPopupKey ===
+            key
           ){
 
-            // Visible everywhere
-
-          }
-
-
-          // -------------------------------------------------
-          // ALL OTHER USERS
-          // Same Division only
-          // -------------------------------------------------
-
-          else if(
-            viewerDivision !==
-            sightingDivision
-          ){
-
-            // Skip this sighting completely
-            return;
-
-          }
-
-
-          // ==================================================
-          // 📍 CURRENT ACTUAL GIS LOCATION
-          // ==================================================
-
-          let currentLocation =
-          {
-            type :
-              "GPS",
-
-            gps :
-              `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
-
-            compartment :
-              "",
-
-            beat :
-              "",
-
-            range :
-              "",
-
-            division :
-              "",
-
-            village :
-              "",
-
-            block :
-              "",
-
-            nearestPoint :
-              "",
-
-            distanceMeters :
-              null
-          };
-
-
-          try{
-
-            // ==============================================
-            // PRIMARY RESOLVER
-            // ==============================================
-
-            let resolved =
+            window.activeSightingPopupKey =
               null;
 
-
-            const gis =
-
-              window.GreenGuardAI
-                ?.GISEntities;
-
-
-            if(
-
-              gis &&
-
-              typeof gis.resolveCurrentLocation ===
-              "function"
-
-            ){
-
-              resolved =
-
-                gis.resolveCurrentLocation(
-
-                  lat,
-
-                  lon
-
-                );
-
-            }
-
-
-            // ==============================================
-            // FALLBACK RESOLVER
-            // ==============================================
-
-            if(
-
-              !resolved &&
-
-              typeof window.resolveCurrentGIS ===
-              "function"
-
-            ){
-
-              resolved =
-
-                window.resolveCurrentGIS(
-
-                  lat,
-
-                  lon
-
-                );
-
-            }
-
-
-            // ==============================================
-            // APPLY RESULT
-            // ==============================================
-
-            if(
-
-              resolved
-
-            ){
-
-              currentLocation =
-
-              {
-
-                ...currentLocation,
-
-                compartment :
-
-                  resolved.compartment ||
-
-                  "",
-
-                beat :
-
-                  resolved.beat ||
-
-                  "",
-
-                range :
-
-                  resolved.range ||
-
-                  "",
-
-                division :
-
-                  resolved.division ||
-
-                  "",
-
-                village :
-
-                  resolved.village ||
-
-                  "",
-
-                block :
-
-                  resolved.block ||
-
-                  "",
-
-                nearestPoint :
-
-                  resolved.nearestPoint ||
-
-                  "",
-
-                distanceMeters :
-
-                  resolved.distanceMeters ??
-
-                  null
-
-              };
-
-
-              // ==========================================
-              // LOCATION TYPE
-              // ==========================================
-
-              if(
-
-                currentLocation.compartment ||
-
-                currentLocation.beat ||
-
-                currentLocation.range
-
-              ){
-
-                currentLocation.type =
-
-                  "FOREST";
-
-              }
-
-
-              else if(
-
-                currentLocation.village
-
-              ){
-
-                currentLocation.type =
-
-                  "VILLAGE";
-
-              }
-
-            }
+            window.activeSightingPopupMarker =
+              null;
 
           }
 
-          catch(err){
 
-            console.warn(
+          elephantLayer.removeLayer(
+            window.sightingMarkers[key]
+          );
 
-              "⚠ Current GIS location resolution failed:",
 
-              err
+          delete window
+            .sightingMarkers[key];
 
+        }
+
+
+        expiredSet.add(
+          key
+        );
+
+
+        const alreadyExists =
+          window.expiredSightings
+            .some(
+              function(x){
+
+                return (
+                  x?.id ===
+                  key
+                );
+
+              }
             );
 
-          }
+
+        if(
+          !alreadyExists
+        ){
+
+          window.expiredSightings.push({
+
+            id:
+              key,
+
+            ts:
+              Date.now()
+
+          });
+
+        }
 
 
-          // ==================================================
-          // 📍 BUILD CURRENT LOCATION POPUP HTML
-          // ==================================================
+        localStorage.setItem(
 
-          let currentLocationHtml =
-            "";
+          "expiredSightings",
 
+          JSON.stringify(
+            window.expiredSightings
+          )
 
-          // --------------------------------------------------
-          // FOREST LOCATION
-          // --------------------------------------------------
-
-          if(
-            currentLocation.type ===
-            "FOREST"
-          ){
-
-            currentLocationHtml = `
-
-              <div>
-                🌲 Compartment:
-                <b>
-                  ${currentLocation.compartment || "N/A"}
-                </b>
-              </div>
-
-              <div>
-                🧭 Beat:
-                <b>
-                  ${currentLocation.beat || "N/A"}
-                </b>
-              </div>
-
-              <div>
-                🏢 Range:
-                <b>
-                  ${currentLocation.range || "N/A"}
-                </b>
-              </div>
-
-            `;
-
-          }
+        );
 
 
-          // --------------------------------------------------
-          // VILLAGE LOCATION
-          // --------------------------------------------------
+        return;
 
-          else if(
-            currentLocation.type ===
-            "VILLAGE"
-          ){
+      }
 
-            currentLocationHtml = `
 
-              <div>
-                🏡 Village:
-                <b>
-                  ${currentLocation.village || "N/A"}
-                </b>
-              </div>
+      // =================================================
+      // MARKER APPEARANCE
+      // =================================================
+
+      let color =
+        "#ff3b30";
+
+
+      let opacity =
+        1;
+
+
+      let pulseClass =
+        "";
+
+
+      let showPulse =
+        true;
+
+
+      if(
+
+        status ===
+        "MOVED" ||
+
+        status.startsWith(
+          "DRIVEN"
+        )
+
+      ){
+
+        showPulse =
+          false;
+
+        color =
+          "#9e9e9e";
+
+        opacity =
+          0.7;
+
+      }
+
+
+      else if(
+        minutes <=
+        120
+      ){
+
+        pulseClass =
+          "riskPulseRed";
+
+      }
+
+
+      else if(
+        minutes <=
+        360
+      ){
+
+        pulseClass =
+          "riskPulseOrange";
+
+      }
+
+
+      else{
+
+        showPulse =
+          false;
+
+
+        if(
+          minutes >=
+          1440
+        ){
+
+          color =
+            "#9e9e9e";
+
+          opacity =
+            0.45;
+
+        }
+
+      }
+
+
+      // =================================================
+      // ICON
+      // =================================================
+
+      const icon =
+        L.divIcon({
+
+          className:
+            "",
+
+          html:
+            `
+            <div
+              class="markerWrap"
+              style="opacity:${opacity};"
+            >
 
               ${
-                currentLocation.block
+                showPulse
                   ? `
-                    <div>
-                      🗺 Block:
-                      <b>
-                        ${currentLocation.block}
-                      </b>
-                    </div>
+                    <div class="radarPulse ${pulseClass}"></div>
+                    <div class="radarPulse delay1 ${pulseClass}"></div>
+                    <div class="radarPulse delay2 ${pulseClass}"></div>
                   `
                   : ""
               }
 
-              ${
-                currentLocation.nearestPoint
-                  ? `
-                    <div>
-                      📌 Near:
-                      <b>
-                        ${currentLocation.nearestPoint}
-                      </b>
-
-                      ${
-                        currentLocation.distanceMeters != null
-                        ? ` (${currentLocation.distanceMeters} m)`
-                        : ""
-                      }
-
-                    </div>
-                  `
-                  : ""
-              }
-
-            `;
-
-          }
-
-
-          // --------------------------------------------------
-          // GPS ONLY / OUTSIDE KNOWN POLYGONS
-          // --------------------------------------------------
-
-          else {
-
-            currentLocationHtml = `
-
-              <div>
-                📌 GIS:
-                <b>
-                  Outside mapped forest/village boundary
-                </b>
-              </div>
-
-            `;
-
-          }
-
-
-          // =================================================
-          // RISK DISPLAY
-          // =================================================
-
-          let riskText =
-            "";
-
-
-          if(
-            riskLevel
-          ){
-
-            riskText +=
-              riskLevel;
-
-          }
-
-
-          if(
-            Number.isFinite(
-              conflictHistory
-            )
-          ){
-
-            if(
-              riskText
-            ){
-
-              riskText +=
-                " • ";
-
-            }
-
-
-            riskText +=
-
-              "Conflict history: " +
-              conflictHistory;
-
-          }
-
-
-          // =================================================
-          // DATETIME DISPLAY
-          // =================================================
-
-          const sightingDateTime =
-            new Date(
-              parsedTs
-            )
-            .toLocaleString(
-              "en-IN"
-            );
-
-
-          // =================================================
-          // POPUP
-          //
-          // IMPORTANT:
-          // NO hard-coded WDPO prefix.
-          // Display canonical sighting_id exactly.
-          // =================================================
-
-          const popup =
-          `
-          <div
-            class="gg-elephant-sighting-popup"
-            style="
-              font-family:Segoe UI, Tahoma, Arial, sans-serif;
-              width:calc(100vw - 48px);
-              max-width:340px;
-              min-width:240px;
-              max-height:calc(70vh - 20px);
-              overflow-y:auto;
-              overflow-x:hidden;
-              -webkit-overflow-scrolling:touch;
-              overscroll-behavior:contain;
-              touch-action:pan-y;
-              word-break:break-word;
-              box-sizing:border-box;
-              background:#ffffff;
-              border-radius:12px;
-              padding:10px;
-              color:#111;
-              border:1px solid #e0e0e0;
-              box-shadow:
-                0 4px 14px
-                rgba(0,0,0,0.15);
-            "
-          >
-
-            <div
-              style="
-                color:${color};
-                font-weight:700;
-                font-size:14px;
-                margin-bottom:8px;
-                display:flex;
-                align-items:center;
-                gap:6px;
-              "
-            >
-              🐘 ${status}
-            </div>
-
-
-            <div
-              style="
-                height:1px;
-                background:#e0e0e0;
-                margin-bottom:10px;
-              "
-            ></div>
-
-
-            <div
-              style="
-                font-size:12px;
-                line-height:1.7;
-                color:#111;
-              "
-            >
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  🆔 Sighting ID:
-                </b>
+              <div class="markerCore">
 
                 <span
                   style="
-                    color:#1b5e20;
-                    font-weight:700;
+                    font-size:17px;
+                    color:${color};
+                    text-shadow:0 0 5px black;
                   "
                 >
-                  ${sightingID}
+                  🐘
                 </span>
 
               </div>
 
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  👥 Herd Size:
-                </b>
-
-                ${herd}
-
-              </div>
-
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  🧭 Movement:
-                </b>
-
-                ${movementText}
-
-              </div>
-
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  📅 Sighting DateTime:
-                </b>
-
-                ${sightingDateTime}
-
-              </div>
-
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  ⏱ Age of Sighting:
-                </b>
-
-                ${ageFormatted}
-
-              </div>
-
-
-              <div
-                style="
-                  margin-bottom:4px;
-                "
-              >
-
-                <b>
-                  👤 Sighted by:
-                </b>
-
-                ${teamLeader}
-
-              </div>
-
-
             </div>
+            `,
+
+          iconSize:
+            [
+              30,
+              30
+            ],
+
+          iconAnchor:
+            [
+              15,
+              15
+            ]
+
+        });
 
 
-            ${
-              riskText
-                ? `
-                  <div
-                    style="
-                      margin-top:8px;
-                      margin-bottom:8px;
-                      font-size:12px;
-                      background:#ffffff;
-                      border:1px solid #eeeeee;
-                      border-radius:7px;
-                      padding:6px;
-                    "
-                  >
+      // =================================================
+      // MOVEMENT
+      // =================================================
 
-                    <b>
-                      ⚠️ Location Risk:
-                    </b>
-
-                    ${riskText}
-
-                  </div>
-                `
-                : ""
-            }
+      let movementText =
+        "Unknown";
 
 
-            <div
-              style="
-                margin-top:8px;
-                margin-bottom:10px;
-                font-size:12px;
-                line-height:1.55;
-                background:#ffffff;
-                border:1px solid #eeeeee;
-                border-radius:7px;
-                padding:6px;
-              "
-            >
-
-              <div
-                style="
-                  color:#111;
-                  font-weight:600;
-                "
-              >
-
-                📞
-
-                ${
-                  phone
-                    ? `
-                      <a
-                        href="tel:${phone}"
-                        style="
-                          color:#00695c;
-                          text-decoration:none;
-                          font-weight:700;
-                        "
-                      >
-                        ${phone}
-                      </a>
-                    `
-                    : "N/A"
-                }
-
-              </div>
-
-            </div>
+      const rawDir =
+        e.Direction ||
+        e.direction ||
+        "";
 
 
-            <!-- ===================================== -->
-            <!-- 📍 CURRENT LOCATION -->
-            <!-- ===================================== -->
+      if(
+        rawDir
+      ){
 
-            <div
-              style="
-                margin-bottom:10px;
-                font-size:11px;
-                line-height:1.6;
-                background:#f7fbf7;
-                border:1px solid #d7e9d8;
-                border-radius:7px;
-                padding:6px;
-              "
-            >
-
-              <div
-                style="
-                  font-weight:700;
-                  color:#1b5e20;
-                  margin-bottom:4px;
-                  font-size:12px;
-                "
-              >
-                📍 Location of Sighting
-              </div>
+        const dirKey =
+          String(
+            rawDir
+          )
+            .trim()
+            .replace(
+              /\s+/g,
+              ""
+            )
+            .toUpperCase();
 
 
-              ${currentLocationHtml}
+        const dirMap = {
+
+          N:
+            "North",
+
+          NE:
+            "North-East",
+
+          E:
+            "East",
+
+          SE:
+            "South-East",
+
+          S:
+            "South",
+
+          SW:
+            "South-West",
+
+          W:
+            "West",
+
+          NW:
+            "North-West"
+
+        };
 
 
-              <div
-                style="
-                  margin-top:3px;
-                  color:#555;
-                  font-size:10px;
-                "
-              >
+        movementText =
+          dirMap[dirKey] ||
+          rawDir;
 
-                🛰 GPS:
-
-                <b>
-                  ${lat.toFixed(6)},
-                  ${lon.toFixed(6)}
-                </b>
-
-              </div>
-
-            </div>
+      }
 
 
-            ${buildSightingMediaPopup(
-              e,
-              key
-            )}
+      // =================================================
+      // AGE DISPLAY
+      // =================================================
+
+      const hrs =
+        Math.floor(
+          minutes /
+          60
+        );
 
 
-            <div
-              style="
-                margin-top:10px;
-              "
-            >
-
-              <button
-
-                onclick="
-                  event.stopPropagation();
-                  openMoveForm(
-                    '${key.replace(
-                      /'/g,
-                      "\\'"
-                    )}'
-                  );
-                "
-
-                style="
-                  background:#2e7d32;
-                  color:white;
-                  border:none;
-                  width:100%;
-                  padding:10px;
-                  border-radius:8px;
-                  cursor:pointer;
-                  font-weight:700;
-                  font-size:12px;
-                  box-shadow:
-                    0 2px 6px
-                    rgba(46,125,50,0.25);
-                "
-              >
-
-                ✅ UPDATE STATUS
-
-              </button>
-
-            </div>
-
-          </div>
-          `;
+      const mins =
+        Math.floor(
+          minutes %
+          60
+        );
 
 
-          // =================================================
-          // CREATE / UPDATE MARKER
-          // =================================================
-          //
-          // Never remove and recreate an existing marker during
-          // refresh. That destroys the popup instance.
-          // =================================================
+      const ageFormatted =
 
-          let marker =
-            window.sightingMarkers[key];
+        hrs > 0
+
+          ? (
+              hrs +
+              " hr " +
+              mins +
+              " min"
+            )
+
+          : (
+              mins +
+              " min"
+            );
 
 
-          // =================================================
-          // CREATE NEW MARKER
-          // =================================================
+      // =================================================
+      // DISPLAY VALUES
+      // =================================================
+
+      const sightingID =
+        String(
+          e.sighting_id ||
+          key
+        );
+
+
+      const herd =
+        Number(
+
+          e.total_seen ??
+          e.herd ??
+          0
+
+        ) ||
+        0;
+
+
+      const teamLeader =
+        e.leader ||
+        e.teamLeader ||
+        "Unknown";
+
+
+      const phone =
+        String(
+
+          e.phone ||
+          ""
+
+        ).trim();
+
+
+      const nearestVillage =
+        String(
+
+          e.nearest_village ||
+          e.nearestVillage ||
+          e.village ||
+          ""
+
+        ).trim();
+
+
+      const nearestDistance =
+        Number(
+
+          e.nearest_village_distance ??
+          e.nearestVillageDistance
+
+        );
+
+
+      const gisDivision =
+        String(
+          e.gis_division ||
+          ""
+        ).trim();
+
+
+      const gisRange =
+        String(
+          e.gis_range ||
+          ""
+        ).trim();
+
+
+      const gisBeat =
+        String(
+
+          e.gis_beat ||
+          e.beat ||
+          ""
+
+        ).trim();
+
+
+      const gisCompartment =
+        String(
+
+          e.gis_compartment ||
+          e.compt ||
+          ""
+
+        ).trim();
+
+
+      const riskLevel =
+        String(
+
+          e.nearest_village_risk ||
+          e.nearestVillageRisk ||
+          ""
+
+        ).trim();
+
+
+      const conflictHistory =
+        Number(
+
+          e.nearest_village_conflict_history ??
+          e.nearestVillageConflictHistory
+
+        );
+
+
+      // =================================================
+      // 🔐 ELEPHANT SIGHTING VISIBILITY
+      // =================================================
+
+      const normalizeScope =
+        value =>
+          String(value || "")
+            .trim()
+            .toUpperCase()
+            .replace(
+              /[^A-Z0-9]/g,
+              ""
+            );
+
+
+      const viewerRole =
+        String(
+          window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+      const viewerDivision =
+        normalizeScope(
+          window.userProfile?.division
+        );
+
+
+      const sightingDivision =
+        normalizeScope(
+          gisDivision
+        );
+
+
+      // -------------------------------------------------
+      // ADMIN
+      // -------------------------------------------------
+
+      if(
+        viewerRole === "ADMIN"
+      ){
+
+        // Visible everywhere
+
+      }
+
+
+      // -------------------------------------------------
+      // ALL OTHER USERS
+      // Same Division only
+      // -------------------------------------------------
+
+      else if(
+        viewerDivision !==
+        sightingDivision
+      ){
+
+        // Skip this sighting completely
+        return;
+
+      }
+
+
+      // ==================================================
+      // 📍 CURRENT ACTUAL GIS LOCATION
+      // ==================================================
+
+      let currentLocation =
+      {
+        type :
+          "GPS",
+
+        gps :
+          `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+
+        compartment :
+          "",
+
+        beat :
+          "",
+
+        range :
+          "",
+
+        division :
+          "",
+
+        village :
+          "",
+
+        block :
+          "",
+
+        nearestPoint :
+          "",
+
+        distanceMeters :
+          null
+      };
+
+
+      try{
+
+        // ==============================================
+        // PRIMARY RESOLVER
+        // ==============================================
+
+        let resolved =
+          null;
+
+
+        const gis =
+
+          window.GreenGuardAI
+            ?.GISEntities;
+
+
+        if(
+
+          gis &&
+
+          typeof gis.resolveCurrentLocation ===
+          "function"
+
+        ){
+
+          resolved =
+
+            gis.resolveCurrentLocation(
+
+              lat,
+
+              lon
+
+            );
+
+        }
+
+
+        // ==============================================
+        // FALLBACK RESOLVER
+        // ==============================================
+
+        if(
+
+          !resolved &&
+
+          typeof window.resolveCurrentGIS ===
+          "function"
+
+        ){
+
+          resolved =
+
+            window.resolveCurrentGIS(
+
+              lat,
+
+              lon
+
+            );
+
+        }
+
+
+        // ==============================================
+        // APPLY RESULT
+        // ==============================================
+
+        if(
+
+          resolved
+
+        ){
+
+          currentLocation =
+
+          {
+
+            ...currentLocation,
+
+            compartment :
+
+              resolved.compartment ||
+
+              "",
+
+            beat :
+
+              resolved.beat ||
+
+              "",
+
+            range :
+
+              resolved.range ||
+
+              "",
+
+            division :
+
+              resolved.division ||
+
+              "",
+
+            village :
+
+              resolved.village ||
+
+              "",
+
+            block :
+
+              resolved.block ||
+
+              "",
+
+            nearestPoint :
+
+              resolved.nearestPoint ||
+
+              "",
+
+            distanceMeters :
+
+              resolved.distanceMeters ??
+
+              null
+
+          };
+
+
+          // ==========================================
+          // LOCATION TYPE
+          // ==========================================
 
           if(
-            !marker
+
+            currentLocation.compartment ||
+
+            currentLocation.beat ||
+
+            currentLocation.range
+
           ){
 
-            marker =
-              L.marker(
-                [
-                  lat,
-                  lon
-                ],
-                {
-                  icon:
-                    icon,
-                  zIndexOffset:
-                    5000
-                }
-              ).addTo(
-                elephantLayer
-              );
+            currentLocation.type =
+
+              "FOREST";
+
+          }
 
 
-            window.sightingMarkers[key] =
-              marker;
+          else if(
+
+            currentLocation.village
+
+          ){
+
+            currentLocation.type =
+
+              "VILLAGE";
+
+          }
+
+        }
+
+      }
+
+      catch(err){
+
+        console.warn(
+
+          "⚠ Current GIS location resolution failed:",
+
+          err
+
+        );
+
+      }
 
 
-            // =================================================
-            // POPUP BINDING - ONCE ONLY
-            // =================================================
+      // ==================================================
+      // 📍 BUILD CURRENT LOCATION POPUP HTML
+      // ==================================================
 
-            marker.bindPopup(
-              popup,
-              {
-                maxWidth:
-                  380,
-
-                minWidth:
-                  240,
-
-                maxHeight:
-                  Math.min(
-                    window.innerHeight * 0.76,
-                    640
-                  ),
-
-                closeOnClick:
-                  false,
-
-                autoClose:
-                  true,
-
-                autoPan:
-                  true,
-
-                autoPanPadding:
-                  [
-                    18,
-                    18
-                  ],
-
-                keepInView:
-                  true
-
-              }
-            );
+      let currentLocationHtml =
+        "";
 
 
-            // =================================================
-            // POPUP OPEN
-            // =================================================
+      // --------------------------------------------------
+      // FOREST LOCATION
+      // --------------------------------------------------
 
-            marker.on(
-              "popupopen",
-              function(){
+      if(
+        currentLocation.type ===
+        "FOREST"
+      ){
 
-                window.activeSightingPopupKey =
-                  key;
+        currentLocationHtml = `
 
-                window.activeSightingPopupMarker =
-                  marker;
+          <div>
+            🌲 Compartment:
+            <b>
+              ${currentLocation.compartment || "N/A"}
+            </b>
+          </div>
 
+          <div>
+            🧭 Beat:
+            <b>
+              ${currentLocation.beat || "N/A"}
+            </b>
+          </div>
 
-                requestAnimationFrame(
-                  function(){
+          <div>
+            🏢 Range:
+            <b>
+              ${currentLocation.range || "N/A"}
+            </b>
+          </div>
 
-                    const popupElement =
-                      marker
-                        .getPopup()
-                        ?.getElement();
+        `;
 
-
-                    if(
-                      !popupElement
-                    ){
-
-                      return;
-
-                    }
-
-
-                    const content =
-                      popupElement.querySelector(
-                        ".leaflet-popup-content"
-                      );
+      }
 
 
-                    if(
-                      content
-                    ){
+      // --------------------------------------------------
+      // VILLAGE LOCATION
+      // --------------------------------------------------
 
-                      content.style.maxHeight =
-                        Math.min(
-                          window.innerHeight * 0.68,
-                          560
-                        ) + "px";
+      else if(
+        currentLocation.type ===
+        "VILLAGE"
+      ){
 
-                      content.style.overflowY =
-                        "auto";
+        currentLocationHtml = `
 
-                      content.style.overflowX =
-                        "hidden";
+          <div>
+            🏡 Village:
+            <b>
+              ${currentLocation.village || "N/A"}
+            </b>
+          </div>
 
-                      content.style.webkitOverflowScrolling =
-                        "touch";
+          ${
+            currentLocation.block
+              ? `
+                <div>
+                  🗺 Block:
+                  <b>
+                    ${currentLocation.block}
+                  </b>
+                </div>
+              `
+              : ""
+          }
 
-                      content.style.overscrollBehavior =
-                        "contain";
+          ${
+            currentLocation.nearestPoint
+              ? `
+                <div>
+                  📌 Near:
+                  <b>
+                    ${currentLocation.nearestPoint}
+                  </b>
 
-                      content.style.touchAction =
-                        "pan-y";
-
-                    }
-
+                  ${
+                    currentLocation.distanceMeters != null
+                    ? ` (${currentLocation.distanceMeters} m)`
+                    : ""
                   }
-                );
 
-              }
-            );
-
-
-            // =================================================
-            // POPUP CLOSE
-            // =================================================
-
-            marker.on(
-              "popupclose",
-              function(){
-
-                if(
-                  window.activeSightingPopupKey ===
-                  key
-                ){
-
-                  window.activeSightingPopupKey =
-                    null;
-
-                  window.activeSightingPopupMarker =
-                    null;
-
-                }
-
-              }
-            );
-
-
-            // =================================================
-            // SAME MARKER CLICK = TOGGLE
-            //
-            // Leaflet's normal popup click handler is allowed
-            // to run first. If it was already open, close it
-            // immediately after that handler completes.
-            // =================================================
-
-            marker.on(
-              "click",
-              function(){
-
-                const wasOpen =
-                  marker.isPopupOpen();
-
-
-                if(
-                  !wasOpen
-                ){
-
-                  return;
-
-                }
-
-
-                setTimeout(
-                  function(){
-
-                    if(
-                      marker.isPopupOpen()
-                    ){
-
-                      marker.closePopup();
-
-                    }
-
-                  },
-                  0
-                );
-
-              }
-            );
-
+                </div>
+              `
+              : ""
           }
 
+        `;
 
-          // =================================================
-          // UPDATE EXISTING MARKER
-          // =================================================
-
-          else{
-
-            marker.setLatLng(
-              [
-                lat,
-                lon
-              ]
-            );
+      }
 
 
-            marker.setIcon(
-              icon
-            );
+      // --------------------------------------------------
+      // GPS ONLY / OUTSIDE KNOWN POLYGONS
+      // --------------------------------------------------
 
-          }
+      else {
+
+        currentLocationHtml = `
+
+          <div>
+            📌 GIS:
+            <b>
+              Outside mapped forest/village boundary
+            </b>
+          </div>
+
+        `;
+
+      }
 
 
-          // =================================================
-          // UPDATE POPUP CONTENT WITHOUT REBINDING
-          // =================================================
+      // =================================================
+      // RISK DISPLAY
+      // =================================================
 
-          marker.setPopupContent(
-            popup
+      let riskText =
+        "";
+
+
+      if(
+        riskLevel
+      ){
+
+        riskText +=
+          riskLevel;
+
+      }
+
+
+      if(
+        Number.isFinite(
+          conflictHistory
+        )
+      ){
+
+        if(
+          riskText
+        ){
+
+          riskText +=
+            " • ";
+
+        }
+
+
+        riskText +=
+
+          "Conflict history: " +
+          conflictHistory;
+
+      }
+
+
+      // =================================================
+      // DATETIME DISPLAY
+      // =================================================
+
+      const sightingDateTime =
+        new Date(
+          parsedTs
+        )
+        .toLocaleString(
+          "en-IN"
+        );
+
+
+      // =================================================
+      // POPUP
+      //
+      // IMPORTANT:
+      // NO hard-coded WDPO prefix.
+      // Display canonical sighting_id exactly.
+      // =================================================
+
+      const popup =
+      `
+      <div
+        class="gg-elephant-sighting-popup"
+        style="
+          font-family:Segoe UI, Tahoma, Arial, sans-serif;
+          width:280px;
+          max-width:280px;
+          min-width:280px;
+          max-height:360px;
+          overflow-y:auto;
+          overflow-x:hidden;
+          -webkit-overflow-scrolling:touch;
+          overscroll-behavior:contain;
+          touch-action:pan-y;
+          word-break:break-word;
+          box-sizing:border-box;
+          background:#ffffff;
+          border-radius:12px;
+          padding:10px;
+          color:#111;
+          border:1px solid #e0e0e0;
+          box-shadow:
+            0 4px 14px
+            rgba(0,0,0,0.15);
+        "
+      >
+
+        <div
+          style="
+            color:${color};
+            font-weight:700;
+            font-size:13px;
+            margin-bottom:6px;
+            display:flex;
+            align-items:center;
+            gap:6px;
+          "
+        >
+          🐘 ${status}
+        </div>
+
+
+        <div
+          style="
+            height:1px;
+            background:#e0e0e0;
+            margin-bottom:8px;
+          "
+        ></div>
+
+
+        <div
+          style="
+            font-size:11px;
+            line-height:1.6;
+            color:#111;
+          "
+        >
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              🆔 Sighting ID:
+            </b>
+
+            <span
+              style="
+                color:#1b5e20;
+                font-weight:700;
+              "
+            >
+              ${sightingID}
+            </span>
+
+          </div>
+
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              👥 Herd Size:
+            </b>
+
+            ${herd}
+
+          </div>
+
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              🧭 Movement:
+            </b>
+
+            ${movementText}
+
+          </div>
+
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              📅 Sighting DateTime:
+            </b>
+
+            ${sightingDateTime}
+
+          </div>
+
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              ⏱ Age of Sighting:
+            </b>
+
+            ${ageFormatted}
+
+          </div>
+
+
+          <div
+            style="
+              margin-bottom:3px;
+            "
+          >
+
+            <b>
+              👤 Sighted by:
+            </b>
+
+            ${teamLeader}
+
+          </div>
+
+
+        </div>
+
+
+        ${
+          riskText
+            ? `
+              <div
+                style="
+                  margin-top:6px;
+                  margin-bottom:6px;
+                  font-size:11px;
+                  background:#ffffff;
+                  border:1px solid #eeeeee;
+                  border-radius:6px;
+                  padding:5px;
+                "
+              >
+
+                <b>
+                  ⚠️ Location Risk:
+                </b>
+
+                ${riskText}
+
+              </div>
+            `
+            : ""
+        }
+
+
+        <div
+          style="
+            margin-top:6px;
+            margin-bottom:8px;
+            font-size:11px;
+            line-height:1.5;
+            background:#ffffff;
+            border:1px solid #eeeeee;
+            border-radius:6px;
+            padding:5px;
+          "
+        >
+
+          <div
+            style="
+              color:#111;
+              font-weight:600;
+            "
+          >
+
+            📞
+
+            ${
+              phone
+                ? `
+                  <a
+                    href="tel:${phone}"
+                    style="
+                      color:#00695c;
+                      text-decoration:none;
+                      font-weight:700;
+                    "
+                  >
+                    ${phone}
+                  </a>
+                `
+                : "N/A"
+            }
+
+          </div>
+
+        </div>
+
+
+        <!-- ===================================== -->
+        <!-- 📍 CURRENT LOCATION -->
+        <!-- ===================================== -->
+
+        <div
+          style="
+            margin-bottom:8px;
+            font-size:10px;
+            line-height:1.5;
+            background:#f7fbf7;
+            border:1px solid #d7e9d8;
+            border-radius:6px;
+            padding:5px;
+          "
+        >
+
+          <div
+            style="
+              font-weight:700;
+              color:#1b5e20;
+              margin-bottom:3px;
+              font-size:11px;
+            "
+          >
+            📍 Location of Sighting
+          </div>
+
+
+          ${currentLocationHtml}
+
+
+          <div
+            style="
+              margin-top:2px;
+              color:#555;
+              font-size:9px;
+            "
+          >
+
+            🛰 GPS:
+
+            <b>
+              ${lat.toFixed(6)},
+              ${lon.toFixed(6)}
+            </b>
+
+          </div>
+
+        </div>
+
+
+        ${buildSightingMediaPopup(
+          e,
+          key
+        )}
+
+
+        <div
+          style="
+            margin-top:8px;
+          "
+        >
+
+          <button
+
+            onclick="
+              event.stopPropagation();
+              openMoveForm(
+                '${key.replace(
+                  /'/g,
+                  "\\'"
+                )}'
+              );
+            "
+
+            style="
+              background:#2e7d32;
+              color:white;
+              border:none;
+              width:100%;
+              padding:8px;
+              border-radius:6px;
+              cursor:pointer;
+              font-weight:700;
+              font-size:11px;
+              box-shadow:
+                0 2px 6px
+                rgba(46,125,50,0.25);
+            "
+          >
+
+            ✅ UPDATE STATUS
+
+          </button>
+
+        </div>
+
+      </div>
+      `;
+
+
+      // =================================================
+      // CREATE / UPDATE MARKER
+      // =================================================
+      //
+      // Never remove and recreate an existing marker during
+      // refresh. That destroys the popup instance.
+      // =================================================
+
+      let marker =
+        window.sightingMarkers[key];
+
+
+      // =================================================
+      // CREATE NEW MARKER
+      // =================================================
+
+      if(
+        !marker
+      ){
+
+        marker =
+          L.marker(
+            [
+              lat,
+              lon
+            ],
+            {
+              icon:
+                icon,
+              zIndexOffset:
+                5000
+            }
+          ).addTo(
+            elephantLayer
           );
 
 
-          // =================================================
-          // PRESERVE OPEN POPUP STATE
-          // =================================================
+        window.sightingMarkers[key] =
+          marker;
 
-          if(
-            popupKeyBeforeRefresh ===
-            key
-          ){
+
+        // =================================================
+        // POPUP BINDING - ONCE ONLY
+        // =================================================
+
+        marker.bindPopup(
+          popup,
+{
+    maxWidth: 300,
+
+    minWidth: 260,
+
+    maxHeight:
+        Math.min(
+            window.innerHeight * 0.7,
+            450
+        ),
+
+    closeOnClick: false,
+
+    autoClose: false,
+
+    autoPan: true,
+
+    autoPanPadding: [
+        15,
+        15
+    ],
+
+    keepInView: true
+}
+        );
+
+
+        // =================================================
+        // POPUP OPEN
+        // =================================================
+
+        marker.on(
+          "popupopen",
+          function(){
 
             window.activeSightingPopupKey =
               key;
@@ -40196,87 +41150,72 @@ async function loadSightings(){
             window.activeSightingPopupMarker =
               marker;
 
+
+            requestAnimationFrame(
+              function(){
+
+                const popupElement =
+                  marker
+                    .getPopup()
+                    ?.getElement();
+
+
+                if(
+                  !popupElement
+                ){
+
+                  return;
+
+                }
+
+
+                const content =
+                  popupElement.querySelector(
+                    ".leaflet-popup-content"
+                  );
+
+
+                if(
+                  content
+                ){
+
+                  content.style.maxHeight =
+                    Math.min(
+                      window.innerHeight * 0.6,
+                      360
+                    ) + "px";
+
+                  content.style.overflowY =
+                    "auto";
+
+                  content.style.overflowX =
+                    "hidden";
+
+                  content.style.webkitOverflowScrolling =
+                    "touch";
+
+                  content.style.overscrollBehavior =
+                    "contain";
+
+                  content.style.touchAction =
+                    "pan-y";
+
+                }
+
+              }
+            );
+
           }
+        );
 
 
-        }
+        // =================================================
+        // POPUP CLOSE
+        // =================================================
 
-        catch(
-          sightingError
-        ){
-
-          console.error(
-            "❌ Sighting render failed:",
-            e,
-            sightingError
-          );
-
-        }
-
-      }
-    );
-
-
-    // =====================================================
-    // REMOVE STALE MARKERS
-    //
-    // Marker exists locally but Firestore record no longer
-    // exists / is no longer active.
-    // =====================================================
-
-    const validKeys =
-      new Set(
-
-        data
-          .filter(
-            function(e){
-
-              const status =
-                String(
-                  e.status ||
-                  "ACTIVE"
-                )
-                .trim()
-                .toUpperCase();
-
-
-              return (
-                status !==
-                "RESOLVED"
-              );
-
-            }
-          )
-          .map(
-            function(e){
-
-              return String(
-
-                e.sighting_id ||
-                e.id ||
-                e.firestore_id ||
-                ""
-
-              ).trim();
-
-            }
-          )
-          .filter(Boolean)
-
-      );
-
-
-    Object.keys(
-      window.sightingMarkers
-    )
-    .forEach(
-      function(key){
-
-        if(
-          !validKeys.has(key)
-        ){
-
-          try{
+        marker.on(
+          "popupclose",
+          function(){
 
             if(
               window.activeSightingPopupKey ===
@@ -40291,62 +41230,271 @@ async function loadSightings(){
 
             }
 
+          }
+        );
 
-            elephantLayer.removeLayer(
-              window.sightingMarkers[key]
+
+        // =================================================
+        // SAME MARKER CLICK = TOGGLE
+        //
+        // Leaflet's normal popup click handler is allowed
+        // to run first. If it was already open, close it
+        // immediately after that handler completes.
+        // =================================================
+
+        marker.on(
+          "click",
+          function(){
+
+            const wasOpen =
+              marker.isPopupOpen();
+
+
+            if(
+              !wasOpen
+            ){
+
+              return;
+
+            }
+
+
+            setTimeout(
+              function(){
+
+                if(
+                  marker.isPopupOpen()
+                ){
+
+                  marker.closePopup();
+
+                }
+
+              },
+              0
             );
 
           }
+        );
 
-          catch(err){
-
-            console.warn(
-              "Marker cleanup failed:",
-              key,
-              err
-            );
-
-          }
+      }
 
 
-          delete window
-            .sightingMarkers[key];
+      // =================================================
+      // UPDATE EXISTING MARKER
+      // =================================================
+
+      else{
+
+        marker.setLatLng(
+          [
+            lat,
+            lon
+          ]
+        );
+
+
+        marker.setIcon(
+          icon
+        );
+
+      }
+
+
+      // =================================================
+      // UPDATE POPUP CONTENT SAFELY
+      //
+      // IMPORTANT:
+      // Never replace the contents of an OPEN popup while
+      // Firestore refresh is running.
+      // =================================================
+
+      const popupIsOpen =
+        marker.isPopupOpen();
+
+
+      const popupChanged =
+        marker._ggSightingPopupHtml !==
+        popup;
+
+
+      if(
+        !popupIsOpen &&
+        popupChanged
+      ){
+
+        marker.setPopupContent(
+          popup
+        );
+
+      }
+
+
+      marker._ggSightingPopupHtml =
+        popup;
+
+
+      // =================================================
+      // PRESERVE OPEN POPUP STATE
+      // =================================================
+
+      if(
+        popupKeyBeforeRefresh ===
+        key ||
+        popupIsOpen
+      ){
+
+        window.activeSightingPopupKey =
+          key;
+
+        window.activeSightingPopupMarker =
+          marker;
+
+      }
+
+
+    }
+
+    catch(
+      sightingError
+    ){
+
+      console.error(
+        "❌ Sighting render failed:",
+        e,
+        sightingError
+      );
+
+    }
+
+  }
+);
+
+// =====================================================
+// REMOVE STALE MARKERS
+//
+// Marker exists locally but Firestore record no longer
+// exists / is no longer active.
+// =====================================================
+
+const validKeys =
+  new Set(
+
+    data
+      .filter(
+        function(e){
+
+          const status =
+            String(
+              e.status ||
+              "ACTIVE"
+            )
+            .trim()
+            .toUpperCase();
+
+
+          return (
+            status !==
+            "RESOLVED"
+          );
+
+        }
+      )
+      .map(
+        function(e){
+
+          return String(
+
+            e.sighting_id ||
+            e.id ||
+            e.firestore_id ||
+            ""
+
+          ).trim();
+
+        }
+      )
+      .filter(Boolean)
+
+  );
+
+
+Object.keys(
+  window.sightingMarkers
+)
+.forEach(
+  function(key){
+
+    if(
+      !validKeys.has(key)
+    ){
+
+      try{
+
+        if(
+          window.activeSightingPopupKey ===
+          key
+        ){
+
+          window.activeSightingPopupKey =
+            null;
+
+          window.activeSightingPopupMarker =
+            null;
 
         }
 
+
+        elephantLayer.removeLayer(
+          window.sightingMarkers[key]
+        );
+
       }
-    );
+
+      catch(err){
+
+        console.warn(
+          "Marker cleanup failed:",
+          key,
+          err
+        );
+
+      }
 
 
-    // =====================================================
-    // COMPLETE
-    // =====================================================
+      delete window
+        .sightingMarkers[key];
 
-    console.log(
-      "✅ Sighting markers synchronized:",
-      Object.keys(
-        window.sightingMarkers
-      ).length
-    );
-
-
-    return data;
-
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ loadSightings failed:",
-      err
-    );
-
-
-    return [];
+    }
 
   }
+);
 
+
+// =====================================================
+// COMPLETE
+// =====================================================
+
+console.log(
+  "✅ Sighting markers synchronized:",
+  Object.keys(
+    window.sightingMarkers
+  ).length
+);
+
+
+return data;
+}
+catch(err){
+
+console.error(
+  "❌ loadSightings failed:",
+  err
+);
+
+
+return [];
+}
 }
 function getWildlifeIcon(animal){
 
