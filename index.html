@@ -71359,7 +71359,1534 @@ function resolveCurrentGIS(
 // =====================================================
 // 🐅 SUBMIT WILDLIFE
 // =====================================================
+// ============================================================
+// ============================================================
+// 📦 SIGHTING MEDIA MANAGER
+// Wildlife + Elephant
+// ============================================================
+// ============================================================
+//
+// WILDLIFE:
+//     w-photo
+//     w-video
+//     w-audio
+//
+// ELEPHANT:
+//     f-photo
+//     f-video
+//     f-audio
+//
+// This module provides:
+//
+//     • Photo preview
+//     • Video preview
+//     • Audio preview
+//     • Change photo/video/audio
+//     • Remove photo/video/audio
+//     • Media state tracking
+//     • Media validation
+//     • File → DataURL conversion
+//     • Media collection before submit
+//
+// IMPORTANT:
+//     Existing form IDs are NOT changed.
+// ============================================================
 
+
+// ============================================================
+// 1. GLOBAL MEDIA STATE
+// ============================================================
+
+window.sightingMedia = {
+
+    wildlife: {
+
+        photo: null,
+
+        video: null,
+
+        audio: null
+
+    },
+
+    elephant: {
+
+        photo: null,
+
+        video: null,
+
+        audio: null
+
+    }
+
+};
+
+
+// ============================================================
+// 2. MEDIA LIMITS
+// ============================================================
+//
+// Keep these limits conservative.
+//
+// Photo  = 10 MB
+// Video  = 20 MB
+// Audio  = 10 MB
+//
+// These are frontend safety limits only.
+// Actual backend/storage limits must also be respected.
+// ============================================================
+
+const SIGHTING_MEDIA_LIMITS = {
+
+    photo:
+        10 * 1024 * 1024,
+
+    video:
+        20 * 1024 * 1024,
+
+    audio:
+        10 * 1024 * 1024
+
+};
+
+
+// ============================================================
+// 3. TYPE → HTML ID HELPER
+// ============================================================
+//
+// wildlife → w
+// elephant → f
+// ============================================================
+
+function getSightingMediaPrefix(type){
+
+    return type === "wildlife"
+        ? "w"
+        : "f";
+
+}
+
+
+// ============================================================
+// 4. VALIDATE SIGHTING TYPE
+// ============================================================
+
+function isValidSightingMediaType(type){
+
+    return (
+        type === "wildlife" ||
+        type === "elephant"
+    );
+
+}
+
+
+// ============================================================
+// 5. PHOTO PREVIEW
+// ============================================================
+
+function previewPhoto(
+    type,
+    input
+){
+
+    try{
+
+        // ----------------------------------------------------
+        // Validate type
+        // ----------------------------------------------------
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            console.error(
+                "❌ Invalid photo media type:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Get file
+        // ----------------------------------------------------
+
+        const file =
+            input?.files?.[0];
+
+
+        if(!file){
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate MIME type
+        // ----------------------------------------------------
+
+        if(
+            !file.type ||
+            !file.type.startsWith(
+                "image/"
+            )
+        ){
+
+            alert(
+                "Please select a valid image."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate size
+        // ----------------------------------------------------
+
+        if(
+            file.size >
+            SIGHTING_MEDIA_LIMITS.photo
+        ){
+
+            alert(
+                "Photo is too large.\n\n" +
+                "Maximum allowed size is 10 MB."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Prefix
+        // ----------------------------------------------------
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        // ----------------------------------------------------
+        // Preview elements
+        // ----------------------------------------------------
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-photo-preview"
+            );
+
+        const image =
+            document.getElementById(
+                prefix +
+                "-photo-preview-img"
+            );
+
+
+        if(
+            !preview ||
+            !image
+        ){
+
+            console.warn(
+                "⚠ Photo preview elements not found:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Store media
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].photo =
+            file;
+
+
+        // ----------------------------------------------------
+        // Create temporary preview URL
+        // ----------------------------------------------------
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        image.src =
+            objectUrl;
+
+
+        image.onload =
+            function(){
+
+                URL.revokeObjectURL(
+                    objectUrl
+                );
+
+            };
+
+
+        // ----------------------------------------------------
+        // Show preview
+        // ----------------------------------------------------
+
+        preview.style.display =
+            "block";
+
+
+        console.log(
+            "📷 PHOTO READY",
+            {
+                type: type,
+                name: file.name,
+                mime: file.type,
+                size: file.size
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Photo preview failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 6. VIDEO PREVIEW
+// ============================================================
+
+function previewVideo(
+    type,
+    input
+){
+
+    try{
+
+        // ----------------------------------------------------
+        // Validate type
+        // ----------------------------------------------------
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            console.error(
+                "❌ Invalid video media type:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Get file
+        // ----------------------------------------------------
+
+        const file =
+            input?.files?.[0];
+
+
+        if(!file){
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate MIME type
+        // ----------------------------------------------------
+
+        if(
+            !file.type ||
+            !file.type.startsWith(
+                "video/"
+            )
+        ){
+
+            alert(
+                "Please select a valid video."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate size
+        // ----------------------------------------------------
+
+        if(
+            file.size >
+            SIGHTING_MEDIA_LIMITS.video
+        ){
+
+            alert(
+                "Video is too large.\n\n" +
+                "Maximum allowed size is 20 MB."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Prefix
+        // ----------------------------------------------------
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        // ----------------------------------------------------
+        // Preview elements
+        // ----------------------------------------------------
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-video-preview"
+            );
+
+        const player =
+            document.getElementById(
+                prefix +
+                "-video-preview-player"
+            );
+
+
+        if(
+            !preview ||
+            !player
+        ){
+
+            console.warn(
+                "⚠ Video preview elements not found:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Store media
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].video =
+            file;
+
+
+        // ----------------------------------------------------
+        // Create temporary URL
+        // ----------------------------------------------------
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        player.src =
+            objectUrl;
+
+
+        // ----------------------------------------------------
+        // Load video metadata
+        // ----------------------------------------------------
+
+        player.load();
+
+
+        // ----------------------------------------------------
+        // Show preview
+        // ----------------------------------------------------
+
+        preview.style.display =
+            "block";
+
+
+        console.log(
+            "🎥 VIDEO READY",
+            {
+                type: type,
+                name: file.name,
+                mime: file.type,
+                size: file.size
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Video preview failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 7. AUDIO PREVIEW
+// ============================================================
+
+function previewAudio(
+    type,
+    input
+){
+
+    try{
+
+        // ----------------------------------------------------
+        // Validate type
+        // ----------------------------------------------------
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            console.error(
+                "❌ Invalid audio media type:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Get file
+        // ----------------------------------------------------
+
+        const file =
+            input?.files?.[0];
+
+
+        if(!file){
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate MIME type
+        // ----------------------------------------------------
+
+        if(
+            !file.type ||
+            !file.type.startsWith(
+                "audio/"
+            )
+        ){
+
+            alert(
+                "Please select a valid audio file."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Validate size
+        // ----------------------------------------------------
+
+        if(
+            file.size >
+            SIGHTING_MEDIA_LIMITS.audio
+        ){
+
+            alert(
+                "Audio is too large.\n\n" +
+                "Maximum allowed size is 10 MB."
+            );
+
+            input.value = "";
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Prefix
+        // ----------------------------------------------------
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        // ----------------------------------------------------
+        // Preview elements
+        // ----------------------------------------------------
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-audio-preview"
+            );
+
+        const player =
+            document.getElementById(
+                prefix +
+                "-audio-preview-player"
+            );
+
+
+        if(
+            !preview ||
+            !player
+        ){
+
+            console.warn(
+                "⚠ Audio preview elements not found:",
+                type
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Store media
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].audio =
+            file;
+
+
+        // ----------------------------------------------------
+        // Create temporary URL
+        // ----------------------------------------------------
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        player.src =
+            objectUrl;
+
+
+        // ----------------------------------------------------
+        // Load audio
+        // ----------------------------------------------------
+
+        player.load();
+
+
+        // ----------------------------------------------------
+        // Show preview
+        // ----------------------------------------------------
+
+        preview.style.display =
+            "block";
+
+
+        console.log(
+            "🎙 AUDIO READY",
+            {
+                type: type,
+                name: file.name,
+                mime: file.type,
+                size: file.size
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Audio preview failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 8. REMOVE PHOTO
+// ============================================================
+
+function removePhoto(
+    type
+){
+
+    try{
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            return;
+
+        }
+
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        const input =
+            document.getElementById(
+                prefix +
+                "-photo"
+            );
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-photo-preview"
+            );
+
+        const image =
+            document.getElementById(
+                prefix +
+                "-photo-preview-img"
+            );
+
+
+        // ----------------------------------------------------
+        // Clear file input
+        // ----------------------------------------------------
+
+        if(input){
+
+            input.value =
+                "";
+
+        }
+
+
+        // ----------------------------------------------------
+        // Clear state
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].photo =
+            null;
+
+
+        // ----------------------------------------------------
+        // Clear image
+        // ----------------------------------------------------
+
+        if(image){
+
+            image.removeAttribute(
+                "src"
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // Hide preview
+        // ----------------------------------------------------
+
+        if(preview){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        console.log(
+            "🗑 PHOTO REMOVED:",
+            type
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Remove photo failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 9. REMOVE VIDEO
+// ============================================================
+
+function removeVideo(
+    type
+){
+
+    try{
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            return;
+
+        }
+
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        const input =
+            document.getElementById(
+                prefix +
+                "-video"
+            );
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-video-preview"
+            );
+
+        const player =
+            document.getElementById(
+                prefix +
+                "-video-preview-player"
+            );
+
+
+        // ----------------------------------------------------
+        // Clear input
+        // ----------------------------------------------------
+
+        if(input){
+
+            input.value =
+                "";
+
+        }
+
+
+        // ----------------------------------------------------
+        // Clear state
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].video =
+            null;
+
+
+        // ----------------------------------------------------
+        // Stop playback
+        // ----------------------------------------------------
+
+        if(player){
+
+            try{
+
+                player.pause();
+
+            }
+            catch(_){
+
+                // Ignore
+
+            }
+
+
+            player.removeAttribute(
+                "src"
+            );
+
+            player.load();
+
+        }
+
+
+        // ----------------------------------------------------
+        // Hide preview
+        // ----------------------------------------------------
+
+        if(preview){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        console.log(
+            "🗑 VIDEO REMOVED:",
+            type
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Remove video failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 10. REMOVE AUDIO
+// ============================================================
+
+function removeAudio(
+    type
+){
+
+    try{
+
+        if(
+            !isValidSightingMediaType(type)
+        ){
+
+            return;
+
+        }
+
+
+        const prefix =
+            getSightingMediaPrefix(
+                type
+            );
+
+
+        const input =
+            document.getElementById(
+                prefix +
+                "-audio"
+            );
+
+        const preview =
+            document.getElementById(
+                prefix +
+                "-audio-preview"
+            );
+
+        const player =
+            document.getElementById(
+                prefix +
+                "-audio-preview-player"
+            );
+
+
+        // ----------------------------------------------------
+        // Clear input
+        // ----------------------------------------------------
+
+        if(input){
+
+            input.value =
+                "";
+
+        }
+
+
+        // ----------------------------------------------------
+        // Clear state
+        // ----------------------------------------------------
+
+        window.sightingMedia[type].audio =
+            null;
+
+
+        // ----------------------------------------------------
+        // Stop playback
+        // ----------------------------------------------------
+
+        if(player){
+
+            try{
+
+                player.pause();
+
+            }
+            catch(_){
+
+                // Ignore
+
+            }
+
+
+            player.removeAttribute(
+                "src"
+            );
+
+            player.load();
+
+        }
+
+
+        // ----------------------------------------------------
+        // Hide preview
+        // ----------------------------------------------------
+
+        if(preview){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        console.log(
+            "🗑 AUDIO REMOVED:",
+            type
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Remove audio failed:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 11. READ FILE AS DATA URL
+// ============================================================
+//
+// This is compatible with your existing photo submission
+// architecture, which already uses FileReader.
+// ============================================================
+
+function readFileAsDataURL(
+    file
+){
+
+    return new Promise(
+        function(
+            resolve,
+            reject
+        ){
+
+            if(!file){
+
+                resolve("");
+
+                return;
+
+            }
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function(){
+
+                    resolve(
+                        reader.result
+                    );
+
+                };
+
+
+            reader.onerror =
+                function(error){
+
+                    reject(
+                        error
+                    );
+
+                };
+
+
+            reader.onabort =
+                function(){
+
+                    reject(
+                        new Error(
+                            "File reading was aborted."
+                        )
+                    );
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// 12. COLLECT ALL MEDIA
+// ============================================================
+//
+// IMPORTANT:
+// This does NOT automatically upload anything.
+//
+// It only reads the currently selected files.
+// ============================================================
+
+async function collectSightingMedia(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        throw new Error(
+            "Invalid sighting media type."
+        );
+
+    }
+
+
+    const media =
+        window.sightingMedia[type];
+
+
+    const result = {
+
+        photo: "",
+
+        video: "",
+
+        audio: ""
+
+    };
+
+
+    // ========================================================
+    // PHOTO
+    // ========================================================
+
+    if(media.photo){
+
+        result.photo =
+            await readFileAsDataURL(
+                media.photo
+            );
+
+    }
+
+
+    // ========================================================
+    // VIDEO
+    // ========================================================
+
+    if(media.video){
+
+        result.video =
+            await readFileAsDataURL(
+                media.video
+            );
+
+    }
+
+
+    // ========================================================
+    // AUDIO
+    // ========================================================
+
+    if(media.audio){
+
+        result.audio =
+            await readFileAsDataURL(
+                media.audio
+            );
+
+    }
+
+
+    console.log(
+        "📦 SIGHTING MEDIA COLLECTED",
+        {
+            type: type,
+
+            photo:
+                !!result.photo,
+
+            video:
+                !!result.video,
+
+            audio:
+                !!result.audio
+        }
+    );
+
+
+    return result;
+
+}
+
+
+// ============================================================
+// 13. SIMPLE CAPTURE HELPERS
+// ============================================================
+//
+// These use the existing HTML file inputs.
+// They do NOT create a second camera architecture.
+// ============================================================
+
+function capturePhoto(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        return;
+
+    }
+
+
+    const prefix =
+        getSightingMediaPrefix(
+            type
+        );
+
+
+    const input =
+        document.getElementById(
+            prefix +
+            "-photo"
+        );
+
+
+    if(input){
+
+        input.click();
+
+    }
+
+}
+
+
+function captureVideo(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        return;
+
+    }
+
+
+    const prefix =
+        getSightingMediaPrefix(
+            type
+        );
+
+
+    const input =
+        document.getElementById(
+            prefix +
+            "-video"
+        );
+
+
+    if(input){
+
+        input.click();
+
+    }
+
+}
+
+
+function recordAudio(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        return;
+
+    }
+
+
+    const prefix =
+        getSightingMediaPrefix(
+            type
+        );
+
+
+    const input =
+        document.getElementById(
+            prefix +
+            "-audio"
+        );
+
+
+    if(input){
+
+        input.click();
+
+    }
+
+}
+
+
+// ============================================================
+// 14. CLEAR ALL MEDIA
+// ============================================================
+//
+// Useful when opening/resetting a form.
+// ============================================================
+
+function clearSightingMedia(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        return;
+
+    }
+
+
+    removePhoto(type);
+
+    removeVideo(type);
+
+    removeAudio(type);
+
+
+    console.log(
+        "🧹 All sighting media cleared:",
+        type
+    );
+
+}
+
+
+// ============================================================
+// 15. DEBUG MEDIA STATE
+// ============================================================
+//
+// Run from browser console:
+//
+// debugSightingMedia("wildlife")
+//
+// or:
+//
+// debugSightingMedia("elephant")
+// ============================================================
+
+function debugSightingMedia(
+    type
+){
+
+    if(
+        !isValidSightingMediaType(type)
+    ){
+
+        console.error(
+            "Invalid media type:",
+            type
+        );
+
+        return;
+
+    }
+
+
+    const media =
+        window.sightingMedia[type];
+
+
+    console.group(
+        "📦 SIGHTING MEDIA:",
+        type
+    );
+
+
+    console.log(
+        "PHOTO:",
+        media.photo
+            ? {
+                name:
+                    media.photo.name,
+
+                type:
+                    media.photo.type,
+
+                size:
+                    media.photo.size
+            }
+            : null
+    );
+
+
+    console.log(
+        "VIDEO:",
+        media.video
+            ? {
+                name:
+                    media.video.name,
+
+                type:
+                    media.video.type,
+
+                size:
+                    media.video.size
+            }
+            : null
+    );
+
+
+    console.log(
+        "AUDIO:",
+        media.audio
+            ? {
+                name:
+                    media.audio.name,
+
+                type:
+                    media.audio.type,
+
+                size:
+                    media.audio.size
+            }
+            : null
+    );
+
+
+    console.groupEnd();
+
+}
+
+
+// ============================================================
+// 16. DEBUG HTML ELEMENTS
+// ============================================================
+//
+// Run:
+//
+// checkSightingMediaUI()
+//
+// This verifies that all required IDs actually exist.
+// ============================================================
+
+function checkSightingMediaUI(){
+
+    const ids = [
+
+        "w-photo",
+        "w-photo-preview",
+        "w-photo-preview-img",
+
+        "w-video",
+        "w-video-preview",
+        "w-video-preview-player",
+
+        "w-audio",
+        "w-audio-preview",
+        "w-audio-preview-player",
+
+        "f-photo",
+        "f-photo-preview",
+        "f-photo-preview-img",
+
+        "f-video",
+        "f-video-preview",
+        "f-video-preview-player",
+
+        "f-audio",
+        "f-audio-preview",
+        "f-audio-preview-player"
+
+    ];
+
+
+    const result = {};
+
+
+    ids.forEach(
+        function(id){
+
+            result[id] =
+                !!document.getElementById(
+                    id
+                );
+
+        }
+    );
+
+
+    console.table(
+        result
+    );
+
+
+    return result;
+
+}
 // =====================================================
 // 🐅 SUBMIT WILDLIFE FORM
 // =====================================================
@@ -79321,47 +80848,590 @@ style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; bac
 <!-- ====================================================== -->
 <!-- GENERAL COMMON FIELDS (TIME, DIRECTION, REMARKS) -->
 <!-- ====================================================== -->
-<div style="background:#ffffff; padding:12px; border-radius:10px; border-left:5px solid #1b5e20; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Time *</b></label>
-<input type="time" id="f-time" required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Driving Status / Remarks Prefix</b></label>
-<select id="f-remarks" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
-  <option value="Active">🔴 Active</option>
-  <option value="Moved">🟢 Moved</option>
-</select>
+<div style="
+    background:#ffffff;
+    padding:12px;
+    border-radius:10px;
+    border-left:5px solid #1b5e20;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+">
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Team Leader</b></label>
-<input type="text" id="f-team" readonly style="width:100%; padding:10px; background:#e9ecef; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; font-size:14px; box-sizing: border-box;">
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Location</b></label>
-<input type="text" id="f-location" readonly style="width:100%; padding:10px; background:#e9ecef; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; font-size:14px; box-sizing: border-box;">
+    <!-- ================================================== -->
+    <!-- TIME -->
+    <!-- ================================================== -->
 
-<label style="display:block; margin-bottom:4px; font-size:13px;">Photo</label>
-<input type="file" id="f-photo" accept="image/*" style="width:100%; margin-bottom:10px; font-size:13px;">
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Time *</b>
+    </label>
 
-<label style="display:block; margin-bottom:4px; font-size:13px;">Video (Optional)</label>
-<input type="file" id="f-video" accept="video/*" style="width:100%; margin-bottom:10px; font-size:13px;">
+    <input
+        type="time"
+        id="f-time"
+        required
+        style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:10px;
+            background:#fff;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    >
 
-<label style="display:block; margin-bottom:4px; font-size:13px;">Audio (Optional)</label>
-<input type="file" id="f-audio" accept="audio/*" style="width:100%; margin-bottom:10px; font-size:13px;">
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Direction</b></label>
-<select id="f-dir" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; margin-bottom:10px; background:#fff; font-size:14px; box-sizing: border-box;">
-<option value="N">North</option>
-<option value="NE">North-East</option>
-<option value="E">East</option>
-<option value="SE">South-East</option>
-<option value="S">South</option>
-<option value="SW">South-West</option>
-<option value="W">West</option>
-<option value="NW">North-West</option>
-<option value="Stationary">Stationary</option>
-<option value="Unknown">Unknown</option>
-</select>
+    <!-- ================================================== -->
+    <!-- DRIVING STATUS / REMARKS PREFIX -->
+    <!-- ================================================== -->
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Remarks</b></label>
-<textarea id="f-remarks-multiline" rows="3" placeholder="Herd feeding near river. Driving operation started." style="width:100%; resize:vertical; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; font-size:14px; box-sizing: border-box;"></textarea>
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Driving Status / Remarks Prefix</b>
+    </label>
+
+    <select
+        id="f-remarks"
+        style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:10px;
+            background:#fff;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    >
+
+        <option value="Active">
+            🔴 Active
+        </option>
+
+        <option value="Moved">
+            🟢 Moved
+        </option>
+
+    </select>
+
+
+    <!-- ================================================== -->
+    <!-- TEAM LEADER -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Team Leader</b>
+    </label>
+
+    <input
+        type="text"
+        id="f-team"
+        readonly
+        style="
+            width:100%;
+            padding:10px;
+            background:#e9ecef;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:10px;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    >
+
+
+    <!-- ================================================== -->
+    <!-- LOCATION -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Location</b>
+    </label>
+
+    <input
+        type="text"
+        id="f-location"
+        readonly
+        style="
+            width:100%;
+            padding:10px;
+            background:#e9ecef;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:10px;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    >
+
+
+    <!-- ================================================== -->
+    <!-- 📷 PHOTO -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:6px;
+        font-size:13px;
+    ">
+        <b>📷 Photo</b>
+    </label>
+
+    <input
+        type="file"
+        id="f-photo"
+        accept="image/*"
+        capture="environment"
+        onchange="previewPhoto('elephant', this)"
+        style="
+            display:block;
+            width:100%;
+            box-sizing:border-box;
+            margin-bottom:8px;
+            font-size:13px;
+        "
+    >
+
+
+    <!-- ================================================== -->
+    <!-- PHOTO PREVIEW -->
+    <!-- ================================================== -->
+
+    <div
+        id="f-photo-preview"
+        style="
+            display:none;
+            margin-top:8px;
+            margin-bottom:14px;
+            padding:10px;
+            background:#fafafa;
+            border:1px solid #e0e0e0;
+            border-radius:10px;
+        "
+    >
+
+        <div style="
+            font-size:13px;
+            font-weight:600;
+            color:#2e7d32;
+            margin-bottom:8px;
+            text-align:center;
+        ">
+            ✅ Photo Ready
+        </div>
+
+        <img
+            id="f-photo-preview-img"
+            alt="Elephant sighting photo preview"
+            style="
+                display:block;
+                width:100%;
+                max-height:240px;
+                object-fit:contain;
+                border-radius:8px;
+                background:#eeeeee;
+                border:1px solid #dddddd;
+            "
+        >
+
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:10px;
+        ">
+
+            <button
+                type="button"
+                onclick="
+                    document
+                        .getElementById('f-photo')
+                        .click();
+                "
+                style="
+                    background:#1976d2;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🔄 Change Photo
+            </button>
+
+            <button
+                type="button"
+                onclick="removePhoto('elephant')"
+                style="
+                    background:#d32f2f;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🗑 Remove
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- 🎥 VIDEO -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:6px;
+        font-size:13px;
+    ">
+        <b>🎥 Video (Optional)</b>
+    </label>
+
+    <input
+        type="file"
+        id="f-video"
+        accept="video/*"
+        capture="environment"
+        onchange="previewVideo('elephant', this)"
+        style="
+            display:block;
+            width:100%;
+            box-sizing:border-box;
+            margin-bottom:8px;
+            font-size:13px;
+        "
+    >
+
+
+    <!-- ================================================== -->
+    <!-- VIDEO PREVIEW -->
+    <!-- ================================================== -->
+
+    <div
+        id="f-video-preview"
+        style="
+            display:none;
+            margin-top:8px;
+            margin-bottom:14px;
+            padding:10px;
+            background:#fafafa;
+            border:1px solid #e0e0e0;
+            border-radius:10px;
+        "
+    >
+
+        <div style="
+            font-size:13px;
+            font-weight:600;
+            color:#2e7d32;
+            margin-bottom:8px;
+            text-align:center;
+        ">
+            ✅ Video Ready
+        </div>
+
+        <video
+            id="f-video-preview-player"
+            controls
+            playsinline
+            preload="metadata"
+            style="
+                display:block;
+                width:100%;
+                max-height:240px;
+                border-radius:8px;
+                background:#000000;
+            "
+        ></video>
+
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:10px;
+        ">
+
+            <button
+                type="button"
+                onclick="
+                    document
+                        .getElementById('f-video')
+                        .click();
+                "
+                style="
+                    background:#1976d2;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🔄 Change Video
+            </button>
+
+            <button
+                type="button"
+                onclick="removeVideo('elephant')"
+                style="
+                    background:#d32f2f;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🗑 Remove
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- 🎙 AUDIO -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:6px;
+        font-size:13px;
+    ">
+        <b>🎙 Audio (Optional)</b>
+    </label>
+
+    <input
+        type="file"
+        id="f-audio"
+        accept="audio/*"
+        capture
+        onchange="previewAudio('elephant', this)"
+        style="
+            display:block;
+            width:100%;
+            box-sizing:border-box;
+            margin-bottom:8px;
+            font-size:13px;
+        "
+    >
+
+
+    <!-- ================================================== -->
+    <!-- AUDIO PREVIEW -->
+    <!-- ================================================== -->
+
+    <div
+        id="f-audio-preview"
+        style="
+            display:none;
+            margin-top:8px;
+            margin-bottom:14px;
+            padding:10px;
+            background:#fafafa;
+            border:1px solid #e0e0e0;
+            border-radius:10px;
+        "
+    >
+
+        <div style="
+            font-size:13px;
+            font-weight:600;
+            color:#2e7d32;
+            margin-bottom:8px;
+            text-align:center;
+        ">
+            ✅ Audio Ready
+        </div>
+
+        <audio
+            id="f-audio-preview-player"
+            controls
+            preload="metadata"
+            style="
+                display:block;
+                width:100%;
+            "
+        ></audio>
+
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:10px;
+        ">
+
+            <button
+                type="button"
+                onclick="
+                    document
+                        .getElementById('f-audio')
+                        .click();
+                "
+                style="
+                    background:#1976d2;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🔄 Change Audio
+            </button>
+
+            <button
+                type="button"
+                onclick="removeAudio('elephant')"
+                style="
+                    background:#d32f2f;
+                    color:#ffffff;
+                    border:none;
+                    padding:10px;
+                    border-radius:7px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                🗑 Remove
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- DIRECTION -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Direction</b>
+    </label>
+
+    <select
+        id="f-dir"
+        style="
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:6px;
+            margin-bottom:10px;
+            background:#fff;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    >
+
+        <option value="N">
+            North
+        </option>
+
+        <option value="NE">
+            North-East
+        </option>
+
+        <option value="E">
+            East
+        </option>
+
+        <option value="SE">
+            South-East
+        </option>
+
+        <option value="S">
+            South
+        </option>
+
+        <option value="SW">
+            South-West
+        </option>
+
+        <option value="W">
+            West
+        </option>
+
+        <option value="NW">
+            North-West
+        </option>
+
+        <option value="Stationary">
+            Stationary
+        </option>
+
+        <option value="Unknown">
+            Unknown
+        </option>
+
+    </select>
+
+
+    <!-- ================================================== -->
+    <!-- REMARKS -->
+    <!-- ================================================== -->
+
+    <label style="
+        display:block;
+        margin-bottom:4px;
+        font-size:13px;
+    ">
+        <b>Remarks</b>
+    </label>
+
+    <textarea
+        id="f-remarks-multiline"
+        rows="3"
+        placeholder="Herd feeding near river. Driving operation started."
+        style="
+            width:100%;
+            resize:vertical;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:6px;
+            font-family:inherit;
+            font-size:14px;
+            box-sizing:border-box;
+        "
+    ></textarea>
+
 </div>
 
 <!-- ====================================================== -->
@@ -79980,45 +82050,426 @@ box-sizing: border-box;
 </div>
 
 <!-- ====================================================== -->
-<!-- EVIDENCE SECTION -->
+<!-- 📷 EVIDENCE SECTION -->
 <!-- ====================================================== -->
 
 <div style="
-background:#ffffff;
-padding:12px;
-border-radius:10px;
-border-left:5px solid #8e24aa;
-box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    background:#ffffff;
+    padding:12px;
+    border-radius:10px;
+    border-left:5px solid #8e24aa;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
 ">
 
-<h4 style="
-margin:0 0 10px 0;
-color:#8e24aa;
-font-size:15px;
-">
-📷 Evidence Media
-</h4>
+    <!-- ================================================== -->
+    <!-- HEADER -->
+    <!-- ================================================== -->
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Photo</b></label>
-<input
-type="file"
-id="w-photo"
-accept="image/*"
-style="display:block; margin-bottom:10px; font-size:13px;">
+    <h4 style="
+        margin:0 0 14px 0;
+        color:#8e24aa;
+        font-size:15px;
+        font-weight:700;
+    ">
+        📷 Evidence Media
+    </h4>
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Video (Optional)</b></label>
-<input
-type="file"
-id="w-video"
-accept="video/*"
-style="display:block; margin-bottom:10px; font-size:13px;">
 
-<label style="display:block; margin-bottom:4px; font-size:13px;"><b>Audio (Optional)</b></label>
-<input
-type="file"
-id="w-audio"
-accept="audio/*"
-style="display:block; font-size:13px;">
+    <!-- ================================================== -->
+    <!-- PHOTO -->
+    <!-- ================================================== -->
+
+    <div style="
+        margin-bottom:16px;
+    ">
+
+        <label style="
+            display:block;
+            margin-bottom:6px;
+            font-size:13px;
+            font-weight:600;
+            color:#333;
+        ">
+            📷 Photo
+        </label>
+
+        <input
+            type="file"
+            id="w-photo"
+            accept="image/*"
+            capture="environment"
+            style="
+                display:block;
+                width:100%;
+                box-sizing:border-box;
+                margin-bottom:8px;
+                font-size:13px;
+            "
+            onchange="previewPhoto('wildlife', this)"
+        >
+
+
+        <!-- ============================================== -->
+        <!-- PHOTO PREVIEW -->
+        <!-- ============================================== -->
+
+        <div
+            id="w-photo-preview"
+            style="
+                display:none;
+                margin-top:8px;
+                padding:10px;
+                background:#fafafa;
+                border:1px solid #e0e0e0;
+                border-radius:10px;
+            "
+        >
+
+            <div style="
+                font-size:13px;
+                font-weight:600;
+                color:#2e7d32;
+                margin-bottom:8px;
+                text-align:center;
+            ">
+                ✅ Photo Ready
+            </div>
+
+
+            <img
+                id="w-photo-preview-img"
+                alt="Wildlife evidence photo preview"
+                style="
+                    display:block;
+                    width:100%;
+                    max-height:240px;
+                    object-fit:contain;
+                    border-radius:8px;
+                    background:#eeeeee;
+                    border:1px solid #dddddd;
+                "
+            >
+
+
+            <!-- ========================================== -->
+            <!-- PHOTO ACTIONS -->
+            <!-- ========================================== -->
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:8px;
+                margin-top:10px;
+            ">
+
+                <button
+                    type="button"
+                    onclick="
+                        document
+                            .getElementById('w-photo')
+                            .click();
+                    "
+                    style="
+                        background:#1976d2;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🔄 Change Photo
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="removePhoto('wildlife')"
+                    style="
+                        background:#d32f2f;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🗑 Remove
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- VIDEO -->
+    <!-- ================================================== -->
+
+    <div style="
+        margin-bottom:16px;
+    ">
+
+        <label style="
+            display:block;
+            margin-bottom:6px;
+            font-size:13px;
+            font-weight:600;
+            color:#333;
+        ">
+            🎥 Video <span style="font-weight:400;">(Optional)</span>
+        </label>
+
+
+        <input
+            type="file"
+            id="w-video"
+            accept="video/*"
+            capture="environment"
+            style="
+                display:block;
+                width:100%;
+                box-sizing:border-box;
+                margin-bottom:8px;
+                font-size:13px;
+            "
+            onchange="previewVideo('wildlife', this)"
+        >
+
+
+        <!-- ============================================== -->
+        <!-- VIDEO PREVIEW -->
+        <!-- ============================================== -->
+
+        <div
+            id="w-video-preview"
+            style="
+                display:none;
+                margin-top:8px;
+                padding:10px;
+                background:#fafafa;
+                border:1px solid #e0e0e0;
+                border-radius:10px;
+            "
+        >
+
+            <div style="
+                font-size:13px;
+                font-weight:600;
+                color:#2e7d32;
+                margin-bottom:8px;
+                text-align:center;
+            ">
+                ✅ Video Ready
+            </div>
+
+
+            <video
+                id="w-video-preview-player"
+                controls
+                playsinline
+                preload="metadata"
+                style="
+                    display:block;
+                    width:100%;
+                    max-height:240px;
+                    border-radius:8px;
+                    background:#000000;
+                "
+            ></video>
+
+
+            <!-- ========================================== -->
+            <!-- VIDEO ACTIONS -->
+            <!-- ========================================== -->
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:8px;
+                margin-top:10px;
+            ">
+
+                <button
+                    type="button"
+                    onclick="
+                        document
+                            .getElementById('w-video')
+                            .click();
+                    "
+                    style="
+                        background:#1976d2;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🔄 Change Video
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="removeVideo('wildlife')"
+                    style="
+                        background:#d32f2f;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🗑 Remove
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- AUDIO -->
+    <!-- ================================================== -->
+
+    <div style="
+        margin-bottom:4px;
+    ">
+
+        <label style="
+            display:block;
+            margin-bottom:6px;
+            font-size:13px;
+            font-weight:600;
+            color:#333;
+        ">
+            🎙 Audio <span style="font-weight:400;">(Optional)</span>
+        </label>
+
+
+        <input
+            type="file"
+            id="w-audio"
+            accept="audio/*"
+            capture
+            style="
+                display:block;
+                width:100%;
+                box-sizing:border-box;
+                margin-bottom:8px;
+                font-size:13px;
+            "
+            onchange="previewAudio('wildlife', this)"
+        >
+
+
+        <!-- ============================================== -->
+        <!-- AUDIO PREVIEW -->
+        <!-- ============================================== -->
+
+        <div
+            id="w-audio-preview"
+            style="
+                display:none;
+                margin-top:8px;
+                padding:10px;
+                background:#fafafa;
+                border:1px solid #e0e0e0;
+                border-radius:10px;
+            "
+        >
+
+            <div style="
+                font-size:13px;
+                font-weight:600;
+                color:#2e7d32;
+                margin-bottom:8px;
+                text-align:center;
+            ">
+                ✅ Audio Ready
+            </div>
+
+
+            <audio
+                id="w-audio-preview-player"
+                controls
+                preload="metadata"
+                style="
+                    display:block;
+                    width:100%;
+                "
+            ></audio>
+
+
+            <!-- ========================================== -->
+            <!-- AUDIO ACTIONS -->
+            <!-- ========================================== -->
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:8px;
+                margin-top:10px;
+            ">
+
+                <button
+                    type="button"
+                    onclick="
+                        document
+                            .getElementById('w-audio')
+                            .click();
+                    "
+                    style="
+                        background:#1976d2;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🔄 Change Audio
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="removeAudio('wildlife')"
+                    style="
+                        background:#d32f2f;
+                        color:#ffffff;
+                        border:none;
+                        padding:10px;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                    "
+                >
+                    🗑 Remove
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 
