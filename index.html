@@ -71351,6 +71351,22 @@ async function submitWildlifeForm(){
     try{
 
 setSubmitLoading(true);
+
+              // =================================================
+        // ALLOW WEBVIEW TO PAINT "SUBMITTING..."
+        // BEFORE HEAVY GPS / GIS / PAYLOAD WORK
+        // =================================================
+
+        await new Promise(resolve => {
+
+            requestAnimationFrame(() => {
+
+                requestAnimationFrame(resolve);
+
+            });
+
+        });
+
         // =================================================
         // OBSERVATION TYPE
         // =================================================
