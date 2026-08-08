@@ -55298,7 +55298,19 @@ async function submitSightingForm(event){
     event.preventDefault();
   }
 
-setSubmitLoading(true);
+  setSubmitLoading(true);
+
+  // =====================================================
+  // ALLOW WEBVIEW TO PAINT "SUBMITTING..." BEFORE
+  // STARTING HEAVY GIS / FILE / FIRESTORE PROCESSING
+  // =====================================================
+
+  await new Promise(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+
   try{
 
     // =====================================================
