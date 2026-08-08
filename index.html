@@ -84741,7 +84741,7 @@ color:#555;
 
 <hr style="margin:12px 0; border:0; border-top:1px solid #ddd;">
 
-<form id="wildlifeForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 10px;">
+<form id="wildlifeForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px;">
 
 <!-- ====================================================== -->
 <!-- AUTO FIELDS -->
@@ -84893,6 +84893,7 @@ display:grid;
 grid-template-columns:1fr 1fr;
 gap:10px;
 margin-top:10px;
+transition: all 0.3s ease;
 ">
 
 <div>
@@ -84944,7 +84945,7 @@ box-sizing: border-box;
 
 </div>
 
-</div>>
+</div>
 
 <!-- ====================================================== -->
 <!-- INDIRECT / SIGNS FOUND SECTION (CONDITIONAL) -->
@@ -84957,6 +84958,7 @@ padding:12px;
 border-radius:10px;
 border-left:5px solid #2e7d32;
 box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+transition: all 0.3s ease;
 ">
 
 <h4 style="
@@ -85019,8 +85021,6 @@ font-size:15px;
 </select>
 </div>
 
-
-
 <!-- ====================================================== -->
 <!-- OBSERVATION / BEHAVIOUR SECTION -->
 <!-- ====================================================== -->
@@ -85031,6 +85031,7 @@ padding:12px;
 border-radius:10px;
 border-left:5px solid #ff9800;
 box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+transition: all 0.3s ease;
 ">
 
 <h4 style="
@@ -85590,6 +85591,7 @@ padding:12px;
 border-radius:10px;
 border-left:5px solid #d32f2f;
 box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+transition: all 0.3s ease;
 ">
 
 <h4 style="
@@ -85629,7 +85631,13 @@ font-size:15px;
 <div style="
 display:flex;
 gap:10px;
-margin-top:5px;
+margin-top:10px;
+position: sticky;
+bottom: 0;
+background: #f4f4f4;
+padding-top: 8px;
+padding-bottom: 4px;
+z-index: 10;
 ">
 
 <button
