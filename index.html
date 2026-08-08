@@ -21143,7 +21143,310 @@ if (!intersects || !cellPolygon) {
     );
   }
 }
-   async function toggleMonthlyHeatmap(){
+
+    // ============================================================
+// 🔥 GREEN GUARD SIGHTING STORAGE TEST
+// ============================================================
+//
+// DEVELOPMENT ONLY
+//
+// This does NOT modify Wildlife or Elephant submission.
+// It only verifies that Firebase Storage can receive a file.
+//
+// ============================================================
+
+window.testSightingStorageUpload = async function(file) {
+
+    try {
+
+        // ========================================================
+        // VALIDATE FILE
+        // ========================================================
+
+        if(
+            !file
+        ){
+
+            throw new Error(
+                "No file supplied."
+            );
+
+        }
+
+
+        // ========================================================
+        // WAIT FOR FIREBASE
+        // ========================================================
+
+        if(
+            !window.firebaseReady
+        ){
+
+            throw new Error(
+                "Firebase is not ready yet."
+            );
+
+        }
+
+
+        // ========================================================
+        // CHECK STORAGE
+        // ========================================================
+
+        if(
+            !window.storage
+        ){
+
+            throw new Error(
+                "Firebase Storage is not initialized."
+            );
+
+        }
+
+
+        if(
+            !window.fb ||
+            typeof window.fb.ref !== "function" ||
+            typeof window.fb.uploadBytes !== "function" ||
+            typeof window.fb.getDownloadURL !== "function"
+        ){
+
+            throw new Error(
+                "Firebase Storage helpers are not available."
+            );
+
+        }
+
+
+        // ========================================================
+        // FILE INFORMATION
+        // ========================================================
+
+        console.log(
+            "📦 STORAGE TEST FILE",
+            {
+
+                name:
+                    file.name,
+
+                type:
+                    file.type,
+
+                size:
+                    file.size
+
+            }
+        );
+
+
+        // ========================================================
+        // DETERMINE MEDIA TYPE
+        // ========================================================
+
+        let mediaType =
+            "other";
+
+
+        if(
+            file.type &&
+            file.type.startsWith("image/")
+        ){
+
+            mediaType =
+                "photo";
+
+        }
+
+        else if(
+            file.type &&
+            file.type.startsWith("video/")
+        ){
+
+            mediaType =
+                "video";
+
+        }
+
+        else if(
+            file.type &&
+            file.type.startsWith("audio/")
+        ){
+
+            mediaType =
+                "audio";
+
+        }
+
+
+        // ========================================================
+        // TEST PATH
+        // ========================================================
+
+        const timestamp =
+            Date.now();
+
+
+        const safeName =
+            file.name
+                .replace(
+                    /[^a-zA-Z0-9._-]/g,
+                    "_"
+                );
+
+
+        const storagePath =
+
+            "sightings/" +
+            "TEST/" +
+            mediaType +
+            "/" +
+            timestamp +
+            "_" +
+            safeName;
+
+
+        console.log(
+            "📁 STORAGE TEST PATH:",
+            storagePath
+        );
+
+
+        // ========================================================
+        // CREATE STORAGE REFERENCE
+        // ========================================================
+
+        const storageRef =
+            window.fb.ref(
+                window.storage,
+                storagePath
+            );
+
+
+        // ========================================================
+        // METADATA
+        // ========================================================
+
+        const metadata = {
+
+            contentType:
+                file.type ||
+                "application/octet-stream",
+
+            customMetadata: {
+
+                source:
+                    "GreenGuard",
+
+                test:
+                    "true",
+
+                mediaType:
+                    mediaType,
+
+                createdAt:
+                    new Date()
+                        .toISOString()
+
+            }
+
+        };
+
+
+        // ========================================================
+        // UPLOAD
+        // ========================================================
+
+        console.log(
+            "⬆️ Uploading to Firebase Storage..."
+        );
+
+
+        const uploadResult =
+            await window.fb.uploadBytes(
+                storageRef,
+                file,
+                metadata
+            );
+
+
+        console.log(
+            "✅ STORAGE UPLOAD COMPLETE",
+            uploadResult
+        );
+
+
+        // ========================================================
+        // GET DOWNLOAD URL
+        // ========================================================
+
+        const downloadUrl =
+            await window.fb.getDownloadURL(
+                uploadResult.ref
+            );
+
+
+        console.log(
+            "🔗 STORAGE DOWNLOAD URL:",
+            downloadUrl
+        );
+
+
+        // ========================================================
+        // RESULT
+        // ========================================================
+
+        const result = {
+
+            success:
+                true,
+
+            path:
+                storagePath,
+
+            url:
+                downloadUrl,
+
+            name:
+                file.name,
+
+            type:
+                file.type,
+
+            size:
+                file.size,
+
+            mediaType:
+                mediaType
+
+        };
+
+
+        console.log(
+            "🎉 GREEN GUARD STORAGE TEST SUCCESS",
+            result
+        );
+
+
+        return result;
+
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ GREEN GUARD STORAGE TEST FAILED",
+            error
+        );
+
+
+        throw error;
+
+    }
+
+};
+    
+  
+    async function toggleMonthlyHeatmap(){
 
   try{
 
