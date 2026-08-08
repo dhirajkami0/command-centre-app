@@ -57021,342 +57021,1583 @@ setSubmitLoading(false);
       fileInput
         ? fileInput.files[0]
         : null;
+// ============================================================
+// 🔥 SIGHTING MEDIA → FIREBASE STORAGE
+// ============================================================
+//
+// Wildlife + Elephant
+//
+// Firestore:
+//     metadata only
+//
+// Firebase Storage:
+//     actual photo/video/audio
+//
+// ============================================================
 
+async function uploadSightingMediaToStorage(
+    observationType,
+    finalPayload
+){
+
+    try{
+
+        // ========================================================
+        // VALIDATE TYPE
+        // ========================================================
+
+        const type =
+            String(
+                observationType || ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        if(
+            type !== "WILDLIFE" &&
+            type !== "ELEPHANT"
+        ){
+
+            throw new Error(
+                "Invalid sighting observation type."
+            );
+
+        }
+
+
+        // ========================================================
+        // WAIT FOR FIREBASE
+        // ========================================================
+
+        if(
+            !window.firebaseReady
+        ){
+
+            if(
+                typeof waitForFirebaseReady ===
+                "function"
+            ){
+
+                await waitForFirebaseReady();
+
+            }
+
+        }
+
+
+        // ========================================================
+        // VALIDATE STORAGE
+        // ========================================================
+
+        if(
+            !window.storage
+        ){
+
+            throw new Error(
+                "Firebase Storage is not initialized."
+            );
+
+        }
+
+
+        if(
+            !window.fb ||
+            typeof window.fb.ref !== "function" ||
+            typeof window.fb.uploadBytes !== "function" ||
+            typeof window.fb.uploadString !== "function" ||
+            typeof window.fb.getDownloadURL !== "function"
+        ){
+
+            throw new Error(
+                "Firebase Storage functions are unavailable."
+            );
+
+        }
+
+
+        // ========================================================
+        // SIGHTING ID
+        // ========================================================
+
+        const sightingId =
+            String(
+                finalPayload.firestore_id ||
+                finalPayload.sighting_id ||
+                ""
+            )
+            .trim();
+
+
+        if(!sightingId){
+
+            throw new Error(
+                "Sighting ID is not available for media upload."
+            );
+
+        }
+
+
+        // ========================================================
+        // FINANCIAL YEAR
+        // ========================================================
+
+        const financialYear =
+            String(
+                finalPayload.financial_year ||
+                "UNKNOWN"
+            )
+            .trim();
+
+
+        // ========================================================
+        // STORAGE ROOT
+        // ========================================================
+
+        const storageRoot =
+            "sightings/" +
+            (
+                type === "WILDLIFE"
+                    ? "wildlife"
+                    : "elephant"
+            ) +
+            "/" +
+            financialYear +
+            "/" +
+            sightingId;
+
+
+        console.log(
+            "📁 SIGHTING STORAGE ROOT:",
+            storageRoot
+        );
+
+
+        // ========================================================
+        // MEDIA STATE
+        // ========================================================
+
+        const mediaState =
+            window.sightingMedia &&
+            window.sightingMedia[
+                type === "WILDLIFE"
+                    ? "wildlife"
+                    : "elephant"
+            ]
+                ? window.sightingMedia[
+                    type === "WILDLIFE"
+                        ? "wildlife"
+                        : "elephant"
+                ]
+                : null;
+
+
+        // ========================================================
+        // RESULT
+        // ========================================================
+
+        const mediaResult = {
+
+            photo_url:
+                "",
+
+            video_url:
+                "",
+
+            audio_url:
+                "",
+
+            photo_storage_path:
+                "",
+
+            video_storage_path:
+                "",
+
+            audio_storage_path:
+                "",
+
+            media_status:
+                "NONE"
+
+        };
+
+
+        // ========================================================
+        // HELPER — SAFE FILE NAME
+        // ========================================================
+
+        function safeFileName(
+            fileName,
+            fallbackName
+        ){
+
+            return String(
+                fileName ||
+                fallbackName
+            )
+            .trim()
+            .replace(
+                /[^a-zA-Z0-9._-]/g,
+                "_"
+            );
+
+        }
+
+
+        // ========================================================
+        // HELPER — UPLOAD BLOB / FILE
+        // ========================================================
+
+        async function uploadBlobMedia(
+            mediaFile,
+            mediaType,
+            fallbackName
+        ){
+
+            if(
+                !mediaFile
+            ){
+
+                return null;
+
+            }
+
+
+            // ====================================================
+            // NORMAL FILE / BLOB
+            // ====================================================
+
+            if(
+                mediaFile instanceof
+                Blob
+            ){
+
+                const fileName =
+                    safeFileName(
+                        mediaFile.name,
+                        fallbackName
+                    );
+
+
+                const storagePath =
+                    storageRoot +
+                    "/" +
+                    mediaType +
+                    "/" +
+                    Date.now() +
+                    "_" +
+                    fileName;
+
+
+                const storageRef =
+                    window.fb.ref(
+                        window.storage,
+                        storagePath
+                    );
+
+
+                const metadata = {
+
+                    contentType:
+                        mediaFile.type ||
+                        "application/octet-stream",
+
+                    customMetadata: {
+
+                        observationType:
+                            type,
+
+                        sightingId:
+                            sightingId,
+
+                        financialYear:
+                            financialYear,
+
+                        mediaType:
+                            mediaType,
+
+                        source:
+                            "GreenGuard"
+
+                    }
+
+                };
+
+
+                console.log(
+                    "⬆️ Uploading:",
+                    {
+                        mediaType:
+                            mediaType,
+
+                        path:
+                            storagePath,
+
+                        size:
+                            mediaFile.size,
+
+                        mime:
+                            mediaFile.type
+
+                    }
+                );
+
+
+                const uploadResult =
+                    await window.fb.uploadBytes(
+                        storageRef,
+                        mediaFile,
+                        metadata
+                    );
+
+
+                const url =
+                    await window.fb.getDownloadURL(
+                        uploadResult.ref
+                    );
+
+
+                console.log(
+                    "✅ MEDIA UPLOADED:",
+                    {
+                        mediaType:
+                            mediaType,
+
+                        path:
+                            storagePath,
+
+                        url:
+                            url
+
+                    }
+                );
+
+
+                return {
+
+                    url:
+                        url,
+
+                    path:
+                        storagePath
+
+                };
+
+            }
+
+
+            // ====================================================
+            // DATA URL
+            // ====================================================
+
+            if(
+                typeof mediaFile ===
+                "string" &&
+                mediaFile.startsWith(
+                    "data:"
+                )
+            ){
+
+                const fileName =
+                    safeFileName(
+                        fallbackName,
+                        mediaType + ".bin"
+                    );
+
+
+                const storagePath =
+                    storageRoot +
+                    "/" +
+                    mediaType +
+                    "/" +
+                    Date.now() +
+                    "_" +
+                    fileName;
+
+
+                const storageRef =
+                    window.fb.ref(
+                        window.storage,
+                        storagePath
+                    );
+
+
+                let contentType =
+                    "application/octet-stream";
+
+
+                if(
+                    mediaType ===
+                    "photo"
+                ){
+
+                    contentType =
+                        "image/jpeg";
+
+                }
+
+                else if(
+                    mediaType ===
+                    "video"
+                ){
+
+                    contentType =
+                        "video/mp4";
+
+                }
+
+                else if(
+                    mediaType ===
+                    "audio"
+                ){
+
+                    contentType =
+                        "audio/mp4";
+
+                }
+
+
+                const metadata = {
+
+                    contentType:
+                        contentType,
+
+                    customMetadata: {
+
+                        observationType:
+                            type,
+
+                        sightingId:
+                            sightingId,
+
+                        financialYear:
+                            financialYear,
+
+                        mediaType:
+                            mediaType,
+
+                        source:
+                            "GreenGuard"
+
+                    }
+
+                };
+
+
+                console.log(
+                    "⬆️ Uploading data URL:",
+                    mediaType
+                );
+
+
+                const uploadResult =
+                    await window.fb.uploadString(
+                        storageRef,
+                        mediaFile,
+                        "data_url",
+                        metadata
+                    );
+
+
+                const url =
+                    await window.fb.getDownloadURL(
+                        uploadResult.ref
+                    );
+
+
+                return {
+
+                    url:
+                        url,
+
+                    path:
+                        storagePath
+
+                };
+
+            }
+
+
+            return null;
+
+        }
+
+
+        // ========================================================
+        // 📷 PHOTO
+        // ========================================================
+
+        let photoFile =
+            mediaState?.photo ||
+            null;
+
+
+        if(
+            !photoFile
+        ){
+
+            const photoInput =
+                document.getElementById(
+                    type === "WILDLIFE"
+                        ? "w-photo"
+                        : "f-photo"
+                );
+
+
+            photoFile =
+                photoInput?.files?.[0] ||
+                null;
+
+        }
+
+
+        if(
+            photoFile
+        ){
+
+            const uploadedPhoto =
+                await uploadBlobMedia(
+                    photoFile,
+                    "photo",
+                    "photo.jpg"
+                );
+
+
+            if(
+                uploadedPhoto
+            ){
+
+                mediaResult.photo_url =
+                    uploadedPhoto.url;
+
+                mediaResult.photo_storage_path =
+                    uploadedPhoto.path;
+
+            }
+
+        }
+
+
+        // ========================================================
+        // 🎥 VIDEO
+        // ========================================================
+
+        let videoFile =
+            mediaState?.video ||
+            null;
+
+
+        if(
+            !videoFile
+        ){
+
+            const videoInput =
+                document.getElementById(
+                    type === "WILDLIFE"
+                        ? "w-video"
+                        : "f-video"
+                );
+
+
+            videoFile =
+                videoInput?.files?.[0] ||
+                null;
+
+        }
+
+
+        if(
+            videoFile
+        ){
+
+            const uploadedVideo =
+                await uploadBlobMedia(
+                    videoFile,
+                    "video",
+                    "video.mp4"
+                );
+
+
+            if(
+                uploadedVideo
+            ){
+
+                mediaResult.video_url =
+                    uploadedVideo.url;
+
+                mediaResult.video_storage_path =
+                    uploadedVideo.path;
+
+            }
+
+        }
+
+
+        // ========================================================
+        // 🎙 AUDIO
+        // ========================================================
+
+        let audioFile =
+            mediaState?.audio ||
+            null;
+
+
+        if(
+            !audioFile
+        ){
+
+            const audioInput =
+                document.getElementById(
+                    type === "WILDLIFE"
+                        ? "w-audio"
+                        : "f-audio"
+                );
+
+
+            audioFile =
+                audioInput?.files?.[0] ||
+                null;
+
+        }
+
+
+        // ========================================================
+        // NATIVE AUDIO DATA URL
+        // ========================================================
+
+        if(
+            typeof audioFile ===
+            "string" &&
+            audioFile.startsWith(
+                "data:"
+            )
+        ){
+
+            const uploadedAudio =
+                await uploadBlobMedia(
+                    audioFile,
+                    "audio",
+                    "audio.m4a"
+                );
+
+
+            if(
+                uploadedAudio
+            ){
+
+                mediaResult.audio_url =
+                    uploadedAudio.url;
+
+                mediaResult.audio_storage_path =
+                    uploadedAudio.path;
+
+            }
+
+        }
+
+
+        // ========================================================
+        // NORMAL AUDIO FILE
+        // ========================================================
+
+        else if(
+            audioFile instanceof
+            Blob
+        ){
+
+            const uploadedAudio =
+                await uploadBlobMedia(
+                    audioFile,
+                    "audio",
+                    "audio.m4a"
+                );
+
+
+            if(
+                uploadedAudio
+            ){
+
+                mediaResult.audio_url =
+                    uploadedAudio.url;
+
+                mediaResult.audio_storage_path =
+                    uploadedAudio.path;
+
+            }
+
+        }
+
+
+        // ========================================================
+        // CONTENT URI
+        // ========================================================
+        //
+        // Native AudioActivity currently may provide:
+        //
+        // content://...
+        //
+        // We first try to convert it to a Blob.
+        //
+        // ========================================================
+
+        else if(
+            typeof audioFile ===
+            "string" &&
+            audioFile.startsWith(
+                "content://"
+            )
+        ){
+
+            try{
+
+                console.log(
+                    "🎙 Converting native audio URI..."
+                );
+
+
+                const response =
+                    await fetch(
+                        audioFile
+                    );
+
+
+                if(
+                    !response.ok
+                ){
+
+                    throw new Error(
+                        "Native audio URI could not be fetched."
+                    );
+
+                }
+
+
+                const audioBlob =
+                    await response.blob();
+
+
+                const uploadedAudio =
+                    await uploadBlobMedia(
+                        audioBlob,
+                        "audio",
+                        "audio.m4a"
+                    );
+
+
+                if(
+                    uploadedAudio
+                ){
+
+                    mediaResult.audio_url =
+                        uploadedAudio.url;
+
+                    mediaResult.audio_storage_path =
+                        uploadedAudio.path;
+
+                }
+
+            }
+            catch(audioError){
+
+                console.error(
+                    "❌ Native audio Storage conversion failed:",
+                    audioError
+                );
+
+
+                throw new Error(
+                    "Unable to read the recorded audio for Firebase Storage."
+                );
+
+            }
+
+        }
+
+
+        // ========================================================
+        // MEDIA STATUS
+        // ========================================================
+
+        const mediaCount =
+
+            (
+                mediaResult.photo_url
+                    ? 1
+                    : 0
+            ) +
+
+            (
+                mediaResult.video_url
+                    ? 1
+                    : 0
+            ) +
+
+            (
+                mediaResult.audio_url
+                    ? 1
+                    : 0
+            );
+
+
+        mediaResult.media_status =
+            mediaCount > 0
+                ? "COMPLETE"
+                : "NONE";
+
+
+        console.log(
+            "📦 SIGHTING STORAGE RESULT:",
+            mediaResult
+        );
+
+
+        return mediaResult;
+
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Sighting media upload failed:",
+            error
+        );
+
+
+        throw error;
+
+    }
+
+}
+
+
+// ============================================================
+// 🔥 UPDATE EXISTING FIRESTORE SIGHTING WITH MEDIA URLS
+// ============================================================
+
+async function updateSightingMediaInFirestore(
+    observationType,
+    firestoreId,
+    mediaResult
+){
+
+    if(
+        !window.db ||
+        !window.fb
+    ){
+
+        throw new Error(
+            "Firebase is not initialized."
+        );
+
+    }
+
+
+    const type =
+        String(
+            observationType ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    const collectionName =
+        type === "WILDLIFE"
+            ? "wildlife_sightings"
+            : "elephant_sightings";
+
+
+    const sightingRef =
+        window.fb.doc(
+            window.db,
+            collectionName,
+            firestoreId
+        );
+
+
+    await window.fb.updateDoc(
+        sightingRef,
+        {
+
+            photo_url:
+                mediaResult.photo_url ||
+                "",
+
+            video_url:
+                mediaResult.video_url ||
+                "",
+
+            audio_url:
+                mediaResult.audio_url ||
+                "",
+
+            photo_storage_path:
+                mediaResult.photo_storage_path ||
+                "",
+
+            video_storage_path:
+                mediaResult.video_storage_path ||
+                "",
+
+            audio_storage_path:
+                mediaResult.audio_storage_path ||
+                "",
+
+            media_status:
+                mediaResult.media_status ||
+                "NONE",
+
+            media_updated_at:
+                window.fb.serverTimestamp()
+
+        }
+    );
+
+
+    console.log(
+        "✅ Firestore media fields updated:",
+        {
+            collection:
+                collectionName,
+
+            firestoreId:
+                firestoreId,
+
+            mediaResult:
+                mediaResult
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// 🔥 REMOVE OLD BASE64 MEDIA BEFORE FIRESTORE WRITE
+// ============================================================
+//
+// IMPORTANT:
+// Firestore must NOT receive large photo/video/audio data.
+//
+// Storage receives the actual files.
+// Firestore receives URLs only after Storage upload.
+//
+// ============================================================
+
+function createFirestoreSafeSightingPayload(
+    payload
+){
+
+    return {
+
+        ...payload,
+
+        photo:
+            "",
+
+        video:
+            "",
+
+        audio:
+            "",
+
+        photo_url:
+            "",
+
+        video_url:
+            "",
+
+        audio_url:
+            "",
+
+        photo_storage_path:
+            "",
+
+        video_storage_path:
+            "",
+
+        audio_storage_path:
+            "",
+
+        media_status:
+            "PENDING"
+
+    };
+
+}
 
     // =====================================================
     // SUBMIT
     // =====================================================
 
-    async function submitToServer(
+async function submitToServer(
+  finalPayload
+){
+
+  // ===================================================
+  // OFFLINE
+  // ===================================================
+
+  if(
+    !navigator.onLine
+  ){
+
+    saveSightingOffline(
       finalPayload
+    );
+
+
+    alert(
+      "📴 Saved offline. Will sync automatically."
+    );
+
+
+    setSubmitLoading(
+      false
+    );
+
+
+    return;
+
+  }
+
+
+  // ===================================================
+  // FIRESTORE + STORAGE
+  // ===================================================
+
+  try{
+
+    // =================================================
+    // NEW SIGHTING
+    // =================================================
+
+    if(
+      !window.isEditingSighting
     ){
 
-      // ===================================================
-      // OFFLINE
-      // ===================================================
+      // =================================================
+      // FIND FIRESTORE SAVE FUNCTION
+      // =================================================
+
+      const firestoreSaveFunction =
+
+        typeof
+        window.saveSightingToFirestore ===
+        "function"
+
+          ? window.saveSightingToFirestore
+
+          : typeof
+            saveSightingToFirestore ===
+            "function"
+
+              ? saveSightingToFirestore
+
+              : null;
+
+
+      // =================================================
+      // VALIDATE FIRESTORE FUNCTION
+      // =================================================
 
       if(
-        !navigator.onLine
+        !firestoreSaveFunction
       ){
 
-        saveSightingOffline(
+        throw new Error(
+          "saveSightingToFirestore() is not available"
+        );
+
+      }
+
+
+      // =================================================
+      // FIRESTORE SAFE PAYLOAD
+      // =================================================
+      //
+      // IMPORTANT:
+      //
+      // Firestore receives metadata only.
+      //
+      // Large photo/video/audio data is NOT written
+      // into Firestore.
+      //
+      // =================================================
+
+      const firestorePayload =
+        createFirestoreSafeSightingPayload(
           finalPayload
         );
 
 
-        alert(
-          "📴 Saved offline. Will sync automatically."
+      // =================================================
+      // FIRESTORE FIRST
+      // =================================================
+
+      const firestoreResult =
+        await firestoreSaveFunction(
+          firestorePayload
         );
 
 
-        setSubmitLoading(
-          false
+      // =================================================
+      // VALIDATE FIRESTORE RESULT
+      // =================================================
+
+      if(
+        !firestoreResult ||
+        !firestoreResult.sightingId
+      ){
+
+        throw new Error(
+          "Firestore returned no sighting ID"
         );
-
-
-        return;
 
       }
 
 
-      // ===================================================
-      // FIRESTORE FIRST
-      // ===================================================
+      // =================================================
+      // RESTORE IDENTIFIERS INTO ORIGINAL PAYLOAD
+      // =================================================
 
-      try{
-
-        if(
-          !window.isEditingSighting
-        ){
-
-          const firestoreSaveFunction =
-
-            typeof
-            window.saveSightingToFirestore ===
-            "function"
-
-              ? window.saveSightingToFirestore
-
-              : typeof
-                saveSightingToFirestore ===
-                "function"
-
-                ? saveSightingToFirestore
-
-                : null;
+      finalPayload.sighting_id =
+        firestoreResult.sightingId;
 
 
-          if(
-            !firestoreSaveFunction
-          ){
-
-            throw new Error(
-              "saveSightingToFirestore() is not available"
-            );
-
-          }
+      finalPayload.firestore_id =
+        firestoreResult.firestoreId ||
+        firestoreResult.sightingId;
 
 
-          const firestoreResult =
-            await firestoreSaveFunction(
-              finalPayload
-            );
+      finalPayload.financial_year =
+        firestoreResult.financialYear ||
+        "";
 
 
-          if(
-            !firestoreResult ||
-            !firestoreResult.sightingId
-          ){
-
-            throw new Error(
-              "Firestore returned no sighting ID"
-            );
-
-          }
+      finalPayload.division_code =
+        firestoreResult.divisionCode ||
+        "";
 
 
-          finalPayload.sighting_id =
-            firestoreResult.sightingId;
+      finalPayload.range_code =
+        firestoreResult.rangeCode ||
+        "";
 
 
-          finalPayload.firestore_id =
-            firestoreResult.firestoreId ||
-            firestoreResult.sightingId;
+      finalPayload.range_sighting_no =
+        firestoreResult.rangeCount ??
+        null;
 
 
-          finalPayload.financial_year =
-            firestoreResult.financialYear ||
-            "";
+      finalPayload.division_sighting_no =
+        firestoreResult.divisionCount ??
+        null;
 
 
-          finalPayload.division_code =
-            firestoreResult.divisionCode ||
-            "";
+      sightingID =
+        firestoreResult.sightingId;
 
 
-          finalPayload.range_code =
-            firestoreResult.rangeCode ||
-            "";
+      // =================================================
+      // FIREBASE STORAGE
+      // =================================================
+      //
+      // Actual media is uploaded to Firebase Storage.
+      //
+      // =================================================
+
+      console.log(
+        "📦 Starting sighting media Storage upload..."
+      );
 
 
-          finalPayload.range_sighting_no =
-            firestoreResult.rangeCount ??
-            null;
+      const mediaResult =
+        await uploadSightingMediaToStorage(
+          observationType,
+          finalPayload
+        );
 
 
-          finalPayload.division_sighting_no =
-            firestoreResult.divisionCount ??
-            null;
+      // =================================================
+      // UPDATE SAME FIRESTORE DOCUMENT
+      // =================================================
+      //
+      // Storage URLs are written back to the exact
+      // Firestore document created above.
+      //
+      // =================================================
+
+      await updateSightingMediaInFirestore(
+
+        observationType,
+
+        firestoreResult.firestoreId ||
+          firestoreResult.sightingId,
+
+        mediaResult
+
+      );
 
 
-          sightingID =
-            firestoreResult.sightingId;
+      // =================================================
+      // ADD MEDIA INFORMATION TO ORIGINAL PAYLOAD
+      // =================================================
 
+      finalPayload.photo_url =
+        mediaResult.photo_url ||
+        "";
+
+
+      finalPayload.video_url =
+        mediaResult.video_url ||
+        "";
+
+
+      finalPayload.audio_url =
+        mediaResult.audio_url ||
+        "";
+
+
+      finalPayload.photo_storage_path =
+        mediaResult.photo_storage_path ||
+        "";
+
+
+      finalPayload.video_storage_path =
+        mediaResult.video_storage_path ||
+        "";
+
+
+      finalPayload.audio_storage_path =
+        mediaResult.audio_storage_path ||
+        "";
+
+
+      finalPayload.media_status =
+        mediaResult.media_status ||
+        "NONE";
+
+
+      // =================================================
+      // DEBUG
+      // =================================================
+
+      console.log(
+        "✅ Firestore + Storage completed:",
+        {
+          sightingId:
+            finalPayload.sighting_id,
+
+          firestoreId:
+            finalPayload.firestore_id,
+
+          photo:
+            !!finalPayload.photo_url,
+
+          video:
+            !!finalPayload.video_url,
+
+          audio:
+            !!finalPayload.audio_url,
+
+          mediaStatus:
+            finalPayload.media_status
         }
-        else{
+      );
 
-          finalPayload.sighting_id =
-            sightingID;
+    }
 
-        }
+
+    // =================================================
+    // EDITING EXISTING SIGHTING
+    // =================================================
+    //
+    // IMPORTANT:
+    //
+    // Existing editing behavior is preserved.
+    //
+    // We do NOT create a new Firestore counter/ID
+    // when editing.
+    //
+    // =================================================
+
+    else{
+
+      finalPayload.sighting_id =
+        sightingID;
+
+
+      // =================================================
+      // IF EDITING HAS AN EXISTING FIRESTORE ID,
+      // WE CAN STILL UPLOAD NEW MEDIA.
+      // =================================================
+
+      if(
+        finalPayload.firestore_id ||
+        finalPayload.sighting_id
+      ){
+
+        console.log(
+          "✏️ Existing sighting edit detected."
+        );
 
 
         // =================================================
-        // EXISTING BACKEND
+        // STORAGE MEDIA
         // =================================================
 
-        try{
-
-          const backendMethod = observationType === "WILDLIFE" ? "saveWildlifeSighting" : "saveElephantSighting";
-
-          if(typeof callBackend === "function"){
-            await callBackend(
-              backendMethod,
-              finalPayload
-            );
-          }
-
-
-          alert(
-            "✅ Submitted to Command Centre"
-          );
-
-
-          setSubmitLoading(
-            false
-          );
-
-
-          if(
-            window.isEditingSighting
-          ){
-
-            window.currentSightingId =
-              sightingID;
-
-          }
-          else{
-
-            window.currentSightingId =
-              null;
-
-          }
-
-
-          window.isEditingSighting =
-            false;
-
-
-          if(
-            observationType === "WILDLIFE" &&
-            typeof closeWildlifeForm === "function"
-          ){
-            closeWildlifeForm();
-          }
-          else if(
-            typeof closeSightingForm ===
-            "function"
-          ){
-
-            closeSightingForm();
-
-          }
-
-
-          const form =
-            document.getElementById(
-              observationType === "WILDLIFE" ? "wildlifeForm" : "elephantForm"
-            );
-
-
-          if(form){
-
-            form.reset();
-
-          }
-
-        }
-        catch(backendErr){
-
-          console.error(
-            "❌ Background backend failed:",
-            backendErr
-          );
-
-
-          saveSightingOffline(
+        const mediaResult =
+          await uploadSightingMediaToStorage(
+            observationType,
             finalPayload
           );
 
 
-          alert(
-            "✅ Sighting saved. Background sync pending."
+        // =================================================
+        // ONLY UPDATE FIRESTORE MEDIA IF MEDIA EXISTS
+        // =================================================
+
+        if(
+          mediaResult &&
+          mediaResult.media_status !==
+          "NONE"
+        ){
+
+          await updateSightingMediaInFirestore(
+
+            observationType,
+
+            finalPayload.firestore_id ||
+              finalPayload.sighting_id,
+
+            mediaResult
+
           );
 
 
-          setSubmitLoading(
-            false
-          );
+          // =============================================
+          // ADD MEDIA URLS TO BACKEND PAYLOAD
+          // =============================================
+
+          finalPayload.photo_url =
+            mediaResult.photo_url ||
+            "";
+
+
+          finalPayload.video_url =
+            mediaResult.video_url ||
+            "";
+
+
+          finalPayload.audio_url =
+            mediaResult.audio_url ||
+            "";
+
+
+          finalPayload.photo_storage_path =
+            mediaResult.photo_storage_path ||
+            "";
+
+
+          finalPayload.video_storage_path =
+            mediaResult.video_storage_path ||
+            "";
+
+
+          finalPayload.audio_storage_path =
+            mediaResult.audio_storage_path ||
+            "";
+
+
+          finalPayload.media_status =
+            mediaResult.media_status ||
+            "NONE";
 
         }
 
       }
-      catch(firestoreErr){
 
-        console.error(
-          "❌ Firestore sighting save failed:",
-          firestoreErr
+    }
+
+
+    // =================================================
+    // EXISTING BACKEND
+    // =================================================
+    //
+    // DO NOT REMOVE.
+    //
+    // Existing backend remains responsible for the
+    // existing Command Centre / Apps Script workflow.
+    //
+    // =================================================
+
+    try{
+
+      const backendMethod =
+        observationType === "WILDLIFE"
+          ? "saveWildlifeSighting"
+          : "saveElephantSighting";
+
+
+      if(
+        typeof callBackend ===
+        "function"
+      ){
+
+        await callBackend(
+          backendMethod,
+          finalPayload
+        );
+
+      }
+
+
+      // =================================================
+      // SUCCESS
+      // =================================================
+
+      alert(
+        "✅ Submitted to Command Centre"
+      );
+
+
+      setSubmitLoading(
+        false
+      );
+
+
+      // =================================================
+      // CURRENT SIGHTING ID
+      // =================================================
+
+      if(
+        window.isEditingSighting
+      ){
+
+        window.currentSightingId =
+          sightingID;
+
+      }
+      else{
+
+        window.currentSightingId =
+          null;
+
+      }
+
+
+      // =================================================
+      // EXIT EDIT MODE
+      // =================================================
+
+      window.isEditingSighting =
+        false;
+
+
+      // =================================================
+      // CLOSE FORM
+      // =================================================
+
+      if(
+        observationType === "WILDLIFE" &&
+        typeof closeWildlifeForm ===
+        "function"
+      ){
+
+        closeWildlifeForm();
+
+      }
+
+      else if(
+        typeof closeSightingForm ===
+        "function"
+      ){
+
+        closeSightingForm();
+
+      }
+
+
+      // =================================================
+      // RESET FORM
+      // =================================================
+
+      const form =
+        document.getElementById(
+          observationType === "WILDLIFE"
+            ? "wildlifeForm"
+            : "elephantForm"
         );
 
 
-        alert(
-          "❌ Sighting submission failed.\n" +
-          "Please try again."
-        );
+      if(
+        form
+      ){
 
-
-        setSubmitLoading(
-          false
-        );
+        form.reset();
 
       }
 
     }
 
 
-    // =====================================================
-    // PHOTO
-    // =====================================================
+    // =================================================
+    // BACKEND FAILURE
+    // =================================================
 
-    if(file){
+    catch(
+      backendErr
+    ){
 
-      const reader =
-        new FileReader();
-
-
-      reader.onloadend =
-      function(){
-
-        payload.photo =
-          reader.result;
-
-
-        submitToServer(
-          payload
-        );
-
-      };
-
-
-      reader.onerror =
-      function(err){
-
-        console.error(
-          "❌ Photo read failed:",
-          err
-        );
-
-
-        payload.photo =
-          "";
-
-
-        submitToServer(
-          payload
-        );
-
-      };
-
-
-      reader.readAsDataURL(
-        file
+      console.error(
+        "❌ Background backend failed:",
+        backendErr
       );
 
-    }
-    else{
 
-      payload.photo =
-        "";
+      // =================================================
+      // FIRESTORE + STORAGE HAVE ALREADY SUCCEEDED.
+      //
+      // Keep the complete payload for background sync.
+      // =================================================
+
+      saveSightingOffline(
+        finalPayload
+      );
 
 
-      submitToServer(
-        payload
+      alert(
+        "✅ Sighting saved. Background sync pending."
+      );
+
+
+      setSubmitLoading(
+        false
       );
 
     }
 
   }
-  catch(e){
+
+
+  // ===================================================
+  // FIRESTORE / STORAGE FAILURE
+  // ===================================================
+
+  catch(
+    firestoreErr
+  ){
 
     console.error(
-      "❌ Crash:",
-      e
+      "❌ Firestore / Storage sighting save failed:",
+      firestoreErr
     );
 
 
     alert(
-      "❌ Form error: " +
-      e.message
+      "❌ Sighting submission failed.\n" +
+      "Please try again."
     );
 
 
@@ -74426,41 +75667,202 @@ setSubmitLoading(false);
 
 }
 
-    async function saveWildlifePayload(payload){
+// ============================================================
+// 🐾 SAVE WILDLIFE PAYLOAD
+// ============================================================
 
-    const firestoreResult =
+async function saveWildlifePayload(
+    payload
+){
 
-        await saveSightingToFirestore(payload);
+    try{
 
-    payload.sighting_id =
-        firestoreResult.sightingId;
+        // ====================================================
+        // FIRESTORE SAFE PAYLOAD
+        // ====================================================
 
-    payload.firestore_id =
-        firestoreResult.firestoreId;
+        const firestorePayload =
+            createFirestoreSafeSightingPayload(
+                payload
+            );
 
-    payload.financial_year =
-        firestoreResult.financialYear;
 
-    payload.range_sighting_no =
-        firestoreResult.rangeCount;
+        // ====================================================
+        // FIRESTORE
+        // ====================================================
 
-    payload.division_sighting_no =
-        firestoreResult.divisionCount;
+        const firestoreResult =
+            await saveSightingToFirestore(
+                firestorePayload
+            );
 
-    await callBackend(
-        "saveWildlifeSighting",
-        payload
-    );
 
-    setSubmitLoading(false);
+        if(
+            !firestoreResult ||
+            !firestoreResult.sightingId
+        ){
 
-    closeWildlifeForm();
+            throw new Error(
+                "Firestore returned no wildlife sighting ID."
+            );
 
-    document
-        .getElementById("wildlifeForm")
-        .reset();
+        }
 
-    alert("✅ Wildlife sighting submitted.");
+
+        // ====================================================
+        // IDENTIFIERS
+        // ====================================================
+
+        payload.sighting_id =
+            firestoreResult.sightingId;
+
+
+        payload.firestore_id =
+            firestoreResult.firestoreId ||
+            firestoreResult.sightingId;
+
+
+        payload.financial_year =
+            firestoreResult.financialYear ||
+            "";
+
+
+        payload.range_sighting_no =
+            firestoreResult.rangeCount ??
+            null;
+
+
+        payload.division_sighting_no =
+            firestoreResult.divisionCount ??
+            null;
+
+
+        // ====================================================
+        // FIREBASE STORAGE
+        // ====================================================
+
+        console.log(
+            "📦 Uploading Wildlife media..."
+        );
+
+
+        const mediaResult =
+            await uploadSightingMediaToStorage(
+                "WILDLIFE",
+                payload
+            );
+
+
+        // ====================================================
+        // UPDATE SAME FIRESTORE DOCUMENT
+        // ====================================================
+
+        await updateSightingMediaInFirestore(
+
+            "WILDLIFE",
+
+            firestoreResult.firestoreId ||
+                firestoreResult.sightingId,
+
+            mediaResult
+
+        );
+
+
+        // ====================================================
+        // ADD MEDIA URLS TO BACKEND PAYLOAD
+        // ====================================================
+
+        payload.photo_url =
+            mediaResult.photo_url ||
+            "";
+
+
+        payload.video_url =
+            mediaResult.video_url ||
+            "";
+
+
+        payload.audio_url =
+            mediaResult.audio_url ||
+            "";
+
+
+        payload.photo_storage_path =
+            mediaResult.photo_storage_path ||
+            "";
+
+
+        payload.video_storage_path =
+            mediaResult.video_storage_path ||
+            "";
+
+
+        payload.audio_storage_path =
+            mediaResult.audio_storage_path ||
+            "";
+
+
+        payload.media_status =
+            mediaResult.media_status ||
+            "NONE";
+
+
+        // ====================================================
+        // EXISTING BACKEND
+        // ====================================================
+
+        await callBackend(
+            "saveWildlifeSighting",
+            payload
+        );
+
+
+        // ====================================================
+        // EXISTING SUCCESS FLOW
+        // ====================================================
+
+        setSubmitLoading(
+            false
+        );
+
+
+        closeWildlifeForm();
+
+
+        document
+            .getElementById(
+                "wildlifeForm"
+            )
+            .reset();
+
+
+        alert(
+            "✅ Wildlife sighting submitted."
+        );
+
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Wildlife submission failed:",
+            error
+        );
+
+
+        setSubmitLoading(
+            false
+        );
+
+
+        alert(
+            "❌ Wildlife sighting submission failed.\n\n" +
+            error.message
+        );
+
+    }
+
 }
           function updateWildlifeCompt(){
 
