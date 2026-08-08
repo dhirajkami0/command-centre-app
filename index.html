@@ -74395,14 +74395,35 @@ async function collectSightingMedia(
     // ========================================================
 
     const media =
-        window.sightingMedia[type];
+        window.sightingMedia?.[type];
 
 
-    if(!media){
+    // ========================================================
+    // NO MEDIA STATE
+    // ========================================================
 
-        throw new Error(
-            "Sighting media state is not available."
+    if(
+        !media
+    ){
+
+        console.warn(
+            "⚠️ No sighting media state found:",
+            type
         );
+
+
+        return {
+
+            photo:
+                null,
+
+            video:
+                null,
+
+            audio:
+                null
+
+        };
 
     }
 
@@ -74413,11 +74434,14 @@ async function collectSightingMedia(
 
     const result = {
 
-        photo: "",
+        photo:
+            null,
 
-        video: "",
+        video:
+            null,
 
-        audio: ""
+        audio:
+            null
 
     };
 
@@ -74425,30 +74449,46 @@ async function collectSightingMedia(
     // ========================================================
     // 📷 PHOTO
     // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // DO NOT convert Photo to Base64.
+    //
+    // Keep the original File object.
+    //
+    // Firebase Storage will receive the File directly.
+    //
+    // ========================================================
 
-    if(media.photo){
+    if(
+        media.photo
+    ){
 
-        try{
-
-            result.photo =
-                await readFileAsDataURL(
-                    media.photo
-                );
+        result.photo =
+            media.photo;
 
 
-        }
-        catch(error){
+        console.log(
+            "📷 Photo collected:",
+            {
 
-            console.error(
-                "❌ Failed to collect photo:",
-                error
-            );
+                type:
+                    type,
 
-            throw new Error(
-                "Unable to process the selected photo."
-            );
+                name:
+                    media.photo.name ||
+                    "",
 
-        }
+                size:
+                    media.photo.size ||
+                    0,
+
+                mime:
+                    media.photo.type ||
+                    ""
+
+            }
+        );
 
     }
 
@@ -74456,30 +74496,44 @@ async function collectSightingMedia(
     // ========================================================
     // 🎥 VIDEO
     // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // DO NOT convert Video to Base64.
+    //
+    // Keep the original File object.
+    //
+    // ========================================================
 
-    if(media.video){
+    if(
+        media.video
+    ){
 
-        try{
-
-            result.video =
-                await readFileAsDataURL(
-                    media.video
-                );
+        result.video =
+            media.video;
 
 
-        }
-        catch(error){
+        console.log(
+            "🎥 Video collected:",
+            {
 
-            console.error(
-                "❌ Failed to collect video:",
-                error
-            );
+                type:
+                    type,
 
-            throw new Error(
-                "Unable to process the selected video."
-            );
+                name:
+                    media.video.name ||
+                    "",
 
-        }
+                size:
+                    media.video.size ||
+                    0,
+
+                mime:
+                    media.video.type ||
+                    ""
+
+            }
+        );
 
     }
 
@@ -74487,101 +74541,118 @@ async function collectSightingMedia(
     // ========================================================
     // 🎙 AUDIO
     // ========================================================
+    //
+    // Audio may come from:
+    //
+    // 1. Native Android AudioActivity
+    //    content://...
+    //
+    // 2. Native Android object
+    //    { nativeUri: "content://..." }
+    //
+    // 3. Normal HTML file input
+    //    File
+    //
+    // DO NOT use FileReader for native Android URI.
+    //
+    // ========================================================
 
-    if(media.audio){
+    if(
+        media.audio
+    ){
 
-        try{
+        // ====================================================
+        // NATIVE ANDROID URI
+        // ====================================================
 
-            // ------------------------------------------------
-            // NATIVE ANDROID AUDIO
-            // ------------------------------------------------
-            //
-            // AudioActivity returns a FileProvider URI:
-            //
-            // content://com.commandcentre.app.provider/...
-            //
-            // recordAudio() stores this URI directly in:
-            //
-            // window.sightingMedia[type].audio
-            //
-            // Therefore a native URI is already a STRING.
-            //
-            // Do NOT pass it to FileReader.
-            // ------------------------------------------------
+        if(
+            typeof media.audio ===
+            "string"
+        ){
 
-            if(
-                typeof media.audio === "string"
-            ){
-
-                result.audio =
-                    media.audio;
-
-
-                console.log(
-                    "🎙 Native Android audio collected:",
-                    result.audio
-                );
-
-            }
-
-            // ------------------------------------------------
-            // LEGACY / OBJECT NATIVE AUDIO
-            // ------------------------------------------------
-            //
-            // Keep compatibility in case another existing
-            // part of the application stores:
-            //
-            // {
-            //     nativeUri: "content://..."
-            // }
-            // ------------------------------------------------
-
-            else if(
-                typeof media.audio === "object" &&
-                media.audio !== null &&
-                media.audio.nativeUri
-            ){
-
-                result.audio =
-                    media.audio.nativeUri;
+            result.audio =
+                media.audio;
 
 
-                console.log(
-                    "🎙 Native Android audio object collected:",
-                    result.audio
-                );
+            console.log(
+                "🎙 Native Android audio collected:",
+                {
 
-            }
+                    type:
+                        type,
 
-            // ------------------------------------------------
-            // NORMAL HTML AUDIO FILE
-            // ------------------------------------------------
+                    uri:
+                        result.audio
 
-            else{
-
-                result.audio =
-                    await readFileAsDataURL(
-                        media.audio
-                    );
-
-
-                console.log(
-                    "🎙 File-input audio collected"
-                );
-
-            }
-
-
-        }
-        catch(error){
-
-            console.error(
-                "❌ Failed to collect audio:",
-                error
+                }
             );
 
-            throw new Error(
-                "Unable to process the audio recording."
+        }
+
+
+        // ====================================================
+        // NATIVE ANDROID OBJECT
+        // ====================================================
+
+        else if(
+            typeof media.audio ===
+                "object" &&
+
+            media.audio !== null &&
+
+            media.audio.nativeUri
+        ){
+
+            result.audio =
+                media.audio.nativeUri;
+
+
+            console.log(
+                "🎙 Native Android audio object collected:",
+                {
+
+                    type:
+                        type,
+
+                    uri:
+                        result.audio
+
+                }
+            );
+
+        }
+
+
+        // ====================================================
+        // NORMAL HTML AUDIO FILE
+        // ====================================================
+
+        else{
+
+            result.audio =
+                media.audio;
+
+
+            console.log(
+                "🎙 HTML audio File collected:",
+                {
+
+                    type:
+                        type,
+
+                    name:
+                        media.audio.name ||
+                        "",
+
+                    size:
+                        media.audio.size ||
+                        0,
+
+                    mime:
+                        media.audio.type ||
+                        ""
+
+                }
             );
 
         }
@@ -74592,6 +74663,42 @@ async function collectSightingMedia(
     // ========================================================
     // DEBUG
     // ========================================================
+
+    let audioSource =
+        "NONE";
+
+
+    if(
+        typeof media.audio ===
+        "string"
+    ){
+
+        audioSource =
+            "NATIVE_ANDROID";
+
+    }
+    else if(
+        typeof media.audio ===
+            "object" &&
+
+        media.audio !== null &&
+
+        media.audio.nativeUri
+    ){
+
+        audioSource =
+            "NATIVE_ANDROID_OBJECT";
+
+    }
+    else if(
+        media.audio
+    ){
+
+        audioSource =
+            "FILE_INPUT";
+
+    }
+
 
     console.log(
         "📦 SIGHTING MEDIA COLLECTED",
@@ -74610,29 +74717,7 @@ async function collectSightingMedia(
                 !!result.audio,
 
             audioSource:
-
-                media.audio &&
-                typeof media.audio === "string"
-
-                    ? "NATIVE_ANDROID"
-
-                    : (
-
-                        media.audio &&
-                        typeof media.audio === "object" &&
-                        media.audio.nativeUri
-
-                            ? "NATIVE_ANDROID_OBJECT"
-
-                            : (
-
-                                media.audio
-                                    ? "FILE_INPUT"
-                                    : "NONE"
-
-                            )
-
-                    )
+                audioSource
 
         }
     );
@@ -75260,10 +75345,15 @@ async function submitWildlifeForm(){
 
     try{
 
-setSubmitLoading(true);
+        // =================================================
+        // 🔄 SUBMIT LOADING
+        // =================================================
 
-              // =================================================
-        // ALLOW WEBVIEW TO PAINT "SUBMITTING..."
+        setSubmitLoading(true);
+
+
+        // =================================================
+        // ⏳ ALLOW WEBVIEW TO PAINT "SUBMITTING..."
         // BEFORE HEAVY GPS / GIS / PAYLOAD WORK
         // =================================================
 
@@ -75277,588 +75367,698 @@ setSubmitLoading(true);
 
         });
 
+
         // =================================================
-        // OBSERVATION TYPE
+        // 🐾 OBSERVATION TYPE
         // =================================================
 
         window.currentObservationType =
-
             "WILDLIFE";
 
-// =================================================
-// GPS
-// =================================================
 
-let gps =
+        // =================================================
+        // 📍 GPS
+        // =================================================
 
-    window.latestGps;
+        let gps =
+            window.latestGps;
 
-let lat =
 
-    Number(
-
-        gps?.lat ??
-
-        gps?.latitude ??
-
-        0
-
-    );
-
-let lon =
-
-    Number(
-
-        gps?.lng ??
-
-        gps?.lon ??
-
-        gps?.longitude ??
-
-        0
-
-    );
-
-// =================================================
-// GET LIVE GPS IF CACHE EMPTY
-// =================================================
-
-if(
-
-    !Number.isFinite(lat) ||
-
-    !Number.isFinite(lon) ||
-
-    lat === 0 ||
-
-    lon === 0
-
-){
-
-    try{
-
-        const position =
-
-            await new Promise(
-
-                (resolve,reject)=>{
-
-                    navigator.geolocation.getCurrentPosition(
-
-                        resolve,
-
-                        reject,
-
-                        {
-
-                            enableHighAccuracy:true,
-
-                            timeout:10000,
-
-                            maximumAge:0
-
-                        }
-
-                    );
-
-                }
-
+        let lat =
+            Number(
+                gps?.lat ??
+                gps?.latitude ??
+                0
             );
 
-        lat =
 
-            position.coords.latitude;
+        let lon =
+            Number(
+                gps?.lng ??
+                gps?.lon ??
+                gps?.longitude ??
+                0
+            );
 
-        lon =
-
-            position.coords.longitude;
-
-        window.latestGps = {
-
-            lat,
-
-            lng:lon,
-
-            accuracy:
-
-                position.coords.accuracy,
-
-            speed:
-
-                position.coords.speed,
-
-            heading:
-
-                position.coords.heading,
-
-            timestamp:
-
-                Date.now()
-
-        };
-
-    }
-
-    catch(err){
-
-        throw new Error(
-
-            "GPS location not available."
-
-        );
-
-    }
-
-}
-// =================================================
-// GIS RESOLUTION
-// =================================================
-
-const gis =
-
-    window.resolveCurrentGIS
-        ? window.resolveCurrentGIS(
-            lat,
-            lon
-        )
-        : null;
-
-if(
-
-    !gis
-
-){
-
-    throw new Error(
-
-        "Unable to resolve GIS location."
-
-    );
-
-}
-
-// =================================================
-// FALLBACK VALUES
-// =================================================
-
-gis.division =
-
-    gis.division ||
-
-    "";
-
-gis.range =
-
-    gis.range ||
-
-    "";
-
-gis.beat =
-
-    gis.beat ||
-
-    "";
-
-gis.compartment =
-
-    gis.compartment ||
-
-    "";
-
-gis.text =
-
-    gis.text ||
-
-    "";
-
-gis.village =
-
-    gis.village ||
-
-    "";
-
-gis.villageCode =
-
-    gis.villageCode ||
-
-    "";
-
-gis.nearestVillage =
-
-    gis.nearestVillage ||
-
-    "";
-
-gis.nearestPoint =
-
-    gis.nearestPoint ||
-
-    "";
-
-gis.distanceMeters =
-
-    gis.distanceMeters ??
-
-    null;
 
         // =================================================
-        // ANIMAL
+        // 📍 GET LIVE GPS IF CACHE EMPTY
         // =================================================
-
-        let animal =
-
-            document
-                .getElementById(
-                    "w-animal"
-                )
-                .value;
 
         if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon) ||
+            lat === 0 ||
+            lon === 0
+        ){
 
+            try{
+
+                const position =
+                    await new Promise(
+                        (resolve, reject) => {
+
+                            navigator.geolocation
+                                .getCurrentPosition(
+
+                                    resolve,
+
+                                    reject,
+
+                                    {
+                                        enableHighAccuracy:
+                                            true,
+
+                                        timeout:
+                                            10000,
+
+                                        maximumAge:
+                                            0
+                                    }
+
+                                );
+
+                        }
+                    );
+
+
+                lat =
+                    position.coords.latitude;
+
+
+                lon =
+                    position.coords.longitude;
+
+
+                // =================================================
+                // 💾 UPDATE GPS CACHE
+                // =================================================
+
+                window.latestGps = {
+
+                    lat:
+                        lat,
+
+                    lng:
+                        lon,
+
+                    accuracy:
+                        position.coords.accuracy,
+
+                    speed:
+                        position.coords.speed,
+
+                    heading:
+                        position.coords.heading,
+
+                    timestamp:
+                        Date.now()
+
+                };
+
+            }
+            catch(err){
+
+                throw new Error(
+                    "GPS location not available."
+                );
+
+            }
+
+        }
+
+
+        // =================================================
+        // 🗺 GIS RESOLUTION
+        // =================================================
+
+        const gis =
+            window.resolveCurrentGIS
+                ? window.resolveCurrentGIS(
+                    lat,
+                    lon
+                )
+                : null;
+
+
+        if(
+            !gis
+        ){
+
+            throw new Error(
+                "Unable to resolve GIS location."
+            );
+
+        }
+
+
+        // =================================================
+        // 🛡 GIS FALLBACK VALUES
+        // =================================================
+
+        gis.division =
+            gis.division ||
+            "";
+
+
+        gis.range =
+            gis.range ||
+            "";
+
+
+        gis.beat =
+            gis.beat ||
+            "";
+
+
+        gis.compartment =
+            gis.compartment ||
+            "";
+
+
+        gis.text =
+            gis.text ||
+            "";
+
+
+        gis.village =
+            gis.village ||
+            "";
+
+
+        gis.villageCode =
+            gis.villageCode ||
+            "";
+
+
+        gis.nearestVillage =
+            gis.nearestVillage ||
+            "";
+
+
+        gis.nearestPoint =
+            gis.nearestPoint ||
+            "";
+
+
+        gis.distanceMeters =
+            gis.distanceMeters ??
+            null;
+
+
+        // =================================================
+        // 🐾 ANIMAL
+        // =================================================
+
+        const animalElement =
+            document.getElementById(
+                "w-animal"
+            );
+
+
+        let animal =
+            animalElement?.value ||
+            "";
+
+
+        if(
             animal ===
-
             "Other"
-
         ){
 
             animal =
-
                 document
                     .getElementById(
                         "w-otherAnimal"
                     )
-                    .value
-                    .trim();
+                    ?.value
+                    ?.trim() ||
+                "Other Wildlife";
 
         }
 
+
         // =================================================
-        // PAYLOAD
+        // 📦 PAYLOAD
         // =================================================
 
         const payload = {
 
-            //------------------------------------------------
+            // ------------------------------------------------
             // OBSERVATION
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            observation_type :
-
+            observation_type:
                 "WILDLIFE",
 
-            animal :
 
+            animal:
                 animal,
 
-            count :
 
+            count:
                 Number(
-
                     document
                         .getElementById(
                             "w-count"
                         )
-                        .value
-
+                        ?.value ||
+                    0
                 ),
 
-            sex :
 
+            sex:
                 document
                     .getElementById(
                         "w-sex"
                     )
-                    .value,
+                    ?.value ||
+                "",
 
-            age :
 
+            age:
                 document
                     .getElementById(
                         "w-age"
                     )
-                    .value,
+                    ?.value ||
+                "",
 
-            behaviour :
 
+            behaviour:
                 document
                     .getElementById(
                         "w-behaviour"
                     )
-                    .value,
+                    ?.value ||
+                "",
 
-            direction :
 
+            direction:
                 document
                     .getElementById(
                         "w-dir"
                     )
-                    .value,
+                    ?.value ||
+                "",
 
-            remarks :
 
+            remarks:
                 document
                     .getElementById(
                         "w-remarks"
                     )
-                    .value,
+                    ?.value ||
+                "",
 
-            //------------------------------------------------
+
+            // ------------------------------------------------
             // FLAGS
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            injured :
-
-                document
+            injured:
+                !!document
                     .getElementById(
                         "w-injured"
                     )
-                    .checked,
+                    ?.checked,
 
-            dead :
 
-                document
+            dead:
+                !!document
                     .getElementById(
                         "w-dead"
                     )
-                    .checked,
+                    ?.checked,
 
-            conflict :
 
-                document
+            conflict:
+                !!document
                     .getElementById(
                         "w-conflict"
                     )
-                    .checked,
+                    ?.checked,
 
-            rescue :
 
-                document
+            rescue:
+                !!document
                     .getElementById(
                         "w-rescue"
                     )
-                    .checked,
+                    ?.checked,
 
-            vet :
 
-                document
+            vet:
+                !!document
                     .getElementById(
                         "w-vet"
                     )
-                    .checked,
+                    ?.checked,
 
-            //------------------------------------------------
+
+            // ------------------------------------------------
             // STAFF
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            leader :
-
+            leader:
                 window.userProfile?.rawName ||
-
                 window.userProfile?.name ||
-
                 "",
 
-            phone :
 
+            phone:
                 window.userProfile?.phone ||
-
                 "",
 
-            designation :
 
+            designation:
                 window.userProfile?.designation ||
-
                 window.userProfile?.role ||
-
                 "",
 
-            staff :
 
+            staff:
                 window.userProfile?.cleanName ||
-
                 "",
 
-            //------------------------------------------------
+
+            // ------------------------------------------------
             // GPS
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            lat :
-
+            lat:
                 lat,
 
-            lon :
 
+            lon:
                 lon,
 
-            location :
 
-                lat + "," + lon,
+            location:
+                lat +
+                "," +
+                lon,
 
-            //------------------------------------------------
+
+            // ------------------------------------------------
             // GIS
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            gis_division :
-
+            gis_division:
                 gis.division,
 
-            gis_range :
 
+            gis_range:
                 gis.range,
 
-            gis_beat :
 
+            gis_beat:
                 gis.beat,
 
-            gis_compartment :
 
+            gis_compartment:
                 gis.compartment,
 
-            resolved_location :
 
+            resolved_location:
                 gis.text,
 
-forest_block :
 
-    gis.compartmentResult?.forestBlock ||
+            forest_block:
+                gis.compartmentResult?.forestBlock ||
+                gis.compartmentResult?.forest_block ||
+                gis.compartmentResult?.block ||
+                gis.compartmentResult?.feature
+                    ?.properties
+                    ?.forest_block ||
+                gis.compartmentResult?.feature
+                    ?.properties
+                    ?.block ||
+                "",
 
-    gis.compartmentResult?.forest_block ||
 
-    gis.compartmentResult?.block ||
-
-    gis.compartmentResult?.feature?.properties?.forest_block ||
-
-    gis.compartmentResult?.feature?.properties?.block ||
-
-    "",
-
-            //------------------------------------------------
+            // ------------------------------------------------
             // VILLAGE
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            village :
-
+            village:
                 gis.village,
 
-            village_code :
 
+            village_code:
                 gis.villageCode,
 
-            village_lgd :
 
+            village_lgd:
                 gis.villageCode,
 
-            //------------------------------------------------
+
+            // ------------------------------------------------
             // NEAREST
-            //------------------------------------------------
+            // ------------------------------------------------
 
-            nearest_location :
-
+            nearest_location:
                 gis.nearestPoint,
 
-            nearest_village :
 
+            nearest_village:
                 gis.nearestVillage,
 
-            nearest_location_distance_m :
 
+            nearest_location_distance_m:
                 gis.distanceMeters,
 
-            nearest_village_distance_m :
 
+            nearest_village_distance_m:
                 gis.distanceMeters
 
         };
 
+
         // =================================================
-        // PHOTO
+        // 🎥📷🎙 MEDIA
+        // =================================================
+        //
+        // IMPORTANT:
+        //
+        // NO FileReader
+        // NO Base64
+        // NO readAsDataURL
+        // NO saveWildlifePayload
+        //
+        // Keep the ORIGINAL media objects.
+        //
+        // This preserves:
+        //
+        // Photo  → File
+        // Video  → File
+        // Audio  → native Android URI / File
+        //
+        // submitToServer() is the single submission owner.
         // =================================================
 
-        const file =
+        const wildlifeMedia =
+            window.sightingMedia?.wildlife;
 
-            document
-                .getElementById(
-                    "w-photo"
-                )
-                .files[0];
 
         if(
-
-            file
-
+            wildlifeMedia
         ){
 
-            const reader =
+            // ------------------------------------------------
+            // PHOTO
+            // ------------------------------------------------
 
-                new FileReader();
+            if(
+                wildlifeMedia.photo
+            ){
 
-            reader.onloadend =
+                payload.photo =
+                    wildlifeMedia.photo;
 
-                async function(){
+            }
 
-                    payload.photo =
 
-                        reader.result;
+            // ------------------------------------------------
+            // VIDEO
+            // ------------------------------------------------
 
-                    await saveWildlifePayload(
+            if(
+                wildlifeMedia.video
+            ){
 
-                        payload
+                payload.video =
+                    wildlifeMedia.video;
 
-                    );
+            }
 
-                };
 
-            reader.onerror =
+            // ------------------------------------------------
+            // AUDIO
+            // ------------------------------------------------
 
-                function(){
+            if(
+                wildlifeMedia.audio
+            ){
 
-                    payload.photo = "";
+                payload.audio =
+                    wildlifeMedia.audio;
 
-                    saveWildlifePayload(
+            }
 
-                        payload
+        }
 
-                    );
 
-                };
+        // =================================================
+        // 📷 NORMAL HTML PHOTO INPUT FALLBACK
+        // =================================================
+        //
+        // If the photo was selected through:
+        //
+        // <input id="w-photo">
+        //
+        // and it has not already entered
+        // window.sightingMedia.wildlife,
+        // preserve that File directly.
+        //
+        // DO NOT convert it to Base64.
+        // =================================================
 
-            reader.readAsDataURL(
+        if(
+            !payload.photo
+        ){
 
-                file
+            const photoInput =
+                document.getElementById(
+                    "w-photo"
+                );
 
-            );
+
+            const photoFile =
+                photoInput
+                    ?.files
+                    ?.length
+                    ? photoInput.files[0]
+                    : null;
+
+
+            if(
+                photoFile
+            ){
+
+                payload.photo =
+                    photoFile;
+
+            }
 
         }
 
-        else{
 
-            payload.photo = "";
+        // =================================================
+        // 📦 ENSURE MEDIA STATE EXISTS
+        // =================================================
 
-            await saveWildlifePayload(
+        if(
+            window.sightingMedia?.wildlife
+        ){
 
-                payload
+            // Keep state synchronized with
+            // normal HTML photo input.
 
-            );
+            if(
+                payload.photo &&
+                !window.sightingMedia
+                    .wildlife
+                    .photo
+            ){
+
+                window.sightingMedia
+                    .wildlife
+                    .photo =
+                        payload.photo;
+
+            }
 
         }
+
+
+        // =================================================
+        // 🧪 MEDIA DEBUG
+        // =================================================
+
+        console.log(
+            "📦 WILDLIFE SUBMIT MEDIA:",
+            {
+
+                photo:
+                    !!payload.photo,
+
+                video:
+                    !!payload.video,
+
+                audio:
+                    !!payload.audio,
+
+                photoType:
+                    payload.photo
+                        ? typeof payload.photo
+                        : null,
+
+                videoType:
+                    payload.video
+                        ? typeof payload.video
+                        : null,
+
+                audioType:
+                    payload.audio
+                        ? typeof payload.audio
+                        : null
+
+            }
+        );
+
+
+        // =================================================
+        // 🚀 SINGLE SUBMISSION PIPELINE
+        // =================================================
+        //
+        // Wildlife now uses the same canonical pipeline:
+        //
+        // submitToServer()
+        //       ↓
+        // Firestore metadata
+        //       ↓
+        // Firebase Storage
+        //       ↓
+        // Update SAME Firestore document
+        //       ↓
+        // Existing Wildlife backend
+        //
+        // =================================================
+
+        await submitToServer(
+            payload
+        );
+
 
     }
-
     catch(err){
 
         console.error(
-
+            "❌ Wildlife submission failed:",
             err
-
         );
+
 
         alert(
-
-            err.message
-
+            err?.message ||
+            "Wildlife sighting submission failed."
         );
 
-setSubmitLoading(false);
+
+        setSubmitLoading(
+            false
+        );
 
     }
 
