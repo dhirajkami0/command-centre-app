@@ -1,30 +1,12 @@
 /* =========================================
 🔥 GREENGUARD SERVICE WORKER
-SMART / USER-CONTROLLED UPDATE SYSTEM
+USER-CONTROLLED UPDATE
 ========================================= */
 
-
-// =========================================
-// 🔥 CACHE VERSION
-// =========================================
-//
-// CHANGE THIS WHEN YOU DEPLOY A NEW VERSION.
-//
-// Example:
-//
-// greenguard-v35
-// greenguard-v36
-// greenguard-v37
-//
-// =========================================
 
 const CACHE_NAME =
     "greenguard-v35";
 
-
-// =========================================
-// 📦 APPLICATION SHELL
-// =========================================
 
 const APP_SHELL = [
 
@@ -69,22 +51,18 @@ const APP_SHELL = [
 //
 // IMPORTANT:
 //
-// DO NOT call skipWaiting() here.
+// DO NOT call self.skipWaiting() here.
 //
-// The new worker must remain WAITING until
-// the user explicitly presses Update.
-//
+// The new worker must WAIT until the user
+// presses the Update button.
 // =========================================
 
 self.addEventListener(
-
     "install",
-
     function(event){
 
         console.log(
-            "📦 GreenGuard SW Installing:",
-            CACHE_NAME
+            "📦 GreenGuard SW Installing..."
         );
 
 
@@ -95,11 +73,10 @@ self.addEventListener(
             )
 
             .then(
-
                 function(cache){
 
                     console.log(
-                        "📦 Caching GreenGuard App Shell"
+                        "📦 Caching App Shell"
                     );
 
 
@@ -108,42 +85,24 @@ self.addEventListener(
                     );
 
                 }
-
             )
 
         );
 
     }
-
 );
 
 
 // =========================================
 // 🚀 ACTIVATE
 // =========================================
-//
-// Activation occurs:
-//
-// 1. Normally on first installation
-//
-// OR
-//
-// 2. After the user explicitly presses
-//    the Update button and the page sends:
-//
-//    { action: "skipWaiting" }
-//
-// =========================================
 
 self.addEventListener(
-
     "activate",
-
     function(event){
 
         console.log(
-            "🚀 GreenGuard SW Activated:",
-            CACHE_NAME
+            "🚀 GreenGuard SW Activated"
         );
 
 
@@ -152,20 +111,16 @@ self.addEventListener(
             caches.keys()
 
                 .then(
-
                     function(keys){
 
                         return Promise.all(
 
                             keys.map(
-
                                 function(key){
 
-                                    if(
-
+                                    if (
                                         key !==
                                         CACHE_NAME
-
                                     ){
 
                                         console.log(
@@ -180,39 +135,29 @@ self.addEventListener(
 
                                     }
 
-
-                                    return Promise.resolve();
-
                                 }
-
                             )
 
                         );
 
                     }
-
                 )
 
         );
 
 
-        // =====================================
-        // 🔥 TAKE CONTROL OF EXISTING CLIENTS
-        // =====================================
+        // ==================================================
+        // IMPORTANT
+        // ==================================================
         //
-        // This is OK.
+        // Once the user has explicitly activated the new
+        // Service Worker, it may claim the clients.
         //
-        // IMPORTANT:
-        //
-        // The page-side controllerchange handler
-        // MUST NOT automatically reload.
-        //
-        // =====================================
+        // ==================================================
 
         self.clients.claim();
 
     }
-
 );
 
 
@@ -220,31 +165,22 @@ self.addEventListener(
 // 🔄 USER-CONTROLLED SKIP WAITING
 // =========================================
 //
-// IMPORTANT:
-//
-// This is the ONLY normal route by which
-// an already-installed waiting worker is
-// allowed to activate.
+// ONLY the webpage Update button sends this message.
 //
 // =========================================
 
 self.addEventListener(
-
     "message",
-
     function(event){
 
-        if(
-
+        if (
             event.data &&
-
             event.data.action ===
             "skipWaiting"
-
         ){
 
             console.log(
-                "⚡ GreenGuard Update Confirmed by User"
+                "⚡ User requested Service Worker activation"
             );
 
 
@@ -253,18 +189,15 @@ self.addEventListener(
         }
 
     }
-
 );
 
 
 // =========================================
-// 🌐 FETCH HANDLER
+// 🌐 FETCH
 // =========================================
 
 self.addEventListener(
-
     "fetch",
-
     function(event){
 
         const req =
@@ -272,15 +205,13 @@ self.addEventListener(
 
 
         // =====================================
-        // ❌ SKIP GOOGLE APPS SCRIPT API
+        // ❌ SKIP GOOGLE APPS SCRIPT
         // =====================================
 
-        if(
-
+        if (
             req.url.includes(
                 "script.google.com"
             )
-
         ){
 
             return;
@@ -289,14 +220,12 @@ self.addEventListener(
 
 
         // =====================================
-        // ❌ ONLY HANDLE GET REQUESTS
+        // ❌ ONLY GET
         // =====================================
 
-        if(
-
+        if (
             req.method !==
             "GET"
-
         ){
 
             return;
@@ -305,24 +234,19 @@ self.addEventListener(
 
 
         // =====================================
-        // 📄 HTML / NAVIGATION
+        // 📄 HTML NAVIGATION
         // =====================================
         //
-        // NETWORK FIRST
+        // Network first.
         //
-        // This ensures that after an explicit
-        // GreenGuard update/reload, the newest
-        // index.html is obtained.
-        //
-        // Offline → cached index.html.
+        // This means manual reload gets the latest
+        // available HTML when online.
         //
         // =====================================
 
-        if(
-
+        if (
             req.mode ===
             "navigate"
-
         ){
 
             event.respondWith(
@@ -330,7 +254,6 @@ self.addEventListener(
                 fetch(req)
 
                     .then(
-
                         function(response){
 
                             console.log(
@@ -339,17 +262,10 @@ self.addEventListener(
                             );
 
 
-                            // ==================================
-                            // CACHE FRESH HTML
-                            // ==================================
-
-                            if(
-
+                            if (
                                 response &&
-
                                 response.status ===
                                 200
-
                             ){
 
                                 const clone =
@@ -359,9 +275,7 @@ self.addEventListener(
                                 caches.open(
                                     CACHE_NAME
                                 )
-
                                 .then(
-
                                     function(cache){
 
                                         cache.put(
@@ -370,20 +284,6 @@ self.addEventListener(
                                         );
 
                                     }
-
-                                )
-
-                                .catch(
-
-                                    function(error){
-
-                                        console.warn(
-                                            "⚠ HTML cache update failed:",
-                                            error
-                                        );
-
-                                    }
-
                                 );
 
                             }
@@ -392,15 +292,13 @@ self.addEventListener(
                             return response;
 
                         }
-
                     )
 
                     .catch(
-
                         function(){
 
                             console.log(
-                                "📦 Offline HTML → cache"
+                                "📦 Offline HTML cache used"
                             );
 
 
@@ -409,7 +307,6 @@ self.addEventListener(
                             );
 
                         }
-
                     )
 
             );
@@ -420,40 +317,30 @@ self.addEventListener(
         }
 
 
-        // =========================================
-        // 📦 STATIC / OTHER GET REQUESTS
-        // =========================================
+        // =====================================
+        // 📦 STATIC FILES
+        // =====================================
         //
-        // NETWORK FIRST
+        // Network first.
         //
-        // Network succeeds:
-        //     return fresh resource
-        //     update cache
+        // If network succeeds, cache the latest
+        // resource.
         //
-        // Network fails:
-        //     return cached resource
+        // If network fails, use cache.
         //
-        // =========================================
+        // =====================================
 
         event.respondWith(
 
             fetch(req)
 
                 .then(
-
                     function(response){
 
-                        // =================================
-                        // 🔥 ONLY CACHE VALID RESPONSES
-                        // =================================
-
-                        if(
-
+                        if (
                             response &&
-
                             response.status ===
                             200
-
                         ){
 
                             const clone =
@@ -463,9 +350,7 @@ self.addEventListener(
                             caches.open(
                                 CACHE_NAME
                             )
-
                             .then(
-
                                 function(cache){
 
                                     cache.put(
@@ -474,20 +359,6 @@ self.addEventListener(
                                     );
 
                                 }
-
-                            )
-
-                            .catch(
-
-                                function(error){
-
-                                    console.warn(
-                                        "⚠ Resource cache update failed:",
-                                        error
-                                    );
-
-                                }
-
                             );
 
                         }
@@ -496,15 +367,13 @@ self.addEventListener(
                         return response;
 
                     }
-
                 )
 
                 .catch(
-
                     function(){
 
                         console.log(
-                            "📦 Cache Fallback:",
+                            "📦 Cache fallback:",
                             req.url
                         );
 
@@ -514,11 +383,9 @@ self.addEventListener(
                         );
 
                     }
-
                 )
 
         );
 
     }
-
 );
