@@ -47,9 +47,12 @@
 
    MEDIA
    ------------------------------------------------------------
-   No competing media uploader is created here.
+   Uses:
+       GGIrregularity.Media.upload()
+       GGIrregularity.Media.updateFirestore()
 
-   Existing media pipeline can be connected later.
+   No Firebase initialization here.
+   No competing media uploader.
 
    FIRESTORE
    ------------------------------------------------------------
@@ -60,6 +63,27 @@
    Document ID:
 
        Firestore auto-generated ID
+
+   FLOW
+   ------------------------------------------------------------
+
+       Manual Form
+            ↓
+       Get GPS
+            ↓
+       resolveCurrentGIS()
+            ↓
+       Build complete payload
+            ↓
+       Create Firestore document
+            ↓
+       Get auto-generated Firestore ID
+            ↓
+       Upload Photo / Video / Audio
+            ↓
+       Update SAME Firestore document
+            ↓
+       Success
 
    ============================================================ */
 
@@ -86,6 +110,7 @@ GGIrregularity.COLLECTION =
 
 GGIrregularity.MODULE =
     "IRREGULARITY";
+
 
 GGIrregularity.RECORD_TYPE =
     "IRREGULARITY_OFFENCE_OBSERVATION";
@@ -331,9 +356,13 @@ function(
 ){
 
     if(
+
         value === "" ||
+
         value === null ||
+
         value === undefined
+
     ){
 
         return null;
@@ -370,8 +399,11 @@ async function(){
      */
 
     if(
+
         window.db &&
+
         window.fb
+
     ){
 
         return true;
@@ -380,13 +412,14 @@ async function(){
 
 
     /*
-     * Reuse existing application readiness function
-     * if available.
+     * Reuse existing application readiness function.
      */
 
     if(
+
         typeof window.waitForFirebaseReady ===
         "function"
+
     ){
 
         await window.waitForFirebaseReady();
@@ -395,8 +428,11 @@ async function(){
 
 
     if(
+
         !window.db ||
+
         !window.fb
+
     ){
 
         throw new Error(
@@ -484,11 +520,11 @@ function(){
    FLOW:
 
        window.latestGps
-              ↓
+             ↓
        if unavailable
-              ↓
+             ↓
        navigator.geolocation
-              ↓
+             ↓
        update window.latestGps
 
    No GPS watcher is created.
@@ -500,7 +536,7 @@ async function(){
 
     /* ========================================================
        FIRST:
-       EXISTING GREEN GUARD GPS CACHE
+       EXISTING GREENGUARD GPS CACHE
        ======================================================== */
 
     const candidates = [
@@ -521,13 +557,18 @@ async function(){
 
 
     for(
+
         const gps of candidates
+
     ){
 
         if(
+
             !gps ||
+
             typeof gps !==
             "object"
+
         ){
 
             continue;
@@ -551,10 +592,15 @@ async function(){
 
 
         if(
+
             latitude !== null &&
+
             longitude !== null &&
+
             latitude !== 0 &&
+
             longitude !== 0
+
         ){
 
             return {
@@ -597,7 +643,9 @@ async function(){
        ======================================================== */
 
     if(
+
         !navigator.geolocation
+
     ){
 
         throw new Error(
@@ -645,7 +693,10 @@ async function(){
             );
 
     }
-    catch(error){
+
+    catch(
+        error
+    ){
 
         console.warn(
             "⚠ Device GPS unavailable:",
@@ -677,10 +728,15 @@ async function(){
 
 
     if(
+
         latitude === null ||
+
         longitude === null ||
+
         latitude === 0 ||
+
         longitude === 0
+
     ){
 
         throw new Error(
@@ -780,8 +836,10 @@ function(
 ){
 
     if(
+
         typeof window.resolveCurrentGIS !==
         "function"
+
     ){
 
         throw new Error(
@@ -799,7 +857,9 @@ function(
 
 
     if(
+
         !gis
+
     ){
 
         throw new Error(
@@ -895,29 +955,38 @@ function(
        ======================================================== */
 
     if(
+
         normalized.village
+
     ){
 
         normalized.location_type =
             "VILLAGE";
 
     }
+
     else if(
+
         normalized.compartment
+
     ){
 
         normalized.location_type =
             "FOREST_COMPARTMENT";
 
     }
+
     else if(
+
         normalized.nearest_point
+
     ){
 
         normalized.location_type =
             "NEAREST_POINT";
 
     }
+
     else{
 
         normalized.location_type =
@@ -1192,6 +1261,55 @@ function(
 
 
 /* ============================================================
+   CHECK WHETHER IRREGULARITY MEDIA EXISTS
+   ============================================================ */
+
+GGIrregularity.hasMedia =
+function(){
+
+    const photoInput =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    const photo =
+        photoInput?.files?.[0] ||
+        null;
+
+
+    const video =
+        videoInput?.files?.[0] ||
+        null;
+
+
+    const audio =
+        audioInput?.files?.[0] ||
+        null;
+
+
+    return !!(
+        photo ||
+        video ||
+        audio
+    );
+
+};
+
+
+/* ============================================================
    BUILD FIRESTORE PAYLOAD
    ============================================================ */
 
@@ -1251,7 +1369,9 @@ async function(
 
 
     if(
+
         !type
+
     ){
 
         throw new Error(
@@ -1272,6 +1392,14 @@ async function(
 
     const serverTimestamp =
         window.fb.serverTimestamp();
+
+
+    /* ========================================================
+       MEDIA INITIAL STATUS
+       ======================================================== */
+
+    const hasMedia =
+        GGIrregularity.hasMedia();
 
 
     /* ========================================================
@@ -1374,6 +1502,15 @@ async function(
         gps_accuracy:
             gps.accuracy,
 
+        gps_speed:
+            gps.speed,
+
+        gps_heading:
+            gps.heading,
+
+        gps_timestamp:
+            gps.timestamp,
+
         gps_location:
             gis.gps_location,
 
@@ -1423,10 +1560,12 @@ async function(
         /* ====================================================
            MEDIA
 
-           Reserved for the existing GreenGuard media
-           pipeline.
+           Actual files are NOT stored in Firestore.
 
-           No competing uploader is created here.
+           The media module uploads them to Firebase Storage
+           after the Firestore document has been created.
+
+           These fields are populated after upload.
            ==================================================== */
 
         photo_url:
@@ -1438,8 +1577,19 @@ async function(
         audio_url:
             "",
 
+        photo_storage_path:
+            "",
+
+        video_storage_path:
+            "",
+
+        audio_storage_path:
+            "",
+
         media_status:
-            "NONE",
+            hasMedia
+                ? "PENDING"
+                : "NONE",
 
 
         /* ====================================================
@@ -1476,17 +1626,15 @@ async function(
     /* ========================================================
        BUILD COMPLETE PAYLOAD
 
-       This is where:
-
-           manual form fields
-                 +
-           GPS
-                 +
-           GIS
-                 +
-           user context
-
-       are combined.
+       manual form fields
+            +
+       GPS
+            +
+       GIS
+            +
+       user context
+            +
+       media placeholders
        ======================================================== */
 
     const payload =
@@ -1535,7 +1683,7 @@ async function(
 
 
     /* ========================================================
-       SUCCESS LOG
+       SUCCESS — FIRESTORE METADATA
        ======================================================== */
 
     console.log(
@@ -1576,11 +1724,231 @@ async function(
                 payload.longitude,
 
             location_type:
-                payload.location_type
+                payload.location_type,
+
+            media_status:
+                payload.media_status
 
         }
     );
 
+
+    /* ========================================================
+       MEDIA UPLOAD
+       ========================================================
+
+       IMPORTANT:
+
+       Firestore document already exists.
+
+       Therefore the auto-generated ID is now known.
+
+       The media module can safely use:
+
+           payload.firestore_id
+
+       to create the Storage path.
+
+       ======================================================== */
+
+    if(
+
+        GGIrregularity.hasMedia()
+
+    ){
+
+        try{
+
+            console.log(
+                "📦 Starting Irregularity media upload..."
+            );
+
+
+            /* ==================================================
+               VERIFY MEDIA MODULE
+               ================================================== */
+
+            if(
+
+                !window.GGIrregularity ||
+
+                !GGIrregularity.Media ||
+
+                typeof GGIrregularity.Media.upload !==
+                "function"
+
+            ){
+
+                throw new Error(
+                    "irregularityMedia.js is not loaded."
+                );
+
+            }
+
+
+            /* ==================================================
+               UPLOAD
+               ================================================== */
+
+            const mediaResult =
+                await GGIrregularity.Media.upload(
+                    payload
+                );
+
+
+            /* ==================================================
+               UPDATE SAME FIRESTORE DOCUMENT
+               ================================================== */
+
+            if(
+
+                mediaResult &&
+
+                typeof GGIrregularity.Media
+                    .updateFirestore ===
+                    "function"
+
+            ){
+
+                await GGIrregularity.Media
+                    .updateFirestore(
+                        documentRef.id,
+                        mediaResult
+                    );
+
+            }
+
+
+            /* ==================================================
+               UPDATE RETURN PAYLOAD
+               ================================================== */
+
+            payload.photo_url =
+                mediaResult?.photo_url ||
+                "";
+
+            payload.video_url =
+                mediaResult?.video_url ||
+                "";
+
+            payload.audio_url =
+                mediaResult?.audio_url ||
+                "";
+
+            payload.photo_storage_path =
+                mediaResult?.photo_storage_path ||
+                "";
+
+            payload.video_storage_path =
+                mediaResult?.video_storage_path ||
+                "";
+
+            payload.audio_storage_path =
+                mediaResult?.audio_storage_path ||
+                "";
+
+            payload.media_status =
+                mediaResult?.media_status ||
+                "NONE";
+
+
+            console.log(
+                "✅ IRREGULARITY MEDIA COMPLETED",
+                {
+
+                    firestore_id:
+                        documentRef.id,
+
+                    photo:
+                        !!payload.photo_url,
+
+                    video:
+                        !!payload.video_url,
+
+                    audio:
+                        !!payload.audio_url,
+
+                    media_status:
+                        payload.media_status
+
+                }
+            );
+
+        }
+
+        catch(
+            mediaError
+        ){
+
+            /* ==================================================
+               IMPORTANT
+
+               The Firestore irregularity itself has already
+               been successfully saved.
+
+               Do NOT delete it just because media failed.
+
+               Mark media as FAILED on the SAME document.
+               ================================================== */
+
+            console.error(
+                "❌ Irregularity media upload failed:",
+                mediaError
+            );
+
+
+            try{
+
+                await window.fb.updateDoc(
+                    documentRef,
+                    {
+
+                        media_status:
+                            "FAILED",
+
+                        media_error:
+                            GGIrregularity.text(
+                                mediaError?.message
+                            ),
+
+                        updated_at:
+                            window.fb.serverTimestamp()
+
+                    }
+                );
+
+            }
+            catch(
+                updateError
+            ){
+
+                console.error(
+                    "❌ Unable to update media failure status:",
+                    updateError
+                );
+
+            }
+
+
+            /*
+             * Do not hide the successful Firestore save.
+             *
+             * Return the Firestore document result so the UI
+             * knows the observation itself was saved.
+             */
+
+            console.warn(
+                "⚠ Irregularity saved, but media upload failed."
+            );
+
+        }
+
+    }
+
+
+    /* ========================================================
+       FINAL RETURN
+       ======================================================== */
 
     return {
 
@@ -1609,7 +1977,9 @@ async function(){
 
 
     if(
+
         !form
+
     ){
 
         console.error(
@@ -1624,12 +1994,11 @@ async function(){
     /* ========================================================
        FORM DATA
 
-       Only visible/manual form fields are collected here.
+       ONLY visible/manual fields are collected here.
 
-       GPS/GIS/user fields are deliberately NOT taken from
-       the form.
+       GPS / GIS / user fields are NOT taken from the form.
 
-       They are added later by buildPayload().
+       buildPayload() adds them automatically.
        ======================================================== */
 
     const formData =
@@ -1645,9 +2014,11 @@ async function(){
        ======================================================== */
 
     if(
+
         !GGIrregularity.text(
             formData.type
         )
+
     ){
 
         alert(
@@ -1664,9 +2035,11 @@ async function(){
        ======================================================== */
 
     if(
+
         !GGIrregularity.text(
             formData.incident_date
         )
+
     ){
 
         alert(
@@ -1683,9 +2056,11 @@ async function(){
        ======================================================== */
 
     if(
+
         !GGIrregularity.text(
             formData.incident_time
         )
+
     ){
 
         alert(
@@ -1708,7 +2083,9 @@ async function(){
 
 
     if(
+
         submitButton
+
     ){
 
         submitButton.disabled =
@@ -1727,7 +2104,9 @@ async function(){
            ==================================================== */
 
         if(
+
             submitButton
+
         ){
 
             submitButton.textContent =
@@ -1752,9 +2131,47 @@ async function(){
         );
 
 
-        alert(
-            "✅ Irregularity / Observation saved."
-        );
+        const mediaStatus =
+            result
+                ?.payload
+                ?.media_status ||
+            "NONE";
+
+
+        if(
+
+            mediaStatus ===
+            "FAILED"
+
+        ){
+
+            alert(
+                "✅ Irregularity / Observation saved.\n\n" +
+                "⚠️ Media upload failed. The observation is safely stored in Firestore."
+            );
+
+        }
+
+        else if(
+
+            mediaStatus ===
+            "COMPLETE"
+
+        ){
+
+            alert(
+                "✅ Irregularity / Observation and media saved."
+            );
+
+        }
+
+        else{
+
+            alert(
+                "✅ Irregularity / Observation saved."
+            );
+
+        }
 
 
         /* ====================================================
@@ -1781,7 +2198,10 @@ async function(){
         return result;
 
     }
-    catch(error){
+
+    catch(
+        error
+    ){
 
         console.error(
             "❌ Irregularity save failed:",
@@ -1801,10 +2221,13 @@ async function(){
         throw error;
 
     }
+
     finally{
 
         if(
+
             submitButton
+
         ){
 
             submitButton.disabled =
@@ -1872,7 +2295,9 @@ function(){
        ======================================================== */
 
     if(
+
         selectedType
+
     ){
 
         const group =
@@ -1882,7 +2307,9 @@ function(){
 
 
         if(
+
             group
+
         ){
 
             group.style.display =
@@ -1909,7 +2336,9 @@ function(){
 
 
     if(
+
         !modal
+
     ){
 
         console.warn(
@@ -1944,7 +2373,9 @@ function(){
 
 
     if(
+
         modal
+
     ){
 
         modal.style.display =
@@ -1973,8 +2404,11 @@ function(){
 
 
     if(
+
         typeSelect &&
+
         !typeSelect.__ggIrregularityChangeBound
+
     ){
 
         typeSelect.__ggIrregularityChangeBound =
@@ -2004,7 +2438,9 @@ function(){
 
 
     if(
+
         form
+
     ){
 
         /*
@@ -2012,7 +2448,9 @@ function(){
          */
 
         if(
+
             !form.__ggIrregularitySubmitBound
+
         ){
 
             form.__ggIrregularitySubmitBound =
@@ -2051,8 +2489,10 @@ function(){
    ============================================================ */
 
 if(
+
     document.readyState ===
     "loading"
+
 ){
 
     document.addEventListener(
