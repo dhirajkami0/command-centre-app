@@ -44109,19 +44109,26 @@ const popup =
             max-width:
                 300px;
 
-            max-height:
-                calc(
-                    70vh - 20px
-                );
+            /*
+             * IMPORTANT:
+             *
+             * DO NOT SCROLL THIS INNER CONTAINER.
+             *
+             * Leaflet's .leaflet-popup-content is
+             * the ONLY scroll container.
+             */
 
-            overflow-y:
-                auto;
+            max-height:
+                none;
+
+            overflow:
+                visible;
 
             overflow-x:
-                hidden;
+                visible;
 
             padding-right:
-                4px;
+                0;
 
             box-sizing:
                 border-box;
@@ -44141,15 +44148,6 @@ const popup =
 
             line-height:
                 1.4;
-
-            -webkit-overflow-scrolling:
-                touch;
-
-            overscroll-behavior:
-                contain;
-
-            scrollbar-width:
-                thin;
         "
     >
 
@@ -44700,6 +44698,7 @@ const popup =
                     s.division ||
                     "-"
                 }
+
             </div>
 
 
@@ -44720,6 +44719,7 @@ const popup =
                     s.range ||
                     "-"
                 }
+
             </div>
 
 
@@ -44740,6 +44740,7 @@ const popup =
                     s.beat ||
                     "-"
                 }
+
             </div>
 
 
@@ -44760,6 +44761,7 @@ const popup =
                     s.compartment ||
                     "-"
                 }
+
             </div>
 
 
@@ -44782,6 +44784,7 @@ const popup =
                     s.village ||
                     "-"
                 }
+
             </div>
 
 
@@ -44865,7 +44868,6 @@ const popup =
     </div>
 
 `;
-
 
 
 
