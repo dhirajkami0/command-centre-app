@@ -3,24 +3,53 @@
    IRREGULARITY / OFFENCE / OBSERVATION MODULE
    ============================================================
 
-   PURPOSE
-   ------------------------------------------------------------
-   Patrol observations / irregularities / offences.
+   FILE:
+       js/irregularity/irregularityModule.js
 
-   CURRENT VERSION
+   PURPOSE:
+       Save patrol irregularities / offences / observations
+       directly to Firestore.
+
+   ============================================================
+   IMPORTANT ARCHITECTURE
+   ============================================================
+
+   FIRESTORE ONLY
    ------------------------------------------------------------
-   • FIRESTORE ONLY
    • No Apps Script
    • No callBackend()
    • No Firebase initialization here
    • Uses existing window.db
    • Uses existing window.fb
-   • Uses ONLY window.resolveCurrentGIS()
-   • No duplicate GIS resolver
-   • No duplicate media uploader
-   • Does not modify Wildlife
-   • Does not modify Elephant
-   • Does not modify Patrol
+
+   GPS
+   ------------------------------------------------------------
+   1. Use window.latestGps first.
+   2. If unavailable, use navigator.geolocation.
+   3. Update window.latestGps after live GPS.
+
+   GIS
+   ------------------------------------------------------------
+   ONLY:
+
+       window.resolveCurrentGIS(
+           latitude,
+           longitude
+       )
+
+   No duplicate GIS resolver.
+
+   USER
+   ------------------------------------------------------------
+   Uses existing:
+
+       window.userProfile
+
+   MEDIA
+   ------------------------------------------------------------
+   No competing media uploader is created here.
+
+   Existing media pipeline can be connected later.
 
    FIRESTORE
    ------------------------------------------------------------
@@ -30,7 +59,8 @@
 
    Document ID:
 
-       Auto-generated Firestore ID
+       Firestore auto-generated ID
+
    ============================================================ */
 
 
@@ -301,14 +331,9 @@ function(
 ){
 
     if(
-        value ===
-        "" ||
-
-        value ===
-        null ||
-
-        value ===
-        undefined
+        value === "" ||
+        value === null ||
+        value === undefined
     ){
 
         return null;
@@ -339,9 +364,9 @@ GGIrregularity.waitForFirebase =
 async function(){
 
     /*
-     * Existing application Firebase instance.
-     *
      * DO NOT initialize Firebase here.
+     *
+     * GreenGuard already owns Firebase initialization.
      */
 
     if(
@@ -356,7 +381,7 @@ async function(){
 
     /*
      * Reuse existing application readiness function
-     * if it is already available.
+     * if available.
      */
 
     if(
@@ -402,6 +427,7 @@ function(){
 
         name:
             GGIrregularity.text(
+                profile.rawName ||
                 profile.cleanName ||
                 profile.name
             ),
@@ -416,6 +442,11 @@ function(){
                 profile.role
             ).toUpperCase(),
 
+        designation:
+            GGIrregularity.text(
+                profile.designation
+            ),
+
         division:
             GGIrregularity.text(
                 profile.division
@@ -429,6 +460,16 @@ function(){
         beat:
             GGIrregularity.text(
                 profile.beat
+            ),
+
+        circle:
+            GGIrregularity.text(
+                profile.circle
+            ),
+
+        sessionId:
+            GGIrregularity.text(
+                window.sessionId
             )
 
     };
@@ -437,17 +478,30 @@ function(){
 
 
 /* ============================================================
-   CURRENT GPS
+   GPS
+   ============================================================
+
+   FLOW:
+
+       window.latestGps
+              ↓
+       if unavailable
+              ↓
+       navigator.geolocation
+              ↓
+       update window.latestGps
+
+   No GPS watcher is created.
+
    ============================================================ */
 
 GGIrregularity.getGPS =
-function(){
+async function(){
 
-    /*
-     * Reuse GPS state already maintained by GreenGuard.
-     *
-     * No new GPS watcher is created here.
-     */
+    /* ========================================================
+       FIRST:
+       EXISTING GREEN GUARD GPS CACHE
+       ======================================================== */
 
     const candidates = [
 
@@ -490,18 +544,17 @@ function(){
 
         const longitude =
             GGIrregularity.number(
-                gps.lon ??
                 gps.lng ??
+                gps.lon ??
                 gps.longitude
             );
 
 
         if(
-            latitude !==
-            null &&
-
-            longitude !==
-            null
+            latitude !== null &&
+            longitude !== null &&
+            latitude !== 0 &&
+            longitude !== 0
         ){
 
             return {
@@ -515,7 +568,21 @@ function(){
                 accuracy:
                     GGIrregularity.number(
                         gps.accuracy
-                    )
+                    ),
+
+                speed:
+                    GGIrregularity.number(
+                        gps.speed
+                    ),
+
+                heading:
+                    GGIrregularity.number(
+                        gps.heading
+                    ),
+
+                timestamp:
+                    gps.timestamp ||
+                    Date.now()
 
             };
 
@@ -524,16 +591,167 @@ function(){
     }
 
 
+    /* ========================================================
+       FALLBACK:
+       DEVICE GPS
+       ======================================================== */
+
+    if(
+        !navigator.geolocation
+    ){
+
+        throw new Error(
+            "GPS location is not available on this device."
+        );
+
+    }
+
+
+    let position;
+
+
+    try{
+
+        position =
+            await new Promise(
+                function(
+                    resolve,
+                    reject
+                ){
+
+                    navigator.geolocation
+                        .getCurrentPosition(
+
+                            resolve,
+
+                            reject,
+
+                            {
+
+                                enableHighAccuracy:
+                                    true,
+
+                                timeout:
+                                    10000,
+
+                                maximumAge:
+                                    0
+
+                            }
+
+                        );
+
+                }
+            );
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ Device GPS unavailable:",
+            error
+        );
+
+
+        throw new Error(
+            "GPS location not available."
+        );
+
+    }
+
+
+    const latitude =
+        GGIrregularity.number(
+            position
+                ?.coords
+                ?.latitude
+        );
+
+
+    const longitude =
+        GGIrregularity.number(
+            position
+                ?.coords
+                ?.longitude
+        );
+
+
+    if(
+        latitude === null ||
+        longitude === null ||
+        latitude === 0 ||
+        longitude === 0
+    ){
+
+        throw new Error(
+            "Invalid GPS coordinates."
+        );
+
+    }
+
+
+    const gps = {
+
+        lat:
+            latitude,
+
+        lng:
+            longitude,
+
+        accuracy:
+            position
+                ?.coords
+                ?.accuracy,
+
+        speed:
+            position
+                ?.coords
+                ?.speed,
+
+        heading:
+            position
+                ?.coords
+                ?.heading,
+
+        timestamp:
+            Date.now()
+
+    };
+
+
+    /* ========================================================
+       UPDATE EXISTING GPS CACHE
+       ======================================================== */
+
+    window.latestGps =
+        gps;
+
+
     return {
 
         latitude:
-            null,
+            latitude,
 
         longitude:
-            null,
+            longitude,
 
         accuracy:
-            null
+            GGIrregularity.number(
+                gps.accuracy
+            ),
+
+        speed:
+            GGIrregularity.number(
+                gps.speed
+            ),
+
+        heading:
+            GGIrregularity.number(
+                gps.heading
+            ),
+
+        timestamp:
+            gps.timestamp
 
     };
 
@@ -544,13 +762,15 @@ function(){
    GIS RESOLVER
    ============================================================
 
-   IMPORTANT
-   ------------------------------------------------------------
-   ONLY:
+   IMPORTANT:
 
-       window.resolveCurrentGIS()
+   THIS IS THE ONLY GIS RESOLVER USED BY THIS MODULE.
 
-   No other GIS resolver is used.
+       window.resolveCurrentGIS(
+           latitude,
+           longitude
+       )
+
    ============================================================ */
 
 GGIrregularity.resolveGIS =
@@ -559,12 +779,167 @@ function(
     longitude
 ){
 
-    return GGIrregularity.GIS.resolve(
-        latitude,
-        longitude
-    );
+    if(
+        typeof window.resolveCurrentGIS !==
+        "function"
+    ){
+
+        throw new Error(
+            "resolveCurrentGIS() is not available."
+        );
+
+    }
+
+
+    const gis =
+        window.resolveCurrentGIS(
+            latitude,
+            longitude
+        );
+
+
+    if(
+        !gis
+    ){
+
+        throw new Error(
+            "Unable to resolve GIS location."
+        );
+
+    }
+
+
+    return gis;
 
 };
+
+
+/* ============================================================
+   NORMALIZE GIS
+   ============================================================ */
+
+GGIrregularity.normalizeGIS =
+function(
+    gis,
+    latitude,
+    longitude
+){
+
+    gis =
+        gis ||
+        {};
+
+
+    const normalized = {
+
+        latitude:
+            latitude,
+
+        longitude:
+            longitude,
+
+        division:
+            GGIrregularity.text(
+                gis.division
+            ),
+
+        range:
+            GGIrregularity.text(
+                gis.range
+            ),
+
+        beat:
+            GGIrregularity.text(
+                gis.beat
+            ),
+
+        compartment:
+            GGIrregularity.text(
+                gis.compartment
+            ),
+
+        village:
+            GGIrregularity.text(
+                gis.village
+            ),
+
+        village_code:
+            GGIrregularity.text(
+                gis.villageCode
+            ),
+
+        block:
+            GGIrregularity.text(
+                gis.block
+            ),
+
+        nearest_point:
+            GGIrregularity.text(
+                gis.nearestPoint
+            ),
+
+        distance_meters:
+            gis.distanceMeters ??
+            null,
+
+        text:
+            GGIrregularity.text(
+                gis.text
+            )
+
+    };
+
+
+    /* ========================================================
+       LOCATION TYPE
+       ======================================================== */
+
+    if(
+        normalized.village
+    ){
+
+        normalized.location_type =
+            "VILLAGE";
+
+    }
+    else if(
+        normalized.compartment
+    ){
+
+        normalized.location_type =
+            "FOREST_COMPARTMENT";
+
+    }
+    else if(
+        normalized.nearest_point
+    ){
+
+        normalized.location_type =
+            "NEAREST_POINT";
+
+    }
+    else{
+
+        normalized.location_type =
+            "GPS";
+
+    }
+
+
+    /* ========================================================
+       GPS LOCATION TEXT
+       ======================================================== */
+
+    normalized.gps_location =
+        latitude +
+        ", " +
+        longitude;
+
+
+    return normalized;
+
+};
+
 
 /* ============================================================
    BUILD CATEGORY-SPECIFIC DETAILS
@@ -666,6 +1041,11 @@ function(
                 formData.fire_area
             ),
 
+        fire_affected_area:
+            GGIrregularity.text(
+                formData.fire_affected_area
+            ),
+
         fire_cause:
             GGIrregularity.text(
                 formData.fire_cause
@@ -675,6 +1055,11 @@ function(
         /* ====================================================
            ENCROACHMENT
            ==================================================== */
+
+        encroached_compartment:
+            GGIrregularity.text(
+                formData.encroached_compartment
+            ),
 
         encroached_area:
             GGIrregularity.text(
@@ -811,28 +1196,45 @@ function(
    ============================================================ */
 
 GGIrregularity.buildPayload =
-function(
+async function(
     formData
 ){
+
+    /* ========================================================
+       USER
+       ======================================================== */
 
     const user =
         GGIrregularity.getUserContext();
 
 
     /* ========================================================
-       CURRENT GPS
+       GPS
+
+       Existing GreenGuard GPS first.
+       Device GPS only if necessary.
        ======================================================== */
 
     const gps =
-        GGIrregularity.getGPS();
+        await GGIrregularity.getGPS();
 
 
     /* ========================================================
-       EXISTING GIS
+       GIS
+
+       ONLY window.resolveCurrentGIS()
        ======================================================== */
 
-    const gis =
+    const rawGIS =
         GGIrregularity.resolveGIS(
+            gps.latitude,
+            gps.longitude
+        );
+
+
+    const gis =
+        GGIrregularity.normalizeGIS(
+            rawGIS,
             gps.latitude,
             gps.longitude
         );
@@ -845,13 +1247,31 @@ function(
     const type =
         GGIrregularity.text(
             formData.type
-        )
-        .toUpperCase();
+        ).toUpperCase();
+
+
+    if(
+        !type
+    ){
+
+        throw new Error(
+            "Irregularity type is required."
+        );
+
+    }
 
 
     const meta =
         GGIrregularity.TYPE_META[type] ||
         GGIrregularity.TYPE_META.GENERAL_OBSERVATION;
+
+
+    /* ========================================================
+       TIMESTAMP
+       ======================================================== */
+
+    const serverTimestamp =
+        window.fb.serverTimestamp();
 
 
     /* ========================================================
@@ -893,6 +1313,17 @@ function(
         reported_by_role:
             user.role,
 
+        reported_by_designation:
+            user.designation,
+
+
+        /* ====================================================
+           SESSION
+           ==================================================== */
+
+        session_id:
+            user.sessionId,
+
 
         /* ====================================================
            GIS ADMINISTRATIVE HIERARCHY
@@ -922,7 +1353,7 @@ function(
             "",
 
         village_code:
-            gis.villageCode ||
+            gis.village_code ||
             "",
 
         block:
@@ -944,8 +1375,7 @@ function(
             gps.accuracy,
 
         gps_location:
-            gis.gps ||
-            "",
+            gis.gps_location,
 
 
         /* ====================================================
@@ -953,16 +1383,16 @@ function(
            ==================================================== */
 
         location_type:
-            gis.type ||
-            "GPS",
+            gis.location_type,
+
+        location_text:
+            gis.text,
 
         nearest_point:
-            gis.nearestPoint ||
-            "",
+            gis.nearest_point,
 
         distance_from_nearest_point:
-            gis.distanceMeters ??
-            null,
+            gis.distance_meters,
 
 
         /* ====================================================
@@ -992,11 +1422,11 @@ function(
 
         /* ====================================================
            MEDIA
-           ----------------------------------------------------
-           Reserved for later integration with the EXISTING
-           GreenGuard Storage/media pipeline.
 
-           No fake upload is performed here.
+           Reserved for the existing GreenGuard media
+           pipeline.
+
+           No competing uploader is created here.
            ==================================================== */
 
         photo_url:
@@ -1017,10 +1447,10 @@ function(
            ==================================================== */
 
         created_at:
-            window.fb.serverTimestamp(),
+            serverTimestamp,
 
         updated_at:
-            window.fb.serverTimestamp()
+            serverTimestamp
 
     };
 
@@ -1044,11 +1474,23 @@ async function(
 
 
     /* ========================================================
-       BUILD PAYLOAD
+       BUILD COMPLETE PAYLOAD
+
+       This is where:
+
+           manual form fields
+                 +
+           GPS
+                 +
+           GIS
+                 +
+           user context
+
+       are combined.
        ======================================================== */
 
     const payload =
-        GGIrregularity.buildPayload(
+        await GGIrregularity.buildPayload(
             formData
         );
 
@@ -1075,7 +1517,7 @@ async function(
 
 
     /* ========================================================
-       DOCUMENT ID
+       STORE DOCUMENT ID INSIDE DOCUMENT
        ======================================================== */
 
     payload.firestore_id =
@@ -1109,6 +1551,9 @@ async function(
             category_label:
                 payload.category_label,
 
+            reported_by:
+                payload.reported_by,
+
             division:
                 payload.division,
 
@@ -1128,7 +1573,10 @@ async function(
                 payload.latitude,
 
             longitude:
-                payload.longitude
+                payload.longitude,
+
+            location_type:
+                payload.location_type
 
         }
     );
@@ -1175,6 +1623,13 @@ async function(){
 
     /* ========================================================
        FORM DATA
+
+       Only visible/manual form fields are collected here.
+
+       GPS/GIS/user fields are deliberately NOT taken from
+       the form.
+
+       They are added later by buildPayload().
        ======================================================== */
 
     const formData =
@@ -1205,6 +1660,44 @@ async function(){
 
 
     /* ========================================================
+       DATE REQUIRED
+       ======================================================== */
+
+    if(
+        !GGIrregularity.text(
+            formData.incident_date
+        )
+    ){
+
+        alert(
+            "Please select incident date."
+        );
+
+        return;
+
+    }
+
+
+    /* ========================================================
+       TIME REQUIRED
+       ======================================================== */
+
+    if(
+        !GGIrregularity.text(
+            formData.incident_time
+        )
+    ){
+
+        alert(
+            "Please select incident time."
+        );
+
+        return;
+
+    }
+
+
+    /* ========================================================
        SUBMIT BUTTON
        ======================================================== */
 
@@ -1222,7 +1715,7 @@ async function(){
             true;
 
         submitButton.textContent =
-            "Saving...";
+            "Getting location...";
 
     }
 
@@ -1232,6 +1725,16 @@ async function(){
         /* ====================================================
            SAVE
            ==================================================== */
+
+        if(
+            submitButton
+        ){
+
+            submitButton.textContent =
+                "Saving...";
+
+        }
+
 
         const result =
             await GGIrregularity.save(
@@ -1262,18 +1765,20 @@ async function(){
 
 
         /* ====================================================
-           RESET DYNAMIC FIELDS
+           RESET DYNAMIC CATEGORY FIELDS
            ==================================================== */
 
         GGIrregularity.updateFields();
 
 
         /* ====================================================
-           CLOSE MODAL IF PRESENT
+           CLOSE MODAL
            ==================================================== */
 
         GGIrregularity.close();
 
+
+        return result;
 
     }
     catch(error){
@@ -1291,6 +1796,9 @@ async function(){
                 "Unknown error"
             )
         );
+
+
+        throw error;
 
     }
     finally{
@@ -1319,17 +1827,24 @@ async function(){
 GGIrregularity.updateFields =
 function(){
 
+    /*
+     * The form generator creates:
+     *
+     *     id="gg-irregularity-type"
+     *
+     * Therefore use the actual generated ID.
+     */
+
     const typeElement =
         document.getElementById(
-            "ggIrregularityType"
+            "gg-irregularity-type"
         );
 
 
     const selectedType =
         GGIrregularity.text(
             typeElement?.value
-        )
-        .toUpperCase();
+        ).toUpperCase();
 
 
     /* ========================================================
@@ -1453,13 +1968,18 @@ function(){
 
     const typeSelect =
         document.getElementById(
-            "ggIrregularityType"
+            "gg-irregularity-type"
         );
 
 
     if(
-        typeSelect
+        typeSelect &&
+        !typeSelect.__ggIrregularityChangeBound
     ){
+
+        typeSelect.__ggIrregularityChangeBound =
+            true;
+
 
         typeSelect.addEventListener(
             "change",
@@ -1488,8 +2008,7 @@ function(){
     ){
 
         /*
-         * Avoid duplicate submit listeners if the module
-         * is initialized more than once.
+         * Avoid duplicate submit listeners.
          */
 
         if(
@@ -1555,3 +2074,8 @@ else{
     GGIrregularity.init();
 
 }
+
+
+/* ============================================================
+   END
+   ============================================================ */
