@@ -61178,7 +61178,9 @@ async function uploadSightingMediaToStorage(
             .trim();
 
 
-        if(!sightingId){
+        if(
+            !sightingId
+        ){
 
             throw new Error(
                 "Sighting ID is not available for media upload."
@@ -61345,11 +61347,31 @@ async function uploadSightingMediaToStorage(
                     );
 
 
+                // =================================================
+                // FIREBASE STORAGE METADATA
+                // =================================================
+                //
+                // IMPORTANT:
+                //
+                // contentDisposition = attachment
+                //
+                // This prevents mobile browsers from opening the
+                // large image directly inside the current page.
+                //
+                // Instead the browser treats it as a download.
+                //
+                // =================================================
+
                 const metadata = {
 
                     contentType:
                         mediaFile.type ||
                         "application/octet-stream",
+
+                    contentDisposition:
+                        "attachment; filename=\"" +
+                        fileName +
+                        "\"",
 
                     customMetadata: {
 
@@ -61506,10 +61528,19 @@ async function uploadSightingMediaToStorage(
                 }
 
 
+                // =================================================
+                // FIREBASE STORAGE METADATA
+                // =================================================
+
                 const metadata = {
 
                     contentType:
                         contentType,
+
+                    contentDisposition:
+                        "attachment; filename=\"" +
+                        fileName +
+                        "\"",
 
                     customMetadata: {
 
@@ -61846,7 +61877,9 @@ async function uploadSightingMediaToStorage(
                 }
 
             }
-            catch(audioError){
+            catch(
+                audioError
+            ){
 
                 console.error(
                     "❌ Native audio Storage conversion failed:",
@@ -61904,7 +61937,9 @@ async function uploadSightingMediaToStorage(
 
 
     }
-    catch(error){
+    catch(
+        error
+    ){
 
         console.error(
             "❌ Sighting media upload failed:",
