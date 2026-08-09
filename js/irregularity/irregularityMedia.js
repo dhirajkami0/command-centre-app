@@ -768,116 +768,189 @@ function(){
    PHOTO — PREVIEW
    ============================================================ */
 
+/* ============================================================
+   GG IRREGULARITY MEDIA
+   WORKING SIGHTING-STYLE PREVIEW PIPELINE
+
+   IMPORTANT:
+   - Irregularity only
+   - Does NOT modify Elephant/Wildlife
+   - Uses existing Irregularity state
+   - Uses existing Irregularity DOM IDs
+   ============================================================ */
+
 GGIrregularity.Media.previewPhoto =
-function(
-    input
-){
+function(input){
 
-    const file =
-        input?.files?.[0] ||
-        null;
+    try{
 
+        const file =
+            input?.files?.[0];
 
-    if(
-        !file
-    ){
+        if(!file){
 
-        return;
+            return false;
 
-    }
+        }
 
 
-    /* ========================================================
-       VALIDATE IMAGE
-       ======================================================== */
+        /* ====================================================
+           VALIDATE
+           ==================================================== */
 
-    if(
-        !file.type ||
-        !file.type.startsWith(
-            "image/"
-        )
-    ){
+        if(
+            !file.type ||
+            !file.type.startsWith("image/")
+        ){
 
-        alert(
-            "Please select a valid image."
-        );
+            alert(
+                "Please select a valid image."
+            );
 
+            input.value = "";
 
-        input.value =
-            "";
+            return false;
 
-
-        return;
-
-    }
+        }
 
 
-    /* ========================================================
-       CLEAR OLD OBJECT URL
-       ======================================================== */
+        /* ====================================================
+           STATE
+           ==================================================== */
 
-    GGIrregularity.Media._revoke(
-        "photo"
-    );
+        const media =
+            GGIrregularity.Media
+                .getFormMediaState();
 
+        if(!media){
 
-    /* ========================================================
-       CREATE PREVIEW URL
-       ======================================================== */
+            console.error(
+                "❌ Irregularity media state unavailable."
+            );
 
-    const url =
-        URL.createObjectURL(
-            file
-        );
+            return false;
 
-
-    GGIrregularity.Media
-        ._photoObjectURL =
-        url;
+        }
 
 
-    /* ========================================================
-       PREVIEW ELEMENT
-       ======================================================== */
-
-    const image =
-        document.getElementById(
-            "gg-irregularity-photo-preview-img"
-        );
+        media.photo =
+            file;
 
 
-    const preview =
-        document.getElementById(
-            "gg-irregularity-photo-preview"
-        );
+        /* ====================================================
+           DOM
+           ==================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-photo-preview"
+            );
+
+        const image =
+            document.getElementById(
+                "gg-irregularity-photo-preview-img"
+            );
 
 
-    if(
-        image
-    ){
+        if(
+            !preview ||
+            !image
+        ){
+
+            console.error(
+                "❌ Irregularity photo preview elements missing."
+            );
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           RELEASE PREVIOUS OBJECT URL
+           ==================================================== */
+
+        if(
+            media.photoObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    media.photoObjectUrl
+                );
+
+            }
+            catch(_){}
+
+        }
+
+
+        /* ====================================================
+           CREATE PREVIEW
+           ==================================================== */
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        media.photoObjectUrl =
+            objectUrl;
+
 
         image.src =
-            url;
-
-    }
+            objectUrl;
 
 
-    if(
-        preview
-    ){
+        /* ====================================================
+           SHOW IMMEDIATELY
+           ==================================================== */
 
         preview.style.display =
             "block";
 
+
+        /* ====================================================
+           REFRESH ACTION BUTTONS
+           ==================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            GGIrregularity.Media
+                .updateControls();
+
+        }
+
+
+        console.log(
+            "📷 IRREGULARITY PHOTO READY",
+            {
+                name:file.name,
+                type:file.type,
+                size:file.size
+            }
+        );
+
+
+        return true;
+
     }
+    catch(error){
 
+        console.error(
+            "❌ Irregularity photo preview failed:",
+            error
+        );
 
-    /* ========================================================
-       UPDATE STATUS
-       ======================================================== */
+        return false;
 
-    GGIrregularity.Media
-        ._updateFormStatus();
+    }
 
 };
 
@@ -910,67 +983,7 @@ function(){
    PHOTO — REMOVE
    ============================================================ */
 
-GGIrregularity.Media.removePhoto =
-function(){
 
-    GGIrregularity.Media._revoke(
-        "photo"
-    );
-
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    const image =
-        document.getElementById(
-            "gg-irregularity-photo-preview-img"
-        );
-
-
-    const preview =
-        document.getElementById(
-            "gg-irregularity-photo-preview"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.value =
-            "";
-
-    }
-
-
-    if(
-        image
-    ){
-
-        image.removeAttribute(
-            "src"
-        );
-
-    }
-
-
-    if(
-        preview
-    ){
-
-        preview.style.display =
-            "none";
-
-    }
-
-
-    GGIrregularity.Media
-        ._updateFormStatus();
-
-};
 
 
 /* ============================================================
@@ -978,121 +991,182 @@ function(){
    ============================================================ */
 
 GGIrregularity.Media.previewVideo =
-function(
-    input
-){
+function(input){
 
-    const file =
-        input?.files?.[0] ||
-        null;
+    try{
 
+        const file =
+            input?.files?.[0];
 
-    if(
-        !file
-    ){
+        if(!file){
 
-        return;
+            return false;
 
-    }
+        }
 
 
-    /* ========================================================
-       VALIDATE VIDEO
-       ======================================================== */
+        /* ====================================================
+           VALIDATE
+           ==================================================== */
 
-    if(
-        !file.type ||
-        !file.type.startsWith(
-            "video/"
-        )
-    ){
+        if(
+            !file.type ||
+            !file.type.startsWith("video/")
+        ){
 
-        alert(
-            "Please select a valid video."
-        );
+            alert(
+                "Please select a valid video."
+            );
 
+            input.value = "";
 
-        input.value =
-            "";
+            return false;
 
-
-        return;
-
-    }
+        }
 
 
-    /* ========================================================
-       CLEAR OLD URL
-       ======================================================== */
+        /* ====================================================
+           STATE
+           ==================================================== */
 
-    GGIrregularity.Media._revoke(
-        "video"
-    );
+        const media =
+            GGIrregularity.Media
+                .getFormMediaState();
 
+        if(!media){
 
-    /* ========================================================
-       CREATE PREVIEW
-       ======================================================== */
+            console.error(
+                "❌ Irregularity media state unavailable."
+            );
 
-    const url =
-        URL.createObjectURL(
-            file
-        );
+            return false;
 
-
-    GGIrregularity.Media
-        ._videoObjectURL =
-        url;
+        }
 
 
-    const player =
-        document.getElementById(
-            "gg-irregularity-video-preview-player"
-        );
+        media.video =
+            file;
 
 
-    const preview =
-        document.getElementById(
-            "gg-irregularity-video-preview"
-        );
+        /* ====================================================
+           DOM
+           ==================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-video-preview"
+            );
+
+        const player =
+            document.getElementById(
+                "gg-irregularity-video-preview-player"
+            );
 
 
-    if(
-        player
-    ){
+        if(
+            !preview ||
+            !player
+        ){
+
+            console.error(
+                "❌ Irregularity video preview elements missing."
+            );
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           RELEASE OLD VIDEO URL
+           ==================================================== */
+
+        if(
+            media.videoObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    media.videoObjectUrl
+                );
+
+            }
+            catch(_){}
+
+        }
+
+
+        /* ====================================================
+           CREATE URL
+           ==================================================== */
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        media.videoObjectUrl =
+            objectUrl;
+
 
         player.src =
-            url;
+            objectUrl;
 
 
-        try{
-
-            player.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
+        player.load();
 
 
-    if(
-        preview
-    ){
+        /* ====================================================
+           SHOW PREVIEW
+           ==================================================== */
 
         preview.style.display =
             "block";
 
+
+        /* ====================================================
+           REFRESH BUTTONS
+           ==================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            GGIrregularity.Media
+                .updateControls();
+
+        }
+
+
+        console.log(
+            "🎥 IRREGULARITY VIDEO READY",
+            {
+                name:file.name,
+                type:file.type,
+                size:file.size
+            }
+        );
+
+
+        return true;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Irregularity video preview failed:",
+            error
+        );
+
+        return false;
+
     }
 
-
-    GGIrregularity.Media
-        ._updateFormStatus();
-
 };
-
-
 /* ============================================================
    VIDEO — CHANGE
    ============================================================ */
@@ -1124,16 +1198,19 @@ function(){
 GGIrregularity.Media.removeVideo =
 function(){
 
-    GGIrregularity.Media._revoke(
-        "video"
-    );
-
+    const media =
+        GGIrregularity.Media
+            .getFormMediaState();
 
     const input =
         document.getElementById(
             "gg-irregularity-video"
         );
 
+    const preview =
+        document.getElementById(
+            "gg-irregularity-video-preview"
+        );
 
     const player =
         document.getElementById(
@@ -1141,56 +1218,60 @@ function(){
         );
 
 
-    const preview =
-        document.getElementById(
-            "gg-irregularity-video-preview"
-        );
+    if(input){
 
-
-    if(
-        input
-    ){
-
-        input.value =
-            "";
+        input.value = "";
 
     }
 
 
     if(
-        player
+        media?.videoObjectUrl
     ){
+
+        try{
+
+            URL.revokeObjectURL(
+                media.videoObjectUrl
+            );
+
+        }
+        catch(_){}
+
+    }
+
+
+    if(player){
 
         try{
 
             player.pause();
 
         }
-        catch(_){
-
-        }
+        catch(_){}
 
 
         player.removeAttribute(
             "src"
         );
 
-
-        try{
-
-            player.load();
-
-        }
-        catch(_){
-
-        }
+        player.load();
 
     }
 
 
-    if(
-        preview
-    ){
+    if(media){
+
+        media.video =
+            null;
+
+        media.videoObjectUrl =
+            null;
+
+    }
+
+
+    if(preview){
 
         preview.style.display =
             "none";
@@ -1199,10 +1280,14 @@ function(){
 
 
     GGIrregularity.Media
-        ._updateFormStatus();
+        .updateControls();
+
+
+    console.log(
+        "🗑 Irregularity video removed"
+    );
 
 };
-
 
 /* ============================================================
    AUDIO — SHOW PREVIEW
@@ -1313,22 +1398,186 @@ function(
    ============================================================ */
 
 GGIrregularity.Media.previewAudio =
-function(
-    input
-){
+function(input){
 
-    const file =
-        input?.files?.[0] ||
-        null;
+    try{
+
+        const file =
+            input?.files?.[0];
+
+        if(!file){
+
+            return false;
+
+        }
 
 
-    if(
-        !file
-    ){
+        /* ====================================================
+           VALIDATE
+           ==================================================== */
 
-        return;
+        if(
+            !file.type ||
+            !file.type.startsWith("audio/")
+        ){
+
+            alert(
+                "Please select a valid audio file."
+            );
+
+            input.value = "";
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           STATE
+           ==================================================== */
+
+        const media =
+            GGIrregularity.Media
+                .getFormMediaState();
+
+        if(!media){
+
+            console.error(
+                "❌ Irregularity media state unavailable."
+            );
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           RELEASE OLD AUDIO URL
+           ==================================================== */
+
+        if(
+            media.audioObjectUrl
+        ){
+
+            try{
+
+                URL.revokeObjectURL(
+                    media.audioObjectUrl
+                );
+
+            }
+            catch(_){}
+
+        }
+
+
+        /* ====================================================
+           STORE FILE
+           ==================================================== */
+
+        media.audio =
+            file;
+
+
+        /* ====================================================
+           DOM
+           ==================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-audio-preview"
+            );
+
+        const player =
+            document.getElementById(
+                "gg-irregularity-audio-preview-player"
+            );
+
+
+        if(
+            !preview ||
+            !player
+        ){
+
+            console.error(
+                "❌ Irregularity audio preview elements missing."
+            );
+
+            return false;
+
+        }
+
+
+        /* ====================================================
+           CREATE OBJECT URL
+           ==================================================== */
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
+
+
+        media.audioObjectUrl =
+            objectUrl;
+
+
+        player.src =
+            objectUrl;
+
+
+        player.load();
+
+
+        /* ====================================================
+           SHOW PREVIEW
+           ==================================================== */
+
+        preview.style.display =
+            "block";
+
+
+        /* ====================================================
+           REFRESH CONTROLS
+           ==================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            GGIrregularity.Media
+                .updateControls();
+
+        }
+
+
+        console.log(
+            "🎙 IRREGULARITY AUDIO READY",
+            {
+                name:file.name,
+                type:file.type,
+                size:file.size
+            }
+        );
+
+
+        return true;
 
     }
+    catch(error){
+
+        console.error(
+            "❌ Irregularity audio preview failed:",
+            error
+        );
+
+        return false;
+
+    }
+
+};
 
 
     /* ========================================================
@@ -2198,210 +2447,396 @@ function(){
 
 
 /* ============================================================
-   AUDIO — REMOVE
+   🎙 AUDIO — REMOVE
    ============================================================ */
 
 GGIrregularity.Media.removeAudio =
 function(){
 
-    /* ========================================================
-       STOP ACTIVE RECORDER
-       ======================================================== */
+    try{
 
-    const recorder =
+        /* ========================================================
+           STOP ACTIVE RECORDER
+           ======================================================== */
+
+        const recorder =
+            GGIrregularity.Media
+                ._audioRecorder;
+
+
+        if(
+            recorder &&
+            recorder.state ===
+                "recording"
+        ){
+
+            try{
+
+                recorder.stop();
+
+            }
+            catch(_){
+
+            }
+
+        }
+
+
+        /* ========================================================
+           STOP AUDIO STREAM
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                ._stopAudioStream ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    ._stopAudioStream();
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Audio stream stop failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           CLEAR RECORDING TIMER
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                ._clearAudioTimer ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    ._clearAudioTimer();
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Audio timer clear failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           REVOKE AUDIO OBJECT URL
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                ._revoke ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    ._revoke(
+                        "audio"
+                    );
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Audio object URL revoke failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           RESET AUDIO STATE
+           ======================================================== */
+
         GGIrregularity.Media
-            ._audioRecorder;
+            ._audioRecorder =
+            null;
 
 
-    if(
-        recorder &&
-        recorder.state ===
-        "recording"
-    ){
+        GGIrregularity.Media
+            ._audioChunks =
+            [];
 
-        try{
 
-            recorder.stop();
+        GGIrregularity.Media
+            ._recording =
+            false;
+
+
+        GGIrregularity.Media
+            ._nativeAudioActive =
+            false;
+
+
+        GGIrregularity.Media
+            ._nativeAudioUri =
+            null;
+
+
+        /* ========================================================
+           CLEAR CURRENT IRREGULARITY AUDIO REQUEST
+           ======================================================== */
+
+        window.currentIrregularityAudioType =
+            null;
+
+
+        /* ========================================================
+           CLEAR AUDIO INPUT
+           ======================================================== */
+
+        const input =
+            document.getElementById(
+                "gg-irregularity-audio"
+            );
+
+
+        if(
+            input
+        ){
+
+            input.value =
+                "";
 
         }
-        catch(_){
+
+
+        /* ========================================================
+           AUDIO PLAYER
+           ======================================================== */
+
+        const player =
+            document.getElementById(
+                "gg-irregularity-audio-preview-player"
+            );
+
+
+        if(
+            player
+        ){
+
+            try{
+
+                player.pause();
+
+            }
+            catch(_){
+
+            }
+
+
+            player.removeAttribute(
+                "src"
+            );
+
+
+            try{
+
+                player.load();
+
+            }
+            catch(_){
+
+            }
 
         }
+
+
+        /* ========================================================
+           AUDIO PREVIEW
+           ======================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-audio-preview"
+            );
+
+
+        if(
+            preview
+        ){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        /* ========================================================
+           AUDIO ACTIONS
+           ======================================================== */
+
+        const actions =
+            document.getElementById(
+                "gg-irregularity-audio-actions"
+            );
+
+
+        if(
+            actions
+        ){
+
+            actions.style.display =
+                "none";
+
+        }
+
+
+        /* ========================================================
+           AUDIO TIMER
+           ======================================================== */
+
+        const timer =
+            document.getElementById(
+                "gg-irregularity-audio-timer"
+            );
+
+
+        if(
+            timer
+        ){
+
+            timer.textContent =
+                "";
+
+        }
+
+
+        /* ========================================================
+           RESET RECORD BUTTON
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                ._setRecordButton ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    ._setRecordButton(
+                        false
+                    );
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Record button reset failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           REFRESH MEDIA CONTROLS
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    .updateControls();
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Media controls refresh failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           UPDATE FORM MEDIA STATUS
+           ======================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                ._updateFormStatus ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media
+                    ._updateFormStatus();
+
+            }
+            catch(error){
+
+                console.warn(
+                    "⚠ Form media status update failed:",
+                    error
+                );
+
+            }
+
+        }
+
+
+        /* ========================================================
+           COMPLETE
+           ======================================================== */
+
+        console.log(
+            "🗑️ Irregularity audio removed."
+        );
+
+
+        return true;
 
     }
+    catch(error){
 
-
-    /* ========================================================
-       STOP STREAM
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._stopAudioStream();
-
-
-    /* ========================================================
-       TIMER
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._clearAudioTimer();
-
-
-    /* ========================================================
-       OBJECT URL
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._revoke(
-            "audio"
+        console.error(
+            "❌ Irregularity audio removal failed:",
+            error
         );
 
 
-    /* ========================================================
-       STATE
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._audioRecorder =
-        null;
-
-
-    GGIrregularity.Media
-        ._audioChunks =
-        [];
-
-
-    GGIrregularity.Media
-        ._recording =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioActive =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioUri =
-        null;
-
-
-    window.currentIrregularityAudioType =
-        null;
-
-
-    /* ========================================================
-       INPUT
-       ======================================================== */
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.value =
-            "";
+        return false;
 
     }
-
-
-    /* ========================================================
-       PLAYER
-       ======================================================== */
-
-    const player =
-        document.getElementById(
-            "gg-irregularity-audio-preview-player"
-        );
-
-
-    if(
-        player
-    ){
-
-        try{
-
-            player.pause();
-
-        }
-        catch(_){
-
-        }
-
-
-        player.removeAttribute(
-            "src"
-        );
-
-
-        try{
-
-            player.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    /* ========================================================
-       PREVIEW
-       ======================================================== */
-
-    const preview =
-        document.getElementById(
-            "gg-irregularity-audio-preview"
-        );
-
-
-    if(
-        preview
-    ){
-
-        preview.style.display =
-            "none";
-
-    }
-
-
-    /* ========================================================
-       TIMER
-       ======================================================== */
-
-    const timer =
-        document.getElementById(
-            "gg-irregularity-audio-timer"
-        );
-
-
-    if(
-        timer
-    ){
-
-        timer.textContent =
-            "";
-
-    }
-
-
-    GGIrregularity.Media
-        ._setRecordButton(
-            false
-        );
-
-
-    GGIrregularity.Media
-        ._updateFormStatus();
 
 };
-
 
 /* ============================================================
    AUDIO — NATIVE ANDROID CALLBACK
@@ -3351,515 +3786,109 @@ async function(
 GGIrregularity.Media.bindEvents =
 function(){
 
-    /* ========================================================
-       PHOTO INPUT
-       ======================================================== */
-
-    const photoInput =
+    const photo =
         document.getElementById(
             "gg-irregularity-photo"
         );
 
+    const video =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+    const audio =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    /* ========================================================
+       PHOTO
+       ======================================================== */
 
     if(
-        photoInput &&
-        !photoInput.dataset.ggMediaBound
+        photo &&
+        !photo.__ggIrregularityMediaBound
     ){
 
-        photoInput.addEventListener(
+        photo.addEventListener(
             "change",
             function(){
 
                 GGIrregularity.Media
                     .previewPhoto(
-                        photoInput
+                        photo
                     );
 
             }
         );
 
 
-        photoInput.dataset.ggMediaBound =
-            "1";
+        photo.__ggIrregularityMediaBound =
+            true;
 
     }
 
 
     /* ========================================================
-       VIDEO INPUT
+       VIDEO
        ======================================================== */
 
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
     if(
-        videoInput &&
-        !videoInput.dataset.ggMediaBound
+        video &&
+        !video.__ggIrregularityMediaBound
     ){
 
-        videoInput.addEventListener(
+        video.addEventListener(
             "change",
             function(){
 
                 GGIrregularity.Media
                     .previewVideo(
-                        videoInput
+                        video
                     );
 
             }
         );
 
 
-        videoInput.dataset.ggMediaBound =
-            "1";
+        video.__ggIrregularityMediaBound =
+            true;
 
     }
 
 
     /* ========================================================
-       AUDIO INPUT
+       AUDIO
        ======================================================== */
 
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
     if(
-        audioInput &&
-        !audioInput.dataset.ggMediaBound
+        audio &&
+        !audio.__ggIrregularityMediaBound
     ){
 
-        audioInput.addEventListener(
+        audio.addEventListener(
             "change",
             function(){
 
-                /*
-                 * Selecting an audio file replaces
-                 * any previous native recording.
-                 */
-
-                GGIrregularity.Media
-                    ._nativeAudioUri =
-                    null;
-
-
                 GGIrregularity.Media
                     .previewAudio(
-                        audioInput
+                        audio
                     );
 
             }
         );
 
 
-        audioInput.dataset.ggMediaBound =
-            "1";
+        audio.__ggIrregularityMediaBound =
+            true;
 
     }
-
-
-    /* ========================================================
-       RECORD BUTTON
-       ======================================================== */
-
-    const recordButton =
-        document.getElementById(
-            "gg-irregularity-record-audio"
-        );
-
-
-    if(
-        recordButton &&
-        !recordButton.dataset.ggMediaBound
-    ){
-
-        recordButton.addEventListener(
-            "click",
-            function(){
-
-                GGIrregularity.Media
-                    .recordAudio();
-
-            }
-        );
-
-
-        recordButton.dataset.ggMediaBound =
-            "1";
-
-    }
-
-
-    /* ========================================================
-       INITIAL BUTTON STATE
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._setRecordButton(
-            false
-        );
 
 
     console.log(
         "✅ Irregularity media events bound."
     );
-
-};
-
-
-/* ============================================================
-   RESET ALL MEDIA
-   ============================================================ */
-
-GGIrregularity.Media.reset =
-function(){
-
-    /* ========================================================
-       STOP RECORDER
-       ======================================================== */
-
-    const recorder =
-        GGIrregularity.Media
-            ._audioRecorder;
-
-
-    if(
-        recorder &&
-        recorder.state ===
-        "recording"
-    ){
-
-        try{
-
-            recorder.stop();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    /* ========================================================
-       STOP STREAM
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._stopAudioStream();
-
-
-    /* ========================================================
-       TIMER
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._clearAudioTimer();
-
-
-    /* ========================================================
-       OBJECT URLS
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._revoke(
-            "photo"
-        );
-
-
-    GGIrregularity.Media
-        ._revoke(
-            "video"
-        );
-
-
-    GGIrregularity.Media
-        ._revoke(
-            "audio"
-        );
-
-
-    /* ========================================================
-       STATE
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._audioRecorder =
-        null;
-
-
-    GGIrregularity.Media
-        ._audioChunks =
-        [];
-
-
-    GGIrregularity.Media
-        ._recording =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioActive =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioUri =
-        null;
-
-
-    window.currentIrregularityAudioType =
-        null;
-
-
-    /* ========================================================
-       PHOTO INPUT
-       ======================================================== */
-
-    const photoInput =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    if(
-        photoInput
-    ){
-
-        photoInput.value =
-            "";
-
-    }
-
-
-    /* ========================================================
-       PHOTO PREVIEW
-       ======================================================== */
-
-    const photoImage =
-        document.getElementById(
-            "gg-irregularity-photo-preview-img"
-        );
-
-
-    if(
-        photoImage
-    ){
-
-        photoImage.removeAttribute(
-            "src"
-        );
-
-    }
-
-
-    const photoPreview =
-        document.getElementById(
-            "gg-irregularity-photo-preview"
-        );
-
-
-    if(
-        photoPreview
-    ){
-
-        photoPreview.style.display =
-            "none";
-
-    }
-
-
-    /* ========================================================
-       VIDEO INPUT
-       ======================================================== */
-
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    if(
-        videoInput
-    ){
-
-        videoInput.value =
-            "";
-
-    }
-
-
-    /* ========================================================
-       VIDEO PREVIEW
-       ======================================================== */
-
-    const videoPlayer =
-        document.getElementById(
-            "gg-irregularity-video-preview-player"
-        );
-
-
-    if(
-        videoPlayer
-    ){
-
-        try{
-
-            videoPlayer.pause();
-
-        }
-        catch(_){
-
-        }
-
-
-        videoPlayer.removeAttribute(
-            "src"
-        );
-
-
-        try{
-
-            videoPlayer.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    const videoPreview =
-        document.getElementById(
-            "gg-irregularity-video-preview"
-        );
-
-
-    if(
-        videoPreview
-    ){
-
-        videoPreview.style.display =
-            "none";
-
-    }
-
-
-    /* ========================================================
-       AUDIO INPUT
-       ======================================================== */
-
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    if(
-        audioInput
-    ){
-
-        audioInput.value =
-            "";
-
-    }
-
-
-    /* ========================================================
-       AUDIO PREVIEW
-       ======================================================== */
-
-    const audioPlayer =
-        document.getElementById(
-            "gg-irregularity-audio-preview-player"
-        );
-
-
-    if(
-        audioPlayer
-    ){
-
-        try{
-
-            audioPlayer.pause();
-
-        }
-        catch(_){
-
-        }
-
-
-        audioPlayer.removeAttribute(
-            "src"
-        );
-
-
-        try{
-
-            audioPlayer.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    const audioPreview =
-        document.getElementById(
-            "gg-irregularity-audio-preview"
-        );
-
-
-    if(
-        audioPreview
-    ){
-
-        audioPreview.style.display =
-            "none";
-
-    }
-
-
-    /* ========================================================
-       TIMER
-       ======================================================== */
-
-    const timer =
-        document.getElementById(
-            "gg-irregularity-audio-timer"
-        );
-
-
-    if(
-        timer
-    ){
-
-        timer.textContent =
-            "";
-
-    }
-
-
-    /* ========================================================
-       BUTTON
-       ======================================================== */
-
-    GGIrregularity.Media
-        ._setRecordButton(
-            false
-        );
-
-
-    GGIrregularity.Media
-        ._updateFormStatus();
 
 };
 
@@ -4300,60 +4329,84 @@ GGIrregularity.Media._originalRemovePhoto =
 GGIrregularity.Media.removePhoto =
 function(){
 
-    const result =
+    const media =
         GGIrregularity.Media
-            ._originalRemovePhoto();
+            .getFormMediaState();
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-photo-preview"
+        );
+
+    const image =
+        document.getElementById(
+            "gg-irregularity-photo-preview-img"
+        );
+
+
+    if(input){
+
+        input.value = "";
+
+    }
+
+
+    if(
+        media?.photoObjectUrl
+    ){
+
+        try{
+
+            URL.revokeObjectURL(
+                media.photoObjectUrl
+            );
+
+        }
+        catch(_){}
+
+    }
+
+
+    if(media){
+
+        media.photo =
+            null;
+
+        media.photoObjectUrl =
+            null;
+
+    }
+
+
+    if(image){
+
+        image.removeAttribute(
+            "src"
+        );
+
+    }
+
+
+    if(preview){
+
+        preview.style.display =
+            "none";
+
+    }
 
 
     GGIrregularity.Media
         .updateControls();
 
 
-    return result;
-
-};
-
-
-GGIrregularity.Media._originalRemoveVideo =
-    GGIrregularity.Media._originalRemoveVideo ||
-    GGIrregularity.Media.removeVideo;
-
-
-GGIrregularity.Media.removeVideo =
-function(){
-
-    const result =
-        GGIrregularity.Media
-            ._originalRemoveVideo();
-
-
-    GGIrregularity.Media
-        .updateControls();
-
-
-    return result;
-
-};
-
-
-GGIrregularity.Media._originalRemoveAudio =
-    GGIrregularity.Media._originalRemoveAudio ||
-    GGIrregularity.Media.removeAudio;
-
-
-GGIrregularity.Media.removeAudio =
-function(){
-
-    const result =
-        GGIrregularity.Media
-            ._originalRemoveAudio();
-
-
-    GGIrregularity.Media
-        .updateControls();
-
-
-    return result;
+    console.log(
+        "🗑 Irregularity photo removed"
+    );
 
 };
 
