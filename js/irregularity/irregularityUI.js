@@ -6,15 +6,38 @@
    File:
        js/irregularity/irregularityUI.js
 
-   IMPORTANT
+   RESPONSIBILITY
    ------------------------------------------------------------
-   • Does NOT modify Elephant modal
-   • Does NOT modify Wildlife modal
-   • Does NOT create another GIS resolver
-   • Uses window.resolveCurrentGIS()
-   • Uses existing latestGps/latestGPS when available
-   • Falls back to device GPS
-   • Firestore saving remains inside irregularityModule.js
+   • Create / reuse Irregularity modal
+   • Build manual-input form
+   • Open / close modal
+   • Set date/time defaults
+   • Preserve existing sighting selector flow
+
+   NOT RESPONSIBLE FOR
+   ------------------------------------------------------------
+   • GPS acquisition
+   • GIS resolution
+   • Firebase initialization
+   • Firestore writing
+   • Apps Script
+   • Media upload
+   • Wildlife
+   • Elephant
+
+   GPS / GIS / PROFILE / FIRESTORE
+   ------------------------------------------------------------
+   Handled by:
+
+       irregularityModule.js
+
+   GPS:
+       window.latestGps
+       navigator.geolocation fallback
+
+   GIS:
+       window.resolveCurrentGIS()
+
    ============================================================ */
 
 
@@ -27,15 +50,23 @@ window.GGIrregularity =
 
 
 /* ============================================================
-   CREATE MODAL
+   UI NAMESPACE
    ============================================================ */
 
 GGIrregularity.UI =
     GGIrregularity.UI || {};
 
 
+/* ============================================================
+   ENSURE MODAL
+   ============================================================ */
+
 GGIrregularity.UI.ensureModal =
 function(){
+
+    /* ========================================================
+       REUSE EXISTING MODAL
+       ======================================================== */
 
     let modal =
         document.getElementById(
@@ -43,7 +74,9 @@ function(){
         );
 
 
-    if(modal){
+    if(
+        modal
+    ){
 
         return modal;
 
@@ -102,6 +135,7 @@ function(){
         "border-radius:15px;" +
         "padding:20px;" +
         "max-width:480px;" +
+        "width:100%;" +
         "margin:20px auto;" +
         "font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;" +
         "border-top:8px solid #1b5e20;" +
@@ -125,8 +159,14 @@ function(){
         "display:flex;" +
         "justify-content:space-between;" +
         "align-items:center;" +
+        "width:100%;" +
+        "box-sizing:border-box;" +
         "margin-bottom:8px;";
 
+
+    /* ========================================================
+       TITLE
+       ======================================================== */
 
     const title =
         document.createElement(
@@ -141,11 +181,18 @@ function(){
     title.style.cssText =
 
         "margin:0;" +
+        "padding:0;" +
         "color:#1b5e20;" +
         "font-size:18px;" +
         "font-weight:800;" +
-        "line-height:1.25;";
+        "line-height:1.25;" +
+        "flex:1;" +
+        "min-width:0;";
 
+
+    /* ========================================================
+       CLOSE BUTTON
+       ======================================================== */
 
     const closeButton =
         document.createElement(
@@ -165,28 +212,53 @@ function(){
         "Close";
 
 
+    closeButton.setAttribute(
+        "aria-label",
+        "Close Irregularity form"
+    );
+
+
     closeButton.style.cssText =
 
-        "font-size:24px;" +
+        "flex:0 0 auto;" +
+        "width:36px;" +
+        "height:36px;" +
         "border:none;" +
-        "background:none;" +
+        "border-radius:50%;" +
+        "background:transparent;" +
+        "font-size:26px;" +
+        "font-weight:400;" +
         "cursor:pointer;" +
-        "padding:5px;" +
+        "padding:0;" +
         "color:#555;" +
-        "line-height:1;";
+        "line-height:36px;" +
+        "text-align:center;" +
+        "touch-action:manipulation;" +
+        "-webkit-tap-highlight-color:transparent;";
 
 
     closeButton.onclick =
-        function(){
+        function(
+            event
+        ){
+
+            event.preventDefault();
+
+            event.stopPropagation();
 
             GGIrregularity.UI.close();
 
         };
 
 
+    /* ========================================================
+       HEADER ASSEMBLY
+       ======================================================== */
+
     header.appendChild(
         title
     );
+
 
     header.appendChild(
         closeButton
@@ -227,7 +299,9 @@ function(){
     formHost.style.cssText =
 
         "width:100%;" +
-        "box-sizing:border-box;";
+        "box-sizing:border-box;" +
+        "margin:0;" +
+        "padding:0;";
 
 
     /* ========================================================
@@ -238,9 +312,11 @@ function(){
         header
     );
 
+
     container.appendChild(
         hr
     );
+
 
     container.appendChild(
         formHost
@@ -263,7 +339,9 @@ function(){
 
     modal.addEventListener(
         "click",
-        function(event){
+        function(
+            event
+        ){
 
             if(
                 event.target ===
@@ -277,6 +355,10 @@ function(){
         }
     );
 
+
+    /* ========================================================
+       RETURN
+       ======================================================== */
 
     return modal;
 
@@ -295,7 +377,7 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       CLOSE SIGHTING SELECTOR
+       CLOSE EXISTING SIGHTING SELECTOR
        ======================================================== */
 
     if(
@@ -325,7 +407,7 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       RESET STATE
+       RESET EXISTING IRREGULARITY STATE
        ======================================================== */
 
     if(
@@ -347,6 +429,10 @@ async function openIrregularityForm(){
         GGIrregularity.UI.ensureModal();
 
 
+    /* ========================================================
+       FORM HOST
+       ======================================================== */
+
     const formHost =
         document.getElementById(
             "gg-irregularity-form-host"
@@ -361,6 +447,7 @@ async function openIrregularityForm(){
             "❌ Irregularity form host not found."
         );
 
+
         console.groupEnd();
 
         return;
@@ -369,7 +456,7 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       BUILD FORM
+       BUILD MANUAL-INPUT FORM
        ======================================================== */
 
     if(
@@ -381,6 +468,7 @@ async function openIrregularityForm(){
         console.error(
             "❌ GGIrregularity.Form.build() not available."
         );
+
 
         console.groupEnd();
 
@@ -400,273 +488,25 @@ async function openIrregularityForm(){
     modal.style.display =
         "block";
 
+
     modal.style.visibility =
         "visible";
+
 
     modal.style.opacity =
         "1";
 
+
+    /* ========================================================
+       PREVENT BACKGROUND PAGE SCROLL
+       ======================================================== */
 
     document.body.style.overflow =
         "hidden";
 
 
     /* ========================================================
-       USER PROFILE
-       ======================================================== */
-
-    const user =
-        window.userProfile ||
-        {};
-
-
-    /* ========================================================
-       GPS
-       ======================================================== */
-
-    let gps =
-        window.latestGps ||
-        window.latestGPS ||
-        null;
-
-
-    const hasValidGPS =
-        gps &&
-        Number.isFinite(
-            Number(
-                gps.lat ??
-                gps.latitude
-            )
-        ) &&
-        Number.isFinite(
-            Number(
-                gps.lng ??
-                gps.lon ??
-                gps.longitude
-            )
-        );
-
-
-    /* ========================================================
-       FALLBACK DEVICE GPS
-       ======================================================== */
-
-    if(
-        !hasValidGPS
-    ){
-
-        try{
-
-            const position =
-                await new Promise(
-                    function(
-                        resolve,
-                        reject
-                    ){
-
-                        if(
-                            !navigator.geolocation
-                        ){
-
-                            reject(
-                                new Error(
-                                    "Geolocation not supported"
-                                )
-                            );
-
-                            return;
-
-                        }
-
-
-                        navigator.geolocation.getCurrentPosition(
-
-                            resolve,
-
-                            reject,
-
-                            {
-
-                                enableHighAccuracy:
-                                    true,
-
-                                timeout:
-                                    10000,
-
-                                maximumAge:
-                                    10000
-
-                            }
-
-                        );
-
-                    }
-                );
-
-
-            gps = {
-
-                lat:
-                    position.coords.latitude,
-
-                lng:
-                    position.coords.longitude,
-
-                accuracy:
-                    position.coords.accuracy
-
-            };
-
-
-            window.latestGps =
-                gps;
-
-
-        }
-        catch(
-            error
-        ){
-
-            console.warn(
-                "⚠ Unable to get current GPS:",
-                error
-            );
-
-
-            gps = {
-
-                lat:
-                    "",
-
-                lng:
-                    "",
-
-                accuracy:
-                    null
-
-            };
-
-        }
-
-    }
-
-
-    /* ========================================================
-       SAVE GPS INTO STATE
-       ======================================================== */
-
-    if(
-        GGIrregularity.State &&
-        typeof GGIrregularity.State.setGPS ===
-        "function"
-    ){
-
-        GGIrregularity.State.setGPS(
-            gps
-        );
-
-    }
-
-
-    /* ========================================================
-       RESOLVE GIS
-       ======================================================== */
-
-    const lat =
-        Number(
-            gps.lat ??
-            gps.latitude
-        );
-
-
-    const lon =
-        Number(
-            gps.lng ??
-            gps.lon ??
-            gps.longitude
-        );
-
-
-    let gis =
-        null;
-
-
-    if(
-
-        Number.isFinite(
-            lat
-        ) &&
-
-        Number.isFinite(
-            lon
-        )
-
-    ){
-
-        /*
-         * IMPORTANT:
-         *
-         * This is the ONLY GIS resolver.
-         *
-         * No new resolver is created here.
-         */
-
-        if(
-            typeof window.resolveCurrentGIS ===
-            "function"
-        ){
-
-            try{
-
-                gis =
-                    window.resolveCurrentGIS(
-                        lat,
-                        lon
-                    );
-
-            }
-            catch(
-                error
-            ){
-
-                console.error(
-                    "❌ GIS resolution failed:",
-                    error
-                );
-
-            }
-
-        }
-        else{
-
-            console.error(
-                "❌ window.resolveCurrentGIS() not available."
-            );
-
-        }
-
-    }
-
-
-    /* ========================================================
-       SAVE GIS STATE
-       ======================================================== */
-
-    if(
-        GGIrregularity.State &&
-        typeof GGIrregularity.State.setGIS ===
-        "function"
-    ){
-
-        GGIrregularity.State.setGIS(
-            gis
-        );
-
-    }
-
-
-    /* ========================================================
-       DATE / TIME
+       DATE / TIME DEFAULTS
        ======================================================== */
 
     const now =
@@ -703,7 +543,7 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       SET FIELD HELPER
+       SAFE FIELD SETTER
        ======================================================== */
 
     const setValue =
@@ -733,6 +573,10 @@ async function openIrregularityForm(){
 
     /* ========================================================
        DATE
+
+       MANUAL FIELD
+       Automatically defaulted to today's date.
+       User can change it.
        ======================================================== */
 
     setValue(
@@ -743,6 +587,10 @@ async function openIrregularityForm(){
 
     /* ========================================================
        TIME
+
+       MANUAL FIELD
+       Automatically defaulted to current time.
+       User can change it.
        ======================================================== */
 
     setValue(
@@ -754,111 +602,34 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       GPS HIDDEN FIELDS
+       INITIALIZE FORM BEHAVIOUR
+       ========================================================
+
+       IMPORTANT:
+
+       irregularityModule.js owns the submit listener.
+
+       We do NOT add:
+
+           form.onsubmit
+
+       here.
+
+       This prevents duplicate Firestore submissions.
        ======================================================== */
-
-    setValue(
-        "gg-irregularity-latitude",
-        Number.isFinite(lat)
-            ? lat
-            : ""
-    );
-
-
-    setValue(
-        "gg-irregularity-longitude",
-        Number.isFinite(lon)
-            ? lon
-            : ""
-    );
-
-
-    /* ========================================================
-       REPORTER
-       ======================================================== */
-
-    const reporter =
-        user.rawName ||
-        user.name ||
-        "";
-
-
-    const phone =
-        user.phone ||
-        "";
-
-
-    /*
-     * These are optional because the current form does not
-     * require visible reporter fields.
-     *
-     * The Firestore module can use the same profile directly.
-     */
-
-
-    window.irregularityReporter = {
-
-        name:
-            reporter,
-
-        phone:
-            phone,
-
-        designation:
-            user.designation ||
-            user.role ||
-            "",
-
-        beat:
-            user.beat ||
-            "",
-
-        range:
-            user.range ||
-            "",
-
-        division:
-            user.division ||
-            "",
-
-        circle:
-            user.circle ||
-            "",
-
-        sessionId:
-            window.sessionId ||
-            ""
-
-    };
-
-
-    /* ========================================================
-       GIS DISPLAY
-       ======================================================== */
-
-    const locationText =
-        gis?.text ||
-        "";
-
-
-    const locationField =
-        document.getElementById(
-            "gg-irregularity-location"
-        );
-
 
     if(
-        locationField
+        typeof GGIrregularity.init ===
+        "function"
     ){
 
-        locationField.value =
-            locationText;
+        GGIrregularity.init();
 
     }
 
 
     /* ========================================================
-       CATEGORY CHANGE HANDLER
+       CATEGORY FIELD
        ======================================================== */
 
     const categorySelect =
@@ -867,135 +638,46 @@ async function openIrregularityForm(){
         );
 
 
+    /* ========================================================
+       CATEGORY STATE
+       ======================================================== */
+
     if(
         categorySelect
     ){
 
-        categorySelect.addEventListener(
-            "change",
-            function(){
+        if(
+            GGIrregularity.State &&
+            typeof GGIrregularity.State.setCategory ===
+            "function"
+        ){
 
-                if(
-                    GGIrregularity.State &&
-                    typeof GGIrregularity.State.setCategory ===
-                    "function"
-                ){
+            GGIrregularity.State.setCategory(
+                categorySelect.value ||
+                ""
+            );
 
-                    GGIrregularity.State.setCategory(
-                        this.value
-                    );
-
-                }
-
-            }
-        );
+        }
 
     }
 
 
     /* ========================================================
-       FORM SUBMIT
+       INITIAL CATEGORY VISIBILITY
        ======================================================== */
 
-    const form =
-        document.getElementById(
-            "ggIrregularityForm"
-        );
-
-
     if(
-        form
+        typeof GGIrregularity.updateFields ===
+        "function"
     ){
 
-        form.onsubmit =
-            async function(
-                event
-            ){
-
-                event.preventDefault();
-
-                event.stopPropagation();
-
-
-                if(
-                    GGIrregularity.State &&
-                    typeof GGIrregularity.State.isSubmitting ===
-                    "function" &&
-                    GGIrregularity.State.isSubmitting()
-                ){
-
-                    return;
-
-                }
-
-
-                if(
-                    GGIrregularity.State &&
-                    typeof GGIrregularity.State.setSubmitting ===
-                    "function"
-                ){
-
-                    GGIrregularity.State.setSubmitting(
-                        true
-                    );
-
-                }
-
-
-                try{
-
-                    if(
-                        typeof GGIrregularity.submit ===
-                        "function"
-                    ){
-
-                        await GGIrregularity.submit(
-                            form
-                        );
-
-                    }
-                    else{
-
-                        console.error(
-                            "❌ GGIrregularity.submit() not available."
-                        );
-
-                    }
-
-                }
-                catch(
-                    error
-                ){
-
-                    console.error(
-                        "❌ Irregularity submission failed:",
-                        error
-                    );
-
-                }
-                finally{
-
-                    if(
-                        GGIrregularity.State &&
-                        typeof GGIrregularity.State.setSubmitting ===
-                        "function"
-                    ){
-
-                        GGIrregularity.State.setSubmitting(
-                            false
-                        );
-
-                    }
-
-                }
-
-            };
+        GGIrregularity.updateFields();
 
     }
 
 
     /* ========================================================
-       FOCUS
+       FOCUS CATEGORY
        ======================================================== */
 
     if(
@@ -1005,7 +687,21 @@ async function openIrregularityForm(){
         setTimeout(
             function(){
 
-                categorySelect.focus();
+                try{
+
+                    categorySelect.focus();
+
+                }
+                catch(
+                    error
+                ){
+
+                    console.warn(
+                        "⚠ Unable to focus irregularity category:",
+                        error
+                    );
+
+                }
 
             },
             100
@@ -1014,26 +710,25 @@ async function openIrregularityForm(){
     }
 
 
+    /* ========================================================
+       DEBUG
+
+       NO GPS IS READ HERE.
+       NO GIS IS RESOLVED HERE.
+       ======================================================== */
+
     console.log(
-        "⚠️ Irregularity modal OPEN"
+        "⚠️ Irregularity form OPEN"
     );
 
 
     console.log(
-        "📍 GPS:",
-        gps
+        "📝 Manual fields ready."
     );
 
 
     console.log(
-        "🗺️ GIS:",
-        gis
-    );
-
-
-    console.log(
-        "👤 Reporter:",
-        window.irregularityReporter
+        "📍 GPS/GIS will be resolved only during submit."
     );
 
 
@@ -1054,6 +749,10 @@ function closeIrregularityForm(){
         );
 
 
+    /* ========================================================
+       HIDE MODAL
+       ======================================================== */
+
     if(
         modal
     ){
@@ -1061,19 +760,28 @@ function closeIrregularityForm(){
         modal.style.display =
             "none";
 
+
         modal.style.visibility =
             "hidden";
+
+
+        modal.style.opacity =
+            "0";
 
     }
 
 
-    /*
-     * Restore normal application scrolling.
-     */
+    /* ========================================================
+       RESTORE PAGE SCROLL
+       ======================================================== */
 
     document.body.style.overflow =
         "";
 
+
+    /* ========================================================
+       RESET EDITING STATE
+       ======================================================== */
 
     window.isEditingIrregularity =
         false;
@@ -1082,6 +790,10 @@ function closeIrregularityForm(){
     window.currentIrregularityId =
         null;
 
+
+    /* ========================================================
+       RESET IRREGULARITY STATE
+       ======================================================== */
 
     if(
         GGIrregularity.State &&
@@ -1095,14 +807,14 @@ function closeIrregularityForm(){
 
 
     console.log(
-        "⚠️ Irregularity modal CLOSED"
+        "⚠️ Irregularity form CLOSED"
     );
 
 }
 
 
 /* ============================================================
-   NAMESPACE ALIASES
+   UI NAMESPACE ALIASES
    ============================================================ */
 
 GGIrregularity.UI.open =
