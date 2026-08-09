@@ -10321,232 +10321,826 @@ catch (
 // ======================================================
 // 🔥 GLOBAL STATE
 // ======================================================
-/* ============================================================
-   🚀 GREENGUARD SMART SERVICE WORKER UPDATE SYSTEM
-   ============================================================
-
-   USER CONTROLLED UPDATE
-
-   FLOW:
-
-       New SW detected
-            ↓
-       UPDATE button
-            ↓
-       User clicks
-            ↓
-       Updating...
-            ↓
-       skipWaiting()
-            ↓
-       controllerchange
-            ↓
-       ONE reload
-            ↓
-       New app loads
-            ↓
-       "APP UPDATED SUCCESSFULLY"
-            ↓
-       Update banner disappears
-
-   IMPORTANT:
-   • Does NOT auto reload
-   • Does NOT touch GPS
-   • Does NOT touch Firestore
-   • Does NOT touch app startup
-   • Does NOT touch offline logic
-   • Prevents double click
-   ============================================================ */
-
-
-/* ============================================================
-   GLOBAL UPDATE STATE
-   ============================================================ */
-
+// ======================================================
+// 🔥 GLOBAL STATE
+// ======================================================
 let newWorker = null;
-
 let isUpdating = false;
-
 let refreshing = false;
 
-
-/* ============================================================
-   UPDATE STORAGE FLAGS
-   ============================================================ */
-
-const GG_UPDATE_SUCCESS_KEY =
-    "GG_UPDATE_SUCCESS";
+const APP_VERSION = "v1006";
+console.log("🔥 VERSION", APP_VERSION);
 
 
-const GG_UPDATE_STARTED_KEY =
-    "GG_UPDATE_STARTED";
+// ======================================================
+// 🚀 SINGLE LOAD WRAPPER (ONLY ONE - FINAL)
+// ======================================================
+window.addEventListener("load", function () {
+
+  // 🔥 MASTER LOCK
+  if (window.__LOAD_EXECUTED__) {
+    console.warn("⛔ Duplicate load blocked");
+    return;
+  }
+  window.__LOAD_EXECUTED__ = true;
+
+  console.log("🚀 LOAD INIT START");
 
 
-/* ============================================================
-   UPDATE VERSION
-   ============================================================ */
-
-const APP_VERSION =
-    "v1006";
-
-
-console.log(
-    "🔥 GREENGUARD VERSION:",
-    APP_VERSION
-);
+  // ======================================================
+  // 🔧 VERSION TAG
+  // ======================================================
+  const versionEl = document.getElementById("versionTag");
+  if (versionEl) versionEl.innerText = APP_VERSION;
 
 
-/* ============================================================
-   TOAST
-   ============================================================ */
+  // ======================================================
+  // 🔥 SPLASH SCREEN
+  // ======================================================
+  const splash = document.getElementById("splash-screen");
 
-function showAppUpdateToast(
-    message,
-    duration
-){
+  if (splash) {
+    setTimeout(() => {
+      splash.style.opacity = "0";
 
-    duration =
-        duration ||
-        3500;
+      setTimeout(() => {
+        splash.remove();
+        if (window.map) {
+          window.map.invalidateSize();
+        }
+      }, 800);
+
+  }, 600);
+  }
 
 
-    let toast =
-        document.getElementById(
-            "gg-app-update-toast"
+// ======================================================
+// 🔥 SERVICE WORKER REGISTER
+// ======================================================
+//
+// IMPORTANT:
+//
+// New code detected:
+//     → install it
+//     → KEEP IT WAITING
+//     → show UPDATE button
+//
+// Do NOT:
+//     → skipWaiting automatically
+//     → reload automatically
+//
+// The user controls when the new version becomes active.
+// ======================================================
+
+if (
+    "serviceWorker" in navigator &&
+    !window.__SW_REGISTERED__
+) {
+
+    window.__SW_REGISTERED__ =
+        true;
+
+
+    navigator.serviceWorker
+        .register(
+            "./sw.js"
+        )
+
+        .then(
+            function(registration){
+
+                console.log(
+                    "✅ SW Registered"
+                );
+
+
+                // ==================================================
+                // 🔎 ONE UPDATE CHECK
+                // ==================================================
+                //
+                // This only checks whether a new Service Worker
+                // exists.
+                //
+                // It does NOT activate it.
+                // It does NOT reload the application.
+                //
+                // ==================================================
+
+                setTimeout(
+                    function(){
+
+                        registration
+                            .update()
+                            .catch(
+                                function(error){
+
+                                    console.warn(
+                                        "⚠ SW update check failed:",
+                                        error
+                                    );
+
+                                }
+                            );
+
+                    },
+                    5000
+                );
+
+
+                // ==================================================
+                // 🔥 NEW WORKER HANDLER
+                // ==================================================
+
+                function handleUpdate(
+                    worker
+                ){
+
+                    if (
+                        !worker
+                    ){
+
+                        return;
+
+                    }
+
+
+                    // ==================================================
+                    // REMEMBER WAITING WORKER
+                    // ==================================================
+
+                    newWorker =
+                        worker;
+
+
+                    worker.addEventListener(
+                        "statechange",
+                        function(){
+
+                            // ==================================================
+                            // NEW VERSION INSTALLED
+                            // ==================================================
+
+                            if (
+                                worker.state ===
+                                "installed" &&
+
+                                navigator
+                                    .serviceWorker
+                                    .controller
+                            ){
+
+                                console.log(
+                                    "🆕 New GreenGuard code detected"
+                                );
+
+
+                                // ==================================================
+                                // IMPORTANT
+                                // ==================================================
+                                //
+                                // DO NOT CALL skipWaiting HERE.
+                                //
+                                // User must press UPDATE.
+                                //
+                                // ==================================================
+
+                                showUpdateUI();
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                // ==================================================
+                // EXISTING WAITING WORKER
+                // ==================================================
+
+                if (
+                    registration.waiting
+                ){
+
+                    console.log(
+                        "⚡ Waiting Service Worker found"
+                    );
+
+
+                    handleUpdate(
+                        registration.waiting
+                    );
+
+
+                    showUpdateUI();
+
+                }
+
+
+                // ==================================================
+                // NEW WORKER FOUND
+                // ==================================================
+
+                registration.addEventListener(
+                    "updatefound",
+                    function(){
+
+                        console.log(
+                            "🔎 New Service Worker found"
+                        );
+
+
+                        handleUpdate(
+                            registration.installing
+                        );
+
+                    }
+                );
+
+
+                // ==================================================
+                // NO WAITING WORKER
+                // ==================================================
+                //
+                // No new version means:
+                //
+                // NO UPDATE BUTTON.
+                //
+                // ==================================================
+
+                if (
+                    !registration.waiting
+                ){
+
+                    hideUpdateUI();
+
+                }
+
+            }
+        )
+
+        .catch(
+            function(error){
+
+                console.error(
+                    "❌ SW registration failed:",
+                    error
+                );
+
+            }
         );
 
+}
 
-    /* ========================================================
-       CREATE ON FIRST USE
-       ======================================================== */
 
-    if(
-        !toast
-    ){
+  // ======================================================
+  // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL FIX)
+  // ======================================================
+  // ======================================================
+// ======================================================
+// 🚀 SERVICE WORKER CONTROLLER CHANGE
+// ======================================================
+//
+// NORMAL APPLICATION:
+//
+//     controllerchange
+//          ↓
+//     DO NOTHING
+//
+// MANUAL UPDATE:
+//
+//     Update button
+//          ↓
+//     skipWaiting()
+//          ↓
+//     controllerchange
+//          ↓
+//     ONE reload
+//
+// ======================================================
 
-        toast =
-            document.createElement(
-                "div"
+if (
+    !window.__SW_CONTROLLER_BOUND__
+) {
+
+    window.__SW_CONTROLLER_BOUND__ =
+        true;
+
+
+    // ==================================================
+    // 🔒 MANUAL UPDATE FLAG
+    // ==================================================
+
+    window.__GG_MANUAL_SW_UPDATE__ =
+        false;
+
+
+    window.__SW_REFRESHING__ =
+        false;
+
+
+    navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        function(){
+
+            console.log(
+                "⚡ Service Worker controllerchange detected"
             );
 
 
-        toast.id =
-            "gg-app-update-toast";
+            // ==================================================
+            // NORMAL APP
+            // ==================================================
+            //
+            // User did NOT press Update.
+            //
+            // NEVER reload.
+            //
+            // ==================================================
+
+            if (
+                !window.__GG_MANUAL_SW_UPDATE__
+            ){
+
+                console.log(
+                    "🛡️ Normal controllerchange → NO reload"
+                );
 
 
-        toast.style.cssText =
+                return;
 
-            "position:fixed;" +
-            "left:50%;" +
-            "bottom:24px;" +
-            "transform:translateX(-50%) translateY(20px);" +
-            "z-index:999999;" +
-            "max-width:calc(100vw - 32px);" +
-            "box-sizing:border-box;" +
-            "padding:12px 18px;" +
-            "border-radius:10px;" +
-            "background:#1b5e20;" +
-            "color:#ffffff;" +
-            "font-size:13px;" +
-            "font-weight:700;" +
-            "line-height:1.35;" +
-            "text-align:center;" +
-            "box-shadow:0 6px 20px rgba(0,0,0,0.30);" +
-            "opacity:0;" +
-            "pointer-events:none;" +
-            "transition:opacity .22s ease, transform .22s ease;";
+            }
 
 
-        document.body.appendChild(
-            toast
-        );
+            // ==================================================
+            // PREVENT DOUBLE RELOAD
+            // ==================================================
 
-    }
+            if (
+                window.__SW_REFRESHING__
+            ){
 
-
-    toast.textContent =
-        message;
-
-
-    /* ========================================================
-       SHOW
-       ======================================================== */
-
-    requestAnimationFrame(
-        function(){
-
-            toast.style.opacity =
-                "1";
+                console.warn(
+                    "⛔ Reload already in progress"
+                );
 
 
-            toast.style.transform =
-                "translateX(-50%) translateY(0)";
+                return;
+
+            }
+
+
+            // ==================================================
+            // FINAL RELOAD LOCK
+            // ==================================================
+
+            window.__SW_REFRESHING__ =
+                true;
+
+
+            console.log(
+                "✅ Manual update activated"
+            );
+
+
+            console.log(
+                "🔄 Reloading GreenGuard ONCE..."
+            );
+
+
+            // ==================================================
+            // HIDE UPDATE BUTTON BEFORE RELOAD
+            // ==================================================
+
+            hideUpdateUI();
+
+
+            // ==================================================
+            // ONE AND ONLY ONE RELOAD
+            // ==================================================
+
+            window.location.reload();
 
         }
     );
 
+}
 
-    /* ========================================================
-       HIDE
-       ======================================================== */
 
-    clearTimeout(
-        toast.__ggToastTimer
+// ======================================================
+// 🔥 MAIN APP INIT
+// ======================================================
+console.log(
+  "🚀 App Started - Command Centre Initializing"
+);
+
+if (window.__APP_STARTED__) {
+
+  console.warn(
+    "⚠ App already started → skipping"
+  );
+
+  return;
+}
+
+window.__APP_STARTED__ = true;
+
+
+// ================= STATUS =================
+if (!navigator.onLine) {
+
+  updateNetworkStatus(
+    "offline"
+  );
+
+} else {
+
+  updateNetworkStatus(
+    "connecting"
+  );
+}
+
+
+// ================= UI INIT =================
+try {
+
+  initResponsiveUI();
+
+} catch (e) {
+
+  console.warn(
+    "UI Init delayed:",
+    e
+  );
+}
+
+
+// ================= PROFILE FLOW =================
+const savedProfile =
+    localStorage.getItem(
+        "userProfile"
     );
 
 
-    toast.__ggToastTimer =
-        setTimeout(
-            function(){
+if (
+    savedProfile
+) {
 
-                toast.style.opacity =
-                    "0";
+    try {
+
+        const profile =
+            JSON.parse(
+                savedProfile
+            );
 
 
-                toast.style.transform =
-                    "translateX(-50%) translateY(20px)";
+        window.userProfile =
+            normalizeUserProfile(
+                profile
+            );
 
-            },
-            duration
+
+        console.log(
+            "📴 OFFLINE MODE → APP STARTED"
         );
 
+
+        // ==========================================
+        // NORMAL ROLE CONTROL
+        // ==========================================
+
+        applyRoleControl?.();
+
+
+        // ==========================================
+        // 🤖 GREENGUARD AI — ADMIN ACCESS
+        //
+        // Profile is NOW available.
+        // This must run AFTER window.userProfile
+        // has been populated.
+        // ==========================================
+
+        if (
+            typeof applyGreenGuardAiAccess ===
+            "function"
+        ) {
+
+            console.log(
+                "🤖 Applying GreenGuard AI access..."
+            );
+
+
+            applyGreenGuardAiAccess(
+                window.userProfile
+            );
+
+        }
+
+        else {
+
+            console.warn(
+                "⏳ applyGreenGuardAiAccess not ready"
+            );
+
+
+            // --------------------------------------
+            // AI code may load slightly later.
+            // Retry after app initialization.
+            // --------------------------------------
+
+            setTimeout(
+                function () {
+
+                    if (
+                        typeof applyGreenGuardAiAccess ===
+                        "function"
+                    ) {
+
+                        console.log(
+                            "🤖 Applying delayed GreenGuard AI access..."
+                        );
+
+
+                        applyGreenGuardAiAccess(
+                            window.userProfile
+                        );
+
+                    }
+
+                    else {
+
+                        console.error(
+                            "❌ applyGreenGuardAiAccess still unavailable"
+                        );
+
+                    }
+
+                },
+                1500
+            );
+
+        }
+
+
+        // ==========================================
+        // APP START
+        // ==========================================
+
+        if (
+            !window.__appBootRequested
+        ) {
+
+            window.__appBootRequested =
+                true;
+
+
+            startApp?.();
+
+        }
+
+
+        // ==========================================
+        // DUTY CONTROL
+        // ==========================================
+
+        initDutyControl?.();
+
+
+        // ==========================================
+        // OFFLINE SYNC
+        // ==========================================
+
+        if (
+            navigator.onLine
+        ) {
+
+            try {
+
+                syncOfflineMoves?.();
+
+                syncOfflineSightings?.();
+
+            }
+
+            catch (
+                e
+            ) {
+
+                console.warn(
+                    "⚠ Sync error:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        // ==========================================
+        // REFRESH PROFILE FROM SERVER
+        // ==========================================
+
+        setTimeout(
+            refreshOnlineProfile,
+            2000
+        );
+
+    }
+
+    catch (
+        e
+    ) {
+
+        console.error(
+            "❌ Corrupt profile",
+            e
+        );
+
+
+        localStorage.removeItem(
+            "userProfile"
+        );
+
+
+        startOnlineLoginFlow();
+
+    }
+
 }
 
+else {
 
-/* ============================================================
-   UPDATE UI ELEMENTS
-   ============================================================ */
-
-function getUpdateBanner(){
-
-    return document.getElementById(
-        "updateBanner"
-    );
+    startOnlineLoginFlow();
 
 }
 
+// ======================================================
+// 🔥 GPS WATCHDOG SYSTEM (PRODUCTION GRADE - FINAL)
+// ======================================================
 
-function getUpdateButton(){
+if (!window.__GPS_WATCHDOG_STARTED__) {
 
-    return document.getElementById(
-        "updateBtn"
-    );
+  window.__GPS_WATCHDOG_STARTED__ = true;
 
-}
+  // ======================================================
+  // 🔥 RESTART LOCK (PREVENT LOOP / STORM)
+  // ======================================================
+  window.__GPS_RESTARTING__ = false;
+
+  function safeGPSRestart(reason){
+
+    if(window.__GPS_RESTARTING__) return;
+
+    window.__GPS_RESTARTING__ = true;
+
+    console.warn("🔄 GPS controlled restart →", reason);
+
+    if(window.gpsRunning){
+      try { stopAutoGPS(); } catch(e){}
+    }
+
+    setTimeout(() => {
+
+      if(!window.gpsRunning){
+       // startAutoGPS();
+      }
+
+      // 🔓 unlock after cooldown
+      setTimeout(() => {
+        window.__GPS_RESTARTING__ = false;
+      }, 5000);
+
+    }, 1000);
+  }
 
 
-/* ============================================================
-   SHOW UPDATE AVAILABLE
-   ============================================================ */
+  // ======================================================
+  // 🔥 1. HEARTBEAT WATCHDOG (PRIMARY RECOVERY)
+  // ======================================================
+  setInterval(() => {
+
+    if(!window.isDutyActive) return;
+
+    const now = Date.now();
+    const last = window.__lastGpsTime;
+
+    const gap = last ? (now - last) : Infinity;
+
+    if(gap > 20000){
+
+      console.error("🚨 GPS DEAD → restarting | gap:", Math.floor(gap/1000), "s");
+
+      safeGPSRestart("heartbeat");
+
+    }
+
+  }, 10000);
+
+
+  // ======================================================
+  // 👁 2. VISIBILITY FORCE RECOVERY (SCREEN OFF FIX)
+  // ======================================================
+  document.addEventListener("visibilitychange", () => {
+
+    if(document.visibilityState === "visible"){
+
+      console.log("👁 App resumed");
+
+      if(window.isDutyActive){
+
+        safeGPSRestart("visibility");
+
+      }
+
+    }
+  });
+
+
+  // ======================================================
+  // 🔥 3. DUTY FAILSAFE (GPS MUST RUN DURING DUTY)
+  // ======================================================
+  setInterval(() => {
+
+    if(window.isDutyActive && !window.gpsRunning){
+
+      console.warn("⚠ GPS missing during duty → restart");
+
+      safeGPSRestart("duty");
+
+    }
+
+  }, 15000);
+
+
+  // ======================================================
+  // 🔄 4. PERIODIC HARD RESET (ANTI-FREEZE)
+  // ======================================================
+  setInterval(() => {
+
+    if(window.isDutyActive){
+
+      console.warn("🔄 Periodic GPS refresh");
+
+      safeGPSRestart("periodic");
+
+    }
+
+  }, 60000); // every 60 sec
+
+}// ======================================================
+// 🔥 END OF LOAD BLOCK
+// ======================================================
+
+}); // ✅🔥 ONLY ONE FINAL CLOSING
+    
+    // ✅🔥 ONLY ONE FINAL CLOSING
+    
+    // ✅🔥 CRITICAL CLOSING (DO NOT MISS) 
+  // ======================================================
+// 🔧 INIT
+// ======================================================
+// ======================================================
+// 🔥 LOAD INIT (RUN ONLY ONCE)
+// ======================================================
+// ======================================================
+// 🎯 SHOW UPDATE UI
+// ======================================================
+// ======================================================
+// 🎯 SHOW UPDATE UI
+// ======================================================
+//
+// Called ONLY when a new Service Worker is available.
+//
+// ======================================================
+
+// ======================================================
+// 🎯 SHOW UPDATE UI
+// ======================================================
+//
+// ONLY called when a NEW / WAITING Service Worker exists.
+//
+// DOES NOT:
+// • reload
+// • activate automatically
+// • touch login
+// • touch profile
+// • touch app startup
+// • touch splash
+//
+// ======================================================
 
 function showUpdateUI(){
 
     const banner =
-        getUpdateBanner();
+        document.getElementById(
+            "updateBanner"
+        );
 
 
     const button =
-        getUpdateButton();
+        document.getElementById(
+            "updateBtn"
+        );
 
 
     if(
@@ -10562,17 +11156,17 @@ function showUpdateUI(){
     }
 
 
-    /* ========================================================
+    /* ==================================================
        SHOW BANNER
-       ======================================================== */
+       ================================================== */
 
     banner.style.display =
         "block";
 
 
-    /* ========================================================
-       UPDATE BUTTON
-       ======================================================== */
+    /* ==================================================
+       PREPARE BUTTON
+       ================================================== */
 
     if(
         button
@@ -10597,76 +11191,61 @@ function showUpdateUI(){
         button.style.cursor =
             "pointer";
 
+
+        /* ==================================================
+           BIND EXACTLY ONCE
+
+           This is IMPORTANT.
+
+           We do not create another global click system.
+           We only connect the existing Update button to
+           the existing handleManualUpdate().
+           ================================================== */
+
+        if(
+            !button.__GG_UPDATE_CLICK_BOUND__
+        ){
+
+            button.__GG_UPDATE_CLICK_BOUND__ =
+                true;
+
+
+            button.addEventListener(
+                "click",
+                function(event){
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    handleManualUpdate();
+
+                }
+            );
+
+        }
+
     }
 
 
     console.log(
-        "🆕 New GreenGuard version available."
+        "🆕 Update available → Update button shown"
     );
 
 }
 
 
-/* ============================================================
-   UPDATE UI → UPDATING
-   ============================================================ */
-
-function updateUIToUpdating(){
-
-    const banner =
-        getUpdateBanner();
-
-
-    const button =
-        getUpdateButton();
-
-
-    if(
-        banner
-    ){
-
-        banner.style.display =
-            "block";
-
-    }
-
-
-    if(
-        button
-    ){
-
-        button.disabled =
-            true;
-
-
-        button.innerText =
-            "Updating...";
-
-
-        button.style.pointerEvents =
-            "none";
-
-
-        button.style.opacity =
-            "0.65";
-
-
-        button.style.cursor =
-            "wait";
-
-    }
-
-}
-
-
-/* ============================================================
-   HIDE UPDATE UI
-   ============================================================ */
+/* ======================================================
+   🎯 HIDE UPDATE UI
+   ====================================================== */
 
 function hideUpdateUI(){
 
     const banner =
-        getUpdateBanner();
+        document.getElementById(
+            "updateBanner"
+        );
 
 
     if(
@@ -10681,336 +11260,48 @@ function hideUpdateUI(){
 }
 
 
-/* ============================================================
-   UPDATE UI → SUCCESS
-   ============================================================ */
+/* ======================================================
+   🤖 AUTO UPDATE
+   ====================================================== */
+//
+// INTENTIONALLY DISABLED.
+//
+// New version may be detected.
+//
+// USER MUST PRESS UPDATE.
+//
+// ======================================================
 
-function updateUIToSuccess(){
+function scheduleAutoUpdate(){
 
-    const banner =
-        getUpdateBanner();
-
-
-    const button =
-        getUpdateButton();
-
-
-    if(
-        button
-    ){
-
-        button.innerText =
-            "Updated ✓";
-
-
-        button.disabled =
-            true;
-
-
-        button.style.pointerEvents =
-            "none";
-
-
-        button.style.opacity =
-            "0.75";
-
-    }
-
-
-    if(
-        banner
-    ){
-
-        /*
-         * Keep it visible very briefly so the user can
-         * see that the update completed.
-         */
-
-        banner.style.display =
-            "block";
-
-
-        setTimeout(
-            function(){
-
-                hideUpdateUI();
-
-            },
-            900
-        );
-
-    }
+    console.log(
+        "🛡️ Automatic update disabled."
+    );
 
 }
 
 
-/* ============================================================
-   RESET UI
-   ============================================================ */
-
-function resetUpdateUI(){
-
-    isUpdating =
-        false;
-
-
-    refreshing =
-        false;
-
-
-    window.__GG_MANUAL_SW_UPDATE__ =
-        false;
-
-
-    const button =
-        getUpdateButton();
-
-
-    if(
-        button
-    ){
-
-        button.innerText =
-            "Update";
-
-
-        button.disabled =
-            false;
-
-
-        button.style.pointerEvents =
-            "auto";
-
-
-        button.style.opacity =
-            "1";
-
-
-        button.style.cursor =
-            "pointer";
-
-    }
-
-}
-
-
-/* ============================================================
-   SERVICE WORKER REGISTRATION
-   ============================================================ */
-
-function initGreenGuardServiceWorker(){
-
-    if(
-        !("serviceWorker" in navigator)
-    ){
-
-        console.warn(
-            "⚠ Service Worker not supported."
-        );
-
-        return;
-
-    }
-
-
-    if(
-        window.__GG_SW_INITIALIZED__
-    ){
-
-        console.log(
-            "⏸ Service Worker update system already initialized."
-        );
-
-        return;
-
-    }
-
-
-    window.__GG_SW_INITIALIZED__ =
-        true;
-
-
-    navigator.serviceWorker
-        .register(
-            "./sw.js"
-        )
-        .then(
-            function(
-                registration
-            ){
-
-                console.log(
-                    "✅ GreenGuard Service Worker registered."
-                );
-
-
-                /* =================================================
-                   INITIAL WAITING WORKER
-                   ================================================= */
-
-                if(
-                    registration.waiting
-                ){
-
-                    console.log(
-                        "⚡ Waiting Service Worker already exists."
-                    );
-
-
-                    newWorker =
-                        registration.waiting;
-
-
-                    showUpdateUI();
-
-                }
-
-
-                /* =================================================
-                   UPDATE CHECK
-                   ================================================= */
-
-                setTimeout(
-                    function(){
-
-                        registration
-                            .update()
-                            .catch(
-                                function(
-                                    error
-                                ){
-
-                                    console.warn(
-                                        "⚠ Service Worker update check failed:",
-                                        error
-                                    );
-
-                                }
-                            );
-
-                    },
-                    5000
-                );
-
-
-                /* =================================================
-                   NEW WORKER FOUND
-                   ================================================= */
-
-                registration.addEventListener(
-                    "updatefound",
-                    function(){
-
-                        console.log(
-                            "🔎 New Service Worker found."
-                        );
-
-
-                        const worker =
-                            registration.installing;
-
-
-                        if(
-                            !worker
-                        ){
-
-                            return;
-
-                        }
-
-
-                        newWorker =
-                            worker;
-
-
-                        worker.addEventListener(
-                            "statechange",
-                            function(){
-
-                                console.log(
-                                    "🔄 SW state:",
-                                    worker.state
-                                );
-
-
-                                if(
-                                    worker.state ===
-                                    "installed" &&
-                                    navigator.serviceWorker
-                                        .controller
-                                ){
-
-                                    console.log(
-                                        "🆕 New GreenGuard version installed and waiting."
-                                    );
-
-
-                                    newWorker =
-                                        worker;
-
-
-                                    showUpdateUI();
-
-                                }
-
-                            }
-                        );
-
-                    }
-                );
-
-
-                /* =================================================
-                   REGISTRATION UPDATE CHECK
-                   ================================================= */
-
-                if(
-                    registration.waiting
-                ){
-
-                    newWorker =
-                        registration.waiting;
-
-
-                    showUpdateUI();
-
-                }
-
-            }
-        )
-        .catch(
-            function(
-                error
-            ){
-
-                console.error(
-                    "❌ GreenGuard Service Worker registration failed:",
-                    error
-                );
-
-            }
-        );
-
-}
-
-
-/* ============================================================
-   MANUAL UPDATE BUTTON
-   ============================================================ */
+/* ======================================================
+   🔘 MANUAL UPDATE
+   ====================================================== */
 
 function handleManualUpdate(){
 
     console.log(
-        "🟢 GreenGuard Update button clicked."
+        "🟢 Manual update clicked"
     );
 
+
+    /* ==================================================
+       DOUBLE CLICK PROTECTION
+       ================================================== */
 
     if(
         isUpdating
     ){
 
         console.log(
-            "⏳ Update already running."
+            "⏳ Update already running"
         );
 
         return;
@@ -11018,92 +11309,71 @@ function handleManualUpdate(){
     }
 
 
-    /* ========================================================
-       FIND CURRENT REGISTRATION WAITING WORKER
-
-       This is important.
-
-       Do not depend ONLY on the old global reference.
-       ======================================================== */
-
-    navigator.serviceWorker
-        .getRegistration(
-            "./"
-        )
-        .then(
-            function(
-                registration
-            ){
-
-                if(
-                    registration &&
-                    registration.waiting
-                ){
-
-                    newWorker =
-                        registration.waiting;
-
-                }
-
-
-                startUpdate();
-
-            }
-        )
-        .catch(
-            function(
-                error
-            ){
-
-                console.error(
-                    "❌ Unable to inspect Service Worker:",
-                    error
-                );
-
-
-                startUpdate();
-
-            }
-        );
-
-}
-
-
-/* ============================================================
-   CORE MANUAL UPDATE
-   ============================================================ */
-
-function startUpdate(){
-
-    /* ========================================================
-       DOUBLE CLICK GUARD
-       ======================================================== */
-
-    if(
-        isUpdating
-    ){
-
-        return;
-
-    }
-
-
-    /* ========================================================
-       WAITING WORKER
-       ======================================================== */
+    /* ==================================================
+       WAITING WORKER CHECK
+       ================================================== */
 
     if(
         !newWorker
     ){
 
         console.warn(
-            "⚠ No waiting Service Worker available."
+            "⚠ No worker available"
         );
 
 
-        showAppUpdateToast(
-            "Update is not ready yet. Please try again."
-        );
+        /*
+         * Re-check the current registration once.
+         *
+         * This does NOT register another Service Worker.
+         * It only retrieves the already-existing registration.
+         */
+
+        if(
+            navigator.serviceWorker
+        ){
+
+            navigator.serviceWorker
+                .getRegistration(
+                    "./"
+                )
+                .then(
+                    function(registration){
+
+                        if(
+                            registration &&
+                            registration.waiting
+                        ){
+
+                            newWorker =
+                                registration.waiting;
+
+
+                            startUpdate();
+
+                        }
+                        else{
+
+                            console.warn(
+                                "⚠ No waiting Service Worker found."
+                            );
+
+                        }
+
+                    }
+                )
+                .catch(
+                    function(error){
+
+                        console.warn(
+                            "⚠ Unable to find waiting Service Worker:",
+                            error
+                        );
+
+                    }
+                );
+
+        }
 
 
         return;
@@ -11111,9 +11381,54 @@ function startUpdate(){
     }
 
 
-    /* ========================================================
-       MARK MANUAL UPDATE
-       ======================================================== */
+    startUpdate();
+
+}
+
+
+/* ======================================================
+   🔥 CORE MANUAL UPDATE
+   ====================================================== */
+
+function startUpdate(){
+
+    /* ==================================================
+       PREVENT DOUBLE CLICK
+       ================================================== */
+
+    if(
+        isUpdating
+    ){
+
+        console.log(
+            "⏳ Update already running"
+        );
+
+        return;
+
+    }
+
+
+    /* ==================================================
+       WAITING WORKER REQUIRED
+       ================================================== */
+
+    if(
+        !newWorker
+    ){
+
+        console.warn(
+            "⚠ No new Service Worker available"
+        );
+
+        return;
+
+    }
+
+
+    /* ==================================================
+       MANUAL UPDATE FLAG
+       ================================================== */
 
     window.__GG_MANUAL_SW_UPDATE__ =
         true;
@@ -11131,16 +11446,20 @@ function startUpdate(){
         false;
 
 
-    /* ========================================================
-       SAVE SUCCESS INTENT
+    /* ==================================================
+       REMEMBER THAT USER STARTED UPDATE
 
        This survives the page reload.
-       ======================================================== */
+
+       We use it ONLY to show the success toast after
+       the new application has loaded.
+
+       ================================================== */
 
     try{
 
         sessionStorage.setItem(
-            GG_UPDATE_STARTED_KEY,
+            "GG_SW_UPDATE_STARTED",
             "1"
         );
 
@@ -11150,28 +11469,28 @@ function startUpdate(){
     ){
 
         console.warn(
-            "⚠ Unable to store update state:",
+            "⚠ Unable to save update state:",
             storageError
         );
 
     }
 
 
-    /* ========================================================
-       UPDATE BUTTON
-       ======================================================== */
+    /* ==================================================
+       CHANGE BUTTON IMMEDIATELY
+       ================================================== */
 
     updateUIToUpdating();
 
 
     console.log(
-        "🟢 Activating new GreenGuard Service Worker..."
+        "🟢 User pressed UPDATE"
     );
 
 
-    /* ========================================================
-       SEND SKIP WAITING
-       ======================================================== */
+    /* ==================================================
+       ACTIVATE WAITING WORKER
+       ================================================== */
 
     try{
 
@@ -11184,7 +11503,7 @@ function startUpdate(){
 
 
         console.log(
-            "📨 skipWaiting message sent."
+            "📨 skipWaiting sent to waiting Service Worker"
         );
 
     }
@@ -11193,23 +11512,31 @@ function startUpdate(){
     ){
 
         console.error(
-            "❌ Failed to send skipWaiting:",
+            "❌ Manual update failed:",
             error
         );
-
-
-        isUpdating =
-            false;
 
 
         window.__GG_MANUAL_SW_UPDATE__ =
             false;
 
 
+        window.__SW_REFRESHING__ =
+            false;
+
+
+        isUpdating =
+            false;
+
+
+        refreshing =
+            false;
+
+
         try{
 
             sessionStorage.removeItem(
-                GG_UPDATE_STARTED_KEY
+                "GG_SW_UPDATE_STARTED"
             );
 
         }
@@ -11220,180 +11547,152 @@ function startUpdate(){
 
         resetUpdateUI();
 
-
-        showAppUpdateToast(
-            "Update could not be started. Please try again."
-        );
-
     }
 
 }
 
 
-/* ============================================================
-   CONTROLLER CHANGE
-   ============================================================
+/* ======================================================
+   🔧 UI → UPDATING
+   ====================================================== */
 
-   This is the actual point where the newly activated
-   Service Worker takes control.
+function updateUIToUpdating(){
 
-   ONLY reload when the user explicitly requested update.
-   ============================================================ */
+    const btn =
+        document.getElementById(
+            "updateBtn"
+        );
 
-function initGreenGuardControllerChange(){
+
+    const banner =
+        document.getElementById(
+            "updateBanner"
+        );
+
 
     if(
-        window.__GG_CONTROLLERCHANGE_BOUND__
+        banner
     ){
 
-        return;
+        banner.style.display =
+            "block";
 
     }
 
 
-    window.__GG_CONTROLLERCHANGE_BOUND__ =
-        true;
+    if(
+        btn
+    ){
+
+        btn.innerText =
+            "Updating...";
 
 
-    navigator.serviceWorker.addEventListener(
-        "controllerchange",
-        function(){
-
-            console.log(
-                "⚡ GreenGuard Service Worker controllerchange."
-            );
+        btn.disabled =
+            true;
 
 
-            /* ==================================================
-               NORMAL CONTROLLER CHANGE
-
-               Never reload automatically.
-               ================================================== */
-
-            if(
-                !window.__GG_MANUAL_SW_UPDATE__
-            ){
-
-                console.log(
-                    "🛡️ Normal controllerchange → no reload."
-                );
+        btn.style.pointerEvents =
+            "none";
 
 
-                return;
-
-            }
-
-
-            /* ==================================================
-               DOUBLE RELOAD GUARD
-               ================================================== */
-
-            if(
-                window.__SW_REFRESHING__
-            ){
-
-                return;
-
-            }
+        btn.style.opacity =
+            "0.65";
 
 
-            window.__SW_REFRESHING__ =
-                true;
+        btn.style.cursor =
+            "wait";
+
+    }
 
 
-            refreshing =
-                true;
-
-
-            isUpdating =
-                true;
-
-
-            /* ==================================================
-               MARK SUCCESS FOR NEXT PAGE
-               ================================================== */
-
-            try{
-
-                sessionStorage.setItem(
-                    GG_UPDATE_SUCCESS_KEY,
-                    "1"
-                );
-
-            }
-            catch(
-                error
-            ){
-
-                console.warn(
-                    "⚠ Unable to save update success state:",
-                    error
-                );
-
-            }
-
-
-            /* ==================================================
-               HIDE UPDATE BUTTON BEFORE RELOAD
-               ================================================== */
-
-            hideUpdateUI();
-
-
-            console.log(
-                "✅ New Service Worker active."
-            );
-
-
-            console.log(
-                "🔄 Reloading GreenGuard once..."
-            );
-
-
-            /* ==================================================
-               ONE RELOAD
-               ================================================== */
-
-            setTimeout(
-                function(){
-
-                    window.location.reload();
-
-                },
-                150
-            );
-
-        }
+    console.log(
+        "⏳ GreenGuard update in progress..."
     );
 
 }
 
 
-/* ============================================================
-   SUCCESS MESSAGE AFTER RELOAD
-   ============================================================ */
+/* ======================================================
+   🔧 UI → RESET
+   ====================================================== */
+
+function resetUpdateUI(){
+
+    isUpdating =
+        false;
+
+
+    refreshing =
+        false;
+
+
+    const btn =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    if(
+        btn
+    ){
+
+        btn.innerText =
+            "Update";
+
+
+        btn.disabled =
+            false;
+
+
+        btn.style.pointerEvents =
+            "auto";
+
+
+        btn.style.opacity =
+            "1";
+
+
+        btn.style.cursor =
+            "pointer";
+
+    }
+
+}
+
+
+/* ======================================================
+   ✅ UPDATE SUCCESS AFTER RELOAD
+   ======================================================
+//
+// This does NOT start the app.
+// This does NOT modify login/profile.
+// This only checks whether the previous page explicitly
+// requested a Service Worker update.
+//
+// ====================================================== */
 
 function checkGreenGuardUpdateSuccess(){
 
-    let success =
+    let updateStarted =
         false;
 
 
     try{
 
-        success =
+        updateStarted =
             sessionStorage.getItem(
-                GG_UPDATE_SUCCESS_KEY
+                "GG_SW_UPDATE_STARTED"
             ) ===
             "1";
 
 
         if(
-            success
+            updateStarted
         ){
 
             sessionStorage.removeItem(
-                GG_UPDATE_SUCCESS_KEY
+                "GG_SW_UPDATE_STARTED"
             );
 
         }
@@ -11404,15 +11703,17 @@ function checkGreenGuardUpdateSuccess(){
     ){
 
         console.warn(
-            "⚠ Unable to read update success state:",
+            "⚠ Unable to read update state:",
             error
         );
+
+        return;
 
     }
 
 
     if(
-        !success
+        !updateStarted
     ){
 
         return;
@@ -11420,9 +11721,9 @@ function checkGreenGuardUpdateSuccess(){
     }
 
 
-    /* ========================================================
-       RESET MANUAL UPDATE FLAGS
-       ======================================================== */
+    /* ==================================================
+       RESET ONLY UPDATE FLAGS
+       ================================================== */
 
     window.__GG_MANUAL_SW_UPDATE__ =
         false;
@@ -11440,179 +11741,136 @@ function checkGreenGuardUpdateSuccess(){
         false;
 
 
-    /* ========================================================
-       UPDATE BUTTON IS REMOVED
-       ======================================================== */
+    /* ==================================================
+       UPDATE BUTTON DISAPPEARS
+       ================================================== */
 
     hideUpdateUI();
 
 
-    /* ========================================================
+    /* ==================================================
        SUCCESS TOAST
-       ======================================================== */
+       ================================================== */
 
-    setTimeout(
+    const showToast =
         function(){
 
-            showAppUpdateToast(
-                "✅ GreenGuard updated successfully."
+            let toast =
+                document.getElementById(
+                    "gg-update-success-toast"
+                );
+
+
+            if(
+                !toast
+            ){
+
+                toast =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                toast.id =
+                    "gg-update-success-toast";
+
+
+                toast.style.cssText =
+
+                    "position:fixed;" +
+                    "left:50%;" +
+                    "bottom:24px;" +
+                    "transform:translateX(-50%);" +
+                    "z-index:999999;" +
+                    "background:#1b5e20;" +
+                    "color:#fff;" +
+                    "padding:12px 18px;" +
+                    "border-radius:10px;" +
+                    "box-shadow:0 4px 18px rgba(0,0,0,.35);" +
+                    "font-size:13px;" +
+                    "font-weight:700;" +
+                    "text-align:center;" +
+                    "pointer-events:none;" +
+                    "opacity:0;" +
+                    "transition:opacity .25s ease;";
+
+
+                document.body.appendChild(
+                    toast
+                );
+
+            }
+
+
+            toast.textContent =
+                "✅ GreenGuard updated successfully";
+
+
+            requestAnimationFrame(
+                function(){
+
+                    toast.style.opacity =
+                        "1";
+
+                }
             );
 
-        },
-        700
-    );
 
-}
+            setTimeout(
+                function(){
 
-
-/* ============================================================
-   BUTTON BINDING
-   ============================================================ */
-
-function bindGreenGuardUpdateButton(){
-
-    const button =
-        getUpdateButton();
+                    toast.style.opacity =
+                        "0";
 
 
-    if(
-        !button
-    ){
+                    setTimeout(
+                        function(){
 
-        console.warn(
-            "⚠ updateBtn not found yet."
-        );
+                            if(
+                                toast &&
+                                toast.parentNode
+                            ){
 
+                                toast.parentNode
+                                    .removeChild(
+                                        toast
+                                    );
 
-        return false;
+                            }
 
-    }
+                        },
+                        300
+                    );
 
+                },
+                3500
+            );
 
-    if(
-        button.__GG_UPDATE_BOUND__
-    ){
-
-        return true;
-
-    }
-
-
-    button.__GG_UPDATE_BOUND__ =
-        true;
+        };
 
 
     /*
-     * IMPORTANT:
+     * Give the newly loaded application a moment to render.
      *
-     * Remove any old inline handler.
-     * We install exactly ONE click handler.
+     * This is ONLY a notification.
      */
 
-    button.onclick =
-        null;
-
-
-    button.addEventListener(
-        "click",
-        function(
-            event
-        ){
-
-            event.preventDefault();
-
-            event.stopPropagation();
-
-
-            handleManualUpdate();
-
-        }
+    setTimeout(
+        showToast,
+        700
     );
 
 
     console.log(
-        "✅ GreenGuard Update button bound."
+        "✅ GreenGuard application updated successfully."
     );
 
-
-    return true;
-
 }
 
 
-/* ============================================================
-   INITIALIZE UPDATE SYSTEM
-   ============================================================ */
-
-function initGreenGuardUpdateSystem(){
-
-    initGreenGuardControllerChange();
-
-
-    checkGreenGuardUpdateSuccess();
-
-
-    /*
-     * Update banner may be created later by the UI.
-     * Try immediately.
-     */
-
-    bindGreenGuardUpdateButton();
-
-
-    /*
-     * If UI is injected later, retry briefly.
-     */
-
-    let attempts =
-        0;
-
-
-    const timer =
-        setInterval(
-            function(){
-
-                attempts++;
-
-
-                if(
-                    bindGreenGuardUpdateButton()
-                ){
-
-                    clearInterval(
-                        timer
-                    );
-
-
-                    return;
-
-                }
-
-
-                if(
-                    attempts >=
-                    20
-                ){
-
-                    clearInterval(
-                        timer
-                    );
-
-                }
-
-            },
-            500
-        );
-
-
-    initGreenGuardServiceWorker();
-
-}
-
-
-/* ============================================================
-   START
-   ============================================================ */
+/* ======================================================
+   INITIAL SUCCESS CHECK
+   ====================================================== */
 
 if(
     document.readyState ===
@@ -11623,7 +11881,7 @@ if(
         "DOMContentLoaded",
         function(){
 
-            initGreenGuardUpdateSystem();
+            checkGreenGuardUpdateSuccess();
 
         },
         {
@@ -11635,7 +11893,7 @@ if(
 }
 else{
 
-    initGreenGuardUpdateSystem();
+    checkGreenGuardUpdateSuccess();
 
 }
 
