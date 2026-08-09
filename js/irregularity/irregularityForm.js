@@ -2809,15 +2809,25 @@ function(
     }
 
 
-    container.innerHTML =
-        GGIrregularity.Form.build();
+container.innerHTML =
+    GGIrregularity.Form.build();
 
+GGIrregularity.Form
+    .bind();
+
+/*
+ * IMPORTANT:
+ * The category selector is now fully mounted.
+ * Apply the selected category after binding.
+ */
+requestAnimationFrame(function(){
 
     GGIrregularity.Form
-        .bind();
+        .updateCategoryFields();
 
-
-    return true;
+});
+    
+return true;
 
 };
 
