@@ -38671,139 +38671,82 @@ function buildSightingMediaPopup(
     }
 
 
-    // ========================================================
-    // DOWNLOAD BUTTON
-    // ========================================================
-    //
-    // IMPORTANT:
-    //
-    // DO NOT use:
-    //
-    // <a href="firebase-url">
-    //
-    // because mobile browsers may navigate away from
-    // GreenGuard and display the large image directly.
-    //
-    // Instead:
-    //
-    // button
-    //    ↓
-    // downloadSightingMedia()
-    //
-    // ========================================================
+// ========================================================
+// DOWNLOAD BUTTON
+// ========================================================
+//
+// IMPORTANT:
+//
+// Do NOT use fetch() here.
+// Do NOT use HEAD.
+// Do NOT create a Blob.
+// Do NOT open a new tab.
+//
+// Firebase Storage already returns a signed download URL.
+// The browser should handle the download natively.
+//
+// ========================================================
 
-    function downloadButton(
-        url,
-        label
-    ){
+function downloadButton(
+    url,
+    label
+){
 
-        const encodedUrl =
-            encodeURIComponent(
-                String(
-                    url ||
-                    ""
-                )
-            );
+    const safeUrl =
+        safeHtml(
+            url
+        );
 
 
-        return `
+    return `
 
-            <button
-                type="button"
-                data-gg-media-download="true"
+        <a
+            href="${safeUrl}"
+            download
+            rel="noopener"
+            onclick="
+                event.stopPropagation();
+            "
+            style="
+                flex:1 1 0;
+                min-width:0;
+                box-sizing:border-box;
 
-                onclick="
-                    event.preventDefault();
-                    event.stopPropagation();
+                display:flex;
+                align-items:center;
+                justify-content:center;
 
-                    if(
-                        typeof downloadSightingMedia ===
-                        'function'
-                    ){
+                text-align:center;
+                text-decoration:none;
 
-window.downloadSightingMedia(
-    decodeURIComponent('${encodedUrl}')
-);
+                border:none;
+                border-radius:7px;
 
-                    }
-                    else{
+                background:#1565c0;
+                color:#fff;
 
-                        console.error(
-                            '❌ downloadSightingMedia() is not available.'
-                        );
+                padding:8px 6px;
 
-                    }
+                font-size:11px;
+                font-weight:700;
 
-                    return false;
-                "
+                line-height:1.2;
 
-                style="
-                    flex:
-                        1 1 0;
+                cursor:pointer;
 
-                    min-width:
-                        0;
+                touch-action:manipulation;
+                -webkit-tap-highlight-color:transparent;
 
-                    box-sizing:
-                        border-box;
+                user-select:none;
+                -webkit-user-select:none;
+            "
+        >
+            ${label}
+        </a>
 
-                    min-height:
-                        34px;
+    `;
 
-                    border:
-                        none;
-
-                    border-radius:
-                        7px;
-
-                    background:
-                        #1565c0;
-
-                    color:
-                        #fff;
-
-                    padding:
-                        8px 7px;
-
-                    font-family:
-                        Segoe UI,
-                        Arial,
-                        sans-serif;
-
-                    font-size:
-                        11px;
-
-                    font-weight:
-                        700;
-
-                    line-height:
-                        1.2;
-
-                    text-align:
-                        center;
-
-                    cursor:
-                        pointer;
-
-                    touch-action:
-                        manipulation;
-
-                    -webkit-tap-highlight-color:
-                        transparent;
-
-                    user-select:
-                        none;
-
-                    -webkit-user-select:
-                        none;
-                "
-            >
-                ${label}
-            </button>
-
-        `;
-
-    }
+}
 
 
     // ========================================================
