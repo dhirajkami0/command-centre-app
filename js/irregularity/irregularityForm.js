@@ -1,190 +1,214 @@
 /* ============================================================
    🌲 GREENGUARD
-   PATROL IRREGULARITY FORM
+   IRREGULARITY / OFFENCE / OBSERVATION FORM
+   ============================================================
+
+   File:
+       js/irregularity/irregularityForm.js
+
+   Purpose:
+       Build and manage the Irregularity form UI.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   • Uses GGIrregularity constants
+   • Does NOT initialize Firebase
+   • Does NOT resolve GIS
+   • Does NOT create GPS tracking
+   • Does NOT use Apps Script
+   • Does NOT use callBackend()
+   • Save is handled by GGIrregularity.submit()
+   • Existing Wildlife / Elephant UI is untouched
    ============================================================ */
 
-(function (window) {
 
-    "use strict";
+/* ============================================================
+   NAMESPACE
+   ============================================================ */
 
-
-    window.GreenGuard =
-        window.GreenGuard ||
-        {};
-
-
-    const GG =
-        window.GreenGuard;
+window.GGIrregularity =
+    window.GGIrregularity || {};
 
 
-    if (
-        GG.IrregularityForm
-    ) {
+/* ============================================================
+   FORM NAMESPACE
+   ============================================================ */
 
-        console.warn(
-            "⚠️ IrregularityForm already loaded."
-        );
-
-        return;
-
-    }
+GGIrregularity.Form =
+    GGIrregularity.Form || {};
 
 
-    const C =
-        GG.IrregularityConstants;
+/* ============================================================
+   ESCAPE HTML
+   ============================================================ */
+
+GGIrregularity.Form.escape =
+function(
+    value
+){
+
+    return String(
+        value ?? ""
+    )
+    .replace(
+        /&/g,
+        "&amp;"
+    )
+    .replace(
+        /</g,
+        "&lt;"
+    )
+    .replace(
+        />/g,
+        "&gt;"
+    )
+    .replace(
+        /"/g,
+        "&quot;"
+    )
+    .replace(
+        /'/g,
+        "&#039;"
+    );
+
+};
 
 
-    // ========================================================
-    // HTML ESCAPE
-    // ========================================================
+/* ============================================================
+   FIELD WRAPPER
+   ============================================================ */
 
-    function escapeHTML(
-        value
-    ) {
+GGIrregularity.Form.field =
+function(
+    label,
+    name,
+    type,
+    options = {}
+){
 
-        return String(
-            value ??
+    const required =
+        options.required
+            ? "required"
+            : "";
+
+    const placeholder =
+        GGIrregularity.Form.escape(
+            options.placeholder ||
             ""
-        )
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
         );
 
-    }
 
-
-    // ========================================================
-    // INPUT
-    // ========================================================
-
-    function input(
-        id,
-        label,
-        type,
-        required
-    ) {
-
-        return `
-
-            <div class="gg-ir-field">
-
-                <label
-                    for="${id}"
-                    class="gg-ir-label"
-                >
-                    ${escapeHTML(label)}
-                    ${
-                        required
-                            ? " *"
-                            : ""
-                    }
-                </label>
-
-                <input
-                    id="${id}"
-                    name="${id}"
-                    type="${type || "text"}"
-                    class="gg-ir-input"
-                    ${
-                        required
-                            ? "required"
-                            : ""
-                    }
-                >
-
-            </div>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // SELECT
-    // ========================================================
-
-    function select(
-        id,
-        label,
-        options,
-        required
-    ) {
-
-        let optionHTML =
-            `<option value="">Select</option>`;
-
-
-        (
-            options ||
-            []
-        )
-        .forEach(
-            function(option){
-
-                optionHTML += `
-
-                    <option
-                        value="${escapeHTML(option)}"
-                    >
-                        ${escapeHTML(option)}
-                    </option>
-
-                `;
-
-            }
+    const value =
+        GGIrregularity.Form.escape(
+            options.value ||
+            ""
         );
+
+
+    /* ========================================================
+       SELECT
+       ======================================================== */
+
+    if(
+        type ===
+        "select"
+    ){
+
+        const optionList =
+            options.options ||
+            [];
+
+
+        const optionHtml =
+            optionList
+                .map(
+                    function(
+                        item
+                    ){
+
+                        const optionValue =
+                            typeof item ===
+                            "string"
+                                ? item
+                                : item.value;
+
+
+                        const optionLabel =
+                            typeof item ===
+                            "string"
+                                ? item
+                                : item.label;
+
+
+                        return `
+
+                            <option
+                                value="${GGIrregularity.Form.escape(
+                                    optionValue
+                                )}"
+                            >
+                                ${GGIrregularity.Form.escape(
+                                    optionLabel
+                                )}
+                            </option>
+
+                        `;
+
+                    }
+                )
+                .join("");
 
 
         return `
 
-            <div class="gg-ir-field">
+            <div
+                class="gg-irregularity-field"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    margin:0 0 10px 0;
+                "
+            >
 
                 <label
-                    for="${id}"
-                    class="gg-ir-label"
+                    for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                    style="
+                        display:block;
+                        margin:0 0 5px 0;
+                        color:#37474f;
+                        font-size:12px;
+                        font-weight:700;
+                        line-height:1.25;
+                    "
                 >
-                    ${escapeHTML(label)}
-                    ${
-                        required
-                            ? " *"
-                            : ""
-                    }
+                    ${GGIrregularity.Form.escape(label)}
                 </label>
 
                 <select
-                    id="${id}"
-                    name="${id}"
-                    class="gg-ir-input"
-                    ${
-                        required
-                            ? "required"
-                            : ""
-                    }
+                    id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                    name="${GGIrregularity.Form.escape(name)}"
+                    ${required}
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        min-height:38px;
+                        padding:8px 10px;
+                        border:1px solid #cfd8dc;
+                        border-radius:7px;
+                        background:#ffffff;
+                        color:#263238;
+                        font-size:13px;
+                        outline:none;
+                    "
                 >
 
-                    ${optionHTML}
+                    <option
+                        value=""
+                    >
+                        Select
+                    </option>
+
+                    ${optionHtml}
 
                 </select>
 
@@ -195,154 +219,60 @@
     }
 
 
-    // ========================================================
-    // TEXTAREA
-    // ========================================================
+    /* ========================================================
+       TEXTAREA
+       ======================================================== */
 
-    function textarea(
-        id,
-        label,
-        required
-    ) {
-
-        return `
-
-            <div class="gg-ir-field">
-
-                <label
-                    for="${id}"
-                    class="gg-ir-label"
-                >
-                    ${escapeHTML(label)}
-                    ${
-                        required
-                            ? " *"
-                            : ""
-                    }
-                </label>
-
-                <textarea
-                    id="${id}"
-                    name="${id}"
-                    class="gg-ir-input gg-ir-textarea"
-                    ${
-                        required
-                            ? "required"
-                            : ""
-                    }
-                ></textarea>
-
-            </div>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // FILE
-    // ========================================================
-
-    function fileInput(
-        id,
-        label,
-        accept,
-        required
-    ) {
-
-        return `
-
-            <div class="gg-ir-field">
-
-                <label
-                    for="${id}"
-                    class="gg-ir-label"
-                >
-                    ${escapeHTML(label)}
-                    ${
-                        required
-                            ? " *"
-                            : ""
-                    }
-                </label>
-
-                <input
-                    id="${id}"
-                    name="${id}"
-                    type="file"
-                    accept="${accept}"
-                    class="gg-ir-input"
-                    ${
-                        required
-                            ? "required"
-                            : ""
-                    }
-                >
-
-            </div>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // LOCATION DISPLAY
-    // ========================================================
-
-    function locationBlock() {
+    if(
+        type ===
+        "textarea"
+    ){
 
         return `
 
             <div
-                class="gg-ir-location"
+                class="gg-irregularity-field"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    margin:0 0 10px 0;
+                "
             >
 
-                <div
-                    class="gg-ir-section-title"
+                <label
+                    for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                    style="
+                        display:block;
+                        margin:0 0 5px 0;
+                        color:#37474f;
+                        font-size:12px;
+                        font-weight:700;
+                        line-height:1.25;
+                    "
                 >
-                    📍 LOCATION OF INCIDENT
-                </div>
+                    ${GGIrregularity.Form.escape(label)}
+                </label>
 
-                <div
-                    id="gg-ir-location-status"
-                    class="gg-ir-location-status"
-                >
-                    Waiting for GPS...
-                </div>
-
-                <div
-                    class="gg-ir-gis-grid"
-                >
-
-                    <div>
-                        <span>Division</span>
-                        <strong id="gg-ir-division">—</strong>
-                    </div>
-
-                    <div>
-                        <span>Range</span>
-                        <strong id="gg-ir-range">—</strong>
-                    </div>
-
-                    <div>
-                        <span>Beat</span>
-                        <strong id="gg-ir-beat">—</strong>
-                    </div>
-
-                    <div>
-                        <span>Compartment</span>
-                        <strong id="gg-ir-compartment">—</strong>
-                    </div>
-
-                </div>
-
-                <div
-                    id="gg-ir-coordinates"
-                    class="gg-ir-coordinates"
-                >
-                    GPS: —
-                </div>
+                <textarea
+                    id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                    name="${GGIrregularity.Form.escape(name)}"
+                    ${required}
+                    placeholder="${placeholder}"
+                    rows="${options.rows || 3}"
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:8px 10px;
+                        border:1px solid #cfd8dc;
+                        border-radius:7px;
+                        background:#ffffff;
+                        color:#263238;
+                        font-size:13px;
+                        line-height:1.35;
+                        resize:vertical;
+                        outline:none;
+                    "
+                >${value}</textarea>
 
             </div>
 
@@ -351,1147 +281,1166 @@
     }
 
 
-    // ========================================================
-    // MEDIA
-    // ========================================================
+    /* ========================================================
+       NORMAL INPUT
+       ======================================================== */
+
+    return `
+
+        <div
+            class="gg-irregularity-field"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin:0 0 10px 0;
+            "
+        >
+
+            <label
+                for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                style="
+                    display:block;
+                    margin:0 0 5px 0;
+                    color:#37474f;
+                    font-size:12px;
+                    font-weight:700;
+                    line-height:1.25;
+                "
+            >
+                ${GGIrregularity.Form.escape(label)}
+            </label>
+
+            <input
+                id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
+                name="${GGIrregularity.Form.escape(name)}"
+                type="${GGIrregularity.Form.escape(type)}"
+                ${required}
+                value="${value}"
+                placeholder="${placeholder}"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    min-height:38px;
+                    padding:8px 10px;
+                    border:1px solid #cfd8dc;
+                    border-radius:7px;
+                    background:#ffffff;
+                    color:#263238;
+                    font-size:13px;
+                    outline:none;
+                "
+            >
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   CATEGORY OPTIONS
+   ============================================================ */
+
+GGIrregularity.Form.categoryOptions =
+function(){
+
+    return [
+
+        {
+            value:
+                GGIrregularity.TYPES.FELLING,
+
+            label:
+                "🌳 Illicit Felling"
+        },
+
+        {
+            value:
+                GGIrregularity.TYPES.TIMBER,
+
+            label:
+                "🪵 Illegal Timber / Forest Produce"
+        },
+
+        {
+            value:
+                GGIrregularity.TYPES.MINING,
+
+            label:
+                "🚜 Illegal Mining / Earth Cutting"
+        },
+
+        {
+            value:
+                GGIrregularity.TYPES.FISHING,
+
+            label:
+                "🎣 Illegal Fishing"
+        },
+
+        {
+            value:
+                GGIrregularity.TYPES.GRAZING,
 
-    function mediaBlock() {
+            label:
+                "🐄 Illegal Grazing"
+        },
 
-        return `
+        {
+            value:
+                GGIrregularity.TYPES.FIRE,
 
-            <div class="gg-ir-media">
+            label:
+                "🔥 Forest Fire"
+        },
 
-                <div
-                    class="gg-ir-section-title"
-                >
-                    🎬 MEDIA
-                </div>
+        {
+            value:
+                GGIrregularity.TYPES.ENCROACHMENT,
 
-                ${fileInput(
-                    "gg-ir-photo",
-                    "Photo",
-                    "image/*",
-                    false
-                )}
+            label:
+                "🚧 Encroachment"
+        },
 
-                ${fileInput(
-                    "gg-ir-video",
-                    "Video",
-                    "video/*",
-                    false
-                )}
+        {
+            value:
+                GGIrregularity.TYPES.STRUCTURE,
 
-                ${fileInput(
-                    "gg-ir-audio",
-                    "Audio",
-                    "audio/*",
-                    false
-                )}
+            label:
+                "🏗️ Illegal Structure / Occupation"
+        },
 
-            </div>
+        {
+            value:
+                GGIrregularity.TYPES.POACHING,
 
-        `;
+            label:
+                "🏹 Poaching"
+        },
 
-    }
+        {
+            value:
+                GGIrregularity.TYPES.TRESPASSING,
 
+            label:
+                "🚪 Illegal Entry / Trespassing"
+        },
 
-    // ========================================================
-    // COMMON FIELDS
-    // ========================================================
+        {
+            value:
+                GGIrregularity.TYPES.WILDLIFE_INJURY,
 
-    function commonFields() {
+            label:
+                "🐾 Wildlife Injury"
+        },
 
-        const profile =
-            window.userProfile ||
-            {};
+        {
+            value:
+                GGIrregularity.TYPES.WILDLIFE_DEATH,
 
+            label:
+                "☠️ Wildlife Death"
+        },
 
-        return `
+        {
+            value:
+                GGIrregularity.TYPES.OBSERVATION,
 
-            <div class="gg-ir-common">
-
-                ${input(
-                    "gg-ir-sighted-by",
-                    "Sighted By",
-                    "text",
-                    true
-                )}
-
-                ${input(
-                    "gg-ir-phone",
-                    "Phone",
-                    "tel",
-                    false
-                )}
-
-            </div>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // ILLICIT FELLING
-    // ========================================================
-
-    function illicitFelling() {
-
-        return `
-
-            ${input(
-                "gg-ir-felling-count",
-                "No. of Trees Felled",
-                "number",
-                true
-            )}
+            label:
+                "👁️ General Observation"
+        }
 
-            ${textarea(
-                "gg-ir-felling-species",
-                "Species Felled",
-                true
-            )}
-
-            ${select(
-                "gg-ir-felling-age",
-                "Felling Condition",
-                [
-                    "Fresh",
-                    "Old",
-                    "Unknown"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-felling-stump",
-                "Stump Present",
-                C.YES_NO,
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // FOREST PRODUCE
-    // ========================================================
-
-    function forestProduce() {
-
-        return `
-
-            ${select(
-                "gg-ir-produce-type",
-                "Material",
-                [
-                    "Timber",
-                    "Firewood",
-                    "Bamboo",
-                    "NTFP",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-produce-species",
-                "Species",
-                "text",
-                false
-            )}
-
-            ${input(
-                "gg-ir-produce-quantity",
-                "Quantity",
-                "number",
-                false
-            )}
-
-            ${select(
-                "gg-ir-produce-unit",
-                "Unit",
-                C.QUANTITY_UNITS,
-                false
-            )}
-
-            ${select(
-                "gg-ir-produce-vehicle",
-                "Vehicle Involved",
-                C.YES_NO,
-                false
-            )}
-
-            ${input(
-                "gg-ir-produce-vehicle-no",
-                "Vehicle Number",
-                "text",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // MINING
-    // ========================================================
-
-    function mining() {
-
-        return `
-
-            ${select(
-                "gg-ir-mining-activity",
-                "Activity",
-                [
-                    "Mining",
-                    "Earth Cutting",
-                    "Sand Extraction",
-                    "Stone Extraction",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-mining-area",
-                "Area Affected",
-                "number",
-                true
-            )}
-
-            ${select(
-                "gg-ir-mining-unit",
-                "Area Unit",
-                C.AREA_UNITS,
-                true
-            )}
-
-            ${input(
-                "gg-ir-mining-depth",
-                "Approx. Depth",
-                "number",
-                false
-            )}
-
-            ${select(
-                "gg-ir-mining-machinery",
-                "Machinery Present",
-                C.YES_NO,
-                false
-            )}
-
-            ${input(
-                "gg-ir-mining-machinery-details",
-                "Machinery Details",
-                "text",
-                false
-            )}
-
-            ${input(
-                "gg-ir-mining-vehicle",
-                "Vehicle Number",
-                "text",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // FISHING
-    // ========================================================
-
-    function fishing() {
-
-        return `
-
-            ${select(
-                "gg-ir-fishing-waterbody",
-                "Waterbody",
-                [
-                    "River",
-                    "Stream",
-                    "Pond",
-                    "Wetland",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${select(
-                "gg-ir-fishing-method",
-                "Fishing Method",
-                [
-                    "Net",
-                    "Electrofishing",
-                    "Poison",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-fishing-persons",
-                "Approx. Persons",
-                "number",
-                false
-            )}
-
-            ${input(
-                "gg-ir-fishing-equipment",
-                "Equipment Found",
-                "text",
-                false
-            )}
-
-            ${input(
-                "gg-ir-fishing-species",
-                "Fish / Species",
-                "text",
-                false
-            )}
-
-            ${input(
-                "gg-ir-fishing-quantity",
-                "Approx. Quantity",
-                "number",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // GRAZING
-    // ========================================================
-
-    function grazing() {
-
-        return `
-
-            ${select(
-                "gg-ir-grazing-animal",
-                "Livestock Type",
-                [
-                    "Cattle",
-                    "Buffalo",
-                    "Goat",
-                    "Sheep",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-grazing-number",
-                "Approx. Number",
-                "number",
-                true
-            )}
-
-            ${input(
-                "gg-ir-grazing-area",
-                "Grazing Area",
-                "number",
-                false
-            )}
-
-            ${select(
-                "gg-ir-grazing-owner",
-                "Owner Identified",
-                C.YES_NO,
-                false
-            )}
-
-            ${input(
-                "gg-ir-grazing-owner-details",
-                "Owner Details",
-                "text",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // FIRE
-    // ========================================================
-
-    function fire() {
-
-        return `
-
-            ${select(
-                "gg-ir-fire-status",
-                "Fire Status",
-                C.FIRE_STATUS,
-                true
-            )}
-
-            ${input(
-                "gg-ir-fire-area",
-                "Area Affected",
-                "number",
-                true
-            )}
-
-            ${select(
-                "gg-ir-fire-unit",
-                "Area Unit",
-                C.AREA_UNITS,
-                true
-            )}
-
-            ${select(
-                "gg-ir-fire-type",
-                "Fire Type",
-                C.FIRE_TYPES,
-                false
-            )}
-
-            ${select(
-                "gg-ir-fire-cause",
-                "Cause",
-                [
-                    "Known",
-                    "Suspected",
-                    "Unknown"
-                ],
-                false
-            )}
-
-            ${textarea(
-                "gg-ir-fire-cause-details",
-                "Cause Details",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // ENCROACHMENT
-    // ========================================================
-
-    function encroachment() {
-
-        return `
-
-            ${select(
-                "gg-ir-enc-type",
-                "Encroachment Type",
-                [
-                    "Agriculture",
-                    "Structure",
-                    "Settlement",
-                    "Fencing",
-                    "Road",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-enc-area",
-                "Area Encroached",
-                "number",
-                true
-            )}
-
-            ${select(
-                "gg-ir-enc-unit",
-                "Area Unit",
-                C.AREA_UNITS,
-                true
-            )}
-
-            ${select(
-                "gg-ir-enc-nature",
-                "Nature",
-                [
-                    "New",
-                    "Existing",
-                    "Expansion"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-enc-structure",
-                "Structure Present",
-                C.YES_NO,
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // ILLEGAL STRUCTURE
-    // ========================================================
-
-    function illegalStructure() {
-
-        return `
-
-            ${select(
-                "gg-ir-structure-type",
-                "Structure Type",
-                [
-                    "Hut",
-                    "House",
-                    "Shed",
-                    "Fence",
-                    "Road",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-structure-area",
-                "Approx. Area",
-                "number",
-                false
-            )}
-
-            ${select(
-                "gg-ir-structure-status",
-                "Construction Status",
-                [
-                    "New",
-                    "Under Construction",
-                    "Existing"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-structure-occupied",
-                "Occupied",
-                C.YES_NO,
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // ILLEGAL ENTRY
-    // ========================================================
-
-    function illegalEntry() {
-
-        return `
-
-            ${select(
-                "gg-ir-entry-type",
-                "Entry Type",
-                C.ENTRY_TYPES,
-                true
-            )}
-
-            ${input(
-                "gg-ir-entry-number",
-                "Approx. Number",
-                "number",
-                false
-            )}
-
-            ${input(
-                "gg-ir-entry-purpose",
-                "Purpose / Activity",
-                "text",
-                false
-            )}
-
-            ${input(
-                "gg-ir-entry-vehicle",
-                "Vehicle Number",
-                "text",
-                false
-            )}
-
-            ${select(
-                "gg-ir-entry-direction",
-                "Direction of Movement",
-                [
-                    "North",
-                    "South",
-                    "East",
-                    "West",
-                    "Unknown"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-entry-identified",
-                "Identified",
-                C.YES_NO,
-                false
-            )}
-
-            ${textarea(
-                "gg-ir-entry-details",
-                "Person / Group Details",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // POACHING
-    // ========================================================
-
-    function poaching() {
-
-        return `
-
-            ${select(
-                "gg-ir-poaching-evidence",
-                "Evidence Type",
-                [
-                    "Carcass",
-                    "Trap",
-                    "Weapon",
-                    "Animal Part",
-                    "Camp",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-poaching-species",
-                "Species",
-                "text",
-                false
-            )}
-
-            ${select(
-                "gg-ir-poaching-trap",
-                "Trap Found",
-                C.YES_NO,
-                false
-            )}
-
-            ${input(
-                "gg-ir-poaching-trap-type",
-                "Trap Type",
-                "text",
-                false
-            )}
-
-            ${textarea(
-                "gg-ir-poaching-evidence-details",
-                "Evidence Details",
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // WILDLIFE INJURY
-    // ========================================================
-
-    function wildlifeInjury() {
-
-        return `
-
-            ${input(
-                "gg-ir-injury-species",
-                "Species",
-                "text",
-                true
-            )}
-
-            ${select(
-                "gg-ir-injury-age",
-                "Age",
-                C.AGE_CLASSES,
-                false
-            )}
-
-            ${select(
-                "gg-ir-injury-sex",
-                "Sex",
-                C.SEX,
-                false
-            )}
-
-            ${select(
-                "gg-ir-injury-type",
-                "Injury Type",
-                [
-                    "Wound",
-                    "Fracture",
-                    "Trap Injury",
-                    "Burn",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${input(
-                "gg-ir-injury-location",
-                "Injury Location",
-                "text",
-                false
-            )}
-
-            ${textarea(
-                "gg-ir-injury-details",
-                "Injury Details",
-                true
-            )}
-
-            ${select(
-                "gg-ir-injury-condition",
-                "Condition",
-                C.CONDITIONS,
-                false
-            )}
-
-            ${select(
-                "gg-ir-injury-mobility",
-                "Mobility",
-                [
-                    "Mobile",
-                    "Immobile",
-                    "Unknown"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-injury-rescue",
-                "Rescue Required",
-                C.YES_NO,
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // WILDLIFE DEATH
-    // ========================================================
-
-    function wildlifeDeath() {
-
-        return `
-
-            ${input(
-                "gg-ir-death-species",
-                "Species",
-                "text",
-                true
-            )}
-
-            ${select(
-                "gg-ir-death-sex",
-                "Sex",
-                C.SEX,
-                false
-            )}
-
-            ${select(
-                "gg-ir-death-age",
-                "Age",
-                C.AGE_CLASSES,
-                false
-            )}
-
-            ${select(
-                "gg-ir-death-condition",
-                "Carcass Condition",
-                [
-                    "Fresh",
-                    "Decomposed",
-                    "Highly Decomposed"
-                ],
-                false
-            )}
-
-            ${select(
-                "gg-ir-death-cause",
-                "Cause",
-                [
-                    "Known",
-                    "Suspected",
-                    "Unknown"
-                ],
-                false
-            )}
-
-            ${textarea(
-                "gg-ir-death-cause-details",
-                "Cause Details",
-                false
-            )}
-
-            ${input(
-                "gg-ir-death-body-length",
-                "Body Length",
-                "number",
-                false
-            )}
-
-            ${input(
-                "gg-ir-death-chest-girth",
-                "Chest Girth",
-                "number",
-                false
-            )}
-
-            ${input(
-                "gg-ir-death-height",
-                "Height",
-                "number",
-                false
-            )}
-
-            ${input(
-                "gg-ir-death-weight",
-                "Weight",
-                "number",
-                false
-            )}
-
-            ${select(
-                "gg-ir-death-postmortem",
-                "Post-mortem Required",
-                C.YES_NO,
-                false
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // GENERAL OBSERVATION
-    // ========================================================
-
-    function generalObservation() {
-
-        return `
-
-            ${select(
-                "gg-ir-observation-type",
-                "Observation Type",
-                [
-                    "Suspicious Activity",
-                    "Forest Condition",
-                    "Wildlife Sign",
-                    "Boundary Issue",
-                    "Other"
-                ],
-                true
-            )}
-
-            ${textarea(
-                "gg-ir-observation-description",
-                "Description",
-                true
-            )}
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // TYPE BODY
-    // ========================================================
-
-    function getTypeBody(
-        type
-    ) {
-
-        switch (
-            String(
-                type ||
-                ""
-            )
-            .trim()
-            .toUpperCase()
-        ) {
-
-            case "ILLICIT_FELLING":
-                return illicitFelling();
-
-
-            case "ILLEGAL_FOREST_PRODUCE":
-                return forestProduce();
-
-
-            case "ILLEGAL_MINING":
-                return mining();
-
-
-            case "ILLEGAL_FISHING":
-                return fishing();
-
-
-            case "ILLEGAL_GRAZING":
-                return grazing();
-
-
-            case "FOREST_FIRE":
-                return fire();
-
-
-            case "ENCROACHMENT":
-                return encroachment();
-
-
-            case "ILLEGAL_STRUCTURE":
-                return illegalStructure();
-
-
-            case "ILLEGAL_ENTRY":
-                return illegalEntry();
-
-
-            case "POACHING":
-                return poaching();
-
-
-            case "WILDLIFE_INJURY":
-                return wildlifeInjury();
-
-
-            case "WILDLIFE_DEATH":
-                return wildlifeDeath();
-
-
-            case "GENERAL_OBSERVATION":
-                return generalObservation();
-
-
-            default:
-                return "";
+    ];
+
+};
+
+
+/* ============================================================
+   CATEGORY SELECT
+   ============================================================ */
+
+GGIrregularity.Form.categorySelect =
+function(){
+
+    return GGIrregularity.Form.field(
+
+        "Irregularity / Offence / Observation",
+
+        "type",
+
+        "select",
+
+        {
+
+            required:
+                true,
+
+            options:
+                GGIrregularity.Form.categoryOptions()
 
         }
 
-    }
-
-
-    // ========================================================
-    // MAIN FORM HTML
-    // ========================================================
-
-    function render(
-        type
-    ) {
-
-        const incident =
-            C.TYPES[
-                type
-            ];
-
-
-        if (
-            !incident
-        ) {
-
-            return "";
-
-        }
-
-
-        const profile =
-            window.userProfile ||
-            {};
-
-
-        return `
-
-            <form
-                id="gg-irregularity-form"
-                class="gg-irregularity-form"
-                novalidate
-            >
-
-                <div
-                    class="gg-ir-header"
-                >
-
-                    <div
-                        class="gg-ir-header-icon"
-                    >
-                        ${incident.icon}
-                    </div>
-
-                    <div>
-
-                        <div
-                            class="gg-ir-header-title"
-                        >
-                            ${escapeHTML(
-                                incident.label
-                            )}
-                        </div>
-
-                        <div
-                            class="gg-ir-header-subtitle"
-                        >
-                            Patrol Irregularity /
-                            Offence / Observation
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="gg-ir-section"
-                >
-
-                    <div
-                        class="gg-ir-section-title"
-                    >
-                        INCIDENT
-                    </div>
-
-                    ${commonFields()}
-
-                </div>
-
-
-                <div
-                    class="gg-ir-section"
-                >
-
-                    <div
-                        class="gg-ir-section-title"
-                    >
-                        ${incident.icon}
-                        INCIDENT DETAILS
-                    </div>
-
-                    <div
-                        id="gg-ir-type-fields"
-                    >
-
-                        ${getTypeBody(
-                            type
-                        )}
-
-                    </div>
-
-                </div>
-
-
-                ${locationBlock()}
-
-
-                ${mediaBlock()}
-
-
-                <div
-                    class="gg-ir-section"
-                >
-
-                    <div
-                        class="gg-ir-section-title"
-                    >
-                        📝 REMARKS
-                    </div>
-
-                    ${textarea(
-                        "gg-ir-remarks",
-                        "Remarks",
-                        false
-                    )}
-
-                </div>
-
-
-                <div
-                    class="gg-ir-actions"
-                >
-
-                    <button
-                        type="button"
-                        id="gg-ir-cancel"
-                        class="gg-ir-btn gg-ir-btn-secondary"
-                    >
-                        CANCEL
-                    </button>
-
-
-                    <button
-                        type="submit"
-                        id="gg-ir-submit"
-                        class="gg-ir-btn gg-ir-btn-primary"
-                    >
-                        SUBMIT INCIDENT
-                    </button>
-
-                </div>
-
-            </form>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // PUBLIC API
-    // ========================================================
-
-    GG.IrregularityForm = {
-
-        render:
-            render,
-
-        getTypeBody:
-            getTypeBody,
-
-        escapeHTML:
-            escapeHTML
-
-    };
-
-
-    window.IrregularityForm =
-        GG.IrregularityForm;
-
-
-    console.log(
-        "✅ GreenGuard IrregularityForm loaded."
     );
 
+};
 
-})(window);
+
+/* ============================================================
+   COMMON INCIDENT FIELDS
+   ============================================================ */
+
+GGIrregularity.Form.commonFields =
+function(){
+
+    return `
+
+        <div
+            style="
+                display:grid;
+                grid-template-columns:
+                    minmax(0,1fr)
+                    minmax(0,1fr);
+                gap:8px;
+                width:100%;
+            "
+        >
+
+            ${GGIrregularity.Form.field(
+                "Incident Date",
+                "incident_date",
+                "date"
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Incident Time",
+                "incident_time",
+                "time"
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLICIT FELLING
+   ============================================================ */
+
+GGIrregularity.Form.felling =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLICIT_FELLING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Felling Compartment",
+                "felling_compartment",
+                "text",
+                {
+                    placeholder:
+                        "Compartment"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "No. of Trees Felled",
+                "number_of_felling",
+                "number",
+                {
+                    placeholder:
+                        "Number of trees"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Species Felled",
+                "species_felled",
+                "text",
+                {
+                    placeholder:
+                        "Species"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL TIMBER / FOREST PRODUCE
+   ============================================================ */
+
+GGIrregularity.Form.timber =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_TIMBER_FOREST_PRODUCE"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Timber / Forest Produce",
+                "timber_type",
+                "text",
+                {
+                    placeholder:
+                        "Type of timber / forest produce"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Quantity",
+                "timber_quantity",
+                "text",
+                {
+                    placeholder:
+                        "Quantity / measurement"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL MINING
+   ============================================================ */
+
+GGIrregularity.Form.mining =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_MINING_EARTH_CUTTING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Mining / Earth Cutting Compartment",
+                "mining_compartment",
+                "text"
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Area",
+                "mining_area",
+                "text",
+                {
+                    placeholder:
+                        "Area / extent"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Mining / Cutting Type",
+                "mining_type",
+                "text",
+                {
+                    placeholder:
+                        "Mining / earth cutting details"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL FISHING
+   ============================================================ */
+
+GGIrregularity.Form.fishing =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_FISHING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Fishing Location",
+                "fishing_location",
+                "text"
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Fishing Method",
+                "fishing_method",
+                "text",
+                {
+                    placeholder:
+                        "Method / gear used"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL GRAZING
+   ============================================================ */
+
+GGIrregularity.Form.grazing =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_GRAZING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Grazing Area",
+                "grazing_area",
+                "text",
+                {
+                    placeholder:
+                        "Estimated area / location"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   FOREST FIRE
+   ============================================================ */
+
+GGIrregularity.Form.fire =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="FOREST_FIRE"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Fire Compartment / Area",
+                "fire_area",
+                "text",
+                {
+                    placeholder:
+                        "Compartment / affected area"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Probable Cause",
+                "fire_cause",
+                "text",
+                {
+                    placeholder:
+                        "If known"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ENCROACHMENT
+   ============================================================ */
+
+GGIrregularity.Form.encroachment =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ENCROACHMENT"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Encroachment Area / Compartment",
+                "encroached_area",
+                "text",
+                {
+                    placeholder:
+                        "Compartment / area"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Encroachment Type",
+                "encroachment_type",
+                "text",
+                {
+                    placeholder:
+                        "Cultivation / occupation / other"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL STRUCTURE / OCCUPATION
+   ============================================================ */
+
+GGIrregularity.Form.structure =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_STRUCTURE_OCCUPATION"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Structure Type",
+                "structure_type",
+                "text",
+                {
+                    placeholder:
+                        "House / shed / road / other"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Description",
+                "structure_description",
+                "textarea",
+                {
+                    rows:
+                        3
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   POACHING
+   ============================================================ */
+
+GGIrregularity.Form.poaching =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="POACHING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Species",
+                "poaching_species",
+                "text"
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Poaching Method",
+                "poaching_method",
+                "text",
+                {
+                    placeholder:
+                        "Method / evidence observed"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   ILLEGAL ENTRY / TRESPASSING
+   ============================================================ */
+
+GGIrregularity.Form.trespassing =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="ILLEGAL_ENTRY_TRESPASSING"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "No. of Trespassers",
+                "trespasser_count",
+                "number"
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Details",
+                "trespassing_description",
+                "textarea",
+                {
+                    rows:
+                        3,
+
+                    placeholder:
+                        "Describe entry / trespassing observed"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   WILDLIFE INJURY
+   ============================================================ */
+
+GGIrregularity.Form.wildlifeInjury =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="WILDLIFE_INJURY"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Species",
+                "injured_species",
+                "text"
+            )}
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        minmax(0,1fr)
+                        minmax(0,1fr);
+                    gap:8px;
+                "
+            >
+
+                ${GGIrregularity.Form.field(
+                    "Age",
+                    "injured_age",
+                    "text"
+                )}
+
+                ${GGIrregularity.Form.field(
+                    "Sex",
+                    "injured_sex",
+                    "text"
+                )}
+
+            </div>
+
+            ${GGIrregularity.Form.field(
+                "Injury Details",
+                "injury_details",
+                "textarea",
+                {
+                    rows:
+                        3
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   WILDLIFE DEATH
+   ============================================================ */
+
+GGIrregularity.Form.wildlifeDeath =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="WILDLIFE_DEATH"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Species",
+                "dead_species",
+                "text"
+            )}
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        minmax(0,1fr)
+                        minmax(0,1fr);
+                    gap:8px;
+                "
+            >
+
+                ${GGIrregularity.Form.field(
+                    "Sex",
+                    "dead_sex",
+                    "text"
+                )}
+
+                ${GGIrregularity.Form.field(
+                    "Age",
+                    "dead_age",
+                    "text"
+                )}
+
+            </div>
+
+            ${GGIrregularity.Form.field(
+                "Measurement",
+                "dead_measurement",
+                "text",
+                {
+                    placeholder:
+                        "Body / carcass measurement"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   GENERAL OBSERVATION
+   ============================================================ */
+
+GGIrregularity.Form.observation =
+function(){
+
+    return `
+
+        <div
+            data-irregularity-group="GENERAL_OBSERVATION"
+            style="display:none;"
+        >
+
+            ${GGIrregularity.Form.field(
+                "Observation",
+                "observation",
+                "textarea",
+                {
+                    rows:
+                        4,
+
+                    placeholder:
+                        "Describe the observation"
+                }
+            )}
+
+        </div>
+
+    `;
+
+};
+
+
+/* ============================================================
+   COMMON REMARKS
+   ============================================================ */
+
+GGIrregularity.Form.remarks =
+function(){
+
+    return GGIrregularity.Form.field(
+
+        "Remarks",
+
+        "remarks",
+
+        "textarea",
+
+        {
+
+            rows:
+                3,
+
+            placeholder:
+                "Additional remarks"
+
+        }
+
+    );
+
+};
+
+
+/* ============================================================
+   BUILD FORM
+   ============================================================ */
+
+GGIrregularity.Form.build =
+function(){
+
+    return `
+
+        <form
+            id="ggIrregularityForm"
+            autocomplete="off"
+            novalidate
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin:0;
+                padding:0;
+            "
+        >
+
+            <!-- ============================================
+                 HEADER
+                 ============================================ -->
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    width:100%;
+                    box-sizing:border-box;
+                    margin:0 0 12px 0;
+                    padding:10px 12px;
+                    border-radius:8px;
+                    background:#2e7d32;
+                    color:#ffffff;
+                "
+            >
+
+                <span
+                    style="
+                        font-size:17px;
+                        line-height:1;
+                        flex:0 0 auto;
+                    "
+                >
+                    ⚠️
+                </span>
+
+                <span
+                    style="
+                        margin-left:7px;
+                        font-size:14px;
+                        font-weight:800;
+                        line-height:1.2;
+                    "
+                >
+                    IRREGULARITY / OFFENCE / OBSERVATION
+                </span>
+
+            </div>
+
+
+            <!-- ============================================
+                 CATEGORY
+                 ============================================ -->
+
+            ${GGIrregularity.Form.categorySelect()}
+
+
+            <!-- ============================================
+                 DATE / TIME
+                 ============================================ -->
+
+            ${GGIrregularity.Form.commonFields()}
+
+
+            <!-- ============================================
+                 CATEGORY-SPECIFIC FIELDS
+                 ============================================ -->
+
+            ${GGIrregularity.Form.felling()}
+
+            ${GGIrregularity.Form.timber()}
+
+            ${GGIrregularity.Form.mining()}
+
+            ${GGIrregularity.Form.fishing()}
+
+            ${GGIrregularity.Form.grazing()}
+
+            ${GGIrregularity.Form.fire()}
+
+            ${GGIrregularity.Form.encroachment()}
+
+            ${GGIrregularity.Form.structure()}
+
+            ${GGIrregularity.Form.poaching()}
+
+            ${GGIrregularity.Form.trespassing()}
+
+            ${GGIrregularity.Form.wildlifeInjury()}
+
+            ${GGIrregularity.Form.wildlifeDeath()}
+
+            ${GGIrregularity.Form.observation()}
+
+
+            <!-- ============================================
+                 REMARKS
+                 ============================================ -->
+
+            ${GGIrregularity.Form.remarks()}
+
+
+            <!-- ============================================
+                 LOCATION INFORMATION
+                 ============================================ -->
+
+            <div
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    margin:10px 0;
+                    padding:9px 10px;
+                    border:1px solid #dfe8df;
+                    border-radius:8px;
+                    background:#f8faf8;
+                "
+            >
+
+                <div
+                    style="
+                        display:flex;
+                        align-items:center;
+                        margin:0 0 5px 0;
+                        color:#1b5e20;
+                        font-size:12px;
+                        font-weight:800;
+                    "
+                >
+
+                    <span>
+                        📍
+                    </span>
+
+                    <span
+                        style="margin-left:5px;"
+                    >
+                        LOCATION
+                    </span>
+
+                </div>
+
+                <div
+                    style="
+                        color:#607d8b;
+                        font-size:11px;
+                        line-height:1.4;
+                    "
+                >
+                    Current GPS and GIS location will be resolved
+                    automatically when the record is saved.
+                </div>
+
+            </div>
+
+
+            <!-- ============================================
+                 MEDIA PLACEHOLDER
+                 ============================================ -->
+
+            <div
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    margin:10px 0;
+                    padding:9px 10px;
+                    border:1px solid #dfe8df;
+                    border-radius:8px;
+                    background:#f8faf8;
+                "
+            >
+
+                <div
+                    style="
+                        display:flex;
+                        align-items:center;
+                        color:#1b5e20;
+                        font-size:12px;
+                        font-weight:800;
+                    "
+                >
+
+                    <span>
+                        🎬
+                    </span>
+
+                    <span
+                        style="margin-left:5px;"
+                    >
+                        MEDIA
+                    </span>
+
+                </div>
+
+                <div
+                    style="
+                        margin-top:5px;
+                        color:#78909c;
+                        font-size:11px;
+                        line-height:1.4;
+                    "
+                >
+                    Media upload will use the existing
+                    GreenGuard Storage flow.
+                </div>
+
+            </div>
+
+
+            <!-- ============================================
+                 SAVE BUTTON
+                 ============================================ -->
+
+            <button
+                id="ggIrregularitySubmit"
+                type="submit"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    min-height:42px;
+                    margin:4px 0 0 0;
+                    padding:9px 12px;
+                    border:none;
+                    border-radius:8px;
+                    background:#2e7d32;
+                    color:#ffffff;
+                    font-size:13px;
+                    font-weight:800;
+                    cursor:pointer;
+                    touch-action:manipulation;
+                    -webkit-tap-highlight-color:transparent;
+                "
+            >
+                SAVE OBSERVATION
+            </button>
+
+        </form>
+
+    `;
+
+};
+
+
+/* ============================================================
+   MOUNT FORM
+   ============================================================ */
+
+GGIrregularity.Form.mount =
+function(
+    container
+){
+
+    if(
+        typeof container ===
+        "string"
+    ){
+
+        container =
+            document.getElementById(
+                container
+            );
+
+    }
+
+
+    if(
+        !container
+    ){
+
+        console.warn(
+            "⚠ Irregularity form container not found."
+        );
+
+        return false;
+
+    }
+
+
+    container.innerHTML =
+        GGIrregularity.Form.build();
+
+
+    /*
+     * GGIrregularity.init()
+     * is responsible for binding the form submit listener.
+     */
+
+    GGIrregularity.init();
+
+
+    return true;
+
+};
+
+
+/* ============================================================
+   OPTIONAL GLOBAL HELPER
+   ============================================================ */
+
+window.mountIrregularityForm =
+function(
+    container
+){
+
+    return GGIrregularity.Form.mount(
+        container
+    );
+
+};
+
+
+/* ============================================================
+   END
+   ============================================================ */
