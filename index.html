@@ -44869,13 +44869,22 @@ const popup =
 // SAME COMPACT SIZE AS ELEPHANT POPUP
 // =================================================
 
+// ========================================================
+// WILDLIFE POPUP OPTIONS
+// ========================================================
+//
+// Slightly narrower popup.
+// One popup-level scrollbar only.
+// Keep the existing popup behaviour unchanged.
+// ========================================================
+
 const popupOptions = {
 
     maxWidth:
-        300,
+        280,
 
     minWidth:
-        260,
+        250,
 
     maxHeight:
         Math.min(
@@ -44936,125 +44945,45 @@ const popupOptions = {
                     true;
 
 
-                // =============================================
-                // POPUP OPEN
-                // =============================================
+// =============================================
+// POPUP OPEN
+// =============================================
 
-                marker.on(
+marker.on(
 
-                    "popupopen",
+    "popupopen",
 
-                    function(){
+    function(){
 
-                        window.activeWildlifePopupId =
+        // =================================================
+        // REMEMBER ACTIVE WILDLIFE POPUP
+        // =================================================
 
-                            id;
+        window.activeWildlifePopupId =
+            id;
 
 
-                        window.activeWildlifePopupMarker =
+        window.activeWildlifePopupMarker =
+            marker;
 
-                            marker;
 
-                              // ====================================================
-        // REMEMBER OPEN POPUP
-        // ====================================================
+        // =================================================
+        // REMEMBER POPUP FOR RETURN
+        // =================================================
 
         rememberWildlifePopupForReturn(
             id
         );
 
 
+        console.log(
+            "🐅 Wildlife popup OPEN:",
+            id
+        );
 
-                        console.log(
+    }
 
-                            "🐅 Wildlife popup OPEN:",
-
-                            id
-
-                        );
-
-
-                        /*
-                         * Make sure the popup content itself
-                         * can scroll on small mobile screens.
-                         */
-
-                        requestAnimationFrame(
-
-                            function(){
-
-                                const popupElement =
-
-                                    marker
-                                        .getPopup()
-                                        ?.getElement();
-
-
-                                if(
-
-                                    !popupElement
-
-                                ){
-
-                                    return;
-
-                                }
-
-
-                                const content =
-
-                                    popupElement.querySelector(
-
-                                        ".leaflet-popup-content"
-
-                                    );
-
-
-                                if(
-
-                                    content
-
-                                ){
-
-content.style.maxHeight =
-
-    Math.min(
-
-        window.innerHeight * 0.60,
-
-        360
-
-    ) + "px";
-
-
-                                    content.style.overflowY =
-
-                                        "auto";
-
-
-                                    content.style.overflowX =
-
-                                        "hidden";
-
-
-                                    content.style.webkitOverflowScrolling =
-
-                                        "touch";
-                                  content.style.overscrollBehavior =
-    "contain";
-
-content.style.touchAction =
-    "pan-y";
-
-                                }
-
-                            }
-
-                        );
-
-                    }
-
-                );
+);
 
 
                 // =============================================
