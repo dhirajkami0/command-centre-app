@@ -3,7 +3,7 @@
    IRREGULARITY UI / MODAL INTEGRATION
    ============================================================
 
-   File:
+   FILE:
        js/irregularity/irregularityUI.js
 
    RESPONSIBILITY
@@ -13,6 +13,7 @@
    • Open / close modal
    • Set date/time defaults
    • Preserve existing sighting selector flow
+   • Connect UI to GGIrregularity module
 
    NOT RESPONSIBLE FOR
    ------------------------------------------------------------
@@ -27,7 +28,7 @@
 
    GPS / GIS / PROFILE / FIRESTORE
    ------------------------------------------------------------
-   Handled by:
+   Handled only by:
 
        irregularityModule.js
 
@@ -38,11 +39,14 @@
    GIS:
        window.resolveCurrentGIS()
 
+   MEDIA:
+       irregularityMedia.js
+
    ============================================================ */
 
 
 /* ============================================================
-   NAMESPACE
+   GLOBAL NAMESPACE
    ============================================================ */
 
 window.GGIrregularity =
@@ -58,6 +62,22 @@ GGIrregularity.UI =
 
 
 /* ============================================================
+   CONSTANTS
+   ============================================================ */
+
+GGIrregularity.UI.MODAL_ID =
+    "irregularity-form-modal";
+
+
+GGIrregularity.UI.CONTAINER_ID =
+    "irregularity-form-container";
+
+
+GGIrregularity.UI.FORM_HOST_ID =
+    "gg-irregularity-form-host";
+
+
+/* ============================================================
    ENSURE MODAL
    ============================================================ */
 
@@ -70,7 +90,7 @@ function(){
 
     let modal =
         document.getElementById(
-            "irregularity-form-modal"
+            GGIrregularity.UI.MODAL_ID
         );
 
 
@@ -94,25 +114,44 @@ function(){
 
 
     modal.id =
-        "irregularity-form-modal";
+        GGIrregularity.UI.MODAL_ID;
+
+
+    modal.setAttribute(
+        "role",
+        "dialog"
+    );
+
+
+    modal.setAttribute(
+        "aria-modal",
+        "true"
+    );
+
+
+    modal.setAttribute(
+        "aria-labelledby",
+        "gg-irregularity-title"
+    );
 
 
     modal.style.cssText =
 
         "display:none;" +
         "position:fixed;" +
-        "top:0;" +
-        "left:0;" +
+        "inset:0;" +
         "width:100%;" +
         "height:100%;" +
-        "background:rgba(0,0,0,0.85);" +
+        "background:rgba(0,0,0,0.82);" +
         "backdrop-filter:blur(4px);" +
         "-webkit-backdrop-filter:blur(4px);" +
         "z-index:5001;" +
         "overflow-y:auto;" +
+        "overflow-x:hidden;" +
         "padding:10px;" +
         "box-sizing:border-box;" +
-        "-webkit-overflow-scrolling:touch;";
+        "-webkit-overflow-scrolling:touch;" +
+        "overscroll-behavior:contain;";
 
 
     /* ========================================================
@@ -126,22 +165,23 @@ function(){
 
 
     container.id =
-        "irregularity-form-container";
+        GGIrregularity.UI.CONTAINER_ID;
 
 
     container.style.cssText =
 
         "background:#f4f4f4;" +
         "border-radius:15px;" +
-        "padding:20px;" +
+        "padding:18px;" +
         "max-width:480px;" +
         "width:100%;" +
         "margin:20px auto;" +
         "font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;" +
-        "border-top:8px solid #1b5e20;" +
+        "border-top:7px solid #1b5e20;" +
         "box-shadow:0 10px 25px rgba(0,0,0,0.3);" +
         "box-sizing:border-box;" +
-        "position:relative;";
+        "position:relative;" +
+        "overflow:visible;";
 
 
     /* ========================================================
@@ -157,11 +197,13 @@ function(){
     header.style.cssText =
 
         "display:flex;" +
-        "justify-content:space-between;" +
         "align-items:center;" +
+        "justify-content:space-between;" +
+        "gap:8px;" +
         "width:100%;" +
         "box-sizing:border-box;" +
-        "margin-bottom:8px;";
+        "margin:0 0 8px 0;" +
+        "padding:0;";
 
 
     /* ========================================================
@@ -172,6 +214,10 @@ function(){
         document.createElement(
             "h3"
         );
+
+
+    title.id =
+        "gg-irregularity-title";
 
 
     title.textContent =
@@ -186,7 +232,7 @@ function(){
         "font-size:18px;" +
         "font-weight:800;" +
         "line-height:1.25;" +
-        "flex:1;" +
+        "flex:1 1 auto;" +
         "min-width:0;";
 
 
@@ -220,13 +266,13 @@ function(){
 
     closeButton.style.cssText =
 
-        "flex:0 0 auto;" +
+        "flex:0 0 36px;" +
         "width:36px;" +
         "height:36px;" +
         "border:none;" +
         "border-radius:50%;" +
         "background:transparent;" +
-        "font-size:26px;" +
+        "font-size:27px;" +
         "font-weight:400;" +
         "cursor:pointer;" +
         "padding:0;" +
@@ -277,9 +323,10 @@ function(){
 
     hr.style.cssText =
 
-        "margin:12px 0;" +
+        "margin:10px 0 14px 0;" +
         "border:0;" +
-        "border-top:1px solid #ddd;";
+        "border-top:1px solid #ddd;" +
+        "height:1px;";
 
 
     /* ========================================================
@@ -293,7 +340,7 @@ function(){
 
 
     formHost.id =
-        "gg-irregularity-form-host";
+        GGIrregularity.UI.FORM_HOST_ID;
 
 
     formHost.style.cssText =
@@ -301,7 +348,8 @@ function(){
         "width:100%;" +
         "box-sizing:border-box;" +
         "margin:0;" +
-        "padding:0;";
+        "padding:0;" +
+        "overflow:visible;";
 
 
     /* ========================================================
@@ -357,6 +405,49 @@ function(){
 
 
     /* ========================================================
+       ESC KEY
+       ======================================================== */
+
+    if(
+        !modal.__ggIrregularityEscapeBound
+    ){
+
+        modal.__ggIrregularityEscapeBound =
+            true;
+
+
+        document.addEventListener(
+            "keydown",
+            function(
+                event
+            ){
+
+                if(
+                    event.key !==
+                    "Escape"
+                ){
+
+                    return;
+
+                }
+
+
+                if(
+                    modal.style.display !==
+                    "none"
+                ){
+
+                    GGIrregularity.UI.close();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* ========================================================
        RETURN
        ======================================================== */
 
@@ -366,76 +457,15 @@ function(){
 
 
 /* ============================================================
-   OPEN IRREGULARITY FORM
+   BUILD FORM
    ============================================================ */
 
-async function openIrregularityForm(){
-
-    console.group(
-        "⚠️ openIrregularityForm START"
-    );
-
-
-    /* ========================================================
-       CLOSE EXISTING SIGHTING SELECTOR
-       ======================================================== */
-
-    if(
-        typeof closeSightingSelector ===
-        "function"
-    ){
-
-        closeSightingSelector();
-
-    }
-
-
-    /* ========================================================
-       OBSERVATION TYPE
-       ======================================================== */
-
-    window.currentObservationType =
-        "IRREGULARITY";
-
-
-    window.isEditingIrregularity =
-        false;
-
-
-    window.currentIrregularityId =
-        null;
-
-
-    /* ========================================================
-       RESET EXISTING IRREGULARITY STATE
-       ======================================================== */
-
-    if(
-        GGIrregularity.State &&
-        typeof GGIrregularity.State.reset ===
-        "function"
-    ){
-
-        GGIrregularity.State.reset();
-
-    }
-
-
-    /* ========================================================
-       ENSURE MODAL
-       ======================================================== */
-
-    const modal =
-        GGIrregularity.UI.ensureModal();
-
-
-    /* ========================================================
-       FORM HOST
-       ======================================================== */
+GGIrregularity.UI.buildForm =
+function(){
 
     const formHost =
         document.getElementById(
-            "gg-irregularity-form-host"
+            GGIrregularity.UI.FORM_HOST_ID
         );
 
 
@@ -447,16 +477,13 @@ async function openIrregularityForm(){
             "❌ Irregularity form host not found."
         );
 
-
-        console.groupEnd();
-
-        return;
+        return false;
 
     }
 
 
     /* ========================================================
-       BUILD MANUAL-INPUT FORM
+       FORM BUILDER MUST EXIST
        ======================================================== */
 
     if(
@@ -469,57 +496,104 @@ async function openIrregularityForm(){
             "❌ GGIrregularity.Form.build() not available."
         );
 
+        return false;
 
-        console.groupEnd();
+    }
 
-        return;
+
+    /* ========================================================
+       BUILD MANUAL FORM ONLY
+       ======================================================== */
+
+    const html =
+        GGIrregularity.Form.build();
+
+
+    if(
+        typeof html !==
+        "string"
+    ){
+
+        console.error(
+            "❌ GGIrregularity.Form.build() did not return HTML."
+        );
+
+        return false;
 
     }
 
 
     formHost.innerHTML =
-        GGIrregularity.Form.build();
+        html;
 
 
-    /* ========================================================
-       SHOW MODAL
-       ======================================================== */
+    return true;
 
-    modal.style.display =
-        "block";
+};
 
 
-    modal.style.visibility =
-        "visible";
+/* ============================================================
+   LOCAL DATE
+   ============================================================
 
+   Do NOT use toISOString() here because that can shift the
+   displayed date around midnight depending on timezone.
 
-    modal.style.opacity =
-        "1";
+   ============================================================ */
 
-
-    /* ========================================================
-       PREVENT BACKGROUND PAGE SCROLL
-       ======================================================== */
-
-    document.body.style.overflow =
-        "hidden";
-
-
-    /* ========================================================
-       DATE / TIME DEFAULTS
-       ======================================================== */
+GGIrregularity.UI.getLocalDate =
+function(){
 
     const now =
         new Date();
 
 
-    const date =
-        now
-            .toISOString()
-            .slice(
-                0,
-                10
-            );
+    const year =
+        now.getFullYear();
+
+
+    const month =
+        String(
+            now.getMonth() + 1
+        )
+        .padStart(
+            2,
+            "0"
+        );
+
+
+    const day =
+        String(
+            now.getDate()
+        )
+        .padStart(
+            2,
+            "0"
+        );
+
+
+    return (
+
+        year +
+        "-" +
+        month +
+        "-" +
+        day
+
+    );
+
+};
+
+
+/* ============================================================
+   LOCAL TIME
+   ============================================================ */
+
+GGIrregularity.UI.getLocalTime =
+function(){
+
+    const now =
+        new Date();
 
 
     const hours =
@@ -542,80 +616,227 @@ async function openIrregularityForm(){
         );
 
 
-    /* ========================================================
-       SAFE FIELD SETTER
-       ======================================================== */
+    return (
 
-    const setValue =
-        function(
-            id,
-            value
-        ){
+        hours +
+        ":" +
+        minutes
 
-            const element =
-                document.getElementById(
-                    id
-                );
+    );
+
+};
 
 
-            if(
-                element
-            ){
+/* ============================================================
+   SAFE FIELD SETTER
+   ============================================================ */
 
-                element.value =
-                    value ??
-                    "";
+GGIrregularity.UI.setValue =
+function(
+    id,
+    value
+){
 
-            }
+    const element =
+        document.getElementById(
+            id
+        );
 
-        };
 
+    if(
+        !element
+    ){
+
+        return false;
+
+    }
+
+
+    element.value =
+        value ??
+        "";
+
+
+    return true;
+
+};
+
+
+/* ============================================================
+   RESET FORM STATE
+   ============================================================ */
+
+GGIrregularity.UI.resetState =
+function(){
+
+    window.currentObservationType =
+        "IRREGULARITY";
+
+
+    window.isEditingIrregularity =
+        false;
+
+
+    window.currentIrregularityId =
+        null;
+
+
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT reset:
+     *
+     *     window.latestGps
+     *
+     * Do NOT modify:
+     *
+     *     window.resolveCurrentGIS
+     *
+     * GPS is application-level state.
+     */
+
+    if(
+        GGIrregularity.State &&
+        typeof GGIrregularity.State.reset ===
+        "function"
+    ){
+
+        GGIrregularity.State.reset();
+
+    }
+
+};
+
+
+/* ============================================================
+   SET DEFAULTS
+   ============================================================ */
+
+GGIrregularity.UI.setDefaults =
+function(){
 
     /* ========================================================
        DATE
-
-       MANUAL FIELD
-       Automatically defaulted to today's date.
-       User can change it.
        ======================================================== */
 
-    setValue(
+    GGIrregularity.UI.setValue(
         "gg-irregularity-incident_date",
-        date
+        GGIrregularity.UI.getLocalDate()
     );
 
 
     /* ========================================================
        TIME
-
-       MANUAL FIELD
-       Automatically defaulted to current time.
-       User can change it.
        ======================================================== */
 
-    setValue(
+    GGIrregularity.UI.setValue(
         "gg-irregularity-incident_time",
-        hours +
-        ":" +
-        minutes
+        GGIrregularity.UI.getLocalTime()
     );
+
+};
+
+
+/* ============================================================
+   INITIALIZE FORM
+   ============================================================ */
+
+GGIrregularity.UI.initializeForm =
+function(){
+
+    /* ========================================================
+       CATEGORY
+       ======================================================== */
+
+    const categorySelect =
+        document.getElementById(
+            "gg-irregularity-type"
+        );
+
+
+    if(
+        categorySelect
+    ){
+
+        if(
+            !categorySelect.__ggIrregularityUIBound
+        ){
+
+            categorySelect.__ggIrregularityUIBound =
+                true;
+
+
+            categorySelect.addEventListener(
+                "change",
+                function(){
+
+                    if(
+                        GGIrregularity.State &&
+                        typeof GGIrregularity.State
+                            .setCategory ===
+                        "function"
+                    ){
+
+                        GGIrregularity.State
+                            .setCategory(
+                                categorySelect.value ||
+                                ""
+                            );
+
+                    }
+
+
+                    if(
+                        typeof GGIrregularity
+                            .updateFields ===
+                        "function"
+                    ){
+
+                        GGIrregularity
+                            .updateFields();
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        /* ====================================================
+           INITIAL CATEGORY STATE
+           ==================================================== */
+
+        if(
+            GGIrregularity.State &&
+            typeof GGIrregularity.State
+                .setCategory ===
+            "function"
+        ){
+
+            GGIrregularity.State
+                .setCategory(
+                    categorySelect.value ||
+                    ""
+                );
+
+        }
+
+    }
 
 
     /* ========================================================
-       INITIALIZE FORM BEHAVIOUR
+       MODULE INITIALIZATION
        ========================================================
 
-       IMPORTANT:
+       The module owns the ONLY submit handler.
 
-       irregularityModule.js owns the submit listener.
-
-       We do NOT add:
+       UI does NOT create:
 
            form.onsubmit
 
-       here.
+       and does NOT create another submit listener.
 
-       This prevents duplicate Firestore submissions.
        ======================================================== */
 
     if(
@@ -629,41 +850,7 @@ async function openIrregularityForm(){
 
 
     /* ========================================================
-       CATEGORY FIELD
-       ======================================================== */
-
-    const categorySelect =
-        document.getElementById(
-            "gg-irregularity-type"
-        );
-
-
-    /* ========================================================
-       CATEGORY STATE
-       ======================================================== */
-
-    if(
-        categorySelect
-    ){
-
-        if(
-            GGIrregularity.State &&
-            typeof GGIrregularity.State.setCategory ===
-            "function"
-        ){
-
-            GGIrregularity.State.setCategory(
-                categorySelect.value ||
-                ""
-            );
-
-        }
-
-    }
-
-
-    /* ========================================================
-       INITIAL CATEGORY VISIBILITY
+       FIELD VISIBILITY
        ======================================================== */
 
     if(
@@ -676,63 +863,241 @@ async function openIrregularityForm(){
     }
 
 
-    /* ========================================================
-       FOCUS CATEGORY
-       ======================================================== */
+    return true;
 
-    if(
-        categorySelect
-    ){
+};
 
-        setTimeout(
-            function(){
 
-                try{
+/* ============================================================
+   OPEN IRREGULARITY FORM
+   ============================================================ */
 
-                    categorySelect.focus();
+async function openIrregularityForm(){
 
-                }
-                catch(
-                    error
-                ){
+    console.group(
+        "⚠️ openIrregularityForm START"
+    );
 
-                    console.warn(
-                        "⚠ Unable to focus irregularity category:",
+
+    try{
+
+        /* ====================================================
+           CLOSE EXISTING SIGHTING SELECTOR
+           ==================================================== */
+
+        if(
+            typeof closeSightingSelector ===
+            "function"
+        ){
+
+            closeSightingSelector();
+
+        }
+
+
+        /* ====================================================
+           OBSERVATION TYPE
+           ==================================================== */
+
+        window.currentObservationType =
+            "IRREGULARITY";
+
+
+        window.isEditingIrregularity =
+            false;
+
+
+        window.currentIrregularityId =
+            null;
+
+
+        /* ====================================================
+           RESET IRREGULARITY STATE
+           ==================================================== */
+
+        GGIrregularity.UI.resetState();
+
+
+        /* ====================================================
+           ENSURE MODAL
+           ==================================================== */
+
+        const modal =
+            GGIrregularity.UI.ensureModal();
+
+
+        if(
+            !modal
+        ){
+
+            throw new Error(
+                "Unable to create Irregularity modal."
+            );
+
+        }
+
+
+        /* ====================================================
+           BUILD MANUAL FORM
+           ==================================================== */
+
+        const built =
+            GGIrregularity.UI.buildForm();
+
+
+        if(
+            !built
+        ){
+
+            throw new Error(
+                "Unable to build Irregularity form."
+            );
+
+        }
+
+
+        /* ====================================================
+           SHOW MODAL
+           ==================================================== */
+
+        modal.style.display =
+            "block";
+
+
+        modal.style.visibility =
+            "visible";
+
+
+        modal.style.opacity =
+            "1";
+
+
+        /* ====================================================
+           PREVENT BACKGROUND SCROLL
+           ==================================================== */
+
+        document.body.style.overflow =
+            "hidden";
+
+
+        /* ====================================================
+           DEFAULT DATE / TIME
+           ==================================================== */
+
+        GGIrregularity.UI.setDefaults();
+
+
+        /* ====================================================
+           INITIALIZE FORM
+           ==================================================== */
+
+        GGIrregularity.UI.initializeForm();
+
+
+        /* ====================================================
+           FOCUS CATEGORY
+           ==================================================== */
+
+        const categorySelect =
+            document.getElementById(
+                "gg-irregularity-type"
+            );
+
+
+        if(
+            categorySelect
+        ){
+
+            setTimeout(
+                function(){
+
+                    try{
+
+                        categorySelect.focus();
+
+                    }
+                    catch(
                         error
-                    );
+                    ){
 
-                }
+                        console.warn(
+                            "⚠ Unable to focus Irregularity category:",
+                            error
+                        );
 
-            },
-            100
+                    }
+
+                },
+                100
+            );
+
+        }
+
+
+        /* ====================================================
+           IMPORTANT DEBUG
+           ==================================================== */
+
+        console.log(
+            "⚠️ Irregularity form OPEN"
         );
 
+
+        console.log(
+            "📝 Manual fields initialized."
+        );
+
+
+        console.log(
+            "📍 GPS is NOT collected while opening form."
+        );
+
+
+        console.log(
+            "🗺 GIS is NOT resolved while opening form."
+        );
+
+
+        console.log(
+            "📍 GPS/GIS will be resolved only during SAVE."
+        );
+
+
+        console.groupEnd();
+
+
+        return true;
+
     }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ Unable to open Irregularity form:",
+            error
+        );
 
 
-    /* ========================================================
-       DEBUG
-
-       NO GPS IS READ HERE.
-       NO GIS IS RESOLVED HERE.
-       ======================================================== */
-
-    console.log(
-        "⚠️ Irregularity form OPEN"
-    );
+        document.body.style.overflow =
+            "";
 
 
-    console.log(
-        "📝 Manual fields ready."
-    );
+        console.groupEnd();
 
 
-    console.log(
-        "📍 GPS/GIS will be resolved only during submit."
-    );
+        alert(
+            "Unable to open Irregularity form.\n\n" +
+            (
+                error?.message ||
+                "Unknown error"
+            )
+        );
 
 
-    console.groupEnd();
+        return false;
+
+    }
 
 }
 
@@ -745,7 +1110,7 @@ function closeIrregularityForm(){
 
     const modal =
         document.getElementById(
-            "irregularity-form-modal"
+            GGIrregularity.UI.MODAL_ID
         );
 
 
@@ -791,8 +1156,12 @@ function closeIrregularityForm(){
         null;
 
 
+    window.currentObservationType =
+        null;
+
+
     /* ========================================================
-       RESET IRREGULARITY STATE
+       RESET MODULE STATE
        ======================================================== */
 
     if(
@@ -814,14 +1183,43 @@ function closeIrregularityForm(){
 
 
 /* ============================================================
-   UI NAMESPACE ALIASES
+   SINGLE UI OPEN
    ============================================================ */
 
 GGIrregularity.UI.open =
     openIrregularityForm;
 
 
+/* ============================================================
+   SINGLE UI CLOSE
+   ============================================================ */
+
 GGIrregularity.UI.close =
+    closeIrregularityForm;
+
+
+/* ============================================================
+   IMPORTANT INTEGRATION
+   ============================================================
+
+   The Firestore module may expose GGIrregularity.close().
+
+   Make it point to the SAME modal closer.
+
+   This prevents the situation where:
+
+       SAVE succeeds
+            ↓
+       module calls GGIrregularity.close()
+            ↓
+       different modal ID is searched
+            ↓
+       modal remains open
+
+   There is still only ONE actual modal.
+   ============================================================ */
+
+GGIrregularity.close =
     closeIrregularityForm;
 
 
@@ -835,6 +1233,57 @@ window.openIrregularityForm =
 
 window.closeIrregularityForm =
     closeIrregularityForm;
+
+
+/* ============================================================
+   OPTIONAL INITIAL SETUP
+   ============================================================
+
+   Do NOT automatically open anything.
+
+   Do NOT acquire GPS.
+
+   Do NOT resolve GIS.
+
+   Do NOT initialize Firebase.
+
+   Do NOT reload the application.
+
+   ============================================================ */
+
+if(
+    document.readyState ===
+    "loading"
+){
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function(){
+
+            /*
+             * Only ensure namespace/UI readiness.
+             *
+             * The actual modal is created when the user
+             * opens Irregularity.
+             */
+
+            GGIrregularity.UI.ready =
+                true;
+
+        },
+        {
+            once:
+                true
+        }
+    );
+
+}
+else{
+
+    GGIrregularity.UI.ready =
+        true;
+
+}
 
 
 /* ============================================================
