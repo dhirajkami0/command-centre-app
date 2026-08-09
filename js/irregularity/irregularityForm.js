@@ -1931,10 +1931,34 @@ function(){
                 SAVE OBSERVATION
             </button>
 
+
+<button
+    id="ggIrregularityCancel"
+    type="button"
+    onclick="closeIrregularityForm()"
+    style="
+        width:100%;
+        box-sizing:border-box;
+        min-height:38px;
+        margin:7px 0 0 0;
+        padding:8px 12px;
+        border:1px solid #cfd8dc;
+        border-radius:8px;
+        background:#ffffff;
+        color:#455a64;
+        font-size:12px;
+        font-weight:700;
+        cursor:pointer;
+        touch-action:manipulation;
+        -webkit-tap-highlight-color:transparent;
+    "
+>
+    CANCEL
+</button>
+
         </form>
 
     `;
-
 };
 
 
