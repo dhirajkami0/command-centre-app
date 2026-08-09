@@ -1222,6 +1222,10 @@ function(){
    This keeps compatibility with the module.
 
    ============================================================ */
+/* ============================================================
+   IRREGULARITY MEDIA UI
+   ALIGNED WITH ELEPHANT / WILDLIFE MEDIA FLOW
+   ============================================================ */
 
 GGIrregularity.Form.media =
 function(){
@@ -1241,10 +1245,6 @@ function(){
             "
         >
 
-            <!-- ====================================================
-                 TITLE
-                 ==================================================== -->
-
             <div
                 style="
                     margin:0 0 8px 0;
@@ -1257,45 +1257,23 @@ function(){
             </div>
 
 
-            <!-- ====================================================
-                 MEDIA INPUT BUTTONS
-                 ==================================================== -->
+            <!-- ==================================================
+                 PHOTO
+                 ================================================== -->
 
             <div
                 style="
-                    display:grid;
-                    grid-template-columns:
-                        repeat(
-                            3,
-                            minmax(0,1fr)
-                        );
-                    gap:7px;
-                    width:100%;
+                    margin-bottom:16px;
                 "
             >
 
-                <!-- ==================================================
-                     PHOTO
-                     ================================================== -->
-
                 <label
-                    for="gg-irregularity-photo"
                     style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        min-height:38px;
-                        box-sizing:border-box;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        text-align:center;
-                        touch-action:manipulation;
-                        -webkit-tap-highlight-color:transparent;
+                        display:block;
+                        margin-bottom:6px;
+                        font-size:13px;
+                        font-weight:600;
+                        color:#333;
                     "
                 >
                     📷 Photo
@@ -1303,340 +1281,503 @@ function(){
 
 
                 <input
+                    type="file"
                     id="gg-irregularity-photo"
                     name="photo"
-                    type="file"
                     accept="image/*"
+                    capture="environment"
+                    onchange="
+                        GGIrregularity.Media
+                            .previewPhoto(
+                                this
+                            );
+                    "
                     style="
-                        position:absolute;
-                        width:1px;
-                        height:1px;
-                        opacity:0;
-                        pointer-events:none;
+                        display:block;
+                        width:100%;
+                        box-sizing:border-box;
+                        margin-bottom:8px;
+                        font-size:13px;
                     "
                 >
 
 
-                <!-- ==================================================
-                     VIDEO
-                     ================================================== -->
+                <!-- PHOTO PREVIEW -->
+
+                <div
+                    id="gg-irregularity-photo-preview"
+                    style="
+                        display:none;
+                        margin-top:8px;
+                        padding:10px;
+                        background:#fafafa;
+                        border:1px solid #e0e0e0;
+                        border-radius:10px;
+                    "
+                >
+
+                    <div
+                        style="
+                            font-size:13px;
+                            font-weight:600;
+                            color:#2e7d32;
+                            margin-bottom:8px;
+                            text-align:center;
+                        "
+                    >
+                        ✅ Photo Ready
+                    </div>
+
+
+                    <img
+                        id="gg-irregularity-photo-preview-img"
+                        alt="Irregularity evidence photo preview"
+                        style="
+                            display:block;
+                            width:100%;
+                            max-height:240px;
+                            object-fit:contain;
+                            border-radius:8px;
+                            background:#eeeeee;
+                            border:1px solid #dddddd;
+                        "
+                    >
+
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:1fr 1fr;
+                            gap:8px;
+                            margin-top:10px;
+                        "
+                    >
+
+                        <button
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .changePhoto();
+                            "
+                            style="
+                                background:#1976d2;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🔄 Change Photo
+                        </button>
+
+
+                        <button
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .removePhoto();
+                            "
+                            style="
+                                background:#d32f2f;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🗑 Remove
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 VIDEO
+                 ================================================== -->
+
+            <div
+                style="
+                    margin-bottom:16px;
+                "
+            >
 
                 <label
-                    for="gg-irregularity-video"
                     style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        min-height:38px;
-                        box-sizing:border-box;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        text-align:center;
-                        touch-action:manipulation;
-                        -webkit-tap-highlight-color:transparent;
+                        display:block;
+                        margin-bottom:6px;
+                        font-size:13px;
+                        font-weight:600;
+                        color:#333;
                     "
                 >
                     🎥 Video
+                    <span
+                        style="
+                            font-weight:400;
+                        "
+                    >
+                        (Optional)
+                    </span>
                 </label>
 
 
                 <input
+                    type="file"
                     id="gg-irregularity-video"
                     name="video"
-                    type="file"
                     accept="video/*"
+                    capture="environment"
+                    onchange="
+                        GGIrregularity.Media
+                            .previewVideo(
+                                this
+                            );
+                    "
                     style="
-                        position:absolute;
-                        width:1px;
-                        height:1px;
-                        opacity:0;
-                        pointer-events:none;
+                        display:block;
+                        width:100%;
+                        box-sizing:border-box;
+                        margin-bottom:8px;
+                        font-size:13px;
                     "
                 >
 
 
-                <!-- ==================================================
-                     AUDIO FILE
-                     ================================================== -->
+                <!-- VIDEO PREVIEW -->
+
+                <div
+                    id="gg-irregularity-video-preview"
+                    style="
+                        display:none;
+                        margin-top:8px;
+                        padding:10px;
+                        background:#fafafa;
+                        border:1px solid #e0e0e0;
+                        border-radius:10px;
+                    "
+                >
+
+                    <div
+                        style="
+                            font-size:13px;
+                            font-weight:600;
+                            color:#2e7d32;
+                            margin-bottom:8px;
+                            text-align:center;
+                        "
+                    >
+                        ✅ Video Ready
+                    </div>
+
+
+                    <video
+                        id="gg-irregularity-video-preview-player"
+                        controls
+                        playsinline
+                        preload="metadata"
+                        style="
+                            display:block;
+                            width:100%;
+                            max-height:240px;
+                            border-radius:8px;
+                            background:#000000;
+                        "
+                    ></video>
+
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:1fr 1fr;
+                            gap:8px;
+                            margin-top:10px;
+                        "
+                    >
+
+                        <button
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .changeVideo();
+                            "
+                            style="
+                                background:#1976d2;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🔄 Change Video
+                        </button>
+
+
+                        <button
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .removeVideo();
+                            "
+                            style="
+                                background:#d32f2f;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🗑 Remove
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 AUDIO
+                 ================================================== -->
+
+            <div
+                style="
+                    margin-bottom:4px;
+                "
+            >
 
                 <label
-                    for="gg-irregularity-audio"
-                    id="gg-irregularity-select-audio"
                     style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        min-height:38px;
-                        box-sizing:border-box;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        text-align:center;
-                        touch-action:manipulation;
-                        -webkit-tap-highlight-color:transparent;
+                        display:block;
+                        margin-bottom:6px;
+                        font-size:13px;
+                        font-weight:600;
+                        color:#333;
                     "
                 >
                     🎙 Audio
+                    <span
+                        style="
+                            font-weight:400;
+                        "
+                    >
+                        (Optional)
+                    </span>
                 </label>
 
 
+                <!-- HIDDEN AUDIO FILE INPUT -->
+
                 <input
+                    type="file"
                     id="gg-irregularity-audio"
                     name="audio"
-                    type="file"
                     accept="audio/*"
                     style="
-                        position:absolute;
-                        width:1px;
-                        height:1px;
-                        opacity:0;
-                        pointer-events:none;
+                        display:none;
+                    "
+                    onchange="
+                        GGIrregularity.Media
+                            .previewAudio(
+                                this
+                            );
                     "
                 >
 
-            </div>
 
+                <!-- RECORD AUDIO -->
 
-            <!-- ====================================================
-                 AUDIO RECORD BUTTON
-                 ==================================================== -->
-
-            <button
-                type="button"
-                id="gg-irregularity-record-audio"
-                style="
-                    width:100%;
-                    min-height:38px;
-                    margin-top:7px;
-                    box-sizing:border-box;
-                    border:1px solid #c8d6c8;
-                    border-radius:7px;
-                    background:#ffffff;
-                    color:#1b5e20;
-                    font-size:11px;
-                    font-weight:700;
-                    cursor:pointer;
-                    touch-action:manipulation;
-                    -webkit-tap-highlight-color:transparent;
-                "
-            >
-                🎙 Record Audio
-            </button>
-
-
-            <!-- ====================================================
-                 PHOTO PREVIEW
-                 ==================================================== -->
-
-            <div
-                id="gg-irregularity-photo-preview"
-                style="
-                    display:none;
-                    margin-top:8px;
-                    padding:8px;
-                    border:1px solid #dfe8df;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <img
-                    id="gg-irregularity-photo-preview-img"
-                    alt="Irregularity photo preview"
+                <button
+                    id="gg-irregularity-record-audio"
+                    type="button"
+                    onclick="
+                        GGIrregularity.Media
+                            .recordAudio();
+                    "
                     style="
-                        display:block;
                         width:100%;
-                        max-height:220px;
-                        object-fit:contain;
-                        border-radius:6px;
-                        background:#f5f5f5;
+                        padding:11px;
+                        background:#6a1b9a;
+                        color:#ffffff;
+                        border:none;
+                        border-radius:7px;
+                        font-size:14px;
+                        font-weight:bold;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                        touch-action:manipulation;
                     "
                 >
+                    🎙 RECORD AUDIO
+                </button>
+
+
+                <!-- AUDIO FILE SELECT -->
+
+                <button
+                    id="gg-irregularity-select-audio"
+                    type="button"
+                    onclick="
+                        document
+                            .getElementById(
+                                'gg-irregularity-audio'
+                            )
+                            ?.click();
+                    "
+                    style="
+                        width:100%;
+                        padding:10px;
+                        margin-top:7px;
+                        background:#ffffff;
+                        color:#6a1b9a;
+                        border:1px solid #6a1b9a;
+                        border-radius:7px;
+                        font-size:13px;
+                        font-weight:bold;
+                        cursor:pointer;
+                        box-sizing:border-box;
+                        touch-action:manipulation;
+                    "
+                >
+                    📁 Select Audio File
+                </button>
+
+
+                <!-- AUDIO PREVIEW -->
 
                 <div
-                    id="gg-irregularity-photo-actions"
+                    id="gg-irregularity-audio-preview"
                     style="
                         display:none;
-                        align-items:center;
-                        gap:6px;
-                        margin-top:7px;
+                        margin-top:10px;
+                        padding:10px;
+                        background:#fafafa;
+                        border:1px solid #e0e0e0;
+                        border-radius:10px;
                     "
                 >
 
-                    <button
-                        type="button"
-                        id="gg-irregularity-photo-remove"
+                    <div
                         style="
-                            flex:1;
-                            min-height:32px;
-                            border:1px solid #d6bcbc;
-                            border-radius:6px;
-                            background:#fff;
-                            color:#b71c1c;
-                            font-size:11px;
-                            font-weight:700;
-                            cursor:pointer;
+                            font-size:13px;
+                            font-weight:600;
+                            color:#2e7d32;
+                            margin-bottom:8px;
+                            text-align:center;
                         "
                     >
-                        Remove Photo
-                    </button>
+                        ✅ Audio Ready
+                    </div>
+
+
+                    <audio
+                        id="gg-irregularity-audio-preview-player"
+                        controls
+                        preload="metadata"
+                        style="
+                            display:block;
+                            width:100%;
+                        "
+                    ></audio>
+
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:1fr 1fr;
+                            gap:8px;
+                            margin-top:10px;
+                        "
+                    >
+
+                        <button
+                            id="gg-irregularity-record-again"
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .recordAgain();
+                            "
+                            style="
+                                background:#1976d2;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🔄 Record Again
+                        </button>
+
+
+                        <button
+                            type="button"
+                            onclick="
+                                GGIrregularity.Media
+                                    .removeAudio();
+                            "
+                            style="
+                                background:#d32f2f;
+                                color:#ffffff;
+                                border:none;
+                                padding:10px;
+                                border-radius:7px;
+                                font-size:13px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                touch-action:manipulation;
+                            "
+                        >
+                            🗑 Remove
+                        </button>
+
+                    </div>
 
                 </div>
 
-            </div>
 
-
-            <!-- ====================================================
-                 VIDEO PREVIEW
-                 ==================================================== -->
-
-            <div
-                id="gg-irregularity-video-preview"
-                style="
-                    display:none;
-                    margin-top:8px;
-                    padding:8px;
-                    border:1px solid #dfe8df;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <video
-                    id="gg-irregularity-video-preview-player"
-                    controls
-                    playsinline
-                    style="
-                        display:block;
-                        width:100%;
-                        max-height:220px;
-                        border-radius:6px;
-                        background:#000;
-                    "
-                ></video>
-
+                <!-- STATUS -->
 
                 <div
-                    id="gg-irregularity-video-actions"
+                    id="gg-irregularity-media-status"
                     style="
-                        display:none;
-                        align-items:center;
-                        gap:6px;
                         margin-top:7px;
+                        color:#607d8b;
+                        font-size:10px;
+                        line-height:1.3;
                     "
                 >
-
-                    <button
-                        type="button"
-                        id="gg-irregularity-video-remove"
-                        style="
-                            flex:1;
-                            min-height:32px;
-                            border:1px solid #d6bcbc;
-                            border-radius:6px;
-                            background:#fff;
-                            color:#b71c1c;
-                            font-size:11px;
-                            font-weight:700;
-                            cursor:pointer;
-                        "
-                    >
-                        Remove Video
-                    </button>
-
+                    No media selected.
                 </div>
 
-            </div>
-
-
-            <!-- ====================================================
-                 AUDIO PREVIEW
-                 ==================================================== -->
-
-            <div
-                id="gg-irregularity-audio-preview"
-                style="
-                    display:none;
-                    margin-top:8px;
-                    padding:8px;
-                    border:1px solid #dfe8df;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <audio
-                    id="gg-irregularity-audio-preview-player"
-                    controls
-                    style="
-                        display:block;
-                        width:100%;
-                    "
-                ></audio>
-
-
-                <div
-                    id="gg-irregularity-audio-actions"
-                    style="
-                        display:none;
-                        align-items:center;
-                        gap:6px;
-                        margin-top:7px;
-                    "
-                >
-
-                    <button
-                        type="button"
-                        id="gg-irregularity-audio-remove"
-                        style="
-                            flex:1;
-                            min-height:32px;
-                            border:1px solid #d6bcbc;
-                            border-radius:6px;
-                            background:#fff;
-                            color:#b71c1c;
-                            font-size:11px;
-                            font-weight:700;
-                            cursor:pointer;
-                        "
-                    >
-                        Remove Audio
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <!-- ====================================================
-                 MEDIA STATUS
-                 ==================================================== -->
-
-            <div
-                id="gg-irregularity-media-status"
-                style="
-                    margin-top:7px;
-                    color:#607d8b;
-                    font-size:10px;
-                    line-height:1.3;
-                "
-            >
-                No media selected.
             </div>
 
         </div>
 
     `;
-
 };
 
 
