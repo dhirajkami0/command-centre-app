@@ -553,6 +553,10 @@ function(){
    FELLING
    ============================================================ */
 
+/* ============================================================
+   FELLING
+   ============================================================ */
+
 GGIrregularity.Form.felling =
 function(){
 
@@ -5016,43 +5020,7 @@ function(){
             "
         >
 
-            <!-- =================================================
-                 TITLE
-                 ================================================= -->
 
-            <div
-                style="
-                    margin-bottom:10px;
-                    padding-bottom:8px;
-                    border-bottom:1px solid #e0e6e0;
-                "
-            >
-
-                <div
-                    style="
-                        color:#1b5e20;
-                        font-size:15px;
-                        font-weight:800;
-                    "
-                >
-                    ⚠️ IRREGULARITY / OFFENCE / OBSERVATION
-                </div>
-
-
-                <div
-                    style="
-                        margin-top:3px;
-                        color:#78909c;
-                        font-size:10px;
-                        line-height:1.35;
-                    "
-                >
-                    Report the field observation. GPS, GIS,
-                    reporter and system information are added
-                    automatically during submission.
-                </div>
-
-            </div>
 
 
             <!-- =================================================
