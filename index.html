@@ -43431,10 +43431,10 @@ async function loadWildlifeSightings(){
 const popupOptions = {
 
     maxWidth:
-        380,
+        430,
 
     minWidth:
-        280,
+        380,
 
     maxHeight:
         Math.min(
@@ -43442,18 +43442,8 @@ const popupOptions = {
             640
         ),
 
-    // ---------------------------------------------
-    // NEVER close because the map was clicked.
-    // ---------------------------------------------
-
     closeOnClick:
         false,
-
-    // ---------------------------------------------
-    // Do not let Leaflet automatically close the
-    // popup when another marker is interacted with.
-    // Our click controller handles the popup state.
-    // ---------------------------------------------
 
     autoClose:
         false,
