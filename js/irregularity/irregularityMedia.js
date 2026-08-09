@@ -1,1199 +1,105 @@
 /* ============================================================
    🌲 GREENGUARD
-   IRREGULARITY / OFFENCE / OBSERVATION FORM
+   IRREGULARITY MEDIA MODULE
    ============================================================
 
    FILE:
-       js/irregularity/irregularityForm.js
+       js/irregularity/irregularityMedia.js
 
-   PURPOSE
-   ------------------------------------------------------------
-   Builds ONLY the fields that the patrol user must manually
-   enter.
-
-   AUTOMATIC SYSTEM DATA IS NOT SHOWN IN THIS FORM.
-
-   At submission, irregularityModule.js adds:
-
-       GPS
-       latitude
-       longitude
-       GPS accuracy
-       GIS
-       division
-       range
-       beat
-       compartment
-       village
-       villageCode
-       block
-       nearestPoint
-       distanceMeters
-       location text
-       reported_by
-       reported_by_phone
-       reported_by_role
-       created_at
-       updated_at
+   PURPOSE:
+       Photo / Video / Audio handling for
+       Irregularity / Offence / Observation.
 
    IMPORTANT
    ------------------------------------------------------------
-   • No Firebase initialization
-   • No GIS resolver
-   • No GPS tracking
-   • No Apps Script
-   • No callBackend()
-   • No duplicate submit handler
-   • Save handled by irregularityModule.js
-   • Existing Wildlife / Elephant UI untouched
+   • Uses EXISTING Firebase
+   • Uses EXISTING window.storage
+   • Uses EXISTING window.db
+   • Uses EXISTING window.fb
+   • NO Firebase initialization
+   • NO Apps Script
+   • NO new Firebase app
+   • NO new Storage instance
+   • Does NOT modify Wildlife
+   • Does NOT modify Elephant
+   • Does NOT modify window.latestGps
+   • Does NOT resolve GIS
+
+   MEDIA:
+       Photo
+       Video
+       Audio recording / audio file
+
+   STORAGE:
+       irregularities/
+           {financialYear}/
+               {firestoreId}/
+                   photo/
+                   video/
+                   audio/
+
+   FIRESTORE MEDIA FIELDS:
+       photo_url
+       video_url
+       audio_url
+       photo_storage_path
+       video_storage_path
+       audio_storage_path
+       media_status
+       media_updated_at
 
    ============================================================ */
 
 
 /* ============================================================
-   NAMESPACE
+   GLOBAL NAMESPACE
    ============================================================ */
 
 window.GGIrregularity =
     window.GGIrregularity || {};
 
 
-GGIrregularity.Form =
-    GGIrregularity.Form || {};
+window.GGIrregularity.Media =
+    window.GGIrregularity.Media || {};
+
+
+const GGIrregularity =
+    window.GGIrregularity;
 
 
 /* ============================================================
-   HTML ESCAPE
+   CONSTANTS
    ============================================================ */
 
-GGIrregularity.Form.escape =
-function(value){
+GGIrregularity.Media.ROOT =
+    "irregularities";
 
-    return String(
-        value ?? ""
-    )
-    .replace(
-        /&/g,
-        "&amp;"
-    )
-    .replace(
-        /</g,
-        "&lt;"
-    )
-    .replace(
-        />/g,
-        "&gt;"
-    )
-    .replace(
-        /"/g,
-        "&quot;"
-    )
-    .replace(
-        /'/g,
-        "&#039;"
-    );
 
-};
+GGIrregularity.Media.TYPE =
+    "irregularity";
 
 
 /* ============================================================
-   FIELD WRAPPER
+   INTERNAL STATE
    ============================================================ */
 
-GGIrregularity.Form.field =
-function(
-    label,
-    name,
-    type,
-    options = {}
-){
+GGIrregularity.Media._photoObjectURL =
+    null;
 
-    const required =
-        options.required
-            ? "required"
-            : "";
 
-    const placeholder =
-        GGIrregularity.Form.escape(
-            options.placeholder || ""
-        );
+GGIrregularity.Media._videoObjectURL =
+    null;
 
-    const value =
-        GGIrregularity.Form.escape(
-            options.value || ""
-        );
 
-
-    /* ========================================================
-       SELECT
-       ======================================================== */
-
-    if(
-        type === "select"
-    ){
-
-        const optionList =
-            options.options || [];
-
-
-        const optionHtml =
-            optionList
-            .map(
-                function(item){
-
-                    const optionValue =
-                        typeof item === "string"
-                            ? item
-                            : item.value;
-
-                    const optionLabel =
-                        typeof item === "string"
-                            ? item
-                            : item.label;
-
-
-                    return `
-                        <option
-                            value="${GGIrregularity.Form.escape(
-                                optionValue
-                            )}"
-                        >
-                            ${GGIrregularity.Form.escape(
-                                optionLabel
-                            )}
-                        </option>
-                    `;
-
-                }
-            )
-            .join("");
-
-
-        return `
-
-            <div
-                class="gg-irregularity-field"
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin:0 0 10px 0;
-                "
-            >
-
-                <label
-                    for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                    style="
-                        display:block;
-                        margin:0 0 5px 0;
-                        color:#37474f;
-                        font-size:12px;
-                        font-weight:700;
-                        line-height:1.25;
-                    "
-                >
-                    ${GGIrregularity.Form.escape(label)}
-                </label>
-
-
-                <select
-                    id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                    name="${GGIrregularity.Form.escape(name)}"
-                    ${required}
-                    style="
-                        width:100%;
-                        box-sizing:border-box;
-                        min-height:38px;
-                        padding:8px 10px;
-                        border:1px solid #cfd8dc;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#263238;
-                        font-size:13px;
-                        outline:none;
-                    "
-                >
-
-                    <option value="">
-                        Select
-                    </option>
-
-                    ${optionHtml}
-
-                </select>
-
-            </div>
-
-        `;
-
-    }
-
-
-    /* ========================================================
-       TEXTAREA
-       ======================================================== */
-
-    if(
-        type === "textarea"
-    ){
-
-        return `
-
-            <div
-                class="gg-irregularity-field"
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin:0 0 10px 0;
-                "
-            >
-
-                <label
-                    for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                    style="
-                        display:block;
-                        margin:0 0 5px 0;
-                        color:#37474f;
-                        font-size:12px;
-                        font-weight:700;
-                        line-height:1.25;
-                    "
-                >
-                    ${GGIrregularity.Form.escape(label)}
-                </label>
-
-
-                <textarea
-                    id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                    name="${GGIrregularity.Form.escape(name)}"
-                    ${required}
-                    placeholder="${placeholder}"
-                    rows="${options.rows || 3}"
-                    style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:8px 10px;
-                        border:1px solid #cfd8dc;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#263238;
-                        font-size:13px;
-                        line-height:1.35;
-                        resize:vertical;
-                        outline:none;
-                    "
-                >${value}</textarea>
-
-            </div>
-
-        `;
-
-    }
-
-
-    /* ========================================================
-       NORMAL INPUT
-       ======================================================== */
-
-    return `
-
-        <div
-            class="gg-irregularity-field"
-            style="
-                width:100%;
-                box-sizing:border-box;
-                margin:0 0 10px 0;
-            "
-        >
-
-            <label
-                for="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                style="
-                    display:block;
-                    margin:0 0 5px 0;
-                    color:#37474f;
-                    font-size:12px;
-                    font-weight:700;
-                    line-height:1.25;
-                "
-            >
-                ${GGIrregularity.Form.escape(label)}
-            </label>
-
-
-            <input
-                id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
-                name="${GGIrregularity.Form.escape(name)}"
-                type="${GGIrregularity.Form.escape(type)}"
-                ${required}
-                value="${value}"
-                placeholder="${placeholder}"
-                ${options.min !== undefined
-                    ? `min="${GGIrregularity.Form.escape(options.min)}"`
-                    : ""}
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    min-height:38px;
-                    padding:8px 10px;
-                    border:1px solid #cfd8dc;
-                    border-radius:7px;
-                    background:#ffffff;
-                    color:#263238;
-                    font-size:13px;
-                    outline:none;
-                "
-            >
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   CATEGORY OPTIONS
-   ============================================================ */
-
-GGIrregularity.Form.categoryOptions =
-function(){
-
-    return [
-
-        {
-            value:
-                GGIrregularity.TYPES.FELLING,
-
-            label:
-                "🌳 Illicit Felling"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.TIMBER,
-
-            label:
-                "🪵 Illegal Timber / Forest Produce"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.MINING,
-
-            label:
-                "🚜 Illegal Mining / Earth Cutting"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.FISHING,
-
-            label:
-                "🎣 Illegal Fishing"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.GRAZING,
-
-            label:
-                "🐄 Illegal Grazing"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.FIRE,
-
-            label:
-                "🔥 Forest Fire"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.ENCROACHMENT,
-
-            label:
-                "🏠 Encroachment"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.STRUCTURE,
-
-            label:
-                "🏗 Illegal Structure / Occupation"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.POACHING,
-
-            label:
-                "🪤 Poaching"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.TRESPASSING,
-
-            label:
-                "🚫 Trespassing"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.WILDLIFE_INJURY,
-
-            label:
-                "🦌 Wildlife Injury"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.WILDLIFE_DEATH,
-
-            label:
-                "🦴 Wildlife Death"
-        },
-
-        {
-            value:
-                GGIrregularity.TYPES.OBSERVATION,
-
-            label:
-                "👁 General Observation"
-        }
-
-    ];
-
-};
-
-
-/* ============================================================
-   CATEGORY SELECT
-   ============================================================ */
-
-GGIrregularity.Form.categorySelect =
-function(){
-
-    return GGIrregularity.Form.field(
-        "Observation / Irregularity Type",
-        "category",
-        "select",
-        {
-            required:true,
-            options:
-                GGIrregularity.Form
-                    .categoryOptions()
-        }
-    )
-    .replace(
-        'id="gg-irregularity-category"',
-        'id="ggIrregularityType"'
-    );
-
-};
-
-
-/* ============================================================
-   COMMON DATE / TIME
-   ============================================================ */
-
-GGIrregularity.Form.commonFields =
-function(){
-
-    return `
-
-        <div
-            style="
-                display:grid;
-                grid-template-columns:
-                    minmax(0,1fr)
-                    minmax(0,1fr);
-                gap:8px;
-                width:100%;
-            "
-        >
-
-            <div>
-
-                ${GGIrregularity.Form.field(
-                    "Incident Date",
-                    "incident_date",
-                    "date",
-                    {
-                        required:true
-                    }
-                )}
-
-            </div>
-
-
-            <div>
-
-                ${GGIrregularity.Form.field(
-                    "Incident Time",
-                    "incident_time",
-                    "time",
-                    {
-                        required:true
-                    }
-                )}
-
-            </div>
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   FELLING
-   ============================================================ */
-
-GGIrregularity.Form.felling =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLICIT_FELLING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Species / Tree Type",
-                "felling_species",
-                "text",
-                {
-                    placeholder:
-                        "e.g. Sal, Teak"
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Number of Trees",
-                "felling_tree_count",
-                "number",
-                {
-                    min:0
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Volume",
-                "felling_volume",
-                "text",
-                {
-                    placeholder:
-                        "e.g. 2.5 m³"
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   TIMBER
-   ============================================================ */
-
-GGIrregularity.Form.timber =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLEGAL_TIMBER_FOREST_PRODUCE"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Forest Produce",
-                "timber_produce",
-                "text",
-                {
-                    placeholder:
-                        "Timber / firewood / bamboo etc."
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Quantity",
-                "timber_quantity",
-                "text",
-                {
-                    placeholder:
-                        "Quantity / volume"
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Vehicle / Mode of Transport",
-                "timber_vehicle",
-                "text",
-                {
-                    placeholder:
-                        "Vehicle number if available"
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   MINING
-   ============================================================ */
-
-GGIrregularity.Form.mining =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLEGAL_MINING_EARTH_CUTTING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Material / Activity",
-                "mining_material",
-                "text",
-                {
-                    placeholder:
-                        "Stone / sand / earth etc."
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Area / Quantity",
-                "mining_quantity",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Machinery / Vehicle",
-                "mining_machinery",
-                "text"
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   FISHING
-   ============================================================ */
-
-GGIrregularity.Form.fishing =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLEGAL_FISHING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Water Body",
-                "fishing_water_body",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Fishing Method",
-                "fishing_method",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Equipment / Net",
-                "fishing_equipment",
-                "text"
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   GRAZING
-   ============================================================ */
-
-GGIrregularity.Form.grazing =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLEGAL_GRAZING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Animal Type",
-                "grazing_animal_type",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Number",
-                "grazing_count",
-                "number",
-                {
-                    min:0
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Owner / Village if Known",
-                "grazing_owner",
-                "text"
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   FIRE
-   ============================================================ */
-
-GGIrregularity.Form.fire =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="FOREST_FIRE"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Fire Type",
-                "fire_type",
-                "text",
-                {
-                    placeholder:
-                        "Ground fire / crown fire / smoke etc."
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Area Affected",
-                "fire_area",
-                "text",
-                {
-                    placeholder:
-                        "e.g. 2 hectares"
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Fire Status",
-                "fire_status",
-                "select",
-                {
-                    options:[
-                        {
-                            value:
-                                "ACTIVE",
-
-                            label:
-                                "Active"
-                        },
-
-                        {
-                            value:
-                                "CONTROLLED",
-
-                            label:
-                                "Controlled"
-                        },
-
-                        {
-                            value:
-                                "EXTINGUISHED",
-
-                            label:
-                                "Extinguished"
-                        }
-                    ]
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   ENCROACHMENT
-   ============================================================ */
-
-GGIrregularity.Form.encroachment =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ENCROACHMENT"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Nature of Encroachment",
-                "encroachment_nature",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Area",
-                "encroachment_area",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Structure / Cultivation Details",
-                "encroachment_details",
-                "textarea",
-                {
-                    rows:3
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   STRUCTURE
-   ============================================================ */
-
-GGIrregularity.Form.structure =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="ILLEGAL_STRUCTURE_OCCUPATION"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Structure Type",
-                "structure_type",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Size",
-                "structure_size",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Purpose / Use",
-                "structure_purpose",
-                "text"
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   POACHING
-   ============================================================ */
-
-GGIrregularity.Form.poaching =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="POACHING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Target Species",
-                "poaching_species",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Evidence / Method",
-                "poaching_method",
-                "textarea",
-                {
-                    rows:3
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   TRESPASSING
-   ============================================================ */
-
-GGIrregularity.Form.trespassing =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="TRESPASSING"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Purpose / Activity",
-                "trespassing_activity",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Persons / Vehicle Details",
-                "trespassing_persons",
-                "textarea",
-                {
-                    rows:3
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   WILDLIFE INJURY
-   ============================================================ */
-
-GGIrregularity.Form.wildlifeInjury =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="WILDLIFE_INJURY"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Species",
-                "wildlife_injury_species",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Condition / Injury",
-                "wildlife_injury_condition",
-                "textarea",
-                {
-                    rows:3
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   WILDLIFE DEATH
-   ============================================================ */
-
-GGIrregularity.Form.wildlifeDeath =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="WILDLIFE_DEATH"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Species",
-                "wildlife_death_species",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Condition / Suspected Cause",
-                "wildlife_death_condition",
-                "textarea",
-                {
-                    rows:3
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   OBSERVATION
-   ============================================================ */
-
-GGIrregularity.Form.observation =
-function(){
-
-    return `
-
-        <div
-            data-irregularity-group="GENERAL_OBSERVATION"
-            style="
-                display:none;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Observation",
-                "observation_text",
-                "textarea",
-                {
-                    rows:4,
-                    placeholder:
-                        "Describe the observation..."
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   REMARKS
-   ============================================================ */
-
-GGIrregularity.Form.remarks =
-function(){
-
-    return `
-
-        <div
-            style="
-                width:100%;
-                box-sizing:border-box;
-                margin-top:2px;
-            "
-        >
-
-            ${GGIrregularity.Form.field(
-                "Remarks",
-                "remarks",
-                "textarea",
-                {
-                    rows:4,
-                    placeholder:
-                        "Additional remarks..."
-                }
-            )}
-
-        </div>
-
-    `;
-
-};
-
-
-/* ============================================================
-   MEDIA NAMESPACE
-   ============================================================ */
-
-GGIrregularity.Media =
-    GGIrregularity.Media || {};
-
-
-/* ============================================================
-   MEDIA STATE
-   ============================================================ */
-
-GGIrregularity.Media._objectUrls =
-    GGIrregularity.Media._objectUrls || {
-
-        photo:
-            null,
-
-        video:
-            null,
-
-        audio:
-            null
-
-    };
+GGIrregularity.Media._audioObjectURL =
+    null;
 
 
 GGIrregularity.Media._audioRecorder =
+    null;
+
+
+GGIrregularity.Media._audioStream =
     null;
 
 
@@ -1201,7 +107,19 @@ GGIrregularity.Media._audioChunks =
     [];
 
 
+GGIrregularity.Media._audioTimer =
+    null;
+
+
+GGIrregularity.Media._audioStartedAt =
+    null;
+
+
 GGIrregularity.Media._recording =
+    false;
+
+
+GGIrregularity.Media._nativeAudioActive =
     false;
 
 
@@ -1209,12 +127,15 @@ GGIrregularity.Media._nativeAudioUri =
     null;
 
 
-GGIrregularity.Media._nativeAudioActive =
-    false;
+/*
+ * Maximum browser-recorded audio duration.
+ *
+ * This is intentionally generous so normal field
+ * observations are not interrupted.
+ */
 
-
-GGIrregularity.Media._audioTimer =
-    null;
+GGIrregularity.Media.MAX_AUDIO_SECONDS =
+    300;
 
 
 /* ============================================================
@@ -1222,7 +143,9 @@ GGIrregularity.Media._audioTimer =
    ============================================================ */
 
 GGIrregularity.Media.safeText =
-function(value){
+function(
+    value
+){
 
     return String(
         value ?? ""
@@ -1232,11 +155,15 @@ function(value){
 
 
 /* ============================================================
-   WAIT FOR FIREBASE
+   WAIT FOR EXISTING FIREBASE
    ============================================================ */
 
 GGIrregularity.Media.waitForFirebase =
 async function(){
+
+    /*
+     * Existing GreenGuard Firebase already ready.
+     */
 
     if(
         window.db &&
@@ -1249,6 +176,10 @@ async function(){
     }
 
 
+    /*
+     * Use existing readiness function if available.
+     */
+
     if(
         typeof window.waitForFirebaseReady ===
         "function"
@@ -1258,6 +189,10 @@ async function(){
 
     }
 
+
+    /*
+     * Final validation.
+     */
 
     if(
         !window.db ||
@@ -1285,7 +220,7 @@ async function(){
 
 
 /* ============================================================
-   VALIDATE STORAGE
+   VALIDATE EXISTING FIREBASE STORAGE API
    ============================================================ */
 
 GGIrregularity.Media.validateStorage =
@@ -1313,34 +248,52 @@ function(){
     }
 
 
-    const required = [
+    if(
+        typeof window.fb.ref !==
+        "function"
+    ){
 
-        "ref",
+        throw new Error(
+            "Firebase Storage ref() is unavailable."
+        );
 
-        "uploadBytes",
-
-        "getDownloadURL"
-
-    ];
+    }
 
 
-    required.forEach(
-        function(name){
+    if(
+        typeof window.fb.uploadBytes !==
+        "function"
+    ){
 
-            if(
-                typeof window.fb[name] !==
-                "function"
-            ){
+        throw new Error(
+            "Firebase Storage uploadBytes() is unavailable."
+        );
 
-                throw new Error(
-                    "Firebase Storage function unavailable: " +
-                    name
-                );
+    }
 
-            }
 
-        }
-    );
+    if(
+        typeof window.fb.uploadString !==
+        "function"
+    ){
+
+        throw new Error(
+            "Firebase Storage uploadString() is unavailable."
+        );
+
+    }
+
+
+    if(
+        typeof window.fb.getDownloadURL !==
+        "function"
+    ){
+
+        throw new Error(
+            "Firebase Storage getDownloadURL() is unavailable."
+        );
+
+    }
 
 };
 
@@ -1370,15 +323,161 @@ function(
 
 
 /* ============================================================
+   BUILD STORAGE ROOT
+   ============================================================ */
+
+GGIrregularity.Media.getStorageRoot =
+function(
+    payload
+){
+
+    const firestoreId =
+        GGIrregularity.Media.safeText(
+            payload?.firestore_id
+        );
+
+
+    if(
+        !firestoreId
+    ){
+
+        throw new Error(
+            "Irregularity Firestore ID is not available for media upload."
+        );
+
+    }
+
+
+    /* ========================================================
+       FINANCIAL YEAR
+       ======================================================== */
+
+    let financialYear =
+        GGIrregularity.Media.safeText(
+            payload?.financial_year
+        );
+
+
+    /* ========================================================
+       CURRENT INDIAN FINANCIAL YEAR
+       ======================================================== */
+
+    if(
+        !financialYear
+    ){
+
+        const now =
+            new Date();
+
+
+        const year =
+            now.getFullYear();
+
+
+        const month =
+            now.getMonth() + 1;
+
+
+        /*
+         * April → March
+         */
+
+        if(
+            month >= 4
+        ){
+
+            financialYear =
+                year +
+                "-" +
+                String(
+                    year + 1
+                );
+
+        }
+        else{
+
+            financialYear =
+                String(
+                    year - 1
+                ) +
+                "-" +
+                year;
+
+        }
+
+    }
+
+
+    /* ========================================================
+       SAME EXISTING STORAGE ROOT
+       ======================================================== */
+
+    const root =
+        GGIrregularity.Media.ROOT +
+        "/" +
+        financialYear +
+        "/" +
+        firestoreId;
+
+
+    return {
+
+        financialYear:
+            financialYear,
+
+        root:
+            root
+
+    };
+
+};
+
+
+/* ============================================================
    REVOKE OBJECT URL
    ============================================================ */
 
 GGIrregularity.Media._revoke =
-function(type){
+function(
+    type
+){
+
+    let property;
+
+
+    if(
+        type === "photo"
+    ){
+
+        property =
+            "_photoObjectURL";
+
+    }
+    else if(
+        type === "video"
+    ){
+
+        property =
+            "_videoObjectURL";
+
+    }
+    else if(
+        type === "audio"
+    ){
+
+        property =
+            "_audioObjectURL";
+
+    }
+    else{
+
+        return;
+
+    }
+
 
     const url =
-        GGIrregularity.Media
-            ._objectUrls?.[type];
+        GGIrregularity.Media[property];
 
 
     if(
@@ -1399,13 +498,125 @@ function(type){
     }
 
 
-    if(
-        GGIrregularity.Media._objectUrls
-    ){
+    GGIrregularity.Media[property] =
+        null;
 
+};
+
+
+/* ============================================================
+   STOP AUDIO STREAM
+   ============================================================ */
+
+GGIrregularity.Media._stopAudioStream =
+function(){
+
+    const stream =
         GGIrregularity.Media
-            ._objectUrls[type] =
-            null;
+            ._audioStream;
+
+
+    if(
+        stream &&
+        typeof stream.getTracks ===
+        "function"
+    ){
+
+        try{
+
+            stream
+                .getTracks()
+                .forEach(
+                    function(track){
+
+                        try{
+
+                            track.stop();
+
+                        }
+                        catch(_){
+
+                        }
+
+                    }
+                );
+
+        }
+        catch(_){
+
+        }
+
+    }
+
+
+    GGIrregularity.Media._audioStream =
+        null;
+
+};
+
+
+/* ============================================================
+   CLEAR AUDIO TIMER
+   ============================================================ */
+
+GGIrregularity.Media._clearAudioTimer =
+function(){
+
+    if(
+        GGIrregularity.Media
+            ._audioTimer
+    ){
+
+        clearInterval(
+            GGIrregularity.Media
+                ._audioTimer
+        );
+
+    }
+
+
+    GGIrregularity.Media._audioTimer =
+        null;
+
+
+    GGIrregularity.Media._audioStartedAt =
+        null;
+
+};
+
+
+/* ============================================================
+   UPDATE MEDIA STATUS SAFELY
+   ============================================================ */
+
+GGIrregularity.Media._updateFormStatus =
+function(
+    state
+){
+
+    if(
+        GGIrregularity.Form &&
+        typeof GGIrregularity.Form
+            .updateMediaStatus ===
+        "function"
+    ){
+
+        try{
+
+            GGIrregularity.Form
+                .updateMediaStatus(
+                    state
+                );
+
+        }
+        catch(error){
+
+            console.warn(
+                "⚠ Unable to update Irregularity media status:",
+                error
+            );
+
+        }
 
     }
 
@@ -1413,52 +624,65 @@ function(type){
 
 
 /* ============================================================
-   ASSIGN FILE TO INPUT
+   SET RECORD BUTTON STATE
    ============================================================ */
 
-GGIrregularity.Media._setInputFile =
+GGIrregularity.Media._setRecordButton =
 function(
-    input,
-    file
+    recording
 ){
 
+    const button =
+        document.getElementById(
+            "gg-irregularity-record-audio"
+        );
+
+
     if(
-        !input ||
-        !file
+        !button
     ){
 
-        return false;
+        return;
 
     }
 
 
-    try{
+    if(
+        recording
+    ){
 
-        const transfer =
-            new DataTransfer();
-
-
-        transfer.items.add(
-            file
-        );
+        button.textContent =
+            "⏹ STOP AUDIO";
 
 
-        input.files =
-            transfer.files;
+        button.style.background =
+            "#ffebee";
 
 
-        return true;
+        button.style.color =
+            "#c62828";
+
+
+        button.style.borderColor =
+            "#ef9a9a";
 
     }
-    catch(error){
+    else{
 
-        console.warn(
-            "⚠ Unable to assign recorded media to input:",
-            error
-        );
+        button.textContent =
+            "🎙 RECORD AUDIO";
 
 
-        return false;
+        button.style.background =
+            "#ffffff";
+
+
+        button.style.color =
+            "#1b5e20";
+
+
+        button.style.borderColor =
+            "#c8d6c8";
 
     }
 
@@ -1466,81 +690,48 @@ function(
 
 
 /* ============================================================
-   STORAGE ROOT
+   GET CURRENT FORM MEDIA
    ============================================================ */
 
-GGIrregularity.Media.getStorageRoot =
-function(
-    payload
-){
+GGIrregularity.Media.getFormMedia =
+function(){
 
-    const firestoreId =
-        GGIrregularity.Media.safeText(
-            payload?.firestore_id
+    const photoInput =
+        document.getElementById(
+            "gg-irregularity-photo"
         );
 
 
-    if(
-        !firestoreId
-    ){
-
-        throw new Error(
-            "Irregularity Firestore ID is missing."
-        );
-
-    }
-
-
-    let financialYear =
-        GGIrregularity.Media.safeText(
-            payload?.financial_year
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
         );
 
 
-    if(
-        !financialYear
-    ){
-
-        const now =
-            new Date();
-
-
-        const year =
-            now.getFullYear();
-
-
-        const month =
-            now.getMonth() + 1;
-
-
-        financialYear =
-            month >= 4
-
-                ? year +
-                    "-" +
-                    String(
-                        year + 1
-                    )
-
-                : String(
-                    year - 1
-                ) +
-                    "-" +
-                    year;
-
-    }
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
 
 
     return {
 
-        financialYear:
-            financialYear,
+        photo:
+            photoInput?.files?.[0] ||
+            null,
 
-        root:
-            "irregularities/" +
-            financialYear +
-            "/" +
-            firestoreId
+        video:
+            videoInput?.files?.[0] ||
+            null,
+
+        audio:
+            audioInput?.files?.[0] ||
+            null,
+
+        nativeAudioUri:
+            GGIrregularity.Media
+                ._nativeAudioUri ||
+            null
 
     };
 
@@ -1548,11 +739,39 @@ function(
 
 
 /* ============================================================
-   PHOTO PREVIEW
+   CHECK MEDIA
+   ============================================================ */
+
+GGIrregularity.Media.hasMedia =
+function(){
+
+    const media =
+        GGIrregularity.Media
+            .getFormMedia();
+
+
+    return !!(
+        media.photo ||
+        media.video ||
+        media.audio ||
+        media.nativeAudioUri
+    );
+
+};
+
+
+/* ============================================================
+   END PART 1/4
+   ============================================================ */
+
+/* ============================================================
+   PHOTO — PREVIEW
    ============================================================ */
 
 GGIrregularity.Media.previewPhoto =
-function(input){
+function(
+    input
+){
 
     const file =
         input?.files?.[0] ||
@@ -1568,7 +787,12 @@ function(input){
     }
 
 
+    /* ========================================================
+       VALIDATE IMAGE
+       ======================================================== */
+
     if(
+        !file.type ||
         !file.type.startsWith(
             "image/"
         )
@@ -1588,10 +812,33 @@ function(input){
     }
 
 
+    /* ========================================================
+       CLEAR OLD OBJECT URL
+       ======================================================== */
+
     GGIrregularity.Media._revoke(
         "photo"
     );
 
+
+    /* ========================================================
+       CREATE PREVIEW URL
+       ======================================================== */
+
+    const url =
+        URL.createObjectURL(
+            file
+        );
+
+
+    GGIrregularity.Media
+        ._photoObjectURL =
+        url;
+
+
+    /* ========================================================
+       PREVIEW ELEMENT
+       ======================================================== */
 
     const image =
         document.getElementById(
@@ -1606,43 +853,61 @@ function(input){
 
 
     if(
-        !image ||
-        !preview
+        image
     ){
 
-        return;
+        image.src =
+            url;
 
     }
 
 
-    const url =
-        URL.createObjectURL(
-            file
-        );
+    if(
+        preview
+    ){
 
+        preview.style.display =
+            "block";
+
+    }
+
+
+    /* ========================================================
+       UPDATE STATUS
+       ======================================================== */
 
     GGIrregularity.Media
-        ._objectUrls
-        .photo =
-        url;
-
-
-    image.src =
-        url;
-
-
-    preview.style.display =
-        "block";
-
-
-    GGIrregularity.Form
-        .updateMediaStatus?.();
+        ._updateFormStatus();
 
 };
 
 
 /* ============================================================
-   REMOVE PHOTO
+   PHOTO — CHANGE
+   ============================================================ */
+
+GGIrregularity.Media.changePhoto =
+function(){
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.click();
+
+    }
+
+};
+
+
+/* ============================================================
+   PHOTO — REMOVE
    ============================================================ */
 
 GGIrregularity.Media.removePhoto =
@@ -1702,18 +967,20 @@ function(){
     }
 
 
-    GGIrregularity.Form
-        .updateMediaStatus?.();
+    GGIrregularity.Media
+        ._updateFormStatus();
 
 };
 
 
 /* ============================================================
-   VIDEO PREVIEW
+   VIDEO — PREVIEW
    ============================================================ */
 
 GGIrregularity.Media.previewVideo =
-function(input){
+function(
+    input
+){
 
     const file =
         input?.files?.[0] ||
@@ -1729,7 +996,12 @@ function(input){
     }
 
 
+    /* ========================================================
+       VALIDATE VIDEO
+       ======================================================== */
+
     if(
+        !file.type ||
         !file.type.startsWith(
             "video/"
         )
@@ -1749,9 +1021,28 @@ function(input){
     }
 
 
+    /* ========================================================
+       CLEAR OLD URL
+       ======================================================== */
+
     GGIrregularity.Media._revoke(
         "video"
     );
+
+
+    /* ========================================================
+       CREATE PREVIEW
+       ======================================================== */
+
+    const url =
+        URL.createObjectURL(
+            file
+        );
+
+
+    GGIrregularity.Media
+        ._videoObjectURL =
+        url;
 
 
     const player =
@@ -1767,46 +1058,67 @@ function(input){
 
 
     if(
-        !player ||
-        !preview
+        player
     ){
 
-        return;
+        player.src =
+            url;
+
+
+        try{
+
+            player.load();
+
+        }
+        catch(_){
+
+        }
 
     }
 
 
-    const url =
-        URL.createObjectURL(
-            file
-        );
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "block";
+
+    }
 
 
     GGIrregularity.Media
-        ._objectUrls
-        .video =
-        url;
-
-
-    player.src =
-        url;
-
-
-    player.load();
-
-
-    preview.style.display =
-        "block";
-
-
-    GGIrregularity.Form
-        .updateMediaStatus?.();
+        ._updateFormStatus();
 
 };
 
 
 /* ============================================================
-   REMOVE VIDEO
+   VIDEO — CHANGE
+   ============================================================ */
+
+GGIrregularity.Media.changeVideo =
+function(){
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.click();
+
+    }
+
+};
+
+
+/* ============================================================
+   VIDEO — REMOVE
    ============================================================ */
 
 GGIrregularity.Media.removeVideo =
@@ -1864,7 +1176,14 @@ function(){
         );
 
 
-        player.load();
+        try{
+
+            player.load();
+
+        }
+        catch(_){
+
+        }
 
     }
 
@@ -1879,18 +1198,124 @@ function(){
     }
 
 
-    GGIrregularity.Form
-        .updateMediaStatus?.();
+    GGIrregularity.Media
+        ._updateFormStatus();
 
 };
 
 
 /* ============================================================
-   AUDIO PREVIEW
+   AUDIO — SHOW PREVIEW
+   ============================================================ */
+
+GGIrregularity.Media._showAudioPreview =
+function(
+    source
+){
+
+    if(
+        !source
+    ){
+
+        return;
+
+    }
+
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-audio-preview-player"
+        );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-audio-preview"
+        );
+
+
+    if(
+        !player
+    ){
+
+        return;
+
+    }
+
+
+    /*
+     * Remove previous preview URL if this is
+     * a browser-created object URL.
+     */
+
+    if(
+        source instanceof Blob
+    ){
+
+        GGIrregularity.Media._revoke(
+            "audio"
+        );
+
+
+        const url =
+            URL.createObjectURL(
+                source
+            );
+
+
+        GGIrregularity.Media
+            ._audioObjectURL =
+            url;
+
+
+        player.src =
+            url;
+
+    }
+    else{
+
+        player.src =
+            String(
+                source
+            );
+
+    }
+
+
+    try{
+
+        player.load();
+
+    }
+    catch(_){
+
+    }
+
+
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "block";
+
+    }
+
+
+    GGIrregularity.Media
+        ._updateFormStatus();
+
+};
+
+
+/* ============================================================
+   AUDIO — PREVIEW SELECTED FILE
    ============================================================ */
 
 GGIrregularity.Media.previewAudio =
-function(input){
+function(
+    input
+){
 
     const file =
         input?.files?.[0] ||
@@ -1906,7 +1331,12 @@ function(input){
     }
 
 
+    /* ========================================================
+       VALIDATE AUDIO
+       ======================================================== */
+
     if(
+        !file.type ||
         !file.type.startsWith(
             "audio/"
         )
@@ -1931,131 +1361,20 @@ function(input){
         null;
 
 
-    GGIrregularity.Media._revoke(
-        "audio"
-    );
-
-
-    const player =
-        document.getElementById(
-            "gg-irregularity-audio-preview-player"
-        );
-
-
-    const preview =
-        document.getElementById(
-            "gg-irregularity-audio-preview"
-        );
-
-
-    if(
-        !player ||
-        !preview
-    ){
-
-        return;
-
-    }
-
-
-    const url =
-        URL.createObjectURL(
+    GGIrregularity.Media
+        ._showAudioPreview(
             file
         );
-
-
-    GGIrregularity.Media
-        ._objectUrls
-        .audio =
-        url;
-
-
-    player.src =
-        url;
-
-
-    player.load();
-
-
-    preview.style.display =
-        "block";
-
-
-    GGIrregularity.Form
-        .updateMediaStatus?.();
 
 };
 
 
 /* ============================================================
-   REMOVE AUDIO
+   AUDIO — SELECT AUDIO FILE
    ============================================================ */
 
-GGIrregularity.Media.removeAudio =
+GGIrregularity.Media.selectAudio =
 function(){
-
-    if(
-        GGIrregularity.Media._audioRecorder
-    ){
-
-        try{
-
-            if(
-                GGIrregularity.Media
-                    ._audioRecorder
-                    .state ===
-                "recording"
-            ){
-
-                GGIrregularity.Media
-                    ._audioRecorder
-                    .stop();
-
-            }
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    if(
-        GGIrregularity.Media._audioTimer
-    ){
-
-        clearInterval(
-            GGIrregularity.Media
-                ._audioTimer
-        );
-
-
-        GGIrregularity.Media
-            ._audioTimer =
-            null;
-
-    }
-
-
-    GGIrregularity.Media._recording =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioActive =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioUri =
-        null;
-
-
-    GGIrregularity.Media._revoke(
-        "audio"
-    );
-
 
     const input =
         document.getElementById(
@@ -2063,105 +1382,90 @@ function(){
         );
 
 
-    const player =
-        document.getElementById(
-            "gg-irregularity-audio-preview-player"
-        );
-
-
-    const preview =
-        document.getElementById(
-            "gg-irregularity-audio-preview"
-        );
-
-
     if(
         input
     ){
 
-        input.value =
-            "";
+        input.click();
+
+    }
+
+};
+
+
+/* ============================================================
+   AUDIO — SET FILE INTO INPUT
+   ============================================================ */
+
+GGIrregularity.Media._setInputFile =
+function(
+    input,
+    file
+){
+
+    if(
+        !input ||
+        !file
+    ){
+
+        return false;
 
     }
 
 
-    if(
-        player
-    ){
+    try{
 
-        try{
+        /*
+         * DataTransfer allows a browser-generated
+         * recording Blob/File to become the actual
+         * <input type="file"> value.
+         */
 
-            player.pause();
-
-        }
-        catch(_){
-
-        }
+        const transfer =
+            new DataTransfer();
 
 
-        player.removeAttribute(
-            "src"
+        transfer.items.add(
+            file
         );
 
 
-        player.load();
+        input.files =
+            transfer.files;
+
+
+        return true;
 
     }
+    catch(error){
+
+        console.warn(
+            "⚠ Could not assign recorded audio to file input:",
+            error
+        );
 
 
-    if(
-        preview
-    ){
-
-        preview.style.display =
-            "none";
+        return false;
 
     }
-
-
-    window.currentIrregularityAudioType =
-        null;
-
-
-    GGIrregularity.Form
-        .updateMediaStatus?.();
 
 };
 
 
 /* ============================================================
-   RECORD AGAIN
+   AUDIO — START BROWSER RECORDING
    ============================================================ */
 
-GGIrregularity.Media.recordAgain =
-function(){
-
-    GGIrregularity.Media.removeAudio();
-
-
-    setTimeout(
-        function(){
-
-            GGIrregularity.Media
-                .recordAudio();
-
-        },
-        120
-    );
-
-};
-
-
-/* ============================================================
-   RECORD AUDIO
-   ============================================================ */
-
-GGIrregularity.Media.recordAudio =
+GGIrregularity.Media.startBrowserRecording =
 async function(){
 
+    /* ========================================================
+       ALREADY RECORDING
+       ======================================================== */
+
     if(
-        GGIrregularity.Media._recording ||
-        GGIrregularity.Media._nativeAudioActive
+        GGIrregularity.Media
+            ._recording
     ){
 
         return;
@@ -2169,87 +1473,34 @@ async function(){
     }
 
 
-    /*
-     * Native Android recorder.
-     *
-     * The Android layer should call:
-     *
-     *     window.onNativeAudioRecorded(uri)
-     *
-     * when recording is completed.
-     */
-
-    if(
-        typeof window.Android !==
-        "undefined" &&
-        typeof window.Android.startVoiceRecorder ===
-        "function"
-    ){
-
-        console.log(
-            "🎙 Launching native Irregularity AudioActivity"
-        );
-
-
-        GGIrregularity.Media
-            ._nativeAudioActive =
-            true;
-
-
-        window.currentIrregularityAudioType =
-            "irregularity";
-
-
-        try{
-
-            window.Android.startVoiceRecorder();
-
-
-            GGIrregularity.Form
-                .updateMediaStatus?.();
-
-
-            return;
-
-        }
-        catch(error){
-
-            console.error(
-                "❌ Native audio recorder failed:",
-                error
-            );
-
-
-            GGIrregularity.Media
-                ._nativeAudioActive =
-                false;
-
-        }
-
-    }
-
-
-    await GGIrregularity.Media
-        .recordBrowserAudio();
-
-};
-
-
-/* ============================================================
-   BROWSER AUDIO FALLBACK
-   ============================================================ */
-
-GGIrregularity.Media.recordBrowserAudio =
-async function(){
+    /* ========================================================
+       BROWSER SUPPORT
+       ======================================================== */
 
     if(
         !navigator.mediaDevices ||
-        typeof navigator.mediaDevices.getUserMedia !==
+        typeof navigator.mediaDevices
+            .getUserMedia !==
         "function"
     ){
 
         alert(
             "Audio recording is not supported on this device/browser."
+        );
+
+
+        return;
+
+    }
+
+
+    if(
+        typeof MediaRecorder ===
+        "undefined"
+    ){
+
+        alert(
+            "Audio recording is not supported on this browser."
         );
 
 
@@ -2264,15 +1515,29 @@ async function(){
 
     try{
 
+        /* ====================================================
+           MICROPHONE
+           ==================================================== */
+
         stream =
-            await navigator.mediaDevices.getUserMedia(
-                {
-                    audio:true
-                }
-            );
+            await navigator.mediaDevices
+                .getUserMedia(
+                    {
+                        audio:true
+                    }
+                );
 
 
-        const candidates = [
+        GGIrregularity.Media
+            ._audioStream =
+            stream;
+
+
+        /* ====================================================
+           SELECT BEST SUPPORTED FORMAT
+           ==================================================== */
+
+        const mimeCandidates = [
 
             "audio/mp4",
 
@@ -2290,25 +1555,35 @@ async function(){
 
 
         if(
-            typeof MediaRecorder.isTypeSupported ===
+            typeof MediaRecorder
+                .isTypeSupported ===
             "function"
         ){
 
             for(
                 const candidate of
-                candidates
+                mimeCandidates
             ){
 
-                if(
-                    MediaRecorder.isTypeSupported(
-                        candidate
-                    )
-                ){
+                try{
 
-                    mimeType =
-                        candidate;
+                    if(
+                        MediaRecorder
+                            .isTypeSupported(
+                                candidate
+                            )
+                    ){
 
-                    break;
+                        mimeType =
+                            candidate;
+
+
+                        break;
+
+                    }
+
+                }
+                catch(_){
 
                 }
 
@@ -2316,6 +1591,10 @@ async function(){
 
         }
 
+
+        /* ====================================================
+           CREATE RECORDER
+           ==================================================== */
 
         const recorder =
             mimeType
@@ -2348,8 +1627,31 @@ async function(){
             true;
 
 
+        GGIrregularity.Media
+            ._audioStartedAt =
+            Date.now();
+
+
+        GGIrregularity.Media
+            ._setRecordButton(
+                true
+            );
+
+
+        GGIrregularity.Media
+            ._updateFormStatus(
+                "recording"
+            );
+
+
+        /* ====================================================
+           DATA
+           ==================================================== */
+
         recorder.ondataavailable =
-        function(event){
+        function(
+            event
+        ){
 
             if(
                 event.data &&
@@ -2367,33 +1669,51 @@ async function(){
         };
 
 
+        /* ====================================================
+           ERROR
+           ==================================================== */
+
         recorder.onerror =
-        function(event){
+        function(
+            event
+        ){
 
             console.error(
-                "❌ Browser audio recorder error:",
+                "❌ Irregularity audio recorder error:",
                 event
             );
 
         };
 
 
+        /* ====================================================
+           STOP
+           ==================================================== */
+
         recorder.onstop =
         function(){
 
             try{
 
-                const type =
+                const finalMime =
                     recorder.mimeType ||
                     mimeType ||
                     "audio/webm";
 
 
                 const extension =
-                    type.includes("mp4")
+                    finalMime.includes(
+                        "mp4"
+                    )
+
                         ? "m4a"
-                        : type.includes("ogg")
+
+                        : finalMime.includes(
+                            "ogg"
+                        )
+
                             ? "ogg"
+
                             : "webm";
 
 
@@ -2403,9 +1723,20 @@ async function(){
                             ._audioChunks,
                         {
                             type:
-                                type
+                                finalMime
                         }
                     );
+
+
+                if(
+                    !blob.size
+                ){
+
+                    throw new Error(
+                        "Audio recording is empty."
+                    );
+
+                }
 
 
                 const file =
@@ -2417,13 +1748,17 @@ async function(){
                         extension,
                         {
                             type:
-                                type,
+                                finalMime,
 
                             lastModified:
                                 Date.now()
                         }
                     );
 
+
+                /* ============================================
+                   PUT RECORDED AUDIO INTO EXISTING INPUT
+                   ============================================ */
 
                 const input =
                     document.getElementById(
@@ -2438,50 +1773,52 @@ async function(){
                     );
 
 
+                /* ============================================
+                   PREVIEW
+                   ============================================ */
+
                 GGIrregularity.Media
-                    .previewAudio(
-                        input
+                    ._showAudioPreview(
+                        file
                     );
 
 
                 console.log(
-                    "✅ Browser audio recording ready:",
-                    file.name
+                    "✅ Irregularity audio recording ready:",
+                    {
+                        name:
+                            file.name,
+
+                        size:
+                            file.size,
+
+                        type:
+                            file.type
+                    }
                 );
 
             }
             catch(error){
 
                 console.error(
-                    "❌ Browser audio processing failed:",
+                    "❌ Failed to create audio recording:",
                     error
+                );
+
+
+                alert(
+                    "Audio recording could not be prepared."
                 );
 
             }
             finally{
 
-                stream
-                    ?.getTracks
-                    ?.()
-                    .forEach(
-                        function(track){
-
-                            try{
-
-                                track.stop();
-
-                            }
-                            catch(_){
-
-                            }
-
-                        }
-                    );
+                GGIrregularity.Media
+                    ._stopAudioStream();
 
 
                 GGIrregularity.Media
-                    ._recording =
-                    false;
+                    ._clearAudioTimer();
 
 
                 GGIrregularity.Media
@@ -2494,20 +1831,47 @@ async function(){
                     [];
 
 
-                GGIrregularity.Form
-                    .updateMediaStatus?.();
+                GGIrregularity.Media
+                    ._recording =
+                    false;
+
+
+                GGIrregularity.Media
+                    ._setRecordButton(
+                        false
+                    );
+
+
+                GGIrregularity.Media
+                    ._updateFormStatus();
 
             }
 
         };
 
 
-        recorder.start();
+        /* ====================================================
+           START
+           ==================================================== */
+
+        recorder.start(
+            1000
+        );
 
 
         console.log(
-            "🎙 Browser audio recording started"
+            "🎙 Irregularity audio recording started."
         );
+
+
+        /* ====================================================
+           TIMER
+           ==================================================== */
+
+        const timer =
+            document.getElementById(
+                "gg-irregularity-audio-timer"
+            );
 
 
         GGIrregularity.Media
@@ -2520,27 +1884,6 @@ async function(){
                             ._recording
                     ){
 
-                        clearInterval(
-                            GGIrregularity.Media
-                                ._audioTimer
-                        );
-
-
-                        GGIrregularity.Media
-                            ._audioTimer =
-                            null;
-
-
-                        return;
-
-                    }
-
-
-                    if(
-                        recorder.state !==
-                        "recording"
-                    ){
-
                         return;
 
                     }
@@ -2550,14 +1893,10 @@ async function(){
                         Math.floor(
                             (
                                 Date.now() -
-                                recorder.__ggStartedAt
-                            ) / 1000
-                        );
-
-
-                    const timer =
-                        document.getElementById(
-                            "gg-irregularity-audio-timer"
+                                GGIrregularity.Media
+                                    ._audioStartedAt
+                            ) /
+                            1000
                         );
 
 
@@ -2568,16 +1907,23 @@ async function(){
                         timer.textContent =
                             "Recording " +
                             elapsed +
-                            "s / 60s";
+                            "s";
 
                     }
 
 
+                    /* ========================================
+                       SAFETY MAXIMUM
+                       ======================================== */
+
                     if(
-                        elapsed >= 60
+                        elapsed >=
+                        GGIrregularity.Media
+                            .MAX_AUDIO_SECONDS
                     ){
 
-                        recorder.stop();
+                        GGIrregularity.Media
+                            .stopRecording();
 
                     }
 
@@ -2585,42 +1931,26 @@ async function(){
                 500
             );
 
-
-        recorder.__ggStartedAt =
-            Date.now();
-
-
-        GGIrregularity.Form
-            .updateMediaStatus?.(
-                "recording"
-            );
-
     }
     catch(error){
 
         console.error(
-            "❌ Unable to start browser audio recording:",
+            "❌ Unable to start microphone:",
             error
         );
 
 
-        stream
-            ?.getTracks
-            ?.()
-            .forEach(
-                function(track){
+        GGIrregularity.Media
+            ._stopAudioStream();
 
-                    try{
 
-                        track.stop();
+        GGIrregularity.Media
+            ._clearAudioTimer();
 
-                    }
-                    catch(_){
 
-                    }
-
-                }
-            );
+        GGIrregularity.Media
+            ._audioRecorder =
+            null;
 
 
         GGIrregularity.Media
@@ -2629,81 +1959,32 @@ async function(){
 
 
         GGIrregularity.Media
-            ._audioRecorder =
-            null;
+            ._setRecordButton(
+                false
+            );
 
-
-        alert(
-            "Unable to start audio recording. Please allow microphone access."
-        );
-
-    }
-
-};
-/* ============================================================
-   NATIVE AUDIO CALLBACK
-   ============================================================ */
-
-GGIrregularity.Media.handleNativeAudio =
-function(uri){
-
-    try{
 
         GGIrregularity.Media
-            ._nativeAudioActive =
-                false;
+            ._updateFormStatus();
 
 
         if(
-            !uri
+            error?.name ===
+            "NotAllowedError"
         ){
 
-            console.warn(
-                "⚠ Native Irregularity audio cancelled."
+            alert(
+                "Microphone permission was denied. Please allow microphone access and try again."
             );
-
-
-            window.currentIrregularityAudioType =
-                null;
-
-
-            GGIrregularity.Form
-                .updateMediaStatus?.();
-
-
-            return;
 
         }
+        else{
 
-
-        GGIrregularity.Media
-            ._nativeAudioUri =
-                String(uri);
-
-
-        GGIrregularity.Media._revoke(
-            "audio"
-        );
-
-
-        GGIrregularity.Media
-            ._showNativeAudioPreview(
-                uri
+            alert(
+                "Unable to start audio recording."
             );
 
-
-        console.log(
-            "✅ Native Irregularity audio ready:",
-            uri
-        );
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ Native Irregularity audio processing failed:",
-            error
-        );
+        }
 
     }
 
@@ -2711,20 +1992,478 @@ function(uri){
 
 
 /* ============================================================
-   NATIVE AUDIO PREVIEW
+   AUDIO — STOP RECORDING
    ============================================================ */
 
-GGIrregularity.Media._showNativeAudioPreview =
-function(uri){
+GGIrregularity.Media.stopRecording =
+function(){
+
+    const recorder =
+        GGIrregularity.Media
+            ._audioRecorder;
+
 
     if(
-        !uri
+        !recorder
     ){
 
         return;
 
     }
 
+
+    if(
+        recorder.state !==
+        "recording"
+    ){
+
+        return;
+
+    }
+
+
+    console.log(
+        "⏹ Stopping Irregularity audio recording..."
+    );
+
+
+    try{
+
+        recorder.stop();
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Unable to stop audio recording:",
+            error
+        );
+
+
+        GGIrregularity.Media
+            ._stopAudioStream();
+
+
+        GGIrregularity.Media
+            ._clearAudioTimer();
+
+
+        GGIrregularity.Media
+            ._audioRecorder =
+            null;
+
+
+        GGIrregularity.Media
+            ._recording =
+            false;
+
+
+        GGIrregularity.Media
+            ._setRecordButton(
+                false
+            );
+
+    }
+
+};
+
+
+/* ============================================================
+   AUDIO — RECORD / STOP TOGGLE
+   ============================================================ */
+
+GGIrregularity.Media.recordAudio =
+async function(){
+
+    /*
+     * If already recording, the same button becomes
+     * STOP AUDIO.
+     */
+
+    if(
+        GGIrregularity.Media
+            ._recording
+    ){
+
+        GGIrregularity.Media
+            .stopRecording();
+
+
+        return;
+
+    }
+
+
+    /*
+     * Native Android recorder is optional.
+     *
+     * Existing Android integration can be used if it
+     * already exposes startVoiceRecorder().
+     *
+     * We do NOT require it.
+     */
+
+    if(
+        window.Android &&
+        typeof window.Android
+            .startVoiceRecorder ===
+        "function"
+    ){
+
+        try{
+
+            GGIrregularity.Media
+                ._nativeAudioActive =
+                true;
+
+
+            window.currentIrregularityAudioType =
+                "irregularity";
+
+
+            window.Android
+                .startVoiceRecorder();
+
+
+            GGIrregularity.Media
+                ._updateFormStatus(
+                    "recording"
+                );
+
+
+            return;
+
+        }
+        catch(error){
+
+            console.warn(
+                "⚠ Native audio recorder failed; using browser recorder:",
+                error
+            );
+
+
+            GGIrregularity.Media
+                ._nativeAudioActive =
+                false;
+
+
+            window.currentIrregularityAudioType =
+                null;
+
+        }
+
+    }
+
+
+    /*
+     * Browser fallback.
+     */
+
+    await GGIrregularity.Media
+        .startBrowserRecording();
+
+};
+
+
+/* ============================================================
+   AUDIO — RECORD AGAIN
+   ============================================================ */
+
+GGIrregularity.Media.recordAgain =
+function(){
+
+    /*
+     * Remove existing recording first.
+     */
+
+    GGIrregularity.Media
+        .removeAudio();
+
+
+    /*
+     * Start again after the DOM has updated.
+     */
+
+    setTimeout(
+        function(){
+
+            GGIrregularity.Media
+                .recordAudio();
+
+        },
+        120
+    );
+
+};
+
+
+/* ============================================================
+   AUDIO — REMOVE
+   ============================================================ */
+
+GGIrregularity.Media.removeAudio =
+function(){
+
+    /* ========================================================
+       STOP ACTIVE RECORDER
+       ======================================================== */
+
+    const recorder =
+        GGIrregularity.Media
+            ._audioRecorder;
+
+
+    if(
+        recorder &&
+        recorder.state ===
+        "recording"
+    ){
+
+        try{
+
+            recorder.stop();
+
+        }
+        catch(_){
+
+        }
+
+    }
+
+
+    /* ========================================================
+       STOP STREAM
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._stopAudioStream();
+
+
+    /* ========================================================
+       TIMER
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._clearAudioTimer();
+
+
+    /* ========================================================
+       OBJECT URL
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._revoke(
+            "audio"
+        );
+
+
+    /* ========================================================
+       STATE
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._audioRecorder =
+        null;
+
+
+    GGIrregularity.Media
+        ._audioChunks =
+        [];
+
+
+    GGIrregularity.Media
+        ._recording =
+        false;
+
+
+    GGIrregularity.Media
+        ._nativeAudioActive =
+        false;
+
+
+    GGIrregularity.Media
+        ._nativeAudioUri =
+        null;
+
+
+    window.currentIrregularityAudioType =
+        null;
+
+
+    /* ========================================================
+       INPUT
+       ======================================================== */
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.value =
+            "";
+
+    }
+
+
+    /* ========================================================
+       PLAYER
+       ======================================================== */
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-audio-preview-player"
+        );
+
+
+    if(
+        player
+    ){
+
+        try{
+
+            player.pause();
+
+        }
+        catch(_){
+
+        }
+
+
+        player.removeAttribute(
+            "src"
+        );
+
+
+        try{
+
+            player.load();
+
+        }
+        catch(_){
+
+        }
+
+    }
+
+
+    /* ========================================================
+       PREVIEW
+       ======================================================== */
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-audio-preview"
+        );
+
+
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "none";
+
+    }
+
+
+    /* ========================================================
+       TIMER
+       ======================================================== */
+
+    const timer =
+        document.getElementById(
+            "gg-irregularity-audio-timer"
+        );
+
+
+    if(
+        timer
+    ){
+
+        timer.textContent =
+            "";
+
+    }
+
+
+    GGIrregularity.Media
+        ._setRecordButton(
+            false
+        );
+
+
+    GGIrregularity.Media
+        ._updateFormStatus();
+
+};
+
+
+/* ============================================================
+   AUDIO — NATIVE ANDROID CALLBACK
+   ============================================================ */
+
+GGIrregularity.Media.handleNativeAudio =
+function(
+    uri
+){
+
+    GGIrregularity.Media
+        ._nativeAudioActive =
+        false;
+
+
+    window.currentIrregularityAudioType =
+        null;
+
+
+    if(
+        !uri
+    ){
+
+        GGIrregularity.Media
+            ._nativeAudioUri =
+            null;
+
+
+        GGIrregularity.Media
+            ._updateFormStatus();
+
+
+        return;
+
+    }
+
+
+    GGIrregularity.Media
+        ._nativeAudioUri =
+        String(
+            uri
+        );
+
+
+    /*
+     * Hide browser recording state.
+     */
+
+    GGIrregularity.Media
+        ._recording =
+        false;
+
+
+    GGIrregularity.Media
+        ._setRecordButton(
+            false
+        );
+
+
+    /*
+     * Preview native URI.
+     */
 
     const player =
         document.getElementById(
@@ -2743,9 +2482,19 @@ function(uri){
     ){
 
         player.src =
-            String(uri);
+            String(
+                uri
+            );
 
-        player.load();
+
+        try{
+
+            player.load();
+
+        }
+        catch(_){
+
+        }
 
     }
 
@@ -2760,8 +2509,8 @@ function(uri){
     }
 
 
-    GGIrregularity.Form
-        .updateMediaStatus?.();
+    GGIrregularity.Media
+        ._updateFormStatus();
 
 };
 
@@ -2771,19 +2520,21 @@ function(uri){
    ============================================================ */
 
 if(
-    !window.__ggIrregularityNativeAudioWrapped
+    !window.__ggIrregularityNativeAudioCallbackInstalled
 ){
 
-    const previousHandler =
+    const existingCallback =
         window.onNativeAudioRecorded;
 
 
     window.onNativeAudioRecorded =
-    function(uri){
+    function(
+        uri
+    ){
 
         /*
-         * Irregularity owns the callback only while
-         * its recorder is active.
+         * Only consume the callback when
+         * Irregularity requested the recorder.
          */
 
         if(
@@ -2803,18 +2554,18 @@ if(
 
 
         /*
-         * Existing Wildlife / Elephant audio callback
-         * remains untouched.
+         * Existing Wildlife / Elephant callback
+         * continues to work.
          */
 
         if(
-            typeof previousHandler ===
+            typeof existingCallback ===
             "function"
         ){
 
             try{
 
-                previousHandler(
+                existingCallback(
                     uri
                 );
 
@@ -2833,85 +2584,17 @@ if(
     };
 
 
-    window.__ggIrregularityNativeAudioWrapped =
+    window.__ggIrregularityNativeAudioCallbackInstalled =
         true;
 
 }
 
 
 /* ============================================================
-   GET FORM MEDIA
+   END PART 2/4
    ============================================================ */
-
-GGIrregularity.Media.getFormMedia =
-function(){
-
-    const photoInput =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    return {
-
-        photo:
-            photoInput?.files?.[0] ||
-            null,
-
-        video:
-            videoInput?.files?.[0] ||
-            null,
-
-        audio:
-            audioInput?.files?.[0] ||
-            null,
-
-        nativeAudioUri:
-            GGIrregularity.Media
-                ._nativeAudioUri ||
-            null
-
-    };
-
-};
-
-
 /* ============================================================
-   HAS MEDIA
-   ============================================================ */
-
-GGIrregularity.Media.hasMedia =
-function(){
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    return !!(
-        media.photo ||
-        media.video ||
-        media.audio ||
-        media.nativeAudioUri
-    );
-
-};
-
-
-/* ============================================================
-   UPLOAD FILE / BLOB
+   UPLOAD BLOB / FILE
    ============================================================ */
 
 GGIrregularity.Media.uploadBlob =
@@ -2933,12 +2616,20 @@ async function(
     }
 
 
+    /* ========================================================
+       FILE NAME
+       ======================================================== */
+
     const fileName =
         GGIrregularity.Media.safeFileName(
             mediaFile.name,
             fallbackName
         );
 
+
+    /* ========================================================
+       STORAGE PATH
+       ======================================================== */
 
     const storagePath =
         storageRoot +
@@ -2950,6 +2641,10 @@ async function(
         fileName;
 
 
+    /* ========================================================
+       EXISTING FIREBASE STORAGE REF
+       ======================================================== */
+
     const storageRef =
         window.fb.ref(
             window.storage,
@@ -2957,13 +2652,18 @@ async function(
         );
 
 
+    /* ========================================================
+       CONTENT TYPE
+       ======================================================== */
+
     let contentType =
         mediaFile.type ||
         "application/octet-stream";
 
 
     if(
-        mediaType === "audio" &&
+        mediaType ===
+        "audio" &&
         !contentType.startsWith(
             "audio/"
         )
@@ -2975,15 +2675,14 @@ async function(
     }
 
 
+    /* ========================================================
+       METADATA
+       ======================================================== */
+
     const metadata = {
 
         contentType:
             contentType,
-
-        contentDisposition:
-            "attachment; filename=\"" +
-            fileName +
-            "\"",
 
         customMetadata: {
 
@@ -3033,6 +2732,10 @@ async function(
     );
 
 
+    /* ========================================================
+       EXISTING uploadBytes()
+       ======================================================== */
+
     const uploadResult =
         await window.fb.uploadBytes(
             storageRef,
@@ -3041,10 +2744,30 @@ async function(
         );
 
 
+    /* ========================================================
+       EXISTING getDownloadURL()
+       ======================================================== */
+
     const url =
         await window.fb.getDownloadURL(
             uploadResult.ref
         );
+
+
+    console.log(
+        "✅ Irregularity media uploaded:",
+        {
+            mediaType:
+                mediaType,
+
+            path:
+                storagePath,
+
+            url:
+                url
+
+        }
+    );
 
 
     return {
@@ -3080,6 +2803,12 @@ async function(
     }
 
 
+    console.log(
+        "⬆️ Reading native Irregularity audio:",
+        uri
+    );
+
+
     let response;
 
 
@@ -3087,20 +2816,22 @@ async function(
 
         response =
             await fetch(
-                String(uri)
+                String(
+                    uri
+                )
             );
 
     }
     catch(error){
 
         console.error(
-            "❌ Cannot read native audio URI:",
+            "❌ Native audio URI could not be opened:",
             error
         );
 
 
         throw new Error(
-            "Native audio file could not be accessed."
+            "Native audio recording could not be accessed."
         );
 
     }
@@ -3111,7 +2842,7 @@ async function(
     ){
 
         throw new Error(
-            "Native audio file could not be read."
+            "Native audio recording could not be read."
         );
 
     }
@@ -3138,25 +2869,47 @@ async function(
         "audio/mp4";
 
 
-    const extension =
+    let extension =
+        "m4a";
+
+
+    if(
         mimeType.includes(
             "webm"
         )
+    ){
 
-            ? "webm"
+        extension =
+            "webm";
 
-            : mimeType.includes(
-                "ogg"
-            )
+    }
+    else if(
+        mimeType.includes(
+            "ogg"
+        )
+    ){
 
-                ? "ogg"
+        extension =
+            "ogg";
 
-                : "m4a";
+    }
+    else if(
+        mimeType.includes(
+            "wav"
+        )
+    ){
+
+        extension =
+            "wav";
+
+    }
 
 
     const file =
         new File(
-            [blob],
+            [
+                blob
+            ],
             "irregularity_audio_" +
             Date.now() +
             "." +
@@ -3185,7 +2938,7 @@ async function(
 
 
 /* ============================================================
-   UPLOAD ALL IRREGULARITY MEDIA
+   UPLOAD ALL MEDIA
    ============================================================ */
 
 GGIrregularity.Media.upload =
@@ -3200,6 +2953,10 @@ async function(
 
     try{
 
+        /* ====================================================
+           EXISTING FIREBASE
+           ==================================================== */
+
         await GGIrregularity.Media
             .waitForFirebase();
 
@@ -3208,6 +2965,10 @@ async function(
             .validateStorage();
 
 
+        /* ====================================================
+           STORAGE ROOT
+           ==================================================== */
+
         const storageInfo =
             GGIrregularity.Media
                 .getStorageRoot(
@@ -3215,10 +2976,18 @@ async function(
                 );
 
 
-        const formMedia =
+        /* ====================================================
+           CURRENT MEDIA
+           ==================================================== */
+
+        const media =
             GGIrregularity.Media
                 .getFormMedia();
 
+
+        /* ====================================================
+           RESULT
+           ==================================================== */
 
         const result = {
 
@@ -3251,13 +3020,18 @@ async function(
            ==================================================== */
 
         if(
-            formMedia.photo
+            media.photo
         ){
+
+            console.log(
+                "📷 Uploading Irregularity photo..."
+            );
+
 
             const uploaded =
                 await GGIrregularity.Media
                     .uploadBlob(
-                        formMedia.photo,
+                        media.photo,
                         "photo",
                         storageInfo.root,
                         "photo.jpg",
@@ -3286,13 +3060,18 @@ async function(
            ==================================================== */
 
         if(
-            formMedia.video
+            media.video
         ){
+
+            console.log(
+                "🎥 Uploading Irregularity video..."
+            );
+
 
             const uploaded =
                 await GGIrregularity.Media
                     .uploadBlob(
-                        formMedia.video,
+                        media.video,
                         "video",
                         storageInfo.root,
                         "video.mp4",
@@ -3317,17 +3096,22 @@ async function(
 
 
         /* ====================================================
-           AUDIO — FILE
+           AUDIO FILE
            ==================================================== */
 
         if(
-            formMedia.audio
+            media.audio
         ){
+
+            console.log(
+                "🎙 Uploading Irregularity audio file..."
+            );
+
 
             const uploaded =
                 await GGIrregularity.Media
                     .uploadBlob(
-                        formMedia.audio,
+                        media.audio,
                         "audio",
                         storageInfo.root,
                         "audio.m4a",
@@ -3352,17 +3136,22 @@ async function(
 
 
         /* ====================================================
-           AUDIO — NATIVE URI
+           NATIVE AUDIO URI
            ==================================================== */
 
         else if(
-            formMedia.nativeAudioUri
+            media.nativeAudioUri
         ){
+
+            console.log(
+                "🎙 Uploading native Irregularity audio..."
+            );
+
 
             const uploaded =
                 await GGIrregularity.Media
                     .uploadNativeAudio(
-                        formMedia.nativeAudioUri,
+                        media.nativeAudioUri,
                         storageInfo.root,
                         payload
                     );
@@ -3388,7 +3177,7 @@ async function(
            MEDIA STATUS
            ==================================================== */
 
-        const mediaCount =
+        const count =
 
             (
                 result.photo_url
@@ -3410,13 +3199,13 @@ async function(
 
 
         result.media_status =
-            mediaCount > 0
+            count > 0
                 ? "COMPLETE"
                 : "NONE";
 
 
         console.log(
-            "📦 IRREGULARITY MEDIA RESULT:",
+            "📦 Irregularity media upload result:",
             result
         );
 
@@ -3446,7 +3235,7 @@ async function(
 
 
 /* ============================================================
-   UPDATE FIRESTORE MEDIA
+   UPDATE FIRESTORE MEDIA FIELDS
    ============================================================ */
 
 GGIrregularity.Media.updateFirestore =
@@ -3454,6 +3243,10 @@ async function(
     firestoreId,
     mediaResult
 ){
+
+    /* ========================================================
+       VALIDATE FIRESTORE
+       ======================================================== */
 
     if(
         !window.db ||
@@ -3478,6 +3271,10 @@ async function(
     }
 
 
+    /* ========================================================
+       EXISTING IRREGULARITY DOCUMENT
+       ======================================================== */
+
     const irregularityRef =
         window.fb.doc(
             window.db,
@@ -3485,6 +3282,10 @@ async function(
             firestoreId
         );
 
+
+    /* ========================================================
+       SAME MEDIA FIELDS AS EXISTING PIPELINE
+       ======================================================== */
 
     await window.fb.updateDoc(
         irregularityRef,
@@ -3544,541 +3345,15 @@ async function(
 
 
 /* ============================================================
-   MEDIA UI
+   MEDIA EVENTS
    ============================================================ */
 
-GGIrregularity.Form.media =
+GGIrregularity.Media.bindEvents =
 function(){
 
-    return `
-
-        <div
-            class="gg-irregularity-media"
-            style="
-                width:100%;
-                box-sizing:border-box;
-                margin:10px 0;
-                padding:10px;
-                border:1px solid #dfe8df;
-                border-radius:8px;
-                background:#f8faf8;
-            "
-        >
-
-            <div
-                style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    gap:8px;
-                    margin-bottom:8px;
-                "
-            >
-
-                <div
-                    style="
-                        color:#1b5e20;
-                        font-size:12px;
-                        font-weight:800;
-                    "
-                >
-                    📎 MEDIA
-                </div>
-
-                <div
-                    id="gg-irregularity-media-status"
-                    style="
-                        color:#607d8b;
-                        font-size:10px;
-                        text-align:right;
-                    "
-                >
-                    No media selected.
-                </div>
-
-            </div>
-
-
-            <!-- ==================================================
-                 PHOTO INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-photo"
-                name="photo"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 VIDEO INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-video"
-                name="video"
-                type="file"
-                accept="video/*"
-                capture="environment"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 AUDIO FILE INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-audio"
-                name="audio"
-                type="file"
-                accept="audio/*"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 MAIN MEDIA BUTTONS
-                 ================================================== -->
-
-            <div
-                style="
-                    display:grid;
-                    grid-template-columns:
-                        minmax(0,1fr)
-                        minmax(0,1fr)
-                        minmax(0,1fr);
-                    gap:7px;
-                    width:100%;
-                "
-            >
-
-                <button
-                    type="button"
-                    id="gg-irregularity-photo-btn"
-                    onclick="
-                        document
-                            .getElementById(
-                                'gg-irregularity-photo'
-                            )
-                            ?.click();
-                    "
-                    style="
-                        min-height:38px;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        touch-action:manipulation;
-                    "
-                >
-                    📷 PHOTO
-                </button>
-
-
-                <button
-                    type="button"
-                    id="gg-irregularity-video-btn"
-                    onclick="
-                        document
-                            .getElementById(
-                                'gg-irregularity-video'
-                            )
-                            ?.click();
-                    "
-                    style="
-                        min-height:38px;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        touch-action:manipulation;
-                    "
-                >
-                    🎥 VIDEO
-                </button>
-
-
-                <button
-                    type="button"
-                    id="gg-irregularity-record-audio"
-                    onclick="
-                        GGIrregularity.Media.recordAudio();
-                    "
-                    style="
-                        min-height:38px;
-                        border:1px solid #c8d6c8;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#1b5e20;
-                        font-size:11px;
-                        font-weight:700;
-                        cursor:pointer;
-                        touch-action:manipulation;
-                    "
-                >
-                    🎙 RECORD AUDIO
-                </button>
-
-            </div>
-
-
-            <!-- ==================================================
-                 PHOTO PREVIEW
-                 ================================================== -->
-
-            <div
-                id="gg-irregularity-photo-preview"
-                style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        📷 Photo Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                document
-                                    .getElementById(
-                                        'gg-irregularity-photo'
-                                    )
-                                    ?.click();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            CHANGE
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removePhoto();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <img
-                    id="gg-irregularity-photo-preview-img"
-                    alt="Photo preview"
-                    style="
-                        display:block;
-                        width:100%;
-                        max-height:220px;
-                        object-fit:contain;
-                        border-radius:6px;
-                        background:#f4f6f4;
-                    "
-                >
-
-            </div>
-
-
-            <!-- ==================================================
-                 VIDEO PREVIEW
-                 ================================================== -->
-
-            <div
-                id="gg-irregularity-video-preview"
-                style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        🎥 Video Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                document
-                                    .getElementById(
-                                        'gg-irregularity-video'
-                                    )
-                                    ?.click();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            CHANGE
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removeVideo();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <video
-                    id="gg-irregularity-video-preview-player"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    style="
-                        display:block;
-                        width:100%;
-                        max-height:240px;
-                        border-radius:6px;
-                        background:#111111;
-                    "
-                ></video>
-
-            </div>
-
-
-            <!-- ==================================================
-                 AUDIO PREVIEW
-                 ================================================== -->
-
-            <div
-                id="gg-irregularity-audio-preview"
-                style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        🎙 Audio Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .recordAgain();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            RECORD AGAIN
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removeAudio();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <audio
-                    id="gg-irregularity-audio-preview-player"
-                    controls
-                    preload="metadata"
-                    style="
-                        display:block;
-                        width:100%;
-                    "
-                ></audio>
-
-
-                <div
-                    id="gg-irregularity-audio-timer"
-                    style="
-                        margin-top:5px;
-                        color:#78909c;
-                        font-size:10px;
-                    "
-                >
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-};
-
-/* ============================================================
-   MEDIA INPUT EVENTS
-   ============================================================ */
-
-GGIrregularity.Form.bindMediaEvents =
-function(){
+    /* ========================================================
+       PHOTO INPUT
+       ======================================================== */
 
     const photoInput =
         document.getElementById(
@@ -4086,25 +3361,9 @@ function(){
         );
 
 
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    /* ========================================================
-       PHOTO
-       ======================================================== */
-
     if(
         photoInput &&
-        !photoInput.dataset.ggBound
+        !photoInput.dataset.ggMediaBound
     ){
 
         photoInput.addEventListener(
@@ -4120,19 +3379,25 @@ function(){
         );
 
 
-        photoInput.dataset.ggBound =
+        photoInput.dataset.ggMediaBound =
             "1";
 
     }
 
 
     /* ========================================================
-       VIDEO
+       VIDEO INPUT
        ======================================================== */
+
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
 
     if(
         videoInput &&
-        !videoInput.dataset.ggBound
+        !videoInput.dataset.ggMediaBound
     ){
 
         videoInput.addEventListener(
@@ -4148,24 +3413,40 @@ function(){
         );
 
 
-        videoInput.dataset.ggBound =
+        videoInput.dataset.ggMediaBound =
             "1";
 
     }
 
 
     /* ========================================================
-       AUDIO FILE
+       AUDIO INPUT
        ======================================================== */
+
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
 
     if(
         audioInput &&
-        !audioInput.dataset.ggBound
+        !audioInput.dataset.ggMediaBound
     ){
 
         audioInput.addEventListener(
             "change",
             function(){
+
+                /*
+                 * Selecting an audio file replaces
+                 * any previous native recording.
+                 */
+
+                GGIrregularity.Media
+                    ._nativeAudioUri =
+                    null;
+
 
                 GGIrregularity.Media
                     .previewAudio(
@@ -4176,159 +3457,86 @@ function(){
         );
 
 
-        audioInput.dataset.ggBound =
+        audioInput.dataset.ggMediaBound =
             "1";
 
     }
 
-};
 
+    /* ========================================================
+       RECORD BUTTON
+       ======================================================== */
 
-/* ============================================================
-   MEDIA STATUS
-   ============================================================ */
-
-GGIrregularity.Form.updateMediaStatus =
-function(
-    forcedStatus
-){
-
-    const status =
+    const recordButton =
         document.getElementById(
-            "gg-irregularity-media-status"
+            "gg-irregularity-record-audio"
         );
 
 
     if(
-        !status
+        recordButton &&
+        !recordButton.dataset.ggMediaBound
     ){
 
-        return;
+        recordButton.addEventListener(
+            "click",
+            function(){
 
-    }
+                GGIrregularity.Media
+                    .recordAudio();
 
-
-    if(
-        forcedStatus ===
-        "recording"
-    ){
-
-        status.textContent =
-            "🎙 Recording audio...";
-
-
-        status.style.color =
-            "#c62828";
-
-
-        return;
-
-    }
-
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    const items = [];
-
-
-    if(
-        media.photo
-    ){
-
-        items.push(
-            "Photo"
+            }
         );
 
+
+        recordButton.dataset.ggMediaBound =
+            "1";
+
     }
 
 
-    if(
-        media.video
-    ){
+    /* ========================================================
+       INITIAL BUTTON STATE
+       ======================================================== */
 
-        items.push(
-            "Video"
+    GGIrregularity.Media
+        ._setRecordButton(
+            false
         );
 
-    }
 
-
-    if(
-        media.audio ||
-        media.nativeAudioUri
-    ){
-
-        items.push(
-            "Audio"
-        );
-
-    }
-
-
-    if(
-        items.length === 0
-    ){
-
-        status.textContent =
-            "No media selected.";
-
-
-        status.style.color =
-            "#607d8b";
-
-
-        return;
-
-    }
-
-
-    status.textContent =
-        items.join(
-            " + "
-        ) +
-        " selected";
-
-
-    status.style.color =
-        "#2e7d32";
+    console.log(
+        "✅ Irregularity media events bound."
+    );
 
 };
 
 
 /* ============================================================
-   RESET MEDIA
+   RESET ALL MEDIA
    ============================================================ */
 
-GGIrregularity.Form.resetMedia =
+GGIrregularity.Media.reset =
 function(){
 
-    /*
-     * Stop browser recorder if active.
-     */
+    /* ========================================================
+       STOP RECORDER
+       ======================================================== */
+
+    const recorder =
+        GGIrregularity.Media
+            ._audioRecorder;
+
 
     if(
-        GGIrregularity.Media
-            ._audioRecorder
+        recorder &&
+        recorder.state ===
+        "recording"
     ){
 
         try{
 
-            const recorder =
-                GGIrregularity.Media
-                    ._audioRecorder;
-
-
-            if(
-                recorder.state ===
-                "recording"
-            ){
-
-                recorder.stop();
-
-            }
+            recorder.stop();
 
         }
         catch(_){
@@ -4338,38 +3546,47 @@ function(){
     }
 
 
-    if(
-        GGIrregularity.Media
-            ._audioTimer
-    ){
+    /* ========================================================
+       STOP STREAM
+       ======================================================== */
 
-        clearInterval(
-            GGIrregularity.Media
-                ._audioTimer
+    GGIrregularity.Media
+        ._stopAudioStream();
+
+
+    /* ========================================================
+       TIMER
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._clearAudioTimer();
+
+
+    /* ========================================================
+       OBJECT URLS
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._revoke(
+            "photo"
         );
 
 
-        GGIrregularity.Media
-            ._audioTimer =
-            null;
-
-    }
-
-
-    GGIrregularity.Media._revoke(
-        "photo"
-    );
+    GGIrregularity.Media
+        ._revoke(
+            "video"
+        );
 
 
-    GGIrregularity.Media._revoke(
-        "video"
-    );
+    GGIrregularity.Media
+        ._revoke(
+            "audio"
+        );
 
 
-    GGIrregularity.Media._revoke(
-        "audio"
-    );
-
+    /* ========================================================
+       STATE
+       ======================================================== */
 
     GGIrregularity.Media
         ._audioRecorder =
@@ -4400,38 +3617,29 @@ function(){
         null;
 
 
-    const ids = [
+    /* ========================================================
+       PHOTO INPUT
+       ======================================================== */
 
-        "gg-irregularity-photo",
-
-        "gg-irregularity-video",
-
-        "gg-irregularity-audio"
-
-    ];
-
-
-    ids.forEach(
-        function(id){
-
-            const input =
-                document.getElementById(
-                    id
-                );
+    const photoInput =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
 
 
-            if(
-                input
-            ){
+    if(
+        photoInput
+    ){
 
-                input.value =
-                    "";
+        photoInput.value =
+            "";
 
-            }
+    }
 
-        }
-    );
 
+    /* ========================================================
+       PHOTO PREVIEW
+       ======================================================== */
 
     const photoImage =
         document.getElementById(
@@ -4465,6 +3673,30 @@ function(){
 
     }
 
+
+    /* ========================================================
+       VIDEO INPUT
+       ======================================================== */
+
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
+    if(
+        videoInput
+    ){
+
+        videoInput.value =
+            "";
+
+    }
+
+
+    /* ========================================================
+       VIDEO PREVIEW
+       ======================================================== */
 
     const videoPlayer =
         document.getElementById(
@@ -4519,6 +3751,30 @@ function(){
     }
 
 
+    /* ========================================================
+       AUDIO INPUT
+       ======================================================== */
+
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    if(
+        audioInput
+    ){
+
+        audioInput.value =
+            "";
+
+    }
+
+
+    /* ========================================================
+       AUDIO PREVIEW
+       ======================================================== */
+
     const audioPlayer =
         document.getElementById(
             "gg-irregularity-audio-preview-player"
@@ -4572,6 +3828,10 @@ function(){
     }
 
 
+    /* ========================================================
+       TIMER
+       ======================================================== */
+
     const timer =
         document.getElementById(
             "gg-irregularity-audio-timer"
@@ -4588,995 +3848,699 @@ function(){
     }
 
 
-    GGIrregularity.Form
-        .updateMediaStatus();
+    /* ========================================================
+       BUTTON
+       ======================================================== */
+
+    GGIrregularity.Media
+        ._setRecordButton(
+            false
+        );
+
+
+    GGIrregularity.Media
+        ._updateFormStatus();
 
 };
 
 
 /* ============================================================
-   SET DEFAULT DATE / TIME
+   FINAL MEDIA STATUS
    ============================================================ */
 
-GGIrregularity.Form.setDateTimeDefaults =
+GGIrregularity.Media.getStatus =
 function(){
 
-    const now =
-        new Date();
+    const media =
+        GGIrregularity.Media
+            .getFormMedia();
 
 
-    const date =
-        now
-            .toISOString()
-            .slice(
-                0,
-                10
-            );
+    const status = {
 
+        photo:
+            !!media.photo,
 
-    const hours =
-        String(
-            now.getHours()
-        )
-        .padStart(
-            2,
-            "0"
-        );
+        video:
+            !!media.video,
 
+        audio:
+            !!(
+                media.audio ||
+                media.nativeAudioUri
+            ),
 
-    const minutes =
-        String(
-            now.getMinutes()
-        )
-        .padStart(
-            2,
-            "0"
-        );
+        nativeAudio:
+            !!media.nativeAudioUri,
 
-
-    const dateInput =
-        document.getElementById(
-            "gg-irregularity-incident_date"
-        );
-
-
-    const timeInput =
-        document.getElementById(
-            "gg-irregularity-incident_time"
-        );
-
-
-    if(
-        dateInput
-    ){
-
-        dateInput.value =
-            date;
-
-    }
-
-
-    if(
-        timeInput
-    ){
-
-        timeInput.value =
-            hours +
-            ":" +
-            minutes;
-
-    }
-
-};
-
-
-/* ============================================================
-   CATEGORY VISIBILITY
-   ============================================================ */
-
-GGIrregularity.Form.updateCategoryFields =
-function(){
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        )?.value ||
-        "";
-
-
-    document
-        .querySelectorAll(
-            "[data-irregularity-group]"
-        )
-        .forEach(
-            function(group){
-
-                group.style.display =
-                    "none";
-
-            }
-        );
-
-
-    if(
-        !category
-    ){
-
-        return;
-
-    }
-
-
-    const group =
-        document.querySelector(
-            '[data-irregularity-group="' +
-            CSS.escape(category) +
-            '"]'
-        );
-
-
-    if(
-        group
-    ){
-
-        group.style.display =
-            "block";
-
-    }
-
-};
-
-
-/* ============================================================
-   READ FORM VALUES
-   ============================================================ */
-
-GGIrregularity.Form.collect =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        !form
-    ){
-
-        throw new Error(
-            "Irregularity form not found."
-        );
-
-    }
-
-
-    const formData =
-        new FormData(
-            form
-        );
-
-
-    const data = {};
-
-
-    formData.forEach(
-        function(value,key){
-
-            /*
-             * Ignore actual media files.
-             * Media is collected by GGIrregularity.Media.
-             */
-
-            if(
-                key === "photo" ||
-                key === "video" ||
-                key === "audio"
-            ){
-
-                return;
-
-            }
-
-
-            if(
-                value instanceof File
-            ){
-
-                return;
-
-            }
-
-
-            data[key] =
-                typeof value ===
-                "string"
-
-                    ? value.trim()
-
-                    : value;
-
-        }
-    );
-
-
-    /*
-     * Normalise numeric fields.
-     */
-
-    if(
-        data.felling_tree_count !==
-        undefined
-    ){
-
-        const value =
-            Number(
-                data.felling_tree_count
-            );
-
-
-        data.felling_tree_count =
-            Number.isFinite(
-                value
-            )
-                ? value
-                : null;
-
-    }
-
-
-    if(
-        data.grazing_count !==
-        undefined
-    ){
-
-        const value =
-            Number(
-                data.grazing_count
-            );
-
-
-        data.grazing_count =
-            Number.isFinite(
-                value
-            )
-                ? value
-                : null;
-
-    }
-
-
-    /*
-     * Preserve the common field names expected
-     * by irregularityModule.js.
-     */
-
-    return data;
-
-};
-
-
-/* ============================================================
-   FORM VALIDATION
-   ============================================================ */
-
-GGIrregularity.Form.validate =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        !form
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Irregularity form not found."
-
-        };
-
-    }
-
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        )?.value ||
-        "";
-
-
-    if(
-        !category
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the observation / irregularity type."
-
-        };
-
-    }
-
-
-    const date =
-        document.getElementById(
-            "gg-irregularity-incident_date"
-        )?.value ||
-        "";
-
-
-    const time =
-        document.getElementById(
-            "gg-irregularity-incident_time"
-        )?.value ||
-        "";
-
-
-    if(
-        !date
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the incident date."
-
-        };
-
-    }
-
-
-    if(
-        !time
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the incident time."
-
-        };
-
-    }
-
-
-    /*
-     * Use native HTML validation for any
-     * additional required fields.
-     */
-
-    if(
-        !form.checkValidity()
-    ){
-
-        try{
-
-            form.reportValidity();
-
-        }
-        catch(_){
-
-        }
-
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please complete the required fields."
-
-        };
-
-    }
-
-
-    return {
-
-        valid:true,
-
-        message:
-            ""
+        recording:
+            !!GGIrregularity.Media
+                ._recording
 
     };
 
+
+    status.hasMedia =
+        !!(
+            status.photo ||
+            status.video ||
+            status.audio
+        );
+
+
+    return status;
+
 };
 
 
 /* ============================================================
-   BUILD FORM HTML
+   END PART 3/4
    ============================================================ */
 
-GGIrregularity.Form.build =
+/* ============================================================
+   PART 4/4
+   FINAL INITIALIZATION + COMPATIBILITY
+   ============================================================ */
+
+
+/* ============================================================
+   MEDIA BUTTON HELPERS
+   ============================================================ */
+
+/*
+ * These global helpers are intentionally small.
+ *
+ * They allow HTML onclick handlers to use the same
+ * existing GGIrregularity.Media functions.
+ */
+
+window.ggIrregularityChangePhoto =
 function(){
 
-    return `
+    GGIrregularity.Media
+        .changePhoto();
 
-        <form
-            id="gg-irregularity-form"
-            autocomplete="off"
-            novalidate
-            style="
-                width:100%;
-                box-sizing:border-box;
-            "
-        >
-
-            <!-- =================================================
-                 TITLE
-                 ================================================= -->
-
-            <div
-                style="
-                    margin-bottom:10px;
-                    padding-bottom:8px;
-                    border-bottom:1px solid #e0e6e0;
-                "
-            >
-
-                <div
-                    style="
-                        color:#1b5e20;
-                        font-size:15px;
-                        font-weight:800;
-                    "
-                >
-                    ⚠️ IRREGULARITY / OFFENCE / OBSERVATION
-                </div>
+};
 
 
-                <div
-                    style="
-                        margin-top:3px;
-                        color:#78909c;
-                        font-size:10px;
-                        line-height:1.35;
-                    "
-                >
-                    Report the field observation. GPS, GIS,
-                    reporter and system information are added
-                    automatically during submission.
-                </div>
+window.ggIrregularityRemovePhoto =
+function(){
 
-            </div>
+    GGIrregularity.Media
+        .removePhoto();
+
+};
 
 
-            <!-- =================================================
-                 CATEGORY
-                 ================================================= -->
+window.ggIrregularityChangeVideo =
+function(){
 
-            ${GGIrregularity.Form.categorySelect()}
+    GGIrregularity.Media
+        .changeVideo();
 
-
-            <!-- =================================================
-                 DATE / TIME
-                 ================================================= -->
-
-            ${GGIrregularity.Form.commonFields()}
+};
 
 
-            <!-- =================================================
-                 CATEGORY-SPECIFIC FIELDS
-                 ================================================= -->
+window.ggIrregularityRemoveVideo =
+function(){
 
-            ${GGIrregularity.Form.felling()}
+    GGIrregularity.Media
+        .removeVideo();
 
-            ${GGIrregularity.Form.timber()}
-
-            ${GGIrregularity.Form.mining()}
-
-            ${GGIrregularity.Form.fishing()}
-
-            ${GGIrregularity.Form.grazing()}
-
-            ${GGIrregularity.Form.fire()}
-
-            ${GGIrregularity.Form.encroachment()}
-
-            ${GGIrregularity.Form.structure()}
-
-            ${GGIrregularity.Form.poaching()}
-
-            ${GGIrregularity.Form.trespassing()}
-
-            ${GGIrregularity.Form.wildlifeInjury()}
-
-            ${GGIrregularity.Form.wildlifeDeath()}
-
-            ${GGIrregularity.Form.observation()}
+};
 
 
-            <!-- =================================================
-                 REMARKS
-                 ================================================= -->
+window.ggIrregularityRecordAudio =
+function(){
 
-            ${GGIrregularity.Form.remarks()}
+    GGIrregularity.Media
+        .recordAudio();
 
-
-            <!-- =================================================
-                 MEDIA
-                 ================================================= -->
-
-            ${GGIrregularity.Form.media()}
+};
 
 
-            <!-- =================================================
-                 SUBMIT
-                 ================================================= -->
+window.ggIrregularityStopAudio =
+function(){
 
-            <button
-                type="submit"
-                id="gg-irregularity-submit"
-                style="
-                    width:100%;
-                    min-height:44px;
-                    margin-top:4px;
-                    border:0;
-                    border-radius:8px;
-                    background:#2e7d32;
-                    color:#ffffff;
-                    font-size:13px;
-                    font-weight:800;
-                    cursor:pointer;
-                    touch-action:manipulation;
-                "
-            >
-                SAVE IRREGULARITY
-            </button>
+    GGIrregularity.Media
+        .stopRecording();
+
+};
 
 
-            <!-- =================================================
-                 CANCEL
-                 ================================================= -->
+window.ggIrregularityRecordAgain =
+function(){
 
-            <button
-                type="button"
-                id="gg-irregularity-cancel"
-                style="
-                    width:100%;
-                    min-height:38px;
-                    margin-top:7px;
-                    border:1px solid #cfd8dc;
-                    border-radius:8px;
-                    background:#ffffff;
-                    color:#455a64;
-                    font-size:12px;
-                    font-weight:700;
-                    cursor:pointer;
-                    touch-action:manipulation;
-                "
-            >
-                CANCEL
-            </button>
+    GGIrregularity.Media
+        .recordAgain();
 
-        </form>
+};
 
-    `;
+
+window.ggIrregularityRemoveAudio =
+function(){
+
+    GGIrregularity.Media
+        .removeAudio();
+
+};
+
+
+window.ggIrregularitySelectAudio =
+function(){
+
+    GGIrregularity.Media
+        .selectAudio();
 
 };
 
 
 /* ============================================================
-   MOUNT FORM
+   MEDIA UI VISIBILITY
    ============================================================ */
 
-GGIrregularity.Form.mount =
+GGIrregularity.Media.updateControls =
+function(){
+
+    const photoInput =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    const photo =
+        photoInput?.files?.[0] ||
+        null;
+
+
+    const video =
+        videoInput?.files?.[0] ||
+        null;
+
+
+    const audio =
+        audioInput?.files?.[0] ||
+        null;
+
+
+    const nativeAudio =
+        GGIrregularity.Media
+            ._nativeAudioUri ||
+        null;
+
+
+    /* ========================================================
+       PHOTO CONTROLS
+       ======================================================== */
+
+    const photoActions =
+        document.getElementById(
+            "gg-irregularity-photo-actions"
+        );
+
+
+    if(
+        photoActions
+    ){
+
+        photoActions.style.display =
+            photo
+                ? "flex"
+                : "none";
+
+    }
+
+
+    /* ========================================================
+       VIDEO CONTROLS
+       ======================================================== */
+
+    const videoActions =
+        document.getElementById(
+            "gg-irregularity-video-actions"
+        );
+
+
+    if(
+        videoActions
+    ){
+
+        videoActions.style.display =
+            video
+                ? "flex"
+                : "none";
+
+    }
+
+
+    /* ========================================================
+       AUDIO CONTROLS
+       ======================================================== */
+
+    const audioActions =
+        document.getElementById(
+            "gg-irregularity-audio-actions"
+        );
+
+
+    if(
+        audioActions
+    ){
+
+        audioActions.style.display =
+            (
+                audio ||
+                nativeAudio
+            )
+                ? "flex"
+                : "none";
+
+    }
+
+
+    /* ========================================================
+       AUDIO FILE BUTTON
+       ======================================================== */
+
+    const selectAudioButton =
+        document.getElementById(
+            "gg-irregularity-select-audio"
+        );
+
+
+    if(
+        selectAudioButton
+    ){
+
+        selectAudioButton.style.display =
+            GGIrregularity.Media
+                ._recording
+                ? "none"
+                : "inline-flex";
+
+    }
+
+
+    /* ========================================================
+       RECORD BUTTON
+       ======================================================== */
+
+    const recordButton =
+        document.getElementById(
+            "gg-irregularity-record-audio"
+        );
+
+
+    if(
+        recordButton
+    ){
+
+        recordButton.style.display =
+            "inline-flex";
+
+    }
+
+};
+
+
+/* ============================================================
+   WRAP STATUS UPDATE
+   ============================================================ */
+
+GGIrregularity.Media._originalUpdateFormStatus =
+    GGIrregularity.Media._originalUpdateFormStatus ||
+    GGIrregularity.Media._updateFormStatus;
+
+
+GGIrregularity.Media._updateFormStatus =
 function(
-    container
+    state
 ){
 
     if(
-        !container
-    ){
-
-        console.error(
-            "❌ Irregularity form container not found."
-        );
-
-
-        return false;
-
-    }
-
-
-    /*
-     * Do not create duplicate forms.
-     */
-
-    const existing =
-        container.querySelector(
-            "#gg-irregularity-form"
-        );
-
-
-    if(
-        existing
-    ){
-
-        GGIrregularity.Form
-            .bind();
-
-        return true;
-
-    }
-
-
-    container.innerHTML =
-        GGIrregularity.Form.build();
-
-
-    GGIrregularity.Form
-        .bind();
-
-
-    return true;
-
-};
-
-
-/* ============================================================
-   BIND FORM EVENTS
-   ============================================================ */
-
-GGIrregularity.Form.bind =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        !form
-    ){
-
-        return false;
-
-    }
-
-
-    /*
-     * Prevent duplicate submit listeners.
-     */
-
-    if(
-        !form.dataset.ggSubmitBound
-    ){
-
-        form.addEventListener(
-            "submit",
-            async function(event){
-
-                event.preventDefault();
-                event.stopPropagation();
-
-
-                /*
-                 * Let irregularityModule.js own the actual
-                 * Firestore save.
-                 */
-
-                if(
-                    typeof GGIrregularity
-                        .submit ===
-                    "function"
-                ){
-
-                    await GGIrregularity
-                        .submit();
-
-                    return;
-
-                }
-
-
-                if(
-                    typeof GGIrregularity
-                        .Module
-                        ?.submit ===
-                    "function"
-                ){
-
-                    await GGIrregularity
-                        .Module
-                        .submit();
-
-                    return;
-
-                }
-
-
-                console.error(
-                    "❌ GGIrregularity.submit() is unavailable."
-                );
-
-
-                alert(
-                    "Irregularity module is not ready."
-                );
-
-            }
-        );
-
-
-        form.dataset.ggSubmitBound =
-            "1";
-
-    }
-
-
-    /*
-     * Category selector.
-     */
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        );
-
-
-    if(
-        category &&
-        !category.dataset.ggBound
-    ){
-
-        category.addEventListener(
-            "change",
-            function(){
-
-                GGIrregularity.Form
-                    .updateCategoryFields();
-
-            }
-        );
-
-
-        category.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /*
-     * Cancel.
-     */
-
-    const cancel =
-        document.getElementById(
-            "gg-irregularity-cancel"
-        );
-
-
-    if(
-        cancel &&
-        !cancel.dataset.ggBound
-    ){
-
-        cancel.addEventListener(
-            "click",
-            function(){
-
-                if(
-                    typeof window
-                        .closeIrregularityForm ===
-                    "function"
-                ){
-
-                    window
-                        .closeIrregularityForm();
-
-                }
-
-            }
-        );
-
-
-        cancel.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /*
-     * Media.
-     */
-
-    GGIrregularity.Form
-        .bindMediaEvents();
-
-
-    GGIrregularity.Form
-        .setDateTimeDefaults();
-
-
-    GGIrregularity.Form
-        .updateCategoryFields();
-
-
-    GGIrregularity.Form
-        .updateMediaStatus();
-
-
-    return true;
-
-};
-
-
-/* ============================================================
-   OPEN / RESET FORM
-   ============================================================ */
-
-GGIrregularity.Form.reset =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        form
+        typeof GGIrregularity.Media
+            ._originalUpdateFormStatus ===
+        "function"
     ){
 
         try{
 
-            form.reset();
+            GGIrregularity.Media
+                ._originalUpdateFormStatus(
+                    state
+                );
 
         }
-        catch(_){
+        catch(error){
+
+            console.warn(
+                "⚠ Media status UI update failed:",
+                error
+            );
 
         }
 
     }
 
 
-    GGIrregularity.Form
-        .resetMedia();
+    try{
 
+        GGIrregularity.Media
+            .updateControls();
 
-    GGIrregularity.Form
-        .setDateTimeDefaults();
+    }
+    catch(error){
 
-
-    GGIrregularity.Form
-        .updateCategoryFields();
-
-
-    GGIrregularity.Form
-        .updateMediaStatus();
-
-};
-
-
-/* ============================================================
-   CLOSE FORM
-   ============================================================ */
-
-GGIrregularity.Form.close =
-function(){
-
-    GGIrregularity.Form
-        .reset();
-
-};
-
-
-/* ============================================================
-   INITIALIZE FORM CONTAINER
-   ============================================================ */
-
-GGIrregularity.Form.init =
-function(){
-
-    /*
-     * Existing UI may already contain the modal.
-     * Find the dedicated irregularity form container.
-     */
-
-    const container =
-        document.getElementById(
-            "irregularity-form-container"
+        console.warn(
+            "⚠ Media controls update failed:",
+            error
         );
 
+    }
 
-    if(
-        container
-    ){
+};
 
-        GGIrregularity.Form
-            .mount(
-                container
+
+/* ============================================================
+   WRAP PREVIEW FUNCTIONS
+   ============================================================ */
+
+/*
+ * Make sure preview operations also refresh
+ * the action buttons.
+ */
+
+GGIrregularity.Media._originalPreviewPhoto =
+    GGIrregularity.Media._originalPreviewPhoto ||
+    GGIrregularity.Media.previewPhoto;
+
+
+GGIrregularity.Media.previewPhoto =
+function(
+    input
+){
+
+    const result =
+        GGIrregularity.Media
+            ._originalPreviewPhoto(
+                input
             );
 
 
-        return true;
-
-    }
-
-
-    /*
-     * Alternative container used by some versions
-     * of the UI.
-     */
-
-    const alternative =
-        document.getElementById(
-            "irregularityFormContainer"
-        );
+    GGIrregularity.Media
+        .updateControls();
 
 
-    if(
-        alternative
-    ){
+    return result;
 
-        GGIrregularity.Form
-            .mount(
-                alternative
+};
+
+
+GGIrregularity.Media._originalPreviewVideo =
+    GGIrregularity.Media._originalPreviewVideo ||
+    GGIrregularity.Media.previewVideo;
+
+
+GGIrregularity.Media.previewVideo =
+function(
+    input
+){
+
+    const result =
+        GGIrregularity.Media
+            ._originalPreviewVideo(
+                input
             );
 
 
-        return true;
-
-    }
-
-
-    console.warn(
-        "⚠️ Irregularity form container not found. UI will mount it when opened."
-    );
+    GGIrregularity.Media
+        .updateControls();
 
 
-    return false;
+    return result;
+
+};
+
+
+GGIrregularity.Media._originalPreviewAudio =
+    GGIrregularity.Media._originalPreviewAudio ||
+    GGIrregularity.Media.previewAudio;
+
+
+GGIrregularity.Media.previewAudio =
+function(
+    input
+){
+
+    const result =
+        GGIrregularity.Media
+            ._originalPreviewAudio(
+                input
+            );
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
 
 };
 
 
 /* ============================================================
-   GLOBAL FORM HELPERS
+   WRAP REMOVE FUNCTIONS
    ============================================================ */
 
-window.openGGIrregularityForm =
+GGIrregularity.Media._originalRemovePhoto =
+    GGIrregularity.Media._originalRemovePhoto ||
+    GGIrregularity.Media.removePhoto;
+
+
+GGIrregularity.Media.removePhoto =
 function(){
 
-    if(
-        typeof window
-            .openIrregularityForm ===
-        "function"
-    ){
-
-        window
-            .openIrregularityForm();
-
-        return;
-
-    }
+    const result =
+        GGIrregularity.Media
+            ._originalRemovePhoto();
 
 
-    console.warn(
-        "⚠️ openIrregularityForm() is not available."
-    );
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
+
+};
+
+
+GGIrregularity.Media._originalRemoveVideo =
+    GGIrregularity.Media._originalRemoveVideo ||
+    GGIrregularity.Media.removeVideo;
+
+
+GGIrregularity.Media.removeVideo =
+function(){
+
+    const result =
+        GGIrregularity.Media
+            ._originalRemoveVideo();
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
+
+};
+
+
+GGIrregularity.Media._originalRemoveAudio =
+    GGIrregularity.Media._originalRemoveAudio ||
+    GGIrregularity.Media.removeAudio;
+
+
+GGIrregularity.Media.removeAudio =
+function(){
+
+    const result =
+        GGIrregularity.Media
+            ._originalRemoveAudio();
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
 
 };
 
 
 /* ============================================================
-   INITIALIZE WHEN DOM READY
+   WRAP RECORDING
    ============================================================ */
+
+GGIrregularity.Media._originalRecordAudio =
+    GGIrregularity.Media._originalRecordAudio ||
+    GGIrregularity.Media.recordAudio;
+
+
+GGIrregularity.Media.recordAudio =
+async function(){
+
+    const result =
+        await GGIrregularity.Media
+            ._originalRecordAudio();
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
+
+};
+
+
+/* ============================================================
+   WRAP RECORD AGAIN
+   ============================================================ */
+
+GGIrregularity.Media._originalRecordAgain =
+    GGIrregularity.Media._originalRecordAgain ||
+    GGIrregularity.Media.recordAgain;
+
+
+GGIrregularity.Media.recordAgain =
+function(){
+
+    const result =
+        GGIrregularity.Media
+            ._originalRecordAgain();
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
+
+};
+
+
+/* ============================================================
+   WRAP RESET
+   ============================================================ */
+
+GGIrregularity.Media._originalReset =
+    GGIrregularity.Media._originalReset ||
+    GGIrregularity.Media.reset;
+
+
+GGIrregularity.Media.reset =
+function(){
+
+    const result =
+        GGIrregularity.Media
+            ._originalReset();
+
+
+    GGIrregularity.Media
+        .updateControls();
+
+
+    return result;
+
+};
+
+
+/* ============================================================
+   BIND MEDIA EVENTS SAFELY
+   ============================================================ */
+
+GGIrregularity.Media.init =
+function(){
+
+    try{
+
+        GGIrregularity.Media
+            .bindEvents();
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Irregularity Media event binding failed:",
+            error
+        );
+
+    }
+
+
+    try{
+
+        GGIrregularity.Media
+            .updateControls();
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ Irregularity Media controls could not be initialized:",
+            error
+        );
+
+    }
+
+
+    console.log(
+        "✅ GGIrregularity.Media initialized."
+    );
+
+
+    return true;
+
+};
+
+
+/* ============================================================
+   DELAYED INIT
+   ============================================================ */
+
+GGIrregularity.Media._domReadyHandler =
+function(){
+
+    try{
+
+        GGIrregularity.Media
+            .init();
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ GGIrregularity.Media init error:",
+            error
+        );
+
+    }
+
+};
+
 
 if(
     document.readyState ===
@@ -5585,24 +4549,8 @@ if(
 
     document.addEventListener(
         "DOMContentLoaded",
-        function(){
-
-            try{
-
-                GGIrregularity.Form
-                    .init();
-
-            }
-            catch(error){
-
-                console.error(
-                    "❌ Irregularity Form initialization failed:",
-                    error
-                );
-
-            }
-
-        },
+        GGIrregularity.Media
+            ._domReadyHandler,
         {
             once:true
         }
@@ -5611,645 +4559,167 @@ if(
 }
 else{
 
-    try{
+    /*
+     * The script can load before the modal/form is
+     * dynamically inserted, so initialize now and
+     * initialize again when the form opens through
+     * irregularityUI.js.
+     */
 
-        GGIrregularity.Form
-            .init();
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ Irregularity Form initialization failed:",
-            error
-        );
-
-    }
+    GGIrregularity.Media
+        ._domReadyHandler();
 
 }
 
 
 /* ============================================================
-   END irregularityForm.js
+   RE-BIND WHEN IRREGULARITY FORM IS OPENED
    ============================================================ */
 
-
-/* ============================================================
-   EXISTING MEDIA PIPELINE COMPATIBILITY
-   ============================================================ */
-
-/*
- * Some existing GreenGuard code may call these names directly.
- * Keep them available without creating another upload pipeline.
- */
-
-
-/* ============================================================
-   PHOTO
-   ============================================================ */
-
-GGIrregularity.Media.changePhoto =
+GGIrregularity.Media.refresh =
 function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   VIDEO
-   ============================================================ */
-
-GGIrregularity.Media.changeVideo =
-function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   AUDIO FILE
-   ============================================================ */
-
-GGIrregularity.Media.selectAudio =
-function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   AUDIO STOP
-   ============================================================ */
-
-GGIrregularity.Media.stopRecording =
-function(){
-
-    const recorder =
-        GGIrregularity.Media
-            ._audioRecorder;
-
-
-    if(
-        recorder &&
-        recorder.state ===
-        "recording"
-    ){
-
-        try{
-
-            recorder.stop();
-
-        }
-        catch(error){
-
-            console.warn(
-                "⚠ Unable to stop audio recorder:",
-                error
-            );
-
-        }
-
-
-        return;
-
-    }
-
-
-    /*
-     * Native recorder is controlled by Android.
-     * There is deliberately no competing native implementation
-     * here.
-     */
-
-    if(
-        GGIrregularity.Media
-            ._nativeAudioActive
-    ){
-
-        console.log(
-            "🎙 Native audio recorder is active."
-        );
-
-    }
-
-};
-
-
-/* ============================================================
-   MEDIA SUMMARY
-   ============================================================ */
-
-GGIrregularity.Media.getSummary =
-function(){
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    return {
-
-        hasPhoto:
-            !!media.photo,
-
-        hasVideo:
-            !!media.video,
-
-        hasAudio:
-            !!(
-                media.audio ||
-                media.nativeAudioUri
-            ),
-
-        photo:
-            media.photo,
-
-        video:
-            media.video,
-
-        audio:
-            media.audio,
-
-        nativeAudioUri:
-            media.nativeAudioUri
-
-    };
-
-};
-
-
-/* ============================================================
-   MEDIA VALIDATION
-   ============================================================ */
-
-GGIrregularity.Media.validate =
-function(){
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    /*
-     * No media is valid.
-     */
-
-    if(
-        !media.photo &&
-        !media.video &&
-        !media.audio &&
-        !media.nativeAudioUri
-    ){
-
-        return {
-
-            valid:true,
-
-            message:""
-
-        };
-
-    }
-
-
-    /*
-     * Photo.
-     */
-
-    if(
-        media.photo &&
-        !media.photo.type.startsWith(
-            "image/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid photo file."
-
-        };
-
-    }
-
-
-    /*
-     * Video.
-     */
-
-    if(
-        media.video &&
-        !media.video.type.startsWith(
-            "video/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid video file."
-
-        };
-
-    }
-
-
-    /*
-     * Audio.
-     */
-
-    if(
-        media.audio &&
-        !media.audio.type.startsWith(
-            "audio/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid audio file."
-
-        };
-
-    }
-
-
-    return {
-
-        valid:true,
-
-        message:""
-
-    };
-
-};
-
-
-/* ============================================================
-   BEFORE SUBMIT MEDIA CHECK
-   ============================================================ */
-
-GGIrregularity.Form.validateMedia =
-function(){
-
-    const result =
-        GGIrregularity.Media
-            .validate();
-
-
-    if(
-        !result.valid
-    ){
-
-        alert(
-            result.message
-        );
-
-
-        return false;
-
-    }
-
-
-    return true;
-
-};
-
-
-/* ============================================================
-   COMPLETE FORM VALIDATION
-   ============================================================ */
-
-GGIrregularity.Form.validateBeforeSubmit =
-function(){
-
-    const formResult =
-        GGIrregularity.Form
-            .validate();
-
-
-    if(
-        !formResult.valid
-    ){
-
-        if(
-            formResult.message
-        ){
-
-            alert(
-                formResult.message
-            );
-
-        }
-
-
-        return false;
-
-    }
-
-
-    if(
-        !GGIrregularity.Form
-            .validateMedia()
-    ){
-
-        return false;
-
-    }
-
-
-    return true;
-
-};
-
-
-/* ============================================================
-   SUBMIT BUTTON STATE
-   ============================================================ */
-
-GGIrregularity.Form.setSubmitting =
-function(
-    state
-){
-
-    const button =
-        document.getElementById(
-            "gg-irregularity-submit"
-        );
-
-
-    if(
-        !button
-    ){
-
-        return;
-
-    }
-
-
-    if(
-        state
-    ){
-
-        button.disabled =
-            true;
-
-
-        button.dataset.originalText =
-            button.textContent;
-
-
-        button.textContent =
-            "SAVING...";
-
-
-        button.style.opacity =
-            "0.65";
-
-
-        button.style.cursor =
-            "wait";
-
-    }
-    else{
-
-        button.disabled =
-            false;
-
-
-        button.textContent =
-            button.dataset.originalText ||
-            "SAVE IRREGULARITY";
-
-
-        button.style.opacity =
-            "1";
-
-
-        button.style.cursor =
-            "pointer";
-
-    }
-
-};
-
-
-/* ============================================================
-   FORM DATA SNAPSHOT
-   ============================================================ */
-
-GGIrregularity.Form.getSnapshot =
-function(){
-
-    let data = {};
-
 
     try{
 
-        data =
-            GGIrregularity.Form
-                .collect();
+        GGIrregularity.Media
+            .bindEvents();
 
     }
     catch(error){
 
-        console.error(
-            "❌ Unable to collect Irregularity form:",
+        console.warn(
+            "⚠ Irregularity media rebind failed:",
             error
         );
 
     }
 
 
-    return {
+    try{
 
-        form:
-            data,
+        GGIrregularity.Media
+            .updateControls();
 
-        media:
-            GGIrregularity.Media
-                .getSummary()
+    }
+    catch(error){
 
-    };
+        console.warn(
+            "⚠ Irregularity media control refresh failed:",
+            error
+        );
+
+    }
 
 };
 
 
 /* ============================================================
-   DEBUG HELPER
+   GLOBAL REFRESH HELPER
    ============================================================ */
 
-GGIrregularity.Form.debug =
+window.refreshIrregularityMedia =
 function(){
 
-    const snapshot =
-        GGIrregularity.Form
-            .getSnapshot();
+    GGIrregularity.Media
+        .refresh();
+
+};
 
 
-    console.log(
-        "=============================="
+/* ============================================================
+   DEBUG
+   ============================================================ */
+
+GGIrregularity.Media.debug =
+function(){
+
+    const media =
+        GGIrregularity.Media
+            .getFormMedia();
+
+
+    const status =
+        GGIrregularity.Media
+            .getStatus();
+
+
+    console.group(
+        "⚠️ IRREGULARITY MEDIA DEBUG"
     );
 
 
     console.log(
-        "⚠️ IRREGULARITY FORM DEBUG"
+        "Photo:",
+        media.photo
     );
 
 
     console.log(
-        "=============================="
+        "Video:",
+        media.video
     );
 
 
     console.log(
-        "FORM:",
-        snapshot.form
+        "Audio:",
+        media.audio
     );
 
 
     console.log(
-        "MEDIA:",
-        snapshot.media
+        "Native Audio URI:",
+        media.nativeAudioUri
     );
 
 
     console.log(
-        "GPS:",
-        window.latestGps
+        "Status:",
+        status
     );
 
 
     console.log(
-        "GIS:",
-        typeof window.resolveCurrentGIS
-    );
-
-
-    console.log(
-        "FIREBASE DB:",
-        !!window.db
-    );
-
-
-    console.log(
-        "FIREBASE STORAGE:",
+        "Firebase Storage:",
         !!window.storage
     );
 
 
     console.log(
-        "MODULE:",
-        typeof GGIrregularity.submit
+        "Firebase DB:",
+        !!window.db
     );
 
 
     console.log(
-        "=============================="
+        "Firebase API:",
+        !!window.fb
     );
 
 
-    return snapshot;
+    console.groupEnd();
 
-};
-
-
-/* ============================================================
-   FINAL INITIALIZATION CHECK
-   ============================================================ */
-
-GGIrregularity.Form.ready =
-function(){
 
     return {
 
-        form:
-            !!document.getElementById(
-                "gg-irregularity-form"
-            ),
-
         media:
-            !!document.getElementById(
-                "gg-irregularity-photo"
-            ) &&
-            !!document.getElementById(
-                "gg-irregularity-video"
-            ) &&
-            !!document.getElementById(
-                "gg-irregularity-audio"
-            ),
+            media,
 
-        photoPreview:
-            !!document.getElementById(
-                "gg-irregularity-photo-preview"
-            ),
+        status:
+            status,
 
-        videoPreview:
-            !!document.getElementById(
-                "gg-irregularity-video-preview"
-            ),
+        firebase:
+            {
 
-        audioPreview:
-            !!document.getElementById(
-                "gg-irregularity-audio-preview"
-            ),
+                storage:
+                    !!window.storage,
 
-        module:
-            typeof GGIrregularity.submit ===
-            "function",
+                db:
+                    !!window.db,
 
-        gis:
-            typeof window.resolveCurrentGIS ===
-            "function",
+                fb:
+                    !!window.fb
 
-        gps:
-            !!window.latestGps
+            }
 
     };
 
@@ -6257,36 +4727,127 @@ function(){
 
 
 /* ============================================================
-   FINAL CONSOLE MESSAGE
+   FINAL SAFETY CHECK
+   ============================================================ */
+
+(function(){
+
+    const requiredFunctions = [
+
+        "getStorageRoot",
+
+        "uploadBlob",
+
+        "upload",
+
+        "updateFirestore",
+
+        "previewPhoto",
+
+        "changePhoto",
+
+        "removePhoto",
+
+        "previewVideo",
+
+        "changeVideo",
+
+        "removeVideo",
+
+        "recordAudio",
+
+        "stopRecording",
+
+        "recordAgain",
+
+        "removeAudio",
+
+        "getFormMedia"
+
+    ];
+
+
+    const missing =
+        requiredFunctions.filter(
+            function(name){
+
+                return typeof GGIrregularity.Media[name] !==
+                    "function";
+
+            }
+        );
+
+
+    if(
+        missing.length
+    ){
+
+        console.error(
+            "❌ GGIrregularity.Media missing functions:",
+            missing
+        );
+
+    }
+    else{
+
+        console.log(
+            "✅ GGIrregularity.Media — all required functions available."
+        );
+
+    }
+
+})();
+
+
+/* ============================================================
+   FINAL LOAD MESSAGE
    ============================================================ */
 
 console.log(
-    "✅ GGIrregularity.Form loaded."
+    "=================================================="
 );
 
 
 console.log(
-    "📎 Irregularity media UI:",
-    {
-        photo:
-            typeof GGIrregularity.Media.previewPhoto,
+    "✅ irregularityMedia.js FULLY LOADED"
+);
 
-        video:
-            typeof GGIrregularity.Media.previewVideo,
 
-        audio:
-            typeof GGIrregularity.Media.recordAudio,
+console.log(
+    "📷 Photo:",
+    typeof GGIrregularity.Media.previewPhoto
+);
 
-        upload:
-            typeof GGIrregularity.Media.upload,
 
-        updateFirestore:
-            typeof GGIrregularity.Media.updateFirestore
+console.log(
+    "🎥 Video:",
+    typeof GGIrregularity.Media.previewVideo
+);
 
-    }
+
+console.log(
+    "🎙 Audio:",
+    typeof GGIrregularity.Media.recordAudio
+);
+
+
+console.log(
+    "⬆️ Upload:",
+    typeof GGIrregularity.Media.upload
+);
+
+
+console.log(
+    "🔥 Firestore Update:",
+    typeof GGIrregularity.Media.updateFirestore
+);
+
+
+console.log(
+    "=================================================="
 );
 
 
 /* ============================================================
-   END OF irregularityForm.js
+   END irregularityMedia.js
    ============================================================ */
