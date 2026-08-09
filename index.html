@@ -38481,7 +38481,7 @@ function buildSightingMediaPopup(
 
 
     // ========================================================
-    // REGISTER MEDIA
+    // INITIALIZE MEDIA REGISTRY
     // ========================================================
 
     if(
@@ -38493,6 +38493,22 @@ function buildSightingMediaPopup(
 
     }
 
+
+    // ========================================================
+    // REGISTER MEDIA
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // The popup does NOT create:
+    //
+    // <img>
+    // <video>
+    // <audio>
+    //
+    // Media is created only after Preview is clicked.
+    //
+    // ========================================================
 
     window.sightingMediaRegistry[
         sightingKey
@@ -38526,57 +38542,27 @@ function buildSightingMediaPopup(
 
 
     // ========================================================
-    // ESCAPE HTML
+    // SAFE ENCODING FOR INLINE EVENT HANDLERS
+    // ========================================================
+    //
+    // We use encodeURIComponent() instead of directly placing
+    // URLs / keys inside JavaScript strings.
+    //
+    // This prevents:
+    //
+    // - quote breaking
+    // - special character problems
+    // - Firebase URL parameter problems
+    // - popup HTML corruption
+    //
     // ========================================================
 
-    function safeHtml(
-        value
-    ){
-
-        if(
-            typeof escapeSightingMediaHtml ===
-            "function"
-        ){
-
-            return escapeSightingMediaHtml(
-                String(
-                    value || ""
-                )
-            );
-
-        }
-
-
-        return String(
-            value || ""
-        )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
-    }
-
-
-    const safeKey =
-        safeHtml(
-            sightingKey
+    const encodedKey =
+        encodeURIComponent(
+            String(
+                sightingKey ||
+                ""
+            )
         );
 
 
@@ -38589,42 +38575,92 @@ function buildSightingMediaPopup(
         label
     ){
 
+        const encodedType =
+            encodeURIComponent(
+                String(
+                    type ||
+                    ""
+                )
+            );
+
+
         return `
 
             <button
                 type="button"
                 data-gg-media-preview="true"
+
                 onclick="
                     event.preventDefault();
                     event.stopPropagation();
 
                     openSightingMediaPreview(
-                        '${safeKey}',
-                        '${type}'
+                        decodeURIComponent('${encodedKey}'),
+                        decodeURIComponent('${encodedType}')
                     );
+
+                    return false;
                 "
+
                 style="
-                    flex:1 1 0;
-                    min-width:0;
-                    box-sizing:border-box;
+                    flex:
+                        1 1 0;
 
-                    border:none;
-                    border-radius:7px;
+                    min-width:
+                        0;
 
-                    background:#2e7d32;
-                    color:#fff;
+                    box-sizing:
+                        border-box;
 
-                    padding:8px 6px;
+                    min-height:
+                        34px;
 
-                    font-size:11px;
-                    font-weight:700;
+                    border:
+                        none;
 
-                    cursor:pointer;
+                    border-radius:
+                        7px;
 
-                    line-height:1.2;
+                    background:
+                        #2e7d32;
 
-                    touch-action:manipulation;
-                    -webkit-tap-highlight-color:transparent;
+                    color:
+                        #fff;
+
+                    padding:
+                        8px 7px;
+
+                    font-family:
+                        Segoe UI,
+                        Arial,
+                        sans-serif;
+
+                    font-size:
+                        11px;
+
+                    font-weight:
+                        700;
+
+                    line-height:
+                        1.2;
+
+                    text-align:
+                        center;
+
+                    cursor:
+                        pointer;
+
+                    touch-action:
+                        manipulation;
+
+                    -webkit-tap-highlight-color:
+                        transparent;
+
+                    user-select:
+                        none;
+
+                    -webkit-user-select:
+                        none;
                 "
             >
                 ${label}
@@ -38638,60 +38674,132 @@ function buildSightingMediaPopup(
     // ========================================================
     // DOWNLOAD BUTTON
     // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // DO NOT use:
+    //
+    // <a href="firebase-url">
+    //
+    // because mobile browsers may navigate away from
+    // GreenGuard and display the large image directly.
+    //
+    // Instead:
+    //
+    // button
+    //    ↓
+    // downloadSightingMedia()
+    //
+    // ========================================================
 
     function downloadButton(
         url,
         label
     ){
 
-        const safeUrl =
-            safeHtml(
-                url
+        const encodedUrl =
+            encodeURIComponent(
+                String(
+                    url ||
+                    ""
+                )
             );
 
 
         return `
 
-            <a
-                href="${safeUrl}"
-                download
-                target="_blank"
-                rel="noopener noreferrer"
+            <button
+                type="button"
+                data-gg-media-download="true"
+
                 onclick="
+                    event.preventDefault();
                     event.stopPropagation();
+
+                    if(
+                        typeof downloadSightingMedia ===
+                        'function'
+                    ){
+
+                        downloadSightingMedia(
+                            decodeURIComponent('${encodedUrl}')
+                        );
+
+                    }
+                    else{
+
+                        console.error(
+                            '❌ downloadSightingMedia() is not available.'
+                        );
+
+                    }
+
+                    return false;
                 "
+
                 style="
-                    flex:1 1 0;
-                    min-width:0;
+                    flex:
+                        1 1 0;
 
-                    box-sizing:border-box;
+                    min-width:
+                        0;
 
-                    display:block;
+                    box-sizing:
+                        border-box;
 
-                    text-align:center;
+                    min-height:
+                        34px;
 
-                    text-decoration:none;
+                    border:
+                        none;
 
-                    border-radius:7px;
+                    border-radius:
+                        7px;
 
-                    background:#1565c0;
-                    color:#fff;
+                    background:
+                        #1565c0;
 
-                    padding:8px 6px;
+                    color:
+                        #fff;
 
-                    font-size:11px;
-                    font-weight:700;
+                    padding:
+                        8px 7px;
 
-                    line-height:1.2;
+                    font-family:
+                        Segoe UI,
+                        Arial,
+                        sans-serif;
 
-                    cursor:pointer;
+                    font-size:
+                        11px;
 
-                    touch-action:manipulation;
-                    -webkit-tap-highlight-color:transparent;
+                    font-weight:
+                        700;
+
+                    line-height:
+                        1.2;
+
+                    text-align:
+                        center;
+
+                    cursor:
+                        pointer;
+
+                    touch-action:
+                        manipulation;
+
+                    -webkit-tap-highlight-color:
+                        transparent;
+
+                    user-select:
+                        none;
+
+                    -webkit-user-select:
+                        none;
                 "
             >
                 ${label}
-            </a>
+            </button>
 
         `;
 
@@ -38714,23 +38822,63 @@ function buildSightingMediaPopup(
 
             <div
                 style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin-bottom:9px;
+                    width:
+                        100%;
+
+                    box-sizing:
+                        border-box;
+
+                    margin:
+                        0 0 10px 0;
+
+                    padding:
+                        8px;
+
+                    background:
+                        #ffffff;
+
+                    border:
+                        1px solid
+                        #e1e7e1;
+
+                    border-radius:
+                        7px;
                 "
             >
 
                 <div
                     style="
-                        display:flex;
-                        align-items:center;
+                        display:
+                            flex;
 
-                        font-size:11px;
-                        font-weight:700;
+                        align-items:
+                            center;
 
-                        color:#333;
+                        width:
+                            100%;
 
-                        margin-bottom:5px;
+                        box-sizing:
+                            border-box;
+
+                        margin:
+                            0 0 6px 0;
+
+                        color:
+                            #333;
+
+                        font-family:
+                            Segoe UI,
+                            Arial,
+                            sans-serif;
+
+                        font-size:
+                            11px;
+
+                        font-weight:
+                            700;
+
+                        line-height:
+                            1.2;
                     "
                 >
 
@@ -38740,7 +38888,8 @@ function buildSightingMediaPopup(
 
                     <span
                         style="
-                            margin-left:4px;
+                            margin-left:
+                                5px;
                         "
                     >
                         ${title}
@@ -38751,10 +38900,26 @@ function buildSightingMediaPopup(
 
                 <div
                     style="
-                        width:100%;
-                        display:flex;
-                        gap:6px;
-                        box-sizing:border-box;
+                        display:
+                            flex;
+
+                        flex-direction:
+                            row;
+
+                        align-items:
+                            stretch;
+
+                        width:
+                            100%;
+
+                        box-sizing:
+                            border-box;
+
+                        gap:
+                            7px;
+
+                        overflow:
+                            hidden;
                     "
                 >
 
@@ -38785,6 +38950,10 @@ function buildSightingMediaPopup(
         "";
 
 
+    // ========================================================
+    // PHOTO
+    // ========================================================
+
     if(
         photoUrl
     ){
@@ -38801,6 +38970,10 @@ function buildSightingMediaPopup(
     }
 
 
+    // ========================================================
+    // VIDEO
+    // ========================================================
+
     if(
         videoUrl
     ){
@@ -38816,6 +38989,10 @@ function buildSightingMediaPopup(
 
     }
 
+
+    // ========================================================
+    // AUDIO
+    // ========================================================
 
     if(
         audioUrl
@@ -38839,48 +39016,86 @@ function buildSightingMediaPopup(
     //
     // IMPORTANT:
     //
-    // No <img>, <video>, or <audio> is created here.
+    // The popup contains ONLY:
     //
-    // Actual media is created ONLY after Preview is clicked.
+    // - labels
+    // - buttons
+    // - URLs encoded inside button handlers
+    //
+    // It does NOT load any actual media.
+    //
+    // Therefore opening the Leaflet popup remains lightweight.
     //
     // ========================================================
 
     return `
 
         <div
+            class="gg-sighting-media"
+
             style="
-                width:100%;
+                width:
+                    100%;
 
-                box-sizing:border-box;
+                box-sizing:
+                    border-box;
 
-                margin-top:10px;
-                margin-bottom:5px;
+                margin:
+                    10px 0 5px 0;
 
-                padding:9px;
+                padding:
+                    9px;
 
-                background:#f8faf8;
+                background:
+                    #f8faf8;
 
                 border:
                     1px solid
                     #dfe8df;
 
-                border-radius:8px;
+                border-radius:
+                    8px;
 
-                overflow:hidden;
+                overflow:
+                    hidden;
             "
         >
 
             <div
+                class="gg-sighting-media-title"
+
                 style="
-                    display:flex;
-                    align-items:center;
+                    display:
+                        flex;
 
-                    font-size:11px;
-                    font-weight:700;
+                    align-items:
+                        center;
 
-                    color:#1b5e20;
+                    width:
+                        100%;
 
-                    margin-bottom:8px;
+                    box-sizing:
+                        border-box;
+
+                    margin:
+                        0 0 8px 0;
+
+                    color:
+                        #1b5e20;
+
+                    font-family:
+                        Segoe UI,
+                        Arial,
+                        sans-serif;
+
+                    font-size:
+                        12px;
+
+                    font-weight:
+                        700;
+
+                    line-height:
+                        1.2;
                 "
             >
 
@@ -38890,7 +39105,8 @@ function buildSightingMediaPopup(
 
                 <span
                     style="
-                        margin-left:4px;
+                        margin-left:
+                            5px;
                     "
                 >
                     MEDIA
@@ -38899,7 +39115,19 @@ function buildSightingMediaPopup(
             </div>
 
 
-            ${rows}
+            <div
+                style="
+                    width:
+                        100%;
+
+                    box-sizing:
+                        border-box;
+                "
+            >
+
+                ${rows}
+
+            </div>
 
         </div>
 
