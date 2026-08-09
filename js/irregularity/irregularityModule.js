@@ -1803,8 +1803,16 @@ async function(
    SUBMIT
    ============================================================ */
 
+/* ============================================================
+   SUBMIT
+   ============================================================ */
+
 GGIrregularity.submit =
 async function(){
+
+    /* ========================================================
+       FORM
+       ======================================================== */
 
     const form =
         document.getElementById(
@@ -1827,12 +1835,16 @@ async function(){
 
     /* ========================================================
        ONLY MANUAL FORM DATA
-
-       No GPS.
-       No GIS.
-       No profile.
-
-       Those are added by buildPayload().
+       
+       IMPORTANT:
+       ----------------
+       NO GPS
+       NO GIS
+       NO PROFILE
+       NO LOCATION FIELDS
+       
+       Those are collected automatically by
+       buildPayload().
        ======================================================== */
 
     const formData =
@@ -1843,8 +1855,14 @@ async function(){
         );
 
 
+    console.log(
+        "📝 Irregularity manual form data:",
+        formData
+    );
+
+
     /* ========================================================
-       REQUIRED CATEGORY
+       CATEGORY
        ======================================================== */
 
     if(
@@ -1863,7 +1881,7 @@ async function(){
 
 
     /* ========================================================
-       REQUIRED DATE
+       INCIDENT DATE
        ======================================================== */
 
     if(
@@ -1882,7 +1900,7 @@ async function(){
 
 
     /* ========================================================
-       REQUIRED TIME
+       INCIDENT TIME
        ======================================================== */
 
     if(
@@ -1899,6 +1917,10 @@ async function(){
 
     }
 
+
+    /* ========================================================
+       SUBMIT BUTTON
+       ======================================================== */
 
     const submitButton =
         document.getElementById(
@@ -1921,19 +1943,37 @@ async function(){
 
     try{
 
+        /* ====================================================
+           SAVE
+           ==================================================== */
+
         if(
             submitButton
         ){
 
             submitButton.textContent =
-                "Saving...";
+                "Getting location...";
 
         }
 
 
-        /* ====================================================
-           SAVE
-           ==================================================== */
+        /*
+         * save()
+         *
+         * internally performs:
+         *
+         * manual data
+         *      +
+         * GPS
+         *      +
+         * GIS
+         *      +
+         * profile
+         *      +
+         * Firestore
+         *      +
+         * media
+         */
 
         const result =
             await GGIrregularity.save(
@@ -1942,22 +1982,40 @@ async function(){
 
 
         /* ====================================================
-           RESULT
+           RESULT VALIDATION
            ==================================================== */
 
-        const mediaStatus =
-            result?.payload?.media_status ||
-            "NONE";
+        if(
+            !result ||
+            !result.firestoreId
+        ){
+
+            throw new Error(
+                "Irregularity save did not return a Firestore document ID."
+            );
+
+        }
 
 
         console.log(
-            "📌 Irregularity ID:",
+            "📌 Irregularity Firestore ID:",
             result.firestoreId
         );
 
 
         /* ====================================================
-           USER MESSAGE
+           MEDIA STATUS
+           ==================================================== */
+
+        const mediaStatus =
+            result
+                ?.payload
+                ?.media_status ||
+            "NONE";
+
+
+        /* ====================================================
+           SUCCESS MESSAGE
            ==================================================== */
 
         if(
@@ -2012,9 +2070,40 @@ async function(){
 
 
         /* ====================================================
-           CLOSE EXISTING UI MODAL
+           RESET MEDIA UI
+           
+           IMPORTANT:
+           Do not leave previous photo/video/audio
+           attached when opening the next observation.
+           ==================================================== */
 
-           The UI module owns the actual modal.
+        if(
+            GGIrregularity.Media &&
+            typeof GGIrregularity.Media.reset ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media.reset();
+
+            }
+            catch(
+                mediaResetError
+            ){
+
+                console.warn(
+                    "⚠ Media reset after save failed:",
+                    mediaResetError
+                );
+
+            }
+
+        }
+
+
+        /* ====================================================
+           CLOSE FORM
            ==================================================== */
 
         if(
@@ -2034,6 +2123,10 @@ async function(){
 
         }
 
+
+        /* ====================================================
+           FINAL RESULT
+           ==================================================== */
 
         return result;
 
@@ -2145,11 +2238,20 @@ function(){
    INITIALIZE
    ============================================================ */
 
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
 GGIrregularity.init =
 function(){
 
+    console.log(
+        "🚀 GGIrregularity.init()"
+    );
+
+
     /* ========================================================
-       CATEGORY CHANGE
+       CATEGORY SELECT
        ======================================================== */
 
     const typeSelect =
@@ -2180,11 +2282,7 @@ function(){
 
 
     /* ========================================================
-       FORM SUBMIT
-
-       ONE handler only.
-
-       Guard prevents duplicate binding.
+       FORM
        ======================================================== */
 
     const form =
@@ -2194,7 +2292,23 @@ function(){
 
 
     if(
-        form &&
+        !form
+    ){
+
+        console.warn(
+            "⚠ ggIrregularityForm not available during init."
+        );
+
+        return false;
+
+    }
+
+
+    /* ========================================================
+       ONE SUBMIT HANDLER ONLY
+       ======================================================== */
+
+    if(
         !form.__ggIrregularitySubmitBound
     ){
 
@@ -2204,14 +2318,24 @@ function(){
 
         form.addEventListener(
             "submit",
-            function(event){
+            function(
+                event
+            ){
 
                 event.preventDefault();
 
 
+                /* ============================================
+                   DUPLICATE SUBMIT GUARD
+                   ============================================ */
+
                 if(
                     form.__ggIrregularitySubmitting
                 ){
+
+                    console.warn(
+                        "⏸ Irregularity submit already running."
+                    );
 
                     return;
 
@@ -2224,6 +2348,18 @@ function(){
 
                 Promise.resolve(
                     GGIrregularity.submit()
+                )
+                .catch(
+                    function(
+                        error
+                    ){
+
+                        console.error(
+                            "❌ Irregularity submit handler error:",
+                            error
+                        );
+
+                    }
                 )
                 .finally(
                     function(){
@@ -2244,7 +2380,67 @@ function(){
        CATEGORY VISIBILITY
        ======================================================== */
 
-    GGIrregularity.updateFields();
+    if(
+        typeof GGIrregularity.updateFields ===
+        "function"
+    ){
+
+        GGIrregularity.updateFields();
+
+    }
+
+
+    /* ========================================================
+       MEDIA
+       
+       IMPORTANT:
+       Do NOT create another media uploader here.
+       
+       The existing Media module remains responsible for:
+       
+       PHOTO
+       VIDEO
+       AUDIO
+       STORAGE UPLOAD
+       FIRESTORE MEDIA UPDATE
+       ======================================================== */
+
+    if(
+        GGIrregularity.Media
+    ){
+
+        if(
+            typeof GGIrregularity.Media.init ===
+            "function"
+        ){
+
+            try{
+
+                GGIrregularity.Media.init();
+
+            }
+            catch(
+                mediaError
+            ){
+
+                console.warn(
+                    "⚠ Irregularity media initialization failed:",
+                    mediaError
+                );
+
+            }
+
+        }
+
+    }
+
+
+    console.log(
+        "✅ GGIrregularity initialized."
+    );
+
+
+    return true;
 
 };
 
@@ -2253,10 +2449,12 @@ function(){
    START
 
    IMPORTANT:
-   This does NOT open the form.
-   This does NOT request GPS.
-   This does NOT resolve GIS.
-   This does NOT reload the application.
+   This does NOT:
+   
+   • open the form
+   • request GPS
+   • resolve GIS
+   • reload application
    ============================================================ */
 
 if(
@@ -2267,13 +2465,6 @@ if(
     document.addEventListener(
         "DOMContentLoaded",
         function(){
-
-            /*
-             * Only initialize if the form already exists.
-             *
-             * The UI can also call GGIrregularity.init()
-             * after dynamically creating the form.
-             */
 
             const form =
                 document.getElementById(
@@ -2314,7 +2505,6 @@ else{
     }
 
 }
-
 
 /* ============================================================
    END
