@@ -41102,182 +41102,239 @@ data.forEach(
         window.sightingMarkers[key] =
           marker;
 
+// =================================================
+// POPUP BINDING - ONCE ONLY
+// =================================================
+//
+// IMPORTANT:
+//
+// Leaflet's automatic popup click handler and a
+// custom click handler must not compete.
+//
+// We therefore remove Leaflet's internal automatic
+// popup-open click handler and control the popup
+// ourselves.
+//
+// Behaviour:
+//
+// First marker click
+//     → OPEN popup
+//
+// Same marker clicked again
+//     → CLOSE popup
+//
+// Popup otherwise stays open.
+//
+// No timeout.
+// No automatic close.
+// No popup blinking.
+// =================================================
 
-        // =================================================
-        // POPUP BINDING - ONCE ONLY
-        // =================================================
+marker.bindPopup(
+  popup,
+  {
+    maxWidth:
+      300,
 
-        marker.bindPopup(
-          popup,
-{
-    maxWidth: 300,
-
-    minWidth: 260,
+    minWidth:
+      260,
 
     maxHeight:
-        Math.min(
-            window.innerHeight * 0.7,
-            450
-        ),
+      Math.min(
+        window.innerHeight * 0.7,
+        450
+      ),
 
-    closeOnClick: false,
+    closeOnClick:
+      false,
 
-    autoClose: false,
+    autoClose:
+      false,
 
-    autoPan: true,
+    autoPan:
+      true,
 
-    autoPanPadding: [
+    autoPanPadding:
+      [
         15,
         15
-    ],
+      ],
 
-    keepInView: true
+    keepInView:
+      true
+  }
+);
+
+
+// =================================================
+// REMOVE LEAFLET DEFAULT POPUP CLICK HANDLER
+// =================================================
+
+if(
+  typeof marker._openPopup ===
+  "function"
+){
+
+  marker.off(
+    "click",
+    marker._openPopup,
+    marker
+  );
+
 }
-        );
 
 
-        // =================================================
-        // POPUP OPEN
-        // =================================================
+// =================================================
+// POPUP OPEN
+// =================================================
 
-        marker.on(
-          "popupopen",
-          function(){
+marker.on(
+  "popupopen",
+  function(){
 
-            window.activeSightingPopupKey =
-              key;
+    window.activeSightingPopupKey =
+      key;
 
-            window.activeSightingPopupMarker =
-              marker;
-
-
-            requestAnimationFrame(
-              function(){
-
-                const popupElement =
-                  marker
-                    .getPopup()
-                    ?.getElement();
+    window.activeSightingPopupMarker =
+      marker;
 
 
-                if(
-                  !popupElement
-                ){
+    requestAnimationFrame(
+      function(){
 
-                  return;
-
-                }
-
-
-                const content =
-                  popupElement.querySelector(
-                    ".leaflet-popup-content"
-                  );
+        const popupElement =
+          marker
+            .getPopup()
+            ?.getElement();
 
 
-                if(
-                  content
-                ){
+        if(
+          !popupElement
+        ){
 
-                  content.style.maxHeight =
-                    Math.min(
-                      window.innerHeight * 0.6,
-                      360
-                    ) + "px";
+          return;
 
-                  content.style.overflowY =
-                    "auto";
-
-                  content.style.overflowX =
-                    "hidden";
-
-                  content.style.webkitOverflowScrolling =
-                    "touch";
-
-                  content.style.overscrollBehavior =
-                    "contain";
-
-                  content.style.touchAction =
-                    "pan-y";
-
-                }
-
-              }
-            );
-
-          }
-        );
+        }
 
 
-        // =================================================
-        // POPUP CLOSE
-        // =================================================
-
-        marker.on(
-          "popupclose",
-          function(){
-
-            if(
-              window.activeSightingPopupKey ===
-              key
-            ){
-
-              window.activeSightingPopupKey =
-                null;
-
-              window.activeSightingPopupMarker =
-                null;
-
-            }
-
-          }
-        );
+        const content =
+          popupElement.querySelector(
+            ".leaflet-popup-content"
+          );
 
 
-        // =================================================
-        // SAME MARKER CLICK = TOGGLE
-        //
-        // Leaflet's normal popup click handler is allowed
-        // to run first. If it was already open, close it
-        // immediately after that handler completes.
-        // =================================================
+        if(
+          content
+        ){
 
-        marker.on(
-          "click",
-          function(){
-
-            const wasOpen =
-              marker.isPopupOpen();
+          content.style.maxHeight =
+            Math.min(
+              window.innerHeight * 0.6,
+              360
+            ) + "px";
 
 
-            if(
-              !wasOpen
-            ){
-
-              return;
-
-            }
+          content.style.overflowY =
+            "auto";
 
 
-            setTimeout(
-              function(){
+          content.style.overflowX =
+            "hidden";
 
-                if(
-                  marker.isPopupOpen()
-                ){
 
-                  marker.closePopup();
+          content.style.webkitOverflowScrolling =
+            "touch";
 
-                }
 
-              },
-              0
-            );
+          content.style.overscrollBehavior =
+            "contain";
 
-          }
-        );
+
+          content.style.touchAction =
+            "pan-y";
+
+        }
 
       }
+    );
+
+  }
+);
+
+
+// =================================================
+// POPUP CLOSE
+// =================================================
+
+marker.on(
+  "popupclose",
+  function(){
+
+    if(
+      window.activeSightingPopupKey ===
+      key
+    ){
+
+      window.activeSightingPopupKey =
+        null;
+
+      window.activeSightingPopupMarker =
+        null;
+
+    }
+
+  }
+);
+
+
+// =================================================
+// CONTROLLED MARKER CLICK
+// =================================================
+//
+// First click:
+//     CLOSED → OPEN
+//
+// Same marker second click:
+//     OPEN → CLOSED
+//
+// Different marker:
+//     OPEN its popup
+//
+// No setTimeout.
+// No delayed close.
+// =================================================
+
+marker.on(
+  "click",
+  function(){
+
+    const isOpen =
+      marker.isPopupOpen();
+
+
+    // =================================================
+    // SAME MARKER CLICKED AGAIN
+    // =================================================
+
+    if(
+      isOpen
+    ){
+
+      marker.closePopup();
+
+      return;
+
+    }
+
+
+    // =================================================
+    // FIRST CLICK / CLOSED POPUP
+    // =================================================
+
+    marker.openPopup();
+
+  }
+);
 
 
       // =================================================
