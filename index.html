@@ -87860,36 +87860,204 @@ function startOnlineLoginFlow(){
 
   });
 }
-    function hideSplash(){
+// ============================================================
+// 🔥 SAFE SPLASH HIDE
+// ============================================================
 
-  const splash = document.getElementById("splash-screen");
-  if(!splash) return;
+function hideSplash(){
 
-  // 🔥 fade out
-  splash.style.opacity = "0";
-  splash.style.pointerEvents = "none";
+    const splash =
+        document.getElementById(
+            "splash-screen"
+        );
 
-  // 🔥 wait for transition to finish
-  setTimeout(() => {
 
-    // hide first (avoids reflow flicker)
-    splash.style.display = "none";
+    // --------------------------------------------------------
+    // No splash = nothing to do
+    // --------------------------------------------------------
 
-    // 🔥 remove later (idle time)
-    setTimeout(() => {
-      splash.remove();
-    }, 300);
+    if(!splash){
 
-    // 🔥 fix map AFTER layout stabilizes
-    if(window.map){
-      setTimeout(() => {
-        map.invalidateSize();
-      }, 250);
+        return;
+
     }
 
-  }, 400); // match CSS transition time
+
+    // --------------------------------------------------------
+    // Prevent duplicate execution
+    // --------------------------------------------------------
+
+    if(
+        splash.dataset.hidden === "1"
+    ){
+
+        return;
+
+    }
+
+
+    splash.dataset.hidden =
+        "1";
+
+
+    console.log(
+        "🟢 Hiding BTRGuard splash..."
+    );
+
+
+    // --------------------------------------------------------
+    // FADE OUT
+    // --------------------------------------------------------
+
+    splash.style.opacity =
+        "0";
+
+    splash.style.pointerEvents =
+        "none";
+
+
+    // --------------------------------------------------------
+    // REMOVE AFTER FADE
+    // --------------------------------------------------------
+
+    setTimeout(
+        function(){
+
+            try{
+
+                splash.style.display =
+                    "none";
+
+
+                // --------------------------------------------
+                // Remove from DOM
+                // --------------------------------------------
+
+                setTimeout(
+                    function(){
+
+                        try{
+
+                            if(
+                                splash &&
+                                splash.parentNode
+                            ){
+
+                                splash.parentNode.removeChild(
+                                    splash
+                                );
+
+                            }
+
+                        }
+                        catch(e){
+
+                            console.warn(
+                                "⚠ Splash remove failed:",
+                                e
+                            );
+
+                        }
+
+                    },
+                    100
+                );
+
+
+                // --------------------------------------------
+                // Fix Leaflet after splash disappears
+                // --------------------------------------------
+
+                setTimeout(
+                    function(){
+
+                        try{
+
+                            if(
+                                window.map &&
+                                typeof window.map.invalidateSize ===
+                                "function"
+                            ){
+
+                                window.map.invalidateSize(
+                                    true
+                                );
+
+                            }
+
+                        }
+                        catch(e){
+
+                            console.warn(
+                                "⚠ Map resize failed:",
+                                e
+                            );
+
+                        }
+
+                    },
+                    150
+                );
+
+            }
+            catch(e){
+
+                console.warn(
+                    "⚠ Splash hide failed:",
+                    e
+                );
+
+            }
+
+        },
+        400
+    );
+
 }
-// ================= REFRESH PROFILE =================
+    
+    
+    // ============================================================
+// 🛡️ SPLASH EMERGENCY RELEASE
+// ============================================================
+//
+// NEVER allow a backend/API failure to leave the app
+// permanently stuck behind the splash screen.
+//
+// Normal startup may hide it earlier.
+// This is only the safety net.
+// ============================================================
+
+setTimeout(
+    function(){
+
+        const splash =
+            document.getElementById(
+                "splash-screen"
+            );
+
+
+        if(
+            splash &&
+            splash.style.display !== "none"
+        ){
+
+            console.warn(
+                "🛡️ Startup taking too long."
+            );
+
+            console.warn(
+                "🟢 Releasing splash so application can continue."
+            );
+
+
+            hideSplash();
+
+        }
+
+    },
+    5000
+);
+    // ================= REFRESH PROFILE =================
 function refreshOnlineProfile(){
 
   // ============================================================
