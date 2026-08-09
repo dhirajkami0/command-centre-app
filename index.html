@@ -81257,201 +81257,29 @@ await submitToServer(
 }
 
 // ============================================================
-// 🐾 SAVE WILDLIFE PAYLOAD
+// 🐾 WILDLIFE SUBMISSION COMPATIBILITY WRAPPER
 // ============================================================
 
-async function saveWildlifePayload(
-    payload
-){
-
-    try{
-
-        // ====================================================
-        // FIRESTORE SAFE PAYLOAD
-        // ====================================================
-
-        const firestorePayload =
-            createFirestoreSafeSightingPayload(
-                payload
-            );
-
-
-        // ====================================================
-        // FIRESTORE
-        // ====================================================
-
-        const firestoreResult =
-            await saveSightingToFirestore(
-                firestorePayload
-            );
-
-
-        if(
-            !firestoreResult ||
-            !firestoreResult.sightingId
-        ){
-
-            throw new Error(
-                "Firestore returned no wildlife sighting ID."
-            );
-
-        }
-
-
-        // ====================================================
-        // IDENTIFIERS
-        // ====================================================
-
-        payload.sighting_id =
-            firestoreResult.sightingId;
-
-
-        payload.firestore_id =
-            firestoreResult.firestoreId ||
-            firestoreResult.sightingId;
-
-
-        payload.financial_year =
-            firestoreResult.financialYear ||
-            "";
-
-
-        payload.range_sighting_no =
-            firestoreResult.rangeCount ??
-            null;
-
-
-        payload.division_sighting_no =
-            firestoreResult.divisionCount ??
-            null;
-
-
-        // ====================================================
-        // FIREBASE STORAGE
-        // ====================================================
-
-        console.log(
-            "📦 Uploading Wildlife media..."
-        );
-
-
-        const mediaResult =
-            await uploadSightingMediaToStorage(
-                "WILDLIFE",
-                payload
-            );
-
-
-        // ====================================================
-        // UPDATE SAME FIRESTORE DOCUMENT
-        // ====================================================
-
-        await updateSightingMediaInFirestore(
-
-            "WILDLIFE",
-
-            firestoreResult.firestoreId ||
-                firestoreResult.sightingId,
-
-            mediaResult
-
-        );
-
-
-        // ====================================================
-        // ADD MEDIA URLS TO BACKEND PAYLOAD
-        // ====================================================
-
-        payload.photo_url =
-            mediaResult.photo_url ||
-            "";
-
-
-        payload.video_url =
-            mediaResult.video_url ||
-            "";
-
-
-        payload.audio_url =
-            mediaResult.audio_url ||
-            "";
-
-
-        payload.photo_storage_path =
-            mediaResult.photo_storage_path ||
-            "";
-
-
-        payload.video_storage_path =
-            mediaResult.video_storage_path ||
-            "";
-
-
-        payload.audio_storage_path =
-            mediaResult.audio_storage_path ||
-            "";
-
-
-        payload.media_status =
-            mediaResult.media_status ||
-            "NONE";
-
-
-        // ====================================================
-        // EXISTING BACKEND
-        // ====================================================
-
-        await callBackend(
-            "saveWildlifeSighting",
-            payload
-        );
-
-
-        // ====================================================
-        // EXISTING SUCCESS FLOW
-        // ====================================================
-
-        setSubmitLoading(
-            false
-        );
-
-
-        closeWildlifeForm();
-
-
-        document
-            .getElementById(
-                "wildlifeForm"
-            )
-            .reset();
-
-
-        alert(
-            "✅ Wildlife sighting submitted."
-        );
-
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ Wildlife submission failed:",
-            error
-        );
-
-
-        setSubmitLoading(
-            false
-        );
-
-
-        alert(
-            "❌ Wildlife sighting submission failed.\n\n" +
-            error.message
+async function saveWildlifePayload(payload){
+
+    if(
+        !payload ||
+        typeof payload !== "object"
+    ){
+
+        throw new Error(
+            "Wildlife payload is missing."
         );
 
     }
 
+    payload.observation_type =
+        "WILDLIFE";
+
+    return await submitToServer(
+        "WILDLIFE",
+        payload
+    );
 }
           function updateWildlifeCompt(){
 
