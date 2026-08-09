@@ -1241,6 +1241,10 @@ function(){
             "
         >
 
+            <!-- ====================================================
+                 TITLE
+                 ==================================================== -->
+
             <div
                 style="
                     margin:0 0 8px 0;
@@ -1252,6 +1256,10 @@ function(){
                 📎 MEDIA
             </div>
 
+
+            <!-- ====================================================
+                 MEDIA INPUT BUTTONS
+                 ==================================================== -->
 
             <div
                 style="
@@ -1266,7 +1274,9 @@ function(){
                 "
             >
 
-                <!-- PHOTO -->
+                <!-- ==================================================
+                     PHOTO
+                     ================================================== -->
 
                 <label
                     for="gg-irregularity-photo"
@@ -1307,7 +1317,9 @@ function(){
                 >
 
 
-                <!-- VIDEO -->
+                <!-- ==================================================
+                     VIDEO
+                     ================================================== -->
 
                 <label
                     for="gg-irregularity-video"
@@ -1348,10 +1360,13 @@ function(){
                 >
 
 
-                <!-- AUDIO -->
+                <!-- ==================================================
+                     AUDIO FILE
+                     ================================================== -->
 
                 <label
                     for="gg-irregularity-audio"
+                    id="gg-irregularity-select-audio"
                     style="
                         display:flex;
                         align-items:center;
@@ -1390,6 +1405,221 @@ function(){
 
             </div>
 
+
+            <!-- ====================================================
+                 AUDIO RECORD BUTTON
+                 ==================================================== -->
+
+            <button
+                type="button"
+                id="gg-irregularity-record-audio"
+                style="
+                    width:100%;
+                    min-height:38px;
+                    margin-top:7px;
+                    box-sizing:border-box;
+                    border:1px solid #c8d6c8;
+                    border-radius:7px;
+                    background:#ffffff;
+                    color:#1b5e20;
+                    font-size:11px;
+                    font-weight:700;
+                    cursor:pointer;
+                    touch-action:manipulation;
+                    -webkit-tap-highlight-color:transparent;
+                "
+            >
+                🎙 Record Audio
+            </button>
+
+
+            <!-- ====================================================
+                 PHOTO PREVIEW
+                 ==================================================== -->
+
+            <div
+                id="gg-irregularity-photo-preview"
+                style="
+                    display:none;
+                    margin-top:8px;
+                    padding:8px;
+                    border:1px solid #dfe8df;
+                    border-radius:7px;
+                    background:#ffffff;
+                "
+            >
+
+                <img
+                    id="gg-irregularity-photo-preview-img"
+                    alt="Irregularity photo preview"
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        object-fit:contain;
+                        border-radius:6px;
+                        background:#f5f5f5;
+                    "
+                >
+
+                <div
+                    id="gg-irregularity-photo-actions"
+                    style="
+                        display:none;
+                        align-items:center;
+                        gap:6px;
+                        margin-top:7px;
+                    "
+                >
+
+                    <button
+                        type="button"
+                        id="gg-irregularity-photo-remove"
+                        style="
+                            flex:1;
+                            min-height:32px;
+                            border:1px solid #d6bcbc;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#b71c1c;
+                            font-size:11px;
+                            font-weight:700;
+                            cursor:pointer;
+                        "
+                    >
+                        Remove Photo
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- ====================================================
+                 VIDEO PREVIEW
+                 ==================================================== -->
+
+            <div
+                id="gg-irregularity-video-preview"
+                style="
+                    display:none;
+                    margin-top:8px;
+                    padding:8px;
+                    border:1px solid #dfe8df;
+                    border-radius:7px;
+                    background:#ffffff;
+                "
+            >
+
+                <video
+                    id="gg-irregularity-video-preview-player"
+                    controls
+                    playsinline
+                    style="
+                        display:block;
+                        width:100%;
+                        max-height:220px;
+                        border-radius:6px;
+                        background:#000;
+                    "
+                ></video>
+
+
+                <div
+                    id="gg-irregularity-video-actions"
+                    style="
+                        display:none;
+                        align-items:center;
+                        gap:6px;
+                        margin-top:7px;
+                    "
+                >
+
+                    <button
+                        type="button"
+                        id="gg-irregularity-video-remove"
+                        style="
+                            flex:1;
+                            min-height:32px;
+                            border:1px solid #d6bcbc;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#b71c1c;
+                            font-size:11px;
+                            font-weight:700;
+                            cursor:pointer;
+                        "
+                    >
+                        Remove Video
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- ====================================================
+                 AUDIO PREVIEW
+                 ==================================================== -->
+
+            <div
+                id="gg-irregularity-audio-preview"
+                style="
+                    display:none;
+                    margin-top:8px;
+                    padding:8px;
+                    border:1px solid #dfe8df;
+                    border-radius:7px;
+                    background:#ffffff;
+                "
+            >
+
+                <audio
+                    id="gg-irregularity-audio-preview-player"
+                    controls
+                    style="
+                        display:block;
+                        width:100%;
+                    "
+                ></audio>
+
+
+                <div
+                    id="gg-irregularity-audio-actions"
+                    style="
+                        display:none;
+                        align-items:center;
+                        gap:6px;
+                        margin-top:7px;
+                    "
+                >
+
+                    <button
+                        type="button"
+                        id="gg-irregularity-audio-remove"
+                        style="
+                            flex:1;
+                            min-height:32px;
+                            border:1px solid #d6bcbc;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#b71c1c;
+                            font-size:11px;
+                            font-weight:700;
+                            cursor:pointer;
+                        "
+                    >
+                        Remove Audio
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- ====================================================
+                 MEDIA STATUS
+                 ==================================================== -->
 
             <div
                 id="gg-irregularity-media-status"
@@ -1487,6 +1717,47 @@ function(){
             names.push(
                 "🎙 " +
                 audio.files[0].name
+            );
+
+        }
+
+
+        /*
+         * Native audio recording does not
+         * create a FileList, so also check
+         * the existing Media module state.
+         */
+
+        const nativeAudio =
+            GGIrregularity.Media &&
+            GGIrregularity.Media
+                ._nativeAudioUri;
+
+
+        if(
+            nativeAudio &&
+            !audio?.files?.length
+        ){
+
+            names.push(
+                "🎙 Recorded audio"
+            );
+
+        }
+
+
+        /*
+         * Active browser recording.
+         */
+
+        if(
+            GGIrregularity.Media &&
+            GGIrregularity.Media
+                ._recording
+        ){
+
+            names.push(
+                "🔴 Recording audio..."
             );
 
         }
@@ -1723,10 +1994,51 @@ function(container){
 
 
     /* ========================================================
-       MEDIA UI
+       MEDIA UI STATUS
        ======================================================== */
 
-    GGIrregularity.Form.bindMediaStatus();
+    if(
+        typeof GGIrregularity.Form.bindMediaStatus ===
+        "function"
+    ){
+
+        GGIrregularity.Form.bindMediaStatus();
+
+    }
+
+
+    /* ========================================================
+       INITIALIZE EXISTING MEDIA MODULE
+       
+       IMPORTANT:
+       The form has just been inserted into the DOM above.
+       Media.init() therefore runs AFTER its required
+       photo/video/audio elements exist.
+       ======================================================== */
+
+    if(
+        GGIrregularity.Media &&
+        typeof GGIrregularity.Media.init ===
+        "function"
+    ){
+
+        try{
+
+            GGIrregularity.Media.init();
+
+        }
+        catch(
+            mediaInitError
+        ){
+
+            console.warn(
+                "⚠ Irregularity Media init failed:",
+                mediaInitError
+            );
+
+        }
+
+    }
 
 
     return true;
@@ -1735,8 +2047,8 @@ function(container){
 
 
 /* ============================================================
-   GLOBAL MOUNT HELPER
-   ============================================================ */
+GLOBAL MOUNT HELPER
+============================================================ */
 
 window.mountIrregularityForm =
 function(container){
