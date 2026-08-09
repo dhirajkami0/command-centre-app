@@ -78,6 +78,24 @@ GGIrregularity.UI.FORM_HOST_ID =
 
 
 /* ============================================================
+   OPEN / CLOSE FLOW GUARDS
+
+   Prevent:
+   • double tap
+   • repeated click
+   • overlapping modal construction
+   • overlapping close/open transitions
+
+   ============================================================ */
+
+GGIrregularity.UI.__opening =
+    false;
+
+GGIrregularity.UI.__closing =
+    false;
+
+
+/* ============================================================
    ENSURE MODAL
    ============================================================ */
 
@@ -125,6 +143,12 @@ function(){
 
     modal.setAttribute(
         "aria-modal",
+        "true"
+    );
+
+
+    modal.setAttribute(
+        "aria-hidden",
         "true"
     );
 
@@ -523,6 +547,11 @@ function(){
     }
 
 
+    /*
+     * Build while the modal is hidden.
+     * This prevents the user seeing a partially-created form.
+     */
+
     formHost.innerHTML =
         html;
 
@@ -534,7 +563,6 @@ function(){
 
 /* ============================================================
    LOCAL DATE
-   ============================================================
 
    Do NOT use toISOString() here because that can shift the
    displayed date around midnight depending on timezone.
@@ -827,7 +855,6 @@ function(){
 
     /* ========================================================
        MODULE INITIALIZATION
-       ========================================================
 
        The module owns the ONLY submit handler.
 
@@ -849,19 +876,15 @@ function(){
     }
 
 
-    /* ========================================================
-       FIELD VISIBILITY
-       ======================================================== */
-
-    if(
-        typeof GGIrregularity.updateFields ===
-        "function"
-    ){
-
-        GGIrregularity.updateFields();
-
-    }
-
+    /*
+     * IMPORTANT:
+     *
+     * GGIrregularity.init() is the module's initialization
+     * owner. Do not call updateFields() a second time here.
+     *
+     * This prevents duplicate category rendering work during
+     * every form opening.
+     */
 
     return true;
 
@@ -874,26 +897,79 @@ function(){
 
 async function openIrregularityForm(){
 
+    /* ========================================================
+       FAST RE-ENTRY GUARD
+       ======================================================== */
+
+    const modalAlreadyOpen =
+        document.getElementById(
+            GGIrregularity.UI.MODAL_ID
+        );
+
+
+    if(
+        GGIrregularity.UI.__opening
+    ){
+
+        return false;
+
+    }
+
+
+    if(
+        modalAlreadyOpen &&
+        modalAlreadyOpen.style.display ===
+        "block"
+    ){
+
+        const category =
+            document.getElementById(
+                "gg-irregularity-type"
+            );
+
+
+        if(
+            category
+        ){
+
+            requestAnimationFrame(
+                function(){
+
+                    try{
+
+                        category.focus({
+                            preventScroll:true
+                        });
+
+                    }
+                    catch(
+                        error
+                    ){
+
+                        category.focus();
+
+                    }
+
+                }
+            );
+
+        }
+
+        return true;
+
+    }
+
+
+    GGIrregularity.UI.__opening =
+        true;
+
+
     console.group(
         "⚠️ openIrregularityForm START"
     );
 
 
     try{
-
-        /* ====================================================
-           CLOSE EXISTING SIGHTING SELECTOR
-           ==================================================== */
-
-        if(
-            typeof closeSightingSelector ===
-            "function"
-        ){
-
-            closeSightingSelector();
-
-        }
-
 
         /* ====================================================
            OBSERVATION TYPE
@@ -920,6 +996,13 @@ async function openIrregularityForm(){
 
         /* ====================================================
            ENSURE MODAL
+
+           IMPORTANT:
+
+           The sighting selector is NOT closed yet.
+
+           This prevents a blank screen while the Irregularity
+           form is being constructed.
            ==================================================== */
 
         const modal =
@@ -935,6 +1018,20 @@ async function openIrregularityForm(){
             );
 
         }
+
+
+        /* ====================================================
+           KEEP MODAL HIDDEN DURING BUILD
+           ==================================================== */
+
+        modal.style.display =
+            "none";
+
+        modal.style.visibility =
+            "hidden";
+
+        modal.style.opacity =
+            "0";
 
 
         /* ====================================================
@@ -957,30 +1054,6 @@ async function openIrregularityForm(){
 
 
         /* ====================================================
-           SHOW MODAL
-           ==================================================== */
-
-        modal.style.display =
-            "block";
-
-
-        modal.style.visibility =
-            "visible";
-
-
-        modal.style.opacity =
-            "1";
-
-
-        /* ====================================================
-           PREVENT BACKGROUND SCROLL
-           ==================================================== */
-
-        document.body.style.overflow =
-            "hidden";
-
-
-        /* ====================================================
            DEFAULT DATE / TIME
            ==================================================== */
 
@@ -988,14 +1061,83 @@ async function openIrregularityForm(){
 
 
         /* ====================================================
-           INITIALIZE FORM
+           INITIALIZE FORM ONCE
            ==================================================== */
 
         GGIrregularity.UI.initializeForm();
 
 
         /* ====================================================
-           FOCUS CATEGORY
+           ATOMIC UI SWITCH
+
+           The old selector remains visible until the new
+           Irregularity form is completely ready.
+
+           Then both transitions happen in the next browser
+           paint frame.
+
+           This eliminates the blank-screen gap.
+           ==================================================== */
+
+        await new Promise(
+            function(resolve){
+
+                requestAnimationFrame(
+                    function(){
+
+                        try{
+
+                            modal.style.display =
+                                "block";
+
+
+                            modal.style.visibility =
+                                "visible";
+
+
+                            modal.style.opacity =
+                                "1";
+
+
+                            modal.setAttribute(
+                                "aria-hidden",
+                                "false"
+                            );
+
+
+                            document.body.style.overflow =
+                                "hidden";
+
+
+                            /* --------------------------------
+                               CLOSE OLD SELECTOR ONLY NOW
+                               -------------------------------- */
+
+                            if(
+                                typeof closeSightingSelector ===
+                                "function"
+                            ){
+
+                                closeSightingSelector();
+
+                            }
+
+                        }
+                        finally{
+
+                            resolve();
+
+                        }
+
+                    }
+                );
+
+            }
+        );
+
+
+        /* ====================================================
+           FOCUS WITHOUT FORCED SCROLL
            ==================================================== */
 
         const categorySelect =
@@ -1008,34 +1150,46 @@ async function openIrregularityForm(){
             categorySelect
         ){
 
-            setTimeout(
+            requestAnimationFrame(
                 function(){
 
                     try{
 
-                        categorySelect.focus();
+                        categorySelect.focus({
+                            preventScroll:true
+                        });
 
                     }
                     catch(
                         error
                     ){
 
-                        console.warn(
-                            "⚠ Unable to focus Irregularity category:",
-                            error
-                        );
+                        try{
+
+                            categorySelect.focus();
+
+                        }
+                        catch(
+                            focusError
+                        ){
+
+                            console.warn(
+                                "⚠ Unable to focus Irregularity category:",
+                                focusError
+                            );
+
+                        }
 
                     }
 
-                },
-                100
+                }
             );
 
         }
 
 
         /* ====================================================
-           IMPORTANT DEBUG
+           READY
            ==================================================== */
 
         console.log(
@@ -1098,6 +1252,12 @@ async function openIrregularityForm(){
         return false;
 
     }
+    finally{
+
+        GGIrregularity.UI.__opening =
+            false;
+
+    }
 
 }
 
@@ -1107,6 +1267,18 @@ async function openIrregularityForm(){
    ============================================================ */
 
 function closeIrregularityForm(){
+
+    /* ========================================================
+       CANCEL ANY OPENING GUARD
+       ======================================================== */
+
+    GGIrregularity.UI.__opening =
+        false;
+
+
+    GGIrregularity.UI.__closing =
+        true;
+
 
     const modal =
         document.getElementById(
@@ -1132,6 +1304,12 @@ function closeIrregularityForm(){
 
         modal.style.opacity =
             "0";
+
+
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
 
     }
 
@@ -1179,6 +1357,10 @@ function closeIrregularityForm(){
         "⚠️ Irregularity form CLOSED"
     );
 
+
+    GGIrregularity.UI.__closing =
+        false;
+
 }
 
 
@@ -1200,7 +1382,6 @@ GGIrregularity.UI.close =
 
 /* ============================================================
    IMPORTANT INTEGRATION
-   ============================================================
 
    The Firestore module may expose GGIrregularity.close().
 
@@ -1209,11 +1390,11 @@ GGIrregularity.UI.close =
    This prevents the situation where:
 
        SAVE succeeds
-            ↓
+           ↓
        module calls GGIrregularity.close()
-            ↓
+           ↓
        different modal ID is searched
-            ↓
+           ↓
        modal remains open
 
    There is still only ONE actual modal.
@@ -1237,7 +1418,6 @@ window.closeIrregularityForm =
 
 /* ============================================================
    OPTIONAL INITIAL SETUP
-   ============================================================
 
    Do NOT automatically open anything.
 
