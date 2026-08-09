@@ -41930,7 +41930,60 @@ function getWildlifeEmoji(animal){
                 thin;
         }
 
+/* =====================================================
+   🐅 WILDLIFE POPUP — DEDICATED WIDTH
+   -----------------------------------------------------
+   This affects ONLY wildlife sighting popups.
+===================================================== */
 
+.gg-wildlife-leaflet-popup
+.leaflet-popup-content-wrapper{
+
+    width:
+        min(
+            400px,
+            calc(
+                100vw - 48px
+            )
+        ) !important;
+
+    max-width:
+        min(
+            400px,
+            calc(
+                100vw - 48px
+            )
+        ) !important;
+
+    box-sizing:
+        border-box;
+
+}
+
+
+.gg-wildlife-leaflet-popup
+.leaflet-popup-content{
+
+    width:
+        min(
+            372px,
+            calc(
+                100vw - 76px
+            )
+        ) !important;
+
+    max-width:
+        min(
+            372px,
+            calc(
+                100vw - 76px
+            )
+        ) !important;
+
+    box-sizing:
+        border-box;
+
+}
         /* =====================================================
            ANDROID / CHROME SCROLLBAR
         ===================================================== */
@@ -43428,6 +43481,10 @@ async function loadWildlifeSightings(){
 // POPUP OPTIONS
 // =================================================
 
+// =================================================
+// POPUP OPTIONS
+// =================================================
+
 const popupOptions = {
 
     maxWidth:
@@ -43453,12 +43510,15 @@ const popupOptions = {
 
     autoPanPadding:
         [
-            20,
-            20
+        20,
+        20
         ],
 
     keepInView:
-        true
+        true,
+
+    className:
+        "gg-wildlife-leaflet-popup"
 
 };
 
