@@ -6,8 +6,36 @@
    File:
        js/irregularity/irregularityForm.js
 
-   Purpose:
-       Build and manage the Irregularity form UI.
+   PURPOSE
+   ------------------------------------------------------------
+   Builds ONLY the fields that the patrol user must manually
+   enter.
+
+   AUTOMATIC SYSTEM DATA IS NOT SHOWN IN THIS FORM.
+
+   At submission, irregularityModule.js is responsible for
+   resolving and adding:
+
+       • GPS
+       • latitude
+       • longitude
+       • GPS accuracy
+       • GIS
+       • division
+       • range
+       • beat
+       • compartment
+       • village
+       • villageCode
+       • block
+       • nearestPoint
+       • distanceMeters
+       • location text
+       • reported_by
+       • reported_by_phone
+       • reported_by_role
+       • created_at
+       • updated_at
 
    IMPORTANT
    ------------------------------------------------------------
@@ -90,6 +118,7 @@ function(
         options.required
             ? "required"
             : "";
+
 
     const placeholder =
         GGIrregularity.Form.escape(
@@ -184,6 +213,7 @@ function(
                     ${GGIrregularity.Form.escape(label)}
                 </label>
 
+
                 <select
                     id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
                     name="${GGIrregularity.Form.escape(name)}"
@@ -253,6 +283,7 @@ function(
                     ${GGIrregularity.Form.escape(label)}
                 </label>
 
+
                 <textarea
                     id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
                     name="${GGIrregularity.Form.escape(name)}"
@@ -309,6 +340,7 @@ function(
             >
                 ${GGIrregularity.Form.escape(label)}
             </label>
+
 
             <input
                 id="gg-irregularity-${GGIrregularity.Form.escape(name)}"
@@ -509,13 +541,21 @@ function(){
             ${GGIrregularity.Form.field(
                 "Incident Date",
                 "incident_date",
-                "date"
+                "date",
+                {
+                    required:
+                        true
+                }
             )}
 
             ${GGIrregularity.Form.field(
                 "Incident Time",
                 "incident_time",
-                "time"
+                "time",
+                {
+                    required:
+                        true
+                }
             )}
 
         </div>
@@ -554,6 +594,9 @@ function(){
                 "number_of_felling",
                 "number",
                 {
+                    min:
+                        "0",
+
                     placeholder:
                         "Number of trees"
                 }
@@ -618,7 +661,7 @@ function(){
 
 
 /* ============================================================
-   ILLEGAL MINING
+   ILLEGAL MINING / EARTH CUTTING
    ============================================================ */
 
 GGIrregularity.Form.mining =
@@ -634,7 +677,11 @@ function(){
             ${GGIrregularity.Form.field(
                 "Mining / Earth Cutting Compartment",
                 "mining_compartment",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Compartment"
+                }
             )}
 
             ${GGIrregularity.Form.field(
@@ -679,9 +726,13 @@ function(){
         >
 
             ${GGIrregularity.Form.field(
-                "Fishing Location",
+                "Fishing Location / Water Body",
                 "fishing_location",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "River / stream / water body"
+                }
             )}
 
             ${GGIrregularity.Form.field(
@@ -716,12 +767,12 @@ function(){
         >
 
             ${GGIrregularity.Form.field(
-                "Grazing Area",
+                "Grazing Area / Details",
                 "grazing_area",
                 "text",
                 {
                     placeholder:
-                        "Estimated area / location"
+                        "Estimated area / grazing details"
                 }
             )}
 
@@ -757,6 +808,16 @@ function(){
             )}
 
             ${GGIrregularity.Form.field(
+                "Area Affected",
+                "fire_affected_area",
+                "text",
+                {
+                    placeholder:
+                        "Estimated affected area"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
                 "Probable Cause",
                 "fire_cause",
                 "text",
@@ -788,12 +849,22 @@ function(){
         >
 
             ${GGIrregularity.Form.field(
-                "Encroachment Area / Compartment",
+                "Encroachment Compartment",
+                "encroached_compartment",
+                "text",
+                {
+                    placeholder:
+                        "Compartment"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Area Encroached",
                 "encroached_area",
                 "text",
                 {
                     placeholder:
-                        "Compartment / area"
+                        "Area encroached"
                 }
             )}
 
@@ -844,7 +915,10 @@ function(){
                 "textarea",
                 {
                     rows:
-                        3
+                        3,
+
+                    placeholder:
+                        "Describe the structure / occupation"
                 }
             )}
 
@@ -872,11 +946,15 @@ function(){
             ${GGIrregularity.Form.field(
                 "Species",
                 "poaching_species",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Species, if known"
+                }
             )}
 
             ${GGIrregularity.Form.field(
-                "Poaching Method",
+                "Poaching Method / Evidence",
                 "poaching_method",
                 "text",
                 {
@@ -909,7 +987,11 @@ function(){
             ${GGIrregularity.Form.field(
                 "No. of Trespassers",
                 "trespasser_count",
-                "number"
+                "number",
+                {
+                    min:
+                        "0"
+                }
             )}
 
             ${GGIrregularity.Form.field(
@@ -949,8 +1031,13 @@ function(){
             ${GGIrregularity.Form.field(
                 "Species",
                 "injured_species",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Species"
+                }
             )}
+
 
             <div
                 style="
@@ -965,16 +1052,25 @@ function(){
                 ${GGIrregularity.Form.field(
                     "Age",
                     "injured_age",
-                    "text"
+                    "text",
+                    {
+                        placeholder:
+                            "Age"
+                    }
                 )}
 
                 ${GGIrregularity.Form.field(
                     "Sex",
                     "injured_sex",
-                    "text"
+                    "text",
+                    {
+                        placeholder:
+                            "Sex"
+                    }
                 )}
 
             </div>
+
 
             ${GGIrregularity.Form.field(
                 "Injury Details",
@@ -982,7 +1078,10 @@ function(){
                 "textarea",
                 {
                     rows:
-                        3
+                        3,
+
+                    placeholder:
+                        "Describe injury"
                 }
             )}
 
@@ -1010,8 +1109,13 @@ function(){
             ${GGIrregularity.Form.field(
                 "Species",
                 "dead_species",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Species"
+                }
             )}
+
 
             <div
                 style="
@@ -1026,16 +1130,25 @@ function(){
                 ${GGIrregularity.Form.field(
                     "Sex",
                     "dead_sex",
-                    "text"
+                    "text",
+                    {
+                        placeholder:
+                            "Sex"
+                    }
                 )}
 
                 ${GGIrregularity.Form.field(
                     "Age",
                     "dead_age",
-                    "text"
+                    "text",
+                    {
+                        placeholder:
+                            "Age"
+                    }
                 )}
 
             </div>
+
 
             ${GGIrregularity.Form.field(
                 "Measurement",
@@ -1114,6 +1227,145 @@ function(){
         }
 
     );
+
+};
+
+
+/* ============================================================
+   MEDIA INPUT SECTION
+   ============================================================
+
+   IMPORTANT
+   ------------------------------------------------------------
+   We are NOT inventing a new media uploader here.
+
+   The actual existing GreenGuard media uploader should be
+   connected by the submit module using the application's
+   existing Storage/media functions.
+
+   Therefore this section only provides the user's intent/
+   attachment slots and does not initialize Firebase Storage.
+   ============================================================ */
+
+GGIrregularity.Form.media =
+function(){
+
+    return `
+
+        <div
+            class="gg-irregularity-media"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin:10px 0;
+                padding:10px;
+                border:1px solid #dfe8df;
+                border-radius:8px;
+                background:#f8faf8;
+            "
+        >
+
+            <div
+                style="
+                    margin:0 0 8px 0;
+                    color:#1b5e20;
+                    font-size:12px;
+                    font-weight:800;
+                "
+            >
+                🎬 MEDIA
+            </div>
+
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(
+                            3,
+                            minmax(0,1fr)
+                        );
+                    gap:7px;
+                "
+            >
+
+                <button
+                    type="button"
+                    id="gg-irregularity-photo"
+                    data-media-type="photo"
+                    style="
+                        min-height:38px;
+                        border:1px solid #c8d6c8;
+                        border-radius:7px;
+                        background:#ffffff;
+                        color:#1b5e20;
+                        font-size:11px;
+                        font-weight:700;
+                        cursor:pointer;
+                        touch-action:manipulation;
+                    "
+                >
+                    📷 Photo
+                </button>
+
+
+                <button
+                    type="button"
+                    id="gg-irregularity-video"
+                    data-media-type="video"
+                    style="
+                        min-height:38px;
+                        border:1px solid #c8d6c8;
+                        border-radius:7px;
+                        background:#ffffff;
+                        color:#1b5e20;
+                        font-size:11px;
+                        font-weight:700;
+                        cursor:pointer;
+                        touch-action:manipulation;
+                    "
+                >
+                    🎥 Video
+                </button>
+
+
+                <button
+                    type="button"
+                    id="gg-irregularity-audio"
+                    data-media-type="audio"
+                    style="
+                        min-height:38px;
+                        border:1px solid #c8d6c8;
+                        border-radius:7px;
+                        background:#ffffff;
+                        color:#1b5e20;
+                        font-size:11px;
+                        font-weight:700;
+                        cursor:pointer;
+                        touch-action:manipulation;
+                    "
+                >
+                    🎙 Audio
+                </button>
+
+            </div>
+
+
+            <div
+                id="gg-irregularity-media-status"
+                style="
+                    margin-top:7px;
+                    color:#607d8b;
+                    font-size:10px;
+                    line-height:1.3;
+                "
+            >
+                No media selected.
+            </div>
+
+        </div>
+
+    `;
 
 };
 
@@ -1234,109 +1486,10 @@ function(){
 
 
             <!-- ============================================
-                 LOCATION INFORMATION
+                 MEDIA
                  ============================================ -->
 
-            <div
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin:10px 0;
-                    padding:9px 10px;
-                    border:1px solid #dfe8df;
-                    border-radius:8px;
-                    background:#f8faf8;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        margin:0 0 5px 0;
-                        color:#1b5e20;
-                        font-size:12px;
-                        font-weight:800;
-                    "
-                >
-
-                    <span>
-                        📍
-                    </span>
-
-                    <span
-                        style="margin-left:5px;"
-                    >
-                        LOCATION
-                    </span>
-
-                </div>
-
-                <div
-                    style="
-                        color:#607d8b;
-                        font-size:11px;
-                        line-height:1.4;
-                    "
-                >
-                    Current GPS and GIS location will be resolved
-                    automatically when the record is saved.
-                </div>
-
-            </div>
-
-
-            <!-- ============================================
-                 MEDIA PLACEHOLDER
-                 ============================================ -->
-
-            <div
-                style="
-                    width:100%;
-                    box-sizing:border-box;
-                    margin:10px 0;
-                    padding:9px 10px;
-                    border:1px solid #dfe8df;
-                    border-radius:8px;
-                    background:#f8faf8;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        color:#1b5e20;
-                        font-size:12px;
-                        font-weight:800;
-                    "
-                >
-
-                    <span>
-                        🎬
-                    </span>
-
-                    <span
-                        style="margin-left:5px;"
-                    >
-                        MEDIA
-                    </span>
-
-                </div>
-
-                <div
-                    style="
-                        margin-top:5px;
-                        color:#78909c;
-                        font-size:11px;
-                        line-height:1.4;
-                    "
-                >
-                    Media upload will use the existing
-                    GreenGuard Storage flow.
-                </div>
-
-            </div>
+            ${GGIrregularity.Form.media()}
 
 
             <!-- ============================================
@@ -1414,10 +1567,23 @@ function(
 
     /*
      * GGIrregularity.init()
-     * is responsible for binding the form submit listener.
+     * is responsible for binding:
+     *
+     * • category switching
+     * • submit
+     * • media controls
+     *
+     * It must NOT create another GPS/GIS resolver.
      */
 
-    GGIrregularity.init();
+    if(
+        typeof GGIrregularity.init ===
+        "function"
+    ){
+
+        GGIrregularity.init();
+
+    }
 
 
     return true;
