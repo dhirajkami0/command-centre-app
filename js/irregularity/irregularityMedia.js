@@ -768,26 +768,20 @@ function(){
    PHOTO — PREVIEW
    ============================================================ */
 
-/* ============================================================
-   GG IRREGULARITY MEDIA
-   WORKING SIGHTING-STYLE PREVIEW PIPELINE
-
-   IMPORTANT:
-   - Irregularity only
-   - Does NOT modify Elephant/Wildlife
-   - Uses existing Irregularity state
-   - Uses existing Irregularity DOM IDs
-   ============================================================ */
-
 GGIrregularity.Media.previewPhoto =
-function(input){
+function(
+    input
+){
 
     try{
 
         const file =
             input?.files?.[0];
 
-        if(!file){
+
+        if(
+            !file
+        ){
 
             return false;
 
@@ -800,14 +794,19 @@ function(input){
 
         if(
             !file.type ||
-            !file.type.startsWith("image/")
+            !file.type.startsWith(
+                "image/"
+            )
         ){
 
             alert(
                 "Please select a valid image."
             );
 
-            input.value = "";
+
+            input.value =
+                "";
+
 
             return false;
 
@@ -815,26 +814,28 @@ function(input){
 
 
         /* ====================================================
-           STATE
+           RELEASE PREVIOUS PHOTO OBJECT URL
            ==================================================== */
 
-        const media =
-            GGIrregularity.Media
-                .getFormMediaState();
-
-        if(!media){
-
-            console.error(
-                "❌ Irregularity media state unavailable."
+        GGIrregularity.Media
+            ._revoke(
+                "photo"
             );
 
-            return false;
 
-        }
+        /* ====================================================
+           CREATE PHOTO PREVIEW URL
+           ==================================================== */
+
+        const objectUrl =
+            URL.createObjectURL(
+                file
+            );
 
 
-        media.photo =
-            file;
+        GGIrregularity.Media
+            ._photoObjectURL =
+            objectUrl;
 
 
         /* ====================================================
@@ -845,6 +846,7 @@ function(input){
             document.getElementById(
                 "gg-irregularity-photo-preview"
             );
+
 
         const image =
             document.getElementById(
@@ -861,59 +863,32 @@ function(input){
                 "❌ Irregularity photo preview elements missing."
             );
 
+
+            GGIrregularity.Media
+                ._revoke(
+                    "photo"
+                );
+
+
             return false;
 
         }
 
 
         /* ====================================================
-           RELEASE PREVIOUS OBJECT URL
+           SHOW PHOTO
            ==================================================== */
-
-        if(
-            media.photoObjectUrl
-        ){
-
-            try{
-
-                URL.revokeObjectURL(
-                    media.photoObjectUrl
-                );
-
-            }
-            catch(_){}
-
-        }
-
-
-        /* ====================================================
-           CREATE PREVIEW
-           ==================================================== */
-
-        const objectUrl =
-            URL.createObjectURL(
-                file
-            );
-
-
-        media.photoObjectUrl =
-            objectUrl;
-
 
         image.src =
             objectUrl;
 
-
-        /* ====================================================
-           SHOW IMMEDIATELY
-           ==================================================== */
 
         preview.style.display =
             "block";
 
 
         /* ====================================================
-           REFRESH ACTION BUTTONS
+           REFRESH MEDIA CONTROLS
            ==================================================== */
 
         if(
@@ -931,9 +906,14 @@ function(input){
         console.log(
             "📷 IRREGULARITY PHOTO READY",
             {
-                name:file.name,
-                type:file.type,
-                size:file.size
+                name:
+                    file.name,
+
+                type:
+                    file.type,
+
+                size:
+                    file.size
             }
         );
 
@@ -947,6 +927,7 @@ function(input){
             "❌ Irregularity photo preview failed:",
             error
         );
+
 
         return false;
 
@@ -983,7 +964,119 @@ function(){
    PHOTO — REMOVE
    ============================================================ */
 
+GGIrregularity.Media.removePhoto =
+function(){
 
+    try{
+
+        /* ====================================================
+           INPUT
+           ==================================================== */
+
+        const input =
+            document.getElementById(
+                "gg-irregularity-photo"
+            );
+
+
+        if(
+            input
+        ){
+
+            input.value =
+                "";
+
+        }
+
+
+        /* ====================================================
+           OBJECT URL
+           ==================================================== */
+
+        GGIrregularity.Media
+            ._revoke(
+                "photo"
+            );
+
+
+        /* ====================================================
+           IMAGE
+           ==================================================== */
+
+        const image =
+            document.getElementById(
+                "gg-irregularity-photo-preview-img"
+            );
+
+
+        if(
+            image
+        ){
+
+            image.removeAttribute(
+                "src"
+            );
+
+        }
+
+
+        /* ====================================================
+           PREVIEW
+           ==================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-photo-preview"
+            );
+
+
+        if(
+            preview
+        ){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        /* ====================================================
+           REFRESH CONTROLS
+           ==================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            GGIrregularity.Media
+                .updateControls();
+
+        }
+
+
+        console.log(
+            "🗑 Irregularity photo removed"
+        );
+
+
+        return true;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Irregularity photo removal failed:",
+            error
+        );
+
+
+        return false;
+
+    }
+
+};
 
 
 /* ============================================================
@@ -991,14 +1084,19 @@ function(){
    ============================================================ */
 
 GGIrregularity.Media.previewVideo =
-function(input){
+function(
+    input
+){
 
     try{
 
         const file =
             input?.files?.[0];
 
-        if(!file){
+
+        if(
+            !file
+        ){
 
             return false;
 
@@ -1011,14 +1109,19 @@ function(input){
 
         if(
             !file.type ||
-            !file.type.startsWith("video/")
+            !file.type.startsWith(
+                "video/"
+            )
         ){
 
             alert(
                 "Please select a valid video."
             );
 
-            input.value = "";
+
+            input.value =
+                "";
+
 
             return false;
 
@@ -1026,26 +1129,13 @@ function(input){
 
 
         /* ====================================================
-           STATE
+           RELEASE PREVIOUS VIDEO OBJECT URL
            ==================================================== */
 
-        const media =
-            GGIrregularity.Media
-                .getFormMediaState();
-
-        if(!media){
-
-            console.error(
-                "❌ Irregularity media state unavailable."
+        GGIrregularity.Media
+            ._revoke(
+                "video"
             );
-
-            return false;
-
-        }
-
-
-        media.video =
-            file;
 
 
         /* ====================================================
@@ -1056,6 +1146,7 @@ function(input){
             document.getElementById(
                 "gg-irregularity-video-preview"
             );
+
 
         const player =
             document.getElementById(
@@ -1072,33 +1163,14 @@ function(input){
                 "❌ Irregularity video preview elements missing."
             );
 
+
             return false;
 
         }
 
 
         /* ====================================================
-           RELEASE OLD VIDEO URL
-           ==================================================== */
-
-        if(
-            media.videoObjectUrl
-        ){
-
-            try{
-
-                URL.revokeObjectURL(
-                    media.videoObjectUrl
-                );
-
-            }
-            catch(_){}
-
-        }
-
-
-        /* ====================================================
-           CREATE URL
+           CREATE VIDEO URL
            ==================================================== */
 
         const objectUrl =
@@ -1107,7 +1179,8 @@ function(input){
             );
 
 
-        media.videoObjectUrl =
+        GGIrregularity.Media
+            ._videoObjectURL =
             objectUrl;
 
 
@@ -1115,7 +1188,14 @@ function(input){
             objectUrl;
 
 
-        player.load();
+        try{
+
+            player.load();
+
+        }
+        catch(_){
+
+        }
 
 
         /* ====================================================
@@ -1127,7 +1207,7 @@ function(input){
 
 
         /* ====================================================
-           REFRESH BUTTONS
+           REFRESH MEDIA CONTROLS
            ==================================================== */
 
         if(
@@ -1145,9 +1225,14 @@ function(input){
         console.log(
             "🎥 IRREGULARITY VIDEO READY",
             {
-                name:file.name,
-                type:file.type,
-                size:file.size
+                name:
+                    file.name,
+
+                type:
+                    file.type,
+
+                size:
+                    file.size
             }
         );
 
@@ -1162,11 +1247,14 @@ function(input){
             error
         );
 
+
         return false;
 
     }
 
 };
+
+
 /* ============================================================
    VIDEO — CHANGE
    ============================================================ */
@@ -1198,96 +1286,137 @@ function(){
 GGIrregularity.Media.removeVideo =
 function(){
 
-    const media =
-        GGIrregularity.Media
-            .getFormMediaState();
+    try{
 
-    const input =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
+        /* ====================================================
+           INPUT
+           ==================================================== */
 
-    const preview =
-        document.getElementById(
-            "gg-irregularity-video-preview"
-        );
-
-    const player =
-        document.getElementById(
-            "gg-irregularity-video-preview-player"
-        );
-
-
-    if(input){
-
-        input.value = "";
-
-    }
-
-
-    if(
-        media?.videoObjectUrl
-    ){
-
-        try{
-
-            URL.revokeObjectURL(
-                media.videoObjectUrl
+        const input =
+            document.getElementById(
+                "gg-irregularity-video"
             );
 
-        }
-        catch(_){}
 
-    }
+        if(
+            input
+        ){
 
-
-    if(player){
-
-        try{
-
-            player.pause();
+            input.value =
+                "";
 
         }
-        catch(_){}
 
 
-        player.removeAttribute(
-            "src"
+        /* ====================================================
+           OBJECT URL
+           ==================================================== */
+
+        GGIrregularity.Media
+            ._revoke(
+                "video"
+            );
+
+
+        /* ====================================================
+           PLAYER
+           ==================================================== */
+
+        const player =
+            document.getElementById(
+                "gg-irregularity-video-preview-player"
+            );
+
+
+        if(
+            player
+        ){
+
+            try{
+
+                player.pause();
+
+            }
+            catch(_){
+
+            }
+
+
+            player.removeAttribute(
+                "src"
+            );
+
+
+            try{
+
+                player.load();
+
+            }
+            catch(_){
+
+            }
+
+        }
+
+
+        /* ====================================================
+           PREVIEW
+           ==================================================== */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-video-preview"
+            );
+
+
+        if(
+            preview
+        ){
+
+            preview.style.display =
+                "none";
+
+        }
+
+
+        /* ====================================================
+           REFRESH CONTROLS
+           ==================================================== */
+
+        if(
+            typeof GGIrregularity.Media
+                .updateControls ===
+            "function"
+        ){
+
+            GGIrregularity.Media
+                .updateControls();
+
+        }
+
+
+        console.log(
+            "🗑 Irregularity video removed"
         );
 
-        player.load();
+
+        return true;
 
     }
+    catch(error){
+
+        console.error(
+            "❌ Irregularity video removal failed:",
+            error
+        );
 
 
-    if(media){
-
-        media.video =
-            null;
-
-        media.videoObjectUrl =
-            null;
-
-    }
-
-
-    if(preview){
-
-        preview.style.display =
-            "none";
+        return false;
 
     }
-
-
-    GGIrregularity.Media
-        .updateControls();
-
-
-    console.log(
-        "🗑 Irregularity video removed"
-    );
 
 };
+
 
 /* ============================================================
    AUDIO — SHOW PREVIEW
@@ -1302,7 +1431,7 @@ function(
         !source
     ){
 
-        return;
+        return false;
 
     }
 
@@ -1323,26 +1452,31 @@ function(
         !player
     ){
 
-        return;
+        console.error(
+            "❌ Irregularity audio preview player missing."
+        );
+
+
+        return false;
 
     }
 
 
-    /*
-     * Remove previous preview URL if this is
-     * a browser-created object URL.
-     */
+    /* ========================================================
+       BROWSER BLOB / FILE
+       ======================================================== */
 
     if(
         source instanceof Blob
     ){
 
-        GGIrregularity.Media._revoke(
-            "audio"
-        );
+        GGIrregularity.Media
+            ._revoke(
+                "audio"
+            );
 
 
-        const url =
+        const objectUrl =
             URL.createObjectURL(
                 source
             );
@@ -1350,14 +1484,18 @@ function(
 
         GGIrregularity.Media
             ._audioObjectURL =
-            url;
+            objectUrl;
 
 
         player.src =
-            url;
+            objectUrl;
 
     }
     else{
+
+        /*
+         * Native Android URI.
+         */
 
         player.src =
             String(
@@ -1387,8 +1525,27 @@ function(
     }
 
 
+    /* ========================================================
+       REFRESH CONTROLS
+       ======================================================== */
+
+    if(
+        typeof GGIrregularity.Media
+            .updateControls ===
+        "function"
+    ){
+
+        GGIrregularity.Media
+            .updateControls();
+
+    }
+
+
     GGIrregularity.Media
         ._updateFormStatus();
+
+
+    return true;
 
 };
 
@@ -1398,14 +1555,19 @@ function(
    ============================================================ */
 
 GGIrregularity.Media.previewAudio =
-function(input){
+function(
+    input
+){
 
     try{
 
         const file =
             input?.files?.[0];
 
-        if(!file){
+
+        if(
+            !file
+        ){
 
             return false;
 
@@ -1418,14 +1580,19 @@ function(input){
 
         if(
             !file.type ||
-            !file.type.startsWith("audio/")
+            !file.type.startsWith(
+                "audio/"
+            )
         ){
 
             alert(
                 "Please select a valid audio file."
             );
 
-            input.value = "";
+
+            input.value =
+                "";
+
 
             return false;
 
@@ -1433,122 +1600,39 @@ function(input){
 
 
         /* ====================================================
-           STATE
+           NATIVE AUDIO NO LONGER ACTIVE
            ==================================================== */
 
-        const media =
+        GGIrregularity.Media
+            ._nativeAudioActive =
+            false;
+
+
+        GGIrregularity.Media
+            ._nativeAudioUri =
+            null;
+
+
+        window.currentIrregularityAudioType =
+            null;
+
+
+        /* ====================================================
+           SHOW FILE PREVIEW
+           ==================================================== */
+
+        const result =
             GGIrregularity.Media
-                .getFormMediaState();
-
-        if(!media){
-
-            console.error(
-                "❌ Irregularity media state unavailable."
-            );
-
-            return false;
-
-        }
-
-
-        /* ====================================================
-           RELEASE OLD AUDIO URL
-           ==================================================== */
-
-        if(
-            media.audioObjectUrl
-        ){
-
-            try{
-
-                URL.revokeObjectURL(
-                    media.audioObjectUrl
+                ._showAudioPreview(
+                    file
                 );
 
-            }
-            catch(_){}
-
-        }
-
-
-        /* ====================================================
-           STORE FILE
-           ==================================================== */
-
-        media.audio =
-            file;
-
-
-        /* ====================================================
-           DOM
-           ==================================================== */
-
-        const preview =
-            document.getElementById(
-                "gg-irregularity-audio-preview"
-            );
-
-        const player =
-            document.getElementById(
-                "gg-irregularity-audio-preview-player"
-            );
-
 
         if(
-            !preview ||
-            !player
+            !result
         ){
-
-            console.error(
-                "❌ Irregularity audio preview elements missing."
-            );
 
             return false;
-
-        }
-
-
-        /* ====================================================
-           CREATE OBJECT URL
-           ==================================================== */
-
-        const objectUrl =
-            URL.createObjectURL(
-                file
-            );
-
-
-        media.audioObjectUrl =
-            objectUrl;
-
-
-        player.src =
-            objectUrl;
-
-
-        player.load();
-
-
-        /* ====================================================
-           SHOW PREVIEW
-           ==================================================== */
-
-        preview.style.display =
-            "block";
-
-
-        /* ====================================================
-           REFRESH CONTROLS
-           ==================================================== */
-
-        if(
-            typeof GGIrregularity.Media
-                .updateControls ===
-            "function"
-        ){
-
-            GGIrregularity.Media
-                .updateControls();
 
         }
 
@@ -1556,9 +1640,14 @@ function(input){
         console.log(
             "🎙 IRREGULARITY AUDIO READY",
             {
-                name:file.name,
-                type:file.type,
-                size:file.size
+                name:
+                    file.name,
+
+                type:
+                    file.type,
+
+                size:
+                    file.size
             }
         );
 
@@ -1573,47 +1662,10 @@ function(input){
             error
         );
 
+
         return false;
 
     }
-
-};
-
-
-    /* ========================================================
-       VALIDATE AUDIO
-       ======================================================== */
-
-    if(
-        !file.type ||
-        !file.type.startsWith(
-            "audio/"
-        )
-    ){
-
-        alert(
-            "Please select a valid audio file."
-        );
-
-
-        input.value =
-            "";
-
-
-        return;
-
-    }
-
-
-    GGIrregularity.Media
-        ._nativeAudioUri =
-        null;
-
-
-    GGIrregularity.Media
-        ._showAudioPreview(
-            file
-        );
 
 };
 
@@ -1666,7 +1718,7 @@ function(
 
         /*
          * DataTransfer allows a browser-generated
-         * recording Blob/File to become the actual
+         * recording File to become the actual
          * <input type="file"> value.
          */
 
@@ -1847,7 +1899,6 @@ async function(){
 
         const recorder =
             mimeType
-
                 ? new MediaRecorder(
                     stream,
                     {
@@ -1990,7 +2041,9 @@ async function(){
 
                 const file =
                     new File(
-                        [blob],
+                        [
+                            blob
+                        ],
                         "irregularity_audio_" +
                         Date.now() +
                         "." +
@@ -2020,6 +2073,20 @@ async function(){
                         input,
                         file
                     );
+
+
+                /* ============================================
+                   NATIVE AUDIO IS NOT ACTIVE
+                   ============================================ */
+
+                GGIrregularity.Media
+                    ._nativeAudioActive =
+                    false;
+
+
+                GGIrregularity.Media
+                    ._nativeAudioUri =
+                    null;
 
 
                 /* ============================================
@@ -2312,6 +2379,10 @@ function(){
                 false
             );
 
+
+        GGIrregularity.Media
+            ._updateFormStatus();
+
     }
 
 };
@@ -2348,8 +2419,6 @@ async function(){
      *
      * Existing Android integration can be used if it
      * already exposes startVoiceRecorder().
-     *
-     * We do NOT require it.
      */
 
     if(
@@ -2447,7 +2516,7 @@ function(){
 
 
 /* ============================================================
-   🎙 AUDIO — REMOVE
+   AUDIO — REMOVE
    ============================================================ */
 
 GGIrregularity.Media.removeAudio =
@@ -2455,9 +2524,9 @@ function(){
 
     try{
 
-        /* ========================================================
+        /* ====================================================
            STOP ACTIVE RECORDER
-           ======================================================== */
+           ==================================================== */
 
         const recorder =
             GGIrregularity.Media
@@ -2467,7 +2536,7 @@ function(){
         if(
             recorder &&
             recorder.state ===
-                "recording"
+            "recording"
         ){
 
             try{
@@ -2482,95 +2551,35 @@ function(){
         }
 
 
-        /* ========================================================
+        /* ====================================================
            STOP AUDIO STREAM
-           ======================================================== */
+           ==================================================== */
 
-        if(
-            typeof GGIrregularity.Media
-                ._stopAudioStream ===
-            "function"
-        ){
-
-            try{
-
-                GGIrregularity.Media
-                    ._stopAudioStream();
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Audio stream stop failed:",
-                    error
-                );
-
-            }
-
-        }
+        GGIrregularity.Media
+            ._stopAudioStream();
 
 
-        /* ========================================================
-           CLEAR RECORDING TIMER
-           ======================================================== */
+        /* ====================================================
+           CLEAR TIMER
+           ==================================================== */
 
-        if(
-            typeof GGIrregularity.Media
-                ._clearAudioTimer ===
-            "function"
-        ){
-
-            try{
-
-                GGIrregularity.Media
-                    ._clearAudioTimer();
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Audio timer clear failed:",
-                    error
-                );
-
-            }
-
-        }
+        GGIrregularity.Media
+            ._clearAudioTimer();
 
 
-        /* ========================================================
+        /* ====================================================
            REVOKE AUDIO OBJECT URL
-           ======================================================== */
+           ==================================================== */
 
-        if(
-            typeof GGIrregularity.Media
-                ._revoke ===
-            "function"
-        ){
-
-            try{
-
-                GGIrregularity.Media
-                    ._revoke(
-                        "audio"
-                    );
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Audio object URL revoke failed:",
-                    error
-                );
-
-            }
-
-        }
+        GGIrregularity.Media
+            ._revoke(
+                "audio"
+            );
 
 
-        /* ========================================================
+        /* ====================================================
            RESET AUDIO STATE
-           ======================================================== */
+           ==================================================== */
 
         GGIrregularity.Media
             ._audioRecorder =
@@ -2597,17 +2606,13 @@ function(){
             null;
 
 
-        /* ========================================================
-           CLEAR CURRENT IRREGULARITY AUDIO REQUEST
-           ======================================================== */
-
         window.currentIrregularityAudioType =
             null;
 
 
-        /* ========================================================
+        /* ====================================================
            CLEAR AUDIO INPUT
-           ======================================================== */
+           ==================================================== */
 
         const input =
             document.getElementById(
@@ -2625,9 +2630,9 @@ function(){
         }
 
 
-        /* ========================================================
+        /* ====================================================
            AUDIO PLAYER
-           ======================================================== */
+           ==================================================== */
 
         const player =
             document.getElementById(
@@ -2666,9 +2671,9 @@ function(){
         }
 
 
-        /* ========================================================
+        /* ====================================================
            AUDIO PREVIEW
-           ======================================================== */
+           ==================================================== */
 
         const preview =
             document.getElementById(
@@ -2686,29 +2691,9 @@ function(){
         }
 
 
-        /* ========================================================
-           AUDIO ACTIONS
-           ======================================================== */
-
-        const actions =
-            document.getElementById(
-                "gg-irregularity-audio-actions"
-            );
-
-
-        if(
-            actions
-        ){
-
-            actions.style.display =
-                "none";
-
-        }
-
-
-        /* ========================================================
+        /* ====================================================
            AUDIO TIMER
-           ======================================================== */
+           ==================================================== */
 
         const timer =
             document.getElementById(
@@ -2726,39 +2711,19 @@ function(){
         }
 
 
-        /* ========================================================
+        /* ====================================================
            RESET RECORD BUTTON
-           ======================================================== */
+           ==================================================== */
 
-        if(
-            typeof GGIrregularity.Media
-                ._setRecordButton ===
-            "function"
-        ){
-
-            try{
-
-                GGIrregularity.Media
-                    ._setRecordButton(
-                        false
-                    );
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Record button reset failed:",
-                    error
-                );
-
-            }
-
-        }
+        GGIrregularity.Media
+            ._setRecordButton(
+                false
+            );
 
 
-        /* ========================================================
-           REFRESH MEDIA CONTROLS
-           ======================================================== */
+        /* ====================================================
+           REFRESH CONTROLS
+           ==================================================== */
 
         if(
             typeof GGIrregularity.Media
@@ -2766,55 +2731,19 @@ function(){
             "function"
         ){
 
-            try{
-
-                GGIrregularity.Media
-                    .updateControls();
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Media controls refresh failed:",
-                    error
-                );
-
-            }
+            GGIrregularity.Media
+                .updateControls();
 
         }
 
 
-        /* ========================================================
-           UPDATE FORM MEDIA STATUS
-           ======================================================== */
+        /* ====================================================
+           UPDATE FORM STATUS
+           ==================================================== */
 
-        if(
-            typeof GGIrregularity.Media
-                ._updateFormStatus ===
-            "function"
-        ){
+        GGIrregularity.Media
+            ._updateFormStatus();
 
-            try{
-
-                GGIrregularity.Media
-                    ._updateFormStatus();
-
-            }
-            catch(error){
-
-                console.warn(
-                    "⚠ Form media status update failed:",
-                    error
-                );
-
-            }
-
-        }
-
-
-        /* ========================================================
-           COMPLETE
-           ======================================================== */
 
         console.log(
             "🗑️ Irregularity audio removed."
@@ -2837,6 +2766,7 @@ function(){
     }
 
 };
+
 
 /* ============================================================
    AUDIO — NATIVE ANDROID CALLBACK
@@ -2944,6 +2874,22 @@ function(
     }
 
 
+    /* ========================================================
+       REFRESH CONTROLS
+       ======================================================== */
+
+    if(
+        typeof GGIrregularity.Media
+            .updateControls ===
+        "function"
+    ){
+
+        GGIrregularity.Media
+            .updateControls();
+
+    }
+
+
     GGIrregularity.Media
         ._updateFormStatus();
 
@@ -3029,6 +2975,12 @@ if(
    END PART 2/4
    ============================================================ */
 /* ============================================================
+   PART 3/4
+   UPLOAD + FIRESTORE + EVENTS + STATUS
+   ============================================================ */
+
+
+/* ============================================================
    UPLOAD BLOB / FILE
    ============================================================ */
 
@@ -3077,7 +3029,7 @@ async function(
 
 
     /* ========================================================
-       EXISTING FIREBASE STORAGE REF
+       FIREBASE STORAGE REF
        ======================================================== */
 
     const storageRef =
@@ -3148,6 +3100,7 @@ async function(
     console.log(
         "⬆️ Uploading Irregularity media:",
         {
+
             mediaType:
                 mediaType,
 
@@ -3168,7 +3121,7 @@ async function(
 
 
     /* ========================================================
-       EXISTING uploadBytes()
+       FIREBASE STORAGE UPLOAD
        ======================================================== */
 
     const uploadResult =
@@ -3180,7 +3133,7 @@ async function(
 
 
     /* ========================================================
-       EXISTING getDownloadURL()
+       DOWNLOAD URL
        ======================================================== */
 
     const url =
@@ -3192,6 +3145,7 @@ async function(
     console.log(
         "✅ Irregularity media uploaded:",
         {
+
             mediaType:
                 mediaType,
 
@@ -3299,6 +3253,10 @@ async function(
     }
 
 
+    /* ========================================================
+       DETERMINE MIME TYPE
+       ======================================================== */
+
     const mimeType =
         blob.type ||
         "audio/mp4";
@@ -3340,6 +3298,10 @@ async function(
     }
 
 
+    /* ========================================================
+       CREATE FILE
+       ======================================================== */
+
     const file =
         new File(
             [
@@ -3350,14 +3312,20 @@ async function(
             "." +
             extension,
             {
+
                 type:
                     mimeType,
 
                 lastModified:
                     Date.now()
+
             }
         );
 
+
+    /* ========================================================
+       USE SAME STORAGE UPLOAD PIPELINE
+       ======================================================== */
 
     return GGIrregularity.Media
         .uploadBlob(
@@ -3389,7 +3357,7 @@ async function(
     try{
 
         /* ====================================================
-           EXISTING FIREBASE
+           FIREBASE
            ==================================================== */
 
         await GGIrregularity.Media
@@ -3571,7 +3539,7 @@ async function(
 
 
         /* ====================================================
-           NATIVE AUDIO URI
+           NATIVE AUDIO
            ==================================================== */
 
         else if(
@@ -3613,7 +3581,6 @@ async function(
            ==================================================== */
 
         const count =
-
             (
                 result.photo_url
                     ? 1
@@ -3680,7 +3647,7 @@ async function(
 ){
 
     /* ========================================================
-       VALIDATE FIRESTORE
+       FIREBASE VALIDATION
        ======================================================== */
 
     if(
@@ -3719,7 +3686,7 @@ async function(
 
 
     /* ========================================================
-       SAME MEDIA FIELDS AS EXISTING PIPELINE
+       MEDIA FIELDS
        ======================================================== */
 
     await window.fb.updateDoc(
@@ -3767,6 +3734,7 @@ async function(
     console.log(
         "✅ Irregularity Firestore media fields updated:",
         {
+
             firestoreId:
                 firestoreId,
 
@@ -3791,10 +3759,12 @@ function(){
             "gg-irregularity-photo"
         );
 
+
     const video =
         document.getElementById(
             "gg-irregularity-video"
         );
+
 
     const audio =
         document.getElementById(
@@ -3894,7 +3864,7 @@ function(){
 
 
 /* ============================================================
-   FINAL MEDIA STATUS
+   MEDIA STATUS
    ============================================================ */
 
 GGIrregularity.Media.getStatus =
@@ -3945,7 +3915,6 @@ function(){
 /* ============================================================
    END PART 3/4
    ============================================================ */
-
 /* ============================================================
    PART 4/4
    FINAL INITIALIZATION + COMPATIBILITY
@@ -4045,10 +4014,6 @@ function(){
 
 
 /* ============================================================
-   MEDIA UI VISIBILITY
-   ============================================================ */
-
-/* ============================================================
    IRREGULARITY MEDIA CONTROL STATE
    ============================================================ */
 
@@ -4060,20 +4025,24 @@ function(){
             ? GGIrregularity.Media.getFormMedia()
             : {};
 
+
     const photo =
         media.photo ||
         GGIrregularity.Media._photoFile ||
         null;
+
 
     const video =
         media.video ||
         GGIrregularity.Media._videoFile ||
         null;
 
+
     const audio =
         media.audio ||
         GGIrregularity.Media._audioFile ||
         null;
+
 
     const nativeAudio =
         GGIrregularity.Media._nativeAudioUri ||
@@ -4089,12 +4058,16 @@ function(){
             "gg-irregularity-photo-actions"
         );
 
-    if(photoActions){
+
+    if(
+        photoActions
+    ){
 
         photoActions.style.display =
             photo
                 ? "flex"
                 : "none";
+
     }
 
 
@@ -4107,12 +4080,16 @@ function(){
             "gg-irregularity-video-actions"
         );
 
-    if(videoActions){
+
+    if(
+        videoActions
+    ){
 
         videoActions.style.display =
             video
                 ? "flex"
                 : "none";
+
     }
 
 
@@ -4125,7 +4102,10 @@ function(){
             "gg-irregularity-audio-actions"
         );
 
-    if(audioActions){
+
+    if(
+        audioActions
+    ){
 
         audioActions.style.display =
             (
@@ -4134,6 +4114,7 @@ function(){
             )
                 ? "flex"
                 : "none";
+
     }
 
 
@@ -4146,12 +4127,16 @@ function(){
             "gg-irregularity-select-audio"
         );
 
-    if(selectAudioButton){
+
+    if(
+        selectAudioButton
+    ){
 
         selectAudioButton.style.display =
             GGIrregularity.Media._recording
                 ? "none"
                 : "inline-flex";
+
     }
 
 
@@ -4164,11 +4149,16 @@ function(){
             "gg-irregularity-record-audio"
         );
 
-    if(recordButton){
+
+    if(
+        recordButton
+    ){
 
         recordButton.style.display =
             "inline-flex";
+
     }
+
 };
 
 
@@ -4318,30 +4308,22 @@ function(
 
 
 /* ============================================================
-   WRAP REMOVE FUNCTIONS
+   PHOTO — REMOVE
    ============================================================ */
-
-GGIrregularity.Media._originalRemovePhoto =
-    GGIrregularity.Media._originalRemovePhoto ||
-    GGIrregularity.Media.removePhoto;
-
 
 GGIrregularity.Media.removePhoto =
 function(){
 
-    const media =
-        GGIrregularity.Media
-            .getFormMediaState();
+    GGIrregularity.Media._revoke(
+        "photo"
+    );
+
 
     const input =
         document.getElementById(
             "gg-irregularity-photo"
         );
 
-    const preview =
-        document.getElementById(
-            "gg-irregularity-photo-preview"
-        );
 
     const image =
         document.getElementById(
@@ -4349,41 +4331,25 @@ function(){
         );
 
 
-    if(input){
+    const preview =
+        document.getElementById(
+            "gg-irregularity-photo-preview"
+        );
 
-        input.value = "";
+
+    if(
+        input
+    ){
+
+        input.value =
+            "";
 
     }
 
 
     if(
-        media?.photoObjectUrl
+        image
     ){
-
-        try{
-
-            URL.revokeObjectURL(
-                media.photoObjectUrl
-            );
-
-        }
-        catch(_){}
-
-    }
-
-
-    if(media){
-
-        media.photo =
-            null;
-
-        media.photoObjectUrl =
-            null;
-
-    }
-
-
-    if(image){
 
         image.removeAttribute(
             "src"
@@ -4392,7 +4358,9 @@ function(){
     }
 
 
-    if(preview){
+    if(
+        preview
+    ){
 
         preview.style.display =
             "none";
@@ -4401,38 +4369,7 @@ function(){
 
 
     GGIrregularity.Media
-        .updateControls();
-
-
-    console.log(
-        "🗑 Irregularity photo removed"
-    );
-
-};
-
-
-/* ============================================================
-   WRAP RECORDING
-   ============================================================ */
-
-GGIrregularity.Media._originalRecordAudio =
-    GGIrregularity.Media._originalRecordAudio ||
-    GGIrregularity.Media.recordAudio;
-
-
-GGIrregularity.Media.recordAudio =
-async function(){
-
-    const result =
-        await GGIrregularity.Media
-            ._originalRecordAudio();
-
-
-    GGIrregularity.Media
-        .updateControls();
-
-
-    return result;
+        ._updateFormStatus();
 
 };
 
