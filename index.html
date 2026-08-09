@@ -10273,35 +10273,75 @@ catch (
 // ======================================================
 
 // ======================================================
-// 🔥 GLOBAL STATE
+// 🔥 GREENGUARD SERVICE WORKER UPDATE FLOW
+// ======================================================
+//
+// PROFESSIONAL / NON-BREAKING VERSION
+//
+// RULES:
+//
+// 1. Normal application use NEVER reloads.
+// 2. Service Worker controllerchange NEVER reloads by itself.
+// 3. Background update NEVER interrupts the user.
+// 4. Update button is the ONLY intentional update trigger.
+// 5. If worker is not ready yet, Update waits for it.
+// 6. If application is busy, update waits safely.
+// 7. Duplicate update clicks are blocked.
+// 8. Existing application UI/state is left untouched until
+//    the user explicitly confirms Update.
+//
 // ======================================================
 
-let newWorker = null;
 
-let isUpdating = false;
+// ======================================================
+// GLOBAL STATE
+// ======================================================
 
-let refreshing = false;
+let newWorker =
+    null;
+
+
+let currentRegistration =
+    null;
+
+
+let isUpdating =
+    false;
+
+
+let refreshing =
+    false;
+
+
+let updateWaitTimer =
+    null;
+
+
+let updateTimeoutTimer =
+    null;
 
 
 // ======================================================
-// 🔥 APPLICATION VERSION
+// APPLICATION VERSION
 // ======================================================
 
-const APP_VERSION = "v1006";
+const APP_VERSION =
+    "v1006";
+
 
 console.log(
-    "🔥 VERSION",
+    "🔥 GREENGUARD VERSION:",
     APP_VERSION
 );
 
 
 // ======================================================
-// 🚀 SINGLE LOAD WRAPPER
+// SINGLE LOAD WRAPPER
 // ======================================================
 //
 // IMPORTANT:
 //
-// This wrapper must execute only once.
+// The application must initialize only once.
 //
 // ======================================================
 
@@ -10312,11 +10352,13 @@ window.addEventListener(
     function(){
 
         // ==================================================
-        // 🔥 MASTER LOAD LOCK
+        // MASTER LOAD LOCK
         // ==================================================
 
         if(
+
             window.__LOAD_EXECUTED__
+
         ){
 
             console.warn(
@@ -10333,12 +10375,12 @@ window.addEventListener(
 
 
         console.log(
-            "🚀 LOAD INIT START"
+            "🚀 GREENGUARD LOAD INIT START"
         );
 
 
         // ==================================================
-        // 🔧 VERSION TAG
+        // VERSION TAG
         // ==================================================
 
         const versionEl =
@@ -10348,7 +10390,9 @@ window.addEventListener(
 
 
         if(
+
             versionEl
+
         ){
 
             versionEl.innerText =
@@ -10358,7 +10402,7 @@ window.addEventListener(
 
 
         // ==================================================
-        // 🔥 SPLASH SCREEN
+        // SPLASH SCREEN
         // ==================================================
 
         const splash =
@@ -10368,7 +10412,9 @@ window.addEventListener(
 
 
         if(
+
             splash
+
         ){
 
             setTimeout(
@@ -10383,14 +10429,36 @@ window.addEventListener(
 
                         function(){
 
-                            splash.remove();
+                            if(
+
+                                splash.parentNode
+
+                            ){
+
+                                splash.remove();
+
+                            }
 
 
                             if(
+
                                 window.map
+
                             ){
 
-                                window.map.invalidateSize();
+                                try{
+
+                                    window.map.invalidateSize();
+
+                                }
+                                catch(error){
+
+                                    console.warn(
+                                        "⚠ Map invalidate failed:",
+                                        error
+                                    );
+
+                                }
 
                             }
 
@@ -10410,17 +10478,14 @@ window.addEventListener(
 
 
         // ======================================================
-        // 🚀 SERVICE WORKER REGISTER
+        // SERVICE WORKER
         // ======================================================
         //
         // IMPORTANT:
         //
-        // Service Worker updates are allowed.
+        // Registration/update is allowed.
         //
-        // BUT:
-        //
-        // A Service Worker update MUST NOT automatically
-        // reload the GreenGuard application.
+        // Automatic reload is NOT allowed.
         //
         // ======================================================
 
@@ -10444,20 +10509,24 @@ window.addEventListener(
 
                 .then(
 
-                    function(reg){
+                    function(registration){
+
+                        currentRegistration =
+                            registration;
+
 
                         console.log(
-                            "✅ SW Registered"
+                            "✅ Service Worker registered"
                         );
 
 
                         // ==================================================
-                        // ONLY ONE INITIAL UPDATE CHECK
+                        // INITIAL BACKGROUND UPDATE CHECK
                         // ==================================================
                         //
-                        // No repeating interval.
+                        // Only one check.
                         //
-                        // This preserves the existing behaviour.
+                        // This does NOT reload the application.
                         //
                         // ==================================================
 
@@ -10467,15 +10536,13 @@ window.addEventListener(
 
                                 try{
 
-                                    reg.update();
+                                    registration.update();
 
                                 }
-                                catch(
-                                    error
-                                ){
+                                catch(error){
 
                                     console.warn(
-                                        "⚠ SW update check failed:",
+                                        "⚠ SW background update check failed:",
                                         error
                                     );
 
@@ -10489,31 +10556,52 @@ window.addEventListener(
 
 
                         // ==================================================
-                        // HANDLE NEW SERVICE WORKER
-                        // ==================================================
-                        //
-                        // IMPORTANT:
-                        //
-                        // DO NOT call skipWaiting automatically here.
-                        //
-                        // Doing so can change the controller while the
-                        // user is actively using the application.
-                        //
-                        // Instead, expose the worker as available.
-                        //
+                        // EXISTING WAITING WORKER
                         // ==================================================
 
-                        function handleUpdate(
+                        if(
+
+                            registration.waiting
+
+                        ){
+
+                            console.log(
+                                "⚡ Existing waiting Service Worker found"
+                            );
+
+
+                            newWorker =
+                                registration.waiting;
+
+
+                            showUpdateUI();
+
+                        }
+
+
+                        // ==================================================
+                        // HANDLE INSTALLING WORKER
+                        // ==================================================
+
+                        function watchWorker(
                             worker
                         ){
 
                             if(
+
                                 !worker
+
                             ){
 
                                 return;
 
                             }
+
+
+                            console.log(
+                                "🔎 Watching Service Worker:",
+                                worker.state
+                            );
 
 
                             worker.addEventListener(
@@ -10522,48 +10610,52 @@ window.addEventListener(
 
                                 function(){
 
+                                    console.log(
+                                        "🔄 Service Worker state:",
+                                        worker.state
+                                    );
+
+
+                                    // ==================================================
+                                    // INSTALLED
+                                    // ==================================================
+
                                     if(
 
                                         worker.state ===
                                         "installed"
 
-                                        &&
-
-                                        navigator
-                                            .serviceWorker
-                                            .controller
-
                                     ){
 
-                                        console.log(
-                                            "⚡ New version ready"
-                                        );
-
-
                                         // ==================================================
-                                        // STORE NEW WORKER
+                                        // NEW WORKER AVAILABLE
                                         // ==================================================
 
-                                        newWorker =
-                                            worker;
+                                        if(
+
+                                            navigator
+                                                .serviceWorker
+                                                .controller
+
+                                        ){
+
+                                            newWorker =
+                                                worker;
 
 
-                                        // ==================================================
-                                        // SHOW UPDATE UI
-                                        // ==================================================
+                                            console.log(
+                                                "⚡ NEW VERSION AVAILABLE"
+                                            );
 
-                                        try{
 
                                             showUpdateUI();
 
                                         }
-                                        catch(
-                                            error
-                                        ){
 
-                                            console.warn(
-                                                "⚠ Update UI unavailable:",
-                                                error
+                                        else{
+
+                                            console.log(
+                                                "ℹ️ First Service Worker installed"
                                             );
 
                                         }
@@ -10578,46 +10670,10 @@ window.addEventListener(
 
 
                         // ==================================================
-                        // EXISTING WAITING WORKER
+                        // UPDATE FOUND
                         // ==================================================
 
-                        if(
-                            reg.waiting
-                        ){
-
-                            newWorker =
-                                reg.waiting;
-
-
-                            console.log(
-                                "⚡ Waiting Service Worker found"
-                            );
-
-
-                            try{
-
-                                showUpdateUI();
-
-                            }
-                            catch(
-                                error
-                            ){
-
-                                console.warn(
-                                    "⚠ Update UI unavailable:",
-                                    error
-                                );
-
-                            }
-
-                        }
-
-
-                        // ==================================================
-                        // NEW WORKER FOUND
-                        // ==================================================
-
-                        reg.addEventListener(
+                        registration.addEventListener(
 
                             "updatefound",
 
@@ -10628,8 +10684,12 @@ window.addEventListener(
                                 );
 
 
-                                handleUpdate(
-                                    reg.installing
+                                const installingWorker =
+                                    registration.installing;
+
+
+                                watchWorker(
+                                    installingWorker
                                 );
 
                             }
@@ -10645,7 +10705,7 @@ window.addEventListener(
                     function(error){
 
                         console.error(
-                            "❌ SW registration failed:",
+                            "❌ Service Worker registration failed:",
                             error
                         );
 
@@ -10657,29 +10717,22 @@ window.addEventListener(
 
 
         // ======================================================
-        // 🚀 SERVICE WORKER CONTROLLER CHANGE
+        // SERVICE WORKER CONTROLLER CHANGE
         // ======================================================
         //
-        // 🔥 CRITICAL FIX
+        // CRITICAL:
         //
-        // NEVER reload the application here.
+        // NEVER reload here automatically.
         //
-        // A controller change can happen while the user is:
+        // A controller change may occur while the user is:
         //
         // - viewing the map
-        // - viewing wildlife popup
-        // - viewing elephant popup
-        // - on GIS
-        // - on analytics
-        // - on duty
+        // - viewing wildlife
+        // - viewing elephant sightings
         // - filling a form
+        // - doing patrol
+        // - on duty
         // - viewing media
-        //
-        // The previous code called:
-        //
-        //     location.reload();
-        //
-        // which caused the application to return to the default UI.
         //
         // ======================================================
 
@@ -10693,78 +10746,61 @@ window.addEventListener(
                 true;
 
 
-            if(
-                navigator.serviceWorker
-            ){
+            navigator.serviceWorker?.addEventListener(
 
-                navigator.serviceWorker.addEventListener(
+                "controllerchange",
 
-                    "controllerchange",
+                function(){
 
-                    function(){
-
-                        console.log(
-                            "⚡ Service Worker controller changed"
-                        );
+                    console.log(
+                        "⚡ Service Worker controller changed"
+                    );
 
 
-                        // ==================================================
-                        // 🔥 DO NOT RELOAD
-                        // ==================================================
-
-                        window.__SW_CONTROLLER_CHANGED__ =
-                            true;
+                    window.__SW_CONTROLLER_CHANGED__ =
+                        true;
 
 
-                        console.log(
-                            "🛡️ GreenGuard kept running — automatic reload blocked."
-                        );
+                    console.log(
+                        "🛡️ GreenGuard kept running — automatic reload blocked."
+                    );
 
 
-                        // ==================================================
-                        // IMPORTANT
-                        // ==================================================
-                        //
-                        // Do NOT:
-                        //
-                        // location.reload()
-                        //
-                        // Do NOT:
-                        //
-                        // setTimeout(location.reload...)
-                        //
-                        // Do NOT:
-                        //
-                        // restart the application.
-                        //
-                        // The current UI remains untouched.
-                        //
-                        // ==================================================
+                    // ==================================================
+                    // IMPORTANT
+                    // ==================================================
+                    //
+                    // DO NOT reload here.
+                    //
+                    // Manual update flow is responsible for the
+                    // intentional reload.
+                    //
+                    // ==================================================
 
-                    }
+                }
 
-                );
-
-            }
+            );
 
         }
 
 
         // ======================================================
-        // 🔥 MAIN APP INIT
+        // MAIN APPLICATION INIT
         // ======================================================
 
         console.log(
-            "🚀 App Started - Command Centre Initializing"
+            "🚀 GreenGuard application initializing"
         );
 
 
         if(
+
             window.__APP_STARTED__
+
         ){
 
             console.warn(
-                "⚠ App already started → skipping"
+                "⚠ Application already started → skipping duplicate init"
             );
 
             return;
@@ -10777,42 +10813,35 @@ window.addEventListener(
 
 
         // ======================================================
-        // ================= STATUS =============================
-        // ======================================================
-
-        if(
-            !navigator.onLine
-        ){
-
-            updateNetworkStatus(
-                "offline"
-            );
-
-        }
-        else{
-
-            updateNetworkStatus(
-                "connecting"
-            );
-
-        }
-
-
-        // ======================================================
-        // ================= UI INIT ============================
+        // NETWORK STATUS
         // ======================================================
 
         try{
 
-            initResponsiveUI();
+            if(
+
+                !navigator.onLine
+
+            ){
+
+                updateNetworkStatus?.(
+                    "offline"
+                );
+
+            }
+            else{
+
+                updateNetworkStatus?.(
+                    "connecting"
+                );
+
+            }
 
         }
-        catch(
-            error
-        ){
+        catch(error){
 
             console.warn(
-                "UI Init delayed:",
+                "⚠ Network status initialization failed:",
                 error
             );
 
@@ -10820,31 +10849,49 @@ window.addEventListener(
 
 
         // ======================================================
-        // ================= PROFILE FLOW =======================
+        // RESPONSIVE UI
+        // ======================================================
+
+        try{
+
+            initResponsiveUI?.();
+
+        }
+        catch(error){
+
+            console.warn(
+                "⚠ UI initialization delayed:",
+                error
+            );
+
+        }
+
+
+        // ======================================================
+        // PROFILE FLOW
         // ======================================================
 
         const savedProfile =
-
             localStorage.getItem(
                 "userProfile"
             );
 
 
         if(
+
             savedProfile
+
         ){
 
             try{
 
                 const profile =
-
                     JSON.parse(
                         savedProfile
                     );
 
 
                 window.userProfile =
-
                     normalizeUserProfile(
                         profile
                     );
@@ -10856,14 +10903,26 @@ window.addEventListener(
 
 
                 // ==================================================
-                // NORMAL ROLE CONTROL
+                // ROLE CONTROL
                 // ==================================================
 
-                applyRoleControl?.();
+                try{
+
+                    applyRoleControl?.();
+
+                }
+                catch(error){
+
+                    console.warn(
+                        "⚠ Role control failed:",
+                        error
+                    );
+
+                }
 
 
                 // ==================================================
-                // 🤖 GREENGUARD AI — ADMIN ACCESS
+                // GREENGUARD AI ACCESS
                 // ==================================================
 
                 if(
@@ -10874,26 +10933,24 @@ window.addEventListener(
 
                 ){
 
-                    console.log(
-                        "🤖 Applying GreenGuard AI access..."
-                    );
+                    try{
 
+                        applyGreenGuardAiAccess(
+                            window.userProfile
+                        );
 
-                    applyGreenGuardAiAccess(
-                        window.userProfile
-                    );
+                    }
+                    catch(error){
+
+                        console.warn(
+                            "⚠ AI access initialization failed:",
+                            error
+                        );
+
+                    }
 
                 }
                 else{
-
-                    console.warn(
-                        "⏳ applyGreenGuardAiAccess not ready"
-                    );
-
-
-                    // ==============================================
-                    // DELAYED AI ACCESS
-                    // ==============================================
 
                     setTimeout(
 
@@ -10907,21 +10964,21 @@ window.addEventListener(
 
                             ){
 
-                                console.log(
-                                    "🤖 Applying delayed GreenGuard AI access..."
-                                );
+                                try{
 
+                                    applyGreenGuardAiAccess(
+                                        window.userProfile
+                                    );
 
-                                applyGreenGuardAiAccess(
-                                    window.userProfile
-                                );
+                                }
+                                catch(error){
 
-                            }
-                            else{
+                                    console.warn(
+                                        "⚠ Delayed AI access failed:",
+                                        error
+                                    );
 
-                                console.error(
-                                    "❌ applyGreenGuardAiAccess still unavailable"
-                                );
+                                }
 
                             }
 
@@ -10939,46 +10996,24 @@ window.addEventListener(
                 // ==================================================
 
                 if(
+
                     !window.__appBootRequested
+
                 ){
 
                     window.__appBootRequested =
                         true;
 
 
-                    startApp?.();
-
-                }
-
-
-                // ==================================================
-                // DUTY CONTROL
-                // ==================================================
-
-                initDutyControl?.();
-
-
-                // ==================================================
-                // OFFLINE SYNC
-                // ==================================================
-
-                if(
-                    navigator.onLine
-                ){
-
                     try{
 
-                        syncOfflineMoves?.();
-
-                        syncOfflineSightings?.();
+                        startApp?.();
 
                     }
-                    catch(
-                        error
-                    ){
+                    catch(error){
 
-                        console.warn(
-                            "⚠ Sync error:",
+                        console.error(
+                            "❌ startApp failed:",
                             error
                         );
 
@@ -10988,24 +11023,86 @@ window.addEventListener(
 
 
                 // ==================================================
-                // REFRESH PROFILE FROM SERVER
+                // DUTY CONTROL
+                // ==================================================
+
+                try{
+
+                    initDutyControl?.();
+
+                }
+                catch(error){
+
+                    console.warn(
+                        "⚠ Duty control initialization failed:",
+                        error
+                    );
+
+                }
+
+
+                // ==================================================
+                // OFFLINE SYNC
+                // ==================================================
+
+                if(
+
+                    navigator.onLine
+
+                ){
+
+                    try{
+
+                        syncOfflineMoves?.();
+
+                        syncOfflineSightings?.();
+
+                    }
+                    catch(error){
+
+                        console.warn(
+                            "⚠ Offline sync error:",
+                            error
+                        );
+
+                    }
+
+                }
+
+
+                // ==================================================
+                // ONLINE PROFILE REFRESH
                 // ==================================================
 
                 setTimeout(
 
-                    refreshOnlineProfile,
+                    function(){
+
+                        try{
+
+                            refreshOnlineProfile?.();
+
+                        }
+                        catch(error){
+
+                            console.warn(
+                                "⚠ Online profile refresh failed:",
+                                error
+                            );
+
+                        }
+
+                    },
 
                     2000
 
                 );
 
             }
-            catch(
-                error
-            ){
+            catch(error){
 
                 console.error(
-                    "❌ Corrupt profile",
+                    "❌ Corrupt profile:",
                     error
                 );
 
@@ -11015,20 +11112,44 @@ window.addEventListener(
                 );
 
 
-                startOnlineLoginFlow();
+                try{
+
+                    startOnlineLoginFlow?.();
+
+                }
+                catch(loginError){
+
+                    console.error(
+                        "❌ Login flow failed:",
+                        loginError
+                    );
+
+                }
 
             }
 
         }
         else{
 
-            startOnlineLoginFlow();
+            try{
+
+                startOnlineLoginFlow?.();
+
+            }
+            catch(error){
+
+                console.error(
+                    "❌ Login flow failed:",
+                    error
+                );
+
+            }
 
         }
 
 
         // ======================================================
-        // 🔥 GPS WATCHDOG SYSTEM
+        // GPS WATCHDOG
         // ======================================================
 
         if(
@@ -11041,10 +11162,6 @@ window.addEventListener(
                 true;
 
 
-            // ==================================================
-            // 🔥 RESTART LOCK
-            // ==================================================
-
             window.__GPS_RESTARTING__ =
                 false;
 
@@ -11054,7 +11171,9 @@ window.addEventListener(
             ){
 
                 if(
+
                     window.__GPS_RESTARTING__
+
                 ){
 
                     return;
@@ -11073,7 +11192,9 @@ window.addEventListener(
 
 
                 if(
+
                     window.gpsRunning
+
                 ){
 
                     try{
@@ -11081,9 +11202,7 @@ window.addEventListener(
                         stopAutoGPS();
 
                     }
-                    catch(
-                        error
-                    ){
+                    catch(error){
 
                         console.warn(
                             "⚠ GPS stop error:",
@@ -11099,21 +11218,13 @@ window.addEventListener(
 
                     function(){
 
-                        if(
-                            !window.gpsRunning
-                        ){
-
-                            // ==================================================
-                            // KEEP EXISTING BEHAVIOUR
-                            // ==================================================
-
-                            // startAutoGPS();
-
-                        }
-
-
                         // ==================================================
-                        // UNLOCK AFTER COOLDOWN
+                        // KEEP EXISTING BEHAVIOUR
+                        // ==================================================
+                        //
+                        // Automatic GPS start remains intentionally
+                        // disabled here.
+                        //
                         // ==================================================
 
                         setTimeout(
@@ -11139,7 +11250,7 @@ window.addEventListener(
 
 
             // ======================================================
-            // 🔥 1. HEARTBEAT WATCHDOG
+            // GPS HEARTBEAT
             // ======================================================
 
             setInterval(
@@ -11147,7 +11258,9 @@ window.addEventListener(
                 function(){
 
                     if(
+
                         !window.isDutyActive
+
                     ){
 
                         return;
@@ -11164,14 +11277,16 @@ window.addEventListener(
 
 
                     const gap =
-
                         last
                             ? now - last
                             : Infinity;
 
 
                     if(
-                        gap > 20000
+
+                        gap >
+                        20000
+
                     ){
 
                         console.error(
@@ -11197,7 +11312,7 @@ window.addEventListener(
 
 
             // ======================================================
-            // 👁 2. VISIBILITY FORCE RECOVERY
+            // VISIBILITY RECOVERY
             // ======================================================
 
             document.addEventListener(
@@ -11207,8 +11322,10 @@ window.addEventListener(
                 function(){
 
                     if(
+
                         document.visibilityState ===
                         "visible"
+
                     ){
 
                         console.log(
@@ -11217,7 +11334,9 @@ window.addEventListener(
 
 
                         if(
+
                             window.isDutyActive
+
                         ){
 
                             safeGPSRestart(
@@ -11234,7 +11353,7 @@ window.addEventListener(
 
 
             // ======================================================
-            // 🔥 3. DUTY FAILSAFE
+            // DUTY FAILSAFE
             // ======================================================
 
             setInterval(
@@ -11268,7 +11387,7 @@ window.addEventListener(
 
 
             // ======================================================
-            // 🔄 4. PERIODIC GPS RESET
+            // PERIODIC GPS RESET
             // ======================================================
 
             setInterval(
@@ -11276,7 +11395,9 @@ window.addEventListener(
                 function(){
 
                     if(
+
                         window.isDutyActive
+
                     ){
 
                         console.warn(
@@ -11304,23 +11425,7 @@ window.addEventListener(
 
 
 // ======================================================
-// 🔧 INIT
-// ======================================================
-
-
-// ======================================================
-// 🔥 LOAD INIT
-// ======================================================
-//
-// Main application load is already protected by:
-//
-// window.__LOAD_EXECUTED__
-//
-// ======================================================
-
-
-// ======================================================
-// 🎯 SHOW UPDATE UI
+// UPDATE UI
 // ======================================================
 
 function showUpdateUI(){
@@ -11332,7 +11437,9 @@ function showUpdateUI(){
 
 
     if(
+
         !banner
+
     ){
 
         console.log(
@@ -11344,36 +11451,46 @@ function showUpdateUI(){
     }
 
 
+    banner.style.display =
+        "block";
+
+
+    const btn =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
     if(
-        banner.style.display ===
-        "block"
+
+        btn
+
     ){
 
-        return;
+        btn.disabled =
+            false;
+
+
+        btn.innerText =
+            "Update";
 
     }
 
 
-    banner.style.display =
-        "block";
+    console.log(
+        "📢 GreenGuard update available"
+    );
 
 }
 
 
 // ======================================================
-// 🤖 AUTO UPDATE
+// AUTOMATIC UPDATE
 // ======================================================
 //
-// IMPORTANT:
+// INTENTIONALLY DISABLED.
 //
-// Automatic update/reload is DISABLED.
-//
-// A background Service Worker update must NEVER cause
-// the running application to reload.
-//
-// The application remains exactly where the user is.
-//
-// The user can update using the existing Update button.
+// Normal application operation must never reload.
 //
 // ======================================================
 
@@ -11387,27 +11504,33 @@ function scheduleAutoUpdate(){
 
 
 // ======================================================
-// 🔘 MANUAL UPDATE
+// MANUAL UPDATE BUTTON
 // ======================================================
 //
-// This is the ONLY normal route that is allowed to
-// intentionally update the running application.
+// THIS IS THE ONLY NORMAL ROUTE THAT CAN START
+// THE APPLICATION UPDATE.
 //
 // ======================================================
 
-function handleManualUpdate(){
+async function handleManualUpdate(){
 
     console.log(
-        "🟢 Manual update clicked"
+        "🟢 GreenGuard Update clicked"
     );
 
 
+    // ==================================================
+    // DUPLICATE CLICK PROTECTION
+    // ==================================================
+
     if(
-        !newWorker
+
+        isUpdating
+
     ){
 
-        console.warn(
-            "⚠ No worker available"
+        console.log(
+            "⏳ Update already running"
         );
 
         return;
@@ -11415,18 +11538,698 @@ function handleManualUpdate(){
     }
 
 
-    startUpdate();
+    // ==================================================
+    // REQUIRE SERVICE WORKER SUPPORT
+    // ==================================================
+
+    if(
+
+        !(
+            "serviceWorker" in
+            navigator
+        )
+
+    ){
+
+        console.error(
+            "❌ Service Worker not supported"
+        );
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // GET REGISTRATION
+    // ==================================================
+
+    let registration =
+        currentRegistration;
+
+
+    if(
+
+        !registration
+
+    ){
+
+        try{
+
+            registration =
+                await navigator
+                    .serviceWorker
+                    .getRegistration(
+                        "./"
+                    );
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Could not get Service Worker registration:",
+                error
+            );
+
+        }
+
+    }
+
+
+    if(
+
+        !registration
+
+    ){
+
+        console.error(
+            "❌ No Service Worker registration found"
+        );
+
+        return;
+
+    }
+
+
+    currentRegistration =
+        registration;
+
+
+    // ==================================================
+    // CHECK WHETHER APPLICATION IS BUSY
+    // ==================================================
+
+    if(
+
+        greenGuardUpdateBusy()
+
+    ){
+
+        console.log(
+            "⏳ Update delayed — application currently busy."
+        );
+
+
+        const btn =
+            document.getElementById(
+                "updateBtn"
+            );
+
+
+        if(
+
+            btn
+
+        ){
+
+            btn.innerText =
+                "Finish Current Task";
+
+        }
+
+
+        setTimeout(
+
+            function(){
+
+                if(
+
+                    !isUpdating &&
+
+                    !greenGuardUpdateBusy()
+
+                ){
+
+                    const retryButton =
+                        document.getElementById(
+                            "updateBtn"
+                        );
+
+
+                    if(
+
+                        retryButton
+
+                    ){
+
+                        retryButton.innerText =
+                            "Update";
+
+                    }
+
+                }
+
+            },
+
+            3000
+
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // START MANUAL UPDATE
+    // ==================================================
+
+    isUpdating =
+        true;
+
+
+    refreshing =
+        false;
+
+
+    window.__SW_CONTROLLER_CHANGED__ =
+        false;
+
+
+    updateUIToUpdating();
+
+
+    console.log(
+        "🔄 Manual GreenGuard update started"
+    );
+
+
+    // ==================================================
+    // IF WAITING WORKER ALREADY EXISTS
+    // ==================================================
+
+    if(
+
+        registration.waiting
+
+    ){
+
+        newWorker =
+            registration.waiting;
+
+
+        console.log(
+            "⚡ Waiting worker available immediately"
+        );
+
+
+        activateNewWorker(
+            registration
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // IF NEW WORKER ALREADY EXISTS
+    // ==================================================
+
+    if(
+
+        newWorker
+
+    ){
+
+        console.log(
+            "⚡ Stored new worker available"
+        );
+
+
+        activateNewWorker(
+            registration
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // NO WORKER YET
+    // ==================================================
+    //
+    // THIS WAS THE MAIN FAILURE IN THE OLD FLOW.
+    //
+    // Instead of returning, force one update check and
+    // wait for the installing/waiting worker.
+    //
+    // ==================================================
+
+    console.log(
+        "🔎 No waiting worker yet → requesting Service Worker update"
+    );
+
+
+    try{
+
+        await registration.update();
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ Service Worker update request failed:",
+            error
+        );
+
+    }
+
+
+    // ==================================================
+    // CHECK AGAIN
+    // ==================================================
+
+    if(
+
+        registration.waiting
+
+    ){
+
+        newWorker =
+            registration.waiting;
+
+
+        activateNewWorker(
+            registration
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // WATCH INSTALLING WORKER
+    // ==================================================
+
+    if(
+
+        registration.installing
+
+    ){
+
+        console.log(
+            "⏳ Waiting for installing Service Worker"
+        );
+
+
+        watchManualInstallingWorker(
+            registration
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // LAST RESORT
+    // ==================================================
+
+    console.warn(
+        "⚠ No installing/waiting worker after update request"
+    );
+
+
+    finishUpdateWithoutReload(
+        "No new Service Worker was available."
+    );
 
 }
 
 
 // ======================================================
-// 🔥 CHECK WHETHER APP IS BUSY
+// WATCH INSTALLING WORKER DURING MANUAL UPDATE
 // ======================================================
-//
-// Manual update should also avoid interrupting an active
-// field operation.
-//
+
+function watchManualInstallingWorker(
+    registration
+){
+
+    if(
+
+        !registration
+
+    ){
+
+        finishUpdateWithoutReload(
+            "Service Worker registration unavailable."
+        );
+
+        return;
+
+    }
+
+
+    const worker =
+        registration.installing;
+
+
+    if(
+
+        !worker
+
+    ){
+
+        finishUpdateWithoutReload(
+            "No installing Service Worker found."
+        );
+
+        return;
+
+    }
+
+
+    worker.addEventListener(
+
+        "statechange",
+
+        function(){
+
+            console.log(
+                "🔄 Manual update worker state:",
+                worker.state
+            );
+
+
+            // ==================================================
+            // INSTALLED
+            // ==================================================
+
+            if(
+
+                worker.state ===
+                "installed"
+
+            ){
+
+                newWorker =
+                    registration.waiting ||
+                    worker;
+
+
+                console.log(
+                    "⚡ Manual update worker installed"
+                );
+
+
+                activateNewWorker(
+                    registration
+                );
+
+            }
+
+
+            // ==================================================
+            // FAILED
+            // ==================================================
+
+            if(
+
+                worker.state ===
+                "redundant"
+
+            ){
+
+                finishUpdateWithoutReload(
+                    "Service Worker installation was cancelled."
+                );
+
+            }
+
+        }
+
+    );
+
+
+    // ==================================================
+    // MANUAL UPDATE TIMEOUT
+    // ==================================================
+
+    clearTimeout(
+        updateTimeoutTimer
+    );
+
+
+    updateTimeoutTimer =
+        setTimeout(
+
+            function(){
+
+                if(
+
+                    isUpdating &&
+
+                    !refreshing
+
+                ){
+
+                    console.warn(
+                        "⚠ Manual update timed out"
+                    );
+
+
+                    finishUpdateWithoutReload(
+                        "Update could not be prepared. Please try again."
+                    );
+
+                }
+
+            },
+
+            15000
+
+        );
+
+}
+
+
+// ======================================================
+// ACTIVATE NEW SERVICE WORKER
+// ======================================================
+
+function activateNewWorker(
+    registration
+){
+
+    if(
+
+        !isUpdating
+
+    ){
+
+        return;
+
+    }
+
+
+    const worker =
+        registration?.waiting ||
+        newWorker;
+
+
+    if(
+
+        !worker
+
+    ){
+
+        finishUpdateWithoutReload(
+            "New Service Worker is not available."
+        );
+
+        return;
+
+    }
+
+
+    newWorker =
+        worker;
+
+
+    console.log(
+        "⚡ Activating new Service Worker"
+    );
+
+
+    try{
+
+        worker.postMessage({
+
+            action:
+                "skipWaiting"
+
+        });
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Could not activate new Service Worker:",
+            error
+        );
+
+
+        finishUpdateWithoutReload(
+            "Unable to activate the new version."
+        );
+
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // WAIT FOR CONTROLLER CHANGE
+    // ==================================================
+
+    waitForManualControllerChange();
+
+}
+
+
+// ======================================================
+// WAIT FOR MANUAL CONTROLLER CHANGE
+// ======================================================
+
+function waitForManualControllerChange(){
+
+    clearInterval(
+        updateWaitTimer
+    );
+
+
+    const startedAt =
+        Date.now();
+
+
+    updateWaitTimer =
+        setInterval(
+
+            function(){
+
+                // ==================================================
+                // CONTROLLER CHANGED
+                // ==================================================
+
+                if(
+
+                    window.__SW_CONTROLLER_CHANGED__
+
+                ){
+
+                    clearInterval(
+                        updateWaitTimer
+                    );
+
+
+                    updateWaitTimer =
+                        null;
+
+
+                    console.log(
+                        "✅ New Service Worker is active"
+                    );
+
+
+                    finishManualUpdate();
+
+                    return;
+
+                }
+
+
+                // ==================================================
+                // WAITING WORKER DISAPPEARED / CONTROLLER MAY
+                // ALREADY HAVE CHANGED
+                // ==================================================
+
+                if(
+
+                    navigator
+                        .serviceWorker
+                        .controller &&
+
+                    newWorker &&
+
+                    newWorker.state ===
+                    "activated"
+
+                ){
+
+                    clearInterval(
+                        updateWaitTimer
+                    );
+
+
+                    updateWaitTimer =
+                        null;
+
+
+                    console.log(
+                        "✅ New Service Worker activated"
+                    );
+
+
+                    finishManualUpdate();
+
+                    return;
+
+                }
+
+
+                // ==================================================
+                // MAX WAIT
+                // ==================================================
+
+                if(
+
+                    Date.now() -
+                    startedAt
+                    >=
+                    15000
+
+                ){
+
+                    clearInterval(
+                        updateWaitTimer
+                    );
+
+
+                    updateWaitTimer =
+                        null;
+
+
+                    console.warn(
+                        "⚠ Service Worker activation timeout"
+                    );
+
+
+                    finishUpdateWithoutReload(
+                        "New version could not be activated."
+                    );
+
+                }
+
+            },
+
+            250
+
+        );
+
+}
+
+
+// ======================================================
+// CHECK WHETHER APPLICATION IS BUSY
 // ======================================================
 
 function greenGuardUpdateBusy(){
@@ -11449,33 +12252,26 @@ function greenGuardUpdateBusy(){
 
 
 // ======================================================
-// 🔥 CORE UPDATE FUNCTION
+// FINISH MANUAL UPDATE
 // ======================================================
 //
 // IMPORTANT:
 //
-// This function is reached ONLY from:
+// This function is reached ONLY after the user clicked
+// Update.
 //
-//     handleManualUpdate()
-//
-// Therefore a reload can happen only after the user
-// explicitly requested an update.
+// Therefore this is the ONLY place where an intentional
+// reload can occur.
 //
 // ======================================================
 
-function startUpdate(){
-
-    // ==================================================
-    // PREVENT DUPLICATE UPDATE
-    // ==================================================
+function finishManualUpdate(){
 
     if(
-        isUpdating
-    ){
 
-        console.warn(
-            "⏳ Update already running"
-        );
+        refreshing
+
+    ){
 
         return;
 
@@ -11483,16 +12279,50 @@ function startUpdate(){
 
 
     // ==================================================
-    // REQUIRE NEW WORKER
+    // CLEAR TIMERS
+    // ==================================================
+
+    clearInterval(
+        updateWaitTimer
+    );
+
+
+    updateWaitTimer =
+        null;
+
+
+    clearTimeout(
+        updateTimeoutTimer
+    );
+
+
+    updateTimeoutTimer =
+        null;
+
+
+    // ==================================================
+    // SAFETY CHECK
     // ==================================================
 
     if(
-        !newWorker
+
+        greenGuardUpdateBusy()
+
     ){
 
-        console.warn(
-            "⚠ No Service Worker available"
+        console.log(
+            "⏳ Update activated but application became busy — waiting."
         );
+
+
+        setTimeout(
+
+            finishManualUpdate,
+
+            3000
+
+        );
+
 
         return;
 
@@ -11500,207 +12330,164 @@ function startUpdate(){
 
 
     // ==================================================
-    // START UPDATE
+    // MARK REFRESHING
     // ==================================================
+
+    refreshing =
+        true;
+
+
+    console.log(
+        "🔄 Explicit GreenGuard Update → safe reload"
+    );
+
+
+    // ==================================================
+    // FINAL UI
+    // ==================================================
+
+    const btn =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    if(
+
+        btn
+
+    ){
+
+        btn.innerText =
+            "Updated";
+
+        btn.disabled =
+            true;
+
+    }
+
+
+    // ==================================================
+    // SINGLE EXPLICIT RELOAD
+    // ==================================================
+    //
+    // This is NOT automatic.
+    //
+    // It happens only because the user pressed Update.
+    //
+    // ==================================================
+
+    setTimeout(
+
+        function(){
+
+            location.reload();
+
+        },
+
+        300
+
+    );
+
+}
+
+
+// ======================================================
+// FINISH UPDATE WITHOUT RELOAD
+// ======================================================
+//
+// Used when no usable new worker is available or the
+// update cannot safely be completed.
+//
+// ======================================================
+
+function finishUpdateWithoutReload(
+    message
+){
+
+    clearInterval(
+        updateWaitTimer
+    );
+
+
+    updateWaitTimer =
+        null;
+
+
+    clearTimeout(
+        updateTimeoutTimer
+    );
+
+
+    updateTimeoutTimer =
+        null;
+
 
     isUpdating =
-        true;
+        false;
 
 
     refreshing =
         false;
 
 
-    updateUIToUpdating();
+    newWorker =
+        null;
 
 
-    console.log(
-        "🔄 Manual GreenGuard update started"
+    console.warn(
+        "⚠ GreenGuard update stopped:",
+        message
     );
 
 
-    // ==================================================
-    // ACTIVATE NEW SERVICE WORKER
-    // ==================================================
+    const btn =
+        document.getElementById(
+            "updateBtn"
+        );
 
-    try{
 
-        newWorker.postMessage({
+    if(
 
-            action:
-                "skipWaiting"
+        btn
 
-        });
-
-    }
-    catch(
-        error
     ){
 
-        console.error(
-            "❌ Update failed:",
-            error
-        );
+        btn.innerText =
+            "Update";
 
-
-        resetUpdateUI();
-
-
-        return;
+        btn.disabled =
+            false;
 
     }
 
 
     // ==================================================
-    // MANUAL UPDATE WATCHDOG
-    // ==================================================
-    //
-    // NEVER use this during normal application operation.
-    //
-    // Only active after the user pressed Update.
-    //
+    // KEEP UPDATE BANNER VISIBLE
     // ==================================================
 
-    const updateStartedAt =
-        Date.now();
-
-
-    function finishManualUpdate(){
-
-        // ==================================================
-        // ALREADY RELOADING
-        // ==================================================
-
-        if(
-            refreshing
-        ){
-
-            return;
-
-        }
-
-
-        // ==================================================
-        // DO NOT INTERRUPT ACTIVE FIELD OPERATION
-        // ==================================================
-
-        if(
-            greenGuardUpdateBusy()
-        ){
-
-            console.log(
-                "⏳ Update waiting — application currently busy."
-            );
-
-
-            setTimeout(
-
-                finishManualUpdate,
-
-                3000
-
-            );
-
-
-            return;
-
-        }
-
-
-        // ==================================================
-        // SAFE TO RELOAD
-        // ==================================================
-
-        refreshing =
-            true;
-
-
-        console.log(
-            "🔄 Manual update → safe reload"
+    const banner =
+        document.getElementById(
+            "updateBanner"
         );
 
 
-        location.reload();
+    if(
+
+        banner
+
+    ){
+
+        banner.style.display =
+            "block";
 
     }
-
-
-    // ==================================================
-    // WAIT FOR SERVICE WORKER ACTIVATION
-    // ==================================================
-
-    const updateTimer =
-        setInterval(
-
-            function(){
-
-                // ==============================================
-                // CONTROLLER CHANGED
-                // ==============================================
-
-                if(
-                    window.__SW_CONTROLLER_CHANGED__
-                ){
-
-                    clearInterval(
-                        updateTimer
-                    );
-
-
-                    console.log(
-                        "✅ New Service Worker active"
-                    );
-
-
-                    finishManualUpdate();
-
-
-                    return;
-
-                }
-
-
-                // ==============================================
-                // MAX WAIT
-                // ==============================================
-
-                if(
-                    Date.now()
-                    -
-                    updateStartedAt
-                    >=
-                    8000
-                ){
-
-                    clearInterval(
-                        updateTimer
-                    );
-
-
-                    console.warn(
-                        "⚠ Service Worker activation timeout"
-                    );
-
-
-                    // ==========================================
-                    // MANUAL UPDATE WAS EXPLICITLY REQUESTED
-                    // ==========================================
-
-                    finishManualUpdate();
-
-                }
-
-            },
-
-            500
-
-        );
 
 }
 
 
 // ======================================================
-// 🔧 UI HELPERS
+// UPDATE BUTTON UI
 // ======================================================
 
 function updateUIToUpdating(){
@@ -11712,29 +12499,68 @@ function updateUIToUpdating(){
 
 
     if(
-        btn
+
+        !btn
+
     ){
 
-        btn.innerText =
-            "Updating...";
-
-
-        btn.disabled =
-            true;
+        return;
 
     }
+
+
+    btn.innerText =
+        "Updating...";
+
+
+    btn.disabled =
+        true;
+
+
+    btn.style.pointerEvents =
+        "none";
+
+
+    btn.style.opacity =
+        "0.75";
 
 }
 
 
 // ======================================================
-// 🔧 RESET UPDATE UI
+// RESET UPDATE UI
 // ======================================================
 
 function resetUpdateUI(){
 
     isUpdating =
         false;
+
+
+    refreshing =
+        false;
+
+
+    newWorker =
+        null;
+
+
+    clearInterval(
+        updateWaitTimer
+    );
+
+
+    updateWaitTimer =
+        null;
+
+
+    clearTimeout(
+        updateTimeoutTimer
+    );
+
+
+    updateTimeoutTimer =
+        null;
 
 
     const btn =
@@ -11744,7 +12570,9 @@ function resetUpdateUI(){
 
 
     if(
+
         btn
+
     ){
 
         btn.innerText =
@@ -11753,6 +12581,14 @@ function resetUpdateUI(){
 
         btn.disabled =
             false;
+
+
+        btn.style.pointerEvents =
+            "";
+
+
+        btn.style.opacity =
+            "";
 
     }
 
