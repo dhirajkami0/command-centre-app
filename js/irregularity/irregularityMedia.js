@@ -3751,51 +3751,64 @@ async function(
    MEDIA EVENTS
    ============================================================ */
 
+/* ============================================================
+   MEDIA EVENTS
+   ============================================================ */
+
 GGIrregularity.Media.bindEvents =
 function(){
-
-    const photo =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    const video =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    const audio =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
 
     /* ========================================================
        PHOTO
        ======================================================== */
 
+    const photoInput =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+
     if(
-        photo &&
-        !photo.__ggIrregularityMediaBound
+        photoInput &&
+        !photoInput.dataset.ggMediaBound
     ){
 
-        photo.addEventListener(
+        photoInput.addEventListener(
             "change",
             function(){
 
+                console.log(
+                    "📷 Irregularity PHOTO change detected"
+                );
+
+
                 GGIrregularity.Media
                     .previewPhoto(
-                        photo
+                        photoInput
                     );
+
+
+                /* --------------------------------------------
+                   REFRESH ACTION BUTTONS
+                   -------------------------------------------- */
+
+                if(
+                    typeof GGIrregularity.Media
+                        .updateControls ===
+                    "function"
+                ){
+
+                    GGIrregularity.Media
+                        .updateControls();
+
+                }
 
             }
         );
 
 
-        photo.__ggIrregularityMediaBound =
-            true;
+        photoInput.dataset.ggMediaBound =
+            "1";
 
     }
 
@@ -3804,54 +3817,166 @@ function(){
        VIDEO
        ======================================================== */
 
+    const videoInput =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
     if(
-        video &&
-        !video.__ggIrregularityMediaBound
+        videoInput &&
+        !videoInput.dataset.ggMediaBound
     ){
 
-        video.addEventListener(
+        videoInput.addEventListener(
             "change",
             function(){
 
+                console.log(
+                    "🎥 Irregularity VIDEO change detected"
+                );
+
+
                 GGIrregularity.Media
                     .previewVideo(
-                        video
+                        videoInput
                     );
+
+
+                /* --------------------------------------------
+                   REFRESH ACTION BUTTONS
+                   -------------------------------------------- */
+
+                if(
+                    typeof GGIrregularity.Media
+                        .updateControls ===
+                    "function"
+                ){
+
+                    GGIrregularity.Media
+                        .updateControls();
+
+                }
 
             }
         );
 
 
-        video.__ggIrregularityMediaBound =
-            true;
+        videoInput.dataset.ggMediaBound =
+            "1";
 
     }
 
 
     /* ========================================================
-       AUDIO
+       AUDIO FILE
        ======================================================== */
 
+    const audioInput =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
     if(
-        audio &&
-        !audio.__ggIrregularityMediaBound
+        audioInput &&
+        !audioInput.dataset.ggMediaBound
     ){
 
-        audio.addEventListener(
+        audioInput.addEventListener(
             "change",
             function(){
 
+                console.log(
+                    "🎙 Irregularity AUDIO file change detected"
+                );
+
+
+                /*
+                 * Selecting an audio file replaces
+                 * any previous native audio URI.
+                 */
+
+                GGIrregularity.Media
+                    ._nativeAudioUri =
+                    null;
+
+
                 GGIrregularity.Media
                     .previewAudio(
-                        audio
+                        audioInput
                     );
+
+
+                /* --------------------------------------------
+                   REFRESH ACTION BUTTONS
+                   -------------------------------------------- */
+
+                if(
+                    typeof GGIrregularity.Media
+                        .updateControls ===
+                    "function"
+                ){
+
+                    GGIrregularity.Media
+                        .updateControls();
+
+                }
 
             }
         );
 
 
-        audio.__ggIrregularityMediaBound =
-            true;
+        audioInput.dataset.ggMediaBound =
+            "1";
+
+    }
+
+
+    /* ========================================================
+       RECORD AUDIO BUTTON
+       ======================================================== */
+
+    const recordButton =
+        document.getElementById(
+            "gg-irregularity-record-audio"
+        );
+
+
+    if(
+        recordButton &&
+        !recordButton.dataset.ggMediaBound
+    ){
+
+        recordButton.addEventListener(
+            "click",
+            function(){
+
+                GGIrregularity.Media
+                    .recordAudio();
+
+            }
+        );
+
+
+        recordButton.dataset.ggMediaBound =
+            "1";
+
+    }
+
+
+    /* ========================================================
+       INITIAL CONTROL STATE
+       ======================================================== */
+
+    if(
+        typeof GGIrregularity.Media
+            .updateControls ===
+        "function"
+    ){
+
+        GGIrregularity.Media
+            .updateControls();
 
     }
 
@@ -3861,7 +3986,6 @@ function(){
     );
 
 };
-
 
 /* ============================================================
    MEDIA STATUS
