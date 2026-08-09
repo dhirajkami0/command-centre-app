@@ -43422,56 +43422,55 @@ async function loadWildlifeSightings(){
                 `;
 
 
-            // =================================================
-            // POPUP OPTIONS
-            // =================================================
 
-            const popupOptions = {
 
-                maxWidth:
-                    380,
+// =================================================
+// POPUP OPTIONS
+// =================================================
 
-                minWidth:
-                    280,
+const popupOptions = {
 
-                maxHeight:
-                    Math.min(
+    maxWidth:
+        380,
 
-                        window.innerHeight * 0.76,
+    minWidth:
+        280,
 
-                        640
+    maxHeight:
+        Math.min(
+            window.innerHeight * 0.76,
+            640
+        ),
 
-                    ),
+    // ---------------------------------------------
+    // NEVER close because the map was clicked.
+    // ---------------------------------------------
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * Leaflet must NOT close this popup simply
-                 * because the user clicks elsewhere on the map.
-                 */
+    closeOnClick:
+        false,
 
-                closeOnClick:
-                    false,
+    // ---------------------------------------------
+    // Do not let Leaflet automatically close the
+    // popup when another marker is interacted with.
+    // Our click controller handles the popup state.
+    // ---------------------------------------------
 
-                /*
-                 * Opening another marker's popup may close
-                 * the previous popup.
-                 */
+    autoClose:
+        false,
 
-                autoClose:
-                    true,
+    autoPan:
+        true,
 
-                autoPan:
-                    true,
+    autoPanPadding:
+        [
+            20,
+            20
+        ],
 
-                autoPanPadding:
-                    [
-                        20,
-                        20
-                    ]
+    keepInView:
+        true
 
-            };
-
+};
 
             // =================================================
             // CREATE POPUP ONLY ONCE
@@ -43653,100 +43652,99 @@ async function loadWildlifeSightings(){
                 );
 
 
-            // =============================================
-            // SAME MARKER TOGGLE
-            // =============================================
-            //
-            // IMPORTANT:
-            //
-            // Leaflet already opens a bound popup when the
-            // marker is clicked.
-            //
-            // Therefore DO NOT call marker.openPopup()
-            // from this click handler.
-            //
-            // We only handle the special case:
-            //
-            //      click same marker again
-            //              ↓
-            //         close popup
-            //
-            // For a different marker, we do NOTHING and
-            // allow Leaflet to perform its normal popup
-            // opening.
-            //
-            // This prevents:
-            //
-            // - popup immediate close
-            // - open/close race
-            // - mobile flicker
-            // - touch instability
-            // - popup disappearing after one frame
-            //
-            // =============================================
-
-            marker.on(
-                "click",
-                function(){
-
-                    const activeId =
-                        window.activeWildlifePopupId ||
-                        null;
+// =============================================
+// CONTROLLED WILDLIFE MARKER POPUP
+// =============================================
+//
+// Behaviour:
+//
+// FIRST CLICK
+//     ↓
+// CLOSED → OPEN
+//
+// SAME MARKER CLICKED AGAIN
+//     ↓
+// OPEN → CLOSED
+//
+// FIRESTORE REFRESH
+//     ↓
+// POPUP REMAINS OPEN
+//
+// No delayed close.
+// No setTimeout.
+// No requestAnimationFrame close.
+// No first-click race.
+// No popup blinking.
+// =============================================
 
 
-                    // =========================================
-                    // SAME MARKER
-                    // =========================================
-                    //
-                    // If this marker is already the active
-                    // popup, close it.
-                    //
-                    // =========================================
+// =================================================
+// REMOVE LEAFLET DEFAULT POPUP CLICK HANDLER
+// =================================================
+//
+// bindPopup() installs Leaflet's internal popup
+// click handler.
+//
+// We remove that handler so only our controlled
+// click handler controls opening/closing.
+// =================================================
 
-                    if(
-                        activeId ===
-                        id
-                    ){
+if(
+    typeof marker._openPopup ===
+    "function"
+){
 
-                        requestAnimationFrame(
-                            function(){
+    marker.off(
+        "click",
+        marker._openPopup,
+        marker
+    );
 
-                                if(
-                                    marker &&
-                                    marker.isPopupOpen()
-                                ){
-
-                                    marker.closePopup();
-
-                                }
-
-                            }
-                        );
-
-                        return;
-
-                    }
+}
 
 
-                    // =========================================
-                    // DIFFERENT / NEW MARKER
-                    // =========================================
-                    //
-                    // DO NOT call openPopup().
-                    //
-                    // Leaflet's bindPopup() already handles it.
-                    //
-                    // popupopen will update:
-                    //
-                    // window.activeWildlifePopupId
-                    // window.activeWildlifePopupMarker
-                    //
-                    // =========================================
+// =================================================
+// CONTROLLED MARKER CLICK
+// =================================================
 
-                    return;
+marker.on(
+    "click",
+    function(){
 
-                }
-            );
+        const popupIsOpen =
+            marker.isPopupOpen();
+
+
+        // =============================================
+        // SAME MARKER CLICKED AGAIN
+        // =============================================
+
+        if(
+            popupIsOpen
+        ){
+
+            marker.closePopup();
+
+            return;
+
+        }
+
+
+        // =============================================
+        // FIRST CLICK
+        // =============================================
+        //
+        // Popup is closed, therefore open it.
+        //
+        // IMPORTANT:
+        // No setTimeout().
+        // No requestAnimationFrame().
+        // =============================================
+
+        marker.openPopup();
+
+    }
+);
 
             }
             // =================================================
