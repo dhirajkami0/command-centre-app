@@ -42389,36 +42389,35 @@ function getWildlifeEmoji(animal){
 
 
 // ============================================================
-// GREEN GUARD — SIGHTING MEDIA DOWNLOAD
-// MOBILE + LAPTOP SAFE
+// GREEN GUARD
+// SIGHTING MEDIA DOWNLOAD
+// MOBILE + LAPTOP
 // ============================================================
 //
 // IMPORTANT:
 //
-// This function intentionally does NOT use:
+// This version:
 //
-//     fetch()
-//     await
-//     blob()
-//     URL.createObjectURL()
+// 1. Uses GET
+// 2. Uses Firebase Storage URL
+// 3. Converts response to Blob
+// 4. Creates a same-origin blob URL
+// 5. Downloads through a temporary anchor
+// 6. NEVER navigates to Firebase Storage
+// 7. NEVER opens a new tab
+// 8. NEVER replaces the GreenGuard page
+// 9. NEVER changes the popup
 //
-// The download is triggered directly from the user's tap.
-//
-// Firebase Storage must have:
-//
-//     Content-Disposition: attachment
-//
-// for the uploaded media object.
-//
+// CORS GET has already been verified successfully.
 // ============================================================
 
 window.downloadSightingMedia =
-    function(
+    async function(
         url
     ){
 
         // ====================================================
-        // GET URL
+        // VALIDATE URL
         // ====================================================
 
         const mediaUrl =
@@ -42428,10 +42427,6 @@ window.downloadSightingMedia =
             )
             .trim();
 
-
-        // ====================================================
-        // VALIDATE URL
-        // ====================================================
 
         if(
             !mediaUrl
@@ -42463,118 +42458,392 @@ window.downloadSightingMedia =
 
 
         console.log(
-            "⬇️ SIGHTING MEDIA DOWNLOAD:",
+            "⬇️ SIGHTING MEDIA DOWNLOAD START:",
             mediaUrl
         );
 
 
         // ====================================================
-        // CREATE DOWNLOAD LINK
+        // FIND FILE NAME
+        // ====================================================
+
+        let fileName =
+            "sighting-media";
+
+
+        try{
+
+            const urlObject =
+                new URL(
+                    mediaUrl
+                );
+
+
+            const pathname =
+                decodeURIComponent(
+                    urlObject.pathname ||
+                    ""
+                );
+
+
+            const parts =
+                pathname
+                    .split("/")
+                    .filter(
+                        function(part){
+
+                            return !!part;
+
+                        }
+                    );
+
+
+            if(
+                parts.length
+            ){
+
+                const lastPart =
+                    parts[
+                        parts.length - 1
+                    ];
+
+
+                if(
+                    lastPart
+                ){
+
+                    fileName =
+                        lastPart;
+
+                }
+
+            }
+
+        }
+        catch(
+            urlError
+        ){
+
+            console.warn(
+                "⚠️ Could not determine media filename.",
+                urlError
+            );
+
+        }
+
+
+        // ====================================================
+        // FALLBACK FILE EXTENSION
+        // ====================================================
+
+        if(
+            fileName ===
+            "sighting-media"
+        ){
+
+            fileName =
+                "sighting-media.bin";
+
+        }
+
+
+        // ====================================================
+        // FETCH FIREBASE STORAGE OBJECT
+        // ====================================================
+
+        let response;
+
+
+        try{
+
+            response =
+                await fetch(
+                    mediaUrl,
+                    {
+                        method:
+                            "GET",
+
+                        mode:
+                            "cors",
+
+                        cache:
+                            "no-store"
+                    }
+                );
+
+        }
+        catch(
+            fetchError
+        ){
+
+            console.error(
+                "❌ SIGHTING MEDIA FETCH FAILED:",
+                fetchError
+            );
+
+
+            alert(
+                "Unable to download this media. Please check your internet connection and try again."
+            );
+
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // HTTP VALIDATION
+        // ====================================================
+
+        if(
+            !response.ok
+        ){
+
+            console.error(
+                "❌ SIGHTING MEDIA HTTP ERROR:",
+                response.status,
+                response.statusText
+            );
+
+
+            alert(
+                "Media download failed. Server returned HTTP " +
+                response.status +
+                "."
+            );
+
+
+            return;
+
+        }
+
+
+        console.log(
+            "✅ SIGHTING MEDIA RESPONSE OK:",
+            response.status
+        );
+
+
+        // ====================================================
+        // CONVERT RESPONSE TO BLOB
+        // ====================================================
+
+        let blob;
+
+
+        try{
+
+            blob =
+                await response.blob();
+
+        }
+        catch(
+            blobError
+        ){
+
+            console.error(
+                "❌ SIGHTING MEDIA BLOB FAILED:",
+                blobError
+            );
+
+
+            alert(
+                "Unable to prepare the media for download."
+            );
+
+
+            return;
+
+        }
+
+
+        if(
+            !blob ||
+            !blob.size
+        ){
+
+            console.error(
+                "❌ SIGHTING MEDIA BLOB IS EMPTY."
+            );
+
+
+            alert(
+                "The media file is empty or unavailable."
+            );
+
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // PRESERVE MIME TYPE
+        // ====================================================
+
+        let downloadBlob =
+            blob;
+
+
+        if(
+            !blob.type
+        ){
+
+            downloadBlob =
+                new Blob(
+                    [
+                        blob
+                    ],
+                    {
+                        type:
+                            "application/octet-stream"
+                    }
+                );
+
+        }
+
+
+        console.log(
+            "📦 SIGHTING MEDIA BLOB READY:",
+            {
+                size:
+                    downloadBlob.size,
+
+                type:
+                    downloadBlob.type,
+
+                fileName:
+                    fileName
+            }
+        );
+
+
+        // ====================================================
+        // CREATE SAME-ORIGIN BLOB URL
         // ====================================================
         //
         // IMPORTANT:
         //
-        // No target="_blank"
-        // No fetch()
-        // No await
-        // No blob()
-        // No Promise
+        // This URL belongs to the GreenGuard page.
         //
-        // The browser receives the Firebase Storage response
-        // directly.
-        //
-        // Content-Disposition: attachment
-        // tells the browser to download the file.
+        // We are NOT navigating to Firebase.
         //
         // ====================================================
 
-        const link =
+        let blobUrl;
+
+
+        try{
+
+            blobUrl =
+                URL.createObjectURL(
+                    downloadBlob
+                );
+
+        }
+        catch(
+            objectUrlError
+        ){
+
+            console.error(
+                "❌ Could not create download URL:",
+                objectUrlError
+            );
+
+
+            alert(
+                "Unable to prepare the download."
+            );
+
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // CREATE TEMPORARY DOWNLOAD LINK
+        // ====================================================
+
+        const downloadLink =
             document.createElement(
                 "a"
             );
 
 
-        link.href =
-            mediaUrl;
+        downloadLink.href =
+            blobUrl;
 
 
-        link.setAttribute(
-            "download",
-            ""
-        );
+        downloadLink.download =
+            fileName;
 
 
-        link.setAttribute(
-            "rel",
-            "noopener"
-        );
+        downloadLink.rel =
+            "noopener";
 
 
-        link.style.position =
+        downloadLink.style.position =
             "fixed";
 
 
-        link.style.left =
+        downloadLink.style.left =
             "-10000px";
 
 
-        link.style.top =
+        downloadLink.style.top =
             "0";
 
 
-        link.style.width =
+        downloadLink.style.width =
             "1px";
 
 
-        link.style.height =
+        downloadLink.style.height =
             "1px";
 
 
-        link.style.opacity =
+        downloadLink.style.opacity =
             "0";
 
 
-        link.style.pointerEvents =
+        downloadLink.style.pointerEvents =
             "none";
 
 
-        link.setAttribute(
-            "aria-hidden",
-            "true"
-        );
-
-
         document.body.appendChild(
-            link
+            downloadLink
         );
 
 
         // ====================================================
-        // START DOWNLOAD IMMEDIATELY
-        // ====================================================
-        //
-        // This happens synchronously while the mobile browser
-        // still considers the action to be a user gesture.
-        //
+        // START DOWNLOAD
         // ====================================================
 
         try{
 
-            link.click();
+            downloadLink.click();
 
 
             console.log(
-                "✅ Sighting media download requested."
+                "✅ SIGHTING MEDIA DOWNLOAD REQUESTED:",
+                fileName
             );
 
         }
         catch(
-            error
+            downloadError
         ){
 
             console.error(
-                "❌ Sighting media download failed:",
-                error
+                "❌ SIGHTING MEDIA DOWNLOAD CLICK FAILED:",
+                downloadError
+            );
+
+
+            alert(
+                "The browser could not start the download."
             );
 
         }
@@ -42583,37 +42852,61 @@ window.downloadSightingMedia =
         // ====================================================
         // CLEANUP
         // ====================================================
+        //
+        // Keep the Blob alive long enough for mobile Chrome
+        // to hand the download to the browser download manager.
+        //
+        // ====================================================
 
         setTimeout(
             function(){
 
                 try{
 
+                    URL.revokeObjectURL(
+                        blobUrl
+                    );
+
+                }
+                catch(
+                    revokeError
+                ){
+
+                    console.warn(
+                        "⚠️ Blob URL cleanup failed:",
+                        revokeError
+                    );
+
+                }
+
+
+                try{
+
                     if(
-                        link &&
-                        link.parentNode
+                        downloadLink &&
+                        downloadLink.parentNode
                     ){
 
-                        link.parentNode.removeChild(
-                            link
+                        downloadLink.parentNode.removeChild(
+                            downloadLink
                         );
 
                     }
 
                 }
                 catch(
-                    cleanupError
+                    removeError
                 ){
 
                     console.warn(
                         "⚠️ Download link cleanup failed:",
-                        cleanupError
+                        removeError
                     );
 
                 }
 
             },
-            1500
+            30000
         );
 
     };
