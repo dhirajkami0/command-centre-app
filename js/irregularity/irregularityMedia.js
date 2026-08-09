@@ -7,44 +7,54 @@
        js/irregularity/irregularityMedia.js
 
    PURPOSE:
-       Upload Irregularity / Offence / Observation media
-       to the EXISTING GreenGuard Firebase Storage system.
+       Photo / Video / Audio handling for:
 
-   SUPPORTED:
-       • Photo
-       • Video
-       • Audio
+           IRREGULARITY
+           OFFENCE
+           OBSERVATION
+
+   MEDIA FLOW:
+
+       PHOTO
+          ↓
+       Preview
+          ↓
+       Change / Remove
+          ↓
+       Firebase Storage
+
+       VIDEO
+          ↓
+       Preview
+          ↓
+       Change / Remove
+          ↓
+       Firebase Storage
+
+       AUDIO
+          ↓
+       Native Android recorder
+          OR
+       Browser MediaRecorder fallback
+          ↓
+       Preview
+          ↓
+       Record Again / Remove
+          ↓
+       Firebase Storage
 
    IMPORTANT
    ------------------------------------------------------------
-   • No Firebase initialization
-   • No Apps Script
-   • No new Firebase app
-   • No new Storage instance
+   • Does NOT initialize Firebase
+   • Does NOT create Firebase app
+   • Does NOT create Storage instance
    • Uses existing window.storage
-   • Uses existing window.db
    • Uses existing window.fb
-   • Does NOT modify Wildlife
-   • Does NOT modify Elephant
    • Does NOT modify window.latestGps
    • Does NOT resolve GIS
-
-   FIRESTORE MEDIA FIELDS:
-       photo_url
-       video_url
-       audio_url
-       photo_storage_path
-       video_storage_path
-       audio_storage_path
-       media_status
-
-   STORAGE:
-       irregularities/
-           {financialYear}/
-               {firestoreId}/
-                   photo/
-                   video/
-                   audio/
+   • Does NOT modify Wildlife
+   • Does NOT modify Elephant
+   • Does NOT create another submit handler
 
    ============================================================ */
 
@@ -68,9 +78,44 @@ GGIrregularity.Media =
 GGIrregularity.Media.ROOT =
     "irregularities";
 
-
 GGIrregularity.Media.TYPE =
     "irregularity";
+
+
+/* ============================================================
+   MEDIA STATE
+   ============================================================ */
+
+GGIrregularity.Media._objectUrls =
+    GGIrregularity.Media._objectUrls || {
+
+        photo: null,
+
+        video: null,
+
+        audio: null
+
+    };
+
+
+GGIrregularity.Media._audioRecorder =
+    null;
+
+
+GGIrregularity.Media._audioChunks =
+    [];
+
+
+GGIrregularity.Media._recording =
+    false;
+
+
+GGIrregularity.Media._nativeAudioUri =
+    null;
+
+
+GGIrregularity.Media._nativeAudioActive =
+    false;
 
 
 /* ============================================================
@@ -78,9 +123,7 @@ GGIrregularity.Media.TYPE =
    ============================================================ */
 
 GGIrregularity.Media.safeText =
-function(
-    value
-){
+function(value){
 
     return String(
         value ?? ""
@@ -91,22 +134,14 @@ function(
 
 /* ============================================================
    WAIT FOR EXISTING FIREBASE
-   ============================================================
-
-   IMPORTANT:
-   ------------------------------------------------------------
-   We NEVER initialize Firebase here.
-
-   We only wait for the existing GreenGuard Firebase system.
-
    ============================================================ */
 
 GGIrregularity.Media.waitForFirebase =
 async function(){
 
-    /* ========================================================
-       ALREADY READY
-       ======================================================== */
+    /*
+     * NEVER initialize Firebase here.
+     */
 
     if(
         window.db &&
@@ -119,10 +154,6 @@ async function(){
     }
 
 
-    /* ========================================================
-       USE EXISTING READINESS FUNCTION
-       ======================================================== */
-
     if(
         typeof window.waitForFirebaseReady ===
         "function"
@@ -132,10 +163,6 @@ async function(){
 
     }
 
-
-    /* ========================================================
-       FINAL VALIDATION
-       ======================================================== */
 
     if(
         !window.db ||
@@ -163,7 +190,7 @@ async function(){
 
 
 /* ============================================================
-   VALIDATE EXISTING FIREBASE STORAGE API
+   VALIDATE STORAGE API
    ============================================================ */
 
 GGIrregularity.Media.validateStorage =
@@ -191,52 +218,34 @@ function(){
     }
 
 
-    if(
-        typeof window.fb.ref !==
-        "function"
-    ){
+    const requiredFunctions = [
 
-        throw new Error(
-            "Firebase Storage ref() is unavailable."
-        );
+        "ref",
 
-    }
+        "uploadBytes",
 
+        "getDownloadURL"
 
-    if(
-        typeof window.fb.uploadBytes !==
-        "function"
-    ){
-
-        throw new Error(
-            "Firebase Storage uploadBytes() is unavailable."
-        );
-
-    }
+    ];
 
 
-    if(
-        typeof window.fb.uploadString !==
-        "function"
-    ){
+    requiredFunctions.forEach(
+        function(name){
 
-        throw new Error(
-            "Firebase Storage uploadString() is unavailable."
-        );
+            if(
+                typeof window.fb[name] !==
+                "function"
+            ){
 
-    }
+                throw new Error(
+                    "Firebase Storage function unavailable: " +
+                    name
+                );
 
+            }
 
-    if(
-        typeof window.fb.getDownloadURL !==
-        "function"
-    ){
-
-        throw new Error(
-            "Firebase Storage getDownloadURL() is unavailable."
-        );
-
-    }
+        }
+    );
 
 };
 
@@ -266,7 +275,101 @@ function(
 
 
 /* ============================================================
-   BUILD STORAGE ROOT
+   REVOKE OBJECT URL
+   ============================================================ */
+
+GGIrregularity.Media._revoke =
+function(type){
+
+    const url =
+        GGIrregularity.Media._objectUrls?.[type];
+
+
+    if(
+        url
+    ){
+
+        try{
+
+            URL.revokeObjectURL(
+                url
+            );
+
+        }
+        catch(_){
+
+        }
+
+    }
+
+
+    if(
+        GGIrregularity.Media._objectUrls
+    ){
+
+        GGIrregularity.Media._objectUrls[type] =
+            null;
+
+    }
+
+};
+
+
+/* ============================================================
+   ASSIGN FILE TO INPUT
+   ============================================================ */
+
+GGIrregularity.Media._setInputFile =
+function(
+    input,
+    file
+){
+
+    if(
+        !input ||
+        !file
+    ){
+
+        return false;
+
+    }
+
+
+    try{
+
+        const dataTransfer =
+            new DataTransfer();
+
+
+        dataTransfer.items.add(
+            file
+        );
+
+
+        input.files =
+            dataTransfer.files;
+
+
+        return true;
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ Unable to assign media file:",
+            error
+        );
+
+
+        return false;
+
+    }
+
+};
+
+
+/* ============================================================
+   STORAGE ROOT
    ============================================================ */
 
 GGIrregularity.Media.getStorageRoot =
@@ -291,19 +394,11 @@ function(
     }
 
 
-    /* ========================================================
-       FINANCIAL YEAR
-       ======================================================== */
-
     let financialYear =
         GGIrregularity.Media.safeText(
             payload?.financial_year
         );
 
-
-    /* ========================================================
-       CURRENT INDIAN FINANCIAL YEAR
-       ======================================================== */
 
     if(
         !financialYear
@@ -320,10 +415,6 @@ function(
         const month =
             now.getMonth() + 1;
 
-
-        /*
-         * April → March
-         */
 
         if(
             month >= 4
@@ -351,25 +442,17 @@ function(
     }
 
 
-    /* ========================================================
-       ROOT
-       ======================================================== */
-
-    const root =
-        GGIrregularity.Media.ROOT +
-        "/" +
-        financialYear +
-        "/" +
-        firestoreId;
-
-
     return {
 
         financialYear:
             financialYear,
 
         root:
-            root
+            GGIrregularity.Media.ROOT +
+            "/" +
+            financialYear +
+            "/" +
+            firestoreId
 
     };
 
@@ -377,336 +460,1242 @@ function(
 
 
 /* ============================================================
-   UPLOAD FILE / BLOB
+   PHOTO PREVIEW
    ============================================================ */
 
-GGIrregularity.Media.uploadBlob =
-async function(
-    mediaFile,
-    mediaType,
-    storageRoot,
-    fallbackName,
-    payload
-){
+GGIrregularity.Media.previewPhoto =
+function(input){
+
+    const file =
+        input?.files?.[0] ||
+        null;
+
 
     if(
-        !mediaFile
+        !file
     ){
 
-        return null;
+        return;
 
     }
 
 
-    /* ========================================================
-       FILE / BLOB
-       ======================================================== */
-
     if(
-        mediaFile instanceof Blob
+        !file.type.startsWith("image/")
     ){
 
-        const fileName =
-            GGIrregularity.Media.safeFileName(
-                mediaFile.name,
-                fallbackName
-            );
-
-
-        const storagePath =
-            storageRoot +
-            "/" +
-            mediaType +
-            "/" +
-            Date.now() +
-            "_" +
-            fileName;
-
-
-        const storageRef =
-            window.fb.ref(
-                window.storage,
-                storagePath
-            );
-
-
-        /* ====================================================
-           EXISTING DOWNLOAD BEHAVIOUR
-           ==================================================== */
-
-        const metadata = {
-
-            contentType:
-                mediaFile.type ||
-                "application/octet-stream",
-
-            contentDisposition:
-                "attachment; filename=\"" +
-                fileName +
-                "\"",
-
-            customMetadata: {
-
-                observationType:
-                    "IRREGULARITY",
-
-                firestoreId:
-                    GGIrregularity.Media.safeText(
-                        payload?.firestore_id
-                    ),
-
-                category:
-                    GGIrregularity.Media.safeText(
-                        payload?.category
-                    ),
-
-                mediaType:
-                    mediaType,
-
-                source:
-                    "GreenGuard"
-
-            }
-
-        };
-
-
-        console.log(
-            "⬆️ Irregularity media upload:",
-            {
-
-                mediaType:
-                    mediaType,
-
-                storagePath:
-                    storagePath,
-
-                size:
-                    mediaFile.size,
-
-                mime:
-                    mediaFile.type
-
-            }
+        alert(
+            "Please select a valid image."
         );
 
+        input.value = "";
 
-        /* ====================================================
-           UPLOAD
-           ==================================================== */
-
-        const uploadResult =
-            await window.fb.uploadBytes(
-                storageRef,
-                mediaFile,
-                metadata
-            );
-
-
-        /* ====================================================
-           DOWNLOAD URL
-           ==================================================== */
-
-        const url =
-            await window.fb.getDownloadURL(
-                uploadResult.ref
-            );
-
-
-        console.log(
-            "✅ Irregularity media uploaded:",
-            {
-
-                mediaType:
-                    mediaType,
-
-                path:
-                    storagePath,
-
-                url:
-                    url
-
-            }
-        );
-
-
-        return {
-
-            url:
-                url,
-
-            path:
-                storagePath
-
-        };
+        return;
 
     }
 
 
-    /* ========================================================
-       DATA URL
-       ======================================================== */
-
-    if(
-        typeof mediaFile ===
-        "string" &&
-        mediaFile.startsWith(
-            "data:"
-        )
-    ){
-
-        const fileName =
-            GGIrregularity.Media.safeFileName(
-                fallbackName,
-                mediaType + ".bin"
-            );
-
-
-        const storagePath =
-            storageRoot +
-            "/" +
-            mediaType +
-            "/" +
-            Date.now() +
-            "_" +
-            fileName;
-
-
-        const storageRef =
-            window.fb.ref(
-                window.storage,
-                storagePath
-            );
-
-
-        /* ====================================================
-           CONTENT TYPE
-           ==================================================== */
-
-        let contentType =
-            "application/octet-stream";
-
-
-        if(
-            mediaType ===
-            "photo"
-        ){
-
-            contentType =
-                "image/jpeg";
-
-        }
-        else if(
-            mediaType ===
-            "video"
-        ){
-
-            contentType =
-                "video/mp4";
-
-        }
-        else if(
-            mediaType ===
-            "audio"
-        ){
-
-            contentType =
-                "audio/mp4";
-
-        }
-
-
-        /* ====================================================
-           METADATA
-           ==================================================== */
-
-        const metadata = {
-
-            contentType:
-                contentType,
-
-            contentDisposition:
-                "attachment; filename=\"" +
-                fileName +
-                "\"",
-
-            customMetadata: {
-
-                observationType:
-                    "IRREGULARITY",
-
-                firestoreId:
-                    GGIrregularity.Media.safeText(
-                        payload?.firestore_id
-                    ),
-
-                category:
-                    GGIrregularity.Media.safeText(
-                        payload?.category
-                    ),
-
-                mediaType:
-                    mediaType,
-
-                source:
-                    "GreenGuard"
-
-            }
-
-        };
-
-
-        console.log(
-            "⬆️ Uploading Irregularity data URL:",
-            mediaType
-        );
-
-
-        const uploadResult =
-            await window.fb.uploadString(
-                storageRef,
-                mediaFile,
-                "data_url",
-                metadata
-            );
-
-
-        const url =
-            await window.fb.getDownloadURL(
-                uploadResult.ref
-            );
-
-
-        return {
-
-            url:
-                url,
-
-            path:
-                storagePath
-
-        };
-
-    }
-
-
-    /* ========================================================
-       UNSUPPORTED
-       ======================================================== */
-
-    console.warn(
-        "⚠ Unsupported Irregularity media:",
-        mediaFile
+    GGIrregularity.Media._revoke(
+        "photo"
     );
 
 
-    return null;
+    const preview =
+        document.getElementById(
+            "gg-irregularity-photo-preview"
+        );
+
+
+    const image =
+        document.getElementById(
+            "gg-irregularity-photo-preview-img"
+        );
+
+
+    if(
+        !preview ||
+        !image
+    ){
+
+        return;
+
+    }
+
+
+    const url =
+        URL.createObjectURL(
+            file
+        );
+
+
+    GGIrregularity.Media._objectUrls.photo =
+        url;
+
+
+    image.src =
+        url;
+
+
+    preview.style.display =
+        "block";
+
+
+    console.log(
+        "📷 Irregularity photo ready:",
+        file.name
+    );
 
 };
 
 
 /* ============================================================
-   GET MEDIA FROM FORM
+   REMOVE PHOTO
+   ============================================================ */
+
+GGIrregularity.Media.removePhoto =
+function(){
+
+    GGIrregularity.Media._revoke(
+        "photo"
+    );
+
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-photo"
+        );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-photo-preview"
+        );
+
+
+    const image =
+        document.getElementById(
+            "gg-irregularity-photo-preview-img"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.value =
+            "";
+
+    }
+
+
+    if(
+        image
+    ){
+
+        image.removeAttribute(
+            "src"
+        );
+
+    }
+
+
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "none";
+
+    }
+
+};
+
+
+/* ============================================================
+   VIDEO PREVIEW
+   ============================================================ */
+
+GGIrregularity.Media.previewVideo =
+function(input){
+
+    const file =
+        input?.files?.[0] ||
+        null;
+
+
+    if(
+        !file
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        !file.type.startsWith("video/")
+    ){
+
+        alert(
+            "Please select a valid video."
+        );
+
+        input.value = "";
+
+        return;
+
+    }
+
+
+    GGIrregularity.Media._revoke(
+        "video"
+    );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-video-preview"
+        );
+
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-video-preview-player"
+        );
+
+
+    if(
+        !preview ||
+        !player
+    ){
+
+        return;
+
+    }
+
+
+    const url =
+        URL.createObjectURL(
+            file
+        );
+
+
+    GGIrregularity.Media._objectUrls.video =
+        url;
+
+
+    player.src =
+        url;
+
+
+    player.load();
+
+
+    preview.style.display =
+        "block";
+
+
+    console.log(
+        "🎥 Irregularity video ready:",
+        file.name
+    );
+
+};
+
+
+/* ============================================================
+   REMOVE VIDEO
+   ============================================================ */
+
+GGIrregularity.Media.removeVideo =
+function(){
+
+    GGIrregularity.Media._revoke(
+        "video"
+    );
+
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-video"
+        );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-video-preview"
+        );
+
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-video-preview-player"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.value =
+            "";
+
+    }
+
+
+    if(
+        player
+    ){
+
+        try{
+
+            player.pause();
+
+        }
+        catch(_){
+
+        }
+
+
+        player.removeAttribute(
+            "src"
+        );
+
+
+        player.load();
+
+    }
+
+
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "none";
+
+    }
+
+};
+
+
+/* ============================================================
+   AUDIO PREVIEW
+   ============================================================ */
+
+GGIrregularity.Media.previewAudio =
+function(input){
+
+    const file =
+        input?.files?.[0] ||
+        null;
+
+
+    if(
+        !file
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        !file.type.startsWith("audio/")
+    ){
+
+        alert(
+            "Please select a valid audio file."
+        );
+
+        input.value = "";
+
+        return;
+
+    }
+
+
+    GGIrregularity.Media._nativeAudioUri =
+        null;
+
+
+    GGIrregularity.Media._revoke(
+        "audio"
+    );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-audio-preview"
+        );
+
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-audio-preview-player"
+        );
+
+
+    if(
+        !preview ||
+        !player
+    ){
+
+        return;
+
+    }
+
+
+    const url =
+        URL.createObjectURL(
+            file
+        );
+
+
+    GGIrregularity.Media._objectUrls.audio =
+        url;
+
+
+    player.src =
+        url;
+
+
+    player.load();
+
+
+    preview.style.display =
+        "block";
+
+
+    console.log(
+        "🎙 Irregularity audio ready:",
+        file.name
+    );
+
+};
+
+
+/* ============================================================
+   NATIVE AUDIO RECORDER
+   ============================================================ */
+
+GGIrregularity.Media.recordAudio =
+async function(){
+
+    /*
+     * Prevent double invocation.
+     */
+
+    if(
+        GGIrregularity.Media._recording ||
+        GGIrregularity.Media._nativeAudioActive
+    ){
+
+        return;
+
+    }
+
+
+    /* ========================================================
+       NATIVE ANDROID
+       ======================================================== */
+
+    if(
+        typeof window.Android !==
+        "undefined" &&
+        typeof window.Android.startVoiceRecorder ===
+        "function"
+    ){
+
+        console.log(
+            "🎙 Launching native GreenGuard audio recorder..."
+        );
+
+
+        GGIrregularity.Media._nativeAudioActive =
+            true;
+
+
+        window.currentIrregularityAudioType =
+            "irregularity";
+
+
+        window.currentSightingAudioType =
+            "irregularity";
+
+
+        try{
+
+            window.Android.startVoiceRecorder();
+
+            return;
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Native audio recorder failed:",
+                error
+            );
+
+
+            GGIrregularity.Media._nativeAudioActive =
+                false;
+
+        }
+
+    }
+
+
+    /* ========================================================
+       BROWSER FALLBACK
+       ======================================================== */
+
+    if(
+        !navigator.mediaDevices ||
+        typeof navigator.mediaDevices.getUserMedia !==
+        "function"
+    ){
+
+        alert(
+            "Audio recording is not supported on this device."
+        );
+
+        return;
+
+    }
+
+
+    let stream =
+        null;
+
+
+    try{
+
+        stream =
+            await navigator.mediaDevices.getUserMedia(
+                {
+                    audio:true
+                }
+            );
+
+
+        const mimeCandidates = [
+
+            "audio/mp4",
+
+            "audio/webm;codecs=opus",
+
+            "audio/webm",
+
+            "audio/ogg;codecs=opus"
+
+        ];
+
+
+        let mimeType =
+            "";
+
+
+        if(
+            typeof MediaRecorder.isTypeSupported ===
+            "function"
+        ){
+
+            for(
+                const candidate of
+                mimeCandidates
+            ){
+
+                if(
+                    MediaRecorder.isTypeSupported(
+                        candidate
+                    )
+                ){
+
+                    mimeType =
+                        candidate;
+
+                    break;
+
+                }
+
+            }
+
+        }
+
+
+        const recorder =
+            mimeType
+                ? new MediaRecorder(
+                    stream,
+                    {
+                        mimeType:
+                            mimeType
+                    }
+                )
+                : new MediaRecorder(
+                    stream
+                );
+
+
+        GGIrregularity.Media._audioRecorder =
+            recorder;
+
+
+        GGIrregularity.Media._audioChunks =
+            [];
+
+
+        GGIrregularity.Media._recording =
+            true;
+
+
+        recorder.ondataavailable =
+        function(event){
+
+            if(
+                event.data &&
+                event.data.size > 0
+            ){
+
+                GGIrregularity.Media
+                    ._audioChunks
+                    .push(
+                        event.data
+                    );
+
+            }
+
+        };
+
+
+        recorder.onerror =
+        function(event){
+
+            console.error(
+                "❌ Irregularity audio recorder error:",
+                event
+            );
+
+        };
+
+
+        recorder.onstop =
+        function(){
+
+            try{
+
+                const type =
+                    recorder.mimeType ||
+                    mimeType ||
+                    "audio/webm";
+
+
+                const extension =
+                    type.includes("mp4")
+                        ? "m4a"
+                        : type.includes("ogg")
+                            ? "ogg"
+                            : "webm";
+
+
+                const blob =
+                    new Blob(
+                        GGIrregularity.Media
+                            ._audioChunks,
+                        {
+                            type:
+                                type
+                        }
+                    );
+
+
+                const file =
+                    new File(
+                        [blob],
+                        "irregularity_audio_" +
+                        Date.now() +
+                        "." +
+                        extension,
+                        {
+                            type:
+                                type,
+
+                            lastModified:
+                                Date.now()
+                        }
+                    );
+
+
+                const input =
+                    document.getElementById(
+                        "gg-irregularity-audio"
+                    );
+
+
+                GGIrregularity.Media
+                    ._setInputFile(
+                        input,
+                        file
+                    );
+
+
+                GGIrregularity.Media
+                    .previewAudio(
+                        input
+                    );
+
+
+                console.log(
+                    "✅ Browser audio recording ready:",
+                    file.name
+                );
+
+            }
+            catch(error){
+
+                console.error(
+                    "❌ Audio processing failed:",
+                    error
+                );
+
+            }
+            finally{
+
+                stream
+                    ?.getTracks
+                    ?.()
+                    .forEach(
+                        function(track){
+
+                            try{
+
+                                track.stop();
+
+                            }
+                            catch(_){
+
+                            }
+
+                        }
+                    );
+
+
+                GGIrregularity.Media._recording =
+                    false;
+
+
+                GGIrregularity.Media._audioRecorder =
+                    null;
+
+
+                GGIrregularity.Media._audioChunks =
+                    [];
+
+            }
+
+        };
+
+
+        recorder.start();
+
+
+        console.log(
+            "🎙 Browser audio recording started"
+        );
+
+
+        const button =
+            document.querySelector(
+                "#ggIrregularityForm button[onclick*='recordAudio']"
+            );
+
+
+        if(
+            button
+        ){
+
+            button.textContent =
+                "⏹ STOP RECORDING";
+
+
+            button.onclick =
+            function(){
+
+                if(
+                    recorder.state ===
+                    "recording"
+                ){
+
+                    recorder.stop();
+
+                    button.textContent =
+                        "🎙 RECORD AUDIO";
+
+                }
+
+            };
+
+        }
+
+
+        recorder.__ggStartedAt =
+            Date.now();
+
+
+        const timer =
+            setInterval(
+                function(){
+
+                    if(
+                        !GGIrregularity.Media
+                            ._recording
+                    ){
+
+                        clearInterval(
+                            timer
+                        );
+
+                        return;
+
+                    }
+
+
+                    if(
+                        recorder.state !==
+                        "recording"
+                    ){
+
+                        clearInterval(
+                            timer
+                        );
+
+                        return;
+
+                    }
+
+
+                    const elapsed =
+                        Math.floor(
+                            (
+                                Date.now() -
+                                recorder.__ggStartedAt
+                            ) /
+                            1000
+                        );
+
+
+                    if(
+                        elapsed >= 60
+                    ){
+
+                        recorder.stop();
+
+
+                        clearInterval(
+                            timer
+                        );
+
+                    }
+
+                },
+                500
+            );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Unable to start browser audio:",
+            error
+        );
+
+
+        stream
+            ?.getTracks
+            ?.()
+            .forEach(
+                function(track){
+
+                    try{
+
+                        track.stop();
+
+                    }
+                    catch(_){
+
+                    }
+
+                }
+            );
+
+
+        GGIrregularity.Media._recording =
+            false;
+
+
+        GGIrregularity.Media._audioRecorder =
+            null;
+
+
+        alert(
+            "Unable to start audio recording. Please allow microphone access."
+        );
+
+    }
+
+};
+
+
+/* ============================================================
+   NATIVE AUDIO RESULT
+   ------------------------------------------------------------
+   Android calls:
+
+       window.onNativeAudioRecorded(uri)
+
+   We preserve any existing Wildlife / Elephant handler.
+   ============================================================ */
+
+GGIrregularity.Media._previousNativeAudioHandler =
+    window.onNativeAudioRecorded;
+
+
+/* ============================================================
+   HANDLE NATIVE AUDIO
+   ============================================================ */
+
+GGIrregularity.Media.handleNativeAudio =
+function(uri){
+
+    try{
+
+        console.log(
+            "🎙 Native Irregularity audio received:",
+            uri
+        );
+
+
+        GGIrregularity.Media
+            ._nativeAudioActive =
+            false;
+
+
+        if(
+            !uri
+        ){
+
+            console.warn(
+                "⚠ Native audio recording cancelled."
+            );
+
+            return;
+
+        }
+
+
+        /*
+         * Store URI.
+         *
+         * This is important because Android's native
+         * AudioActivity may return a file/content URI rather
+         * than a browser File object.
+         */
+
+        GGIrregularity.Media
+            ._nativeAudioUri =
+            String(uri);
+
+
+        /*
+         * Remove previous browser object URL.
+         */
+
+        GGIrregularity.Media._revoke(
+            "audio"
+        );
+
+
+        /*
+         * Update audio player directly.
+         */
+
+        const preview =
+            document.getElementById(
+                "gg-irregularity-audio-preview"
+            );
+
+
+        const player =
+            document.getElementById(
+                "gg-irregularity-audio-preview-player"
+            );
+
+
+        if(
+            player
+        ){
+
+            player.src =
+                String(uri);
+
+            player.load();
+
+        }
+
+
+        if(
+            preview
+        ){
+
+            preview.style.display =
+                "block";
+
+        }
+
+
+        console.log(
+            "✅ Native Irregularity audio preview ready."
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Native Irregularity audio processing failed:",
+            error
+        );
+
+    }
+
+};
+
+
+/* ============================================================
+   INSTALL CALLBACK SAFELY
+   ============================================================ */
+
+window.onNativeAudioRecorded =
+function(uri){
+
+    /*
+     * Irregularity requested native audio.
+     */
+
+    if(
+        window.currentIrregularityAudioType ===
+        "irregularity"
+    ){
+
+        GGIrregularity.Media
+            .handleNativeAudio(
+                uri
+            );
+
+
+        return;
+
+    }
+
+
+    /*
+     * Otherwise preserve existing
+     * Wildlife / Elephant behavior.
+     */
+
+    if(
+        typeof GGIrregularity.Media
+            ._previousNativeAudioHandler ===
+        "function"
+    ){
+
+        try{
+
+            GGIrregularity.Media
+                ._previousNativeAudioHandler(
+                    uri
+                );
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Existing native audio handler failed:",
+                error
+            );
+
+        }
+
+    }
+
+};
+
+
+/* ============================================================
+   RECORD AGAIN
+   ============================================================ */
+
+GGIrregularity.Media.recordAgain =
+function(){
+
+    GGIrregularity.Media.removeAudio();
+
+    setTimeout(
+        function(){
+
+            GGIrregularity.Media
+                .recordAudio();
+
+        },
+        100
+    );
+
+};
+
+
+/* ============================================================
+   REMOVE AUDIO
+   ============================================================ */
+
+GGIrregularity.Media.removeAudio =
+function(){
+
+    /*
+     * Stop browser recorder.
+     */
+
+    if(
+        GGIrregularity.Media._audioRecorder &&
+        GGIrregularity.Media._recording
+    ){
+
+        try{
+
+            GGIrregularity.Media
+                ._audioRecorder
+                .stop();
+
+        }
+        catch(_){
+
+        }
+
+    }
+
+
+    GGIrregularity.Media._recording =
+        false;
+
+
+    GGIrregularity.Media._nativeAudioActive =
+        false;
+
+
+    GGIrregularity.Media._nativeAudioUri =
+        null;
+
+
+    GGIrregularity.Media._revoke(
+        "audio"
+    );
+
+
+    const input =
+        document.getElementById(
+            "gg-irregularity-audio"
+        );
+
+
+    const preview =
+        document.getElementById(
+            "gg-irregularity-audio-preview"
+        );
+
+
+    const player =
+        document.getElementById(
+            "gg-irregularity-audio-preview-player"
+        );
+
+
+    if(
+        input
+    ){
+
+        input.value =
+            "";
+
+    }
+
+
+    if(
+        player
+    ){
+
+        try{
+
+            player.pause();
+
+        }
+        catch(_){
+
+        }
+
+
+        player.removeAttribute(
+            "src"
+        );
+
+
+        player.load();
+
+    }
+
+
+    if(
+        preview
+    ){
+
+        preview.style.display =
+            "none";
+
+    }
+
+
+    window.currentIrregularityAudioType =
+        null;
+
+
+    window.currentSightingAudioType =
+        null;
+
+
+    console.log(
+        "🗑 Irregularity audio removed."
+    );
+
+};
+
+
+/* ============================================================
+   CLEAR ALL MEDIA
+   ============================================================ */
+
+GGIrregularity.Media.clearFormMedia =
+function(){
+
+    GGIrregularity.Media.removePhoto();
+
+    GGIrregularity.Media.removeVideo();
+
+    GGIrregularity.Media.removeAudio();
+
+};
+
+
+/* ============================================================
+   GET FORM MEDIA
    ============================================================ */
 
 GGIrregularity.Media.getFormMedia =
@@ -730,18 +1719,39 @@ function(){
         );
 
 
+    const photo =
+        photoInput?.files?.[0] ||
+        null;
+
+
+    const video =
+        videoInput?.files?.[0] ||
+        null;
+
+
+    const audio =
+        audioInput?.files?.[0] ||
+        null;
+
+
     return {
 
         photo:
-            photoInput?.files?.[0] ||
-            null,
+
+            photo,
 
         video:
-            videoInput?.files?.[0] ||
-            null,
+
+            video,
 
         audio:
-            audioInput?.files?.[0] ||
+
+            audio,
+
+        nativeAudioUri:
+
+            GGIrregularity.Media
+                ._nativeAudioUri ||
             null
 
     };
@@ -750,27 +1760,311 @@ function(){
 
 
 /* ============================================================
-   CHECK WHETHER MEDIA EXISTS
+   HAS MEDIA
    ============================================================ */
 
 GGIrregularity.Media.hasMedia =
 function(){
 
     const media =
-        GGIrregularity.Media.getFormMedia();
+        GGIrregularity.Media
+            .getFormMedia();
 
 
     return !!(
         media.photo ||
         media.video ||
-        media.audio
+        media.audio ||
+        media.nativeAudioUri
     );
 
 };
 
 
 /* ============================================================
-   UPLOAD ALL IRREGULARITY MEDIA
+   UPLOAD NORMAL FILE / BLOB
+   ============================================================ */
+
+GGIrregularity.Media.uploadBlob =
+async function(
+    mediaFile,
+    mediaType,
+    storageRoot,
+    fallbackName,
+    payload
+){
+
+    if(
+        !mediaFile
+    ){
+
+        return null;
+
+    }
+
+
+    if(
+        !(mediaFile instanceof Blob)
+    ){
+
+        return null;
+
+    }
+
+
+    const fileName =
+        GGIrregularity.Media.safeFileName(
+            mediaFile.name,
+            fallbackName
+        );
+
+
+    const storagePath =
+        storageRoot +
+        "/" +
+        mediaType +
+        "/" +
+        Date.now() +
+        "_" +
+        fileName;
+
+
+    const storageRef =
+        window.fb.ref(
+            window.storage,
+            storagePath
+        );
+
+
+    const metadata = {
+
+        contentType:
+            mediaFile.type ||
+            "application/octet-stream",
+
+        contentDisposition:
+            "attachment; filename=\"" +
+            fileName +
+            "\"",
+
+        customMetadata: {
+
+            observationType:
+                "IRREGULARITY",
+
+            firestoreId:
+                GGIrregularity.Media.safeText(
+                    payload?.firestore_id
+                ),
+
+            category:
+                GGIrregularity.Media.safeText(
+                    payload?.category
+                ),
+
+            mediaType:
+                mediaType,
+
+            source:
+                "GreenGuard"
+
+        }
+
+    };
+
+
+    console.log(
+        "⬆️ Uploading Irregularity media:",
+        {
+            mediaType:
+                mediaType,
+
+            name:
+                fileName,
+
+            size:
+                mediaFile.size,
+
+            type:
+                mediaFile.type,
+
+            path:
+                storagePath
+        }
+    );
+
+
+    const uploadResult =
+        await window.fb.uploadBytes(
+            storageRef,
+            mediaFile,
+            metadata
+        );
+
+
+    const url =
+        await window.fb.getDownloadURL(
+            uploadResult.ref
+        );
+
+
+    console.log(
+        "✅ Irregularity media uploaded:",
+        {
+            mediaType:
+                mediaType,
+
+            path:
+                storagePath,
+
+            url:
+                url
+        }
+    );
+
+
+    return {
+
+        url:
+            url,
+
+        path:
+            storagePath
+
+    };
+
+};
+
+
+/* ============================================================
+   UPLOAD NATIVE AUDIO URI
+   ============================================================ */
+
+GGIrregularity.Media.uploadNativeAudio =
+async function(
+    uri,
+    storageRoot,
+    payload
+){
+
+    if(
+        !uri
+    ){
+
+        return null;
+
+    }
+
+
+    /*
+     * First try fetching the native URI.
+     *
+     * This works when Android exposes the returned URI
+     * to the WebView.
+     */
+
+    let response;
+
+
+    try{
+
+        response =
+            await fetch(
+                String(uri)
+            );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Unable to access native audio URI:",
+            error
+        );
+
+
+        throw new Error(
+            "Native audio file could not be accessed."
+        );
+
+    }
+
+
+    if(
+        !response.ok
+    ){
+
+        throw new Error(
+            "Native audio file could not be read."
+        );
+
+    }
+
+
+    const blob =
+        await response.blob();
+
+
+    if(
+        !blob ||
+        !blob.size
+    ){
+
+        throw new Error(
+            "Native audio recording is empty."
+        );
+
+    }
+
+
+    const mimeType =
+        blob.type ||
+        "audio/mp4";
+
+
+    const extension =
+        mimeType.includes("webm")
+            ? "webm"
+            : mimeType.includes("ogg")
+                ? "ogg"
+                : "m4a";
+
+
+    const file =
+        new File(
+            [blob],
+            "irregularity_audio_" +
+            Date.now() +
+            "." +
+            extension,
+            {
+                type:
+                    mimeType,
+
+                lastModified:
+                    Date.now()
+            }
+        );
+
+
+    return GGIrregularity.Media.uploadBlob(
+
+        file,
+
+        "audio",
+
+        storageRoot,
+
+        "audio." + extension,
+
+        payload
+
+    );
+
+};
+
+
+/* ============================================================
+   UPLOAD ALL MEDIA
    ============================================================ */
 
 GGIrregularity.Media.upload =
@@ -785,10 +2079,6 @@ async function(
 
     try{
 
-        /* ====================================================
-           FIREBASE
-           ==================================================== */
-
         await GGIrregularity.Media
             .waitForFirebase();
 
@@ -796,10 +2086,6 @@ async function(
         GGIrregularity.Media
             .validateStorage();
 
-
-        /* ====================================================
-           STORAGE ROOT
-           ==================================================== */
 
         const storageInfo =
             GGIrregularity.Media
@@ -809,23 +2095,15 @@ async function(
 
 
         console.log(
-            "📁 Irregularity Storage Root:",
+            "📁 Storage root:",
             storageInfo.root
         );
 
-
-        /* ====================================================
-           FORM MEDIA
-           ==================================================== */
 
         const formMedia =
             GGIrregularity.Media
                 .getFormMedia();
 
-
-        /* ====================================================
-           RESULT
-           ==================================================== */
 
         const result = {
 
@@ -936,7 +2214,7 @@ async function(
 
 
         /* ====================================================
-           AUDIO
+           AUDIO — NORMAL FILE
            ==================================================== */
 
         if(
@@ -977,7 +2255,49 @@ async function(
 
 
         /* ====================================================
-           MEDIA COUNT
+           AUDIO — NATIVE URI
+           ==================================================== */
+
+        else if(
+            formMedia.nativeAudioUri
+        ){
+
+            console.log(
+                "🎙 Uploading native Android audio URI..."
+            );
+
+
+            const uploadedNativeAudio =
+                await GGIrregularity.Media
+                    .uploadNativeAudio(
+
+                        formMedia.nativeAudioUri,
+
+                        storageInfo.root,
+
+                        payload
+
+                    );
+
+
+            if(
+                uploadedNativeAudio
+            ){
+
+                result.audio_url =
+                    uploadedNativeAudio.url;
+
+
+                result.audio_storage_path =
+                    uploadedNativeAudio.path;
+
+            }
+
+        }
+
+
+        /* ====================================================
+           MEDIA STATUS
            ==================================================== */
 
         const mediaCount =
@@ -1001,22 +2321,14 @@ async function(
             );
 
 
-        /* ====================================================
-           STATUS
-           ==================================================== */
-
         result.media_status =
             mediaCount > 0
                 ? "COMPLETE"
                 : "NONE";
 
 
-        /* ====================================================
-           RESULT
-           ==================================================== */
-
         console.log(
-            "📦 IRREGULARITY MEDIA RESULT:",
+            "📦 FINAL IRREGULARITY MEDIA:",
             result
         );
 
@@ -1027,9 +2339,7 @@ async function(
         return result;
 
     }
-    catch(
-        error
-    ){
+    catch(error){
 
         console.error(
             "❌ Irregularity media upload failed:",
@@ -1048,7 +2358,7 @@ async function(
 
 
 /* ============================================================
-   UPDATE IRREGULARITY FIRESTORE MEDIA
+   UPDATE FIRESTORE MEDIA FIELDS
    ============================================================ */
 
 GGIrregularity.Media.updateFirestore =
@@ -1056,10 +2366,6 @@ async function(
     firestoreId,
     mediaResult
 ){
-
-    /* ========================================================
-       VALIDATE FIREBASE
-       ======================================================== */
 
     if(
         !window.db ||
@@ -1084,10 +2390,6 @@ async function(
     }
 
 
-    /* ========================================================
-       DOCUMENT
-       ======================================================== */
-
     const irregularityRef =
         window.fb.doc(
             window.db,
@@ -1095,10 +2397,6 @@ async function(
             firestoreId
         );
 
-
-    /* ========================================================
-       UPDATE SAME DOCUMENT
-       ======================================================== */
 
     await window.fb.updateDoc(
         irregularityRef,
@@ -1145,10 +2443,6 @@ async function(
     console.log(
         "✅ Irregularity Firestore media fields updated:",
         {
-
-            collection:
-                "irregularities",
-
             firestoreId:
                 firestoreId,
 
@@ -1168,57 +2462,105 @@ async function(
 GGIrregularity.Media.clearForm =
 function(){
 
-    const inputIds = [
+    GGIrregularity.Media
+        .clearFormMedia();
 
-        "gg-irregularity-photo",
-
-        "gg-irregularity-video",
-
-        "gg-irregularity-audio"
-
-    ];
+};
 
 
-    inputIds.forEach(
-        function(
-            id
-        ){
+/* ============================================================
+   DEBUG HELPER
+   ============================================================ */
 
-            const input =
-                document.getElementById(
-                    id
-                );
+GGIrregularity.Media.debug =
+function(){
+
+    const media =
+        GGIrregularity.Media
+            .getFormMedia();
 
 
-            if(
-                input
-            ){
+    console.log(
+        "🔎 IRREGULARITY MEDIA DEBUG",
+        {
 
-                input.value =
-                    "";
+            photo:
+                media.photo
+                    ? {
+                        name:
+                            media.photo.name,
 
-            }
+                        type:
+                            media.photo.type,
+
+                        size:
+                            media.photo.size
+                    }
+                    : null,
+
+            video:
+                media.video
+                    ? {
+                        name:
+                            media.video.name,
+
+                        type:
+                            media.video.type,
+
+                        size:
+                            media.video.size
+                    }
+                    : null,
+
+            audio:
+                media.audio
+                    ? {
+                        name:
+                            media.audio.name,
+
+                        type:
+                            media.audio.type,
+
+                        size:
+                            media.audio.size
+                    }
+                    : null,
+
+            nativeAudioUri:
+                media.nativeAudioUri
 
         }
     );
 
 
-    const status =
-        document.getElementById(
-            "gg-irregularity-media-status"
-        );
-
-
-    if(
-        status
-    ){
-
-        status.textContent =
-            "No media selected.";
-
-    }
+    return media;
 
 };
+
+
+/* ============================================================
+   READY
+   ============================================================ */
+
+console.log(
+    "✅ GGIrregularity.Media loaded",
+    {
+        photo:
+            typeof GGIrregularity.Media.previewPhoto,
+
+        video:
+            typeof GGIrregularity.Media.previewVideo,
+
+        audio:
+            typeof GGIrregularity.Media.recordAudio,
+
+        upload:
+            typeof GGIrregularity.Media.upload,
+
+        nativeRecorder:
+            typeof window.Android?.startVoiceRecorder
+    }
+);
 
 
 /* ============================================================
