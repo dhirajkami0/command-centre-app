@@ -62705,7 +62705,236 @@ async function uploadSightingMediaToStorage(
 
 }
 
+// ============================================================
+// 🔧 FIX EXISTING SIGHTING MEDIA DOWNLOAD METADATA
+// ============================================================
+//
+// PURPOSE:
+//
+// Existing Firebase Storage files may have:
+//
+//     Content-Disposition: null
+//
+// This causes mobile browsers to open the image instead of
+// treating it as a download.
+//
+// This function changes the existing Storage object's metadata
+// to:
+//
+//     Content-Disposition: attachment
+//
+// IMPORTANT:
+//
+// This does NOT upload the file again.
+// It only updates Storage metadata.
+//
+// ============================================================
 
+async function updateExistingSightingMediaMetadata(
+    storagePath,
+    fileName,
+    contentType
+){
+
+    try{
+
+        // ====================================================
+        // WAIT FOR FIREBASE
+        // ====================================================
+
+        if(
+            !window.firebaseReady
+        ){
+
+            if(
+                typeof waitForFirebaseReady ===
+                "function"
+            ){
+
+                await waitForFirebaseReady();
+
+            }
+
+        }
+
+
+        // ====================================================
+        // VALIDATE STORAGE
+        // ====================================================
+
+        if(
+            !window.storage
+        ){
+
+            throw new Error(
+                "Firebase Storage is not initialized."
+            );
+
+        }
+
+
+        // ====================================================
+        // VALIDATE FIREBASE STORAGE API
+        // ====================================================
+
+        if(
+            !window.fb ||
+            typeof window.fb.ref !==
+                "function" ||
+            typeof window.fb.updateMetadata !==
+                "function"
+        ){
+
+            throw new Error(
+                "Firebase Storage updateMetadata() is unavailable."
+            );
+
+        }
+
+
+        // ====================================================
+        // VALIDATE PATH
+        // ====================================================
+
+        const path =
+            String(
+                storagePath ||
+                ""
+            )
+            .trim();
+
+
+        if(
+            !path
+        ){
+
+            throw new Error(
+                "Storage path is empty."
+            );
+
+        }
+
+
+        // ====================================================
+        // SAFE FILE NAME
+        // ====================================================
+
+        const safeFileName =
+            String(
+                fileName ||
+                path.split("/").pop() ||
+                "sighting-media"
+            )
+            .trim()
+            .replace(
+                /["\\]/g,
+                "_"
+            );
+
+
+        // ====================================================
+        // CONTENT TYPE
+        // ====================================================
+
+        const safeContentType =
+            String(
+                contentType ||
+                "application/octet-stream"
+            )
+            .trim();
+
+
+        // ====================================================
+        // CREATE STORAGE REFERENCE
+        // ====================================================
+
+        const storageRef =
+            window.fb.ref(
+                window.storage,
+                path
+            );
+
+
+        // ====================================================
+        // UPDATE METADATA
+        // ====================================================
+
+        const metadata = {
+
+            contentType:
+                safeContentType,
+
+            contentDisposition:
+                'attachment; filename="' +
+                safeFileName +
+                '"'
+
+        };
+
+
+        console.log(
+            "🔧 Updating existing media metadata:",
+            {
+                path:
+                    path,
+
+                fileName:
+                    safeFileName,
+
+                contentType:
+                    safeContentType
+            }
+        );
+
+
+        // ====================================================
+        // WRITE METADATA
+        // ====================================================
+
+        const updatedMetadata =
+            await window.fb.updateMetadata(
+                storageRef,
+                metadata
+            );
+
+
+        // ====================================================
+        // SUCCESS
+        // ====================================================
+
+        console.log(
+            "✅ Existing media metadata fixed:",
+            {
+                path:
+                    path,
+
+                contentDisposition:
+                    updatedMetadata?.contentDisposition ||
+                    null,
+
+                contentType:
+                    updatedMetadata?.contentType ||
+                    null
+            }
+        );
+
+
+        return updatedMetadata;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Existing media metadata update failed:",
+            error
+        );
+
+
+        throw error;
+
+    }
+
+}
 // ============================================================
 // 🔥 UPDATE EXISTING FIRESTORE SIGHTING WITH MEDIA URLS
 // ============================================================
