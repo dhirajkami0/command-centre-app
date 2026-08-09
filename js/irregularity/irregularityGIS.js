@@ -1,549 +1,554 @@
 /* ============================================================
    🌲 GREENGUARD
-   IRREGULARITY GIS RESOLVER
+   IRREGULARITY GIS ADAPTER
+   ============================================================
+
+   File:
+       js/irregularity/irregularityGIS.js
+
+   IMPORTANT
+   ------------------------------------------------------------
+   This module does NOT create a GIS system.
+
+   It uses ONLY the existing global:
+
+       window.resolveCurrentGIS(lat, lon)
+
+   Existing GIS functions remain untouched:
+
+       findVillageAtPoint()
+       findCompartmentAtPoint()
+       findNearestVillagePoint()
+
+   No duplicate GIS resolver.
+   No GIS data loading.
+   No Firestore.
+   No Apps Script.
    ============================================================ */
 
-(function (window) {
 
-    "use strict";
+/* ============================================================
+   NAMESPACE
+   ============================================================ */
 
-
-    window.GreenGuard =
-        window.GreenGuard ||
-        {};
-
-
-    const GG =
-        window.GreenGuard;
+window.GGIrregularity =
+    window.GGIrregularity || {};
 
 
-    if (
-        GG.IrregularityGIS
-    ) {
+GGIrregularity.GIS =
+    GGIrregularity.GIS || {};
 
-        console.warn(
-            "⚠️ IrregularityGIS already loaded."
+
+/* ============================================================
+   RESOLVE CURRENT LOCATION
+   ============================================================ */
+
+GGIrregularity.GIS.resolve =
+function(
+    lat,
+    lon
+){
+
+    /* ========================================================
+       NORMALIZE GPS
+       ======================================================== */
+
+    lat =
+        Number(
+            lat
         );
 
-        return;
-
-    }
-
-
-    // ========================================================
-    // NUMBER NORMALIZER
-    // ========================================================
-
-    function numberOrNull(
-        value
-    ) {
-
-        const number =
-            Number(
-                value
-            );
+    lon =
+        Number(
+            lon
+        );
 
 
-        return Number.isFinite(
-            number
+    /* ========================================================
+       INVALID GPS
+       ======================================================== */
+
+    if(
+
+        !Number.isFinite(
+            lat
+        ) ||
+
+        !Number.isFinite(
+            lon
         )
-            ? number
-            : null;
 
-    }
-
-
-    // ========================================================
-    // GET CURRENT PROFILE
-    // ========================================================
-
-    function getProfile() {
-
-        return (
-            window.userProfile ||
-            {}
-        );
-
-    }
-
-
-    // ========================================================
-    // GET DUTY STATE
-    // ========================================================
-
-    function getDutyState() {
-
-        return {
-
-            active:
-                !!(
-                    window.isDutyActive ||
-                    window.dutyActive
-                ),
-
-            sessionId:
-                String(
-                    window.currentSessionId ||
-                    window.sessionId ||
-                    window.GG_SESSION_ID ||
-                    ""
-                )
-                .trim()
-
-        };
-
-    }
-
-
-    // ========================================================
-    // GPS FROM CURRENT MAP / APP STATE
-    // ========================================================
-
-    function getCurrentGPS() {
-
-        // ----------------------------------------------------
-        // Existing application values
-        // ----------------------------------------------------
-
-        const latitude =
-            numberOrNull(
-                window.currentLatitude ??
-                window.currentLat ??
-                window.lastLatitude
-            );
-
-
-        const longitude =
-            numberOrNull(
-                window.currentLongitude ??
-                window.currentLon ??
-                window.lastLongitude
-            );
-
-
-        const accuracy =
-            numberOrNull(
-                window.currentGPSAccuracy ??
-                window.gpsAccuracy ??
-                window.lastGPSAccuracy
-            );
-
-
-        if (
-            latitude !== null &&
-            longitude !== null
-        ) {
-
-            return {
-
-                latitude:
-                    latitude,
-
-                longitude:
-                    longitude,
-
-                accuracy:
-                    accuracy
-
-            };
-
-        }
-
-
-        // ----------------------------------------------------
-        // Browser fallback
-        // ----------------------------------------------------
-
-        return new Promise(
-            function(resolve){
-
-                if (
-                    !navigator.geolocation
-                ) {
-
-                    resolve({
-
-                        latitude:
-                            null,
-
-                        longitude:
-                            null,
-
-                        accuracy:
-                            null
-
-                    });
-
-                    return;
-
-                }
-
-
-                navigator.geolocation
-                    .getCurrentPosition(
-
-                        function(position){
-
-                            resolve({
-
-                                latitude:
-                                    numberOrNull(
-                                        position.coords.latitude
-                                    ),
-
-                                longitude:
-                                    numberOrNull(
-                                        position.coords.longitude
-                                    ),
-
-                                accuracy:
-                                    numberOrNull(
-                                        position.coords.accuracy
-                                    )
-
-                            });
-
-                        },
-
-                        function(){
-
-                            resolve({
-
-                                latitude:
-                                    null,
-
-                                longitude:
-                                    null,
-
-                                accuracy:
-                                    null
-
-                            });
-
-                        },
-
-                        {
-
-                            enableHighAccuracy:
-                                true,
-
-                            timeout:
-                                10000,
-
-                            maximumAge:
-                                5000
-
-                        }
-
-                    );
-
-            }
-        );
-
-    }
-
-
-    // ========================================================
-    // PROFILE GIS FALLBACK
-    // ========================================================
-
-    function getProfileGIS() {
-
-        const profile =
-            getProfile();
-
-
-        return {
-
-            division:
-                profile.division ||
-                profile.gis_division ||
-                "",
-
-            range:
-                profile.range ||
-                profile.gis_range ||
-                "",
-
-            beat:
-                profile.beat ||
-                profile.gis_beat ||
-                "",
-
-            compartment:
-                profile.compartment ||
-                profile.gis_compartment ||
-                "",
-
-            divisionCode:
-                profile.divisionCode ||
-                profile.division_code ||
-                "",
-
-            rangeCode:
-                profile.rangeCode ||
-                profile.range_code ||
-                "",
-
-            beatCode:
-                profile.beatCode ||
-                profile.beat_code ||
-                "",
-
-            compartmentCode:
-                profile.compartmentCode ||
-                profile.compartment_code ||
-                ""
-
-        };
-
-    }
-
-
-    // ========================================================
-    // EXTRACT GIS FROM EXISTING GLOBAL CONTEXT
-    // ========================================================
-
-    function getExistingGIS() {
-
-        const candidates = [
-
-            window.currentGISContext,
-
-            window.activeGISContext,
-
-            window.activePopupContext,
-
-            window.currentLocationContext,
-
-            window.currentSightingGIS
-
-        ];
-
-
-        for (
-            let i = 0;
-            i < candidates.length;
-            i++
-        ) {
-
-            const candidate =
-                candidates[i];
-
-
-            if (
-                candidate &&
-                typeof candidate ===
-                    "object"
-            ) {
-
-                return {
-
-                    division:
-                        candidate.division ||
-                        candidate.gis_division ||
-                        "",
-
-                    range:
-                        candidate.range ||
-                        candidate.gis_range ||
-                        "",
-
-                    beat:
-                        candidate.beat ||
-                        candidate.gis_beat ||
-                        "",
-
-                    compartment:
-                        candidate.compartment ||
-                        candidate.gis_compartment ||
-                        "",
-
-                    divisionCode:
-                        candidate.divisionCode ||
-                        candidate.division_code ||
-                        "",
-
-                    rangeCode:
-                        candidate.rangeCode ||
-                        candidate.range_code ||
-                        "",
-
-                    beatCode:
-                        candidate.beatCode ||
-                        candidate.beat_code ||
-                        "",
-
-                    compartmentCode:
-                        candidate.compartmentCode ||
-                        candidate.compartment_code ||
-                        ""
-
-                };
-
-            }
-
-        }
-
+    ){
 
         return null;
 
     }
 
 
-    // ========================================================
-    // RESOLVE
-    // ========================================================
+    /* ========================================================
+       EXISTING GLOBAL GIS RESOLVER
+       ======================================================== */
 
-    async function resolve() {
+    if(
 
-        const gps =
-            await getCurrentGPS();
+        typeof window.resolveCurrentGIS !==
+        "function"
 
+    ){
 
-        const existingGIS =
-            getExistingGIS();
+        console.error(
+            "❌ resolveCurrentGIS() is not available."
+        );
 
-
-        const profileGIS =
-            getProfileGIS();
-
-
-        const gis =
-            existingGIS ||
-            profileGIS;
-
-
-        const result = {
-
-            latitude:
-                gps.latitude,
-
-            longitude:
-                gps.longitude,
-
-            accuracy:
-                gps.accuracy,
-
-            division:
-                gis.division ||
-                "",
-
-            range:
-                gis.range ||
-                "",
-
-            beat:
-                gis.beat ||
-                "",
-
-            compartment:
-                gis.compartment ||
-                "",
-
-            divisionCode:
-                gis.divisionCode ||
-                "",
-
-            rangeCode:
-                gis.rangeCode ||
-                "",
-
-            beatCode:
-                gis.beatCode ||
-                "",
-
-            compartmentCode:
-                gis.compartmentCode ||
-                ""
-
-        };
-
-
-        // ====================================================
-        // STORE IN STATE
-        // ====================================================
-
-        if (
-            GG.IrregularityState
-        ) {
-
-            const state =
-                GG.IrregularityState.state;
-
-
-            state.latitude =
-                result.latitude;
-
-            state.longitude =
-                result.longitude;
-
-            state.accuracy =
-                result.accuracy;
-
-            state.division =
-                result.division;
-
-            state.range =
-                result.range;
-
-            state.beat =
-                result.beat;
-
-            state.compartment =
-                result.compartment;
-
-            state.divisionCode =
-                result.divisionCode;
-
-            state.rangeCode =
-                result.rangeCode;
-
-            state.beatCode =
-                result.beatCode;
-
-            state.compartmentCode =
-                result.compartmentCode;
-
-        }
-
-
-        return result;
+        return null;
 
     }
 
 
-    // ========================================================
-    // PUBLIC API
-    // ========================================================
+    /* ========================================================
+       CALL EXISTING RESOLVER
+       ======================================================== */
 
-    GG.IrregularityGIS = {
+    let gis =
+        null;
 
-        getCurrentGPS:
-            getCurrentGPS,
 
-        getProfileGIS:
-            getProfileGIS,
+    try{
 
-        getExistingGIS:
-            getExistingGIS,
+        gis =
+            window.resolveCurrentGIS(
+                lat,
+                lon
+            );
 
-        resolve:
-            resolve,
+    }
+    catch(
+        error
+    ){
 
-        getDutyState:
-            getDutyState
+        console.error(
+            "❌ Existing GIS resolver failed:",
+            error
+        );
+
+        return null;
+
+    }
+
+
+    /* ========================================================
+       RESOLVER RETURNED NOTHING
+       ======================================================== */
+
+    if(
+        !gis ||
+        typeof gis !==
+        "object"
+    ){
+
+        console.warn(
+            "⚠ GIS resolver returned no location."
+        );
+
+        return {
+
+            lat:
+                lat,
+
+            lon:
+                lon,
+
+            division:
+                "",
+
+            range:
+                "",
+
+            beat:
+                "",
+
+            compartment:
+                "",
+
+            village:
+                "",
+
+            villageCode:
+                "",
+
+            block:
+                "",
+
+            nearestVillage:
+                "",
+
+            nearestPoint:
+                "",
+
+            distanceMeters:
+                null,
+
+            text:
+                "Unknown Location",
+
+            compartmentResult:
+                null,
+
+            villageResult:
+                null,
+
+            nearestPointResult:
+                null
+
+        };
+
+    }
+
+
+    /* ========================================================
+       RETURN THE EXISTING GIS RESULT
+       ========================================================
+
+       Do not rebuild or reinterpret the GIS hierarchy.
+
+       The global resolver already returns:
+
+           lat
+           lon
+           compartment
+           beat
+           range
+           division
+           village
+           villageCode
+           block
+           nearestVillage
+           nearestPoint
+           distanceMeters
+           text
+           compartmentResult
+           villageResult
+           nearestPointResult
+
+       We simply preserve it.
+       ======================================================== */
+
+    return {
+
+        lat:
+            gis.lat ??
+            lat,
+
+        lon:
+            gis.lon ??
+            lon,
+
+        compartment:
+            gis.compartment ||
+            "",
+
+        beat:
+            gis.beat ||
+            "",
+
+        range:
+            gis.range ||
+            "",
+
+        division:
+            gis.division ||
+            "",
+
+        village:
+            gis.village ||
+            "",
+
+        villageCode:
+            gis.villageCode ||
+            "",
+
+        block:
+            gis.block ||
+            "",
+
+        nearestVillage:
+            gis.nearestVillage ||
+            "",
+
+        nearestPoint:
+            gis.nearestPoint ||
+            "",
+
+        distanceMeters:
+            gis.distanceMeters ??
+            null,
+
+        text:
+            gis.text ||
+            "Unknown Location",
+
+        compartmentResult:
+            gis.compartmentResult ||
+            null,
+
+        villageResult:
+            gis.villageResult ||
+            null,
+
+        nearestPointResult:
+            gis.nearestPointResult ||
+            null
 
     };
 
-
-    window.IrregularityGIS =
-        GG.IrregularityGIS;
+};
 
 
-    console.log(
-        "✅ GreenGuard IrregularityGIS loaded."
+/* ============================================================
+   RESOLVE FROM EXISTING GPS OBJECT
+   ============================================================ */
+
+GGIrregularity.GIS.resolveGPS =
+function(
+    gps
+){
+
+    if(
+        !gps ||
+        typeof gps !==
+        "object"
+    ){
+
+        return null;
+
+    }
+
+
+    const lat =
+        Number(
+            gps.lat ??
+            gps.latitude
+        );
+
+
+    const lon =
+        Number(
+            gps.lon ??
+            gps.lng ??
+            gps.longitude
+        );
+
+
+    return GGIrregularity.GIS.resolve(
+        lat,
+        lon
     );
 
+};
 
-})(window);
+
+/* ============================================================
+   BUILD FIRESTORE LOCATION FIELDS
+   ============================================================
+
+   This creates only the location fields required by the
+   Irregularity Firestore document.
+
+   It does NOT save anything.
+   ============================================================ */
+
+GGIrregularity.GIS.toFirestore =
+function(
+    gis
+){
+
+    if(
+        !gis
+    ){
+
+        return {
+
+            division:
+                "",
+
+            range:
+                "",
+
+            beat:
+                "",
+
+            compartment:
+                "",
+
+            village:
+                "",
+
+            village_code:
+                "",
+
+            block:
+                "",
+
+            latitude:
+                null,
+
+            longitude:
+                null,
+
+            gps_accuracy:
+                null,
+
+            gps_location:
+                "",
+
+            location_type:
+                "GPS",
+
+            nearest_point:
+                "",
+
+            distance_from_nearest_point:
+                null
+
+        };
+
+    }
+
+
+    /* ========================================================
+       LOCATION TYPE
+       ======================================================== */
+
+    let locationType =
+        "GPS";
+
+
+    if(
+        gis.compartment
+    ){
+
+        locationType =
+            "FOREST";
+
+    }
+    else if(
+        gis.village
+    ){
+
+        locationType =
+            "VILLAGE";
+
+    }
+
+
+    /* ========================================================
+       GPS TEXT
+       ======================================================== */
+
+    const latitude =
+        Number(
+            gis.lat
+        );
+
+
+    const longitude =
+        Number(
+            gis.lon
+        );
+
+
+    let gpsLocation =
+        "";
+
+
+    if(
+
+        Number.isFinite(
+            latitude
+        ) &&
+
+        Number.isFinite(
+            longitude
+        )
+
+    ){
+
+        gpsLocation =
+            `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+    }
+
+
+    /* ========================================================
+       RETURN FIRESTORE LOCATION OBJECT
+       ======================================================== */
+
+    return {
+
+        division:
+            gis.division ||
+            "",
+
+        range:
+            gis.range ||
+            "",
+
+        beat:
+            gis.beat ||
+            "",
+
+        compartment:
+            gis.compartment ||
+            "",
+
+        village:
+            gis.village ||
+            "",
+
+        village_code:
+            gis.villageCode ||
+            "",
+
+        block:
+            gis.block ||
+            "",
+
+        latitude:
+            Number.isFinite(
+                latitude
+            )
+                ? latitude
+                : null,
+
+        longitude:
+            Number.isFinite(
+                longitude
+            )
+                ? longitude
+                : null,
+
+        gps_accuracy:
+            null,
+
+        gps_location:
+            gpsLocation,
+
+        location_type:
+            locationType,
+
+        nearest_point:
+            gis.nearestPoint ||
+            "",
+
+        distance_from_nearest_point:
+            gis.distanceMeters ??
+            null
+
+    };
+
+};
+
+
+/* ============================================================
+   END
+   ============================================================ */
