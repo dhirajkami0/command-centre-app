@@ -10337,198 +10337,355 @@ window.addEventListener("load", function () {
   }
 
 
-  // ======================================================
-  // 🔥 SERVICE WORKER REGISTER (FIXED)
-  // ======================================================
-  if ("serviceWorker" in navigator && !window.__SW_REGISTERED__) {
+// ======================================================
+// 🔥 SERVICE WORKER REGISTER
+// ======================================================
+//
+// IMPORTANT:
+//
+// New code detected:
+//     → install it
+//     → KEEP IT WAITING
+//     → show UPDATE button
+//
+// Do NOT:
+//     → skipWaiting automatically
+//     → reload automatically
+//
+// The user controls when the new version becomes active.
+// ======================================================
 
-    window.__SW_REGISTERED__ = true;
+if (
+    "serviceWorker" in navigator &&
+    !window.__SW_REGISTERED__
+) {
 
-    navigator.serviceWorker.register("./sw.js")
-    .then(reg => {
-
-      console.log("✅ SW Registered");
-
-      // ❌ REMOVE INTERVAL (WAS CAUSING LOOP)
-      // setInterval(() => reg.update(), 60000);
-
-      // ✅ ONLY ONE CHECK
-      setTimeout(() => reg.update(), 5000);
+    window.__SW_REGISTERED__ =
+        true;
 
 
-      function handleUpdate(worker) {
+    navigator.serviceWorker
+        .register(
+            "./sw.js"
+        )
 
-        if (!worker) return;
+        .then(
+            function(registration){
 
-        worker.addEventListener("statechange", () => {
+                console.log(
+                    "✅ SW Registered"
+                );
 
-          if (
-            worker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            console.log("⚡ New version ready");
 
-            try {
-              worker.postMessage({ action: "skipWaiting" });
-            } catch (e) {
-              console.warn("⚠ skipWaiting failed:", e);
+                // ==================================================
+                // 🔎 ONE UPDATE CHECK
+                // ==================================================
+                //
+                // This only checks whether a new Service Worker
+                // exists.
+                //
+                // It does NOT activate it.
+                // It does NOT reload the application.
+                //
+                // ==================================================
+
+                setTimeout(
+                    function(){
+
+                        registration
+                            .update()
+                            .catch(
+                                function(error){
+
+                                    console.warn(
+                                        "⚠ SW update check failed:",
+                                        error
+                                    );
+
+                                }
+                            );
+
+                    },
+                    5000
+                );
+
+
+                // ==================================================
+                // 🔥 NEW WORKER HANDLER
+                // ==================================================
+
+                function handleUpdate(
+                    worker
+                ){
+
+                    if (
+                        !worker
+                    ){
+
+                        return;
+
+                    }
+
+
+                    // ==================================================
+                    // REMEMBER WAITING WORKER
+                    // ==================================================
+
+                    newWorker =
+                        worker;
+
+
+                    worker.addEventListener(
+                        "statechange",
+                        function(){
+
+                            // ==================================================
+                            // NEW VERSION INSTALLED
+                            // ==================================================
+
+                            if (
+                                worker.state ===
+                                "installed" &&
+
+                                navigator
+                                    .serviceWorker
+                                    .controller
+                            ){
+
+                                console.log(
+                                    "🆕 New GreenGuard code detected"
+                                );
+
+
+                                // ==================================================
+                                // IMPORTANT
+                                // ==================================================
+                                //
+                                // DO NOT CALL skipWaiting HERE.
+                                //
+                                // User must press UPDATE.
+                                //
+                                // ==================================================
+
+                                showUpdateUI();
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                // ==================================================
+                // EXISTING WAITING WORKER
+                // ==================================================
+
+                if (
+                    registration.waiting
+                ){
+
+                    console.log(
+                        "⚡ Waiting Service Worker found"
+                    );
+
+
+                    handleUpdate(
+                        registration.waiting
+                    );
+
+
+                    showUpdateUI();
+
+                }
+
+
+                // ==================================================
+                // NEW WORKER FOUND
+                // ==================================================
+
+                registration.addEventListener(
+                    "updatefound",
+                    function(){
+
+                        console.log(
+                            "🔎 New Service Worker found"
+                        );
+
+
+                        handleUpdate(
+                            registration.installing
+                        );
+
+                    }
+                );
+
+
+                // ==================================================
+                // NO WAITING WORKER
+                // ==================================================
+                //
+                // No new version means:
+                //
+                // NO UPDATE BUTTON.
+                //
+                // ==================================================
+
+                if (
+                    !registration.waiting
+                ){
+
+                    hideUpdateUI();
+
+                }
+
             }
-          }
+        )
 
-        });
-      }
+        .catch(
+            function(error){
 
-      if (reg.waiting) handleUpdate(reg.waiting);
+                console.error(
+                    "❌ SW registration failed:",
+                    error
+                );
 
-      reg.addEventListener("updatefound", () => {
-        handleUpdate(reg.installing);
-      });
+            }
+        );
 
-    })
-    .catch(err => {
-      console.error("❌ SW registration failed:", err);
-    });
-  }
+}
 
 
   // ======================================================
   // 🚀 SERVICE WORKER CONTROLLER CHANGE (FINAL FIX)
   // ======================================================
   // ======================================================
-// 🚀 SERVICE WORKER CONTROLLER CHANGE
-// FINAL SAFE VERSION (NO LOGIN DOUBLE OPEN)
 // ======================================================
-if (!window.__SW_CONTROLLER_BOUND__) {
+// 🚀 SERVICE WORKER CONTROLLER CHANGE
+// ======================================================
+//
+// NORMAL APPLICATION:
+//
+//     controllerchange
+//          ↓
+//     DO NOTHING
+//
+// MANUAL UPDATE:
+//
+//     Update button
+//          ↓
+//     skipWaiting()
+//          ↓
+//     controllerchange
+//          ↓
+//     ONE reload
+//
+// ======================================================
 
-  window.__SW_CONTROLLER_BOUND__ = true;
+if (
+    !window.__SW_CONTROLLER_BOUND__
+) {
 
-  navigator.serviceWorker.addEventListener(
+    window.__SW_CONTROLLER_BOUND__ =
+        true;
 
-    "controllerchange",
 
-    () => {
+    // ==================================================
+    // 🔒 MANUAL UPDATE FLAG
+    // ==================================================
 
-      console.log(
-        "⚡ controllerchange detected"
-      );
+    window.__GG_MANUAL_SW_UPDATE__ =
+        false;
 
-      // ==================================================
-      // 🔥 BLOCK MULTIPLE RELOADS
-      // ==================================================
-      if(window.__SW_REFRESHING__){
 
-        console.warn(
-          "⛔ Reload already in progress"
-        );
+    window.__SW_REFRESHING__ =
+        false;
 
-        return;
-      }
 
-      // ==================================================
-      // 🔥 MARK START
-      // ==================================================
-      window.__SW_RELOAD_START__ =
-        Date.now();
+    navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        function(){
 
-      function safeReload(){
+            console.log(
+                "⚡ Service Worker controllerchange detected"
+            );
 
-        const elapsed =
 
-          Date.now()
-          - window.__SW_RELOAD_START__;
+            // ==================================================
+            // NORMAL APP
+            // ==================================================
+            //
+            // User did NOT press Update.
+            //
+            // NEVER reload.
+            //
+            // ==================================================
 
-        // ==================================================
-        // 🔥 BUSY CONDITIONS
-        // ==================================================
- const justLoggedIn =
+            if (
+                !window.__GG_MANUAL_SW_UPDATE__
+            ){
 
-  Date.now() - (window.__LOGIN_TIME__ || 0) < 120000;
+                console.log(
+                    "🛡️ Normal controllerchange → NO reload"
+                );
 
-const isBusy =
 
-  window.isFormOpen ||
+                return;
 
-  window.isUserTyping ||
+            }
 
-  window.isDutyActive ||
 
-  loginUIShown ||
+            // ==================================================
+            // PREVENT DOUBLE RELOAD
+            // ==================================================
 
-  loginInProgress ||
+            if (
+                window.__SW_REFRESHING__
+            ){
 
-  justLoggedIn ||
+                console.warn(
+                    "⛔ Reload already in progress"
+                );
 
-  !window.userProfile;
-        // ==================================================
-        // 🔥 WAIT IF LOGIN / DUTY ACTIVE
-        // ==================================================
-        if(
 
-          isBusy &&
+                return;
 
-          elapsed < 15000
+            }
 
-        ){
 
-          console.log(
+            // ==================================================
+            // FINAL RELOAD LOCK
+            // ==================================================
 
-            "⏳ Reload delayed",
+            window.__SW_REFRESHING__ =
+                true;
 
-            "| elapsed:",
 
-            Math.floor(elapsed / 1000),
+            console.log(
+                "✅ Manual update activated"
+            );
 
-            "s"
-          );
 
-          setTimeout(
+            console.log(
+                "🔄 Reloading GreenGuard ONCE..."
+            );
 
-            safeReload,
 
-            2000
-          );
+            // ==================================================
+            // HIDE UPDATE BUTTON BEFORE RELOAD
+            // ==================================================
 
-          return;
+            hideUpdateUI();
+
+
+            // ==================================================
+            // ONE AND ONLY ONE RELOAD
+            // ==================================================
+
+            window.location.reload();
+
         }
-
-        // ==================================================
-        // 🔥 FINAL LOCK
-        // ==================================================
-        window.__SW_REFRESHING__ =
-          true;
-
-        console.log(
-
-          elapsed >= 15000
-
-            ? "⚠ Force reload"
-
-            : "🔄 Safe reload"
-        );
-
-        // ==================================================
-        // 🔥 SAFE RELOAD
-        // ==================================================
-        location.reload();
-      }
-
-      // ==================================================
-      // 🔥 START SAFE TIMER
-      // ==================================================
-      setTimeout(
-
-        safeReload,
-
-        2500
-      );
-
-      // ==================================================
-      // 🔥 FAILSAFE
-      // ==================================================
-     
-    }
-
-  );
+    );
 
 }
 
@@ -10911,34 +11068,140 @@ if (!window.__GPS_WATCHDOG_STARTED__) {
 // ======================================================
 // 🎯 SHOW UPDATE UI
 // ======================================================
-function showUpdateUI() {
+// ======================================================
+// 🎯 SHOW UPDATE UI
+// ======================================================
+//
+// Called ONLY when a new Service Worker is available.
+//
+// ======================================================
 
-  const banner = document.getElementById("updateBanner");
+function showUpdateUI(){
 
-  if (!banner || banner.style.display === "block") return;
+    const banner =
+        document.getElementById(
+            "updateBanner"
+        );
 
-  banner.style.display = "block";
+
+    if (
+        !banner
+    ){
+
+        console.warn(
+            "⚠ updateBanner not found"
+        );
+
+        return;
+
+    }
+
+
+    banner.style.display =
+        "block";
+
+
+    const button =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    if (
+        button
+    ){
+
+        button.disabled =
+            false;
+
+
+        button.innerText =
+            "Update";
+
+
+        button.style.pointerEvents =
+            "auto";
+
+
+        button.style.opacity =
+            "1";
+
+    }
+
+
+    console.log(
+        "🆕 Update available → Update button shown"
+    );
 
 }
+    // ======================================================
+// 🎯 HIDE UPDATE UI
+// ======================================================
+//
+// Used when there is no waiting/new Service Worker.
+//
+// Also used after successful manual update.
+//
+// ======================================================
 
+function hideUpdateUI(){
+
+    const banner =
+        document.getElementById(
+            "updateBanner"
+        );
+
+
+    if (
+        banner
+    ){
+
+        banner.style.display =
+            "none";
+
+    }
+
+
+    const button =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    if (
+        button
+    ){
+
+        button.disabled =
+            false;
+
+
+        button.innerText =
+            "Update";
+
+    }
+
+}
 
 // ======================================================
 // 🤖 AUTO UPDATE
 // ======================================================
-function scheduleAutoUpdate() {
+// ======================================================
+// 🤖 AUTO UPDATE
+// ======================================================
+//
+// INTENTIONALLY DISABLED.
+//
+// A new version may be detected.
+// The user must decide when to update.
+//
+// ======================================================
 
-  setTimeout(() => {
+function scheduleAutoUpdate(){
 
-    if (isUpdating) return;
-    if (!newWorker) return;
-
-    if (window.isFormOpen || window.isUserTyping) return;
-
-    console.log("⚡ Auto updating");
-
-    startUpdate();
-
-  }, 10000);
+    console.log(
+        "🛡️ Automatic update disabled."
+    );
 
 }
 
@@ -10963,28 +11226,126 @@ function handleManualUpdate() {
 // ======================================================
 // 🔥 CORE UPDATE FUNCTION (FIXED)
 // ======================================================
-function startUpdate() {
+// ======================================================
+// 🔥 MANUAL UPDATE
+// ======================================================
+//
+// THIS FUNCTION RUNS ONLY WHEN THE USER PRESSES
+// THE UPDATE BUTTON.
+//
+// ======================================================
 
-  isUpdating = true;
-  updateUIToUpdating();
+function startUpdate(){
 
-  try {
-    newWorker.postMessage({ action: "skipWaiting" });
-  } catch (e) {
-    console.error("❌ Update failed:", e);
-    resetUpdateUI();
-  }
+    // ==================================================
+    // PREVENT DOUBLE CLICK
+    // ==================================================
 
-  // 🔥 GUARANTEED RECOVERY (CRITICAL FIX)
-  setTimeout(() => {
+    if (
+        isUpdating
+    ){
 
-    if (!refreshing) {
-      console.warn("⚠ SW did not activate → forcing reload");
+        console.log(
+            "⏳ Update already running"
+        );
 
-      location.reload(); // 🔥 FORCE UPDATE
+        return;
+
     }
 
-  }, 8000); // wait 8 sec max
+
+    // ==================================================
+    // WAITING WORKER REQUIRED
+    // ==================================================
+
+    if (
+        !newWorker
+    ){
+
+        console.warn(
+            "⚠ No new Service Worker available"
+        );
+
+        return;
+
+    }
+
+
+    // ==================================================
+    // MARK AS USER-REQUESTED UPDATE
+    // ==================================================
+    //
+    // controllerchange is allowed to reload ONLY when
+    // this flag is true.
+    //
+    // ==================================================
+
+    window.__GG_MANUAL_SW_UPDATE__ =
+        true;
+
+
+    window.__SW_REFRESHING__ =
+        false;
+
+
+    isUpdating =
+        true;
+
+
+    refreshing =
+        false;
+
+
+    updateUIToUpdating();
+
+
+    console.log(
+        "🟢 User pressed UPDATE"
+    );
+
+
+    // ==================================================
+    // ACTIVATE WAITING WORKER
+    // ==================================================
+
+    try{
+
+        newWorker.postMessage({
+
+            action:
+                "skipWaiting"
+
+        });
+
+
+        console.log(
+            "📨 skipWaiting sent to waiting Service Worker"
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Manual update failed:",
+            error
+        );
+
+
+        window.__GG_MANUAL_SW_UPDATE__ =
+            false;
+
+
+        isUpdating =
+            false;
+
+
+        refreshing =
+            false;
+
+
+        resetUpdateUI();
+
+    }
 
 }
 
