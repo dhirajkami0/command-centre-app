@@ -22,6 +22,7 @@
    • No new Firebase app
    • No new Storage instance
    • Uses existing window.storage
+   • Uses existing window.db
    • Uses existing window.fb
    • Does NOT modify Wildlife
    • Does NOT modify Elephant
@@ -36,6 +37,14 @@
        video_storage_path
        audio_storage_path
        media_status
+
+   STORAGE:
+       irregularities/
+           {financialYear}/
+               {firestoreId}/
+                   photo/
+                   video/
+                   audio/
 
    ============================================================ */
 
@@ -82,25 +91,37 @@ function(
 
 /* ============================================================
    WAIT FOR EXISTING FIREBASE
+   ============================================================
+
+   IMPORTANT:
+   ------------------------------------------------------------
+   We NEVER initialize Firebase here.
+
+   We only wait for the existing GreenGuard Firebase system.
+
    ============================================================ */
 
 GGIrregularity.Media.waitForFirebase =
 async function(){
 
-    /*
-     * DO NOT initialize Firebase here.
-     *
-     * Reuse GreenGuard's existing Firebase readiness flow.
-     */
+    /* ========================================================
+       ALREADY READY
+       ======================================================== */
 
     if(
-        window.firebaseReady
+        window.db &&
+        window.fb &&
+        window.storage
     ){
 
         return;
 
     }
 
+
+    /* ========================================================
+       USE EXISTING READINESS FUNCTION
+       ======================================================== */
 
     if(
         typeof window.waitForFirebaseReady ===
@@ -111,6 +132,10 @@ async function(){
 
     }
 
+
+    /* ========================================================
+       FINAL VALIDATION
+       ======================================================== */
 
     if(
         !window.db ||
@@ -266,19 +291,19 @@ function(
     }
 
 
-    /*
-     * Keep the existing financial-year convention
-     * when available.
-     *
-     * If irregularity does not have financial_year,
-     * use the current financial year.
-     */
+    /* ========================================================
+       FINANCIAL YEAR
+       ======================================================== */
 
     let financialYear =
         GGIrregularity.Media.safeText(
             payload?.financial_year
         );
 
+
+    /* ========================================================
+       CURRENT INDIAN FINANCIAL YEAR
+       ======================================================== */
 
     if(
         !financialYear
@@ -297,8 +322,6 @@ function(
 
 
         /*
-         * Indian financial year:
-         *
          * April → March
          */
 
@@ -328,17 +351,25 @@ function(
     }
 
 
+    /* ========================================================
+       ROOT
+       ======================================================== */
+
+    const root =
+        GGIrregularity.Media.ROOT +
+        "/" +
+        financialYear +
+        "/" +
+        firestoreId;
+
+
     return {
 
         financialYear:
             financialYear,
 
         root:
-            GGIrregularity.Media.ROOT +
-            "/" +
-            financialYear +
-            "/" +
-            firestoreId
+            root
 
     };
 
@@ -346,7 +377,7 @@ function(
 
 
 /* ============================================================
-   UPLOAD BLOB / FILE
+   UPLOAD FILE / BLOB
    ============================================================ */
 
 GGIrregularity.Media.uploadBlob =
@@ -400,7 +431,7 @@ async function(
 
 
         /* ====================================================
-           SAME DOWNLOAD BEHAVIOUR AS EXISTING SYSTEM
+           EXISTING DOWNLOAD BEHAVIOUR
            ==================================================== */
 
         const metadata = {
@@ -460,6 +491,10 @@ async function(
         );
 
 
+        /* ====================================================
+           UPLOAD
+           ==================================================== */
+
         const uploadResult =
             await window.fb.uploadBytes(
                 storageRef,
@@ -467,6 +502,10 @@ async function(
                 metadata
             );
 
+
+        /* ====================================================
+           DOWNLOAD URL
+           ==================================================== */
 
         const url =
             await window.fb.getDownloadURL(
@@ -540,6 +579,10 @@ async function(
             );
 
 
+        /* ====================================================
+           CONTENT TYPE
+           ==================================================== */
+
         let contentType =
             "application/octet-stream";
 
@@ -572,6 +615,10 @@ async function(
 
         }
 
+
+        /* ====================================================
+           METADATA
+           ==================================================== */
 
         const metadata = {
 
@@ -643,6 +690,16 @@ async function(
     }
 
 
+    /* ========================================================
+       UNSUPPORTED
+       ======================================================== */
+
+    console.warn(
+        "⚠ Unsupported Irregularity media:",
+        mediaFile
+    );
+
+
     return null;
 
 };
@@ -688,6 +745,26 @@ function(){
             null
 
     };
+
+};
+
+
+/* ============================================================
+   CHECK WHETHER MEDIA EXISTS
+   ============================================================ */
+
+GGIrregularity.Media.hasMedia =
+function(){
+
+    const media =
+        GGIrregularity.Media.getFormMedia();
+
+
+    return !!(
+        media.photo ||
+        media.video ||
+        media.audio
+    );
 
 };
 
@@ -900,7 +977,7 @@ async function(
 
 
         /* ====================================================
-           MEDIA STATUS
+           MEDIA COUNT
            ==================================================== */
 
         const mediaCount =
@@ -923,6 +1000,10 @@ async function(
                     : 0
             );
 
+
+        /* ====================================================
+           STATUS
+           ==================================================== */
 
         result.media_status =
             mediaCount > 0
@@ -1016,7 +1097,7 @@ async function(
 
 
     /* ========================================================
-       UPDATE
+       UPDATE SAME DOCUMENT
        ======================================================== */
 
     await window.fb.updateDoc(
@@ -1076,6 +1157,66 @@ async function(
 
         }
     );
+
+};
+
+
+/* ============================================================
+   CLEAR FORM MEDIA
+   ============================================================ */
+
+GGIrregularity.Media.clearForm =
+function(){
+
+    const inputIds = [
+
+        "gg-irregularity-photo",
+
+        "gg-irregularity-video",
+
+        "gg-irregularity-audio"
+
+    ];
+
+
+    inputIds.forEach(
+        function(
+            id
+        ){
+
+            const input =
+                document.getElementById(
+                    id
+                );
+
+
+            if(
+                input
+            ){
+
+                input.value =
+                    "";
+
+            }
+
+        }
+    );
+
+
+    const status =
+        document.getElementById(
+            "gg-irregularity-media-status"
+        );
+
+
+    if(
+        status
+    ){
+
+        status.textContent =
+            "No media selected.";
+
+    }
 
 };
 
