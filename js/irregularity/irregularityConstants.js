@@ -1,597 +1,673 @@
 /* ============================================================
    🌲 GREENGUARD
-   IRREGULARITY / OFFENCE / OBSERVATION
-   CONSTANTS
+   IRREGULARITY CONSTANTS
+   ============================================================
+
+   File:
+       js/irregularity/irregularityConstants.js
+
+   Purpose:
+       Central constants for the
+       Irregularity / Offence / Observation module.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   • No Firebase initialization
+   • No Firestore calls
+   • No Apps Script
+   • No GIS resolver
+   • No GPS watcher
+   • No UI logic
+   • No modification of existing modules
    ============================================================ */
 
-(function (window) {
 
-    "use strict";
+/* ============================================================
+   GLOBAL NAMESPACE
+   ============================================================ */
 
-
-    // ========================================================
-    // GLOBAL NAMESPACE
-    // ========================================================
-
-    window.GreenGuard =
-        window.GreenGuard ||
-        {};
+window.GGIrregularity =
+    window.GGIrregularity || {};
 
 
-    const GG =
-        window.GreenGuard;
+/* ============================================================
+   FIRESTORE
+   ============================================================ */
+
+GGIrregularity.COLLECTION =
+    "irregularities";
 
 
-    // ========================================================
-    // PREVENT DOUBLE LOAD
-    // ========================================================
+/* ============================================================
+   MODULE
+   ============================================================ */
 
-    if (
-        GG.IrregularityConstants
-    ) {
+GGIrregularity.MODULE =
+    "IRREGULARITY";
 
-        console.warn(
-            "⚠️ IrregularityConstants already loaded."
-        );
 
-        return;
+GGIrregularity.RECORD_TYPE =
+    "IRREGULARITY_OFFENCE_OBSERVATION";
+
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+
+GGIrregularity.STATUS = {
+
+    ACTIVE:
+        "ACTIVE",
+
+    CLOSED:
+        "CLOSED"
+
+};
+
+
+/* ============================================================
+   CATEGORY TYPES
+   ============================================================ */
+
+GGIrregularity.TYPES = {
+
+    /* --------------------------------------------------------
+       FOREST OFFENCES
+       -------------------------------------------------------- */
+
+    FELLING:
+        "ILLICIT_FELLING",
+
+    TIMBER:
+        "ILLEGAL_TIMBER_FOREST_PRODUCE",
+
+    MINING:
+        "ILLEGAL_MINING_EARTH_CUTTING",
+
+    FISHING:
+        "ILLEGAL_FISHING",
+
+    GRAZING:
+        "ILLEGAL_GRAZING",
+
+
+    /* --------------------------------------------------------
+       FIRE / LAND
+       -------------------------------------------------------- */
+
+    FIRE:
+        "FOREST_FIRE",
+
+    ENCROACHMENT:
+        "ENCROACHMENT",
+
+    STRUCTURE:
+        "ILLEGAL_STRUCTURE_OCCUPATION",
+
+
+    /* --------------------------------------------------------
+       WILDLIFE / SECURITY
+       -------------------------------------------------------- */
+
+    POACHING:
+        "POACHING",
+
+    TRESPASSING:
+        "ILLEGAL_ENTRY_TRESPASSING",
+
+    WILDLIFE_INJURY:
+        "WILDLIFE_INJURY",
+
+    WILDLIFE_DEATH:
+        "WILDLIFE_DEATH",
+
+
+    /* --------------------------------------------------------
+       GENERAL
+       -------------------------------------------------------- */
+
+    OBSERVATION:
+        "GENERAL_OBSERVATION"
+
+};
+
+
+/* ============================================================
+   CATEGORY DISPLAY INFORMATION
+   ============================================================ */
+
+GGIrregularity.TYPE_META = {
+
+    ILLICIT_FELLING: {
+
+        icon:
+            "🌳",
+
+        title:
+            "Illicit Felling"
+
+    },
+
+
+    ILLEGAL_TIMBER_FOREST_PRODUCE: {
+
+        icon:
+            "🪵",
+
+        title:
+            "Illegal Timber / Forest Produce"
+
+    },
+
+
+    ILLEGAL_MINING_EARTH_CUTTING: {
+
+        icon:
+            "🚜",
+
+        title:
+            "Illegal Mining / Earth Cutting"
+
+    },
+
+
+    ILLEGAL_FISHING: {
+
+        icon:
+            "🎣",
+
+        title:
+            "Illegal Fishing"
+
+    },
+
+
+    ILLEGAL_GRAZING: {
+
+        icon:
+            "🐄",
+
+        title:
+            "Illegal Grazing"
+
+    },
+
+
+    FOREST_FIRE: {
+
+        icon:
+            "🔥",
+
+        title:
+            "Forest Fire"
+
+    },
+
+
+    ENCROACHMENT: {
+
+        icon:
+            "🚧",
+
+        title:
+            "Encroachment"
+
+    },
+
+
+    ILLEGAL_STRUCTURE_OCCUPATION: {
+
+        icon:
+            "🏗️",
+
+        title:
+            "Illegal Structure / Occupation"
+
+    },
+
+
+    POACHING: {
+
+        icon:
+            "🏹",
+
+        title:
+            "Poaching"
+
+    },
+
+
+    ILLEGAL_ENTRY_TRESPASSING: {
+
+        icon:
+            "🚪",
+
+        title:
+            "Illegal Entry / Trespassing"
+
+    },
+
+
+    WILDLIFE_INJURY: {
+
+        icon:
+            "🐾",
+
+        title:
+            "Wildlife Injury"
+
+    },
+
+
+    WILDLIFE_DEATH: {
+
+        icon:
+            "☠️",
+
+        title:
+            "Wildlife Death"
+
+    },
+
+
+    GENERAL_OBSERVATION: {
+
+        icon:
+            "👁️",
+
+        title:
+            "General Observation"
 
     }
 
+};
 
-    // ========================================================
-    // VERSION
-    // ========================================================
 
-    const IrregularityConstants = {
+/* ============================================================
+   CATEGORY ORDER
+   ============================================================ */
 
-        VERSION:
-            "1.0.0",
+GGIrregularity.CATEGORY_ORDER = [
 
+    GGIrregularity.TYPES.FELLING,
 
-        MODULE:
-            "PATROL_IRREGULARITY",
+    GGIrregularity.TYPES.TIMBER,
 
+    GGIrregularity.TYPES.MINING,
 
-        // ====================================================
-        // FIRESTORE
-        // ====================================================
+    GGIrregularity.TYPES.FISHING,
 
-        FIRESTORE_COLLECTION:
-            "patrol_irregularities",
+    GGIrregularity.TYPES.GRAZING,
 
+    GGIrregularity.TYPES.FIRE,
 
-        // ====================================================
-        // MEDIA ROOT
-        // ====================================================
+    GGIrregularity.TYPES.ENCROACHMENT,
 
-        STORAGE_ROOT:
-            "patrol_irregularities",
+    GGIrregularity.TYPES.STRUCTURE,
 
+    GGIrregularity.TYPES.POACHING,
 
-        // ====================================================
-        // STATUS
-        // ====================================================
+    GGIrregularity.TYPES.TRESPASSING,
 
-        STATUS: {
+    GGIrregularity.TYPES.WILDLIFE_INJURY,
 
-            OPEN:
-                "OPEN",
+    GGIrregularity.TYPES.WILDLIFE_DEATH,
 
-            VERIFIED:
-                "VERIFIED",
+    GGIrregularity.TYPES.OBSERVATION
 
-            ACTION_TAKEN:
-                "ACTION_TAKEN",
+];
 
-            CLOSED:
-                "CLOSED"
 
-        },
+/* ============================================================
+   CATEGORY GROUP IDS
+   ============================================================ */
 
+GGIrregularity.GROUPS = {
 
-        // ====================================================
-        // INCIDENT TYPES
-        // ====================================================
+    FELLING:
+        "ILLICIT_FELLING",
 
-        TYPES: {
+    TIMBER:
+        "ILLEGAL_TIMBER_FOREST_PRODUCE",
 
-            ILLICIT_FELLING: {
+    MINING:
+        "ILLEGAL_MINING_EARTH_CUTTING",
 
-                code:
-                    "ILLICIT_FELLING",
+    FISHING:
+        "ILLEGAL_FISHING",
 
-                label:
-                    "Illicit Felling",
+    GRAZING:
+        "ILLEGAL_GRAZING",
 
-                icon:
-                    "🌳",
+    FIRE:
+        "FOREST_FIRE",
 
-                category:
-                    "FOREST_OFFENCE"
+    ENCROACHMENT:
+        "ENCROACHMENT",
 
-            },
+    STRUCTURE:
+        "ILLEGAL_STRUCTURE_OCCUPATION",
 
+    POACHING:
+        "POACHING",
 
-            ILLEGAL_FOREST_PRODUCE: {
+    TRESPASSING:
+        "ILLEGAL_ENTRY_TRESPASSING",
 
-                code:
-                    "ILLEGAL_FOREST_PRODUCE",
+    WILDLIFE_INJURY:
+        "WILDLIFE_INJURY",
 
-                label:
-                    "Illegal Timber / Forest Produce",
+    WILDLIFE_DEATH:
+        "WILDLIFE_DEATH",
 
-                icon:
-                    "🪵",
+    OBSERVATION:
+        "GENERAL_OBSERVATION"
 
-                category:
-                    "FOREST_OFFENCE"
+};
 
-            },
 
+/* ============================================================
+   COMMON FIELD NAMES
+   ============================================================ */
 
-            ILLEGAL_MINING: {
+GGIrregularity.FIELDS = {
 
-                code:
-                    "ILLEGAL_MINING",
+    TYPE:
+        "type",
 
-                label:
-                    "Illegal Mining / Earth Cutting",
+    INCIDENT_DATE:
+        "incident_date",
 
-                icon:
-                    "🚜",
+    INCIDENT_TIME:
+        "incident_time",
 
-                category:
-                    "FOREST_OFFENCE"
+    REMARKS:
+        "remarks",
 
-            },
 
+    /* --------------------------------------------------------
+       FELLING
+       -------------------------------------------------------- */
 
-            ILLEGAL_FISHING: {
+    FELLING_COMPARTMENT:
+        "felling_compartment",
 
-                code:
-                    "ILLEGAL_FISHING",
+    NUMBER_OF_FELLING:
+        "number_of_felling",
 
-                label:
-                    "Illegal Fishing",
+    SPECIES_FELLED:
+        "species_felled",
 
-                icon:
-                    "🎣",
 
-                category:
-                    "FOREST_OFFENCE"
+    /* --------------------------------------------------------
+       TIMBER / FOREST PRODUCE
+       -------------------------------------------------------- */
 
-            },
+    TIMBER_TYPE:
+        "timber_type",
 
+    TIMBER_QUANTITY:
+        "timber_quantity",
 
-            ILLEGAL_GRAZING: {
 
-                code:
-                    "ILLEGAL_GRAZING",
+    /* --------------------------------------------------------
+       MINING
+       -------------------------------------------------------- */
 
-                label:
-                    "Illegal Grazing",
+    MINING_COMPARTMENT:
+        "mining_compartment",
 
-                icon:
-                    "🐄",
+    MINING_AREA:
+        "mining_area",
 
-                category:
-                    "FOREST_OFFENCE"
+    MINING_TYPE:
+        "mining_type",
 
-            },
 
+    /* --------------------------------------------------------
+       FISHING
+       -------------------------------------------------------- */
 
-            FOREST_FIRE: {
+    FISHING_LOCATION:
+        "fishing_location",
 
-                code:
-                    "FOREST_FIRE",
+    FISHING_METHOD:
+        "fishing_method",
 
-                label:
-                    "Forest Fire",
 
-                icon:
-                    "🔥",
+    /* --------------------------------------------------------
+       GRAZING
+       -------------------------------------------------------- */
 
-                category:
-                    "ENVIRONMENT"
+    GRAZING_AREA:
+        "grazing_area",
 
-            },
 
+    /* --------------------------------------------------------
+       FIRE
+       -------------------------------------------------------- */
 
-            ENCROACHMENT: {
+    FIRE_AREA:
+        "fire_area",
 
-                code:
-                    "ENCROACHMENT",
+    FIRE_CAUSE:
+        "fire_cause",
 
-                label:
-                    "Encroachment",
 
-                icon:
-                    "🚧",
+    /* --------------------------------------------------------
+       ENCROACHMENT
+       -------------------------------------------------------- */
 
-                category:
-                    "FOREST_OFFENCE"
+    ENCROACHED_AREA:
+        "encroached_area",
 
-            },
+    ENCROACHMENT_TYPE:
+        "encroachment_type",
 
 
-            ILLEGAL_STRUCTURE: {
+    /* --------------------------------------------------------
+       STRUCTURE
+       -------------------------------------------------------- */
 
-                code:
-                    "ILLEGAL_STRUCTURE",
+    STRUCTURE_TYPE:
+        "structure_type",
 
-                label:
-                    "Illegal Structure / Occupation",
+    STRUCTURE_DESCRIPTION:
+        "structure_description",
 
-                icon:
-                    "🏗️",
 
-                category:
-                    "FOREST_OFFENCE"
+    /* --------------------------------------------------------
+       POACHING
+       -------------------------------------------------------- */
 
-            },
+    POACHING_SPECIES:
+        "poaching_species",
 
+    POACHING_METHOD:
+        "poaching_method",
 
-            ILLEGAL_ENTRY: {
 
-                code:
-                    "ILLEGAL_ENTRY",
+    /* --------------------------------------------------------
+       TRESPASSING
+       -------------------------------------------------------- */
 
-                label:
-                    "Illegal Entry / Trespassing",
+    TRESPASSER_COUNT:
+        "trespasser_count",
 
-                icon:
-                    "🚷",
+    TRESPASSING_DESCRIPTION:
+        "trespassing_description",
 
-                category:
-                    "FOREST_OFFENCE"
 
-            },
+    /* --------------------------------------------------------
+       WILDLIFE INJURY
+       -------------------------------------------------------- */
 
+    INJURED_SPECIES:
+        "injured_species",
 
-            POACHING: {
+    INJURED_AGE:
+        "injured_age",
 
-                code:
-                    "POACHING",
+    INJURED_SEX:
+        "injured_sex",
 
-                label:
-                    "Poaching",
+    INJURY_DETAILS:
+        "injury_details",
 
-                icon:
-                    "🏹",
 
-                category:
-                    "WILDLIFE_OFFENCE"
+    /* --------------------------------------------------------
+       WILDLIFE DEATH
+       -------------------------------------------------------- */
 
-            },
+    DEAD_SPECIES:
+        "dead_species",
 
+    DEAD_SEX:
+        "dead_sex",
 
-            WILDLIFE_INJURY: {
+    DEAD_AGE:
+        "dead_age",
 
-                code:
-                    "WILDLIFE_INJURY",
+    DEAD_MEASUREMENT:
+        "dead_measurement",
 
-                label:
-                    "Wildlife Injury",
 
-                icon:
-                    "🐾",
+    /* --------------------------------------------------------
+       GENERAL OBSERVATION
+       -------------------------------------------------------- */
 
-                category:
-                    "WILDLIFE"
+    OBSERVATION:
+        "observation"
 
-            },
+};
 
 
-            WILDLIFE_DEATH: {
+/* ============================================================
+   LOCATION FIELD NAMES
+   ============================================================ */
 
-                code:
-                    "WILDLIFE_DEATH",
+GGIrregularity.LOCATION_FIELDS = {
 
-                label:
-                    "Wildlife Death",
+    DIVISION:
+        "division",
 
-                icon:
-                    "☠️",
+    RANGE:
+        "range",
 
-                category:
-                    "WILDLIFE"
+    BEAT:
+        "beat",
 
-            },
+    COMPARTMENT:
+        "compartment",
 
+    VILLAGE:
+        "village",
 
-            GENERAL_OBSERVATION: {
+    VILLAGE_CODE:
+        "village_code",
 
-                code:
-                    "GENERAL_OBSERVATION",
+    BLOCK:
+        "block",
 
-                label:
-                    "General Observation",
+    LATITUDE:
+        "latitude",
 
-                icon:
-                    "👁️",
+    LONGITUDE:
+        "longitude",
 
-                category:
-                    "OBSERVATION"
+    GPS_ACCURACY:
+        "gps_accuracy",
 
-            }
+    GPS_LOCATION:
+        "gps_location",
 
-        },
+    LOCATION_TYPE:
+        "location_type",
 
+    NEAREST_POINT:
+        "nearest_point",
 
-        // ====================================================
-        // TYPE ORDER
-        // ====================================================
+    DISTANCE_FROM_NEAREST_POINT:
+        "distance_from_nearest_point"
 
-        TYPE_ORDER: [
+};
 
-            "ILLICIT_FELLING",
 
-            "ILLEGAL_FOREST_PRODUCE",
+/* ============================================================
+   MEDIA FIELD NAMES
+   ============================================================ */
 
-            "ILLEGAL_MINING",
+GGIrregularity.MEDIA_FIELDS = {
 
-            "ILLEGAL_FISHING",
+    PHOTO_URL:
+        "photo_url",
 
-            "ILLEGAL_GRAZING",
+    VIDEO_URL:
+        "video_url",
 
-            "FOREST_FIRE",
+    AUDIO_URL:
+        "audio_url",
 
-            "ENCROACHMENT",
+    MEDIA_STATUS:
+        "media_status"
 
-            "ILLEGAL_STRUCTURE",
+};
 
-            "ILLEGAL_ENTRY",
 
-            "POACHING",
+/* ============================================================
+   MEDIA STATUS
+   ============================================================ */
 
-            "WILDLIFE_INJURY",
+GGIrregularity.MEDIA_STATUS = {
 
-            "WILDLIFE_DEATH",
+    NONE:
+        "NONE",
 
-            "GENERAL_OBSERVATION"
+    PENDING:
+        "PENDING",
 
-        ],
+    COMPLETE:
+        "COMPLETE",
 
+    FAILED:
+        "FAILED"
 
-        // ====================================================
-        // CATEGORY LABELS
-        // ====================================================
+};
 
-        CATEGORIES: {
 
-            FOREST_OFFENCE:
-                "Forest Offence",
+/* ============================================================
+   FIRESTORE TIMESTAMP FIELDS
+   ============================================================ */
 
-            WILDLIFE_OFFENCE:
-                "Wildlife Protection",
+GGIrregularity.TIMESTAMP_FIELDS = {
 
-            WILDLIFE:
-                "Wildlife",
+    CREATED_AT:
+        "created_at",
 
-            ENVIRONMENT:
-                "Environment",
+    UPDATED_AT:
+        "updated_at"
 
-            OBSERVATION:
-                "Observation"
+};
 
-        },
 
+/* ============================================================
+   DEFAULT VALUES
+   ============================================================ */
 
-        // ====================================================
-        // COMMON MEDIA TYPES
-        // ====================================================
+GGIrregularity.DEFAULTS = {
 
-        MEDIA_TYPES: [
+    STATUS:
+        GGIrregularity.STATUS.ACTIVE,
 
-            "photo",
+    MEDIA_STATUS:
+        GGIrregularity.MEDIA_STATUS.NONE,
 
-            "video",
+    LOCATION_TYPE:
+        "GPS"
 
-            "audio"
+};
 
-        ],
 
-
-        // ====================================================
-        // UNITS
-        // ====================================================
-
-        AREA_UNITS: [
-
-            "HECTARE",
-
-            "ACRE",
-
-            "SQ_METER"
-
-        ],
-
-
-        QUANTITY_UNITS: [
-
-            "NUMBER",
-
-            "KG",
-
-            "CFT",
-
-            "BUNDLE",
-
-            "OTHER"
-
-        ],
-
-
-        // ====================================================
-        // COMMON ENTRY TYPES
-        // ====================================================
-
-        ENTRY_TYPES: [
-
-            "PERSON",
-
-            "GROUP",
-
-            "VEHICLE",
-
-            "LIVESTOCK"
-
-        ],
-
-
-        // ====================================================
-        // COMMON BOOLEAN OPTIONS
-        // ====================================================
-
-        YES_NO: [
-
-            "Yes",
-
-            "No"
-
-        ],
-
-
-        // ====================================================
-        // FIRE STATUS
-        // ====================================================
-
-        FIRE_STATUS: [
-
-            "ACTIVE",
-
-            "SMOULDERING",
-
-            "UNDER_CONTROL",
-
-            "EXTINGUISHED"
-
-        ],
-
-
-        // ====================================================
-        // FIRE TYPES
-        // ====================================================
-
-        FIRE_TYPES: [
-
-            "GROUND",
-
-            "SURFACE",
-
-            "CROWN",
-
-            "OTHER"
-
-        ],
-
-
-        // ====================================================
-        // WILDLIFE AGE
-        // ====================================================
-
-        AGE_CLASSES: [
-
-            "Adult",
-
-            "Sub-adult",
-
-            "Juvenile",
-
-            "Unknown"
-
-        ],
-
-
-        // ====================================================
-        // SEX
-        // ====================================================
-
-        SEX: [
-
-            "Male",
-
-            "Female",
-
-            "Unknown"
-
-        ],
-
-
-        // ====================================================
-        // CONDITION
-        // ====================================================
-
-        CONDITIONS: [
-
-            "Critical",
-
-            "Serious",
-
-            "Moderate",
-
-            "Stable",
-
-            "Unknown"
-
-        ]
-
-
-    };
-
-
-    // ========================================================
-    // FREEZE IMPORTANT CONFIG
-    // ========================================================
-
-    try {
-
-        Object.freeze(
-            IrregularityConstants.TYPES
-        );
-
-        Object.freeze(
-            IrregularityConstants.STATUS
-        );
-
-    }
-    catch (error) {
-
-        console.warn(
-            "⚠️ Could not freeze irregularity constants:",
-            error
-        );
-
-    }
-
-
-    // ========================================================
-    // EXPORT
-    // ========================================================
-
-    GG.IrregularityConstants =
-        IrregularityConstants;
-
-
-    window.IrregularityConstants =
-        IrregularityConstants;
-
-
-    console.log(
-        "✅ GreenGuard IrregularityConstants loaded:",
-        {
-            version:
-                IrregularityConstants.VERSION,
-
-            types:
-                IrregularityConstants.TYPE_ORDER.length,
-
-            collection:
-                IrregularityConstants.FIRESTORE_COLLECTION
-
-        }
-    );
-
-
-})(window);
+/* ============================================================
+   END
+   ============================================================ */
