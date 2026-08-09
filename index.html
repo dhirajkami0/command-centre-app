@@ -38689,7 +38689,8 @@ function buildSightingMediaPopup(
 
 function downloadButton(
     url,
-    label
+    label,
+    sightingKey
 ){
 
     // ====================================================
@@ -38756,7 +38757,45 @@ function downloadButton(
 
 
     // ====================================================
+    // SAFE SIGHTING KEY
+    // ====================================================
+
+    const safeSightingKey =
+        String(
+            sightingKey ||
+            ""
+        )
+        .replace(
+            /\\/g,
+            "\\\\"
+        )
+        .replace(
+            /'/g,
+            "\\'"
+        )
+        .replace(
+            /\r/g,
+            ""
+        )
+        .replace(
+            /\n/g,
+            "\\n"
+        );
+
+
+    // ====================================================
     // RETURN NATIVE DOWNLOAD LINK
+    // ====================================================
+    //
+    // IMPORTANT:
+    //
+    // Keep this as a native <a download> element.
+    //
+    // This is what is currently allowing mobile downloads
+    // to work without using fetch().
+    //
+    // Before leaving the page, remember the popup ID.
+    //
     // ====================================================
 
     return `
@@ -38767,6 +38806,17 @@ function downloadButton(
             rel="noopener"
             onclick="
                 event.stopPropagation();
+
+                if(
+                    typeof rememberWildlifePopupForReturn ===
+                    'function'
+                ){
+
+                    rememberWildlifePopupForReturn(
+                        '${safeSightingKey}'
+                    );
+
+                }
             "
             style="
                 flex:1 1 0;
@@ -38800,243 +38850,44 @@ function downloadButton(
 
                 user-select:none;
                 -webkit-user-select:none;
+
+                white-space:normal;
+                overflow:hidden;
             "
         >
             ${safeLabel}
         </a>
 
     `;
-
 }
 
+  // ========================================================
+// MEDIA ROW BUILDER
+// ========================================================
 
-    // ========================================================
-    // MEDIA ROW BUILDER
-    // ========================================================
+function mediaRow(
+    icon,
+    title,
+    type,
+    url,
+    downloadLabel,
+    sightingKey
+){
 
-    function mediaRow(
-        icon,
-        title,
-        type,
-        url,
-        downloadLabel
-    ){
+    // ====================================================
+    // SAFE SIGHTING KEY
+    // ====================================================
 
-        return `
+    const safeSightingKey =
+        String(
+            sightingKey ||
+            ""
+        );
 
-            <div
-                style="
-                    width:
-                        100%;
-
-                    box-sizing:
-                        border-box;
-
-                    margin:
-                        0 0 10px 0;
-
-                    padding:
-                        8px;
-
-                    background:
-                        #ffffff;
-
-                    border:
-                        1px solid
-                        #e1e7e1;
-
-                    border-radius:
-                        7px;
-                "
-            >
-
-                <div
-                    style="
-                        display:
-                            flex;
-
-                        align-items:
-                            center;
-
-                        width:
-                            100%;
-
-                        box-sizing:
-                            border-box;
-
-                        margin:
-                            0 0 6px 0;
-
-                        color:
-                            #333;
-
-                        font-family:
-                            Segoe UI,
-                            Arial,
-                            sans-serif;
-
-                        font-size:
-                            11px;
-
-                        font-weight:
-                            700;
-
-                        line-height:
-                            1.2;
-                    "
-                >
-
-                    <span>
-                        ${icon}
-                    </span>
-
-                    <span
-                        style="
-                            margin-left:
-                                5px;
-                        "
-                    >
-                        ${title}
-                    </span>
-
-                </div>
-
-
-                <div
-                    style="
-                        display:
-                            flex;
-
-                        flex-direction:
-                            row;
-
-                        align-items:
-                            stretch;
-
-                        width:
-                            100%;
-
-                        box-sizing:
-                            border-box;
-
-                        gap:
-                            7px;
-
-                        overflow:
-                            hidden;
-                    "
-                >
-
-                    ${previewButton(
-                        type,
-                        "Preview"
-                    )}
-
-                    ${downloadButton(
-                        url,
-                        downloadLabel
-                    )}
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-
-    // ========================================================
-    // BUILD MEDIA ROWS
-    // ========================================================
-
-    let rows =
-        "";
-
-
-    // ========================================================
-    // PHOTO
-    // ========================================================
-
-    if(
-        photoUrl
-    ){
-
-        rows +=
-            mediaRow(
-                "📷",
-                "PHOTO",
-                "photo",
-                photoUrl,
-                "Download Photo"
-            );
-
-    }
-
-
-    // ========================================================
-    // VIDEO
-    // ========================================================
-
-    if(
-        videoUrl
-    ){
-
-        rows +=
-            mediaRow(
-                "🎥",
-                "VIDEO",
-                "video",
-                videoUrl,
-                "Download Video"
-            );
-
-    }
-
-
-    // ========================================================
-    // AUDIO
-    // ========================================================
-
-    if(
-        audioUrl
-    ){
-
-        rows +=
-            mediaRow(
-                "🎙",
-                "AUDIO",
-                "audio",
-                audioUrl,
-                "Download Audio"
-            );
-
-    }
-
-
-    // ========================================================
-    // RETURN LIGHTWEIGHT MEDIA SECTION
-    // ========================================================
-    //
-    // IMPORTANT:
-    //
-    // The popup contains ONLY:
-    //
-    // - labels
-    // - buttons
-    // - URLs encoded inside button handlers
-    //
-    // It does NOT load any actual media.
-    //
-    // Therefore opening the Leaflet popup remains lightweight.
-    //
-    // ========================================================
 
     return `
 
         <div
-            class="gg-sighting-media"
-
             style="
                 width:
                     100%;
@@ -39045,20 +38896,20 @@ function downloadButton(
                     border-box;
 
                 margin:
-                    10px 0 5px 0;
+                    0 0 10px 0;
 
                 padding:
-                    9px;
+                    8px;
 
                 background:
-                    #f8faf8;
+                    #ffffff;
 
                 border:
                     1px solid
-                    #dfe8df;
+                    #e1e7e1;
 
                 border-radius:
-                    8px;
+                    7px;
 
                 overflow:
                     hidden;
@@ -39066,8 +38917,6 @@ function downloadButton(
         >
 
             <div
-                class="gg-sighting-media-title"
-
                 style="
                     display:
                         flex;
@@ -39082,10 +38931,10 @@ function downloadButton(
                         border-box;
 
                     margin:
-                        0 0 8px 0;
+                        0 0 6px 0;
 
                     color:
-                        #1b5e20;
+                        #333;
 
                     font-family:
                         Segoe UI,
@@ -39093,7 +38942,7 @@ function downloadButton(
                         sans-serif;
 
                     font-size:
-                        12px;
+                        11px;
 
                     font-weight:
                         700;
@@ -39104,16 +38953,25 @@ function downloadButton(
             >
 
                 <span>
-                    🎬
+                    ${icon}
                 </span>
 
                 <span
                     style="
                         margin-left:
                             5px;
+
+                        min-width:
+                            0;
+
+                        overflow:
+                            hidden;
+
+                        text-overflow:
+                            ellipsis;
                     "
                 >
-                    MEDIA
+                    ${title}
                 </span>
 
             </div>
@@ -39121,21 +38979,246 @@ function downloadButton(
 
             <div
                 style="
+                    display:
+                        flex;
+
+                    flex-direction:
+                        row;
+
+                    align-items:
+                        stretch;
+
                     width:
                         100%;
 
                     box-sizing:
                         border-box;
+
+                    gap:
+                        7px;
+
+                    overflow:
+                        hidden;
                 "
             >
 
-                ${rows}
+                ${previewButton(
+                    type,
+                    "Preview"
+                )}
+
+                ${downloadButton(
+                    url,
+                    downloadLabel,
+                    safeSightingKey
+                )}
 
             </div>
 
         </div>
 
     `;
+
+}
+
+// ========================================================
+// BUILD MEDIA ROWS
+// ========================================================
+
+let rows =
+    "";
+
+
+// ========================================================
+// PHOTO
+// ========================================================
+
+if(
+    photoUrl
+){
+
+    rows +=
+        mediaRow(
+            "📷",
+            "PHOTO",
+            "photo",
+            photoUrl,
+            "Download Photo",
+            sightingKey
+        );
+
+}
+
+
+// ========================================================
+// VIDEO
+// ========================================================
+
+if(
+    videoUrl
+){
+
+    rows +=
+        mediaRow(
+            "🎥",
+            "VIDEO",
+            "video",
+            videoUrl,
+            "Download Video",
+            sightingKey
+        );
+
+}
+
+
+// ========================================================
+// AUDIO
+// ========================================================
+
+if(
+    audioUrl
+){
+
+    rows +=
+        mediaRow(
+            "🎙",
+            "AUDIO",
+            "audio",
+            audioUrl,
+            "Download Audio",
+            sightingKey
+        );
+
+}
+
+
+// ========================================================
+// RETURN LIGHTWEIGHT MEDIA SECTION
+// ========================================================
+//
+// IMPORTANT:
+//
+// The popup contains ONLY:
+//
+// - media labels
+// - Preview buttons
+// - Download buttons
+// - media URLs
+//
+// It does NOT load actual photo/video/audio here.
+//
+// Actual media is loaded only when Preview is clicked.
+//
+// The sightingKey is passed through mediaRow() so that
+// the download button can remember the currently opened
+// wildlife popup before the mobile browser opens Downloads.
+//
+// ========================================================
+
+return `
+
+    <div
+        class="gg-sighting-media"
+
+        style="
+            width:
+                100%;
+
+            box-sizing:
+                border-box;
+
+            margin:
+                10px 0 5px 0;
+
+            padding:
+                9px;
+
+            background:
+                #f8faf8;
+
+            border:
+                1px solid
+                #dfe8df;
+
+            border-radius:
+                8px;
+
+            overflow:
+                hidden;
+        "
+    >
+
+        <div
+            class="gg-sighting-media-title"
+
+            style="
+                display:
+                    flex;
+
+                align-items:
+                    center;
+
+                width:
+                    100%;
+
+                box-sizing:
+                    border-box;
+
+                margin:
+                    0 0 8px 0;
+
+                color:
+                    #1b5e20;
+
+                font-family:
+                    Segoe UI,
+                    Arial,
+                    sans-serif;
+
+                font-size:
+                    12px;
+
+                font-weight:
+                    700;
+
+                line-height:
+                    1.2;
+            "
+        >
+
+            <span>
+                🎬
+            </span>
+
+            <span
+                style="
+                    margin-left:
+                        5px;
+                "
+            >
+                MEDIA
+            </span>
+
+        </div>
+
+
+        <div
+            style="
+                width:
+                    100%;
+
+                box-sizing:
+                    border-box;
+            "
+        >
+
+            ${rows}
+
+        </div>
+
+    </div>
+
+`;
 
 }
 
@@ -42923,6 +43006,100 @@ window.activeWildlifePopupId =
 
 window.activeWildlifePopupMarker =
     null;
+
+    // ============================================================
+// 🐅 PERSIST WILDLIFE POPUP ACROSS DOWNLOAD/BROWSER RETURN
+// ============================================================
+
+const GG_WILDLIFE_RETURN_POPUP_KEY =
+    "gg_return_wildlife_popup_id";
+
+
+function rememberWildlifePopupForReturn(
+    id
+){
+
+    const popupId =
+        String(
+            id ||
+            ""
+        ).trim();
+
+
+    if(
+        !popupId
+    ){
+
+        return;
+
+    }
+
+
+    try{
+
+        localStorage.setItem(
+            GG_WILDLIFE_RETURN_POPUP_KEY,
+            popupId
+        );
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠️ Could not save wildlife popup state:",
+            error
+        );
+
+    }
+
+}
+
+
+function getRememberedWildlifePopup(){
+
+    try{
+
+        return String(
+            localStorage.getItem(
+                GG_WILDLIFE_RETURN_POPUP_KEY
+            ) ||
+            ""
+        ).trim();
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠️ Could not read wildlife popup state:",
+            error
+        );
+
+        return "";
+
+    }
+
+}
+
+
+function clearRememberedWildlifePopup(){
+
+    try{
+
+        localStorage.removeItem(
+            GG_WILDLIFE_RETURN_POPUP_KEY
+        );
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠️ Could not clear wildlife popup state:",
+            error
+        );
+
+    }
+
+}
 // ============================================================
 // EXISTING WILDLIFE LOADER
 // ============================================================
@@ -42967,9 +43144,27 @@ async function loadWildlifeSightings(){
      * this refresh started.
      */
 
-    const openWildlifePopupId =
-        window.activeWildlifePopupId ||
-        null;
+// =====================================================
+// 🐅 RESTORE POPUP STATE
+// =====================================================
+//
+// First use the live in-memory popup.
+//
+// If the page was recreated after returning from the
+// Android Downloads screen, window state is gone.
+//
+// In that case recover the popup ID from localStorage.
+//
+// =====================================================
+
+const rememberedWildlifePopupId =
+    getRememberedWildlifePopup();
+
+
+const openWildlifePopupId =
+    window.activeWildlifePopupId ||
+    rememberedWildlifePopupId ||
+    null;
 
 
     try{
@@ -44327,6 +44522,15 @@ const popupOptions = {
 
                             marker;
 
+                              // ====================================================
+        // REMEMBER OPEN POPUP
+        // ====================================================
+
+        rememberWildlifePopupForReturn(
+            id
+        );
+
+
 
                         console.log(
 
@@ -44441,6 +44645,8 @@ const popupOptions = {
                             window.activeWildlifePopupMarker =
 
                                 null;
+
+                              clearRememberedWildlifePopup();
 
                         }
 
