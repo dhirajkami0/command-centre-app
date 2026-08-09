@@ -6,84 +6,27 @@
    FILE:
        js/irregularity/irregularityModule.js
 
-   PURPOSE:
-       Save patrol irregularities / offences / observations
-       directly to Firestore.
-
-   ============================================================
-   IMPORTANT ARCHITECTURE
-   ============================================================
-
-   FIRESTORE ONLY
+   RESPONSIBILITY
    ------------------------------------------------------------
-   • No Apps Script
-   • No callBackend()
-   • No Firebase initialization here
-   • Uses existing window.db
-   • Uses existing window.fb
+   • Collect manual form data
+   • Get GPS at SAVE time only
+   • Use existing window.latestGps first
+   • Use navigator.geolocation only if needed
+   • Use ONLY window.resolveCurrentGIS()
+   • Merge automatic + manual + profile information
+   • Save to Firestore
+   • Generate Firestore auto-ID
+   • Trigger existing Irregularity media module
+   • Update the SAME Firestore document with media URLs
 
-   GPS
-   ------------------------------------------------------------
-   1. Use window.latestGps first.
-   2. If unavailable, use navigator.geolocation.
-   3. Update window.latestGps after live GPS.
-
-   GIS
-   ------------------------------------------------------------
-   ONLY:
-
-       window.resolveCurrentGIS(
-           latitude,
-           longitude
-       )
-
-   No duplicate GIS resolver.
-
-   USER
-   ------------------------------------------------------------
-   Uses existing:
-
-       window.userProfile
-
-   MEDIA
-   ------------------------------------------------------------
-   Uses:
-       GGIrregularity.Media.upload()
-       GGIrregularity.Media.updateFirestore()
-
-   No Firebase initialization here.
-   No competing media uploader.
-
-   FIRESTORE
-   ------------------------------------------------------------
-   Collection:
-
-       irregularities
-
-   Document ID:
-
-       Firestore auto-generated ID
-
-   FLOW
-   ------------------------------------------------------------
-
-       Manual Form
-            ↓
-       Get GPS
-            ↓
-       resolveCurrentGIS()
-            ↓
-       Build complete payload
-            ↓
-       Create Firestore document
-            ↓
-       Get auto-generated Firestore ID
-            ↓
-       Upload Photo / Video / Audio
-            ↓
-       Update SAME Firestore document
-            ↓
-       Success
+   NO:
+   • Apps Script
+   • callBackend()
+   • Firebase initialization
+   • second GPS system
+   • second GIS resolver
+   • Wildlife changes
+   • Elephant changes
 
    ============================================================ */
 
@@ -97,7 +40,7 @@ window.GGIrregularity =
 
 
 /* ============================================================
-   FIRESTORE COLLECTION
+   COLLECTION
    ============================================================ */
 
 GGIrregularity.COLLECTION =
@@ -105,7 +48,7 @@ GGIrregularity.COLLECTION =
 
 
 /* ============================================================
-   MODULE IDENTIFIERS
+   MODULE
    ============================================================ */
 
 GGIrregularity.MODULE =
@@ -132,7 +75,7 @@ GGIrregularity.STATUS = {
 
 
 /* ============================================================
-   IRREGULARITY TYPES
+   CATEGORIES
    ============================================================ */
 
 GGIrregularity.TYPES = {
@@ -180,151 +123,74 @@ GGIrregularity.TYPES = {
 
 
 /* ============================================================
-   DISPLAY METADATA
+   CATEGORY LABELS
    ============================================================ */
 
 GGIrregularity.TYPE_META = {
 
     ILLICIT_FELLING: {
-
-        icon:
-            "🌳",
-
-        title:
-            "Illicit Felling"
-
+        icon: "🌳",
+        title: "Illicit Felling"
     },
-
 
     ILLEGAL_TIMBER_FOREST_PRODUCE: {
-
-        icon:
-            "🪵",
-
-        title:
-            "Illegal Timber / Forest Produce"
-
+        icon: "🪵",
+        title: "Illegal Timber / Forest Produce"
     },
-
 
     ILLEGAL_MINING_EARTH_CUTTING: {
-
-        icon:
-            "🚜",
-
-        title:
-            "Illegal Mining / Earth Cutting"
-
+        icon: "🚜",
+        title: "Illegal Mining / Earth Cutting"
     },
-
 
     ILLEGAL_FISHING: {
-
-        icon:
-            "🎣",
-
-        title:
-            "Illegal Fishing"
-
+        icon: "🎣",
+        title: "Illegal Fishing"
     },
-
 
     ILLEGAL_GRAZING: {
-
-        icon:
-            "🐄",
-
-        title:
-            "Illegal Grazing"
-
+        icon: "🐄",
+        title: "Illegal Grazing"
     },
-
 
     FOREST_FIRE: {
-
-        icon:
-            "🔥",
-
-        title:
-            "Forest Fire"
-
+        icon: "🔥",
+        title: "Forest Fire"
     },
-
 
     ENCROACHMENT: {
-
-        icon:
-            "🚧",
-
-        title:
-            "Encroachment"
-
+        icon: "🚧",
+        title: "Encroachment"
     },
-
 
     ILLEGAL_STRUCTURE_OCCUPATION: {
-
-        icon:
-            "🏗️",
-
-        title:
-            "Illegal Structure / Occupation"
-
+        icon: "🏗️",
+        title: "Illegal Structure / Occupation"
     },
-
 
     POACHING: {
-
-        icon:
-            "🏹",
-
-        title:
-            "Poaching"
-
+        icon: "🏹",
+        title: "Poaching"
     },
-
 
     ILLEGAL_ENTRY_TRESPASSING: {
-
-        icon:
-            "🚪",
-
-        title:
-            "Illegal Entry / Trespassing"
-
+        icon: "🚪",
+        title: "Illegal Entry / Trespassing"
     },
-
 
     WILDLIFE_INJURY: {
-
-        icon:
-            "🐾",
-
-        title:
-            "Wildlife Injury"
-
+        icon: "🐾",
+        title: "Wildlife Injury"
     },
-
 
     WILDLIFE_DEATH: {
-
-        icon:
-            "☠️",
-
-        title:
-            "Wildlife Death"
-
+        icon: "☠️",
+        title: "Wildlife Death"
     },
 
-
     GENERAL_OBSERVATION: {
-
-        icon:
-            "👁️",
-
-        title:
-            "General Observation"
-
+        icon: "👁️",
+        title: "General Observation"
     }
 
 };
@@ -335,9 +201,7 @@ GGIrregularity.TYPE_META = {
    ============================================================ */
 
 GGIrregularity.text =
-function(
-    value
-){
+function(value){
 
     return String(
         value ?? ""
@@ -351,18 +215,12 @@ function(
    ============================================================ */
 
 GGIrregularity.number =
-function(
-    value
-){
+function(value){
 
     if(
-
         value === "" ||
-
         value === null ||
-
         value === undefined
-
     ){
 
         return null;
@@ -371,14 +229,10 @@ function(
 
 
     const number =
-        Number(
-            value
-        );
+        Number(value);
 
 
-    return Number.isFinite(
-        number
-    )
+    return Number.isFinite(number)
         ? number
         : null;
 
@@ -394,16 +248,12 @@ async function(){
 
     /*
      * DO NOT initialize Firebase here.
-     *
-     * GreenGuard already owns Firebase initialization.
+     * Reuse the existing GreenGuard Firebase system.
      */
 
     if(
-
         window.db &&
-
         window.fb
-
     ){
 
         return true;
@@ -411,15 +261,9 @@ async function(){
     }
 
 
-    /*
-     * Reuse existing application readiness function.
-     */
-
     if(
-
         typeof window.waitForFirebaseReady ===
         "function"
-
     ){
 
         await window.waitForFirebaseReady();
@@ -428,11 +272,8 @@ async function(){
 
 
     if(
-
         !window.db ||
-
         !window.fb
-
     ){
 
         throw new Error(
@@ -448,7 +289,7 @@ async function(){
 
 
 /* ============================================================
-   CURRENT USER CONTEXT
+   USER PROFILE
    ============================================================ */
 
 GGIrregularity.getUserContext =
@@ -517,29 +358,23 @@ function(){
    GPS
    ============================================================
 
-   FLOW:
+   IMPORTANT:
 
-       window.latestGps
-             ↓
-       if unavailable
-             ↓
-       navigator.geolocation
-             ↓
-       update window.latestGps
+   GPS is NOT collected while opening the form.
 
-   No GPS watcher is created.
+   GPS is collected only when SAVE is pressed.
+
+   Priority:
+
+       1. window.latestGps
+       2. navigator.geolocation
 
    ============================================================ */
 
 GGIrregularity.getGPS =
 async function(){
 
-    /* ========================================================
-       FIRST:
-       EXISTING GREENGUARD GPS CACHE
-       ======================================================== */
-
-    const candidates = [
+    const gpsCandidates = [
 
         window.latestGps,
 
@@ -556,19 +391,17 @@ async function(){
     ];
 
 
+    /* ========================================================
+       EXISTING GPS CACHE
+       ======================================================== */
+
     for(
-
-        const gps of candidates
-
+        const gps of gpsCandidates
     ){
 
         if(
-
             !gps ||
-
-            typeof gps !==
-            "object"
-
+            typeof gps !== "object"
         ){
 
             continue;
@@ -576,14 +409,14 @@ async function(){
         }
 
 
-        const latitude =
+        const lat =
             GGIrregularity.number(
                 gps.lat ??
                 gps.latitude
             );
 
 
-        const longitude =
+        const lon =
             GGIrregularity.number(
                 gps.lng ??
                 gps.lon ??
@@ -592,24 +425,19 @@ async function(){
 
 
         if(
-
-            latitude !== null &&
-
-            longitude !== null &&
-
-            latitude !== 0 &&
-
-            longitude !== 0
-
+            lat !== null &&
+            lon !== null &&
+            lat !== 0 &&
+            lon !== 0
         ){
 
             return {
 
                 latitude:
-                    latitude,
+                    lat,
 
                 longitude:
-                    longitude,
+                    lon,
 
                 accuracy:
                     GGIrregularity.number(
@@ -638,14 +466,11 @@ async function(){
 
 
     /* ========================================================
-       FALLBACK:
-       DEVICE GPS
+       DEVICE GPS FALLBACK
        ======================================================== */
 
     if(
-
         !navigator.geolocation
-
     ){
 
         throw new Error(
@@ -675,7 +500,6 @@ async function(){
                             reject,
 
                             {
-
                                 enableHighAccuracy:
                                     true,
 
@@ -684,7 +508,6 @@ async function(){
 
                                 maximumAge:
                                     0
-
                             }
 
                         );
@@ -693,10 +516,7 @@ async function(){
             );
 
     }
-
-    catch(
-        error
-    ){
+    catch(error){
 
         console.warn(
             "⚠ Device GPS unavailable:",
@@ -713,30 +533,21 @@ async function(){
 
     const latitude =
         GGIrregularity.number(
-            position
-                ?.coords
-                ?.latitude
+            position?.coords?.latitude
         );
 
 
     const longitude =
         GGIrregularity.number(
-            position
-                ?.coords
-                ?.longitude
+            position?.coords?.longitude
         );
 
 
     if(
-
         latitude === null ||
-
         longitude === null ||
-
         latitude === 0 ||
-
         longitude === 0
-
     ){
 
         throw new Error(
@@ -746,7 +557,13 @@ async function(){
     }
 
 
-    const gps = {
+    /* ========================================================
+       UPDATE EXISTING GPS CACHE
+
+       Do not create another GPS system.
+       ======================================================== */
+
+    window.latestGps = {
 
         lat:
             latitude,
@@ -755,32 +572,18 @@ async function(){
             longitude,
 
         accuracy:
-            position
-                ?.coords
-                ?.accuracy,
+            position.coords.accuracy,
 
         speed:
-            position
-                ?.coords
-                ?.speed,
+            position.coords.speed,
 
         heading:
-            position
-                ?.coords
-                ?.heading,
+            position.coords.heading,
 
         timestamp:
             Date.now()
 
     };
-
-
-    /* ========================================================
-       UPDATE EXISTING GPS CACHE
-       ======================================================== */
-
-    window.latestGps =
-        gps;
 
 
     return {
@@ -793,21 +596,21 @@ async function(){
 
         accuracy:
             GGIrregularity.number(
-                gps.accuracy
+                position.coords.accuracy
             ),
 
         speed:
             GGIrregularity.number(
-                gps.speed
+                position.coords.speed
             ),
 
         heading:
             GGIrregularity.number(
-                gps.heading
+                position.coords.heading
             ),
 
         timestamp:
-            gps.timestamp
+            Date.now()
 
     };
 
@@ -815,16 +618,14 @@ async function(){
 
 
 /* ============================================================
-   GIS RESOLVER
+   GIS
    ============================================================
 
-   IMPORTANT:
-
-   THIS IS THE ONLY GIS RESOLVER USED BY THIS MODULE.
+   ONLY:
 
        window.resolveCurrentGIS(
-           latitude,
-           longitude
+           lat,
+           lon
        )
 
    ============================================================ */
@@ -836,10 +637,8 @@ function(
 ){
 
     if(
-
         typeof window.resolveCurrentGIS !==
         "function"
-
     ){
 
         throw new Error(
@@ -857,9 +656,7 @@ function(
 
 
     if(
-
         !gis
-
     ){
 
         throw new Error(
@@ -886,17 +683,40 @@ function(
 ){
 
     gis =
-        gis ||
-        {};
+        gis || {};
 
 
-    const normalized = {
+    let locationType =
+        "GPS";
 
-        latitude:
-            latitude,
 
-        longitude:
-            longitude,
+    if(
+        gis.village
+    ){
+
+        locationType =
+            "VILLAGE";
+
+    }
+    else if(
+        gis.compartment
+    ){
+
+        locationType =
+            "FOREST_COMPARTMENT";
+
+    }
+    else if(
+        gis.nearestPoint
+    ){
+
+        locationType =
+            "NEAREST_POINT";
+
+    }
+
+
+    return {
 
         division:
             GGIrregularity.text(
@@ -923,7 +743,7 @@ function(
                 gis.village
             ),
 
-        village_code:
+        villageCode:
             GGIrregularity.text(
                 gis.villageCode
             ),
@@ -933,97 +753,45 @@ function(
                 gis.block
             ),
 
-        nearest_point:
+        nearestPoint:
             GGIrregularity.text(
                 gis.nearestPoint
             ),
 
-        distance_meters:
+        distanceMeters:
             gis.distanceMeters ??
             null,
 
         text:
             GGIrregularity.text(
                 gis.text
-            )
+            ),
+
+        locationType:
+            locationType,
+
+        gpsLocation:
+            latitude +
+            ", " +
+            longitude
 
     };
-
-
-    /* ========================================================
-       LOCATION TYPE
-       ======================================================== */
-
-    if(
-
-        normalized.village
-
-    ){
-
-        normalized.location_type =
-            "VILLAGE";
-
-    }
-
-    else if(
-
-        normalized.compartment
-
-    ){
-
-        normalized.location_type =
-            "FOREST_COMPARTMENT";
-
-    }
-
-    else if(
-
-        normalized.nearest_point
-
-    ){
-
-        normalized.location_type =
-            "NEAREST_POINT";
-
-    }
-
-    else{
-
-        normalized.location_type =
-            "GPS";
-
-    }
-
-
-    /* ========================================================
-       GPS LOCATION TEXT
-       ======================================================== */
-
-    normalized.gps_location =
-        latitude +
-        ", " +
-        longitude;
-
-
-    return normalized;
 
 };
 
 
 /* ============================================================
-   BUILD CATEGORY-SPECIFIC DETAILS
+   CATEGORY DETAILS
    ============================================================ */
 
 GGIrregularity.buildDetails =
-function(
-    formData
-){
+function(formData){
 
     return {
 
-        /* ====================================================
-           ILLICIT FELLING
-           ==================================================== */
+        /* ----------------------------------------------------
+           FELLING
+           ---------------------------------------------------- */
 
         felling_compartment:
             GGIrregularity.text(
@@ -1041,9 +809,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL TIMBER / FOREST PRODUCE
-           ==================================================== */
+        /* ----------------------------------------------------
+           TIMBER
+           ---------------------------------------------------- */
 
         timber_type:
             GGIrregularity.text(
@@ -1056,9 +824,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL MINING / EARTH CUTTING
-           ==================================================== */
+        /* ----------------------------------------------------
+           MINING
+           ---------------------------------------------------- */
 
         mining_compartment:
             GGIrregularity.text(
@@ -1076,9 +844,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL FISHING
-           ==================================================== */
+        /* ----------------------------------------------------
+           FISHING
+           ---------------------------------------------------- */
 
         fishing_location:
             GGIrregularity.text(
@@ -1091,9 +859,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL GRAZING
-           ==================================================== */
+        /* ----------------------------------------------------
+           GRAZING
+           ---------------------------------------------------- */
 
         grazing_area:
             GGIrregularity.text(
@@ -1101,9 +869,9 @@ function(
             ),
 
 
-        /* ====================================================
-           FOREST FIRE
-           ==================================================== */
+        /* ----------------------------------------------------
+           FIRE
+           ---------------------------------------------------- */
 
         fire_area:
             GGIrregularity.text(
@@ -1121,9 +889,9 @@ function(
             ),
 
 
-        /* ====================================================
+        /* ----------------------------------------------------
            ENCROACHMENT
-           ==================================================== */
+           ---------------------------------------------------- */
 
         encroached_compartment:
             GGIrregularity.text(
@@ -1141,9 +909,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL STRUCTURE / OCCUPATION
-           ==================================================== */
+        /* ----------------------------------------------------
+           STRUCTURE
+           ---------------------------------------------------- */
 
         structure_type:
             GGIrregularity.text(
@@ -1156,9 +924,9 @@ function(
             ),
 
 
-        /* ====================================================
+        /* ----------------------------------------------------
            POACHING
-           ==================================================== */
+           ---------------------------------------------------- */
 
         poaching_species:
             GGIrregularity.text(
@@ -1171,9 +939,9 @@ function(
             ),
 
 
-        /* ====================================================
-           ILLEGAL ENTRY / TRESPASSING
-           ==================================================== */
+        /* ----------------------------------------------------
+           TRESPASSING
+           ---------------------------------------------------- */
 
         trespasser_count:
             GGIrregularity.number(
@@ -1186,9 +954,9 @@ function(
             ),
 
 
-        /* ====================================================
+        /* ----------------------------------------------------
            WILDLIFE INJURY
-           ==================================================== */
+           ---------------------------------------------------- */
 
         injured_species:
             GGIrregularity.text(
@@ -1211,9 +979,9 @@ function(
             ),
 
 
-        /* ====================================================
+        /* ----------------------------------------------------
            WILDLIFE DEATH
-           ==================================================== */
+           ---------------------------------------------------- */
 
         dead_species:
             GGIrregularity.text(
@@ -1236,9 +1004,9 @@ function(
             ),
 
 
-        /* ====================================================
+        /* ----------------------------------------------------
            GENERAL OBSERVATION
-           ==================================================== */
+           ---------------------------------------------------- */
 
         observation:
             GGIrregularity.text(
@@ -1246,9 +1014,9 @@ function(
             ),
 
 
-        /* ====================================================
-           COMMON REMARKS
-           ==================================================== */
+        /* ----------------------------------------------------
+           REMARKS
+           ---------------------------------------------------- */
 
         remarks:
             GGIrregularity.text(
@@ -1261,43 +1029,28 @@ function(
 
 
 /* ============================================================
-   CHECK WHETHER IRREGULARITY MEDIA EXISTS
+   MEDIA DETECTION
    ============================================================ */
 
 GGIrregularity.hasMedia =
 function(){
 
-    const photoInput =
+    const photo =
         document.getElementById(
             "gg-irregularity-photo"
-        );
-
-
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    const photo =
-        photoInput?.files?.[0] ||
-        null;
+        )?.files?.[0];
 
 
     const video =
-        videoInput?.files?.[0] ||
-        null;
+        document.getElementById(
+            "gg-irregularity-video"
+        )?.files?.[0];
 
 
     const audio =
-        audioInput?.files?.[0] ||
-        null;
+        document.getElementById(
+            "gg-irregularity-audio"
+        )?.files?.[0];
 
 
     return !!(
@@ -1310,7 +1063,7 @@ function(){
 
 
 /* ============================================================
-   BUILD FIRESTORE PAYLOAD
+   BUILD COMPLETE FIRESTORE PAYLOAD
    ============================================================ */
 
 GGIrregularity.buildPayload =
@@ -1329,8 +1082,7 @@ async function(
     /* ========================================================
        GPS
 
-       Existing GreenGuard GPS first.
-       Device GPS only if necessary.
+       ONLY HERE
        ======================================================== */
 
     const gps =
@@ -1340,7 +1092,7 @@ async function(
     /* ========================================================
        GIS
 
-       ONLY window.resolveCurrentGIS()
+       ONLY HERE
        ======================================================== */
 
     const rawGIS =
@@ -1362,16 +1114,14 @@ async function(
        CATEGORY
        ======================================================== */
 
-    const type =
+    const category =
         GGIrregularity.text(
             formData.type
         ).toUpperCase();
 
 
     if(
-
-        !type
-
+        !category
     ){
 
         throw new Error(
@@ -1382,20 +1132,22 @@ async function(
 
 
     const meta =
-        GGIrregularity.TYPE_META[type] ||
-        GGIrregularity.TYPE_META.GENERAL_OBSERVATION;
+        GGIrregularity.TYPE_META[category];
+
+
+    if(
+        !meta
+    ){
+
+        throw new Error(
+            "Invalid irregularity category."
+        );
+
+    }
 
 
     /* ========================================================
-       TIMESTAMP
-       ======================================================== */
-
-    const serverTimestamp =
-        window.fb.serverTimestamp();
-
-
-    /* ========================================================
-       MEDIA INITIAL STATUS
+       MEDIA STATUS
        ======================================================== */
 
     const hasMedia =
@@ -1403,13 +1155,21 @@ async function(
 
 
     /* ========================================================
-       FINAL PAYLOAD
+       SERVER TIMESTAMP
+       ======================================================== */
+
+    const timestamp =
+        window.fb.serverTimestamp();
+
+
+    /* ========================================================
+       PAYLOAD
        ======================================================== */
 
     return {
 
         /* ====================================================
-           CORE
+           IDENTIFICATION
            ==================================================== */
 
         module:
@@ -1419,7 +1179,7 @@ async function(
             GGIrregularity.RECORD_TYPE,
 
         category:
-            type,
+            category,
 
         category_label:
             meta.title,
@@ -1444,17 +1204,12 @@ async function(
         reported_by_designation:
             user.designation,
 
-
-        /* ====================================================
-           SESSION
-           ==================================================== */
-
         session_id:
             user.sessionId,
 
 
         /* ====================================================
-           GIS ADMINISTRATIVE HIERARCHY
+           GIS
            ==================================================== */
 
         division:
@@ -1481,11 +1236,26 @@ async function(
             "",
 
         village_code:
-            gis.village_code ||
+            gis.villageCode ||
             "",
 
         block:
             gis.block ||
+            "",
+
+        nearest_point:
+            gis.nearestPoint ||
+            "",
+
+        distance_from_nearest_point:
+            gis.distanceMeters ??
+            null,
+
+        location_type:
+            gis.locationType,
+
+        location_text:
+            gis.text ||
             "",
 
 
@@ -1499,6 +1269,9 @@ async function(
         longitude:
             gps.longitude,
 
+        gps_location:
+            gis.gpsLocation,
+
         gps_accuracy:
             gps.accuracy,
 
@@ -1510,26 +1283,6 @@ async function(
 
         gps_timestamp:
             gps.timestamp,
-
-        gps_location:
-            gis.gps_location,
-
-
-        /* ====================================================
-           LOCATION
-           ==================================================== */
-
-        location_type:
-            gis.location_type,
-
-        location_text:
-            gis.text,
-
-        nearest_point:
-            gis.nearest_point,
-
-        distance_from_nearest_point:
-            gis.distance_meters,
 
 
         /* ====================================================
@@ -1548,7 +1301,7 @@ async function(
 
 
         /* ====================================================
-           CATEGORY DETAILS
+           MANUAL CATEGORY DETAILS
            ==================================================== */
 
         details:
@@ -1558,14 +1311,7 @@ async function(
 
 
         /* ====================================================
-           MEDIA
-
-           Actual files are NOT stored in Firestore.
-
-           The media module uploads them to Firebase Storage
-           after the Firestore document has been created.
-
-           These fields are populated after upload.
+           MEDIA PLACEHOLDERS
            ==================================================== */
 
         photo_url:
@@ -1597,10 +1343,10 @@ async function(
            ==================================================== */
 
         created_at:
-            serverTimestamp,
+            timestamp,
 
         updated_at:
-            serverTimestamp
+            timestamp
 
     };
 
@@ -1608,44 +1354,13 @@ async function(
 
 
 /* ============================================================
-   SAVE TO FIRESTORE
+   CREATE FIRESTORE DOCUMENT
    ============================================================ */
 
-GGIrregularity.save =
+GGIrregularity.createDocument =
 async function(
-    formData
+    payload
 ){
-
-    /* ========================================================
-       FIREBASE
-       ======================================================== */
-
-    await GGIrregularity.waitForFirebase();
-
-
-    /* ========================================================
-       BUILD COMPLETE PAYLOAD
-
-       manual form fields
-            +
-       GPS
-            +
-       GIS
-            +
-       user context
-            +
-       media placeholders
-       ======================================================== */
-
-    const payload =
-        await GGIrregularity.buildPayload(
-            formData
-        );
-
-
-    /* ========================================================
-       COLLECTION
-       ======================================================== */
 
     const collectionRef =
         window.fb.collection(
@@ -1654,9 +1369,9 @@ async function(
         );
 
 
-    /* ========================================================
-       AUTO-GENERATED DOCUMENT ID
-       ======================================================== */
+    /*
+     * Firestore auto-generated document ID.
+     */
 
     const documentRef =
         window.fb.doc(
@@ -1664,17 +1379,9 @@ async function(
         );
 
 
-    /* ========================================================
-       STORE DOCUMENT ID INSIDE DOCUMENT
-       ======================================================== */
-
     payload.firestore_id =
         documentRef.id;
 
-
-    /* ========================================================
-       FIRESTORE WRITE
-       ======================================================== */
 
     await window.fb.setDoc(
         documentRef,
@@ -1682,289 +1389,418 @@ async function(
     );
 
 
-    /* ========================================================
-       SUCCESS — FIRESTORE METADATA
-       ======================================================== */
-
-    console.log(
-        "✅ IRREGULARITY SAVED TO FIRESTORE",
-        {
-
-            firestore_id:
-                documentRef.id,
-
-            category:
-                payload.category,
-
-            category_label:
-                payload.category_label,
-
-            reported_by:
-                payload.reported_by,
-
-            division:
-                payload.division,
-
-            range:
-                payload.range,
-
-            beat:
-                payload.beat,
-
-            compartment:
-                payload.compartment,
-
-            village:
-                payload.village,
-
-            latitude:
-                payload.latitude,
-
-            longitude:
-                payload.longitude,
-
-            location_type:
-                payload.location_type,
-
-            media_status:
-                payload.media_status
-
-        }
-    );
-
-
-    /* ========================================================
-       MEDIA UPLOAD
-       ========================================================
-
-       IMPORTANT:
-
-       Firestore document already exists.
-
-       Therefore the auto-generated ID is now known.
-
-       The media module can safely use:
-
-           payload.firestore_id
-
-       to create the Storage path.
-
-       ======================================================== */
-
-    if(
-
-        GGIrregularity.hasMedia()
-
-    ){
-
-        try{
-
-            console.log(
-                "📦 Starting Irregularity media upload..."
-            );
-
-
-            /* ==================================================
-               VERIFY MEDIA MODULE
-               ================================================== */
-
-            if(
-
-                !window.GGIrregularity ||
-
-                !GGIrregularity.Media ||
-
-                typeof GGIrregularity.Media.upload !==
-                "function"
-
-            ){
-
-                throw new Error(
-                    "irregularityMedia.js is not loaded."
-                );
-
-            }
-
-
-            /* ==================================================
-               UPLOAD
-               ================================================== */
-
-            const mediaResult =
-                await GGIrregularity.Media.upload(
-                    payload
-                );
-
-
-            /* ==================================================
-               UPDATE SAME FIRESTORE DOCUMENT
-               ================================================== */
-
-            if(
-
-                mediaResult &&
-
-                typeof GGIrregularity.Media
-                    .updateFirestore ===
-                    "function"
-
-            ){
-
-                await GGIrregularity.Media
-                    .updateFirestore(
-                        documentRef.id,
-                        mediaResult
-                    );
-
-            }
-
-
-            /* ==================================================
-               UPDATE RETURN PAYLOAD
-               ================================================== */
-
-            payload.photo_url =
-                mediaResult?.photo_url ||
-                "";
-
-            payload.video_url =
-                mediaResult?.video_url ||
-                "";
-
-            payload.audio_url =
-                mediaResult?.audio_url ||
-                "";
-
-            payload.photo_storage_path =
-                mediaResult?.photo_storage_path ||
-                "";
-
-            payload.video_storage_path =
-                mediaResult?.video_storage_path ||
-                "";
-
-            payload.audio_storage_path =
-                mediaResult?.audio_storage_path ||
-                "";
-
-            payload.media_status =
-                mediaResult?.media_status ||
-                "NONE";
-
-
-            console.log(
-                "✅ IRREGULARITY MEDIA COMPLETED",
-                {
-
-                    firestore_id:
-                        documentRef.id,
-
-                    photo:
-                        !!payload.photo_url,
-
-                    video:
-                        !!payload.video_url,
-
-                    audio:
-                        !!payload.audio_url,
-
-                    media_status:
-                        payload.media_status
-
-                }
-            );
-
-        }
-
-        catch(
-            mediaError
-        ){
-
-            /* ==================================================
-               IMPORTANT
-
-               The Firestore irregularity itself has already
-               been successfully saved.
-
-               Do NOT delete it just because media failed.
-
-               Mark media as FAILED on the SAME document.
-               ================================================== */
-
-            console.error(
-                "❌ Irregularity media upload failed:",
-                mediaError
-            );
-
-
-            try{
-
-                await window.fb.updateDoc(
-                    documentRef,
-                    {
-
-                        media_status:
-                            "FAILED",
-
-                        media_error:
-                            GGIrregularity.text(
-                                mediaError?.message
-                            ),
-
-                        updated_at:
-                            window.fb.serverTimestamp()
-
-                    }
-                );
-
-            }
-            catch(
-                updateError
-            ){
-
-                console.error(
-                    "❌ Unable to update media failure status:",
-                    updateError
-                );
-
-            }
-
-
-            /*
-             * Do not hide the successful Firestore save.
-             *
-             * Return the Firestore document result so the UI
-             * knows the observation itself was saved.
-             */
-
-            console.warn(
-                "⚠ Irregularity saved, but media upload failed."
-            );
-
-        }
-
-    }
-
-
-    /* ========================================================
-       FINAL RETURN
-       ======================================================== */
-
-    return {
-
-        firestoreId:
-            documentRef.id,
-
-        payload:
-            payload
-
-    };
+    return documentRef;
 
 };
 
 
 /* ============================================================
-   FORM DATA SUBMIT
+   UPLOAD MEDIA
+   ============================================================ */
+
+GGIrregularity.uploadMedia =
+async function(
+    documentRef,
+    payload
+){
+
+    if(
+        !GGIrregularity.hasMedia()
+    ){
+
+        return {
+
+            photo_url:
+                "",
+
+            video_url:
+                "",
+
+            audio_url:
+                "",
+
+            photo_storage_path:
+                "",
+
+            video_storage_path:
+                "",
+
+            audio_storage_path:
+                "",
+
+            media_status:
+                "NONE"
+
+        };
+
+    }
+
+
+    /* ========================================================
+       MEDIA MODULE REQUIRED
+       ======================================================== */
+
+    if(
+        !window.GGIrregularity ||
+        !GGIrregularity.Media ||
+        typeof GGIrregularity.Media.upload !==
+        "function"
+    ){
+
+        throw new Error(
+            "irregularityMedia.js is not loaded."
+        );
+
+    }
+
+
+    /* ========================================================
+       UPLOAD
+       ======================================================== */
+
+    const mediaResult =
+        await GGIrregularity.Media.upload(
+            payload
+        );
+
+
+    if(
+        !mediaResult
+    ){
+
+        return {
+
+            photo_url:
+                "",
+
+            video_url:
+                "",
+
+            audio_url:
+                "",
+
+            photo_storage_path:
+                "",
+
+            video_storage_path:
+                "",
+
+            audio_storage_path:
+                "",
+
+            media_status:
+                "NONE"
+
+        };
+
+    }
+
+
+    /* ========================================================
+       UPDATE SAME DOCUMENT
+       ======================================================== */
+
+    if(
+        typeof GGIrregularity.Media
+            .updateFirestore ===
+        "function"
+    ){
+
+        await GGIrregularity.Media
+            .updateFirestore(
+                documentRef.id,
+                mediaResult
+            );
+
+    }
+    else{
+
+        /*
+         * Safety fallback if media module only uploads.
+         */
+
+        await window.fb.updateDoc(
+            documentRef,
+            {
+
+                photo_url:
+                    mediaResult.photo_url ||
+                    "",
+
+                video_url:
+                    mediaResult.video_url ||
+                    "",
+
+                audio_url:
+                    mediaResult.audio_url ||
+                    "",
+
+                photo_storage_path:
+                    mediaResult.photo_storage_path ||
+                    "",
+
+                video_storage_path:
+                    mediaResult.video_storage_path ||
+                    "",
+
+                audio_storage_path:
+                    mediaResult.audio_storage_path ||
+                    "",
+
+                media_status:
+                    mediaResult.media_status ||
+                    "COMPLETE",
+
+                updated_at:
+                    window.fb.serverTimestamp()
+
+            }
+        );
+
+    }
+
+
+    return mediaResult;
+
+};
+
+
+/* ============================================================
+   SAVE
+   ============================================================ */
+
+GGIrregularity.save =
+async function(
+    formData
+){
+
+    console.group(
+        "⚠️ GREENGUARD IRREGULARITY SAVE"
+    );
+
+
+    try{
+
+        /* ====================================================
+           FIREBASE
+           ==================================================== */
+
+        await GGIrregularity.waitForFirebase();
+
+
+        /* ====================================================
+           COMPLETE PAYLOAD
+
+           Manual form
+               +
+           GPS
+               +
+           GIS
+               +
+           Profile
+               +
+           timestamps
+           ==================================================== */
+
+        const payload =
+            await GGIrregularity.buildPayload(
+                formData
+            );
+
+
+        console.log(
+            "📦 Irregularity payload prepared:",
+            payload
+        );
+
+
+        /* ====================================================
+           CREATE FIRESTORE DOCUMENT
+           ==================================================== */
+
+        const documentRef =
+            await GGIrregularity.createDocument(
+                payload
+            );
+
+
+        console.log(
+            "✅ Irregularity Firestore document created:",
+            documentRef.id
+        );
+
+
+        /* ====================================================
+           MEDIA
+
+           Firestore document already exists.
+
+           Therefore media can safely use:
+
+               payload.firestore_id
+           ==================================================== */
+
+        if(
+            GGIrregularity.hasMedia()
+        ){
+
+            try{
+
+                const mediaResult =
+                    await GGIrregularity.uploadMedia(
+                        documentRef,
+                        payload
+                    );
+
+
+                /* ============================================
+                   UPDATE RETURN PAYLOAD
+                   ============================================ */
+
+                payload.photo_url =
+                    mediaResult?.photo_url ||
+                    "";
+
+                payload.video_url =
+                    mediaResult?.video_url ||
+                    "";
+
+                payload.audio_url =
+                    mediaResult?.audio_url ||
+                    "";
+
+                payload.photo_storage_path =
+                    mediaResult?.photo_storage_path ||
+                    "";
+
+                payload.video_storage_path =
+                    mediaResult?.video_storage_path ||
+                    "";
+
+                payload.audio_storage_path =
+                    mediaResult?.audio_storage_path ||
+                    "";
+
+                payload.media_status =
+                    mediaResult?.media_status ||
+                    "NONE";
+
+
+                console.log(
+                    "✅ Irregularity media completed:",
+                    mediaResult
+                );
+
+            }
+            catch(
+                mediaError
+            ){
+
+                console.error(
+                    "❌ Irregularity media upload failed:",
+                    mediaError
+                );
+
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * The observation itself has already been
+                 * successfully saved.
+                 *
+                 * Do NOT delete it.
+                 */
+
+                try{
+
+                    await window.fb.updateDoc(
+                        documentRef,
+                        {
+
+                            media_status:
+                                "FAILED",
+
+                            media_error:
+                                GGIrregularity.text(
+                                    mediaError?.message
+                                ),
+
+                            updated_at:
+                                window.fb.serverTimestamp()
+
+                        }
+                    );
+
+                }
+                catch(
+                    statusError
+                ){
+
+                    console.error(
+                        "❌ Could not update media failure status:",
+                        statusError
+                    );
+
+                }
+
+
+                payload.media_status =
+                    "FAILED";
+
+            }
+
+        }
+
+
+        /* ====================================================
+           FINAL RESULT
+           ==================================================== */
+
+        const result = {
+
+            firestoreId:
+                documentRef.id,
+
+            payload:
+                payload
+
+        };
+
+
+        console.log(
+            "✅ IRREGULARITY SAVE COMPLETE:",
+            result
+        );
+
+
+        console.groupEnd();
+
+
+        return result;
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ IRREGULARITY SAVE FAILED:",
+            error
+        );
+
+
+        console.groupEnd();
+
+
+        throw error;
+
+    }
+
+};
+
+
+/* ============================================================
+   SUBMIT
    ============================================================ */
 
 GGIrregularity.submit =
@@ -1977,28 +1813,26 @@ async function(){
 
 
     if(
-
         !form
-
     ){
 
         console.error(
             "❌ ggIrregularityForm not found."
         );
 
-        return;
+        return null;
 
     }
 
 
     /* ========================================================
-       FORM DATA
+       ONLY MANUAL FORM DATA
 
-       ONLY visible/manual fields are collected here.
+       No GPS.
+       No GIS.
+       No profile.
 
-       GPS / GIS / user fields are NOT taken from the form.
-
-       buildPayload() adds them automatically.
+       Those are added by buildPayload().
        ======================================================== */
 
     const formData =
@@ -2010,71 +1844,61 @@ async function(){
 
 
     /* ========================================================
-       CATEGORY REQUIRED
+       REQUIRED CATEGORY
        ======================================================== */
 
     if(
-
         !GGIrregularity.text(
             formData.type
         )
-
     ){
 
         alert(
             "Please select Irregularity / Offence / Observation type."
         );
 
-        return;
+        return null;
 
     }
 
 
     /* ========================================================
-       DATE REQUIRED
+       REQUIRED DATE
        ======================================================== */
 
     if(
-
         !GGIrregularity.text(
             formData.incident_date
         )
-
     ){
 
         alert(
             "Please select incident date."
         );
 
-        return;
+        return null;
 
     }
 
 
     /* ========================================================
-       TIME REQUIRED
+       REQUIRED TIME
        ======================================================== */
 
     if(
-
         !GGIrregularity.text(
             formData.incident_time
         )
-
     ){
 
         alert(
             "Please select incident time."
         );
 
-        return;
+        return null;
 
     }
 
-
-    /* ========================================================
-       SUBMIT BUTTON
-       ======================================================== */
 
     const submitButton =
         document.getElementById(
@@ -2083,9 +1907,7 @@ async function(){
 
 
     if(
-
         submitButton
-
     ){
 
         submitButton.disabled =
@@ -2099,14 +1921,8 @@ async function(){
 
     try{
 
-        /* ====================================================
-           SAVE
-           ==================================================== */
-
         if(
-
             submitButton
-
         ){
 
             submitButton.textContent =
@@ -2115,6 +1931,10 @@ async function(){
         }
 
 
+        /* ====================================================
+           SAVE
+           ==================================================== */
+
         const result =
             await GGIrregularity.save(
                 formData
@@ -2122,41 +1942,38 @@ async function(){
 
 
         /* ====================================================
-           SUCCESS
+           RESULT
            ==================================================== */
 
+        const mediaStatus =
+            result?.payload?.media_status ||
+            "NONE";
+
+
         console.log(
-            "📌 Irregularity Firestore ID:",
+            "📌 Irregularity ID:",
             result.firestoreId
         );
 
 
-        const mediaStatus =
-            result
-                ?.payload
-                ?.media_status ||
-            "NONE";
-
+        /* ====================================================
+           USER MESSAGE
+           ==================================================== */
 
         if(
-
             mediaStatus ===
             "FAILED"
-
         ){
 
             alert(
                 "✅ Irregularity / Observation saved.\n\n" +
-                "⚠️ Media upload failed. The observation is safely stored in Firestore."
+                "⚠️ Media upload failed, but the observation is safely stored."
             );
 
         }
-
         else if(
-
             mediaStatus ===
             "COMPLETE"
-
         ){
 
             alert(
@@ -2164,7 +1981,6 @@ async function(){
             );
 
         }
-
         else{
 
             alert(
@@ -2182,29 +1998,52 @@ async function(){
 
 
         /* ====================================================
-           RESET DYNAMIC CATEGORY FIELDS
+           RESET CATEGORY VISIBILITY
            ==================================================== */
 
-        GGIrregularity.updateFields();
+        if(
+            typeof GGIrregularity.updateFields ===
+            "function"
+        ){
+
+            GGIrregularity.updateFields();
+
+        }
 
 
         /* ====================================================
-           CLOSE MODAL
+           CLOSE EXISTING UI MODAL
+
+           The UI module owns the actual modal.
            ==================================================== */
 
-        GGIrregularity.close();
+        if(
+            typeof window.closeIrregularityForm ===
+            "function"
+        ){
+
+            window.closeIrregularityForm();
+
+        }
+        else if(
+            typeof GGIrregularity.close ===
+            "function"
+        ){
+
+            GGIrregularity.close();
+
+        }
 
 
         return result;
 
     }
-
     catch(
         error
     ){
 
         console.error(
-            "❌ Irregularity save failed:",
+            "❌ Unable to save irregularity:",
             error
         );
 
@@ -2218,16 +2057,13 @@ async function(){
         );
 
 
-        throw error;
+        return null;
 
     }
-
     finally{
 
         if(
-
             submitButton
-
         ){
 
             submitButton.disabled =
@@ -2250,14 +2086,6 @@ async function(){
 GGIrregularity.updateFields =
 function(){
 
-    /*
-     * The form generator creates:
-     *
-     *     id="gg-irregularity-type"
-     *
-     * Therefore use the actual generated ID.
-     */
-
     const typeElement =
         document.getElementById(
             "gg-irregularity-type"
@@ -2269,10 +2097,6 @@ function(){
             typeElement?.value
         ).toUpperCase();
 
-
-    /* ========================================================
-       HIDE ALL CATEGORY GROUPS
-       ======================================================== */
 
     document
         .querySelectorAll(
@@ -2290,96 +2114,27 @@ function(){
         );
 
 
-    /* ========================================================
-       SHOW SELECTED CATEGORY
-       ======================================================== */
-
     if(
-
-        selectedType
-
+        !selectedType
     ){
-
-        const group =
-            document.querySelector(
-                `[data-irregularity-group="${selectedType}"]`
-            );
-
-
-        if(
-
-            group
-
-        ){
-
-            group.style.display =
-                "block";
-
-        }
-
-    }
-
-};
-
-
-/* ============================================================
-   OPEN MODAL
-   ============================================================ */
-
-GGIrregularity.open =
-function(){
-
-    const modal =
-        document.getElementById(
-            "ggIrregularityModal"
-        );
-
-
-    if(
-
-        !modal
-
-    ){
-
-        console.warn(
-            "⚠ ggIrregularityModal not found."
-        );
 
         return;
 
     }
 
 
-    modal.style.display =
-        "flex";
-
-
-    GGIrregularity.updateFields();
-
-};
-
-
-/* ============================================================
-   CLOSE MODAL
-   ============================================================ */
-
-GGIrregularity.close =
-function(){
-
-    const modal =
-        document.getElementById(
-            "ggIrregularityModal"
+    const group =
+        document.querySelector(
+            `[data-irregularity-group="${selectedType}"]`
         );
 
 
     if(
-
-        modal
-
+        group
     ){
 
-        modal.style.display =
-            "none";
+        group.style.display =
+            "block";
 
     }
 
@@ -2394,7 +2149,7 @@ GGIrregularity.init =
 function(){
 
     /* ========================================================
-       CATEGORY SELECT
+       CATEGORY CHANGE
        ======================================================== */
 
     const typeSelect =
@@ -2404,11 +2159,8 @@ function(){
 
 
     if(
-
         typeSelect &&
-
         !typeSelect.__ggIrregularityChangeBound
-
     ){
 
         typeSelect.__ggIrregularityChangeBound =
@@ -2428,7 +2180,11 @@ function(){
 
 
     /* ========================================================
-       FORM
+       FORM SUBMIT
+
+       ONE handler only.
+
+       Guard prevents duplicate binding.
        ======================================================== */
 
     const form =
@@ -2438,45 +2194,54 @@ function(){
 
 
     if(
-
-        form
-
+        form &&
+        !form.__ggIrregularitySubmitBound
     ){
 
-        /*
-         * Avoid duplicate submit listeners.
-         */
-
-        if(
-
-            !form.__ggIrregularitySubmitBound
-
-        ){
-
-            form.__ggIrregularitySubmitBound =
-                true;
+        form.__ggIrregularitySubmitBound =
+            true;
 
 
-            form.addEventListener(
-                "submit",
-                function(
-                    event
+        form.addEventListener(
+            "submit",
+            function(event){
+
+                event.preventDefault();
+
+
+                if(
+                    form.__ggIrregularitySubmitting
                 ){
 
-                    event.preventDefault();
-
-                    GGIrregularity.submit();
+                    return;
 
                 }
-            );
 
-        }
+
+                form.__ggIrregularitySubmitting =
+                    true;
+
+
+                Promise.resolve(
+                    GGIrregularity.submit()
+                )
+                .finally(
+                    function(){
+
+                        form.__ggIrregularitySubmitting =
+                            false;
+
+                    }
+                );
+
+            }
+        );
 
     }
 
 
     /* ========================================================
-       INITIAL FIELD STATE
+       CATEGORY VISIBILITY
        ======================================================== */
 
     GGIrregularity.updateFields();
@@ -2486,20 +2251,43 @@ function(){
 
 /* ============================================================
    START
+
+   IMPORTANT:
+   This does NOT open the form.
+   This does NOT request GPS.
+   This does NOT resolve GIS.
+   This does NOT reload the application.
    ============================================================ */
 
 if(
-
     document.readyState ===
     "loading"
-
 ){
 
     document.addEventListener(
         "DOMContentLoaded",
         function(){
 
-            GGIrregularity.init();
+            /*
+             * Only initialize if the form already exists.
+             *
+             * The UI can also call GGIrregularity.init()
+             * after dynamically creating the form.
+             */
+
+            const form =
+                document.getElementById(
+                    "ggIrregularityForm"
+                );
+
+
+            if(
+                form
+            ){
+
+                GGIrregularity.init();
+
+            }
 
         },
         {
@@ -2511,7 +2299,19 @@ if(
 }
 else{
 
-    GGIrregularity.init();
+    const form =
+        document.getElementById(
+            "ggIrregularityForm"
+        );
+
+
+    if(
+        form
+    ){
+
+        GGIrregularity.init();
+
+    }
 
 }
 
