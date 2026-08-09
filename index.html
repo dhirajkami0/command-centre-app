@@ -38677,13 +38677,13 @@ function buildSightingMediaPopup(
 //
 // IMPORTANT:
 //
-// Do NOT use fetch() here.
-// Do NOT use HEAD.
-// Do NOT create a Blob.
-// Do NOT open a new tab.
-//
-// Firebase Storage already returns a signed download URL.
-// The browser should handle the download natively.
+// - No fetch()
+// - No HEAD request
+// - No Blob
+// - No new tab
+// - No page navigation
+// - No safeHtml() dependency
+// - Native browser download
 //
 // ========================================================
 
@@ -38692,11 +38692,72 @@ function downloadButton(
     label
 ){
 
+    // ====================================================
+    // SAFE URL ESCAPE
+    // ====================================================
+
     const safeUrl =
-        safeHtml(
-            url
+        String(
+            url ||
+            ""
+        )
+        .trim()
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
         );
 
+
+    // ====================================================
+    // SAFE LABEL
+    // ====================================================
+
+    const safeLabel =
+        String(
+            label ||
+            "Download"
+        )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+
+    // ====================================================
+    // RETURN NATIVE DOWNLOAD LINK
+    // ====================================================
 
     return `
 
@@ -38741,7 +38802,7 @@ function downloadButton(
                 -webkit-user-select:none;
             "
         >
-            ${label}
+            ${safeLabel}
         </a>
 
     `;
