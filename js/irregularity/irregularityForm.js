@@ -413,7 +413,7 @@ function(){
                 GGIrregularity.TYPES.ENCROACHMENT,
 
             label:
-                "🏠 Encroachment"
+                "🚧 Encroachment"
         },
 
         {
@@ -421,7 +421,7 @@ function(){
                 GGIrregularity.TYPES.STRUCTURE,
 
             label:
-                "🏗 Illegal Structure / Occupation"
+                "🏗️ Illegal Structure / Occupation"
         },
 
         {
@@ -429,7 +429,7 @@ function(){
                 GGIrregularity.TYPES.POACHING,
 
             label:
-                "🪤 Poaching"
+                "🏹 Poaching"
         },
 
         {
@@ -437,7 +437,7 @@ function(){
                 GGIrregularity.TYPES.TRESPASSING,
 
             label:
-                "🚫 Trespassing"
+                "🚪 Illegal Entry / Trespassing"
         },
 
         {
@@ -445,7 +445,7 @@ function(){
                 GGIrregularity.TYPES.WILDLIFE_INJURY,
 
             label:
-                "🦌 Wildlife Injury"
+                "🐾 Wildlife Injury"
         },
 
         {
@@ -453,7 +453,7 @@ function(){
                 GGIrregularity.TYPES.WILDLIFE_DEATH,
 
             label:
-                "🦴 Wildlife Death"
+                "☠️ Wildlife Death"
         },
 
         {
@@ -461,7 +461,7 @@ function(){
                 GGIrregularity.TYPES.OBSERVATION,
 
             label:
-                "👁 General Observation"
+                "👁️ General Observation"
         }
 
     ];
@@ -477,26 +477,30 @@ GGIrregularity.Form.categorySelect =
 function(){
 
     return GGIrregularity.Form.field(
-        "Observation / Irregularity Type",
-        "category",
+
+        "Irregularity / Offence / Observation",
+
+        "type",
+
         "select",
+
         {
-            required:true,
+
+            required:
+                true,
+
             options:
-                GGIrregularity.Form
-                    .categoryOptions()
+                GGIrregularity.Form.categoryOptions()
+
         }
-    )
-    .replace(
-        'id="gg-irregularity-category"',
-        'id="ggIrregularityType"'
+
     );
 
 };
 
 
 /* ============================================================
-   COMMON DATE / TIME
+   COMMON INCIDENT DATE / TIME
    ============================================================ */
 
 GGIrregularity.Form.commonFields =
@@ -515,32 +519,23 @@ function(){
             "
         >
 
-            <div>
+            ${GGIrregularity.Form.field(
+                "Incident Date",
+                "incident_date",
+                "date",
+                {
+                    required:true
+                }
+            )}
 
-                ${GGIrregularity.Form.field(
-                    "Incident Date",
-                    "incident_date",
-                    "date",
-                    {
-                        required:true
-                    }
-                )}
-
-            </div>
-
-
-            <div>
-
-                ${GGIrregularity.Form.field(
-                    "Incident Time",
-                    "incident_time",
-                    "time",
-                    {
-                        required:true
-                    }
-                )}
-
-            </div>
+            ${GGIrregularity.Form.field(
+                "Incident Time",
+                "incident_time",
+                "time",
+                {
+                    required:true
+                }
+            )}
 
         </div>
 
@@ -550,11 +545,7 @@ function(){
 
 
 /* ============================================================
-   FELLING
-   ============================================================ */
-
-/* ============================================================
-   FELLING
+   🌳 ILLICIT FELLING
    ============================================================ */
 
 GGIrregularity.Form.felling =
@@ -564,37 +555,37 @@ function(){
 
         <div
             data-irregularity-group="ILLICIT_FELLING"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Species / Tree Type",
-                "felling_species",
+                "Felling Compartment",
+                "felling_compartment",
                 "text",
                 {
                     placeholder:
-                        "e.g. Sal, Teak"
+                        "Compartment"
                 }
             )}
 
             ${GGIrregularity.Form.field(
-                "Approx. Number of Trees",
-                "felling_tree_count",
+                "No. of Trees Felled",
+                "number_of_felling",
                 "number",
                 {
-                    min:0
+                    min:"0",
+                    placeholder:
+                        "Number of trees"
                 }
             )}
 
             ${GGIrregularity.Form.field(
-                "Approx. Volume",
-                "felling_volume",
+                "Species Felled",
+                "species_felled",
                 "text",
                 {
                     placeholder:
-                        "e.g. 2.5 m³"
+                        "Species"
                 }
             )}
 
@@ -606,7 +597,7 @@ function(){
 
 
 /* ============================================================
-   TIMBER
+   🪵 ILLEGAL TIMBER / FOREST PRODUCE
    ============================================================ */
 
 GGIrregularity.Form.timber =
@@ -616,38 +607,26 @@ function(){
 
         <div
             data-irregularity-group="ILLEGAL_TIMBER_FOREST_PRODUCE"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Forest Produce",
-                "timber_produce",
+                "Timber / Forest Produce",
+                "timber_type",
                 "text",
                 {
                     placeholder:
-                        "Timber / firewood / bamboo etc."
+                        "Type of timber / forest produce"
                 }
             )}
 
             ${GGIrregularity.Form.field(
-                "Approx. Quantity",
+                "Quantity",
                 "timber_quantity",
                 "text",
                 {
                     placeholder:
-                        "Quantity / volume"
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Vehicle / Mode of Transport",
-                "timber_vehicle",
-                "text",
-                {
-                    placeholder:
-                        "Vehicle number if available"
+                        "Quantity / measurement"
                 }
             )}
 
@@ -659,7 +638,7 @@ function(){
 
 
 /* ============================================================
-   MINING
+   🚜 ILLEGAL MINING / EARTH CUTTING
    ============================================================ */
 
 GGIrregularity.Form.mining =
@@ -669,31 +648,37 @@ function(){
 
         <div
             data-irregularity-group="ILLEGAL_MINING_EARTH_CUTTING"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Material / Activity",
-                "mining_material",
+                "Mining / Earth Cutting Compartment",
+                "mining_compartment",
                 "text",
                 {
                     placeholder:
-                        "Stone / sand / earth etc."
+                        "Compartment"
                 }
             )}
 
             ${GGIrregularity.Form.field(
-                "Approx. Area / Quantity",
-                "mining_quantity",
-                "text"
+                "Area",
+                "mining_area",
+                "text",
+                {
+                    placeholder:
+                        "Area / extent"
+                }
             )}
 
             ${GGIrregularity.Form.field(
-                "Machinery / Vehicle",
-                "mining_machinery",
-                "text"
+                "Mining / Cutting Type",
+                "mining_type",
+                "text",
+                {
+                    placeholder:
+                        "Mining / earth cutting details"
+                }
             )}
 
         </div>
@@ -704,7 +689,7 @@ function(){
 
 
 /* ============================================================
-   FISHING
+   🎣 ILLEGAL FISHING
    ============================================================ */
 
 GGIrregularity.Form.fishing =
@@ -714,27 +699,27 @@ function(){
 
         <div
             data-irregularity-group="ILLEGAL_FISHING"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Water Body",
-                "fishing_water_body",
-                "text"
+                "Fishing Location / Water Body",
+                "fishing_location",
+                "text",
+                {
+                    placeholder:
+                        "River / stream / water body"
+                }
             )}
 
             ${GGIrregularity.Form.field(
                 "Fishing Method",
                 "fishing_method",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Equipment / Net",
-                "fishing_equipment",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Method / gear used"
+                }
             )}
 
         </div>
@@ -745,7 +730,7 @@ function(){
 
 
 /* ============================================================
-   GRAZING
+   🐄 ILLEGAL GRAZING
    ============================================================ */
 
 GGIrregularity.Form.grazing =
@@ -755,30 +740,17 @@ function(){
 
         <div
             data-irregularity-group="ILLEGAL_GRAZING"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Animal Type",
-                "grazing_animal_type",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Number",
-                "grazing_count",
-                "number",
+                "Grazing Area / Details",
+                "grazing_area",
+                "text",
                 {
-                    min:0
+                    placeholder:
+                        "Estimated area / grazing details"
                 }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Owner / Village if Known",
-                "grazing_owner",
-                "text"
             )}
 
         </div>
@@ -789,7 +761,7 @@ function(){
 
 
 /* ============================================================
-   FIRE
+   🔥 FOREST FIRE
    ============================================================ */
 
 GGIrregularity.Form.fire =
@@ -799,61 +771,36 @@ function(){
 
         <div
             data-irregularity-group="FOREST_FIRE"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Fire Type",
-                "fire_type",
-                "text",
-                {
-                    placeholder:
-                        "Ground fire / crown fire / smoke etc."
-                }
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Area Affected",
+                "Fire Compartment / Area",
                 "fire_area",
                 "text",
                 {
                     placeholder:
-                        "e.g. 2 hectares"
+                        "Compartment / affected area"
                 }
             )}
 
             ${GGIrregularity.Form.field(
-                "Fire Status",
-                "fire_status",
-                "select",
+                "Area Affected",
+                "fire_affected_area",
+                "text",
                 {
-                    options:[
-                        {
-                            value:
-                                "ACTIVE",
+                    placeholder:
+                        "Estimated affected area"
+                }
+            )}
 
-                            label:
-                                "Active"
-                        },
-
-                        {
-                            value:
-                                "CONTROLLED",
-
-                            label:
-                                "Controlled"
-                        },
-
-                        {
-                            value:
-                                "EXTINGUISHED",
-
-                            label:
-                                "Extinguished"
-                        }
-                    ]
+            ${GGIrregularity.Form.field(
+                "Probable Cause",
+                "fire_cause",
+                "text",
+                {
+                    placeholder:
+                        "If known"
                 }
             )}
 
@@ -865,7 +812,7 @@ function(){
 
 
 /* ============================================================
-   ENCROACHMENT
+   🚧 ENCROACHMENT
    ============================================================ */
 
 GGIrregularity.Form.encroachment =
@@ -875,29 +822,36 @@ function(){
 
         <div
             data-irregularity-group="ENCROACHMENT"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Nature of Encroachment",
-                "encroachment_nature",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Approx. Area",
-                "encroachment_area",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Structure / Cultivation Details",
-                "encroachment_details",
-                "textarea",
+                "Encroachment Compartment",
+                "encroached_compartment",
+                "text",
                 {
-                    rows:3
+                    placeholder:
+                        "Compartment"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Area Encroached",
+                "encroached_area",
+                "text",
+                {
+                    placeholder:
+                        "Area encroached"
+                }
+            )}
+
+            ${GGIrregularity.Form.field(
+                "Encroachment Type",
+                "encroachment_type",
+                "text",
+                {
+                    placeholder:
+                        "Cultivation / occupation / other"
                 }
             )}
 
@@ -909,7 +863,7 @@ function(){
 
 
 /* ============================================================
-   STRUCTURE
+   🏗️ ILLEGAL STRUCTURE / OCCUPATION
    ============================================================ */
 
 GGIrregularity.Form.structure =
@@ -919,27 +873,28 @@ function(){
 
         <div
             data-irregularity-group="ILLEGAL_STRUCTURE_OCCUPATION"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
                 "Structure Type",
                 "structure_type",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "House / shed / road / other"
+                }
             )}
 
             ${GGIrregularity.Form.field(
-                "Approx. Size",
-                "structure_size",
-                "text"
-            )}
-
-            ${GGIrregularity.Form.field(
-                "Purpose / Use",
-                "structure_purpose",
-                "text"
+                "Description",
+                "structure_description",
+                "textarea",
+                {
+                    rows:3,
+                    placeholder:
+                        "Describe the structure / occupation"
+                }
             )}
 
         </div>
@@ -950,7 +905,7 @@ function(){
 
 
 /* ============================================================
-   POACHING
+   🏹 POACHING
    ============================================================ */
 
 GGIrregularity.Form.poaching =
@@ -960,23 +915,26 @@ function(){
 
         <div
             data-irregularity-group="POACHING"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Target Species",
+                "Species",
                 "poaching_species",
-                "text"
+                "text",
+                {
+                    placeholder:
+                        "Species, if known"
+                }
             )}
 
             ${GGIrregularity.Form.field(
-                "Evidence / Method",
+                "Poaching Method / Evidence",
                 "poaching_method",
-                "textarea",
+                "text",
                 {
-                    rows:3
+                    placeholder:
+                        "Method / evidence observed"
                 }
             )}
 
@@ -988,7 +946,7 @@ function(){
 
 
 /* ============================================================
-   TRESPASSING
+   🚪 ILLEGAL ENTRY / TRESPASSING
    ============================================================ */
 
 GGIrregularity.Form.trespassing =
@@ -997,24 +955,27 @@ function(){
     return `
 
         <div
-            data-irregularity-group="TRESPASSING"
-            style="
-                display:none;
-            "
+            data-irregularity-group="ILLEGAL_ENTRY_TRESPASSING"
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
-                "Purpose / Activity",
-                "trespassing_activity",
-                "text"
+                "No. of Trespassers",
+                "trespasser_count",
+                "number",
+                {
+                    min:"0"
+                }
             )}
 
             ${GGIrregularity.Form.field(
-                "Persons / Vehicle Details",
-                "trespassing_persons",
+                "Details",
+                "trespassing_description",
                 "textarea",
                 {
-                    rows:3
+                    rows:3,
+                    placeholder:
+                        "Describe entry / trespassing observed"
                 }
             )}
 
@@ -1026,7 +987,7 @@ function(){
 
 
 /* ============================================================
-   WILDLIFE INJURY
+   🐾 WILDLIFE INJURY
    ============================================================ */
 
 GGIrregularity.Form.wildlifeInjury =
@@ -1036,23 +997,61 @@ function(){
 
         <div
             data-irregularity-group="WILDLIFE_INJURY"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
                 "Species",
-                "wildlife_injury_species",
-                "text"
+                "injured_species",
+                "text",
+                {
+                    placeholder:
+                        "Species"
+                }
             )}
 
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        minmax(0,1fr)
+                        minmax(0,1fr);
+                    gap:8px;
+                "
+            >
+
+                ${GGIrregularity.Form.field(
+                    "Age",
+                    "injured_age",
+                    "text",
+                    {
+                        placeholder:
+                            "Age"
+                    }
+                )}
+
+                ${GGIrregularity.Form.field(
+                    "Sex",
+                    "injured_sex",
+                    "text",
+                    {
+                        placeholder:
+                            "Sex"
+                    }
+                )}
+
+            </div>
+
+
             ${GGIrregularity.Form.field(
-                "Condition / Injury",
-                "wildlife_injury_condition",
+                "Injury Details",
+                "injury_details",
                 "textarea",
                 {
-                    rows:3
+                    rows:3,
+                    placeholder:
+                        "Describe injury"
                 }
             )}
 
@@ -1064,7 +1063,7 @@ function(){
 
 
 /* ============================================================
-   WILDLIFE DEATH
+   ☠️ WILDLIFE DEATH
    ============================================================ */
 
 GGIrregularity.Form.wildlifeDeath =
@@ -1074,23 +1073,60 @@ function(){
 
         <div
             data-irregularity-group="WILDLIFE_DEATH"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
                 "Species",
-                "wildlife_death_species",
-                "text"
+                "dead_species",
+                "text",
+                {
+                    placeholder:
+                        "Species"
+                }
             )}
 
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        minmax(0,1fr)
+                        minmax(0,1fr);
+                    gap:8px;
+                "
+            >
+
+                ${GGIrregularity.Form.field(
+                    "Sex",
+                    "dead_sex",
+                    "text",
+                    {
+                        placeholder:
+                            "Sex"
+                    }
+                )}
+
+                ${GGIrregularity.Form.field(
+                    "Age",
+                    "dead_age",
+                    "text",
+                    {
+                        placeholder:
+                            "Age"
+                    }
+                )}
+
+            </div>
+
+
             ${GGIrregularity.Form.field(
-                "Condition / Suspected Cause",
-                "wildlife_death_condition",
-                "textarea",
+                "Measurement",
+                "dead_measurement",
+                "text",
                 {
-                    rows:3
+                    placeholder:
+                        "Body / carcass measurement"
                 }
             )}
 
@@ -1102,7 +1138,7 @@ function(){
 
 
 /* ============================================================
-   OBSERVATION
+   👁️ GENERAL OBSERVATION
    ============================================================ */
 
 GGIrregularity.Form.observation =
@@ -1112,19 +1148,17 @@ function(){
 
         <div
             data-irregularity-group="GENERAL_OBSERVATION"
-            style="
-                display:none;
-            "
+            style="display:none;"
         >
 
             ${GGIrregularity.Form.field(
                 "Observation",
-                "observation_text",
+                "observation",
                 "textarea",
                 {
                     rows:4,
                     placeholder:
-                        "Describe the observation..."
+                        "Describe the observation"
                 }
             )}
 
@@ -1136,45 +1170,57 @@ function(){
 
 
 /* ============================================================
-   REMARKS
+   COMMON REMARKS
    ============================================================ */
 
 GGIrregularity.Form.remarks =
 function(){
 
-    return `
+    return GGIrregularity.Form.field(
 
-        <div
-            style="
-                width:100%;
-                box-sizing:border-box;
-                margin-top:2px;
-            "
-        >
+        "Remarks",
 
-            ${GGIrregularity.Form.field(
-                "Remarks",
-                "remarks",
-                "textarea",
-                {
-                    rows:4,
-                    placeholder:
-                        "Additional remarks..."
-                }
-            )}
+        "remarks",
 
-        </div>
+        "textarea",
 
-    `;
+        {
+            rows:3,
+
+            placeholder:
+                "Additional remarks"
+        }
+
+    );
 
 };
 
 
-
-
-
 /* ============================================================
-   MEDIA UI
+   📷 MEDIA
+   ============================================================
+
+   IMPORTANT
+   ------------------------------------------------------------
+   These MUST be actual <input type="file"> elements.
+
+   irregularityModule.js checks:
+
+       element.files[0]
+
+   Therefore buttons with the same IDs are incorrect.
+
+   The visible labels act as the professional buttons while
+   the actual file inputs remain visually hidden.
+
+   IDs are preserved:
+
+       gg-irregularity-photo
+       gg-irregularity-video
+       gg-irregularity-audio
+
+   This keeps compatibility with the module.
+
    ============================================================ */
 
 GGIrregularity.Form.media =
@@ -1197,125 +1243,39 @@ function(){
 
             <div
                 style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    gap:8px;
-                    margin-bottom:8px;
+                    margin:0 0 8px 0;
+                    color:#1b5e20;
+                    font-size:12px;
+                    font-weight:800;
                 "
             >
-
-                <div
-                    style="
-                        color:#1b5e20;
-                        font-size:12px;
-                        font-weight:800;
-                    "
-                >
-                    📎 MEDIA
-                </div>
-
-                <div
-                    id="gg-irregularity-media-status"
-                    style="
-                        color:#607d8b;
-                        font-size:10px;
-                        text-align:right;
-                    "
-                >
-                    No media selected.
-                </div>
-
+                📎 MEDIA
             </div>
 
-
-            <!-- ==================================================
-                 PHOTO INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-photo"
-                name="photo"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 VIDEO INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-video"
-                name="video"
-                type="file"
-                accept="video/*"
-                capture="environment"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 AUDIO FILE INPUT
-                 ================================================== -->
-
-            <input
-                id="gg-irregularity-audio"
-                name="audio"
-                type="file"
-                accept="audio/*"
-                style="
-                    position:absolute;
-                    width:1px;
-                    height:1px;
-                    opacity:0;
-                    pointer-events:none;
-                "
-            >
-
-
-            <!-- ==================================================
-                 MAIN MEDIA BUTTONS
-                 ================================================== -->
 
             <div
                 style="
                     display:grid;
                     grid-template-columns:
-                        minmax(0,1fr)
-                        minmax(0,1fr)
-                        minmax(0,1fr);
+                        repeat(
+                            3,
+                            minmax(0,1fr)
+                        );
                     gap:7px;
                     width:100%;
                 "
             >
 
-                <button
-                    type="button"
-                    id="gg-irregularity-photo-btn"
-                    onclick="
-                        document
-                            .getElementById(
-                                'gg-irregularity-photo'
-                            )
-                            ?.click();
-                    "
+                <!-- PHOTO -->
+
+                <label
+                    for="gg-irregularity-photo"
                     style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
                         min-height:38px;
+                        box-sizing:border-box;
                         border:1px solid #c8d6c8;
                         border-radius:7px;
                         background:#ffffff;
@@ -1323,25 +1283,40 @@ function(){
                         font-size:11px;
                         font-weight:700;
                         cursor:pointer;
+                        text-align:center;
                         touch-action:manipulation;
+                        -webkit-tap-highlight-color:transparent;
                     "
                 >
-                    📷 PHOTO
-                </button>
+                    📷 Photo
+                </label>
 
 
-                <button
-                    type="button"
-                    id="gg-irregularity-video-btn"
-                    onclick="
-                        document
-                            .getElementById(
-                                'gg-irregularity-video'
-                            )
-                            ?.click();
-                    "
+                <input
+                    id="gg-irregularity-photo"
+                    name="photo"
+                    type="file"
+                    accept="image/*"
                     style="
+                        position:absolute;
+                        width:1px;
+                        height:1px;
+                        opacity:0;
+                        pointer-events:none;
+                    "
+                >
+
+
+                <!-- VIDEO -->
+
+                <label
+                    for="gg-irregularity-video"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
                         min-height:38px;
+                        box-sizing:border-box;
                         border:1px solid #c8d6c8;
                         border-radius:7px;
                         background:#ffffff;
@@ -1349,21 +1324,40 @@ function(){
                         font-size:11px;
                         font-weight:700;
                         cursor:pointer;
+                        text-align:center;
                         touch-action:manipulation;
+                        -webkit-tap-highlight-color:transparent;
                     "
                 >
-                    🎥 VIDEO
-                </button>
+                    🎥 Video
+                </label>
 
 
-                <button
-                    type="button"
-                    id="gg-irregularity-record-audio"
-                    onclick="
-                        GGIrregularity.Media.recordAudio();
-                    "
+                <input
+                    id="gg-irregularity-video"
+                    name="video"
+                    type="file"
+                    accept="video/*"
                     style="
+                        position:absolute;
+                        width:1px;
+                        height:1px;
+                        opacity:0;
+                        pointer-events:none;
+                    "
+                >
+
+
+                <!-- AUDIO -->
+
+                <label
+                    for="gg-irregularity-audio"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
                         min-height:38px;
+                        box-sizing:border-box;
                         border:1px solid #c8d6c8;
                         border-radius:7px;
                         background:#ffffff;
@@ -1371,330 +1365,42 @@ function(){
                         font-size:11px;
                         font-weight:700;
                         cursor:pointer;
+                        text-align:center;
                         touch-action:manipulation;
+                        -webkit-tap-highlight-color:transparent;
                     "
                 >
-                    🎙 RECORD AUDIO
-                </button>
-
-            </div>
+                    🎙 Audio
+                </label>
 
 
-            <!-- ==================================================
-                 PHOTO PREVIEW
-                 ================================================== -->
-
-            <div
-                id="gg-irregularity-photo-preview"
-                style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <div
+                <input
+                    id="gg-irregularity-audio"
+                    name="audio"
+                    type="file"
+                    accept="audio/*"
                     style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        📷 Photo Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                document
-                                    .getElementById(
-                                        'gg-irregularity-photo'
-                                    )
-                                    ?.click();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            CHANGE
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removePhoto();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <img
-                    id="gg-irregularity-photo-preview-img"
-                    alt="Photo preview"
-                    style="
-                        display:block;
-                        width:100%;
-                        max-height:220px;
-                        object-fit:contain;
-                        border-radius:6px;
-                        background:#f4f6f4;
+                        position:absolute;
+                        width:1px;
+                        height:1px;
+                        opacity:0;
+                        pointer-events:none;
                     "
                 >
 
             </div>
 
 
-            <!-- ==================================================
-                 VIDEO PREVIEW
-                 ================================================== -->
-
             <div
-                id="gg-irregularity-video-preview"
+                id="gg-irregularity-media-status"
                 style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
+                    margin-top:7px;
+                    color:#607d8b;
+                    font-size:10px;
+                    line-height:1.3;
                 "
             >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        🎥 Video Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                document
-                                    .getElementById(
-                                        'gg-irregularity-video'
-                                    )
-                                    ?.click();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            CHANGE
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removeVideo();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <video
-                    id="gg-irregularity-video-preview-player"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    style="
-                        display:block;
-                        width:100%;
-                        max-height:240px;
-                        border-radius:6px;
-                        background:#111111;
-                    "
-                ></video>
-
-            </div>
-
-
-            <!-- ==================================================
-                 AUDIO PREVIEW
-                 ================================================== -->
-
-            <div
-                id="gg-irregularity-audio-preview"
-                style="
-                    display:none;
-                    margin-top:9px;
-                    padding:8px;
-                    border:1px solid #d7e2d7;
-                    border-radius:7px;
-                    background:#ffffff;
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        gap:8px;
-                        margin-bottom:6px;
-                    "
-                >
-
-                    <strong
-                        style="
-                            color:#37474f;
-                            font-size:11px;
-                        "
-                    >
-                        🎙 Audio Preview
-                    </strong>
-
-
-                    <div
-                        style="
-                            display:flex;
-                            gap:5px;
-                        "
-                    >
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .recordAgain();
-                            "
-                            style="
-                                border:1px solid #c8d6c8;
-                                border-radius:6px;
-                                background:#ffffff;
-                                color:#1b5e20;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            RECORD AGAIN
-                        </button>
-
-
-                        <button
-                            type="button"
-                            onclick="
-                                GGIrregularity.Media
-                                    .removeAudio();
-                            "
-                            style="
-                                border:1px solid #efcaca;
-                                border-radius:6px;
-                                background:#fffafa;
-                                color:#c62828;
-                                font-size:10px;
-                                padding:5px 8px;
-                            "
-                        >
-                            REMOVE
-                        </button>
-
-                    </div>
-
-                </div>
-
-
-                <audio
-                    id="gg-irregularity-audio-preview-player"
-                    controls
-                    preload="metadata"
-                    style="
-                        display:block;
-                        width:100%;
-                    "
-                ></audio>
-
-
-                <div
-                    id="gg-irregularity-audio-timer"
-                    style="
-                        margin-top:5px;
-                        color:#78909c;
-                        font-size:10px;
-                    "
-                >
-                </div>
-
+                No media selected.
             </div>
 
         </div>
@@ -1703,125 +1409,31 @@ function(){
 
 };
 
+
 /* ============================================================
-   MEDIA INPUT EVENTS
+   MEDIA STATUS LISTENERS
    ============================================================ */
 
-GGIrregularity.Form.bindMediaEvents =
+GGIrregularity.Form.bindMediaStatus =
 function(){
 
-    const photoInput =
+    const photo =
         document.getElementById(
             "gg-irregularity-photo"
         );
 
 
-    const videoInput =
+    const video =
         document.getElementById(
             "gg-irregularity-video"
         );
 
 
-    const audioInput =
+    const audio =
         document.getElementById(
             "gg-irregularity-audio"
         );
 
-
-    /* ========================================================
-       PHOTO
-       ======================================================== */
-
-    if(
-        photoInput &&
-        !photoInput.dataset.ggBound
-    ){
-
-        photoInput.addEventListener(
-            "change",
-            function(){
-
-                GGIrregularity.Media
-                    .previewPhoto(
-                        photoInput
-                    );
-
-            }
-        );
-
-
-        photoInput.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /* ========================================================
-       VIDEO
-       ======================================================== */
-
-    if(
-        videoInput &&
-        !videoInput.dataset.ggBound
-    ){
-
-        videoInput.addEventListener(
-            "change",
-            function(){
-
-                GGIrregularity.Media
-                    .previewVideo(
-                        videoInput
-                    );
-
-            }
-        );
-
-
-        videoInput.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /* ========================================================
-       AUDIO FILE
-       ======================================================== */
-
-    if(
-        audioInput &&
-        !audioInput.dataset.ggBound
-    ){
-
-        audioInput.addEventListener(
-            "change",
-            function(){
-
-                GGIrregularity.Media
-                    .previewAudio(
-                        audioInput
-                    );
-
-            }
-        );
-
-
-        audioInput.dataset.ggBound =
-            "1";
-
-    }
-
-};
-
-
-/* ============================================================
-   MEDIA STATUS
-   ============================================================ */
-
-GGIrregularity.Form.updateMediaStatus =
-function(
-    forcedStatus
-){
 
     const status =
         document.getElementById(
@@ -1838,797 +1450,111 @@ function(
     }
 
 
-    if(
-        forcedStatus ===
-        "recording"
-    ){
+    const update =
+    function(){
+
+        const names = [];
+
+
+        if(
+            photo?.files?.length
+        ){
+
+            names.push(
+                "📷 " +
+                photo.files[0].name
+            );
+
+        }
+
+
+        if(
+            video?.files?.length
+        ){
+
+            names.push(
+                "🎥 " +
+                video.files[0].name
+            );
+
+        }
+
+
+        if(
+            audio?.files?.length
+        ){
+
+            names.push(
+                "🎙 " +
+                audio.files[0].name
+            );
+
+        }
+
 
         status.textContent =
-            "🎙 Recording audio...";
-
-
-        status.style.color =
-            "#c62828";
-
-
-        return;
-
-    }
-
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    const items = [];
-
-
-    if(
-        media.photo
-    ){
-
-        items.push(
-            "Photo"
-        );
-
-    }
-
-
-    if(
-        media.video
-    ){
-
-        items.push(
-            "Video"
-        );
-
-    }
-
-
-    if(
-        media.audio ||
-        media.nativeAudioUri
-    ){
-
-        items.push(
-            "Audio"
-        );
-
-    }
-
-
-    if(
-        items.length === 0
-    ){
-
-        status.textContent =
-            "No media selected.";
-
-
-        status.style.color =
-            "#607d8b";
-
-
-        return;
-
-    }
-
-
-    status.textContent =
-        items.join(
-            " + "
-        ) +
-        " selected";
-
-
-    status.style.color =
-        "#2e7d32";
-
-};
-
-
-/* ============================================================
-   RESET MEDIA
-   ============================================================ */
-
-GGIrregularity.Form.resetMedia =
-function(){
-
-    /*
-     * Stop browser recorder if active.
-     */
-
-    if(
-        GGIrregularity.Media
-            ._audioRecorder
-    ){
-
-        try{
-
-            const recorder =
-                GGIrregularity.Media
-                    ._audioRecorder;
-
-
-            if(
-                recorder.state ===
-                "recording"
-            ){
-
-                recorder.stop();
-
-            }
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    if(
-        GGIrregularity.Media
-            ._audioTimer
-    ){
-
-        clearInterval(
-            GGIrregularity.Media
-                ._audioTimer
-        );
-
-
-        GGIrregularity.Media
-            ._audioTimer =
-            null;
-
-    }
-
-
-    GGIrregularity.Media._revoke(
-        "photo"
-    );
-
-
-    GGIrregularity.Media._revoke(
-        "video"
-    );
-
-
-    GGIrregularity.Media._revoke(
-        "audio"
-    );
-
-
-    GGIrregularity.Media
-        ._audioRecorder =
-        null;
-
-
-    GGIrregularity.Media
-        ._audioChunks =
-        [];
-
-
-    GGIrregularity.Media
-        ._recording =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioActive =
-        false;
-
-
-    GGIrregularity.Media
-        ._nativeAudioUri =
-        null;
-
-
-    window.currentIrregularityAudioType =
-        null;
-
-
-    const ids = [
-
-        "gg-irregularity-photo",
-
-        "gg-irregularity-video",
-
-        "gg-irregularity-audio"
-
-    ];
-
-
-    ids.forEach(
-        function(id){
-
-            const input =
-                document.getElementById(
-                    id
-                );
-
-
-            if(
-                input
-            ){
-
-                input.value =
-                    "";
-
-            }
-
-        }
-    );
-
-
-    const photoImage =
-        document.getElementById(
-            "gg-irregularity-photo-preview-img"
-        );
-
-
-    if(
-        photoImage
-    ){
-
-        photoImage.removeAttribute(
-            "src"
-        );
-
-    }
-
-
-    const photoPreview =
-        document.getElementById(
-            "gg-irregularity-photo-preview"
-        );
-
-
-    if(
-        photoPreview
-    ){
-
-        photoPreview.style.display =
-            "none";
-
-    }
-
-
-    const videoPlayer =
-        document.getElementById(
-            "gg-irregularity-video-preview-player"
-        );
-
-
-    if(
-        videoPlayer
-    ){
-
-        try{
-
-            videoPlayer.pause();
-
-        }
-        catch(_){
-
-        }
-
-
-        videoPlayer.removeAttribute(
-            "src"
-        );
-
-
-        try{
-
-            videoPlayer.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    const videoPreview =
-        document.getElementById(
-            "gg-irregularity-video-preview"
-        );
-
-
-    if(
-        videoPreview
-    ){
-
-        videoPreview.style.display =
-            "none";
-
-    }
-
-
-    const audioPlayer =
-        document.getElementById(
-            "gg-irregularity-audio-preview-player"
-        );
-
-
-    if(
-        audioPlayer
-    ){
-
-        try{
-
-            audioPlayer.pause();
-
-        }
-        catch(_){
-
-        }
-
-
-        audioPlayer.removeAttribute(
-            "src"
-        );
-
-
-        try{
-
-            audioPlayer.load();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    const audioPreview =
-        document.getElementById(
-            "gg-irregularity-audio-preview"
-        );
-
-
-    if(
-        audioPreview
-    ){
-
-        audioPreview.style.display =
-            "none";
-
-    }
-
-
-    const timer =
-        document.getElementById(
-            "gg-irregularity-audio-timer"
-        );
-
-
-    if(
-        timer
-    ){
-
-        timer.textContent =
-            "";
-
-    }
-
-
-    GGIrregularity.Form
-        .updateMediaStatus();
-
-};
-
-
-/* ============================================================
-   SET DEFAULT DATE / TIME
-   ============================================================ */
-
-GGIrregularity.Form.setDateTimeDefaults =
-function(){
-
-    const now =
-        new Date();
-
-
-    const date =
-        now
-            .toISOString()
-            .slice(
-                0,
-                10
-            );
-
-
-    const hours =
-        String(
-            now.getHours()
-        )
-        .padStart(
-            2,
-            "0"
-        );
-
-
-    const minutes =
-        String(
-            now.getMinutes()
-        )
-        .padStart(
-            2,
-            "0"
-        );
-
-
-    const dateInput =
-        document.getElementById(
-            "gg-irregularity-incident_date"
-        );
-
-
-    const timeInput =
-        document.getElementById(
-            "gg-irregularity-incident_time"
-        );
-
-
-    if(
-        dateInput
-    ){
-
-        dateInput.value =
-            date;
-
-    }
-
-
-    if(
-        timeInput
-    ){
-
-        timeInput.value =
-            hours +
-            ":" +
-            minutes;
-
-    }
-
-};
-
-
-/* ============================================================
-   CATEGORY VISIBILITY
-   ============================================================ */
-
-GGIrregularity.Form.updateCategoryFields =
-function(){
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        )?.value ||
-        "";
-
-
-    document
-        .querySelectorAll(
-            "[data-irregularity-group]"
-        )
-        .forEach(
-            function(group){
-
-                group.style.display =
-                    "none";
-
-            }
-        );
-
-
-    if(
-        !category
-    ){
-
-        return;
-
-    }
-
-
-    const group =
-        document.querySelector(
-            '[data-irregularity-group="' +
-            CSS.escape(category) +
-            '"]'
-        );
-
-
-    if(
-        group
-    ){
-
-        group.style.display =
-            "block";
-
-    }
-
-};
-
-
-/* ============================================================
-   READ FORM VALUES
-   ============================================================ */
-
-GGIrregularity.Form.collect =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        !form
-    ){
-
-        throw new Error(
-            "Irregularity form not found."
-        );
-
-    }
-
-
-    const formData =
-        new FormData(
-            form
-        );
-
-
-    const data = {};
-
-
-    formData.forEach(
-        function(value,key){
-
-            /*
-             * Ignore actual media files.
-             * Media is collected by GGIrregularity.Media.
-             */
-
-            if(
-                key === "photo" ||
-                key === "video" ||
-                key === "audio"
-            ){
-
-                return;
-
-            }
-
-
-            if(
-                value instanceof File
-            ){
-
-                return;
-
-            }
-
-
-            data[key] =
-                typeof value ===
-                "string"
-
-                    ? value.trim()
-
-                    : value;
-
-        }
-    );
-
-
-    /*
-     * Normalise numeric fields.
-     */
-
-    if(
-        data.felling_tree_count !==
-        undefined
-    ){
-
-        const value =
-            Number(
-                data.felling_tree_count
-            );
-
-
-        data.felling_tree_count =
-            Number.isFinite(
-                value
-            )
-                ? value
-                : null;
-
-    }
-
-
-    if(
-        data.grazing_count !==
-        undefined
-    ){
-
-        const value =
-            Number(
-                data.grazing_count
-            );
-
-
-        data.grazing_count =
-            Number.isFinite(
-                value
-            )
-                ? value
-                : null;
-
-    }
-
-
-    /*
-     * Preserve the common field names expected
-     * by irregularityModule.js.
-     */
-
-    return data;
-
-};
-
-
-/* ============================================================
-   FORM VALIDATION
-   ============================================================ */
-
-GGIrregularity.Form.validate =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        !form
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Irregularity form not found."
-
-        };
-
-    }
-
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        )?.value ||
-        "";
-
-
-    if(
-        !category
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the observation / irregularity type."
-
-        };
-
-    }
-
-
-    const date =
-        document.getElementById(
-            "gg-irregularity-incident_date"
-        )?.value ||
-        "";
-
-
-    const time =
-        document.getElementById(
-            "gg-irregularity-incident_time"
-        )?.value ||
-        "";
-
-
-    if(
-        !date
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the incident date."
-
-        };
-
-    }
-
-
-    if(
-        !time
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please select the incident time."
-
-        };
-
-    }
-
-
-    /*
-     * Use native HTML validation for any
-     * additional required fields.
-     */
-
-    if(
-        !form.checkValidity()
-    ){
-
-        try{
-
-            form.reportValidity();
-
-        }
-        catch(_){
-
-        }
-
-
-        return {
-
-            valid:false,
-
-            message:
-                "Please complete the required fields."
-
-        };
-
-    }
-
-
-    return {
-
-        valid:true,
-
-        message:
-            ""
+            names.length
+                ? names.join("  •  ")
+                : "No media selected.";
 
     };
 
+
+    if(
+        photo &&
+        !photo.__ggIrregularityMediaBound
+    ){
+
+        photo.__ggIrregularityMediaBound =
+            true;
+
+        photo.addEventListener(
+            "change",
+            update
+        );
+
+    }
+
+
+    if(
+        video &&
+        !video.__ggIrregularityMediaBound
+    ){
+
+        video.__ggIrregularityMediaBound =
+            true;
+
+        video.addEventListener(
+            "change",
+            update
+        );
+
+    }
+
+
+    if(
+        audio &&
+        !audio.__ggIrregularityMediaBound
+    ){
+
+        audio.__ggIrregularityMediaBound =
+            true;
+
+        audio.addEventListener(
+            "change",
+            update
+        );
+
+    }
+
+
+    update();
+
 };
 
 
 /* ============================================================
-   BUILD FORM HTML
+   BUILD COMPLETE FORM
    ============================================================ */
 
 GGIrregularity.Form.build =
@@ -2637,17 +1563,16 @@ function(){
     return `
 
         <form
-            id="gg-irregularity-form"
+            id="ggIrregularityForm"
             autocomplete="off"
             novalidate
             style="
                 width:100%;
                 box-sizing:border-box;
+                margin:0;
+                padding:0;
             "
         >
-
-
-
 
             <!-- =================================================
                  CATEGORY
@@ -2709,17 +1634,19 @@ function(){
 
 
             <!-- =================================================
-                 SUBMIT
+                 SAVE
                  ================================================= -->
 
             <button
+                id="ggIrregularitySubmit"
                 type="submit"
-                id="gg-irregularity-submit"
                 style="
                     width:100%;
-                    min-height:44px;
-                    margin-top:4px;
-                    border:0;
+                    box-sizing:border-box;
+                    min-height:42px;
+                    margin:4px 0 0 0;
+                    padding:9px 12px;
+                    border:none;
                     border-radius:8px;
                     background:#2e7d32;
                     color:#ffffff;
@@ -2727,34 +1654,10 @@ function(){
                     font-weight:800;
                     cursor:pointer;
                     touch-action:manipulation;
+                    -webkit-tap-highlight-color:transparent;
                 "
             >
-                SAVE IRREGULARITY
-            </button>
-
-
-            <!-- =================================================
-                 CANCEL
-                 ================================================= -->
-
-            <button
-                type="button"
-                id="gg-irregularity-cancel"
-                style="
-                    width:100%;
-                    min-height:38px;
-                    margin-top:7px;
-                    border:1px solid #cfd8dc;
-                    border-radius:8px;
-                    background:#ffffff;
-                    color:#455a64;
-                    font-size:12px;
-                    font-weight:700;
-                    cursor:pointer;
-                    touch-action:manipulation;
-                "
-            >
-                CANCEL
+                SAVE OBSERVATION
             </button>
 
         </form>
@@ -2769,796 +1672,61 @@ function(){
    ============================================================ */
 
 GGIrregularity.Form.mount =
-function(
-    container
-){
+function(container){
+
+    if(
+        typeof container ===
+        "string"
+    ){
+
+        container =
+            document.getElementById(
+                container
+            );
+
+    }
+
 
     if(
         !container
     ){
 
-        console.error(
-            "❌ Irregularity form container not found."
+        console.warn(
+            "⚠ Irregularity form container not found."
         );
-
 
         return false;
 
     }
 
 
-    /*
-     * Do not create duplicate forms.
-     */
-
-    const existing =
-        container.querySelector(
-            "#gg-irregularity-form"
-        );
+    container.innerHTML =
+        GGIrregularity.Form.build();
 
 
-    if(
-        existing
-    ){
+    /* ========================================================
+       INITIALIZE EXISTING MODULE
 
-        GGIrregularity.Form
-            .bind();
+       This does NOT create another submit handler if the
+       module's guard is working.
 
-        return true;
-
-    }
-
-
-container.innerHTML =
-    GGIrregularity.Form.build();
-
-GGIrregularity.Form
-    .bind();
-
-/*
- * IMPORTANT:
- * The category selector is now fully mounted.
- * Apply the selected category after binding.
- */
-requestAnimationFrame(function(){
-
-    GGIrregularity.Form
-        .updateCategoryFields();
-
-});
-    
-return true;
-
-};
-
-
-/* ============================================================
-   BIND FORM EVENTS
-   ============================================================ */
-
-GGIrregularity.Form.bind =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
+       ======================================================== */
 
     if(
-        !form
-    ){
-
-        return false;
-
-    }
-
-
-    /*
-     * Prevent duplicate submit listeners.
-     */
-
-    if(
-        !form.dataset.ggSubmitBound
-    ){
-
-        form.addEventListener(
-            "submit",
-            async function(event){
-
-                event.preventDefault();
-                event.stopPropagation();
-
-
-                /*
-                 * Let irregularityModule.js own the actual
-                 * Firestore save.
-                 */
-
-                if(
-                    typeof GGIrregularity
-                        .submit ===
-                    "function"
-                ){
-
-                    await GGIrregularity
-                        .submit();
-
-                    return;
-
-                }
-
-
-                if(
-                    typeof GGIrregularity
-                        .Module
-                        ?.submit ===
-                    "function"
-                ){
-
-                    await GGIrregularity
-                        .Module
-                        .submit();
-
-                    return;
-
-                }
-
-
-                console.error(
-                    "❌ GGIrregularity.submit() is unavailable."
-                );
-
-
-                alert(
-                    "Irregularity module is not ready."
-                );
-
-            }
-        );
-
-
-        form.dataset.ggSubmitBound =
-            "1";
-
-    }
-
-
-    /*
-     * Category selector.
-     */
-
-    const category =
-        document.getElementById(
-            "ggIrregularityType"
-        );
-
-
-    if(
-        category &&
-        !category.dataset.ggBound
-    ){
-
-        category.addEventListener(
-            "change",
-            function(){
-
-                GGIrregularity.Form
-                    .updateCategoryFields();
-
-            }
-        );
-
-
-        category.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /*
-     * Cancel.
-     */
-
-    const cancel =
-        document.getElementById(
-            "gg-irregularity-cancel"
-        );
-
-
-    if(
-        cancel &&
-        !cancel.dataset.ggBound
-    ){
-
-        cancel.addEventListener(
-            "click",
-            function(){
-
-                if(
-                    typeof window
-                        .closeIrregularityForm ===
-                    "function"
-                ){
-
-                    window
-                        .closeIrregularityForm();
-
-                }
-
-            }
-        );
-
-
-        cancel.dataset.ggBound =
-            "1";
-
-    }
-
-
-    /*
-     * Media.
-     */
-
-    GGIrregularity.Form
-        .bindMediaEvents();
-
-
-    GGIrregularity.Form
-        .setDateTimeDefaults();
-
-
-    GGIrregularity.Form
-        .updateCategoryFields();
-
-
-    GGIrregularity.Form
-        .updateMediaStatus();
-
-
-    return true;
-
-};
-
-
-/* ============================================================
-   OPEN / RESET FORM
-   ============================================================ */
-
-GGIrregularity.Form.reset =
-function(){
-
-    const form =
-        document.getElementById(
-            "gg-irregularity-form"
-        );
-
-
-    if(
-        form
-    ){
-
-        try{
-
-            form.reset();
-
-        }
-        catch(_){
-
-        }
-
-    }
-
-
-    GGIrregularity.Form
-        .resetMedia();
-
-
-    GGIrregularity.Form
-        .setDateTimeDefaults();
-
-
-    GGIrregularity.Form
-        .updateCategoryFields();
-
-
-    GGIrregularity.Form
-        .updateMediaStatus();
-
-};
-
-
-/* ============================================================
-   CLOSE FORM
-   ============================================================ */
-
-GGIrregularity.Form.close =
-function(){
-
-    GGIrregularity.Form
-        .reset();
-
-};
-
-
-/* ============================================================
-   INITIALIZE FORM CONTAINER
-   ============================================================ */
-
-GGIrregularity.Form.init =
-function(){
-
-    /*
-     * Existing UI may already contain the modal.
-     * Find the dedicated irregularity form container.
-     */
-
-    const container =
-        document.getElementById(
-            "irregularity-form-container"
-        );
-
-
-    if(
-        container
-    ){
-
-        GGIrregularity.Form
-            .mount(
-                container
-            );
-
-
-        return true;
-
-    }
-
-
-    /*
-     * Alternative container used by some versions
-     * of the UI.
-     */
-
-    const alternative =
-        document.getElementById(
-            "irregularityFormContainer"
-        );
-
-
-    if(
-        alternative
-    ){
-
-        GGIrregularity.Form
-            .mount(
-                alternative
-            );
-
-
-        return true;
-
-    }
-
-
-    console.warn(
-        "⚠️ Irregularity form container not found. UI will mount it when opened."
-    );
-
-
-    return false;
-
-};
-
-
-/* ============================================================
-   GLOBAL FORM HELPERS
-   ============================================================ */
-
-window.openGGIrregularityForm =
-function(){
-
-    if(
-        typeof window
-            .openIrregularityForm ===
+        typeof GGIrregularity.init ===
         "function"
     ){
 
-        window
-            .openIrregularityForm();
-
-        return;
+        GGIrregularity.init();
 
     }
 
 
-    console.warn(
-        "⚠️ openIrregularityForm() is not available."
-    );
-
-};
-
-
-/* ============================================================
-   INITIALIZE WHEN DOM READY
-   ============================================================ */
-
-if(
-    document.readyState ===
-    "loading"
-){
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        function(){
-
-            try{
-
-                GGIrregularity.Form
-                    .init();
-
-            }
-            catch(error){
-
-                console.error(
-                    "❌ Irregularity Form initialization failed:",
-                    error
-                );
-
-            }
-
-        },
-        {
-            once:true
-        }
-    );
-
-}
-else{
-
-    try{
-
-        GGIrregularity.Form
-            .init();
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ Irregularity Form initialization failed:",
-            error
-        );
-
-    }
-
-}
-
-
-/* ============================================================
-   END irregularityForm.js
-   ============================================================ */
-
-
-/* ============================================================
-   EXISTING MEDIA PIPELINE COMPATIBILITY
-   ============================================================ */
-
-/*
- * Some existing GreenGuard code may call these names directly.
- * Keep them available without creating another upload pipeline.
- */
-
-
-/* ============================================================
-   PHOTO
-   ============================================================ */
-
-GGIrregularity.Media.changePhoto =
-function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   VIDEO
-   ============================================================ */
-
-GGIrregularity.Media.changeVideo =
-function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   AUDIO FILE
-   ============================================================ */
-
-GGIrregularity.Media.selectAudio =
-function(){
-
-    const input =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
-
-    if(
-        input
-    ){
-
-        input.click();
-
-    }
-
-};
-
-
-/* ============================================================
-   AUDIO STOP
-   ============================================================ */
-
-GGIrregularity.Media.stopRecording =
-function(){
-
-    const recorder =
-        GGIrregularity.Media
-            ._audioRecorder;
-
-
-    if(
-        recorder &&
-        recorder.state ===
-        "recording"
-    ){
-
-        try{
-
-            recorder.stop();
-
-        }
-        catch(error){
-
-            console.warn(
-                "⚠ Unable to stop audio recorder:",
-                error
-            );
-
-        }
-
-
-        return;
-
-    }
-
-
-    /*
-     * Native recorder is controlled by Android.
-     * There is deliberately no competing native implementation
-     * here.
-     */
-
-    if(
-        GGIrregularity.Media
-            ._nativeAudioActive
-    ){
-
-        console.log(
-            "🎙 Native audio recorder is active."
-        );
-
-    }
-
-};
-
-
-/* ============================================================
-   MEDIA SUMMARY
-   ============================================================ */
-
-GGIrregularity.Media.getSummary =
-function(){
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    return {
-
-        hasPhoto:
-            !!media.photo,
-
-        hasVideo:
-            !!media.video,
-
-        hasAudio:
-            !!(
-                media.audio ||
-                media.nativeAudioUri
-            ),
-
-        photo:
-            media.photo,
-
-        video:
-            media.video,
-
-        audio:
-            media.audio,
-
-        nativeAudioUri:
-            media.nativeAudioUri
-
-    };
-
-};
-
-
-/* ============================================================
-   MEDIA VALIDATION
-   ============================================================ */
-
-GGIrregularity.Media.validate =
-function(){
-
-    const media =
-        GGIrregularity.Media
-            .getFormMedia();
-
-
-    /*
-     * No media is valid.
-     */
-
-    if(
-        !media.photo &&
-        !media.video &&
-        !media.audio &&
-        !media.nativeAudioUri
-    ){
-
-        return {
-
-            valid:true,
-
-            message:""
-
-        };
-
-    }
-
-
-    /*
-     * Photo.
-     */
-
-    if(
-        media.photo &&
-        !media.photo.type.startsWith(
-            "image/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid photo file."
-
-        };
-
-    }
-
-
-    /*
-     * Video.
-     */
-
-    if(
-        media.video &&
-        !media.video.type.startsWith(
-            "video/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid video file."
-
-        };
-
-    }
-
-
-    /*
-     * Audio.
-     */
-
-    if(
-        media.audio &&
-        !media.audio.type.startsWith(
-            "audio/"
-        )
-    ){
-
-        return {
-
-            valid:false,
-
-            message:
-                "Invalid audio file."
-
-        };
-
-    }
-
-
-    return {
-
-        valid:true,
-
-        message:""
-
-    };
-
-};
-
-
-/* ============================================================
-   BEFORE SUBMIT MEDIA CHECK
-   ============================================================ */
-
-GGIrregularity.Form.validateMedia =
-function(){
-
-    const result =
-        GGIrregularity.Media
-            .validate();
-
-
-    if(
-        !result.valid
-    ){
-
-        alert(
-            result.message
-        );
-
-
-        return false;
-
-    }
+    /* ========================================================
+       MEDIA UI
+       ======================================================== */
+
+    GGIrregularity.Form.bindMediaStatus();
 
 
     return true;
@@ -3567,330 +1735,19 @@ function(){
 
 
 /* ============================================================
-   COMPLETE FORM VALIDATION
+   GLOBAL MOUNT HELPER
    ============================================================ */
 
-GGIrregularity.Form.validateBeforeSubmit =
-function(){
+window.mountIrregularityForm =
+function(container){
 
-    const formResult =
-        GGIrregularity.Form
-            .validate();
-
-
-    if(
-        !formResult.valid
-    ){
-
-        if(
-            formResult.message
-        ){
-
-            alert(
-                formResult.message
-            );
-
-        }
-
-
-        return false;
-
-    }
-
-
-    if(
-        !GGIrregularity.Form
-            .validateMedia()
-    ){
-
-        return false;
-
-    }
-
-
-    return true;
+    return GGIrregularity.Form.mount(
+        container
+    );
 
 };
 
 
 /* ============================================================
-   SUBMIT BUTTON STATE
-   ============================================================ */
-
-GGIrregularity.Form.setSubmitting =
-function(
-    state
-){
-
-    const button =
-        document.getElementById(
-            "gg-irregularity-submit"
-        );
-
-
-    if(
-        !button
-    ){
-
-        return;
-
-    }
-
-
-    if(
-        state
-    ){
-
-        button.disabled =
-            true;
-
-
-        button.dataset.originalText =
-            button.textContent;
-
-
-        button.textContent =
-            "SAVING...";
-
-
-        button.style.opacity =
-            "0.65";
-
-
-        button.style.cursor =
-            "wait";
-
-    }
-    else{
-
-        button.disabled =
-            false;
-
-
-        button.textContent =
-            button.dataset.originalText ||
-            "SAVE IRREGULARITY";
-
-
-        button.style.opacity =
-            "1";
-
-
-        button.style.cursor =
-            "pointer";
-
-    }
-
-};
-
-
-/* ============================================================
-   FORM DATA SNAPSHOT
-   ============================================================ */
-
-GGIrregularity.Form.getSnapshot =
-function(){
-
-    let data = {};
-
-
-    try{
-
-        data =
-            GGIrregularity.Form
-                .collect();
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ Unable to collect Irregularity form:",
-            error
-        );
-
-    }
-
-
-    return {
-
-        form:
-            data,
-
-        media:
-            GGIrregularity.Media
-                .getSummary()
-
-    };
-
-};
-
-
-/* ============================================================
-   DEBUG HELPER
-   ============================================================ */
-
-GGIrregularity.Form.debug =
-function(){
-
-    const snapshot =
-        GGIrregularity.Form
-            .getSnapshot();
-
-
-    console.log(
-        "=============================="
-    );
-
-
-    console.log(
-        "⚠️ IRREGULARITY FORM DEBUG"
-    );
-
-
-    console.log(
-        "=============================="
-    );
-
-
-    console.log(
-        "FORM:",
-        snapshot.form
-    );
-
-
-    console.log(
-        "MEDIA:",
-        snapshot.media
-    );
-
-
-    console.log(
-        "GPS:",
-        window.latestGps
-    );
-
-
-    console.log(
-        "GIS:",
-        typeof window.resolveCurrentGIS
-    );
-
-
-    console.log(
-        "FIREBASE DB:",
-        !!window.db
-    );
-
-
-    console.log(
-        "FIREBASE STORAGE:",
-        !!window.storage
-    );
-
-
-    console.log(
-        "MODULE:",
-        typeof GGIrregularity.submit
-    );
-
-
-    console.log(
-        "=============================="
-    );
-
-
-    return snapshot;
-
-};
-
-
-/* ============================================================
-   FINAL INITIALIZATION CHECK
-   ============================================================ */
-
-GGIrregularity.Form.ready =
-function(){
-
-    return {
-
-        form:
-            !!document.getElementById(
-                "gg-irregularity-form"
-            ),
-
-        media:
-            !!document.getElementById(
-                "gg-irregularity-photo"
-            ) &&
-            !!document.getElementById(
-                "gg-irregularity-video"
-            ) &&
-            !!document.getElementById(
-                "gg-irregularity-audio"
-            ),
-
-        photoPreview:
-            !!document.getElementById(
-                "gg-irregularity-photo-preview"
-            ),
-
-        videoPreview:
-            !!document.getElementById(
-                "gg-irregularity-video-preview"
-            ),
-
-        audioPreview:
-            !!document.getElementById(
-                "gg-irregularity-audio-preview"
-            ),
-
-        module:
-            typeof GGIrregularity.submit ===
-            "function",
-
-        gis:
-            typeof window.resolveCurrentGIS ===
-            "function",
-
-        gps:
-            !!window.latestGps
-
-    };
-
-};
-
-
-/* ============================================================
-   FINAL CONSOLE MESSAGE
-   ============================================================ */
-
-console.log(
-    "✅ GGIrregularity.Form loaded."
-);
-
-
-console.log(
-    "📎 Irregularity media UI:",
-    {
-        photo:
-            typeof GGIrregularity.Media.previewPhoto,
-
-        video:
-            typeof GGIrregularity.Media.previewVideo,
-
-        audio:
-            typeof GGIrregularity.Media.recordAudio,
-
-        upload:
-            typeof GGIrregularity.Media.upload,
-
-        updateFirestore:
-            typeof GGIrregularity.Media.updateFirestore
-
-    }
-);
-
-
-/* ============================================================
-   END OF irregularityForm.js
+   END
    ============================================================ */
