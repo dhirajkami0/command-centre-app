@@ -4019,50 +4019,40 @@ function(){
    MEDIA UI VISIBILITY
    ============================================================ */
 
+/* ============================================================
+   IRREGULARITY MEDIA CONTROL STATE
+   ============================================================ */
+
 GGIrregularity.Media.updateControls =
 function(){
 
-    const photoInput =
-        document.getElementById(
-            "gg-irregularity-photo"
-        );
-
-
-    const videoInput =
-        document.getElementById(
-            "gg-irregularity-video"
-        );
-
-
-    const audioInput =
-        document.getElementById(
-            "gg-irregularity-audio"
-        );
-
+    const media =
+        GGIrregularity.Media.getFormMedia
+            ? GGIrregularity.Media.getFormMedia()
+            : {};
 
     const photo =
-        photoInput?.files?.[0] ||
+        media.photo ||
+        GGIrregularity.Media._photoFile ||
         null;
-
 
     const video =
-        videoInput?.files?.[0] ||
+        media.video ||
+        GGIrregularity.Media._videoFile ||
         null;
-
 
     const audio =
-        audioInput?.files?.[0] ||
+        media.audio ||
+        GGIrregularity.Media._audioFile ||
         null;
 
-
     const nativeAudio =
-        GGIrregularity.Media
-            ._nativeAudioUri ||
+        GGIrregularity.Media._nativeAudioUri ||
         null;
 
 
     /* ========================================================
-       PHOTO CONTROLS
+       PHOTO
        ======================================================== */
 
     const photoActions =
@@ -4070,21 +4060,17 @@ function(){
             "gg-irregularity-photo-actions"
         );
 
-
-    if(
-        photoActions
-    ){
+    if(photoActions){
 
         photoActions.style.display =
             photo
                 ? "flex"
                 : "none";
-
     }
 
 
     /* ========================================================
-       VIDEO CONTROLS
+       VIDEO
        ======================================================== */
 
     const videoActions =
@@ -4092,21 +4078,17 @@ function(){
             "gg-irregularity-video-actions"
         );
 
-
-    if(
-        videoActions
-    ){
+    if(videoActions){
 
         videoActions.style.display =
             video
                 ? "flex"
                 : "none";
-
     }
 
 
     /* ========================================================
-       AUDIO CONTROLS
+       AUDIO
        ======================================================== */
 
     const audioActions =
@@ -4114,10 +4096,7 @@ function(){
             "gg-irregularity-audio-actions"
         );
 
-
-    if(
-        audioActions
-    ){
+    if(audioActions){
 
         audioActions.style.display =
             (
@@ -4126,12 +4105,11 @@ function(){
             )
                 ? "flex"
                 : "none";
-
     }
 
 
     /* ========================================================
-       AUDIO FILE BUTTON
+       AUDIO SELECT BUTTON
        ======================================================== */
 
     const selectAudioButton =
@@ -4139,22 +4117,17 @@ function(){
             "gg-irregularity-select-audio"
         );
 
-
-    if(
-        selectAudioButton
-    ){
+    if(selectAudioButton){
 
         selectAudioButton.style.display =
-            GGIrregularity.Media
-                ._recording
+            GGIrregularity.Media._recording
                 ? "none"
                 : "inline-flex";
-
     }
 
 
     /* ========================================================
-       RECORD BUTTON
+       RECORD AUDIO BUTTON
        ======================================================== */
 
     const recordButton =
@@ -4162,16 +4135,11 @@ function(){
             "gg-irregularity-record-audio"
         );
 
-
-    if(
-        recordButton
-    ){
+    if(recordButton){
 
         recordButton.style.display =
             "inline-flex";
-
     }
-
 };
 
 
