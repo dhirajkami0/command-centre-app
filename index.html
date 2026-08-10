@@ -9968,6 +9968,81 @@ else{
 
       }
 
+      // ==============================================
+// ⚠️ LOAD IRREGULARITIES
+// ==============================================
+//
+// Initial load + realtime listener.
+//
+// IMPORTANT:
+// Do NOT use getDocs() here separately if
+// your irregularity listener already performs
+// the initial Firestore snapshot.
+//
+// This block only starts the functions that
+// already exist.
+// ==============================================
+
+if(
+
+  typeof loadIrregularities ===
+  "function"
+
+){
+
+  console.log(
+    "⚠️ Loading irregularities..."
+  );
+
+
+  await loadIrregularities();
+
+
+  console.log(
+    "✅ Irregularities loaded"
+  );
+
+}
+else{
+
+  console.warn(
+    "⚠ loadIrregularities() unavailable"
+  );
+
+}
+
+
+// ==============================================
+// ⚠️ START IRREGULARITY REALTIME LISTENER
+// ==============================================
+
+if(
+
+  typeof listenIrregularities ===
+  "function"
+
+){
+
+  console.log(
+    "⚠️ Starting irregularity realtime..."
+  );
+
+
+  listenIrregularities();
+
+
+  console.log(
+    "✅ Irregularity realtime active"
+  );
+
+}
+else{
+
+  console.warn(
+    "⚠ listenIrregularities() unavailable"
+  );
+
+}
     }
 
     catch(err){
@@ -40329,11 +40404,2240 @@ return `
 
 }
 
+function buildIrregularityContextHtml(
+    category,
+    details
+){
+
+    const rows = [];
+
+
+    const add =
+        function(
+            icon,
+            label,
+            value
+        ){
+
+            if(
+                value === null ||
+                value === undefined ||
+                value === ""
+            ){
+
+                return;
+
+            }
+
+
+            rows.push(
+                `
+                <div
+                    style="
+                        margin-bottom:3px;
+                    "
+                >
+
+                    <b>
+                        ${icon}
+                        ${label}:
+                    </b>
+
+                    ${escapeIrregularityHtml(
+                        value
+                    )}
+
+                </div>
+                `
+            );
+
+        };
+
+
+    switch(
+        category
+    ){
+
+        /* =========================================
+           FELLING
+           ========================================= */
+
+        case "ILLICIT_FELLING":
+
+            add(
+                "🌲",
+                "Felling Compartment",
+                details.felling_compartment
+            );
+
+            add(
+                "🌳",
+                "Number of Felling",
+                details.number_of_felling
+            );
+
+            add(
+                "🌿",
+                "Species Felled",
+                details.species_felled
+            );
+
+            break;
+
+
+        /* =========================================
+           TIMBER
+           ========================================= */
+
+        case "ILLEGAL_TIMBER_FOREST_PRODUCE":
+
+            add(
+                "🪵",
+                "Timber Type",
+                details.timber_type
+            );
+
+            add(
+                "📦",
+                "Timber Quantity",
+                details.timber_quantity
+            );
+
+            break;
+
+
+        /* =========================================
+           MINING
+           ========================================= */
+
+        case "ILLEGAL_MINING_EARTH_CUTTING":
+
+            add(
+                "🌲",
+                "Mining Compartment",
+                details.mining_compartment
+            );
+
+            add(
+                "📐",
+                "Mining Area",
+                details.mining_area
+            );
+
+            add(
+                "🚜",
+                "Mining Type",
+                details.mining_type
+            );
+
+            break;
+
+
+        /* =========================================
+           FISHING
+           ========================================= */
+
+        case "ILLEGAL_FISHING":
+
+            add(
+                "📍",
+                "Fishing Location",
+                details.fishing_location
+            );
+
+            add(
+                "🎣",
+                "Fishing Method",
+                details.fishing_method
+            );
+
+            break;
+
+
+        /* =========================================
+           GRAZING
+           ========================================= */
+
+        case "ILLEGAL_GRAZING":
+
+            add(
+                "🌱",
+                "Grazing Area",
+                details.grazing_area
+            );
+
+            break;
+
+
+        /* =========================================
+           FIRE
+           ========================================= */
+
+        case "FOREST_FIRE":
+
+            add(
+                "🔥",
+                "Fire Area",
+                details.fire_area
+            );
+
+            add(
+                "📐",
+                "Affected Area",
+                details.fire_affected_area
+            );
+
+            add(
+                "❓",
+                "Cause",
+                details.fire_cause
+            );
+
+            break;
+
+
+        /* =========================================
+           ENCROACHMENT
+           ========================================= */
+
+        case "ENCROACHMENT":
+
+            add(
+                "🌲",
+                "Compartment",
+                details.encroached_compartment
+            );
+
+            add(
+                "📐",
+                "Encroached Area",
+                details.encroached_area
+            );
+
+            add(
+                "🏷️",
+                "Encroachment Type",
+                details.encroachment_type
+            );
+
+            break;
+
+
+        /* =========================================
+           STRUCTURE
+           ========================================= */
+
+        case "ILLEGAL_STRUCTURE_OCCUPATION":
+
+            add(
+                "🏗️",
+                "Structure Type",
+                details.structure_type
+            );
+
+            add(
+                "📝",
+                "Description",
+                details.structure_description
+            );
+
+            break;
+
+
+        /* =========================================
+           POACHING
+           ========================================= */
+
+        case "POACHING":
+
+            add(
+                "🐾",
+                "Species",
+                details.poaching_species
+            );
+
+            add(
+                "🏹",
+                "Method",
+                details.poaching_method
+            );
+
+            break;
+
+
+        /* =========================================
+           TRESPASSING
+           ========================================= */
+
+        case "ILLEGAL_ENTRY_TRESPASSING":
+
+            add(
+                "👥",
+                "Trespasser Count",
+                details.trespasser_count
+            );
+
+            add(
+                "📝",
+                "Description",
+                details.trespassing_description
+            );
+
+            break;
+
+
+        /* =========================================
+           WILDLIFE INJURY
+           ========================================= */
+
+        case "WILDLIFE_INJURY":
+
+            add(
+                "🐾",
+                "Species",
+                details.injured_species
+            );
+
+            add(
+                "🎂",
+                "Age",
+                details.injured_age
+            );
+
+            add(
+                "⚥",
+                "Sex",
+                details.injured_sex
+            );
+
+            add(
+                "🩹",
+                "Injury Details",
+                details.injury_details
+            );
+
+            break;
+
+
+        /* =========================================
+           WILDLIFE DEATH
+           ========================================= */
+
+        case "WILDLIFE_DEATH":
+
+            add(
+                "🐾",
+                "Species",
+                details.dead_species
+            );
+
+            add(
+                "⚥",
+                "Sex",
+                details.dead_sex
+            );
+
+            add(
+                "🎂",
+                "Age",
+                details.dead_age
+            );
+
+            add(
+                "📏",
+                "Measurement",
+                details.dead_measurement
+            );
+
+            break;
+
+
+        /* =========================================
+           GENERAL OBSERVATION
+           ========================================= */
+
+        case "GENERAL_OBSERVATION":
+
+            add(
+                "👁️",
+                "Observation",
+                details.observation
+            );
+
+            break;
+
+    }
+
+
+    /* =========================================
+       COMMON REMARKS
+       ========================================= */
+
+    add(
+        "📝",
+        "Remarks",
+        details.remarks
+    );
+
+
+    return rows.join("");
+
+}
+    function buildIrregularityMediaPopup(
+    e,
+    key
+){
+
+    const photo =
+        String(
+            e.photo_url ||
+            ""
+        ).trim();
+
+
+    const video =
+        String(
+            e.video_url ||
+            ""
+        ).trim();
+
+
+    const audio =
+        String(
+            e.audio_url ||
+            ""
+        ).trim();
+
+
+    if(
+        !photo &&
+        !video &&
+        !audio
+    ){
+
+        return "";
+
+    }
+
+
+    let html =
+        `
+        <div
+            style="
+                margin-top:8px;
+
+                background:#fafafa;
+
+                border:
+                    1px solid #e0e0e0;
+
+                border-radius:7px;
+
+                padding:6px;
+            "
+        >
+
+            <div
+                style="
+                    font-size:11px;
+                    font-weight:700;
+
+                    color:#333;
+
+                    margin-bottom:5px;
+                "
+            >
+                📎 Media
+            </div>
+        `;
+
+
+    /* =========================================
+       PHOTO
+       ========================================= */
+
+    if(
+        photo
+    ){
+
+        html +=
+            `
+            <div
+                style="
+                    margin-bottom:7px;
+                "
+            >
+
+                <div
+                    style="
+                        font-size:10px;
+                        font-weight:700;
+                        margin-bottom:3px;
+                    "
+                >
+                    📷 Photo
+                </div>
+
+
+                <a
+                    href="${escapeAttribute(photo)}"
+                    target="_blank"
+                    rel="noopener"
+                    onclick="event.stopPropagation();"
+                >
+
+                    <img
+                        src="${escapeAttribute(photo)}"
+                        alt="Irregularity photo"
+                        style="
+                            width:100%;
+                            max-height:150px;
+                            object-fit:cover;
+
+                            border-radius:6px;
+
+                            border:
+                                1px solid #ddd;
+
+                            display:block;
+                        "
+                    />
+
+                </a>
+
+
+                <div
+                    style="
+                        margin-top:4px;
+                        display:flex;
+                        gap:5px;
+                    "
+                >
+
+                    <a
+                        href="${escapeAttribute(photo)}"
+                        target="_blank"
+                        rel="noopener"
+                        onclick="event.stopPropagation();"
+                        style="
+                            flex:1;
+
+                            text-align:center;
+
+                            background:#2e7d32;
+                            color:#fff;
+
+                            padding:5px;
+
+                            border-radius:5px;
+
+                            text-decoration:none;
+
+                            font-size:10px;
+                            font-weight:700;
+                        "
+                    >
+                        Open Photo
+                    </a>
+
+
+                    <a
+                        href="${escapeAttribute(photo)}"
+                        download
+                        target="_blank"
+                        rel="noopener"
+                        onclick="event.stopPropagation();"
+                        style="
+                            flex:1;
+
+                            text-align:center;
+
+                            background:#555;
+                            color:#fff;
+
+                            padding:5px;
+
+                            border-radius:5px;
+
+                            text-decoration:none;
+
+                            font-size:10px;
+                            font-weight:700;
+                        "
+                    >
+                        Download
+                    </a>
+
+                </div>
+
+            </div>
+            `;
+
+    }
+
+
+    /* =========================================
+       VIDEO
+       ========================================= */
+
+    if(
+        video
+    ){
+
+        html +=
+            `
+            <div
+                style="
+                    margin-bottom:7px;
+                "
+            >
+
+                <div
+                    style="
+                        font-size:10px;
+                        font-weight:700;
+                        margin-bottom:3px;
+                    "
+                >
+                    🎥 Video
+                </div>
+
+
+                <video
+                    controls
+                    preload="metadata"
+                    style="
+                        width:100%;
+                        max-height:150px;
+                        border-radius:6px;
+                        background:#000;
+                    "
+                    onclick="event.stopPropagation();"
+                >
+
+                    <source
+                        src="${escapeAttribute(video)}"
+                    >
+
+                </video>
+
+
+                <div
+                    style="
+                        margin-top:4px;
+                        text-align:right;
+                    "
+                >
+
+                    <a
+                        href="${escapeAttribute(video)}"
+                        target="_blank"
+                        rel="noopener"
+                        onclick="event.stopPropagation();"
+                        style="
+                            color:#1565c0;
+                            font-size:10px;
+                            font-weight:700;
+                            text-decoration:none;
+                        "
+                    >
+                        Open / Download Video
+                    </a>
+
+                </div>
+
+            </div>
+            `;
+
+    }
+
+
+    /* =========================================
+       AUDIO
+       ========================================= */
+
+    if(
+        audio
+    ){
+
+        html +=
+            `
+            <div
+                style="
+                    margin-bottom:2px;
+                "
+            >
+
+                <div
+                    style="
+                        font-size:10px;
+                        font-weight:700;
+                        margin-bottom:3px;
+                    "
+                >
+                    🎧 Audio
+                </div>
+
+
+                <audio
+                    controls
+                    preload="metadata"
+                    style="
+                        width:100%;
+                    "
+                    onclick="event.stopPropagation();"
+                >
+
+                    <source
+                        src="${escapeAttribute(audio)}"
+                    >
+
+                </audio>
+
+
+                <div
+                    style="
+                        margin-top:3px;
+                        text-align:right;
+                    "
+                >
+
+                    <a
+                        href="${escapeAttribute(audio)}"
+                        target="_blank"
+                        rel="noopener"
+                        onclick="event.stopPropagation();"
+                        style="
+                            color:#1565c0;
+                            font-size:10px;
+                            font-weight:700;
+                            text-decoration:none;
+                        "
+                    >
+                        Open / Download Audio
+                    </a>
+
+                </div>
+
+            </div>
+            `;
+
+    }
+
+
+    html +=
+        `</div>`;
+
+
+    return html;
+
+}
+
+    function escapeIrregularityHtml(
+    value
+){
+
+    return String(
+        value ?? ""
+    )
+    .replace(
+        /&/g,
+        "&amp;"
+    )
+    .replace(
+        /</g,
+        "&lt;"
+    )
+    .replace(
+        />/g,
+        "&gt;"
+    )
+    .replace(
+        /"/g,
+        "&quot;"
+    )
+    .replace(
+        /'/g,
+        "&#039;"
+    );
+
+}
+
+
+function escapeAttribute(
+    value
+){
+
+    return escapeIrregularityHtml(
+        value
+    );
+
+}
+  function parseIrregularityDateTime(e){
+
+    const date =
+        String(
+            e.incident_date ||
+            ""
+        ).trim();
+
+
+    const time =
+        String(
+            e.incident_time ||
+            ""
+        ).trim();
+
+
+    if(
+        !date
+    ){
+
+        return null;
+
+    }
+
+
+    /*
+     * Normal HTML date:
+     *
+     * YYYY-MM-DD
+     */
+
+    if(
+        /^\d{4}-\d{2}-\d{2}$/
+            .test(date)
+    ){
+
+        const value =
+            new Date(
+                date +
+                "T" +
+                (
+                    time ||
+                    "00:00"
+                )
+            );
+
+
+        const ts =
+            value.getTime();
+
+
+        if(
+            !Number.isNaN(ts)
+        ){
+
+            return ts;
+
+        }
+
+    }
+
+
+    /*
+     * Generic fallback.
+     */
+
+    const combined =
+        (
+            date +
+            " " +
+            time
+        ).trim();
+
+
+    const parsed =
+        new Date(
+            combined
+        );
+
+
+    const ts =
+        parsed.getTime();
+
+
+    return Number.isNaN(ts)
+        ? null
+        : ts;
+
+}
 
 // ============================================================
 // EXISTING FUNCTION
 // ============================================================
+async function loadIrregularities(){
 
+    try{
+
+        console.log(
+            "⚠️ Loading irregularities from Firestore..."
+        );
+
+
+        /* =====================================================
+           INIT
+           ===================================================== */
+
+        window.irregularityMarkers =
+            window.irregularityMarkers ||
+            {};
+
+
+        window.activeIrregularityPopupKey =
+            window.activeIrregularityPopupKey ||
+            null;
+
+
+        window.activeIrregularityPopupMarker =
+            window.activeIrregularityPopupMarker ||
+            null;
+
+
+        const popupKeyBeforeRefresh =
+            window.activeIrregularityPopupKey;
+
+
+        /* =====================================================
+           FIRESTORE
+           ===================================================== */
+
+        const {
+            collection,
+            getDocs
+        } = window.fb;
+
+
+        const db =
+            window.db;
+
+
+        const snapshot =
+            await getDocs(
+                collection(
+                    db,
+                    "irregularities"
+                )
+            );
+
+
+        const data =
+            [];
+
+
+        snapshot.forEach(
+            function(docSnap){
+
+                const d =
+                    docSnap.data() ||
+                    {};
+
+
+                data.push({
+
+                    ...d,
+
+                    firestore_id:
+                        d.firestore_id ||
+                        docSnap.id
+
+                });
+
+            }
+        );
+
+
+        console.log(
+            "⚠️ Irregularities loaded:",
+            data.length
+        );
+
+
+        const now =
+            Date.now();
+
+
+        /* =====================================================
+           PROCESS EACH IRREGULARITY
+           ===================================================== */
+
+        data.forEach(
+            function(e){
+
+                try{
+
+                    /* =================================================
+                       GPS
+                       ================================================= */
+
+                    const lat =
+                        Number(
+                            e.latitude ??
+                            e.lat
+                        );
+
+
+                    const lon =
+                        Number(
+                            e.longitude ??
+                            e.lon
+                        );
+
+
+                    if(
+                        !Number.isFinite(lat) ||
+                        !Number.isFinite(lon)
+                    ){
+
+                        console.warn(
+                            "⚠ Invalid irregularity GPS:",
+                            e.irregularity_id ||
+                            e.firestore_id
+                        );
+
+                        return;
+
+                    }
+
+
+                    /* =================================================
+                       CANONICAL KEY
+                       ================================================= */
+
+                    const key =
+                        String(
+
+                            e.irregularity_id ||
+                            e.id ||
+                            e.firestore_id ||
+                            ""
+
+                        ).trim();
+
+
+                    if(
+                        !key
+                    ){
+
+                        console.warn(
+                            "⚠ Irregularity without ID skipped"
+                        );
+
+                        return;
+
+                    }
+
+
+                    /* =================================================
+                       STATUS
+                       ================================================= */
+
+                    const status =
+                        String(
+                            e.status ||
+                            "ACTIVE"
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    /*
+                     * Same philosophy as sightings:
+                     *
+                     * ACTIVE → show
+                     * CLOSED → remove
+                     */
+
+                    if(
+                        status ===
+                        "CLOSED"
+                    ){
+
+                        if(
+                            window.irregularityMarkers[key]
+                        ){
+
+                            if(
+                                window.activeIrregularityPopupKey ===
+                                key
+                            ){
+
+                                window.activeIrregularityPopupKey =
+                                    null;
+
+                                window.activeIrregularityPopupMarker =
+                                    null;
+
+                            }
+
+
+                            irregularityLayer.removeLayer(
+                                window.irregularityMarkers[key]
+                            );
+
+
+                            delete
+                                window.irregularityMarkers[key];
+
+                        }
+
+
+                        return;
+
+                    }
+
+
+                    /* =================================================
+                       CATEGORY
+                       ================================================= */
+
+                    const category =
+                        String(
+                            e.category ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    const meta =
+                        window.GGIrregularity
+                            ?.TYPE_META?.[category] ||
+                        {
+
+                            icon:
+                                "⚠️",
+
+                            title:
+                                e.category_label ||
+                                "Irregularity"
+
+                        };
+
+
+                    const categoryIcon =
+                        meta.icon ||
+                        "⚠️";
+
+
+                    const categoryTitle =
+                        meta.title ||
+                        e.category_label ||
+                        "Irregularity";
+
+
+                    /* =================================================
+                       INCIDENT DATETIME
+                       ================================================= */
+
+                    const incidentTs =
+                        parseIrregularityDateTime(
+                            e
+                        );
+
+
+                    const ageMinutes =
+                        incidentTs !== null
+                            ? Math.max(
+                                0,
+                                Math.floor(
+                                    (
+                                        now -
+                                        incidentTs
+                                    ) /
+                                    60000
+                                )
+                            )
+                            : null;
+
+
+                    /* =================================================
+                       AGE
+                       ================================================= */
+
+                    let ageFormatted =
+                        "Unknown";
+
+
+                    if(
+                        ageMinutes !== null
+                    ){
+
+                        const days =
+                            Math.floor(
+                                ageMinutes /
+                                1440
+                            );
+
+
+                        const hours =
+                            Math.floor(
+                                (
+                                    ageMinutes %
+                                    1440
+                                ) /
+                                60
+                            );
+
+
+                        const mins =
+                            ageMinutes %
+                            60;
+
+
+                        if(
+                            days > 0
+                        ){
+
+                            ageFormatted =
+                                days +
+                                " day " +
+                                hours +
+                                " hr " +
+                                mins +
+                                " min";
+
+                        }
+
+                        else if(
+                            hours > 0
+                        ){
+
+                            ageFormatted =
+                                hours +
+                                " hr " +
+                                mins +
+                                " min";
+
+                        }
+
+                        else{
+
+                            ageFormatted =
+                                mins +
+                                " min";
+
+                        }
+
+                    }
+
+
+                    /* =================================================
+                       REPORTER
+                       ================================================= */
+
+                    const reportedBy =
+                        String(
+                            e.reported_by ||
+                            e.sighted_by ||
+                            e.created_by ||
+                            "Unknown"
+                        ).trim();
+
+
+                    const phone =
+                        String(
+                            e.reported_by_phone ||
+                            e.phone ||
+                            ""
+                        ).trim();
+
+
+                    /* =================================================
+                       GIS
+                       ================================================= */
+
+                    const division =
+                        String(
+                            e.gis_division ||
+                            e.division ||
+                            ""
+                        ).trim();
+
+
+                    const range =
+                        String(
+                            e.gis_range ||
+                            e.range ||
+                            ""
+                        ).trim();
+
+
+                    const beat =
+                        String(
+                            e.gis_beat ||
+                            e.beat ||
+                            ""
+                        ).trim();
+
+
+                    const compartment =
+                        String(
+                            e.gis_compartment ||
+                            e.compartment ||
+                            ""
+                        ).trim();
+
+
+                    /* =================================================
+                       INCIDENT DATETIME DISPLAY
+                       ================================================= */
+
+                    const incidentDateTime =
+                        incidentTs !== null
+                            ? new Date(
+                                incidentTs
+                              ).toLocaleString(
+                                "en-IN"
+                              )
+                            : (
+                                [
+                                    e.incident_date,
+                                    e.incident_time
+                                ]
+                                .filter(Boolean)
+                                .join(" ")
+                                ||
+                                "Unknown"
+                              );
+
+
+                    /* =================================================
+                       DYNAMIC ICON
+                       ================================================= */
+
+                    const icon =
+                        L.divIcon({
+
+                            className:
+                                "",
+
+                            html:
+                                `
+                                <div
+                                    class="gg-irregularity-marker"
+                                    style="
+                                        width:32px;
+                                        height:32px;
+                                        display:flex;
+                                        align-items:center;
+                                        justify-content:center;
+                                        position:relative;
+                                        filter:
+                                            drop-shadow(
+                                                0 2px 4px
+                                                rgba(0,0,0,.45)
+                                            );
+                                    "
+                                >
+
+                                    <div
+                                        style="
+                                            width:28px;
+                                            height:28px;
+                                            border-radius:50%;
+                                            background:#ffffff;
+                                            border:2px solid #d32f2f;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            box-sizing:border-box;
+                                        "
+                                    >
+
+                                        <span
+                                            style="
+                                                font-size:18px;
+                                                line-height:1;
+                                            "
+                                        >
+                                            ${categoryIcon}
+                                        </span>
+
+                                    </div>
+
+                                </div>
+                                `,
+
+                            iconSize:
+                                [
+                                    32,
+                                    32
+                                ],
+
+                            iconAnchor:
+                                [
+                                    16,
+                                    16
+                                ]
+
+                        });
+
+
+                    /* =================================================
+                       DETAILS
+                       ================================================= */
+
+                    const details =
+                        e.details &&
+                        typeof e.details === "object"
+                            ? e.details
+                            : {};
+
+
+                    const contextHtml =
+                        buildIrregularityContextHtml(
+                            category,
+                            details
+                        );
+
+
+                    /* =================================================
+                       MEDIA
+                       ================================================= */
+
+                    const mediaHtml =
+                        buildIrregularityMediaPopup(
+                            e,
+                            key
+                        );
+
+
+                    /* =================================================
+                       POPUP
+                       ================================================= */
+
+                    const popup =
+                        `
+                        <div
+                            class="gg-irregularity-popup"
+                            style="
+                                font-family:
+                                    Segoe UI,
+                                    Tahoma,
+                                    Arial,
+                                    sans-serif;
+
+                                width:280px;
+                                max-width:280px;
+                                min-width:280px;
+
+                                max-height:360px;
+
+                                overflow-y:auto;
+                                overflow-x:hidden;
+
+                                -webkit-overflow-scrolling:touch;
+
+                                overscroll-behavior:contain;
+
+                                touch-action:pan-y;
+
+                                word-break:break-word;
+
+                                box-sizing:border-box;
+
+                                background:#ffffff;
+
+                                border-radius:12px;
+
+                                padding:10px;
+
+                                color:#111;
+
+                                border:
+                                    1px solid #e0e0e0;
+
+                                box-shadow:
+                                    0 4px 14px
+                                    rgba(0,0,0,.15);
+                            "
+                        >
+
+                            <!-- STATUS / CATEGORY -->
+
+                            <div
+                                style="
+                                    color:#d32f2f;
+                                    font-weight:700;
+                                    font-size:13px;
+                                    margin-bottom:6px;
+
+                                    display:flex;
+                                    align-items:center;
+
+                                    gap:6px;
+                                "
+                            >
+
+                                ${categoryIcon}
+
+                                ${status}
+
+                            </div>
+
+
+                            <div
+                                style="
+                                    height:1px;
+                                    background:#e0e0e0;
+                                    margin-bottom:8px;
+                                "
+                            ></div>
+
+
+                            <!-- COMMON FIELDS -->
+
+                            <div
+                                style="
+                                    font-size:11px;
+                                    line-height:1.6;
+                                    color:#111;
+                                "
+                            >
+
+                                <div
+                                    style="margin-bottom:3px;"
+                                >
+
+                                    <b>
+                                        🆔 Irregularity ID:
+                                    </b>
+
+                                    <span
+                                        style="
+                                            color:#b71c1c;
+                                            font-weight:700;
+                                        "
+                                    >
+                                        ${escapeIrregularityHtml(key)}
+                                    </span>
+
+                                </div>
+
+
+                                <div
+                                    style="margin-bottom:3px;"
+                                >
+
+                                    <b>
+                                        ⚠️ Type:
+                                    </b>
+
+                                    ${escapeIrregularityHtml(
+                                        categoryTitle
+                                    )}
+
+                                </div>
+
+
+                                <div
+                                    style="margin-bottom:3px;"
+                                >
+
+                                    <b>
+                                        📅 Incident DateTime:
+                                    </b>
+
+                                    ${escapeIrregularityHtml(
+                                        incidentDateTime
+                                    )}
+
+                                </div>
+
+
+                                <div
+                                    style="margin-bottom:3px;"
+                                >
+
+                                    <b>
+                                        ⏱ Age of Irregularity:
+                                    </b>
+
+                                    ${escapeIrregularityHtml(
+                                        ageFormatted
+                                    )}
+
+                                </div>
+
+
+                                <div
+                                    style="margin-bottom:3px;"
+                                >
+
+                                    <b>
+                                        👤 Reported by:
+                                    </b>
+
+                                    ${escapeIrregularityHtml(
+                                        reportedBy
+                                    )}
+
+                                </div>
+
+                            </div>
+
+
+                            ${
+                                phone
+                                    ? `
+                                        <div
+                                            style="
+                                                margin-top:6px;
+                                                margin-bottom:8px;
+
+                                                font-size:11px;
+                                                line-height:1.5;
+
+                                                background:#ffffff;
+
+                                                border:
+                                                    1px solid #eeeeee;
+
+                                                border-radius:6px;
+
+                                                padding:5px;
+                                            "
+                                        >
+
+                                            <div
+                                                style="
+                                                    color:#111;
+                                                    font-weight:600;
+                                                "
+                                            >
+
+                                                📞
+
+                                                <a
+                                                    href="tel:${escapeAttribute(
+                                                        phone
+                                                    )}"
+                                                    style="
+                                                        color:#00695c;
+                                                        text-decoration:none;
+                                                        font-weight:700;
+                                                    "
+                                                >
+                                                    ${escapeIrregularityHtml(
+                                                        phone
+                                                    )}
+                                                </a>
+
+                                            </div>
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            ${
+                                contextHtml
+                                    ? `
+                                        <div
+                                            style="
+                                                margin-top:8px;
+                                                margin-bottom:8px;
+
+                                                background:#fff8f8;
+
+                                                border:
+                                                    1px solid #f0d5d5;
+
+                                                border-radius:6px;
+
+                                                padding:6px;
+                                            "
+                                        >
+
+                                            <div
+                                                style="
+                                                    font-weight:700;
+                                                    color:#b71c1c;
+
+                                                    font-size:11px;
+
+                                                    margin-bottom:4px;
+                                                "
+                                            >
+
+                                                ⚠️
+                                                ${escapeIrregularityHtml(
+                                                    categoryTitle
+                                                )}
+                                                Details
+
+                                            </div>
+
+                                            ${contextHtml}
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            <!-- LOCATION -->
+
+                            <div
+                                style="
+                                    margin-bottom:8px;
+
+                                    font-size:10px;
+                                    line-height:1.5;
+
+                                    background:#f7fbf7;
+
+                                    border:
+                                        1px solid #d7e9d8;
+
+                                    border-radius:6px;
+
+                                    padding:5px;
+                                "
+                            >
+
+                                <div
+                                    style="
+                                        font-weight:700;
+
+                                        color:#1b5e20;
+
+                                        margin-bottom:3px;
+
+                                        font-size:11px;
+                                    "
+                                >
+
+                                    📍 Location of Irregularity
+
+                                </div>
+
+
+                                ${
+                                    compartment
+                                        ? `
+                                            <div>
+                                                🌲 Compartment:
+                                                <b>
+                                                    ${escapeIrregularityHtml(
+                                                        compartment
+                                                    )}
+                                                </b>
+                                            </div>
+                                        `
+                                        : ""
+                                }
+
+
+                                ${
+                                    beat
+                                        ? `
+                                            <div>
+                                                🧭 Beat:
+                                                <b>
+                                                    ${escapeIrregularityHtml(
+                                                        beat
+                                                    )}
+                                                </b>
+                                            </div>
+                                        `
+                                        : ""
+                                }
+
+
+                                ${
+                                    range
+                                        ? `
+                                            <div>
+                                                🏢 Range:
+                                                <b>
+                                                    ${escapeIrregularityHtml(
+                                                        range
+                                                    )}
+                                                </b>
+                                            </div>
+                                        `
+                                        : ""
+                                }
+
+
+                                ${
+                                    division
+                                        ? `
+                                            <div>
+                                                🏛 Division:
+                                                <b>
+                                                    ${escapeIrregularityHtml(
+                                                        division
+                                                    )}
+                                                </b>
+                                            </div>
+                                        `
+                                        : ""
+                                }
+
+
+                                <div
+                                    style="
+                                        margin-top:2px;
+
+                                        color:#555;
+
+                                        font-size:9px;
+                                    "
+                                >
+
+                                    🛰 GPS:
+
+                                    <b>
+                                        ${lat.toFixed(6)},
+                                        ${lon.toFixed(6)}
+                                    </b>
+
+                                </div>
+
+                            </div>
+
+
+                            ${mediaHtml}
+
+                        </div>
+                        `;
+
+
+                    /* =================================================
+                       CREATE / UPDATE MARKER
+                       ================================================= */
+
+                    let marker =
+                        window.irregularityMarkers[key];
+
+
+                    if(
+                        !marker
+                    ){
+
+                        marker =
+                            L.marker(
+                                [
+                                    lat,
+                                    lon
+                                ],
+                                {
+                                    icon:
+                                        icon,
+
+                                    zIndexOffset:
+                                        4500
+                                }
+                            )
+                            .addTo(
+                                irregularityLayer
+                            );
+
+
+                        window.irregularityMarkers[key] =
+                            marker;
+
+
+                        /* =================================================
+                           POPUP
+                           ================================================= */
+
+                        marker.bindPopup(
+                            popup,
+                            {
+
+                                maxWidth:
+                                    300,
+
+                                minWidth:
+                                    260,
+
+                                maxHeight:
+                                    Math.min(
+                                        window.innerHeight *
+                                        0.7,
+                                        450
+                                    ),
+
+                                closeOnClick:
+                                    false,
+
+                                autoClose:
+                                    false,
+
+                                autoPan:
+                                    true,
+
+                                autoPanPadding:
+                                    [
+                                        15,
+                                        15
+                                    ],
+
+                                keepInView:
+                                    true
+
+                            }
+                        );
+
+
+                        /* =================================================
+                           REMOVE LEAFLET DEFAULT CLICK
+                           ================================================= */
+
+                        if(
+                            typeof marker._openPopup ===
+                            "function"
+                        ){
+
+                            marker.off(
+                                "click",
+                                marker._openPopup,
+                                marker
+                            );
+
+                        }
+
+
+                        /* =================================================
+                           POPUP OPEN
+                           ================================================= */
+
+                        marker.on(
+                            "popupopen",
+                            function(){
+
+                                window.activeIrregularityPopupKey =
+                                    key;
+
+
+                                window.activeIrregularityPopupMarker =
+                                    marker;
+
+
+                                requestAnimationFrame(
+                                    function(){
+
+                                        const popupElement =
+                                            marker
+                                                .getPopup()
+                                                ?.getElement();
+
+
+                                        const content =
+                                            popupElement
+                                                ?.querySelector(
+                                                    ".leaflet-popup-content"
+                                                );
+
+
+                                        if(
+                                            content
+                                        ){
+
+                                            content.style.maxHeight =
+                                                Math.min(
+                                                    window.innerHeight *
+                                                    0.6,
+                                                    360
+                                                ) +
+                                                "px";
+
+
+                                            content.style.overflowY =
+                                                "auto";
+
+
+                                            content.style.overflowX =
+                                                "hidden";
+
+
+                                            content.style.webkitOverflowScrolling =
+                                                "touch";
+
+
+                                            content.style.overscrollBehavior =
+                                                "contain";
+
+
+                                            content.style.touchAction =
+                                                "pan-y";
+
+                                        }
+
+                                    }
+                                );
+
+                            }
+                        );
+
+
+                        /* =================================================
+                           POPUP CLOSE
+                           ================================================= */
+
+                        marker.on(
+                            "popupclose",
+                            function(){
+
+                                if(
+                                    window.activeIrregularityPopupKey ===
+                                    key
+                                ){
+
+                                    window.activeIrregularityPopupKey =
+                                        null;
+
+
+                                    window.activeIrregularityPopupMarker =
+                                        null;
+
+                                }
+
+                            }
+                        );
+
+
+                        /* =================================================
+                           CONTROLLED CLICK
+                           ================================================= */
+
+                        marker.on(
+                            "click",
+                            function(){
+
+                                const isOpen =
+                                    marker.isPopupOpen();
+
+
+                                if(
+                                    isOpen
+                                ){
+
+                                    marker.closePopup();
+
+                                    return;
+
+                                }
+
+
+                                marker.openPopup();
+
+                            }
+                        );
+
+                    }
+
+
+                    else{
+
+                        marker.setLatLng(
+                            [
+                                lat,
+                                lon
+                            ]
+                        );
+
+
+                        marker.setIcon(
+                            icon
+                        );
+
+                    }
+
+
+                    /* =================================================
+                       SAFE POPUP UPDATE
+                       ================================================= */
+
+                    const popupIsOpen =
+                        marker.isPopupOpen();
+
+
+                    const popupChanged =
+                        marker._ggIrregularityPopupHtml !==
+                        popup;
+
+
+                    if(
+                        !popupIsOpen &&
+                        popupChanged
+                    ){
+
+                        marker.setPopupContent(
+                            popup
+                        );
+
+                    }
+
+
+                    marker._ggIrregularityPopupHtml =
+                        popup;
+
+
+                    /* =================================================
+                       PRESERVE OPEN POPUP
+                       ================================================= */
+
+                    if(
+                        popupKeyBeforeRefresh ===
+                        key ||
+                        popupIsOpen
+                    ){
+
+                        window.activeIrregularityPopupKey =
+                            key;
+
+
+                        window.activeIrregularityPopupMarker =
+                            marker;
+
+                    }
+
+                }
+
+                catch(
+                    irregularityError
+                ){
+
+                    console.error(
+                        "❌ Irregularity render failed:",
+                        e,
+                        irregularityError
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* =====================================================
+           REMOVE STALE MARKERS
+           ===================================================== */
+
+        const validKeys =
+            new Set(
+
+                data
+                    .filter(
+                        function(e){
+
+                            return (
+                                String(
+                                    e.status ||
+                                    "ACTIVE"
+                                )
+                                .trim()
+                                .toUpperCase()
+                                !==
+                                "CLOSED"
+                            );
+
+                        }
+                    )
+                    .map(
+                        function(e){
+
+                            return String(
+                                e.irregularity_id ||
+                                e.id ||
+                                e.firestore_id ||
+                                ""
+                            ).trim();
+
+                        }
+                    )
+                    .filter(Boolean)
+
+            );
+
+
+        Object.keys(
+            window.irregularityMarkers
+        )
+        .forEach(
+            function(key){
+
+                if(
+                    !validKeys.has(key)
+                ){
+
+                    try{
+
+                        if(
+                            window.activeIrregularityPopupKey ===
+                            key
+                        ){
+
+                            window.activeIrregularityPopupKey =
+                                null;
+
+
+                            window.activeIrregularityPopupMarker =
+                                null;
+
+                        }
+
+
+                        irregularityLayer.removeLayer(
+                            window.irregularityMarkers[key]
+                        );
+
+                    }
+                    catch(
+                        err
+                    ){
+
+                        console.warn(
+                            "Irregularity marker cleanup failed:",
+                            key,
+                            err
+                        );
+
+                    }
+
+
+                    delete
+                        window.irregularityMarkers[key];
+
+                }
+
+            }
+        );
+
+
+        console.log(
+            "✅ Irregularity markers synchronized:",
+            Object.keys(
+                window.irregularityMarkers
+            ).length
+        );
+
+
+        return data;
+
+    }
+
+    catch(
+        err
+    ){
+
+        console.error(
+            "❌ loadIrregularities failed:",
+            err
+        );
+
+
+        return [];
+
+    }
+
+}
 
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
@@ -52800,8 +55104,1288 @@ function navigateHEC(
 // 🚨 HEC ALERT CACHE
 // =====================================================
 
+// ============================================================
+// REALTIME IRREGULARITY LISTENER
+// ============================================================
 
-// =====================================================
+window.irregularityListener =
+    window.irregularityListener ||
+    null;
+
+
+window.irregularityMarkers =
+    window.irregularityMarkers ||
+    {};
+
+
+window.activeIrregularityPopupKey =
+    window.activeIrregularityPopupKey ||
+    null;
+
+
+window.activeIrregularityPopupMarker =
+    window.activeIrregularityPopupMarker ||
+    null;
+
+
+function listenIrregularities(){
+
+    try{
+
+        /* ======================================================
+           PREVENT DUPLICATE LISTENER
+           ====================================================== */
+
+        if(
+            window.irregularityListener
+        ){
+
+            console.log(
+                "⚠️ Irregularity realtime listener already active"
+            );
+
+            return;
+        }
+
+
+        /* ======================================================
+           FIRESTORE
+           ====================================================== */
+
+        const {
+            collection,
+            onSnapshot
+        } = window.fb;
+
+
+        const db =
+            window.db;
+
+
+        if(
+            !db ||
+            !collection ||
+            !onSnapshot
+        ){
+
+            console.error(
+                "❌ Firestore unavailable for irregularity listener"
+            );
+
+            return;
+        }
+
+
+        console.log(
+            "🔥 Starting realtime irregularity listener..."
+        );
+
+
+        /* ======================================================
+           LISTEN
+           ====================================================== */
+
+        window.irregularityListener =
+            onSnapshot(
+
+                collection(
+                    db,
+                    "irregularities"
+                ),
+
+                function(snapshot){
+
+                    console.log(
+                        "⚠️ Irregularity realtime changes:",
+                        snapshot.docChanges().length
+                    );
+
+
+                    snapshot.docChanges()
+                        .forEach(
+                            function(change){
+
+                                try{
+
+                                    const docSnap =
+                                        change.doc;
+
+
+                                    const d =
+                                        docSnap.data() ||
+                                        {};
+
+
+                                    const irregularity =
+                                    {
+                                        ...d,
+
+                                        firestore_id:
+                                            d.firestore_id ||
+                                            docSnap.id
+                                    };
+
+
+                                    /* ==================================
+                                       CANONICAL KEY
+                                       ================================== */
+
+                                    const key =
+                                        String(
+
+                                            irregularity.irregularity_id ||
+                                            irregularity.id ||
+                                            irregularity.firestore_id ||
+                                            ""
+
+                                        ).trim();
+
+
+                                    if(
+                                        !key
+                                    ){
+
+                                        console.warn(
+                                            "⚠️ Irregularity without ID:",
+                                            docSnap.id
+                                        );
+
+                                        return;
+
+                                    }
+
+
+                                    /* ==================================
+                                       REMOVED
+                                       ================================== */
+
+                                    if(
+                                        change.type ===
+                                        "removed"
+                                    ){
+
+                                        removeIrregularityMarker(
+                                            key
+                                        );
+
+                                        return;
+
+                                    }
+
+
+                                    /* ==================================
+                                       ACTIVE / MODIFIED / ADDED
+                                       ================================== */
+
+                                    renderIrregularityMarker(
+                                        irregularity
+                                    );
+
+                                }
+
+                                catch(
+                                    changeError
+                                ){
+
+                                    console.error(
+                                        "❌ Irregularity change failed:",
+                                        changeError
+                                    );
+
+                                }
+
+                            }
+                        );
+
+
+                    console.log(
+                        "✅ Irregularity realtime sync complete:",
+                        Object.keys(
+                            window.irregularityMarkers
+                        ).length
+                    );
+
+                },
+
+                function(error){
+
+                    console.error(
+                        "❌ Irregularity realtime listener failed:",
+                        error
+                    );
+
+
+                    window.irregularityListener =
+                        null;
+
+                }
+
+            );
+
+
+        console.log(
+            "✅ Irregularity realtime listener attached"
+        );
+
+    }
+
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ listenIrregularities failed:",
+            error
+        );
+
+    }
+
+}
+
+    function renderIrregularityMarker(
+    e
+){
+
+    try{
+
+        const key =
+            String(
+
+                e.irregularity_id ||
+                e.id ||
+                e.firestore_id ||
+                ""
+
+            ).trim();
+
+
+        if(
+            !key
+        ){
+
+            return;
+
+        }
+
+
+        /* ======================================================
+           STATUS
+           ====================================================== */
+
+        const status =
+            String(
+                e.status ||
+                "ACTIVE"
+            )
+            .trim()
+            .toUpperCase();
+
+
+        /*
+         * Resolved/closed irregularities should disappear
+         * from the active operational map.
+         */
+
+        if(
+            status === "RESOLVED" ||
+            status === "CLOSED"
+        ){
+
+            removeIrregularityMarker(
+                key
+            );
+
+            return;
+
+        }
+
+
+        /* ======================================================
+           GPS
+           ====================================================== */
+
+        const lat =
+            Number(
+                e.latitude ??
+                e.lat
+            );
+
+
+        const lon =
+            Number(
+                e.longitude ??
+                e.lon
+            );
+
+
+        if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon)
+        ){
+
+            console.warn(
+                "⚠️ Invalid irregularity GPS:",
+                key,
+                lat,
+                lon
+            );
+
+            /*
+             * If an existing marker previously had valid GPS
+             * but the modified document no longer has GPS,
+             * don't destroy it unnecessarily.
+             */
+
+            return;
+
+        }
+
+
+        /* ======================================================
+           CATEGORY
+           ====================================================== */
+
+        const category =
+            String(
+                e.category ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        const meta =
+            window.GGIrregularity
+                ?.TYPE_META?.[category] ||
+            {};
+
+
+        const categoryIcon =
+            meta.icon ||
+            "⚠️";
+
+
+        const categoryTitle =
+            meta.title ||
+            e.category_label ||
+            category ||
+            "Irregularity";
+
+
+        /* ======================================================
+           ICON
+           ====================================================== */
+
+        const icon =
+            L.divIcon({
+
+                className:
+                    "",
+
+                html:
+                    `
+                    <div
+                        style="
+                            width:32px;
+                            height:32px;
+
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+
+                            border-radius:50%;
+
+                            background:#ffffff;
+
+                            border:
+                                2px solid #d32f2f;
+
+                            box-sizing:border-box;
+
+                            box-shadow:
+                                0 2px 6px
+                                rgba(0,0,0,.4);
+
+                            font-size:18px;
+
+                            line-height:1;
+                        "
+                    >
+                        ${categoryIcon}
+                    </div>
+                    `,
+
+                iconSize:
+                    [
+                        32,
+                        32
+                    ],
+
+                iconAnchor:
+                    [
+                        16,
+                        16
+                    ]
+
+            });
+
+
+        /* ======================================================
+           POPUP
+           ====================================================== */
+
+        const popup =
+            buildIrregularityPopup(
+                e,
+                key,
+                category,
+                categoryTitle
+            );
+
+
+        /* ======================================================
+           EXISTING MARKER
+           ====================================================== */
+
+        let marker =
+            window.irregularityMarkers[key];
+
+
+        if(
+            !marker
+        ){
+
+            /* ==============================================
+               CREATE
+               ============================================== */
+
+            marker =
+                L.marker(
+                    [
+                        lat,
+                        lon
+                    ],
+                    {
+                        icon:
+                            icon,
+
+                        zIndexOffset:
+                            4500
+                    }
+                )
+                .addTo(
+                    irregularityLayer
+                );
+
+
+            window.irregularityMarkers[key] =
+                marker;
+
+
+            /* ==============================================
+               POPUP
+               ============================================== */
+
+            marker.bindPopup(
+                popup,
+                {
+
+                    maxWidth:
+                        300,
+
+                    minWidth:
+                        260,
+
+                    maxHeight:
+                        Math.min(
+                            window.innerHeight *
+                            0.7,
+                            450
+                        ),
+
+                    closeOnClick:
+                        false,
+
+                    autoClose:
+                        false,
+
+                    autoPan:
+                        true,
+
+                    autoPanPadding:
+                        [
+                            15,
+                            15
+                        ],
+
+                    keepInView:
+                        true
+
+                }
+            );
+
+
+            /* ==============================================
+               REMOVE LEAFLET DEFAULT CLICK HANDLER
+               ============================================== */
+
+            if(
+                typeof marker._openPopup ===
+                "function"
+            ){
+
+                marker.off(
+                    "click",
+                    marker._openPopup,
+                    marker
+                );
+
+            }
+
+
+            /* ==============================================
+               POPUP OPEN
+               ============================================== */
+
+            marker.on(
+                "popupopen",
+                function(){
+
+                    window.activeIrregularityPopupKey =
+                        key;
+
+                    window.activeIrregularityPopupMarker =
+                        marker;
+
+
+                    requestAnimationFrame(
+                        function(){
+
+                            const popupElement =
+                                marker
+                                    .getPopup()
+                                    ?.getElement();
+
+
+                            const content =
+                                popupElement
+                                    ?.querySelector(
+                                        ".leaflet-popup-content"
+                                    );
+
+
+                            if(
+                                content
+                            ){
+
+                                content.style.maxHeight =
+                                    Math.min(
+                                        window.innerHeight *
+                                        0.6,
+                                        360
+                                    ) +
+                                    "px";
+
+
+                                content.style.overflowY =
+                                    "auto";
+
+
+                                content.style.overflowX =
+                                    "hidden";
+
+
+                                content.style.webkitOverflowScrolling =
+                                    "touch";
+
+
+                                content.style.overscrollBehavior =
+                                    "contain";
+
+
+                                content.style.touchAction =
+                                    "pan-y";
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+
+
+            /* ==============================================
+               POPUP CLOSE
+               ============================================== */
+
+            marker.on(
+                "popupclose",
+                function(){
+
+                    if(
+                        window.activeIrregularityPopupKey ===
+                        key
+                    ){
+
+                        window.activeIrregularityPopupKey =
+                            null;
+
+
+                        window.activeIrregularityPopupMarker =
+                            null;
+
+                    }
+
+                }
+            );
+
+
+            /* ==============================================
+               CONTROLLED CLICK
+               ============================================== */
+
+            marker.on(
+                "click",
+                function(){
+
+                    if(
+                        marker.isPopupOpen()
+                    ){
+
+                        marker.closePopup();
+
+                        return;
+
+                    }
+
+
+                    marker.openPopup();
+
+                }
+            );
+
+        }
+
+
+        /* ======================================================
+           UPDATE EXISTING MARKER
+           ====================================================== */
+
+        else{
+
+            marker.setLatLng(
+                [
+                    lat,
+                    lon
+                ]
+            );
+
+
+            marker.setIcon(
+                icon
+            );
+
+        }
+
+
+        /* ======================================================
+           SAFE POPUP UPDATE
+           ====================================================== */
+
+        const popupIsOpen =
+            marker.isPopupOpen();
+
+
+        const popupChanged =
+            marker._ggIrregularityPopupHtml !==
+            popup;
+
+
+        /*
+         * Never replace popup HTML while user is reading it.
+         */
+
+        if(
+            !popupIsOpen &&
+            popupChanged
+        ){
+
+            marker.setPopupContent(
+                popup
+            );
+
+        }
+
+
+        marker._ggIrregularityPopupHtml =
+            popup;
+
+
+        /* ======================================================
+           PRESERVE POPUP STATE
+           ====================================================== */
+
+        if(
+            popupIsOpen ||
+            window.activeIrregularityPopupKey ===
+            key
+        ){
+
+            window.activeIrregularityPopupKey =
+                key;
+
+
+            window.activeIrregularityPopupMarker =
+                marker;
+
+        }
+
+    }
+
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ renderIrregularityMarker failed:",
+            e,
+            error
+        );
+
+    }
+
+}
+  function buildIrregularityPopup(
+    e,
+    key,
+    category,
+    categoryTitle
+){
+
+    const now =
+        Date.now();
+
+
+    const incidentTs =
+        parseIrregularityDateTime(
+            e
+        );
+
+
+    let age =
+        "Unknown";
+
+
+    if(
+        incidentTs !== null
+    ){
+
+        const minutes =
+            Math.max(
+                0,
+                Math.floor(
+                    (
+                        now -
+                        incidentTs
+                    ) /
+                    60000
+                )
+            );
+
+
+        const days =
+            Math.floor(
+                minutes /
+                1440
+            );
+
+
+        const hours =
+            Math.floor(
+                (
+                    minutes %
+                    1440
+                ) /
+                60
+            );
+
+
+        const mins =
+            minutes %
+            60;
+
+
+        if(
+            days
+        ){
+
+            age =
+                `${days} day ${hours} hr ${mins} min`;
+
+        }
+
+        else if(
+            hours
+        ){
+
+            age =
+                `${hours} hr ${mins} min`;
+
+        }
+
+        else{
+
+            age =
+                `${mins} min`;
+
+        }
+
+    }
+
+
+    const reportedBy =
+        String(
+            e.reported_by ||
+            "Unknown"
+        ).trim();
+
+
+    const phone =
+        String(
+            e.reported_by_phone ||
+            ""
+        ).trim();
+
+
+    const incidentDateTime =
+        incidentTs !== null
+            ? new Date(
+                incidentTs
+              ).toLocaleString(
+                "en-IN"
+              )
+            : [
+                e.incident_date,
+                e.incident_time
+              ]
+              .filter(Boolean)
+              .join(" ");
+
+
+    const compartment =
+        e.gis_compartment ||
+        e.compartment ||
+        "";
+
+
+    const beat =
+        e.gis_beat ||
+        e.beat ||
+        "";
+
+
+    const range =
+        e.gis_range ||
+        e.range ||
+        "";
+
+
+    const division =
+        e.gis_division ||
+        e.division ||
+        "";
+
+
+    const lat =
+        Number(
+            e.latitude ??
+            e.lat
+        );
+
+
+    const lon =
+        Number(
+            e.longitude ??
+            e.lon
+        );
+
+
+    const details =
+        e.details &&
+        typeof e.details === "object"
+            ? e.details
+            : {};
+
+
+    const contextHtml =
+        buildIrregularityContextHtml(
+            category,
+            details
+        );
+
+
+    const mediaHtml =
+        buildIrregularityMediaPopup(
+            e,
+            key
+        );
+
+
+    return `
+
+        <div
+            style="
+                font-family:Segoe UI,Tahoma,Arial,sans-serif;
+                width:280px;
+                max-width:280px;
+                min-width:280px;
+            "
+        >
+
+            <div
+                style="
+                    color:#d32f2f;
+                    font-weight:700;
+                    font-size:13px;
+                    margin-bottom:6px;
+                "
+            >
+
+                ${categoryIconSafe(
+                    category
+                )}
+
+                ${escapeIrregularityHtml(
+                    e.status ||
+                    "ACTIVE"
+                )}
+
+            </div>
+
+
+            <div
+                style="
+                    font-size:11px;
+                    line-height:1.6;
+                "
+            >
+
+                <div>
+                    <b>🆔 Irregularity ID:</b>
+                    ${escapeIrregularityHtml(key)}
+                </div>
+
+
+                <div>
+                    <b>⚠️ Type:</b>
+                    ${escapeIrregularityHtml(
+                        categoryTitle
+                    )}
+                </div>
+
+
+                <div>
+                    <b>📅 Incident DateTime:</b>
+                    ${escapeIrregularityHtml(
+                        incidentDateTime ||
+                        "Unknown"
+                    )}
+                </div>
+
+
+                <div>
+                    <b>⏱ Age of Irregularity:</b>
+                    ${escapeIrregularityHtml(age)}
+                </div>
+
+
+                <div>
+                    <b>👤 Reported by:</b>
+                    ${escapeIrregularityHtml(
+                        reportedBy
+                    )}
+                </div>
+
+            </div>
+
+
+            ${
+                phone
+                    ? `
+                        <div
+                            style="
+                                margin-top:6px;
+                                margin-bottom:8px;
+                            "
+                        >
+
+                            📞
+
+                            <a
+                                href="tel:${escapeAttribute(phone)}"
+                                onclick="event.stopPropagation();"
+                                style="
+                                    color:#00695c;
+                                    text-decoration:none;
+                                    font-weight:700;
+                                "
+                            >
+                                ${escapeIrregularityHtml(phone)}
+                            </a>
+
+                        </div>
+                    `
+                    : ""
+            }
+
+
+            ${
+                contextHtml
+                    ? `
+                        <div
+                            style="
+                                margin-top:7px;
+                                margin-bottom:8px;
+
+                                background:#fff8f8;
+
+                                border:
+                                    1px solid #f0d5d5;
+
+                                border-radius:6px;
+
+                                padding:6px;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    font-weight:700;
+                                    color:#b71c1c;
+                                    font-size:11px;
+                                    margin-bottom:4px;
+                                "
+                            >
+                                ⚠️
+                                ${escapeIrregularityHtml(
+                                    categoryTitle
+                                )}
+                                Details
+                            </div>
+
+                            ${contextHtml}
+
+                        </div>
+                    `
+                    : ""
+            }
+
+
+            <div
+                style="
+                    margin-bottom:8px;
+
+                    font-size:10px;
+                    line-height:1.5;
+
+                    background:#f7fbf7;
+
+                    border:
+                        1px solid #d7e9d8;
+
+                    border-radius:6px;
+
+                    padding:5px;
+                "
+            >
+
+                <div
+                    style="
+                        font-weight:700;
+                        color:#1b5e20;
+                        margin-bottom:3px;
+                        font-size:11px;
+                    "
+                >
+                    📍 Location of Irregularity
+                </div>
+
+
+                ${
+                    compartment
+                        ? `
+                            <div>
+                                🌲 Compartment:
+                                <b>
+                                    ${escapeIrregularityHtml(
+                                        compartment
+                                    )}
+                                </b>
+                            </div>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    beat
+                        ? `
+                            <div>
+                                🧭 Beat:
+                                <b>
+                                    ${escapeIrregularityHtml(
+                                        beat
+                                    )}
+                                </b>
+                            </div>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    range
+                        ? `
+                            <div>
+                                🏢 Range:
+                                <b>
+                                    ${escapeIrregularityHtml(
+                                        range
+                                    )}
+                                </b>
+                            </div>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    division
+                        ? `
+                            <div>
+                                🏛 Division:
+                                <b>
+                                    ${escapeIrregularityHtml(
+                                        division
+                                    )}
+                                </b>
+                            </div>
+                        `
+                        : ""
+                }
+
+
+                ${
+                    Number.isFinite(lat) &&
+                    Number.isFinite(lon)
+                        ? `
+                            <div
+                                style="
+                                    margin-top:2px;
+                                    color:#555;
+                                    font-size:9px;
+                                "
+                            >
+                                🛰 GPS:
+                                <b>
+                                    ${lat.toFixed(6)},
+                                    ${lon.toFixed(6)}
+                                </b>
+                            </div>
+                        `
+                        : ""
+                }
+
+            </div>
+
+
+            ${mediaHtml}
+
+        </div>
+
+    `;
+
+}
+    function categoryIconSafe(
+    category
+){
+
+    return (
+        window.GGIrregularity
+            ?.TYPE_META?.[
+                String(
+                    category ||
+                    ""
+                )
+                .trim()
+                .toUpperCase()
+            ]
+            ?.icon
+        ||
+        "⚠️"
+    );
+
+}
+
+    function removeIrregularityMarker(
+    key
+){
+
+    const marker =
+        window.irregularityMarkers?.[key];
+
+
+    if(
+        !marker
+    ){
+
+        return;
+
+    }
+
+
+    try{
+
+        if(
+            window.activeIrregularityPopupKey ===
+            key
+        ){
+
+            window.activeIrregularityPopupKey =
+                null;
+
+
+            window.activeIrregularityPopupMarker =
+                null;
+
+        }
+
+
+        irregularityLayer.removeLayer(
+            marker
+        );
+
+    }
+
+    catch(
+        error
+    ){
+
+        console.warn(
+            "⚠️ Failed to remove irregularity marker:",
+            key,
+            error
+        );
+
+    }
+
+
+    delete
+        window.irregularityMarkers[key];
+
+}
+    // =====================================================
 // STOP HEC REALTIME LISTENER
 // =====================================================
 
