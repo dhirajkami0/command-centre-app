@@ -630,11 +630,62 @@ async function(){
 
    ============================================================ */
 
+/* ============================================================
+   IRREGULARITY — AUTHORITATIVE GIS RESOLVER
+   ============================================================ */
+
 GGIrregularity.resolveGIS =
 function(
-    latitude,
-    longitude
+    lat,
+    lon
 ){
+
+    lat = Number(lat);
+    lon = Number(lon);
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
+    ){
+
+        console.error(
+            "❌ Invalid GPS for Irregularity GIS:",
+            lat,
+            lon
+        );
+
+        return {
+
+            lat: lat,
+            lon: lon,
+
+            division: "",
+            range: "",
+            beat: "",
+            compartment: "",
+
+            village: "",
+            villageCode: "",
+            block: "",
+
+            nearestPoint: "",
+            distanceMeters: null,
+
+            locationType: "GPS",
+            text: "",
+
+            compartmentResult: null,
+            villageResult: null,
+            nearestPointResult: null
+
+        };
+
+    }
+
+
+    /* ========================================================
+       USE THE SAME AUTHORITATIVE APPLICATION GIS RESOLVER
+       ======================================================== */
 
     if(
         typeof window.resolveCurrentGIS !==
@@ -642,34 +693,94 @@ function(
     ){
 
         throw new Error(
-            "resolveCurrentGIS() is not available."
+            "Authoritative GIS resolver unavailable."
         );
 
     }
 
 
-    const gis =
-        window.resolveCurrentGIS(
-            latitude,
-            longitude
+    let result;
+
+    try{
+
+        result =
+            window.resolveCurrentGIS(
+                lat,
+                lon
+            );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ resolveCurrentGIS failed:",
+            error
         );
 
-
-    if(
-        !gis
-    ){
-
-        throw new Error(
-            "Unable to resolve GIS location."
-        );
+        throw error;
 
     }
 
 
-    return gis;
+    /* ========================================================
+       NORMALIZE EMPTY RESULT SAFELY
+       ======================================================== */
+
+    result =
+        result ||
+        {};
+
+
+    /* ========================================================
+       IMPORTANT:
+       DO NOT USE Leaflet layer globals here.
+
+       The application already has the authoritative
+       compartment spatial index:
+
+       window.findCompartmentAtPoint()
+       window.compartmentSpatialIndex
+
+       resolveCurrentGIS() remains the first authority.
+       ======================================================== */
+
+    console.log(
+        "🗺 Irregularity authoritative GIS:",
+        {
+            lat: lat,
+            lon: lon,
+
+            division:
+                result.division || "",
+
+            range:
+                result.range || "",
+
+            beat:
+                result.beat || "",
+
+            compartment:
+                result.compartment || "",
+
+            village:
+                result.village || "",
+
+            nearestPoint:
+                result.nearestPoint || "",
+
+            distanceMeters:
+                result.distanceMeters ??
+                null,
+
+            compartmentResult:
+                result.compartmentResult || null
+        }
+    );
+
+
+    return result;
 
 };
-
 
 /* ============================================================
    NORMALIZE GIS
@@ -1354,29 +1465,37 @@ async function(
 
 
 /* ============================================================
-   CREATE FIRESTORE DOCUMENT
-   ============================================================ */
-
-/* ============================================================
    CREATE IRREGULARITY FIRESTORE DOCUMENT
 
-   SAME ID / COUNTER LOGIC AS
-   ELEPHANT + WILDLIFE SIGHTING WRITE FLOW
+   ID DESIGN
+   ------------------------------------------------------------
+   1. buildPayload() already resolves:
+        GIS Division → User Profile Division
+        GIS Range    → User Profile Range
 
-   FINANCIAL YEAR:
-   01 APRIL → 31 MARCH
+   2. createDocument() uses ONLY those FINAL payload values.
 
-   FINAL ID:
+   3. Division + Range are mandatory for ID generation.
 
-   DIVISIONCODE-RANGECODE-RANGECOUNT/DIVISIONCOUNT
+   4. Financial Year:
+        01 April → 31 March
 
-   Example:
+   5. Separate Irregularity counters:
+        Division counter
+        Range counter
 
-   BuxaTR_WEST-EastDamanpur-7/7
+   6. Final visible ID:
 
-   Firestore document ID:
+        DIVISIONCODE-RANGECODE-RANGECOUNT/DIVISIONCOUNT
 
-   BuxaTR_WEST-EastDamanpur-7__7
+      Example:
+
+        BuxaTR_WEST-EastDamanpur-7/7
+
+   7. Firestore document ID:
+
+        BuxaTR_WEST-EastDamanpur-7__7
+
    ============================================================ */
 
 GGIrregularity.createDocument =
@@ -1473,35 +1592,38 @@ async function(
 
 
     /* ========================================================
-       5. GET GIS VALUES
+       5. FINAL DIVISION / RANGE
 
-       USE THE EXISTING IRREGULARITY PAYLOAD FIELDS.
+       IMPORTANT
+       --------------------------------------------------------
+       DO NOT resolve GIS again here.
 
-       DO NOT INVENT NEW FIELDS.
+       buildPayload() has already done:
+
+           GIS resolver
+                 ↓
+           profile fallback
+
+       Therefore payload.division and payload.range
+       are the authoritative FINAL values for ID creation.
        ======================================================== */
 
     const division =
         String(
-            payload.gis_division ||
             payload.division ||
-            payload.divisionCode ||
-            payload.division_code ||
             ""
         ).trim();
 
 
     const range =
         String(
-            payload.gis_range ||
             payload.range ||
-            payload.rangeCode ||
-            payload.range_code ||
             ""
         ).trim();
 
 
     /* ========================================================
-       6. GIS VALIDATION
+       6. DIVISION + RANGE ARE REQUIRED FOR ID
        ======================================================== */
 
     if(
@@ -1510,19 +1632,19 @@ async function(
     ){
 
         throw new Error(
-            "GIS division/range missing. Cannot generate Irregularity ID."
+            "Division and Range are required to generate Irregularity ID."
         );
 
     }
 
 
     /* ========================================================
-       7. SAME CODE LOGIC AS SIGHTING
+       7. SAME CODE SOURCE AS EXISTING PAYLOAD
 
-       Existing sighting code currently resolves:
+       Do not invent another GIS lookup.
 
-       divisionCode = division
-       rangeCode    = range
+       The existing final Division and Range values
+       are used directly.
        ======================================================== */
 
     const divisionCode =
@@ -1536,16 +1658,16 @@ async function(
     /* ========================================================
        8. FINANCIAL YEAR
 
-       EXACT SAME LOGIC AS ELEPHANT/WILDLIFE
+       01 APRIL → 31 MARCH
 
-       01 Apr 2026 → 31 Mar 2027
-       = 2026-27
+       April 2026  → 2026-27
+       March 2027  → 2026-27
 
-       January/February/March
-       belong to previous FY.
+       January 2027 → 2026-27
+       February 2027 → 2026-27
+       March 2027 → 2026-27
 
-       April onward
-       belongs to current FY.
+       April 2027 → 2027-28
        ======================================================== */
 
     const now =
@@ -1582,8 +1704,6 @@ async function(
 
     /* ========================================================
        9. SAFE COUNTER KEYS
-
-       SAME LOGIC AS SIGHTING
        ======================================================== */
 
     const safeFY =
@@ -1610,15 +1730,10 @@ async function(
     /* ========================================================
        10. IRREGULARITY COUNTER COLLECTION
 
-       IMPORTANT:
+       Separate from Elephant/Wildlife counters.
 
-       Keep Irregularity counters separate from
-       Elephant/Wildlife counters.
-
-       Therefore an Elephant sighting does NOT consume
-       an Irregularity number and vice versa.
-
-       The NUMBERING ALGORITHM remains EXACTLY the SAME.
+       Elephant/Wildlife numbers do NOT consume
+       Irregularity numbers.
        ======================================================== */
 
     const counterCollection =
@@ -1656,12 +1771,15 @@ async function(
 
 
     /* ========================================================
-       13. TRANSACTION
+       13. ATOMIC TRANSACTION
 
-       EXACT SAME STRUCTURE AS SIGHTING.
+       READ BOTH COUNTERS
+       INCREMENT BOTH
+       CREATE FINAL ID
+       WRITE COUNTERS
+       WRITE IRREGULARITY
 
-       BOTH COUNTERS + IRREGULARITY DOCUMENT
-       ARE COMMITTED ATOMICALLY.
+       ALL ATOMIC.
        ======================================================== */
 
     const result =
@@ -1693,14 +1811,12 @@ async function(
 
                 const oldDivisionCount =
                     divisionSnap.exists()
-
                         ? Number(
                             divisionSnap
                                 .data()
                                 ?.count ||
                             0
                         )
-
                         : 0;
 
 
@@ -1710,14 +1826,12 @@ async function(
 
                 const oldRangeCount =
                     rangeSnap.exists()
-
                         ? Number(
                             rangeSnap
                                 .data()
                                 ?.count ||
                             0
                         )
-
                         : 0;
 
 
@@ -1756,11 +1870,11 @@ async function(
                 /* ==============================================
                    NEXT COUNTERS
 
-                   RANGE:
-                   1, 2, 3...
+                   Range:
+                       1, 2, 3...
 
-                   DIVISION:
-                   1, 2, 3...
+                   Division:
+                       1, 2, 3...
                    ============================================== */
 
                 const divisionCount =
@@ -1772,7 +1886,12 @@ async function(
 
 
                 /* ==============================================
-                   SAME ID COMPONENT LOGIC AS SIGHTING
+                   ID COMPONENTS
+
+                   Preserve existing design:
+                   remove spaces only.
+
+                   No new transformation.
                    ============================================== */
 
                 const idDivision =
@@ -1792,9 +1911,6 @@ async function(
                 /* ==============================================
                    FINAL IRREGULARITY ID
 
-                   EXACT SAME FORMAT AS
-                   ELEPHANT / WILDLIFE
-
                    Example:
 
                    BuxaTR_WEST-EastDamanpur-7/7
@@ -1813,14 +1929,14 @@ async function(
                 /* ==============================================
                    FIRESTORE DOCUMENT ID
 
-                   EXACT SAME TRANSFORMATION AS SIGHTING
+                   Replace "/" with "__"
 
-                   Visible ID:
+                   Example:
 
+                   Visible:
                    BuxaTR_WEST-EastDamanpur-7/7
 
-                   Firestore ID:
-
+                   Firestore:
                    BuxaTR_WEST-EastDamanpur-7__7
                    ============================================== */
 
@@ -1833,6 +1949,16 @@ async function(
 
                 /* ==============================================
                    IRREGULARITY DOCUMENT REFERENCE
+
+                   IMPORTANT:
+                   Declare it INSIDE the transaction before
+                   transaction.set().
+
+                   This prevents the previous:
+
+                   irregularityRef is not defined
+
+                   error.
                    ============================================== */
 
                 const irregularityRef =
@@ -1948,7 +2074,7 @@ async function(
 
 
                         /* ======================================
-                           GIS
+                           FINAL DIVISION / RANGE USED FOR ID
                            ====================================== */
 
                         gis_division:
@@ -1956,7 +2082,6 @@ async function(
 
                         gis_range:
                             range,
-
 
                         division_code:
                             divisionCode,
@@ -1991,7 +2116,7 @@ async function(
 
 
                 /* ==============================================
-                   RETURN SAME STRUCTURE AS SIGHTING
+                   RETURN RESULT
                    ============================================== */
 
                 return {
@@ -2029,103 +2154,112 @@ async function(
         );
 
 
-/* ========================================================
-   14. VERIFY RESULT
-   ======================================================== */
+    /* ========================================================
+       14. VERIFY TRANSACTION RESULT
+       ======================================================== */
 
-if(
-    !result ||
-    !result.irregularityId ||
-    !result.firestoreId
-){
+    if(
+        !result ||
+        !result.irregularityId ||
+        !result.firestoreId
+    ){
 
-    throw new Error(
-        "Firestore transaction completed without a valid Irregularity ID."
-    );
-
-}
-
-
-/* ========================================================
-   15. WRITE IDs BACK INTO PAYLOAD
-   ======================================================== */
-
-payload.irregularity_id =
-    result.irregularityId;
-
-payload.firestore_id =
-    result.firestoreId;
-
-payload.financial_year =
-    result.financialYear;
-
-payload.division_code =
-    result.divisionCode;
-
-payload.range_code =
-    result.rangeCode;
-
-payload.range_irregularity_no =
-    result.rangeCount;
-
-payload.division_irregularity_no =
-    result.divisionCount;
-
-
-/* ========================================================
-   16. LOG
-   ======================================================== */
-
-console.log(
-    "🔥 Irregularity Firestore saved:",
-    result
-);
-
-console.table([
-    {
-
-        irregularityId:
-            result.irregularityId,
-
-        firestoreId:
-            result.firestoreId,
-
-        financialYear:
-            result.financialYear,
-
-        division:
-            result.division,
-
-        range:
-            result.range,
-
-        rangeNo:
-            result.rangeCount,
-
-        divisionNo:
-            result.divisionCount
+        throw new Error(
+            "Firestore transaction completed without a valid Irregularity ID."
+        );
 
     }
-]);
 
 
-/* ========================================================
-   17. BUILD DOCUMENT REF AGAIN
-   ======================================================== */
+    /* ========================================================
+       15. WRITE FINAL IDs BACK INTO PAYLOAD
+       ======================================================== */
 
-const documentRef =
-    doc(
-        db,
-        GGIrregularity.COLLECTION,
-        result.firestoreId
+    payload.irregularity_id =
+        result.irregularityId;
+
+
+    payload.firestore_id =
+        result.firestoreId;
+
+
+    payload.financial_year =
+        result.financialYear;
+
+
+    payload.division_code =
+        result.divisionCode;
+
+
+    payload.range_code =
+        result.rangeCode;
+
+
+    payload.range_irregularity_no =
+        result.rangeCount;
+
+
+    payload.division_irregularity_no =
+        result.divisionCount;
+
+
+    /* ========================================================
+       16. LOG
+       ======================================================== */
+
+    console.log(
+        "🔥 Irregularity Firestore saved:",
+        result
     );
 
 
-/* ========================================================
-   18. RETURN DOCUMENT REF
-   ======================================================== */
+    console.table([
+        {
 
-return documentRef;
+            irregularityId:
+                result.irregularityId,
+
+            firestoreId:
+                result.firestoreId,
+
+            financialYear:
+                result.financialYear,
+
+            division:
+                result.division,
+
+            range:
+                result.range,
+
+            rangeNo:
+                result.rangeCount,
+
+            divisionNo:
+                result.divisionCount
+
+        }
+    ]);
+
+
+    /* ========================================================
+       17. BUILD DOCUMENT REF AGAIN
+
+       Same final Firestore ID.
+       ======================================================== */
+
+    const documentRef =
+        doc(
+            db,
+            GGIrregularity.COLLECTION,
+            result.firestoreId
+        );
+
+
+    /* ========================================================
+       18. RETURN DOCUMENT REF
+       ======================================================== */
+
+    return documentRef;
 
 };
 
