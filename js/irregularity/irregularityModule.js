@@ -1503,9 +1503,9 @@ async function(
     payload
 ){
 
-    /* ========================================================
-       1. FIREBASE READY
-       ======================================================== */
+    // ========================================================
+    // 1. WAIT FOR FIREBASE
+    // ========================================================
 
     if(
         !window.db ||
@@ -1524,9 +1524,9 @@ async function(
     }
 
 
-    /* ========================================================
-       2. FINAL FIREBASE VALIDATION
-       ======================================================== */
+    // ========================================================
+    // 2. FINAL FIREBASE VALIDATION
+    // ========================================================
 
     if(
         !window.db ||
@@ -1540,9 +1540,9 @@ async function(
     }
 
 
-    /* ========================================================
-       3. FIRESTORE FUNCTIONS
-       ======================================================== */
+    // ========================================================
+    // 3. EXISTING FIRESTORE INSTANCE
+    // ========================================================
 
     const db =
         window.db;
@@ -1574,9 +1574,9 @@ async function(
     }
 
 
-    /* ========================================================
-       4. VALIDATE PAYLOAD
-       ======================================================== */
+    // ========================================================
+    // 4. VALIDATE PAYLOAD
+    // ========================================================
 
     if(
         !payload ||
@@ -1591,36 +1591,21 @@ async function(
     }
 
 
-    /* ========================================================
-       5. USER PROFILE FALLBACK
-       --------------------------------------------------------
-       IMPORTANT:
-
-       GIS is ALWAYS FIRST.
-
-       If GIS did not provide Division/Range,
-       use window.userProfile.
-
-       This is specifically required for
-       ADMIN / DFO / ADFO where profile posting
-       may or may not contain these values.
-       ======================================================== */
+    // ========================================================
+    // 5. DIVISION / RANGE
+    //
+    // PRIORITY:
+    //
+    // 1. GIS resolved values already present in payload
+    // 2. window.userProfile fallback
+    //
+    // DO NOT RUN ANOTHER GIS RESOLVER HERE.
+    // ========================================================
 
     const userProfile =
         window.userProfile ||
         {};
 
-
-    /* ========================================================
-       6. FINAL DIVISION
-       --------------------------------------------------------
-       PRIORITY:
-
-       1. GIS Division already placed in payload
-       2. payload.division
-       3. existing payload divisionCode fields
-       4. window.userProfile.division
-       ======================================================== */
 
     const division =
         String(
@@ -1640,17 +1625,6 @@ async function(
         ).trim();
 
 
-    /* ========================================================
-       7. FINAL RANGE
-       --------------------------------------------------------
-       PRIORITY:
-
-       1. GIS Range already placed in payload
-       2. payload.range
-       3. existing payload rangeCode fields
-       4. window.userProfile.range
-       ======================================================== */
-
     const range =
         String(
 
@@ -1669,12 +1643,9 @@ async function(
         ).trim();
 
 
-    /* ========================================================
-       8. BEAT
-       --------------------------------------------------------
-       KEEP EXISTING BEAT DATA.
-       NO NEW GIS LOOKUP.
-       ======================================================== */
+    // ========================================================
+    // 6. KEEP EXISTING BEAT / COMPARTMENT
+    // ========================================================
 
     const beat =
         String(
@@ -1692,13 +1663,6 @@ async function(
         ).trim();
 
 
-    /* ========================================================
-       9. COMPARTMENT
-       --------------------------------------------------------
-       KEEP EXISTING COMPARTMENT DATA.
-       NO NEW GIS LOOKUP.
-       ======================================================== */
-
     const compartment =
         String(
 
@@ -1715,9 +1679,9 @@ async function(
         ).trim();
 
 
-    /* ========================================================
-       10. DIVISION + RANGE REQUIRED FOR ID
-       ======================================================== */
+    // ========================================================
+    // 7. DIVISION / RANGE REQUIRED FOR ID
+    // ========================================================
 
     if(
         !division ||
@@ -1725,17 +1689,17 @@ async function(
     ){
 
         throw new Error(
-            "Division and Range could not be determined. Cannot generate Irregularity ID."
+            "GIS division/range missing and no userProfile division/range fallback available. Cannot generate Irregularity ID."
         );
 
     }
 
 
-    /* ========================================================
-       11. FINAL CODE VALUES
-       --------------------------------------------------------
-       Same pattern as Elephant / Wildlife.
-       ======================================================== */
+    // ========================================================
+    // 8. CODE VALUES
+    //
+    // SAME AS SIGHTING FLOW
+    // ========================================================
 
     const divisionCode =
         division;
@@ -1745,19 +1709,13 @@ async function(
         range;
 
 
-    /* ========================================================
-       12. FINANCIAL YEAR
-       --------------------------------------------------------
-       01 APRIL → 31 MARCH
-
-       Example:
-
-       01 Apr 2026 → 31 Mar 2027
-       = 2026-27
-
-       01 Apr 2027 → 31 Mar 2028
-       = 2027-28
-       ======================================================== */
+    // ========================================================
+    // 9. FINANCIAL YEAR
+    //
+    // 1 APRIL → 31 MARCH
+    //
+    // April 2026 → March 2027 = 2026-27
+    // ========================================================
 
     const now =
         new Date();
@@ -1791,9 +1749,9 @@ async function(
         );
 
 
-    /* ========================================================
-       13. SAFE COUNTER KEYS
-       ======================================================== */
+    // ========================================================
+    // 10. SAFE COUNTER KEYS
+    // ========================================================
 
     const safeFY =
         financialYear.replace(
@@ -1816,25 +1774,21 @@ async function(
         );
 
 
-    /* ========================================================
-       14. IRREGULARITY COUNTER COLLECTION
-       --------------------------------------------------------
-       Separate from Elephant/Wildlife counters.
-
-       Elephant/Wildlife counters are NOT touched.
-       ======================================================== */
+    // ========================================================
+    // 11. IRREGULARITY COUNTER COLLECTION
+    //
+    // SEPARATE FROM ELEPHANT / WILDLIFE
+    // ========================================================
 
     const counterCollection =
         "irregularity_counters";
 
 
-    /* ========================================================
-       15. DIVISION COUNTER REFERENCE
-       --------------------------------------------------------
-       One counter per:
-
-       Financial Year + Division
-       ======================================================== */
+    // ========================================================
+    // 12. DIVISION COUNTER
+    //
+    // FY + DIVISION
+    // ========================================================
 
     const divisionCounterRef =
         doc(
@@ -1850,13 +1804,11 @@ async function(
         );
 
 
-    /* ========================================================
-       16. RANGE COUNTER REFERENCE
-       --------------------------------------------------------
-       One counter per:
-
-       Financial Year + Division + Range
-       ======================================================== */
+    // ========================================================
+    // 13. RANGE COUNTER
+    //
+    // FY + DIVISION + RANGE
+    // ========================================================
 
     const rangeCounterRef =
         doc(
@@ -1874,23 +1826,21 @@ async function(
         );
 
 
-    /* ========================================================
-       17. ATOMIC TRANSACTION
-       --------------------------------------------------------
-       SAME DESIGN AS ELEPHANT / WILDLIFE:
-
-       READ counters
-       ↓
-       increment counters
-       ↓
-       create final ID
-       ↓
-       write counters
-       ↓
-       write Irregularity
-
-       EVERYTHING ATOMIC.
-       ======================================================== */
+    // ========================================================
+    // 14. TRANSACTION
+    //
+    // SAME STRUCTURE AS SIGHTING:
+    //
+    // READ BOTH COUNTERS
+    //       ↓
+    // INCREMENT BOTH
+    //       ↓
+    // GENERATE FINAL ID
+    //       ↓
+    // WRITE COUNTERS
+    //       ↓
+    // WRITE IRREGULARITY
+    // ========================================================
 
     const result =
         await runTransaction(
@@ -1901,9 +1851,9 @@ async function(
                 transaction
             ){
 
-                /* ==================================================
-                   17A. ALL READS FIRST
-                   ================================================== */
+                // ==================================================
+                // 14A. READ DIVISION COUNTER
+                // ==================================================
 
                 const divisionSnap =
                     await transaction.get(
@@ -1911,15 +1861,19 @@ async function(
                     );
 
 
+                // ==================================================
+                // 14B. READ RANGE COUNTER
+                // ==================================================
+
                 const rangeSnap =
                     await transaction.get(
                         rangeCounterRef
                     );
 
 
-                /* ==================================================
-                   17B. CURRENT DIVISION COUNT
-                   ================================================== */
+                // ==================================================
+                // 14C. EXISTING DIVISION COUNT
+                // ==================================================
 
                 const oldDivisionCount =
                     divisionSnap.exists()
@@ -1934,9 +1888,9 @@ async function(
                         : 0;
 
 
-                /* ==================================================
-                   17C. CURRENT RANGE COUNT
-                   ================================================== */
+                // ==================================================
+                // 14D. EXISTING RANGE COUNT
+                // ==================================================
 
                 const oldRangeCount =
                     rangeSnap.exists()
@@ -1951,9 +1905,9 @@ async function(
                         : 0;
 
 
-                /* ==================================================
-                   17D. VALIDATE DIVISION COUNTER
-                   ================================================== */
+                // ==================================================
+                // 14E. COUNTER VALIDATION
+                // ==================================================
 
                 if(
                     !Number.isFinite(
@@ -1969,10 +1923,6 @@ async function(
                 }
 
 
-                /* ==================================================
-                   17E. VALIDATE RANGE COUNTER
-                   ================================================== */
-
                 if(
                     !Number.isFinite(
                         oldRangeCount
@@ -1987,9 +1937,9 @@ async function(
                 }
 
 
-                /* ==================================================
-                   17F. NEXT COUNTERS
-                   ================================================== */
+                // ==================================================
+                // 14F. INCREMENT
+                // ==================================================
 
                 const divisionCount =
                     oldDivisionCount + 1;
@@ -1999,13 +1949,11 @@ async function(
                     oldRangeCount + 1;
 
 
-                /* ==================================================
-                   17G. ID COMPONENTS
-                   --------------------------------------------------
-                   SAME AS ELEPHANT / WILDLIFE.
-
-                   Remove spaces only.
-                   ================================================== */
+                // ==================================================
+                // 14G. FINAL ID COMPONENTS
+                //
+                // SAME AS ELEPHANT / WILDLIFE
+                // ==================================================
 
                 const idDivision =
                     divisionCode.replace(
@@ -2021,17 +1969,13 @@ async function(
                     );
 
 
-                /* ==================================================
-                   17H. FINAL IRREGULARITY ID
-                   --------------------------------------------------
-                   SAME PATTERN:
-
-                   DIVISION-RANGE-RANGECOUNT/DIVISIONCOUNT
-
-                   Example:
-
-                   BuxaTR_WEST-EastDamanpur-7/7
-                   ================================================== */
+                // ==================================================
+                // 14H. FINAL USER-FACING IRREGULARITY ID
+                //
+                // SAME PATTERN AS SIGHTING
+                //
+                // DIVISION-RANGE-RANGECOUNT/DIVISIONCOUNT
+                // ==================================================
 
                 const finalIrregularityID =
                     idDivision +
@@ -2043,22 +1987,19 @@ async function(
                     divisionCount;
 
 
-                /* ==================================================
-                   17I. FIRESTORE DOCUMENT ID
-                   --------------------------------------------------
-                   Visible ID:
-
-                   BuxaTR_WEST-EastDamanpur-7/7
-
-                   Firestore document ID:
-
-                   BuxaTR_WEST-EastDamanpur-7__7
-
-                   "/" is replaced only for the Firestore
-                   document path.
-
-                   The actual irregularity_id retains "/".
-                   ================================================== */
+                // ==================================================
+                // 14I. FIRESTORE DOCUMENT ID
+                //
+                // "/" → "__"
+                //
+                // USER ID:
+                //
+                // BuxaTR_WEST-EastDamanpur-7/7
+                //
+                // FIRESTORE:
+                //
+                // BuxaTR_WEST-EastDamanpur-7__7
+                // ==================================================
 
                 const firestoreDocumentID =
                     finalIrregularityID.replace(
@@ -2067,17 +2008,9 @@ async function(
                     );
 
 
-                /* ==================================================
-                   17J. IRREGULARITY DOCUMENT REFERENCE
-                   --------------------------------------------------
-                   IMPORTANT:
-
-                   Keep this INSIDE the transaction.
-
-                   This also fixes the previous:
-
-                   irregularityRef is not defined
-                   ================================================== */
+                // ==================================================
+                // 14J. EXISTING IRREGULARITY COLLECTION
+                // ==================================================
 
                 const irregularityRef =
                     doc(
@@ -2091,9 +2024,9 @@ async function(
                     );
 
 
-                /* ==================================================
-                   17K. DIVISION COUNTER WRITE
-                   ================================================== */
+                // ==================================================
+                // 14K. DIVISION COUNTER WRITE
+                // ==================================================
 
                 transaction.set(
 
@@ -2131,9 +2064,9 @@ async function(
                 );
 
 
-                /* ==================================================
-                   17L. RANGE COUNTER WRITE
-                   ================================================== */
+                // ==================================================
+                // 14L. RANGE COUNTER WRITE
+                // ==================================================
 
                 transaction.set(
 
@@ -2177,16 +2110,16 @@ async function(
                 );
 
 
-                /* ==================================================
-                   17M. IRREGULARITY FIRESTORE WRITE
-                   --------------------------------------------------
-                   IMPORTANT:
-
-                   ...payload remains.
-
-                   Therefore category and ALL existing
-                   Irregularity payload fields remain intact.
-                   ================================================== */
+                // ==================================================
+                // 14M. IRREGULARITY WRITE
+                //
+                // IMPORTANT:
+                //
+                // KEEP ...payload
+                //
+                // Therefore category/details/media/GPS/etc.
+                // remain exactly as created by buildPayload().
+                // ==================================================
 
                 transaction.set(
 
@@ -2197,9 +2130,21 @@ async function(
                         ...payload,
 
 
-                        /* ==========================================
-                           CANONICAL IRREGULARITY ID
-                           ========================================== */
+                        // ==========================================
+                        // CATEGORY REMAINS FROM PAYLOAD
+                        // ==========================================
+
+                        category:
+                            payload.category,
+
+
+                        category_label:
+                            payload.category_label,
+
+
+                        // ==========================================
+                        // CANONICAL ID
+                        // ==========================================
 
                         irregularity_id:
                             finalIrregularityID,
@@ -2209,17 +2154,17 @@ async function(
                             firestoreDocumentID,
 
 
-                        /* ==========================================
-                           FINANCIAL YEAR
-                           ========================================== */
+                        // ==========================================
+                        // FINANCIAL YEAR
+                        // ==========================================
 
                         financial_year:
                             financialYear,
 
 
-                        /* ==========================================
-                           FINAL DIVISION / RANGE
-                           ========================================== */
+                        // ==========================================
+                        // FINAL GIS / POSTING VALUES
+                        // ==========================================
 
                         gis_division:
                             division,
@@ -2229,10 +2174,6 @@ async function(
                             range,
 
 
-                        /* ==========================================
-                           BEAT / COMPARTMENT
-                           ========================================== */
-
                         gis_beat:
                             beat,
 
@@ -2241,9 +2182,9 @@ async function(
                             compartment,
 
 
-                        /* ==========================================
-                           CODE VALUES
-                           ========================================== */
+                        // ==========================================
+                        // CODE VALUES
+                        // ==========================================
 
                         division_code:
                             divisionCode,
@@ -2253,9 +2194,9 @@ async function(
                             rangeCode,
 
 
-                        /* ==========================================
-                           COUNTER VALUES
-                           ========================================== */
+                        // ==========================================
+                        // COUNTERS
+                        // ==========================================
 
                         range_irregularity_no:
                             rangeCount,
@@ -2265,9 +2206,9 @@ async function(
                             divisionCount,
 
 
-                        /* ==========================================
-                           TIMESTAMPS
-                           ========================================== */
+                        // ==========================================
+                        // TIMESTAMPS
+                        // ==========================================
 
                         created_at:
                             serverTimestamp(),
@@ -2281,51 +2222,41 @@ async function(
                 );
 
 
-                /* ==================================================
-                   17N. TRANSACTION RESULT
-                   ================================================== */
+                // ==================================================
+                // 14N. TRANSACTION RESULT
+                // ==================================================
 
                 return {
 
                     firestoreId:
                         firestoreDocumentID,
 
-
                     irregularityId:
                         finalIrregularityID,
-
 
                     financialYear:
                         financialYear,
 
-
                     division:
                         division,
-
 
                     range:
                         range,
 
-
                     beat:
                         beat,
-
 
                     compartment:
                         compartment,
 
-
                     divisionCode:
                         divisionCode,
-
 
                     rangeCode:
                         rangeCode,
 
-
                     rangeCount:
                         rangeCount,
-
 
                     divisionCount:
                         divisionCount
@@ -2337,9 +2268,9 @@ async function(
         );
 
 
-    /* ========================================================
-       18. VERIFY TRANSACTION RESULT
-       ======================================================== */
+    // ========================================================
+    // 15. VERIFY TRANSACTION
+    // ========================================================
 
     if(
         !result ||
@@ -2354,12 +2285,9 @@ async function(
     }
 
 
-    /* ========================================================
-       19. WRITE FINAL ID VALUES BACK TO PAYLOAD
-       --------------------------------------------------------
-       This does NOT change the original category/details/
-       media/GPS payload structure.
-       ======================================================== */
+    // ========================================================
+    // 16. WRITE GENERATED VALUES BACK TO PAYLOAD
+    // ========================================================
 
     payload.irregularity_id =
         result.irregularityId;
@@ -2389,9 +2317,9 @@ async function(
         result.divisionCount;
 
 
-    /* ========================================================
-       20. SUCCESS LOG
-       ======================================================== */
+    // ========================================================
+    // 17. SUCCESS LOG
+    // ========================================================
 
     console.log(
         "🔥 Irregularity Firestore saved:",
@@ -2406,26 +2334,20 @@ async function(
             irregularityId:
                 result.irregularityId,
 
-
             firestoreId:
                 result.firestoreId,
-
 
             financialYear:
                 result.financialYear,
 
-
             division:
                 result.division,
-
 
             range:
                 result.range,
 
-
             rangeNo:
                 result.rangeCount,
-
 
             divisionNo:
                 result.divisionCount
@@ -2435,11 +2357,9 @@ async function(
     ]);
 
 
-    /* ========================================================
-       21. RETURN DOCUMENT REFERENCE
-       --------------------------------------------------------
-       Same final Firestore document ID.
-       ======================================================== */
+    // ========================================================
+    // 18. RETURN SAME FIRESTORE DOCUMENT
+    // ========================================================
 
     const documentRef =
         doc(
