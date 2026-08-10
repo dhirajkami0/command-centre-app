@@ -82037,6 +82037,39 @@ function checkSightingMediaUI(){
 // =====================================================
 // 🐅 SUBMIT WILDLIFE FORM
 // =====================================================
+async function submitWildlifeForm(){
+
+    try{
+
+        // =================================================
+        // 🔄 SUBMIT LOADING
+        // =================================================
+
+        setSubmitLoading(true);
+
+
+        // =================================================
+        // ⏳ ALLOW WEBVIEW TO PAINT "SUBMITTING..."
+        // BEFORE HEAVY GPS / GIS / PAYLOAD WORK
+        // =================================================
+
+        await new Promise(resolve => {
+
+            requestAnimationFrame(() => {
+
+                requestAnimationFrame(resolve);
+
+            });
+
+        });
+
+
+        // =================================================
+        // 🐾 OBSERVATION TYPE
+        // =================================================
+
+        window.currentObservationType =
+            "WILDLIFE";
 
 // =================================================
 // 📍 GPS — AUTHORITATIVE PRIORITY CHAIN
