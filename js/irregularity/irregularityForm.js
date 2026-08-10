@@ -477,6 +477,7 @@ GGIrregularity.Form.categorySelect =
 function(){
 
     return GGIrregularity.Form.field(
+        "Irregularity / Offence / Observation",
 
               "type",
 
