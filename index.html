@@ -87392,9 +87392,10 @@ document
 
 }
     /* 3. Open Form + GPS */
-       function openSightingForm(){
+ function openSightingForm(){
 
     console.group("🐘 openSightingForm START");
+
     console.log(
         "⏱ Time:",
         new Date().toLocaleTimeString()
@@ -87415,9 +87416,11 @@ document
             "❌ form-modal NOT FOUND"
         );
 
+
         console.groupEnd();
 
         return;
+
     }
 
 
@@ -87426,8 +87429,10 @@ document
     modal.style.display =
         "block";
 
+
     modal.style.visibility =
         "visible";
+
 
     modal.style.opacity =
         "1";
@@ -87453,6 +87458,7 @@ document
     ){
 
         form.reset();
+
 
         console.log(
             "🧹 Form reset done"
@@ -87563,6 +87569,7 @@ document
             "User not loaded"
         );
 
+
         console.groupEnd();
 
         return;
@@ -87613,6 +87620,7 @@ document
                     id
                 );
 
+
                 return;
 
             }
@@ -87641,8 +87649,10 @@ document
         teamInput.value =
             displayName;
 
+
         teamInput.readOnly =
             true;
+
 
         teamInput.dataset.lockedUser =
             displayName;
@@ -87751,7 +87761,11 @@ document
         //
         // 1. window.latestGps
         // 2. localStorage.lastLat / lastLon
-        // 3. navigator.geolocation.watchPosition()
+        // 3. navigator.geolocation
+        //
+        // Device GPS is scanned for FULL 5 seconds.
+        // The BEST accuracy received during those 5 seconds
+        // is selected.
         // =====================================================
 
 
@@ -87781,14 +87795,19 @@ document
 
 
         if(
+
             Number.isFinite(
                 latestLat
             ) &&
+
             Number.isFinite(
                 latestLon
             ) &&
+
             latestLat !== 0 &&
+
             latestLon !== 0
+
         ){
 
             console.log(
@@ -87824,11 +87843,6 @@ document
 
         // =====================================================
         // 2️⃣ SECOND PRIORITY — localStorage
-        //
-        // Existing application keys:
-        //
-        // lastLat
-        // lastLon
         // =====================================================
 
         const cachedLat =
@@ -87848,14 +87862,19 @@ document
 
 
         if(
+
             Number.isFinite(
                 cachedLat
             ) &&
+
             Number.isFinite(
                 cachedLon
             ) &&
+
             cachedLat !== 0 &&
+
             cachedLon !== 0
+
         ){
 
             console.log(
@@ -87889,6 +87908,10 @@ document
         // latestGps unavailable
         // AND
         // localStorage unavailable
+        //
+        // Scan GPS continuously for 5 seconds.
+        // Keep every valid fix.
+        // Select the fix with LOWEST accuracy value.
         // =====================================================
 
         if(
@@ -87899,9 +87922,11 @@ document
                 "❌ GPS unavailable — geolocation not supported"
             );
 
+
             alert(
                 "❌ Could not get GPS location"
             );
+
 
             return;
 
@@ -87909,7 +87934,7 @@ document
 
 
         console.log(
-            "📡 GPS SOURCE 3 — Starting device GPS scan..."
+            "📡 GPS SOURCE 3 — Starting 5 second BEST GPS scan..."
         );
 
 
@@ -87924,6 +87949,10 @@ document
         let gpsDone =
             false;
 
+
+        // =====================================================
+        // START DEVICE GPS WATCH
+        // =====================================================
 
         const watchId =
             navigator.geolocation.watchPosition(
@@ -87941,29 +87970,94 @@ document
                     }
 
 
+                    // =================================================
+                    // READ GPS
+                    // =================================================
+
+                    const lat =
+                        Number(
+                            pos?.coords?.latitude
+                        );
+
+
+                    const lon =
+                        Number(
+                            pos?.coords?.longitude
+                        );
+
+
                     const acc =
                         Number(
-                            pos.coords.accuracy
+                            pos?.coords?.accuracy
                         );
+
+
+                    // =================================================
+                    // VALIDATE GPS FIX
+                    // =================================================
+
+                    if(
+
+                        !Number.isFinite(
+                            lat
+                        ) ||
+
+                        !Number.isFinite(
+                            lon
+                        ) ||
+
+                        !Number.isFinite(
+                            acc
+                        ) ||
+
+                        lat === 0 ||
+
+                        lon === 0 ||
+
+                        acc <= 0
+
+                    ){
+
+                        console.warn(
+                            "⚠ Ignoring invalid GPS fix:",
+                            {
+                                lat,
+                                lon,
+                                accuracy:
+                                    acc
+                            }
+                        );
+
+
+                        return;
+
+                    }
 
 
                     console.log(
                         "📍 GPS UPDATE:",
-                        acc + "m"
+                        {
+                            lat,
+                            lon,
+                            accuracy:
+                                acc + "m"
+                        }
                     );
 
 
                     // =================================================
                     // KEEP BEST GPS
+                    //
+                    // LOWER accuracy = BETTER GPS
                     // =================================================
 
                     if(
-                        Number.isFinite(acc) &&
                         acc < bestAcc
                     ){
 
                         bestAcc =
                             acc;
+
 
                         bestPos =
                             pos;
@@ -87971,7 +88065,12 @@ document
 
                         console.log(
                             "🏆 NEW BEST GPS:",
-                            acc + "m"
+                            {
+                                lat,
+                                lon,
+                                accuracy:
+                                    acc + "m"
+                            }
                         );
 
                     }
@@ -87996,8 +88095,11 @@ document
                     enableHighAccuracy:
                         true,
 
+                    // Give individual GPS fixes enough time.
+                    // The overall collection window is 5 seconds.
+
                     timeout:
-                        5000,
+                        10000,
 
                     maximumAge:
                         0
@@ -88008,7 +88110,7 @@ document
 
 
         // =====================================================
-        // COLLECT GPS FOR 5 SEC
+        // COLLECT GPS FOR FULL 5 SECONDS
         // =====================================================
 
         setTimeout(
@@ -88026,6 +88128,10 @@ document
                 gpsDone =
                     true;
 
+
+                // =================================================
+                // STOP GPS WATCH
+                // =================================================
 
                 navigator.geolocation
                     .clearWatch(
@@ -88069,7 +88175,7 @@ document
                                 finalLon,
 
                             accuracy:
-                                finalAccuracy
+                                finalAccuracy + "m"
                         }
                     );
 
@@ -88118,11 +88224,11 @@ document
 
 
                 // =================================================
-                // NO GPS
+                // NO VALID GPS FIX
                 // =================================================
 
                 console.error(
-                    "❌ GPS unavailable — no valid GPS fix received"
+                    "❌ GPS unavailable — no valid GPS fix received after 5 second scan"
                 );
 
 
