@@ -6518,37 +6518,37 @@ style="background:#f9a825;margin-top:8px;display:none;">
       📲 Install App
     </button>
   </div>
-<div id="updateBanner" style="
-  display:none;
-  position:fixed;
-  bottom:20px;
-  left:20px;
-  z-index:9999;
-  background:#1b5e20;
-  color:white;
-  padding:12px 16px;
-  border-radius:10px;
-  box-shadow:0 4px 15px rgba(0,0,0,0.4);
-  font-weight:bold;
-">
-  🚀 New version available
-
-  <button
+<button
     id="updateBtn"
     type="button"
     style="
-      margin-left:10px;
-      background:#4caf50;
-      border:none;
-      color:white;
-      padding:6px 12px;
-      border-radius:6px;
-      cursor:pointer;
+        margin-left:10px;
+        background:#4caf50;
+        border:none;
+        color:white;
+        padding:6px 12px;
+        border-radius:6px;
+        cursor:pointer;
     "
-  >
+>
     Update
-  </button>
-</div>
+</button>
+
+<button
+    id="updateCancelBtn"
+    type="button"
+    style="
+        margin-left:6px;
+        background:#777;
+        border:none;
+        color:white;
+        padding:6px 12px;
+        border-radius:6px;
+        cursor:pointer;
+    "
+>
+    Cancel
+</button>>
   
 
 
@@ -11143,6 +11143,12 @@ function showUpdateUI(){
         );
 
 
+    const cancelButton =
+        document.getElementById(
+            "updateCancelBtn"
+        );
+
+
     if(
         !banner
     ){
@@ -11165,7 +11171,7 @@ function showUpdateUI(){
 
 
     /* ==================================================
-       PREPARE BUTTON
+       PREPARE UPDATE BUTTON
        ================================================== */
 
     if(
@@ -11192,14 +11198,12 @@ function showUpdateUI(){
             "pointer";
 
 
+        button.style.display =
+            "inline-block";
+
+
         /* ==================================================
            BIND EXACTLY ONCE
-
-           This is IMPORTANT.
-
-           We do not create another global click system.
-           We only connect the existing Update button to
-           the existing handleManualUpdate().
            ================================================== */
 
         if(
@@ -11229,8 +11233,71 @@ function showUpdateUI(){
     }
 
 
+    /* ==================================================
+       PREPARE CANCEL BUTTON
+       ================================================== */
+
+    if(
+        cancelButton
+    ){
+
+        cancelButton.disabled =
+            false;
+
+
+        cancelButton.innerText =
+            "Cancel";
+
+
+        cancelButton.style.pointerEvents =
+            "auto";
+
+
+        cancelButton.style.opacity =
+            "1";
+
+
+        cancelButton.style.cursor =
+            "pointer";
+
+
+        cancelButton.style.display =
+            "inline-block";
+
+
+        /* ==================================================
+           BIND EXACTLY ONCE
+           ================================================== */
+
+        if(
+            !cancelButton.__GG_UPDATE_CANCEL_BOUND__
+        ){
+
+            cancelButton.__GG_UPDATE_CANCEL_BOUND__ =
+                true;
+
+
+            cancelButton.addEventListener(
+                "click",
+                function(event){
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    cancelUpdateUI();
+
+                }
+            );
+
+        }
+
+    }
+
+
     console.log(
-        "🆕 Update available → Update button shown"
+        "🆕 Update available → Update + Cancel shown"
     );
 
 }
@@ -11257,8 +11324,96 @@ function hideUpdateUI(){
 
     }
 
-}
 
+    const button =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    if(
+        button
+    ){
+
+        button.disabled =
+            false;
+
+        button.style.pointerEvents =
+            "auto";
+
+        button.style.opacity =
+            "1";
+
+        button.style.cursor =
+            "pointer";
+
+    }
+
+
+    const cancelButton =
+        document.getElementById(
+            "updateCancelBtn"
+        );
+
+
+    if(
+        cancelButton
+    ){
+
+        cancelButton.disabled =
+            false;
+
+        cancelButton.style.pointerEvents =
+            "auto";
+
+        cancelButton.style.opacity =
+            "1";
+
+        cancelButton.style.cursor =
+            "pointer";
+
+    }
+
+}
+/* ======================================================
+   ❌ CANCEL UPDATE UI
+   ====================================================== */
+
+function cancelUpdateUI(){
+
+    console.log(
+        "❌ User cancelled update"
+    );
+
+
+    /*
+     * Important:
+     *
+     * Cancel is only available BEFORE the user starts
+     * the actual update.
+     *
+     * It removes the update UI.
+     *
+     * It does NOT unregister the Service Worker.
+     * It does NOT modify application data.
+     */
+
+    if(
+        isUpdating
+    ){
+
+        console.log(
+            "⏳ Update already running — cancel ignored."
+        );
+
+        return;
+
+    }
+
+
+    hideUpdateUI();
+
+}
 
 /* ======================================================
    🤖 AUTO UPDATE
@@ -11556,11 +11711,21 @@ function startUpdate(){
    🔧 UI → UPDATING
    ====================================================== */
 
+/* ======================================================
+   🔧 UI → UPDATING
+   ====================================================== */
+
 function updateUIToUpdating(){
 
     const btn =
         document.getElementById(
             "updateBtn"
+        );
+
+
+    const cancelButton =
+        document.getElementById(
+            "updateCancelBtn"
         );
 
 
@@ -11606,12 +11771,34 @@ function updateUIToUpdating(){
     }
 
 
+    /*
+     * Once update has actually started,
+     * Cancel is no longer shown.
+     *
+     * This prevents the user from trying to cancel
+     * after skipWaiting has already been requested.
+     */
+
+    if(
+        cancelButton
+    ){
+
+        cancelButton.style.display =
+            "none";
+
+    }
+
+
     console.log(
         "⏳ GreenGuard update in progress..."
     );
 
 }
 
+
+/* ======================================================
+   🔧 UI → RESET
+   ====================================================== */
 
 /* ======================================================
    🔧 UI → RESET
@@ -11630,6 +11817,12 @@ function resetUpdateUI(){
     const btn =
         document.getElementById(
             "updateBtn"
+        );
+
+
+    const cancelButton =
+        document.getElementById(
+            "updateCancelBtn"
         );
 
 
@@ -11656,10 +11849,43 @@ function resetUpdateUI(){
         btn.style.cursor =
             "pointer";
 
+
+        btn.style.display =
+            "inline-block";
+
+    }
+
+
+    if(
+        cancelButton
+    ){
+
+        cancelButton.innerText =
+            "Cancel";
+
+
+        cancelButton.disabled =
+            false;
+
+
+        cancelButton.style.pointerEvents =
+            "auto";
+
+
+        cancelButton.style.opacity =
+            "1";
+
+
+        cancelButton.style.cursor =
+            "pointer";
+
+
+        cancelButton.style.display =
+            "inline-block";
+
     }
 
 }
-
 
 /* ======================================================
    ✅ UPDATE SUCCESS AFTER RELOAD
