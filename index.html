@@ -82038,151 +82038,468 @@ function checkSightingMediaUI(){
 // 🐅 SUBMIT WILDLIFE FORM
 // =====================================================
 
-async function submitWildlifeForm(){
+// =================================================
+// 📍 GPS — AUTHORITATIVE PRIORITY CHAIN
+//
+// PRIORITY:
+//
+// 1. window.latestGps
+// 2. localStorage cached GPS
+// 3. navigator.geolocation.getCurrentPosition()
+//
+// IMPORTANT:
+// window.latestGps ALWAYS HAS FIRST PRIORITY.
+// =================================================
+
+let gpsSource =
+    "";
+
+let lat =
+    0;
+
+let lon =
+    0;
+
+let gpsAccuracy =
+    null;
+
+let gpsSpeed =
+    null;
+
+let gpsHeading =
+    null;
+
+let gpsTimestamp =
+    null;
+
+
+// =================================================
+// 1️⃣ FIRST PRIORITY — window.latestGps
+// =================================================
+
+const latestGps =
+    window.latestGps;
+
+
+const latestLat =
+    Number(
+        latestGps?.lat ??
+        latestGps?.latitude ??
+        0
+    );
+
+
+const latestLon =
+    Number(
+        latestGps?.lng ??
+        latestGps?.lon ??
+        latestGps?.longitude ??
+        0
+    );
+
+
+if(
+    Number.isFinite(latestLat) &&
+    Number.isFinite(latestLon) &&
+    latestLat !== 0 &&
+    latestLon !== 0
+){
+
+    lat =
+        latestLat;
+
+    lon =
+        latestLon;
+
+    gpsAccuracy =
+        latestGps?.accuracy ??
+        null;
+
+    gpsSpeed =
+        latestGps?.speed ??
+        null;
+
+    gpsHeading =
+        latestGps?.heading ??
+        null;
+
+    gpsTimestamp =
+        latestGps?.timestamp ??
+        null;
+
+    gpsSource =
+        "window.latestGps";
+
+
+    console.log(
+        "✅ GPS SOURCE 1 — window.latestGps",
+        {
+            lat:
+                lat,
+
+            lon:
+                lon,
+
+            accuracy:
+                gpsAccuracy,
+
+            speed:
+                gpsSpeed,
+
+            heading:
+                gpsHeading,
+
+            timestamp:
+                gpsTimestamp
+        }
+    );
+
+}
+
+
+// =================================================
+// 2️⃣ SECOND PRIORITY — EXISTING LOCAL STORAGE CACHE
+//
+// Uses the existing app keys:
+// lastLat
+// lastLon
+//
+// Only used when window.latestGps is unavailable.
+// =================================================
+
+if(
+    gpsSource === ""
+){
+
+    const cachedLat =
+        Number(
+            localStorage.getItem(
+                "lastLat"
+            )
+        );
+
+
+    const cachedLon =
+        Number(
+            localStorage.getItem(
+                "lastLon"
+            )
+        );
+
+
+    if(
+        Number.isFinite(cachedLat) &&
+        Number.isFinite(cachedLon) &&
+        cachedLat !== 0 &&
+        cachedLon !== 0
+    ){
+
+        lat =
+            cachedLat;
+
+        lon =
+            cachedLon;
+
+        gpsAccuracy =
+            null;
+
+        gpsSpeed =
+            null;
+
+        gpsHeading =
+            null;
+
+        gpsTimestamp =
+            null;
+
+        gpsSource =
+            "localStorage";
+
+
+        console.log(
+            "📦 GPS SOURCE 2 — localStorage cached GPS",
+            {
+                lat:
+                    lat,
+
+                lon:
+                    lon
+            }
+        );
+
+    }
+
+}
+
+
+// =================================================
+// 3️⃣ THIRD PRIORITY — FRESH DEVICE GPS
+//
+// Only used when:
+//
+// window.latestGps = unavailable
+// AND
+// localStorage cache = unavailable
+// =================================================
+
+if(
+    gpsSource === ""
+){
+
+    console.log(
+        "📡 GPS SOURCE 3 — requesting fresh device GPS..."
+    );
+
 
     try{
 
-        // =================================================
-        // 🔄 SUBMIT LOADING
-        // =================================================
-
-        setSubmitLoading(true);
-
-
-        // =================================================
-        // ⏳ ALLOW WEBVIEW TO PAINT "SUBMITTING..."
-        // BEFORE HEAVY GPS / GIS / PAYLOAD WORK
-        // =================================================
-
-        await new Promise(resolve => {
-
-            requestAnimationFrame(() => {
-
-                requestAnimationFrame(resolve);
-
-            });
-
-        });
-
-
-        // =================================================
-        // 🐾 OBSERVATION TYPE
-        // =================================================
-
-        window.currentObservationType =
-            "WILDLIFE";
-
-
-        // =================================================
-        // 📍 GPS
-        // =================================================
-
-        let gps =
-            window.latestGps;
-
-
-        let lat =
-            Number(
-                gps?.lat ??
-                gps?.latitude ??
-                0
-            );
-
-
-        let lon =
-            Number(
-                gps?.lng ??
-                gps?.lon ??
-                gps?.longitude ??
-                0
-            );
-
-
-        // =================================================
-        // 📍 GET LIVE GPS IF CACHE EMPTY
-        // =================================================
-
         if(
-            !Number.isFinite(lat) ||
-            !Number.isFinite(lon) ||
-            lat === 0 ||
-            lon === 0
+            !navigator.geolocation
         ){
 
-            try{
-
-                const position =
-                    await new Promise(
-                        (resolve, reject) => {
-
-                            navigator.geolocation
-                                .getCurrentPosition(
-
-                                    resolve,
-
-                                    reject,
-
-                                    {
-                                        enableHighAccuracy:
-                                            true,
-
-                                        timeout:
-                                            10000,
-
-                                        maximumAge:
-                                            0
-                                    }
-
-                                );
-
-                        }
-                    );
-
-
-                lat =
-                    position.coords.latitude;
-
-
-                lon =
-                    position.coords.longitude;
-
-
-                // =================================================
-                // 💾 UPDATE GPS CACHE
-                // =================================================
-
-                window.latestGps = {
-
-                    lat:
-                        lat,
-
-                    lng:
-                        lon,
-
-                    accuracy:
-                        position.coords.accuracy,
-
-                    speed:
-                        position.coords.speed,
-
-                    heading:
-                        position.coords.heading,
-
-                    timestamp:
-                        Date.now()
-
-                };
-
-            }
-            catch(err){
-
-                throw new Error(
-                    "GPS location not available."
-                );
-
-            }
+            throw new Error(
+                "Geolocation is not supported."
+            );
 
         }
+
+
+        const position =
+            await new Promise(
+                (
+                    resolve,
+                    reject
+                ) => {
+
+                    navigator.geolocation
+                        .getCurrentPosition(
+
+                            resolve,
+
+                            reject,
+
+                            {
+
+                                enableHighAccuracy:
+                                    true,
+
+                                timeout:
+                                    10000,
+
+                                maximumAge:
+                                    0
+
+                            }
+
+                        );
+
+                }
+            );
+
+
+        // =================================================
+        // FRESH GPS
+        // =================================================
+
+        lat =
+            Number(
+                position.coords.latitude
+            );
+
+
+        lon =
+            Number(
+                position.coords.longitude
+            );
+
+
+        gpsAccuracy =
+            position.coords.accuracy ??
+            null;
+
+
+        gpsSpeed =
+            position.coords.speed ??
+            null;
+
+
+        gpsHeading =
+            position.coords.heading ??
+            null;
+
+
+        gpsTimestamp =
+            position.timestamp ??
+            Date.now();
+
+
+        gpsSource =
+            "navigator.geolocation";
+
+
+        // =================================================
+        // UPDATE GLOBAL GPS CACHE
+        // =================================================
+
+        window.latestGps = {
+
+            lat:
+                lat,
+
+            lng:
+                lon,
+
+            accuracy:
+                gpsAccuracy,
+
+            speed:
+                gpsSpeed,
+
+            heading:
+                gpsHeading,
+
+            timestamp:
+                gpsTimestamp
+
+        };
+
+
+        // =================================================
+        // UPDATE EXISTING LOCAL GPS CACHE
+        // =================================================
+
+        localStorage.setItem(
+            "lastLat",
+            String(
+                lat
+            )
+        );
+
+
+        localStorage.setItem(
+            "lastLon",
+            String(
+                lon
+            )
+        );
+
+
+        console.log(
+            "✅ GPS SOURCE 3 — fresh device GPS acquired",
+            {
+                lat:
+                    lat,
+
+                lon:
+                    lon,
+
+                accuracy:
+                    gpsAccuracy,
+
+                speed:
+                    gpsSpeed,
+
+                heading:
+                    gpsHeading,
+
+                timestamp:
+                    gpsTimestamp
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ GPS SOURCE 3 FAILED:",
+            error
+        );
+
+    }
+
+}
+
+
+// =================================================
+// 4️⃣ FINAL GPS VALIDATION
+// =================================================
+
+if(
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    lat === 0 ||
+    lon === 0
+){
+
+    throw new Error(
+        "GPS location not available from latestGps, cached GPS, or device GPS."
+    );
+
+}
+
+
+// =================================================
+// 5️⃣ FINAL GPS OBJECT
+// =================================================
+//
+// Keep this local object for the existing
+// submitWildlifeForm() flow.
+// =================================================
+
+gps = {
+
+    lat:
+        lat,
+
+    lng:
+        lon,
+
+    latitude:
+        lat,
+
+    longitude:
+        lon,
+
+    accuracy:
+        gpsAccuracy,
+
+    speed:
+        gpsSpeed,
+
+    heading:
+        gpsHeading,
+
+    timestamp:
+        gpsTimestamp
+
+};
+
+
+console.log(
+    "📍 FINAL WILDLIFE GPS",
+    {
+        source:
+            gpsSource,
+
+        lat:
+            lat,
+
+        lon:
+            lon,
+
+        accuracy:
+            gpsAccuracy,
+
+        speed:
+            gpsSpeed,
+
+        heading:
+            gpsHeading,
+
+        timestamp:
+            gpsTimestamp
+    }
+);
 
 
         // =================================================
