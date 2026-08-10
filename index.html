@@ -61018,14 +61018,43 @@ const observationType =
     // Keep exactly the GIS values resolved by the app.
     // =====================================================
 
-    const division =
+// =====================================================
+// 6. GIS VALUES
+//
+// PRIORITY:
+//
+// 1. GIS resolver values already present in payload
+// 2. window.userProfile fallback
+//
+// IMPORTANT:
+// Do NOT run another GIS resolver here.
+// The payload has already gone through the
+// authoritative GIS resolution flow.
+// =====================================================
+
+const userProfile =
+    window.userProfile ||
+    {};
+
+
+// =====================================================
+// DIVISION
+// =====================================================
+
+const division =
     String(
         payload.gis_division ||
         payload.division ||
         payload.divisionCode ||
         payload.division_code ||
+        userProfile.division ||
         ""
     ).trim();
+
+
+// =====================================================
+// RANGE
+// =====================================================
 
 const range =
     String(
@@ -61033,8 +61062,16 @@ const range =
         payload.range ||
         payload.rangeCode ||
         payload.range_code ||
+        userProfile.range ||
         ""
     ).trim();
+
+
+// =====================================================
+// BEAT
+//
+// KEEP EXISTING LOGIC
+// =====================================================
 
 const beat =
     String(
@@ -61044,6 +61081,13 @@ const beat =
         payload.beat_name ||
         ""
     ).trim();
+
+
+// =====================================================
+// COMPARTMENT
+//
+// KEEP EXISTING LOGIC
+// =====================================================
 
 const compartment =
     String(
@@ -61057,16 +61101,27 @@ const compartment =
     // 7. GIS VALIDATION
     // =====================================================
 
-    if (
-        !division ||
-        !range
-    ) {
+// =====================================================
+// 7. DIVISION / RANGE VALIDATION
+//
+// At this point:
+//
+// GIS was checked first.
+// userProfile was checked as fallback.
+//
+// If still missing, ID generation must stop.
+// =====================================================
 
-        throw new Error(
-            "GIS division/range missing"
-        );
+if (
+    !division ||
+    !range
+) {
 
-    }
+    throw new Error(
+        "Division and Range could not be determined from GIS or userProfile."
+    );
+
+}
 
 
     // =====================================================
