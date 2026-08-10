@@ -41561,6 +41561,13 @@ function escapeAttribute(
 
 }
 
+
+    var irregularityLayer =
+    window.irregularityLayer ||
+    L.layerGroup();
+
+window.irregularityLayer =
+    irregularityLayer;
 // ============================================================
 // EXISTING FUNCTION
 // ============================================================
@@ -75592,7 +75599,10 @@ async function loadVillageBoundaryLayer() {
             "👮 Staff": window.staffLayer || staffLayer,
 
             // 🐘 ELEPHANTS
-            "🐘 Elephants": window.elephantLayer || elephantLayer
+            "🐘 Elephants": window.elephantLayer || elephantLayer,
+          // ⚠️ IRREGULARITIES
+"⚠️ Irregularities":
+    window.irregularityLayer || irregularityLayer
         };
 
         /* ============================================================
@@ -76414,7 +76424,124 @@ map.on(
     return;
 
   }
-      /* ========================================================
+
+            /* ========================================================
+         ⚠️ IRREGULARITIES
+         --------------------------------------------------------
+         Available to every logged-in user.
+
+         FIRST ENABLE:
+         - Loads existing irregularities.
+         - Starts realtime listener.
+         - Existing markers are reused.
+
+         NEXT ENABLE:
+         - Existing layer is reused.
+         - Realtime listener is NOT duplicated.
+      ======================================================== */
+
+      if(
+
+        layerName ===
+
+        "⚠️ Irregularities"
+
+      ){
+
+        /* ------------------------------------------------------
+           MAKE SURE IRREGULARITY LAYER EXISTS
+        ------------------------------------------------------ */
+
+        if(
+
+          !window.irregularityLayer
+
+        ){
+
+          console.warn(
+            "⚠ irregularityLayer unavailable"
+          );
+
+          return;
+
+        }
+
+
+        /* ------------------------------------------------------
+           LOAD EXISTING IRREGULARITIES
+        ------------------------------------------------------ */
+
+        if(
+
+          typeof loadIrregularities ===
+          "function"
+
+        ){
+
+          console.log(
+            "⚠️ Loading irregularities..."
+          );
+
+
+          await loadIrregularities();
+
+
+          console.log(
+            "✅ Irregularities loaded"
+          );
+
+        }
+        else{
+
+          console.warn(
+            "⚠ loadIrregularities() unavailable"
+          );
+
+        }
+
+
+        /* ------------------------------------------------------
+           START REALTIME LISTENER
+        ------------------------------------------------------ */
+
+        if(
+
+          typeof listenIrregularities ===
+          "function"
+
+        ){
+
+          console.log(
+            "⚠️ Starting irregularity realtime..."
+          );
+
+
+          listenIrregularities();
+
+
+          console.log(
+            "✅ Irregularity realtime active"
+          );
+
+        }
+        else{
+
+          console.warn(
+            "⚠ listenIrregularities() unavailable"
+          );
+
+        }
+
+
+        console.log(
+          "⚠️ Irregularities Enabled"
+        );
+
+
+        return;
+
+      }
+    /* ========================================================
          🌱 PLANTATION
          --------------------------------------------------------
          Existing plantation lazy-loading behavior.
