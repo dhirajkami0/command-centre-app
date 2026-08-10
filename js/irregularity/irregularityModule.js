@@ -2029,109 +2029,103 @@ async function(
         );
 
 
-    /* ========================================================
-       14. VERIFY RESULT
-       ======================================================== */
+/* ========================================================
+   14. VERIFY RESULT
+   ======================================================== */
 
-    if(
-        !result ||
-        !result.irregularityId ||
-        !result.firestoreId
-    ){
+if(
+    !result ||
+    !result.irregularityId ||
+    !result.firestoreId
+){
 
-        throw new Error(
-            "Firestore transaction completed without a valid Irregularity ID."
-        );
+    throw new Error(
+        "Firestore transaction completed without a valid Irregularity ID."
+    );
+
+}
+
+
+/* ========================================================
+   15. WRITE IDs BACK INTO PAYLOAD
+   ======================================================== */
+
+payload.irregularity_id =
+    result.irregularityId;
+
+payload.firestore_id =
+    result.firestoreId;
+
+payload.financial_year =
+    result.financialYear;
+
+payload.division_code =
+    result.divisionCode;
+
+payload.range_code =
+    result.rangeCode;
+
+payload.range_irregularity_no =
+    result.rangeCount;
+
+payload.division_irregularity_no =
+    result.divisionCount;
+
+
+/* ========================================================
+   16. LOG
+   ======================================================== */
+
+console.log(
+    "🔥 Irregularity Firestore saved:",
+    result
+);
+
+console.table([
+    {
+
+        irregularityId:
+            result.irregularityId,
+
+        firestoreId:
+            result.firestoreId,
+
+        financialYear:
+            result.financialYear,
+
+        division:
+            result.division,
+
+        range:
+            result.range,
+
+        rangeNo:
+            result.rangeCount,
+
+        divisionNo:
+            result.divisionCount
 
     }
+]);
 
 
-    /* ========================================================
-       15. WRITE SAME IDs BACK INTO PAYLOAD
+/* ========================================================
+   17. BUILD DOCUMENT REF AGAIN
+   ======================================================== */
 
-       IMPORTANT FOR MEDIA.
-
-       uploadMedia() receives this SAME payload.
-       ======================================================== */
-
-    payload.irregularity_id =
-        result.irregularityId;
-
-
-    payload.firestore_id =
-        result.firestoreId;
-
-
-    payload.financial_year =
-        result.financialYear;
-
-
-    payload.division_code =
-        result.divisionCode;
-
-
-    payload.range_code =
-        result.rangeCode;
-
-
-    payload.range_irregularity_no =
-        result.rangeCount;
-
-
-    payload.division_irregularity_no =
-        result.divisionCount;
-
-
-    /* ========================================================
-       16. LOG
-       ======================================================== */
-
-    console.log(
-        "🔥 Irregularity Firestore saved:",
-        result
+const documentRef =
+    doc(
+        db,
+        GGIrregularity.COLLECTION,
+        result.firestoreId
     );
 
 
-    console.table([
-        {
+/* ========================================================
+   18. RETURN DOCUMENT REF
+   ======================================================== */
 
-            irregularityId:
-                result.irregularityId,
-
-            firestoreId:
-                result.firestoreId,
-
-            financialYear:
-                result.financialYear,
-
-            division:
-                result.division,
-
-            range:
-                result.range,
-
-            rangeNo:
-                result.rangeCount,
-
-            divisionNo:
-                result.divisionCount
-
-        }
-    ]);
-
-
-    /* ========================================================
-       17. RETURN DOCUMENT REFERENCE
-
-       IMPORTANT:
-
-       Your existing GGIrregularity.save() expects
-       createDocument() to return documentRef.
-
-       DO NOT BREAK THAT FLOW.
-       ======================================================== */
-
-    return irregularityRef;
+return documentRef;
 
 };
 
