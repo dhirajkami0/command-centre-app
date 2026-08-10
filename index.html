@@ -40403,7 +40403,305 @@ return `
 `;
 
 }
+async function downloadIrregularityMedia(
+    url,
+    fileName,
+    irregularityId
+){
 
+    try{
+
+        const mediaUrl =
+            String(
+                url || ""
+            ).trim();
+
+        if(!mediaUrl){
+
+            alert(
+                "Media is not available."
+            );
+
+            return;
+        }
+
+
+        const finalFileName =
+            String(
+                fileName ||
+                (
+                    "IRREGULARITY-" +
+                    String(
+                        irregularityId ||
+                        "MEDIA"
+                    )
+                )
+            ).trim();
+
+
+        console.log(
+            "⬇️ IRREGULARITY MEDIA DOWNLOAD:",
+            {
+                irregularityId,
+                fileName:
+                    finalFileName,
+                url:
+                    mediaUrl
+            }
+        );
+
+
+        // ====================================================
+        // FETCH MEDIA
+        // SAME APPROACH AS SIGHTING/WILDLIFE
+        // ====================================================
+
+        const response =
+            await fetch(
+                mediaUrl
+            );
+
+
+        if(
+            !response.ok
+        ){
+
+            throw new Error(
+                "Media download failed: HTTP " +
+                response.status
+            );
+
+        }
+
+
+        const blob =
+            await response.blob();
+
+
+        // ====================================================
+        // CREATE DOWNLOAD BLOB
+        // ====================================================
+
+        let downloadBlob =
+            blob;
+
+
+        if(
+            !downloadBlob ||
+            !downloadBlob.size
+        ){
+
+            throw new Error(
+                "Downloaded media is empty."
+            );
+
+        }
+
+
+        console.log(
+            "📦 IRREGULARITY MEDIA BLOB READY:",
+            {
+                size:
+                    downloadBlob.size,
+
+                type:
+                    downloadBlob.type,
+
+                fileName:
+                    finalFileName
+            }
+        );
+
+
+        // ====================================================
+        // CREATE SAME-ORIGIN BLOB URL
+        // ====================================================
+
+        let blobUrl;
+
+        try{
+
+            blobUrl =
+                URL.createObjectURL(
+                    downloadBlob
+                );
+
+        }
+        catch(
+            objectUrlError
+        ){
+
+            console.error(
+                "❌ Could not create irregularity download URL:",
+                objectUrlError
+            );
+
+            alert(
+                "Unable to prepare the download."
+            );
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // TEMPORARY DOWNLOAD LINK
+        // ====================================================
+
+        const downloadLink =
+            document.createElement(
+                "a"
+            );
+
+
+        downloadLink.href =
+            blobUrl;
+
+
+        downloadLink.download =
+            finalFileName;
+
+
+        downloadLink.rel =
+            "noopener";
+
+
+        downloadLink.style.position =
+            "fixed";
+
+
+        downloadLink.style.left =
+            "-10000px";
+
+
+        downloadLink.style.top =
+            "0";
+
+
+        downloadLink.style.width =
+            "1px";
+
+
+        downloadLink.style.height =
+            "1px";
+
+
+        downloadLink.style.opacity =
+            "0";
+
+
+        downloadLink.style.pointerEvents =
+            "none";
+
+
+        document.body.appendChild(
+            downloadLink
+        );
+
+
+        // ====================================================
+        // START DOWNLOAD
+        // ====================================================
+
+        try{
+
+            downloadLink.click();
+
+            console.log(
+                "✅ IRREGULARITY MEDIA DOWNLOAD REQUESTED:",
+                finalFileName
+            );
+
+        }
+        catch(
+            downloadError
+        ){
+
+            console.error(
+                "❌ IRREGULARITY MEDIA DOWNLOAD CLICK FAILED:",
+                downloadError
+            );
+
+            alert(
+                "The browser could not start the download."
+            );
+
+        }
+
+
+        // ====================================================
+        // CLEANUP
+        // SAME TIMING AS SIGHTING
+        // ====================================================
+
+        setTimeout(
+            function(){
+
+                try{
+
+                    URL.revokeObjectURL(
+                        blobUrl
+                    );
+
+                }
+                catch(
+                    revokeError
+                ){
+
+                    console.warn(
+                        "⚠️ Irregularity Blob URL cleanup failed:",
+                        revokeError
+                    );
+
+                }
+
+
+                try{
+
+                    if(
+                        downloadLink &&
+                        downloadLink.parentNode
+                    ){
+
+                        downloadLink.parentNode
+                            .removeChild(
+                                downloadLink
+                            );
+
+                    }
+
+                }
+                catch(
+                    removeError
+                ){
+
+                    console.warn(
+                        "⚠️ Irregularity download link cleanup failed:",
+                        removeError
+                    );
+
+                }
+
+            },
+            30000
+        );
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ IRREGULARITY MEDIA DOWNLOAD FAILED:",
+            err
+        );
+
+        alert(
+            "Unable to download the irregularity media."
+        );
+
+    }
+
+}
 function buildIrregularityContextHtml(
     category,
     details
