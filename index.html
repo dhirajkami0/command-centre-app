@@ -83159,337 +83159,776 @@ document
     /* 3. Open Form + GPS */
        function openSightingForm(){
 
-  console.group("🐘 openSightingForm START");
-  console.log("⏱ Time:", new Date().toLocaleTimeString());
-
-  const modal = document.getElementById("form-modal");
-
-  if (!modal) {
-    console.error("❌ form-modal NOT FOUND");
-    console.groupEnd();
-    return;
-  }
-
-  /* 🔥 FORCE SHOW */
-  modal.style.display = "block";
-  modal.style.visibility = "visible";
-  modal.style.opacity = "1";
-
-  console.log("✅ Modal visible");
-
-/* ===============================
-   🧹 RESET FORM
-=============================== */
-const form =
-  document.getElementById(
-    "elephantForm"
-  );
-
-if(form){
-
-  form.reset();
-
-  console.log(
-    "🧹 Form reset done"
-  );
-
-}
-
-// =====================================
-// 🔥 LOAD DYNAMIC BEATS
-// =====================================
-
-try{
-
-  populateSightingBeats();
-
-}
-
-catch(err){
-
-  console.warn(
-
-    "Beat population failed",
-
-    err
-
-  );
-
-}
-
-// =====================================
-// 🔥 LOAD DYNAMIC BLOCKS
-// =====================================
-
-try{
-
-  populateForestBlocks();
-
-}
-
-catch(err){
-
-  console.warn(
-
-    "Block population failed",
-
-    err
-
-  );
-
-}
-
-// =====================================
-// 🔥 LOAD DYNAMIC REMARKS
-// =====================================
-
-
-// =====================================
-// RESET COMPARTMENTS
-// =====================================
-
-const compInput =
-
-  document.getElementById(
-    "f-compt"
-  );
-
-if(compInput){
-
-  compInput.value = "";
-
-}
-
-const compList =
-
-  document.getElementById(
-    "f-compt-list"
-  );
-
-if(compList){
-
-  compList.innerHTML = "";
-
-} 
-         /* ===============================
-     PROFILE
-  =============================== */
-  const profile = window.userProfile;
-
-  console.log("👤 Profile RAW:", profile);
-
-if (!profile || !profile.rawName) {
-    alert("User not loaded");
-    console.groupEnd();
-    return;
-  }
-
-  /* ===============================
-     🧠 USE RAW NAME
-  =============================== */
- const displayName = String(profile.rawName || profile.name || "").trim();
-
-  console.log("✅ Using RAW Name:", displayName);
-
-  /* ===============================
-     SAFE SET
-  =============================== */
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if (!el) {
-      console.error("❌ Missing field:", id);
-      return;
-    }
-    el.value = val;
-  };
-
-  /* ===============================
-     TEAM LEADER
-  =============================== */
-  const teamInput = document.getElementById("f-team");
-
-  if (teamInput) {
-    teamInput.value = displayName;
-    teamInput.readOnly = true;
-    teamInput.dataset.lockedUser = displayName;
-    console.log("✅ Team Leader set:", displayName);
-  }
-
-  /* ===============================
-     TIME AUTO
-  =============================== */
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,"0");
-  const mm = String(now.getMinutes()).padStart(2,"0");
-
-  setVal("f-time", hh + ":" + mm);
-
-  /* ===============================
-     📍 LOCATION AUTO (FINAL FIX)
-  =============================== */
-
-  function fillLocation(lat, lon){
-    setVal("f-lat", lat);
-    setVal("f-lon", lon);
-    setVal("f-location", lat + ", " + lon);
-
-    // 🔥 SAVE LAST
-    localStorage.setItem("lastLat", lat);
-    localStorage.setItem("lastLon", lon);
-
-    console.log("📍 Location set:", lat, lon);
-  }
-
- function tryGPS(){
-
-  if (!navigator.geolocation) {
-
-    console.error(
-      "❌ Geolocation not supported"
+    console.group("🐘 openSightingForm START");
+    console.log(
+        "⏱ Time:",
+        new Date().toLocaleTimeString()
     );
 
-    return;
-  }
 
-  console.log(
-    "📡 Starting 5 sec GPS scan..."
-  );
+    const modal =
+        document.getElementById(
+            "form-modal"
+        );
 
-  let bestPos = null;
 
-  let bestAcc = Infinity;
+    if(
+        !modal
+    ){
 
-  let gpsDone = false;
+        console.error(
+            "❌ form-modal NOT FOUND"
+        );
 
-  const watchId =
-    navigator.geolocation.watchPosition(
+        console.groupEnd();
 
-      function(pos){
+        return;
+    }
 
-        const acc =
-          pos.coords.accuracy;
+
+    /* 🔥 FORCE SHOW */
+
+    modal.style.display =
+        "block";
+
+    modal.style.visibility =
+        "visible";
+
+    modal.style.opacity =
+        "1";
+
+
+    console.log(
+        "✅ Modal visible"
+    );
+
+
+    /* ===============================
+       🧹 RESET FORM
+       =============================== */
+
+    const form =
+        document.getElementById(
+            "elephantForm"
+        );
+
+
+    if(
+        form
+    ){
+
+        form.reset();
 
         console.log(
-          "📍 GPS UPDATE:",
-          acc + "m"
+            "🧹 Form reset done"
         );
 
-        // =====================================================
-        // 🔥 KEEP BEST GPS
-        // =====================================================
-        if(acc < bestAcc){
+    }
 
-          bestAcc = acc;
 
-          bestPos = pos;
+    // =====================================
+    // 🔥 LOAD DYNAMIC BEATS
+    // =====================================
 
-          console.log(
-            "🏆 NEW BEST GPS:",
-            acc + "m"
-          );
-        }
-      },
+    try{
 
-      function(err){
+        populateSightingBeats();
+
+    }
+    catch(err){
 
         console.warn(
-          "⚠ GPS failed:",
-          err.message
+            "Beat population failed",
+            err
         );
-      },
 
-      {
-        enableHighAccuracy: true,
+    }
 
-        timeout: 5000,
 
-        maximumAge: 0
-      }
+    // =====================================
+    // 🔥 LOAD DYNAMIC BLOCKS
+    // =====================================
+
+    try{
+
+        populateForestBlocks();
+
+    }
+    catch(err){
+
+        console.warn(
+            "Block population failed",
+            err
+        );
+
+    }
+
+
+    // =====================================
+    // 🔥 LOAD DYNAMIC REMARKS
+    // =====================================
+
+
+    // =====================================
+    // RESET COMPARTMENTS
+    // =====================================
+
+    const compInput =
+        document.getElementById(
+            "f-compt"
+        );
+
+
+    if(
+        compInput
+    ){
+
+        compInput.value =
+            "";
+
+    }
+
+
+    const compList =
+        document.getElementById(
+            "f-compt-list"
+        );
+
+
+    if(
+        compList
+    ){
+
+        compList.innerHTML =
+            "";
+
+    }
+
+
+    /* ===============================
+       PROFILE
+       =============================== */
+
+    const profile =
+        window.userProfile;
+
+
+    console.log(
+        "👤 Profile RAW:",
+        profile
     );
 
-  // =========================================================
-  // 🔥 COLLECT GPS FOR 5 SEC
-  // =========================================================
-  setTimeout(() => {
 
-    if(gpsDone) return;
+    if(
+        !profile ||
+        !profile.rawName
+    ){
 
-    gpsDone = true;
+        alert(
+            "User not loaded"
+        );
 
-    navigator.geolocation.clearWatch(
-      watchId
+        console.groupEnd();
+
+        return;
+
+    }
+
+
+    /* ===============================
+       🧠 USE RAW NAME
+       =============================== */
+
+    const displayName =
+        String(
+            profile.rawName ||
+            profile.name ||
+            ""
+        ).trim();
+
+
+    console.log(
+        "✅ Using RAW Name:",
+        displayName
     );
 
-    // =====================================================
-    // 🔥 BEST GPS FOUND
-    // =====================================================
-    if(bestPos){
 
-      const lat =
-        bestPos.coords.latitude.toFixed(5);
+    /* ===============================
+       SAFE SET
+       =============================== */
 
-      const lon =
-        bestPos.coords.longitude.toFixed(5);
+    const setVal =
+        (
+            id,
+            val
+        ) => {
 
-      const acc =
-        Math.round(bestPos.coords.accuracy);
+            const el =
+                document.getElementById(
+                    id
+                );
 
-      console.log(
-        "✅ FINAL BEST GPS:",
+
+            if(
+                !el
+            ){
+
+                console.error(
+                    "❌ Missing field:",
+                    id
+                );
+
+                return;
+
+            }
+
+
+            el.value =
+                val;
+
+        };
+
+
+    /* ===============================
+       TEAM LEADER
+       =============================== */
+
+    const teamInput =
+        document.getElementById(
+            "f-team"
+        );
+
+
+    if(
+        teamInput
+    ){
+
+        teamInput.value =
+            displayName;
+
+        teamInput.readOnly =
+            true;
+
+        teamInput.dataset.lockedUser =
+            displayName;
+
+
+        console.log(
+            "✅ Team Leader set:",
+            displayName
+        );
+
+    }
+
+
+    /* ===============================
+       TIME AUTO
+       =============================== */
+
+    const now =
+        new Date();
+
+
+    const hh =
+        String(
+            now.getHours()
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    const mm =
+        String(
+            now.getMinutes()
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    setVal(
+        "f-time",
+        hh + ":" + mm
+    );
+
+
+    /* ===============================
+       📍 LOCATION AUTO
+       =============================== */
+
+    function fillLocation(
         lat,
-        lon,
-        acc + "m"
-      );
+        lon
+    ){
 
-      fillLocation(lat, lon);
+        setVal(
+            "f-lat",
+            lat
+        );
 
-      return;
+
+        setVal(
+            "f-lon",
+            lon
+        );
+
+
+        setVal(
+            "f-location",
+            lat +
+            ", " +
+            lon
+        );
+
+
+        // 🔥 SAVE LAST
+
+        localStorage.setItem(
+            "lastLat",
+            String(
+                lat
+            )
+        );
+
+
+        localStorage.setItem(
+            "lastLon",
+            String(
+                lon
+            )
+        );
+
+
+        console.log(
+            "📍 Location set:",
+            lat,
+            lon
+        );
+
     }
 
-    // =====================================================
-    // 🔥 FALLBACK TO LAST GPS
-    // =====================================================
-    const lat =
-      localStorage.getItem("lastLat");
 
-    const lon =
-      localStorage.getItem("lastLon");
+    function tryGPS(){
 
-    if(lat && lon){
+        // =====================================================
+        // 📍 GPS PRIORITY
+        //
+        // 1. window.latestGps
+        // 2. localStorage.lastLat / lastLon
+        // 3. navigator.geolocation.watchPosition()
+        // =====================================================
 
-      console.log(
-        "📴 Using fallback GPS"
-      );
 
-      fillLocation(lat, lon);
+        // =====================================================
+        // 1️⃣ FIRST PRIORITY — window.latestGps
+        // =====================================================
 
-    } else {
+        const latestGps =
+            window.latestGps;
 
-      alert(
-        "❌ Could not get GPS location"
-      );
+
+        const latestLat =
+            Number(
+                latestGps?.lat ??
+                latestGps?.latitude ??
+                0
+            );
+
+
+        const latestLon =
+            Number(
+                latestGps?.lng ??
+                latestGps?.lon ??
+                latestGps?.longitude ??
+                0
+            );
+
+
+        if(
+            Number.isFinite(
+                latestLat
+            ) &&
+            Number.isFinite(
+                latestLon
+            ) &&
+            latestLat !== 0 &&
+            latestLon !== 0
+        ){
+
+            console.log(
+                "✅ GPS SOURCE 1 — window.latestGps",
+                {
+                    lat:
+                        latestLat,
+
+                    lon:
+                        latestLon,
+
+                    accuracy:
+                        latestGps?.accuracy ??
+                        null,
+
+                    timestamp:
+                        latestGps?.timestamp ??
+                        null
+                }
+            );
+
+
+            fillLocation(
+                latestLat,
+                latestLon
+            );
+
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // 2️⃣ SECOND PRIORITY — localStorage
+        //
+        // Existing application keys:
+        //
+        // lastLat
+        // lastLon
+        // =====================================================
+
+        const cachedLat =
+            Number(
+                localStorage.getItem(
+                    "lastLat"
+                )
+            );
+
+
+        const cachedLon =
+            Number(
+                localStorage.getItem(
+                    "lastLon"
+                )
+            );
+
+
+        if(
+            Number.isFinite(
+                cachedLat
+            ) &&
+            Number.isFinite(
+                cachedLon
+            ) &&
+            cachedLat !== 0 &&
+            cachedLon !== 0
+        ){
+
+            console.log(
+                "📦 GPS SOURCE 2 — localStorage cached GPS",
+                {
+                    lat:
+                        cachedLat,
+
+                    lon:
+                        cachedLon
+                }
+            );
+
+
+            fillLocation(
+                cachedLat,
+                cachedLon
+            );
+
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // 3️⃣ THIRD PRIORITY — DEVICE GPS
+        //
+        // Only reached when:
+        //
+        // latestGps unavailable
+        // AND
+        // localStorage unavailable
+        // =====================================================
+
+        if(
+            !navigator.geolocation
+        ){
+
+            console.error(
+                "❌ GPS unavailable — geolocation not supported"
+            );
+
+            alert(
+                "❌ Could not get GPS location"
+            );
+
+            return;
+
+        }
+
+
+        console.log(
+            "📡 GPS SOURCE 3 — Starting device GPS scan..."
+        );
+
+
+        let bestPos =
+            null;
+
+
+        let bestAcc =
+            Infinity;
+
+
+        let gpsDone =
+            false;
+
+
+        const watchId =
+            navigator.geolocation.watchPosition(
+
+                function(
+                    pos
+                ){
+
+                    if(
+                        gpsDone
+                    ){
+
+                        return;
+
+                    }
+
+
+                    const acc =
+                        Number(
+                            pos.coords.accuracy
+                        );
+
+
+                    console.log(
+                        "📍 GPS UPDATE:",
+                        acc + "m"
+                    );
+
+
+                    // =================================================
+                    // KEEP BEST GPS
+                    // =================================================
+
+                    if(
+                        Number.isFinite(acc) &&
+                        acc < bestAcc
+                    ){
+
+                        bestAcc =
+                            acc;
+
+                        bestPos =
+                            pos;
+
+
+                        console.log(
+                            "🏆 NEW BEST GPS:",
+                            acc + "m"
+                        );
+
+                    }
+
+                },
+
+
+                function(
+                    err
+                ){
+
+                    console.warn(
+                        "⚠ GPS failed:",
+                        err.message
+                    );
+
+                },
+
+
+                {
+
+                    enableHighAccuracy:
+                        true,
+
+                    timeout:
+                        5000,
+
+                    maximumAge:
+                        0
+
+                }
+
+            );
+
+
+        // =====================================================
+        // COLLECT GPS FOR 5 SEC
+        // =====================================================
+
+        setTimeout(
+            function(){
+
+                if(
+                    gpsDone
+                ){
+
+                    return;
+
+                }
+
+
+                gpsDone =
+                    true;
+
+
+                navigator.geolocation
+                    .clearWatch(
+                        watchId
+                    );
+
+
+                // =================================================
+                // BEST GPS FOUND
+                // =================================================
+
+                if(
+                    bestPos
+                ){
+
+                    const finalLat =
+                        Number(
+                            bestPos.coords.latitude
+                        );
+
+
+                    const finalLon =
+                        Number(
+                            bestPos.coords.longitude
+                        );
+
+
+                    const finalAccuracy =
+                        Number(
+                            bestPos.coords.accuracy
+                        );
+
+
+                    console.log(
+                        "✅ GPS SOURCE 3 — FINAL BEST GPS:",
+                        {
+                            lat:
+                                finalLat,
+
+                            lon:
+                                finalLon,
+
+                            accuracy:
+                                finalAccuracy
+                        }
+                    );
+
+
+                    // =================================================
+                    // UPDATE window.latestGps
+                    // =================================================
+
+                    window.latestGps = {
+
+                        lat:
+                            finalLat,
+
+                        lng:
+                            finalLon,
+
+                        accuracy:
+                            bestPos.coords.accuracy,
+
+                        speed:
+                            bestPos.coords.speed,
+
+                        heading:
+                            bestPos.coords.heading,
+
+                        timestamp:
+                            bestPos.timestamp ||
+                            Date.now()
+
+                    };
+
+
+                    // =================================================
+                    // SAVE LOCAL CACHE
+                    // =================================================
+
+                    fillLocation(
+                        finalLat,
+                        finalLon
+                    );
+
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // NO GPS
+                // =================================================
+
+                console.error(
+                    "❌ GPS unavailable — no valid GPS fix received"
+                );
+
+
+                alert(
+                    "❌ Could not get GPS location"
+                );
+
+            },
+            5000
+        );
+
     }
 
-  }, 5000);
+
+    // 🔥 IMPORTANT:
+    // Delay ensures modal + DOM ready
+
+    setTimeout(
+        tryGPS,
+        300
+    );
+
+
+    /* ===============================
+       TOTAL INIT
+       =============================== */
+
+    setTimeout(
+        () => {
+
+            calculateTotal();
+
+        },
+        100
+    );
+
+
+    console.groupEnd();
+
 }
-
-// 🔥 IMPORTANT: Delay ensures modal + DOM ready
-setTimeout(
-  tryGPS,
-  300
-);
-
-/* ===============================
-   TOTAL INIT
-=============================== */
-setTimeout(() => {
-
-  calculateTotal();
-
-}, 100);
-
-console.groupEnd();
-}/* ============================================================
+    /* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
 let dutyComptMap = {}
