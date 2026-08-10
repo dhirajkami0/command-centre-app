@@ -1357,39 +1357,781 @@ async function(
    CREATE FIRESTORE DOCUMENT
    ============================================================ */
 
+/* ============================================================
+   CREATE IRREGULARITY FIRESTORE DOCUMENT
+
+   SAME ID / COUNTER LOGIC AS
+   ELEPHANT + WILDLIFE SIGHTING WRITE FLOW
+
+   FINANCIAL YEAR:
+   01 APRIL → 31 MARCH
+
+   FINAL ID:
+
+   DIVISIONCODE-RANGECODE-RANGECOUNT/DIVISIONCOUNT
+
+   Example:
+
+   BuxaTR_WEST-EastDamanpur-7/7
+
+   Firestore document ID:
+
+   BuxaTR_WEST-EastDamanpur-7__7
+   ============================================================ */
+
 GGIrregularity.createDocument =
 async function(
     payload
 ){
 
-    const collectionRef =
-        window.fb.collection(
-            window.db,
-            GGIrregularity.COLLECTION
+    /* ========================================================
+       1. FIREBASE READY
+       ======================================================== */
+
+    if(
+        !window.db ||
+        !window.fb
+    ){
+
+        if(
+            typeof waitForFirebaseReady ===
+            "function"
+        ){
+
+            await waitForFirebaseReady();
+
+        }
+
+    }
+
+
+    /* ========================================================
+       2. FINAL FIREBASE VALIDATION
+       ======================================================== */
+
+    if(
+        !window.db ||
+        !window.fb
+    ){
+
+        throw new Error(
+            "Firebase is not initialized."
+        );
+
+    }
+
+
+    /* ========================================================
+       3. FIRESTORE FUNCTIONS
+       ======================================================== */
+
+    const db =
+        window.db;
+
+
+    const {
+        doc,
+        runTransaction,
+        serverTimestamp
+    } =
+        window.fb;
+
+
+    if(
+        typeof doc !==
+        "function" ||
+
+        typeof runTransaction !==
+        "function" ||
+
+        typeof serverTimestamp !==
+        "function"
+    ){
+
+        throw new Error(
+            "Required Firestore modules are unavailable."
+        );
+
+    }
+
+
+    /* ========================================================
+       4. VALIDATE PAYLOAD
+       ======================================================== */
+
+    if(
+        !payload ||
+        typeof payload !==
+        "object"
+    ){
+
+        throw new Error(
+            "Invalid Irregularity payload."
+        );
+
+    }
+
+
+    /* ========================================================
+       5. GET GIS VALUES
+
+       USE THE EXISTING IRREGULARITY PAYLOAD FIELDS.
+
+       DO NOT INVENT NEW FIELDS.
+       ======================================================== */
+
+    const division =
+        String(
+            payload.gis_division ||
+            payload.division ||
+            payload.divisionCode ||
+            payload.division_code ||
+            ""
+        ).trim();
+
+
+    const range =
+        String(
+            payload.gis_range ||
+            payload.range ||
+            payload.rangeCode ||
+            payload.range_code ||
+            ""
+        ).trim();
+
+
+    /* ========================================================
+       6. GIS VALIDATION
+       ======================================================== */
+
+    if(
+        !division ||
+        !range
+    ){
+
+        throw new Error(
+            "GIS division/range missing. Cannot generate Irregularity ID."
+        );
+
+    }
+
+
+    /* ========================================================
+       7. SAME CODE LOGIC AS SIGHTING
+
+       Existing sighting code currently resolves:
+
+       divisionCode = division
+       rangeCode    = range
+       ======================================================== */
+
+    const divisionCode =
+        division;
+
+
+    const rangeCode =
+        range;
+
+
+    /* ========================================================
+       8. FINANCIAL YEAR
+
+       EXACT SAME LOGIC AS ELEPHANT/WILDLIFE
+
+       01 Apr 2026 → 31 Mar 2027
+       = 2026-27
+
+       January/February/March
+       belong to previous FY.
+
+       April onward
+       belongs to current FY.
+       ======================================================== */
+
+    const now =
+        new Date();
+
+
+    const year =
+        now.getFullYear();
+
+
+    const month =
+        now.getMonth();
+
+
+    const startYear =
+        month >= 3
+            ? year
+            : year - 1;
+
+
+    const endYear =
+        startYear + 1;
+
+
+    const financialYear =
+        startYear +
+        "-" +
+        String(
+            endYear
+        ).slice(
+            -2
         );
 
 
-    /*
-     * Firestore auto-generated document ID.
-     */
+    /* ========================================================
+       9. SAFE COUNTER KEYS
 
-    const documentRef =
-        window.fb.doc(
-            collectionRef
+       SAME LOGIC AS SIGHTING
+       ======================================================== */
+
+    const safeFY =
+        financialYear.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
         );
+
+
+    const safeDivision =
+        divisionCode.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
+        );
+
+
+    const safeRange =
+        rangeCode.replace(
+            /[^A-Za-z0-9_-]/g,
+            "_"
+        );
+
+
+    /* ========================================================
+       10. IRREGULARITY COUNTER COLLECTION
+
+       IMPORTANT:
+
+       Keep Irregularity counters separate from
+       Elephant/Wildlife counters.
+
+       Therefore an Elephant sighting does NOT consume
+       an Irregularity number and vice versa.
+
+       The NUMBERING ALGORITHM remains EXACTLY the SAME.
+       ======================================================== */
+
+    const counterCollection =
+        "irregularity_counters";
+
+
+    /* ========================================================
+       11. DIVISION COUNTER REFERENCE
+       ======================================================== */
+
+    const divisionCounterRef =
+        doc(
+            db,
+            counterCollection,
+            safeFY +
+            "__" +
+            safeDivision
+        );
+
+
+    /* ========================================================
+       12. RANGE COUNTER REFERENCE
+       ======================================================== */
+
+    const rangeCounterRef =
+        doc(
+            db,
+            counterCollection,
+            safeFY +
+            "__" +
+            safeDivision +
+            "__" +
+            safeRange
+        );
+
+
+    /* ========================================================
+       13. TRANSACTION
+
+       EXACT SAME STRUCTURE AS SIGHTING.
+
+       BOTH COUNTERS + IRREGULARITY DOCUMENT
+       ARE COMMITTED ATOMICALLY.
+       ======================================================== */
+
+    const result =
+        await runTransaction(
+            db,
+            async function(
+                transaction
+            ){
+
+                /* ==============================================
+                   ALL READS FIRST
+                   ============================================== */
+
+                const divisionSnap =
+                    await transaction.get(
+                        divisionCounterRef
+                    );
+
+
+                const rangeSnap =
+                    await transaction.get(
+                        rangeCounterRef
+                    );
+
+
+                /* ==============================================
+                   CURRENT DIVISION COUNT
+                   ============================================== */
+
+                const oldDivisionCount =
+                    divisionSnap.exists()
+
+                        ? Number(
+                            divisionSnap
+                                .data()
+                                ?.count ||
+                            0
+                        )
+
+                        : 0;
+
+
+                /* ==============================================
+                   CURRENT RANGE COUNT
+                   ============================================== */
+
+                const oldRangeCount =
+                    rangeSnap.exists()
+
+                        ? Number(
+                            rangeSnap
+                                .data()
+                                ?.count ||
+                            0
+                        )
+
+                        : 0;
+
+
+                /* ==============================================
+                   COUNTER VALIDATION
+                   ============================================== */
+
+                if(
+                    !Number.isFinite(
+                        oldDivisionCount
+                    ) ||
+                    oldDivisionCount < 0
+                ){
+
+                    throw new Error(
+                        "Invalid Irregularity division counter."
+                    );
+
+                }
+
+
+                if(
+                    !Number.isFinite(
+                        oldRangeCount
+                    ) ||
+                    oldRangeCount < 0
+                ){
+
+                    throw new Error(
+                        "Invalid Irregularity range counter."
+                    );
+
+                }
+
+
+                /* ==============================================
+                   NEXT COUNTERS
+
+                   RANGE:
+                   1, 2, 3...
+
+                   DIVISION:
+                   1, 2, 3...
+                   ============================================== */
+
+                const divisionCount =
+                    oldDivisionCount + 1;
+
+
+                const rangeCount =
+                    oldRangeCount + 1;
+
+
+                /* ==============================================
+                   SAME ID COMPONENT LOGIC AS SIGHTING
+                   ============================================== */
+
+                const idDivision =
+                    divisionCode.replace(
+                        /\s+/g,
+                        ""
+                    );
+
+
+                const idRange =
+                    rangeCode.replace(
+                        /\s+/g,
+                        ""
+                    );
+
+
+                /* ==============================================
+                   FINAL IRREGULARITY ID
+
+                   EXACT SAME FORMAT AS
+                   ELEPHANT / WILDLIFE
+
+                   Example:
+
+                   BuxaTR_WEST-EastDamanpur-7/7
+                   ============================================== */
+
+                const finalIrregularityID =
+                    idDivision +
+                    "-" +
+                    idRange +
+                    "-" +
+                    rangeCount +
+                    "/" +
+                    divisionCount;
+
+
+                /* ==============================================
+                   FIRESTORE DOCUMENT ID
+
+                   EXACT SAME TRANSFORMATION AS SIGHTING
+
+                   Visible ID:
+
+                   BuxaTR_WEST-EastDamanpur-7/7
+
+                   Firestore ID:
+
+                   BuxaTR_WEST-EastDamanpur-7__7
+                   ============================================== */
+
+                const firestoreDocumentID =
+                    finalIrregularityID.replace(
+                        /\//g,
+                        "__"
+                    );
+
+
+                /* ==============================================
+                   IRREGULARITY DOCUMENT REFERENCE
+                   ============================================== */
+
+                const irregularityRef =
+                    doc(
+                        db,
+                        GGIrregularity.COLLECTION,
+                        firestoreDocumentID
+                    );
+
+
+                /* ==============================================
+                   DIVISION COUNTER WRITE
+                   ============================================== */
+
+                transaction.set(
+                    divisionCounterRef,
+                    {
+
+                        type:
+                            "division",
+
+                        financialYear:
+                            financialYear,
+
+                        division:
+                            division,
+
+                        divisionCode:
+                            divisionCode,
+
+                        count:
+                            divisionCount,
+
+                        updatedAt:
+                            serverTimestamp()
+
+                    },
+                    {
+                        merge:
+                            true
+                    }
+                );
+
+
+                /* ==============================================
+                   RANGE COUNTER WRITE
+                   ============================================== */
+
+                transaction.set(
+                    rangeCounterRef,
+                    {
+
+                        type:
+                            "range",
+
+                        financialYear:
+                            financialYear,
+
+                        division:
+                            division,
+
+                        divisionCode:
+                            divisionCode,
+
+                        range:
+                            range,
+
+                        rangeCode:
+                            rangeCode,
+
+                        count:
+                            rangeCount,
+
+                        updatedAt:
+                            serverTimestamp()
+
+                    },
+                    {
+                        merge:
+                            true
+                    }
+                );
+
+
+                /* ==============================================
+                   IRREGULARITY DOCUMENT WRITE
+                   ============================================== */
+
+                transaction.set(
+                    irregularityRef,
+                    {
+
+                        ...payload,
+
+
+                        /* ======================================
+                           CANONICAL IDENTITY
+                           ====================================== */
+
+                        irregularity_id:
+                            finalIrregularityID,
+
+                        firestore_id:
+                            firestoreDocumentID,
+
+
+                        /* ======================================
+                           FINANCIAL YEAR
+                           ====================================== */
+
+                        financial_year:
+                            financialYear,
+
+
+                        /* ======================================
+                           GIS
+                           ====================================== */
+
+                        gis_division:
+                            division,
+
+                        gis_range:
+                            range,
+
+
+                        division_code:
+                            divisionCode,
+
+                        range_code:
+                            rangeCode,
+
+
+                        /* ======================================
+                           COUNTER VALUES
+                           ====================================== */
+
+                        range_irregularity_no:
+                            rangeCount,
+
+                        division_irregularity_no:
+                            divisionCount,
+
+
+                        /* ======================================
+                           TIMESTAMPS
+                           ====================================== */
+
+                        created_at:
+                            serverTimestamp(),
+
+                        updated_at:
+                            serverTimestamp()
+
+                    }
+                );
+
+
+                /* ==============================================
+                   RETURN SAME STRUCTURE AS SIGHTING
+                   ============================================== */
+
+                return {
+
+                    firestoreId:
+                        firestoreDocumentID,
+
+                    irregularityId:
+                        finalIrregularityID,
+
+                    financialYear:
+                        financialYear,
+
+                    division:
+                        division,
+
+                    range:
+                        range,
+
+                    divisionCode:
+                        divisionCode,
+
+                    rangeCode:
+                        rangeCode,
+
+                    rangeCount:
+                        rangeCount,
+
+                    divisionCount:
+                        divisionCount
+
+                };
+
+            }
+        );
+
+
+    /* ========================================================
+       14. VERIFY RESULT
+       ======================================================== */
+
+    if(
+        !result ||
+        !result.irregularityId ||
+        !result.firestoreId
+    ){
+
+        throw new Error(
+            "Firestore transaction completed without a valid Irregularity ID."
+        );
+
+    }
+
+
+    /* ========================================================
+       15. WRITE SAME IDs BACK INTO PAYLOAD
+
+       IMPORTANT FOR MEDIA.
+
+       uploadMedia() receives this SAME payload.
+       ======================================================== */
+
+    payload.irregularity_id =
+        result.irregularityId;
 
 
     payload.firestore_id =
-        documentRef.id;
+        result.firestoreId;
 
 
-    await window.fb.setDoc(
-        documentRef,
-        payload
+    payload.financial_year =
+        result.financialYear;
+
+
+    payload.division_code =
+        result.divisionCode;
+
+
+    payload.range_code =
+        result.rangeCode;
+
+
+    payload.range_irregularity_no =
+        result.rangeCount;
+
+
+    payload.division_irregularity_no =
+        result.divisionCount;
+
+
+    /* ========================================================
+       16. LOG
+       ======================================================== */
+
+    console.log(
+        "🔥 Irregularity Firestore saved:",
+        result
     );
 
 
-    return documentRef;
+    console.table([
+        {
+
+            irregularityId:
+                result.irregularityId,
+
+            firestoreId:
+                result.firestoreId,
+
+            financialYear:
+                result.financialYear,
+
+            division:
+                result.division,
+
+            range:
+                result.range,
+
+            rangeNo:
+                result.rangeCount,
+
+            divisionNo:
+                result.divisionCount
+
+        }
+    ]);
+
+
+    /* ========================================================
+       17. RETURN DOCUMENT REFERENCE
+
+       IMPORTANT:
+
+       Your existing GGIrregularity.save() expects
+       createDocument() to return documentRef.
+
+       DO NOT BREAK THAT FLOW.
+       ======================================================== */
+
+    return irregularityRef;
 
 };
 
