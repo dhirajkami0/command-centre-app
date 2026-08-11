@@ -48662,7 +48662,81 @@ const popup =
                 </td>
 
             </tr>
+<!-- TIME OF SIGHTING -->
 
+<tr
+    style="
+        border-bottom:
+            1px solid
+            #f0f0f0;
+    "
+>
+    <td
+        style="
+            padding:
+                5px 0;
+
+            color:
+                #666;
+        "
+    >
+        <b>
+            Time of Sighting
+        </b>
+    </td>
+
+    <td
+        style="
+            padding:
+                5px 0;
+        "
+    >
+        ${
+            s.time ||
+            s.sighting_time ||
+            s.wildlife_time ||
+            s.observation_time ||
+            "-"
+        }
+    </td>
+</tr>
+
+
+<!-- AGE OF ANIMAL -->
+
+<tr
+    style="
+        border-bottom:
+            1px solid
+            #f0f0f0;
+    "
+>
+    <td
+        style="
+            padding:
+                5px 0;
+
+            color:
+                #666;
+        "
+    >
+        <b>
+            Age of Animal Sighting
+        </b>
+    </td>
+
+    <td
+        style="
+            padding:
+                5px 0;
+        "
+    >
+        ${
+            s.age ||
+            "-"
+        }
+    </td>
+</tr>
 
             <!-- COUNT -->
 
