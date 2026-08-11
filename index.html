@@ -46851,7 +46851,237 @@ function clearRememberedWildlifePopup(){
     }
 
 }
+
+    // ============================================================
+// 🔐 WILDLIFE + IRREGULARITY VISIBILITY
+// ------------------------------------------------------------
+// Uses the SAME NORMAL STAFF visibility hierarchy.
+//
+// IMPORTANT:
+// - NO DEPREDATION exception
+// - NO RESCUE exception
+// - NO emergency bypass
+//
+// NORMAL RULE:
+//
+// ADMIN
+//   → ALL
+//
+// DFO / ADFO
+//   → SAME DIVISION
+//
+// TEAM LEADER / FR / FG / OTHER
+//   → SELF
+//   → SAME RANGE
+//
+// Selected GIS filtering is applied separately.
 // ============================================================
+
+function normalizeMarkerScopeValue(value){
+
+    return String(
+        value || ""
+    )
+    .trim()
+    .toUpperCase()
+    .replace(
+        /[^A-Z0-9]/g,
+        ""
+    );
+
+}
+
+
+// ============================================================
+// 🔐 COMMON MARKER ROLE VISIBILITY
+// ============================================================
+
+function isMarkerRoleVisible(target){
+
+    target =
+        target ||
+        {};
+
+
+    // ========================================================
+    // 👤 VIEWER ROLE
+    // ========================================================
+
+    const viewerRole =
+        String(
+            window.userProfile?.role || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    // ========================================================
+    // 👤 VIEWER NAME
+    // ========================================================
+
+    const viewerName =
+        cleanName(
+            window.userProfile?.cleanName ||
+            window.userProfile?.name ||
+            ""
+        );
+
+
+    // ========================================================
+    // 🗺 VIEWER DIVISION
+    // ========================================================
+
+    const viewerDivision =
+        normalizeMarkerScopeValue(
+            window.userProfile?.division || ""
+        );
+
+
+    // ========================================================
+    // 🗺 VIEWER RANGE
+    // ========================================================
+
+    const viewerRange =
+        normalizeMarkerScopeValue(
+            window.userProfile?.range || ""
+        );
+
+
+    // ========================================================
+    // 🎯 TARGET NAME
+    // ========================================================
+
+    const targetName =
+        cleanName(
+            target.cleanName ||
+            target.name ||
+            target.reportedBy ||
+            target.createdBy ||
+            ""
+        );
+
+
+    // ========================================================
+    // 🗺 TARGET DIVISION
+    // ========================================================
+
+    const targetDivision =
+        normalizeMarkerScopeValue(
+            target.division ||
+            target.Division ||
+            ""
+        );
+
+
+    // ========================================================
+    // 🗺 TARGET RANGE
+    // ========================================================
+
+    const targetRange =
+        normalizeMarkerScopeValue(
+            target.range ||
+            target.Range ||
+            ""
+        );
+
+
+    // ========================================================
+    // 👤 SELF
+    // ========================================================
+
+    const isSelf =
+        !!viewerName &&
+        !!targetName &&
+        viewerName === targetName;
+
+
+    // ========================================================
+    // 🗺 SAME DIVISION
+    // ========================================================
+
+    const sameDivision =
+        !!viewerDivision &&
+        !!targetDivision &&
+        viewerDivision === targetDivision;
+
+
+    // ========================================================
+    // 🗺 SAME RANGE
+    // ========================================================
+
+    const sameRange =
+        !!viewerRange &&
+        !!targetRange &&
+        viewerRange === targetRange;
+
+
+    // ========================================================
+    // 🔐 FINAL NORMAL VISIBILITY
+    // ========================================================
+
+    let visible =
+        false;
+
+
+    // ========================================================
+    // 👑 1. ADMIN
+    // ========================================================
+
+    if(
+        viewerRole === "ADMIN"
+    ){
+
+        visible =
+            true;
+
+    }
+
+
+    // ========================================================
+    // 👤 2. SELF
+    // ========================================================
+
+    else if(
+        isSelf
+    ){
+
+        visible =
+            true;
+
+    }
+
+
+    // ========================================================
+    // 🟩 3. DFO / ADFO
+    // ========================================================
+
+    else if(
+        viewerRole === "DFO" ||
+        viewerRole === "ADFO"
+    ){
+
+        visible =
+            sameDivision;
+
+    }
+
+
+    // ========================================================
+    // 👮 4. TEAM LEADER / FR / FG / OTHER
+    // ========================================================
+
+    else {
+
+        visible =
+            sameRange;
+
+    }
+
+
+    return visible;
+
+}
+    // ============================================================
 // EXISTING WILDLIFE LOADER
 // ============================================================
 
