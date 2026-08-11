@@ -76262,56 +76262,113 @@ async function loadVillageBoundaryLayer() {
         /* ============================================================
             📍 OVERLAYS AVAILABLE TO EVERY LOGGED-IN USER
         ============================================================ */
-        const layerControlOverlays = {
-            // 👮 STAFF
-            "👮 Staff": window.staffLayer || staffLayer,
+const layerControlOverlays = {
 
-            // 🐘 ELEPHANTS
-            "🐘 Elephants": window.elephantLayer || elephantLayer,
-          // ⚠️ IRREGULARITIES
-"⚠️ Irregularities":
-    window.irregularityLayer || irregularityLayer
-        };
+    // 👮 STAFF
+    "👮 Staff":
+        window.staffLayer ||
+        staffLayer,
 
-        /* ============================================================
-            👑 ADMIN-ONLY OVERLAYS
-        ============================================================ */
-        if (layerControlIsAdmin) {
-            // 🚨 INCIDENTS / ALERTS
-            if (typeof window.incidentLayer !== 'undefined' || typeof incidentLayer !== 'undefined') {
-                layerControlOverlays["🚨 Alerts"] = window.incidentLayer || incidentLayer;
-            }
 
-            // 📡 PREDICTION
-            if (typeof window.predictionLayer !== 'undefined' || typeof predictionLayer !== 'undefined') {
-                layerControlOverlays["📡 Prediction"] = window.predictionLayer || predictionLayer;
-            }
+    // 🐘 ELEPHANTS
+    "🐘 Elephants":
+        window.elephantLayer ||
+        elephantLayer,
 
-            // 🐅 WILDLIFE
-            if (typeof window.wildlifeLayer !== 'undefined') {
-                layerControlOverlays["🐅 Wildlife"] = window.wildlifeLayer;
-            }
 
-            // 📍 VILLAGE GPS POINTS
-            if (typeof window.villageLayer !== 'undefined' || typeof villageLayer !== 'undefined') {
-                layerControlOverlays["📍 Village Locations"] = window.villageLayer || villageLayer;
-            }
+    // 🐅 WILDLIFE
+    "🐅 Wildlife":
+        window.wildlifeLayer,
 
-            // 🏡 VILLAGE POLYGONS
-            if (typeof window.villageBoundaryLayer !== 'undefined' || typeof villageBoundaryLayer !== 'undefined') {
-                layerControlOverlays["🏡 Village Boundaries"] = window.villageBoundaryLayer || villageBoundaryLayer;
-            }
 
-            // 🌱 PLANTATION
-            if (typeof window.plantationLayer !== 'undefined' || typeof plantationLayer !== 'undefined') {
-                layerControlOverlays["🌱 Plantation"] = window.plantationLayer || plantationLayer;
-            }
+    // ⚠️ IRREGULARITIES
+    "⚠️ Irregularities":
+        window.irregularityLayer ||
+        irregularityLayer
+};
 
-            // 🟩 COVERAGE GRID
-            if (typeof window.gridRootLayer !== 'undefined') {
-                layerControlOverlays["🟩 Coverage Grid"] = window.gridRootLayer;
-            }
-        }
+
+/* ============================================================
+    👑 ADMIN-ONLY OVERLAYS
+============================================================ */
+if (layerControlIsAdmin) {
+
+    // 🚨 INCIDENTS / ALERTS
+    if (
+        typeof window.incidentLayer !== 'undefined' ||
+        typeof incidentLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["🚨 Alerts"] =
+            window.incidentLayer ||
+            incidentLayer;
+
+    }
+
+
+    // 📡 PREDICTION
+    if (
+        typeof window.predictionLayer !== 'undefined' ||
+        typeof predictionLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["📡 Prediction"] =
+            window.predictionLayer ||
+            predictionLayer;
+
+    }
+
+
+    // 📍 VILLAGE GPS POINTS
+    if (
+        typeof window.villageLayer !== 'undefined' ||
+        typeof villageLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["📍 Village Locations"] =
+            window.villageLayer ||
+            villageLayer;
+
+    }
+
+
+    // 🏡 VILLAGE POLYGONS
+    if (
+        typeof window.villageBoundaryLayer !== 'undefined' ||
+        typeof villageBoundaryLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["🏡 Village Boundaries"] =
+            window.villageBoundaryLayer ||
+            villageBoundaryLayer;
+
+    }
+
+
+    // 🌱 PLANTATION
+    if (
+        typeof window.plantationLayer !== 'undefined' ||
+        typeof plantationLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["🌱 Plantation"] =
+            window.plantationLayer ||
+            plantationLayer;
+
+    }
+
+
+    // 🟩 COVERAGE GRID
+    if (
+        typeof window.gridRootLayer !== 'undefined'
+    ) {
+
+        layerControlOverlays["🟩 Coverage Grid"] =
+            window.gridRootLayer;
+
+    }
+
+}
 
         /* ============================================================
             🎛 CREATE LEAFLET LAYER CONTROL
