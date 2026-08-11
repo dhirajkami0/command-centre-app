@@ -76262,113 +76262,113 @@ async function loadVillageBoundaryLayer() {
         /* ============================================================
             📍 OVERLAYS AVAILABLE TO EVERY LOGGED-IN USER
         ============================================================ */
-const layerControlOverlays = {
+        const layerControlOverlays = {
 
-    // 👮 STAFF
-    "👮 Staff":
-        window.staffLayer ||
-        staffLayer,
-
-
-    // 🐘 ELEPHANTS
-    "🐘 Elephants":
-        window.elephantLayer ||
-        elephantLayer,
+            // 👮 STAFF
+            "👮 Staff":
+                window.staffLayer ||
+                staffLayer,
 
 
-    // 🐅 WILDLIFE
-    "🐅 Wildlife":
-        window.wildlifeLayer,
+            // 🐘 ELEPHANTS
+            "🐘 Elephants":
+                window.elephantLayer ||
+                elephantLayer,
 
 
-    // ⚠️ IRREGULARITIES
-    "⚠️ Irregularities":
-        window.irregularityLayer ||
-        irregularityLayer
-};
+            // 🐅 WILDLIFE
+            "🐅 Wildlife":
+                window.wildlifeLayer,
 
 
-/* ============================================================
-    👑 ADMIN-ONLY OVERLAYS
-============================================================ */
-if (layerControlIsAdmin) {
-
-    // 🚨 INCIDENTS / ALERTS
-    if (
-        typeof window.incidentLayer !== 'undefined' ||
-        typeof incidentLayer !== 'undefined'
-    ) {
-
-        layerControlOverlays["🚨 Alerts"] =
-            window.incidentLayer ||
-            incidentLayer;
-
-    }
+            // ⚠️ IRREGULARITIES
+            "⚠️ Irregularities":
+                window.irregularityLayer ||
+                irregularityLayer
+        };
 
 
-    // 📡 PREDICTION
-    if (
-        typeof window.predictionLayer !== 'undefined' ||
-        typeof predictionLayer !== 'undefined'
-    ) {
+        /* ============================================================
+            👑 ADMIN-ONLY OVERLAYS
+        ============================================================ */
+        if (layerControlIsAdmin) {
 
-        layerControlOverlays["📡 Prediction"] =
-            window.predictionLayer ||
-            predictionLayer;
+            // 🚨 INCIDENTS / ALERTS
+            if (
+                typeof window.incidentLayer !== 'undefined' ||
+                typeof incidentLayer !== 'undefined'
+            ) {
 
-    }
+                layerControlOverlays["🚨 Alerts"] =
+                    window.incidentLayer ||
+                    incidentLayer;
 
-
-    // 📍 VILLAGE GPS POINTS
-    if (
-        typeof window.villageLayer !== 'undefined' ||
-        typeof villageLayer !== 'undefined'
-    ) {
-
-        layerControlOverlays["📍 Village Locations"] =
-            window.villageLayer ||
-            villageLayer;
-
-    }
+            }
 
 
-    // 🏡 VILLAGE POLYGONS
-    if (
-        typeof window.villageBoundaryLayer !== 'undefined' ||
-        typeof villageBoundaryLayer !== 'undefined'
-    ) {
+            // 📡 PREDICTION
+            if (
+                typeof window.predictionLayer !== 'undefined' ||
+                typeof predictionLayer !== 'undefined'
+            ) {
 
-        layerControlOverlays["🏡 Village Boundaries"] =
-            window.villageBoundaryLayer ||
-            villageBoundaryLayer;
+                layerControlOverlays["📡 Prediction"] =
+                    window.predictionLayer ||
+                    predictionLayer;
 
-    }
-
-
-    // 🌱 PLANTATION
-    if (
-        typeof window.plantationLayer !== 'undefined' ||
-        typeof plantationLayer !== 'undefined'
-    ) {
-
-        layerControlOverlays["🌱 Plantation"] =
-            window.plantationLayer ||
-            plantationLayer;
-
-    }
+            }
 
 
-    // 🟩 COVERAGE GRID
-    if (
-        typeof window.gridRootLayer !== 'undefined'
-    ) {
+            // 📍 VILLAGE GPS POINTS
+            if (
+                typeof window.villageLayer !== 'undefined' ||
+                typeof villageLayer !== 'undefined'
+            ) {
 
-        layerControlOverlays["🟩 Coverage Grid"] =
-            window.gridRootLayer;
+                layerControlOverlays["📍 Village Locations"] =
+                    window.villageLayer ||
+                    villageLayer;
 
-    }
+            }
 
-}
+
+            // 🏡 VILLAGE POLYGONS
+            if (
+                typeof window.villageBoundaryLayer !== 'undefined' ||
+                typeof villageBoundaryLayer !== 'undefined'
+            ) {
+
+                layerControlOverlays["🏡 Village Boundaries"] =
+                    window.villageBoundaryLayer ||
+                    villageBoundaryLayer;
+
+            }
+
+
+            // 🌱 PLANTATION
+            if (
+                typeof window.plantationLayer !== 'undefined' ||
+                typeof plantationLayer !== 'undefined'
+            ) {
+
+                layerControlOverlays["🌱 Plantation"] =
+                    window.plantationLayer ||
+                    plantationLayer;
+
+            }
+
+
+            // 🟩 COVERAGE GRID
+            if (
+                typeof window.gridRootLayer !== 'undefined'
+            ) {
+
+                layerControlOverlays["🟩 Coverage Grid"] =
+                    window.gridRootLayer;
+
+            }
+
+        }
 
         /* ============================================================
             🎛 CREATE LEAFLET LAYER CONTROL
@@ -76434,7 +76434,6 @@ if (layerControlIsAdmin) {
         Waits for window.userProfile / role availability before building
     ============================================================ */
     function checkAndInit() {
-        // If userProfile exists and role is populated, or if a global flag/event signals readiness, build immediately.
         if (window.userProfile && window.userProfile.role !== undefined) {
             initializeLayerControlSystem();
             return true;
@@ -76448,14 +76447,12 @@ if (layerControlIsAdmin) {
 
     // Try immediately
     if (!checkAndInit()) {
-        // Otherwise, poll safely or listen to standard profile-ready triggers
         let attempts = 0;
-        const maxAttempts = 30; // 3 seconds max fallback polling
+        const maxAttempts = 30;
         const interval = setInterval(() => {
             attempts++;
             if (checkAndInit() || attempts >= maxAttempts) {
                 clearInterval(interval);
-                // Fallback initialization if profile is persistently missing after timeout
                 if (attempts >= maxAttempts && !window.layerControl) {
                     console.warn("⚠ User profile role load timed out. Initializing Layer Control as GUEST.");
                     initializeLayerControlSystem();
@@ -76463,7 +76460,6 @@ if (layerControlIsAdmin) {
             }
         }, 100);
 
-        // Also listen to custom events if dispatched by app architecture
         window.addEventListener('userProfileLoaded', function handler() {
             clearInterval(interval);
             window.removeEventListener('userProfileLoaded', handler);
@@ -76561,25 +76557,38 @@ if (typeof map !== 'undefined') {
                     return;
                 }
 
-                // 🐅 WILDLIFE ON — ADMIN ONLY
+                // 🐅 WILDLIFE ON — AVAILABLE TO EVERY LOGGED-IN USER
                 if (layerName === "🐅 Wildlife") {
-                    const currentRole = String(
-                        window.userProfile?.role ||
-                        window.currentRole ||
-                        ""
-                    ).trim().toUpperCase();
-
-                    if (currentRole !== "ADMIN") {
-                        console.warn("🔒 Wildlife access denied:", currentRole || "UNKNOWN");
-                        if (window.wildlifeLayer && map.hasLayer(window.wildlifeLayer)) {
-                            map.removeLayer(window.wildlifeLayer);
-                        }
-                        return;
-                    }
-
                     typeof loadWildlifeSightings === 'function' && await loadWildlifeSightings();
                     typeof startWildlifeListener === 'function' && startWildlifeListener();
                     console.log("🐅 Wildlife Enabled");
+                    return;
+                }
+
+                // ⚠️ IRREGULARITIES
+                if (layerName === "⚠️ Irregularities") {
+                    if (!window.irregularityLayer) {
+                        console.warn("⚠ irregularityLayer unavailable");
+                        return;
+                    }
+
+                    if (typeof loadIrregularities === "function") {
+                        console.log("⚠️ Loading irregularities...");
+                        await loadIrregularities();
+                        console.log("✅ Irregularities loaded");
+                    } else {
+                        console.warn("⚠ loadIrregularities() unavailable");
+                    }
+
+                    if (typeof listenIrregularities === "function") {
+                        console.log("⚠️ Starting irregularity realtime...");
+                        listenIrregularities();
+                        console.log("✅ Irregularity realtime active");
+                    } else {
+                        console.warn("⚠ listenIrregularities() unavailable");
+                    }
+
+                    console.log("⚠️ Irregularities Enabled");
                     return;
                 }
 
@@ -76674,982 +76683,6 @@ if (typeof map !== 'undefined') {
         }
     );
 }
-
-
-
-/* ============================================================
-   ⚡ OVERLAY ADD (CLEANED)
-============================================================ */
-/* ============================================================
-   ⚡ OVERLAY ADD (OPTIMIZED)
-============================================================ */
-/* ============================================================
-   🗺 OVERLAY ADD
-============================================================ */
-/* ============================================================
-   🗺 OVERLAY ADD
-   ------------------------------------------------------------
-   Handles Leaflet overlay layers when user enables them.
-
-   VILLAGE BOUNDARIES:
-   - ADMIN only.
-   - Lazy loads GeoJSON on first use.
-   - Village polygons remain visible.
-   - BTR polygons remain visible.
-   - Village Canvas becomes interactive.
-   - BTR Canvas becomes non-interactive.
-   - Staff remains untouched.
-============================================================ */
-
-/* ============================================================
-   🧭 OVERLAY ADD
-   ------------------------------------------------------------
-   Handles Leaflet overlays when user enables them.
-
-   STAFF TRACKS:
-   - Starts BULK mode.
-   - Invalidates older bulk requests.
-   - Clears any selected individual OTHER-staff track.
-   - Closes staff popup.
-   - Loads tracks only from visibleStaffCache.
-   - Current user's automatic track remains untouched.
-
-   VILLAGE BOUNDARIES:
-   - ADMIN only.
-   - Lazy loads polygons.
-   - Switches interaction ownership to village canvas.
-
-   STAFF / PLANTATION:
-   - Existing behavior preserved.
-============================================================ */
-
-map.on(
-  "overlayadd",
-
-  async function(
-    e
-  ) {
-
-    try {
-
-      /* ========================================================
-         🔥 SAFETY
-      ======================================================== */
-
-      if(
-        !e ||
-        !e.name
-      ){
-
-        return;
-
-      }
-
-
-      const layerName =
-        String(
-          e.name
-        );
-
-
-      /* ========================================================
-         🔥 DEBUG
-      ======================================================== */
-
-      if(
-        GRID_DEBUG
-      ){
-
-        console.log(
-
-          "🧭 Layer Enabled:",
-
-          layerName
-
-        );
-
-      }
-
-
-      /* ========================================================
-         👮 STAFF
-         --------------------------------------------------------
-         Existing staff behavior remains unchanged.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "👮 Staff"
-      ){
-
-        loadStaff?.();
-
-
-        return;
-
-      }
-
-
-      /* ========================================================
-         🛣 STAFF TRACKS ON
-         --------------------------------------------------------
-
-         DESIGN:
-
-         visibleStaffCache
-               │
-               ▼
-         authorized markers
-               │
-               ▼
-         bulk/lazy track loading
-
-         IMPORTANT:
-
-         - Marker visibility rule is already resolved upstream.
-         - NO additional dutyActive check here.
-         - Current user's automatic track is NOT duplicated.
-         - Existing individual track is removed.
-         - Existing popup is closed.
-         - Bulk mode starts with TRACKS ONLY.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🛣 Staff Tracks"
-      ){
-
-        const state =
-          window.staffTrackState;
-
-
-        if(
-          !state
-        ){
-
-          console.warn(
-            "⚠ staffTrackState unavailable"
-          );
-
-
-          return;
-
-        }
-
-
-        /* ------------------------------------------------------
-           INVALIDATE ANY PREVIOUS BULK GENERATION
-        ------------------------------------------------------ */
-
-        state.requestId +=
-          1;
-
-
-        /* ------------------------------------------------------
-           ENABLE BULK MODE
-        ------------------------------------------------------ */
-
-        state.bulkEnabled =
-          true;
-
-
-        state.loading =
-          false;
-
-
-        state.bulkScopeKey =
-          null;
-
-
-        /* ------------------------------------------------------
-           CLEAR PREVIOUS INDIVIDUAL SELECTION
-
-           clearSelectedStaffTrack() already protects the
-           logged-in user's automatic track.
-        ------------------------------------------------------ */
-
-        window
-          .clearSelectedStaffTrack?.();
-
-
-        /* ------------------------------------------------------
-           CLOSE CURRENT STAFF POPUP
-
-           Bulk mode must start with tracks only.
-        ------------------------------------------------------ */
-
-        Object.values(
-          window.staffMarkers ||
-          {}
-        )
-        .forEach(
-
-          function(
-            marker
-          ){
-
-            try {
-
-              if(
-                marker
-                  ?.isPopupOpen?.()
-              ){
-
-                marker
-                  .closePopup();
-
-              }
-
-            }
-            catch(
-              err
-            ){}
-
-          }
-
-        );
-
-
-        state.selectedStaff =
-          null;
-
-
-        console.log(
-
-          "🛣 STAFF TRACKS ON — request:",
-
-          state.requestId
-
-        );
-
-
-        /* ------------------------------------------------------
-           IMPORTANT:
-
-           Leaflet has already added bulkStaffTrackLayer
-           to the map before overlayadd fires.
-
-           loadBulkVisibleStaffTracks() uses:
-
-             visibleStaffCache
-
-           and therefore follows the SAME authorization
-           rule already used for marker visibility.
-        ------------------------------------------------------ */
-
-        await window
-          .loadBulkVisibleStaffTracks?.();
-
-
-        return;
-
-      }
-
-
-      /* ========================================================
-         🏡 VILLAGE BOUNDARIES ON — ADMIN ONLY
-         --------------------------------------------------------
-
-         FIRST TIME:
-         1. Leaflet adds empty villageBoundaryLayer.
-         2. overlayadd fires.
-         3. ADMIN role is verified again.
-         4. GeoJSON lazy loads.
-         5. Polygons are added.
-         6. Village Canvas becomes interaction owner.
-
-         NEXT TIME:
-         1. Existing polygons are reused.
-         2. No GeoJSON download.
-         3. Village Canvas becomes interaction owner.
-
-         IMPORTANT:
-         - Non-admin access is rejected.
-         - BTR stays visible.
-         - BTR Canvas becomes non-interactive.
-         - Village Canvas becomes interactive.
-         - Staff remains untouched.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🏡 Village Boundaries"
-      ){
-
-        /* ------------------------------------------------------
-           ADMIN ACCESS RECHECK
-        ------------------------------------------------------ */
-
-        const currentVillageRole =
-          String(
-            window.userProfile?.role ||
-            window.currentRole ||
-            ""
-          )
-          .trim()
-          .toUpperCase();
-
-
-        if(
-          currentVillageRole !==
-          "ADMIN"
-        ){
-
-          console.warn(
-            "🔒 Village Boundary access denied:",
-            currentVillageRole ||
-            "UNKNOWN"
-          );
-
-
-          /*
-           * Remove ONLY the unauthorized village layer.
-           * No other map layer is touched.
-           */
-
-          if(
-            window.villageBoundaryLayer &&
-            map.hasLayer(
-              window.villageBoundaryLayer
-            )
-          ){
-
-            map.removeLayer(
-              window.villageBoundaryLayer
-            );
-
-          }
-
-
-          return;
-
-        }
-
-
-        /* ------------------------------------------------------
-           Lazy load village polygons
-        ------------------------------------------------------ */
-
-        await loadVillageBoundaryLayer();
-
-
-        /* ------------------------------------------------------
-           Switch interaction ownership
-
-           Village Canvas → interactive
-           BTR Canvas     → non-interactive
-           Staff          → unchanged
-        ------------------------------------------------------ */
-
-        setVillageInteractionMode(
-          true
-        );
-
-
-        console.log(
-
-          "🏡 Village Boundaries Enabled — ADMIN"
-
-        );
-
-
-        return;
-
-      }
-
-  /* ========================================================
-     🐅 WILDLIFE
-     --------------------------------------------------------
-     ADMIN only.
-
-     First enable:
-     - Loads all wildlife sightings.
-     - Existing markers are reused.
-     - Realtime listener keeps layer synchronized.
-
-     Next enable:
-     - Existing markers reload.
-     - Listener already active.
-  ======================================================== */
-
-  if(
-
-    layerName ===
-
-    "🐅 Wildlife"
-
-  ){
-
-    const currentRole =
-
-      String(
-
-        window.userProfile?.role ||
-
-        ""
-
-      )
-
-      .trim()
-
-      .toUpperCase();
-
-    if(
-
-      currentRole !==
-
-      "ADMIN"
-
-    ){
-
-      console.warn(
-
-        "🔒 Wildlife access denied:",
-
-        currentRole ||
-
-        "UNKNOWN"
-
-      );
-
-      if(
-
-        window.wildlifeLayer &&
-
-        map.hasLayer(
-
-          window.wildlifeLayer
-
-        )
-
-      ){
-
-        map.removeLayer(
-
-          window.wildlifeLayer
-
-        );
-
-      }
-
-      return;
-
-    }
-
-    await loadWildlifeSightings?.();
-
-    startWildlifeListener?.();
-
-    console.log(
-
-      "🐅 Wildlife Enabled"
-
-    );
-
-    return;
-
-  }
-
-            /* ========================================================
-         ⚠️ IRREGULARITIES
-         --------------------------------------------------------
-         Available to every logged-in user.
-
-         FIRST ENABLE:
-         - Loads existing irregularities.
-         - Starts realtime listener.
-         - Existing markers are reused.
-
-         NEXT ENABLE:
-         - Existing layer is reused.
-         - Realtime listener is NOT duplicated.
-      ======================================================== */
-
-      if(
-
-        layerName ===
-
-        "⚠️ Irregularities"
-
-      ){
-
-        /* ------------------------------------------------------
-           MAKE SURE IRREGULARITY LAYER EXISTS
-        ------------------------------------------------------ */
-
-        if(
-
-          !window.irregularityLayer
-
-        ){
-
-          console.warn(
-            "⚠ irregularityLayer unavailable"
-          );
-
-          return;
-
-        }
-
-
-        /* ------------------------------------------------------
-           LOAD EXISTING IRREGULARITIES
-        ------------------------------------------------------ */
-
-        if(
-
-          typeof loadIrregularities ===
-          "function"
-
-        ){
-
-          console.log(
-            "⚠️ Loading irregularities..."
-          );
-
-
-          await loadIrregularities();
-
-
-          console.log(
-            "✅ Irregularities loaded"
-          );
-
-        }
-        else{
-
-          console.warn(
-            "⚠ loadIrregularities() unavailable"
-          );
-
-        }
-
-
-        /* ------------------------------------------------------
-           START REALTIME LISTENER
-        ------------------------------------------------------ */
-
-        if(
-
-          typeof listenIrregularities ===
-          "function"
-
-        ){
-
-          console.log(
-            "⚠️ Starting irregularity realtime..."
-          );
-
-
-          listenIrregularities();
-
-
-          console.log(
-            "✅ Irregularity realtime active"
-          );
-
-        }
-        else{
-
-          console.warn(
-            "⚠ listenIrregularities() unavailable"
-          );
-
-        }
-
-
-        console.log(
-          "⚠️ Irregularities Enabled"
-        );
-
-
-        return;
-
-      }
-    /* ========================================================
-         🌱 PLANTATION
-         --------------------------------------------------------
-         Existing plantation lazy-loading behavior.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🌱 Plantation"
-      ){
-
-        loadPlantationLayer?.();
-
-
-        return;
-
-      }
-
-    }
-
-
-    /* ==========================================================
-       🔥 ERROR SAFETY
-    ========================================================== */
-
-    catch(
-      err
-    ){
-
-      console.error(
-
-        "🔥 overlayadd crash:",
-
-        err
-
-      );
-
-    }
-
-  }
-
-);
-
-
-
-/* ============================================================
-   🧹 OVERLAY REMOVE
-   ------------------------------------------------------------
-   Handles Leaflet overlays when user disables them.
-
-   STAFF TRACKS:
-   - Invalidates pending bulk work.
-   - Stops bulk mode.
-   - Clears ALL bulk tracks.
-   - Clears selected individual OTHER-staff track.
-   - Closes selected/current staff popup.
-   - Keeps current user's automatic track.
-
-   VILLAGE BOUNDARIES:
-   - Leaflet automatically hides villageBoundaryLayer.
-   - BTR Canvas interaction is restored.
-   - Village data remains cached.
-   - Staff remains untouched.
-============================================================ */
-
-map.on(
-  "overlayremove",
-
-  function(
-    e
-  ) {
-
-    try {
-
-      /* ========================================================
-         🔥 SAFETY
-      ======================================================== */
-
-      if(
-        !e ||
-        !e.name
-      ){
-
-        return;
-
-      }
-
-
-      const layerName =
-        String(
-          e.name
-        );
-
-
-      /* ========================================================
-         🔥 DEBUG
-      ======================================================== */
-
-      if(
-        GRID_DEBUG
-      ){
-
-        console.log(
-
-          "🧹 Layer Disabled:",
-
-          layerName
-
-        );
-
-      }
-
-
-      /* ========================================================
-         🛣 STAFF TRACKS OFF
-         --------------------------------------------------------
-
-         DESIGN:
-
-         BULK ON
-            │
-            ▼
-         checkbox OFF
-            │
-             ├── invalidate pending requests
-             ├── stop pending batch ownership
-             ├── clear ALL bulk tracks
-             ├── clear selected individual track
-             ├── close staff popup
-             ├── clear selectedStaff
-            │
-             └── KEEP logged-in user's automatic track
-
-         IMPORTANT:
-
-         Leaflet itself removes bulkStaffTrackLayer from map.
-         We clear its child layers/storage here.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🛣 Staff Tracks"
-      ){
-
-        const state =
-          window.staffTrackState;
-
-
-        /* ------------------------------------------------------
-           INVALIDATE PENDING BULK REQUESTS
-
-           Every loadBulkStaffTrack() checks requestId.
-           Any Firestore read still completing becomes stale
-           and will therefore not render.
-        ------------------------------------------------------ */
-
-        if(
-          state
-        ){
-
-          state.requestId +=
-            1;
-
-
-          state.bulkEnabled =
-            false;
-
-
-          state.loading =
-            false;
-
-
-          state.bulkScopeKey =
-            null;
-
-        }
-
-
-        /* ------------------------------------------------------
-           REMOVE ALL BULK-OWNED TRACKS
-
-           DOES NOT touch:
-             window.staffTracks
-             window.trackListeners
-             current user's automatic track
-        ------------------------------------------------------ */
-
-        window
-          .clearBulkStaffTracks?.();
-
-
-        /* ------------------------------------------------------
-           REMOVE SELECTED INDIVIDUAL OTHER-STAFF TRACK
-
-           Current user's automatic track is protected inside
-           clearSelectedStaffTrack().
-        ------------------------------------------------------ */
-
-        window
-          .clearSelectedStaffTrack?.();
-
-
-        /* ------------------------------------------------------
-           CLOSE ALL STAFF POPUPS
-
-           After BULK OFF we return to clean individual mode.
-        ------------------------------------------------------ */
-
-        Object.values(
-          window.staffMarkers ||
-          {}
-        )
-        .forEach(
-
-          function(
-            marker
-          ){
-
-            try {
-
-              if(
-                marker
-                  ?.isPopupOpen?.()
-              ){
-
-                marker
-                  .closePopup();
-
-              }
-
-            }
-            catch(
-              err
-            ){}
-
-          }
-
-        );
-
-
-        /* ------------------------------------------------------
-           CLEAR UI SELECTION
-        ------------------------------------------------------ */
-
-        if(
-          state
-        ){
-
-          state.selectedStaff =
-            null;
-
-        }
-
-
-        console.log(
-
-          "🛣 STAFF TRACKS OFF — request:",
-
-          state?.requestId
-
-        );
-
-
-        return;
-
-      }
-
-
-      /* ========================================================
-         🏡 VILLAGE BOUNDARIES OFF
-         --------------------------------------------------------
-
-         Leaflet Layer Control automatically removes
-         villageBoundaryLayer from the map.
-
-         We only need to restore interaction ownership:
-
-         Village Canvas → non-interactive
-         BTR Canvas     → interactive
-         Staff          → unchanged
-
-         IMPORTANT:
-         - We DO NOT remove BTR.
-         - We DO NOT add BTR.
-         - We DO NOT touch staffLayer.
-         - Village GeoJSON stays cached in memory.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🏡 Village Boundaries"
-      ){
-
-        setVillageInteractionMode(
-          false
-        );
-
-
-        console.log(
-
-          "🌲 Village Boundaries Disabled — BTR Interaction Restored"
-
-        );
-
-
-        return;
-
-      }
-/* ========================================================
-   🐅 WILDLIFE OFF
-   ======================================================== */
-
-if(
-
-    layerName ===
-
-    "🐅 Wildlife"
-
-){
-
-    window.wildlifeLayer
-        ?.clearLayers?.();
-
-    window.wildlifeMarkers =
-
-        {};
-
-    window.wildlifeInitialized =
-
-        false;
-
-    console.log(
-
-        "🐅 Wildlife Disabled"
-
-    );
-
-    return;
-
-}
-
-      /* ========================================================
-         🌱 PLANTATION OFF
-         --------------------------------------------------------
-         Existing plantation cleanup behavior.
-      ======================================================== */
-
-      if(
-        layerName ===
-        "🌱 Plantation"
-      ){
-
-        plantationLayer
-          ?.clearLayers?.();
-
-
-        return;
-
-      }
-
-    }
-
-
-    /* ==========================================================
-       🔥 ERROR SAFETY
-    ========================================================== */
-
-    catch(
-      err
-    ){
-
-      console.error(
-
-        "🔥 overlayremove crash:",
-
-        err
-
-      );
-
-    }
-
-  }
-
-);
 
 
 
