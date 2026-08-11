@@ -82783,434 +82783,890 @@ openSightingForm();
 
 async function openWildlifeForm(){
 
-    // ==================================================
-    // CLOSE SELECTOR
-    // ==================================================
+// ==================================================
+// CLOSE SELECTOR
+// ==================================================
 
-    closeSightingSelector();
+closeSightingSelector();
 
-    // ==================================================
-    // NEW OBSERVATION
-    // ==================================================
+// ==================================================
+// NEW OBSERVATION
+// ==================================================
 
-    window.currentObservationType =
+window.currentObservationType =
 
-        "WILDLIFE";
+    "WILDLIFE";
 
-    window.isEditingSighting =
+window.isEditingSighting =
 
-        false;
+    false;
 
-    window.currentSightingId =
+window.currentSightingId =
 
-        null;
+    null;
 
-    // ==================================================
-    // RESET FORM
-    // ==================================================
+// ==================================================
+// RESET FORM
+// ==================================================
 
-    const form =
+const form =
 
-        document.getElementById(
-            "wildlifeForm"
-        );
+    document.getElementById(
+        "wildlifeForm"
+    );
 
-    if(form){
+if(form){
 
-        form.reset();
+    form.reset();
 
-    }
+}
 
-    // ==================================================
-    // SHOW MODAL
-    // ==================================================
+// ==================================================
+// SHOW MODAL
+// ==================================================
 
-    document
-        .getElementById(
-            "wildlife-form-modal"
-        )
-        .style.display = "block";
+document
+    .getElementById(
+        "wildlife-form-modal"
+    )
+    .style.display = "block";
 
-    // ==================================================
-    // USER
-    // ==================================================
+// ==================================================
+// USER
+// ==================================================
 
-    const user =
+const user =
 
-        window.userProfile ||
+    window.userProfile ||
 
-        {};
-
-    // ==================================================
-    // GPS
-    // ==================================================
+    {};
 
 // ==================================================
 // GPS
 // ==================================================
+//
+// PRIORITY:
+//
+// 1. window.latestGps
+// 2. window.latestGPS
+// 3. localStorage.lastLat / lastLon
+// 4. navigator.geolocation
+//
+// DEVICE GPS:
+//
+// - scan for full 5 seconds
+// - keep valid fixes
+// - choose BEST accuracy
+// - lower accuracy value = better GPS
+//
+// ==================================================
 
 let gps =
+
     window.latestGps ||
+
     window.latestGPS ||
+
     null;
 
-// --------------------------------------------------
-// FALLBACK TO DEVICE GPS
-// --------------------------------------------------
 
-if (
-    !gps ||
-    !Number.isFinite(Number(gps.lat ?? gps.latitude)) ||
-    !Number.isFinite(
-        Number(gps.lng ?? gps.lon ?? gps.longitude)
-    )
-) {
+// ==================================================
+// CHECK CURRENT GPS CACHE
+// ==================================================
 
-    try {
+let gpsLat =
 
-        const position =
-            await new Promise((resolve, reject) => {
+    Number(
+        gps?.lat ??
+        gps?.latitude ??
+        0
+    );
 
-                navigator.geolocation.getCurrentPosition(
 
-                    resolve,
+let gpsLon =
 
-                    reject,
+    Number(
+        gps?.lng ??
+        gps?.lon ??
+        gps?.longitude ??
+        0
+    );
 
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 10000
-                    }
 
-                );
+// ==================================================
+// 1️⃣ LATEST GPS AVAILABLE
+// ==================================================
 
-            });
+if(
+
+    Number.isFinite(gpsLat) &&
+
+    Number.isFinite(gpsLon) &&
+
+    gpsLat !== 0 &&
+
+    gpsLon !== 0
+
+){
+
+    console.log(
+        "✅ WILDLIFE GPS SOURCE 1 — latestGps",
+        {
+            lat:
+                gpsLat,
+
+            lon:
+                gpsLon,
+
+            accuracy:
+                gps?.accuracy ??
+                null,
+
+            timestamp:
+                gps?.timestamp ??
+                null
+        }
+    );
+
+}
+
+
+// ==================================================
+// 2️⃣ FALLBACK — LOCAL STORAGE
+// ==================================================
+
+else{
+
+    const cachedLat =
+
+        Number(
+            localStorage.getItem(
+                "lastLat"
+            )
+        );
+
+
+    const cachedLon =
+
+        Number(
+            localStorage.getItem(
+                "lastLon"
+            )
+        );
+
+
+    if(
+
+        Number.isFinite(
+            cachedLat
+        ) &&
+
+        Number.isFinite(
+            cachedLon
+        ) &&
+
+        cachedLat !== 0 &&
+
+        cachedLon !== 0
+
+    ){
 
         gps = {
 
             lat:
-                position.coords.latitude,
+                cachedLat,
 
             lng:
-                position.coords.longitude,
-
-            accuracy:
-                position.coords.accuracy
+                cachedLon
 
         };
 
-        // Keep latest GPS updated
-        window.latestGps = gps;
 
-    }
-    catch (err) {
+        gpsLat =
+            cachedLat;
 
-        console.warn(
-            "Unable to get current GPS",
-            err
+
+        gpsLon =
+            cachedLon;
+
+
+        console.log(
+            "📦 WILDLIFE GPS SOURCE 2 — localStorage",
+            {
+                lat:
+                    cachedLat,
+
+                lon:
+                    cachedLon
+            }
         );
 
-        gps = {
-            lat: "",
-            lng: ""
-        };
+    }
+
+
+// ==================================================
+// 3️⃣ DEVICE GPS
+// ==================================================
+
+    else{
+
+        if(
+            !navigator.geolocation
+        ){
+
+            console.error(
+                "❌ WILDLIFE GPS unavailable — geolocation not supported"
+            );
+
+
+            gps = {
+
+                lat: "",
+
+                lng: ""
+
+            };
+
+        }
+
+        else{
+
+            console.log(
+                "📡 WILDLIFE GPS SOURCE 3 — starting 5 second BEST GPS scan..."
+            );
+
+
+            let bestPosition =
+                null;
+
+
+            let bestAccuracy =
+                Infinity;
+
+
+            let gpsFinished =
+                false;
+
+
+            // ==================================================
+            // START DEVICE GPS WATCH
+            // ==================================================
+
+            const watchId =
+
+                navigator.geolocation.watchPosition(
+
+                    function(position){
+
+                        if(
+                            gpsFinished
+                        ){
+
+                            return;
+
+                        }
+
+
+                        const lat =
+
+                            Number(
+                                position
+                                    ?.coords
+                                    ?.latitude
+                            );
+
+
+                        const lon =
+
+                            Number(
+                                position
+                                    ?.coords
+                                    ?.longitude
+                            );
+
+
+                        const accuracy =
+
+                            Number(
+                                position
+                                    ?.coords
+                                    ?.accuracy
+                            );
+
+
+                        // ==========================================
+                        // VALIDATE GPS
+                        // ==========================================
+
+                        if(
+
+                            !Number.isFinite(
+                                lat
+                            ) ||
+
+                            !Number.isFinite(
+                                lon
+                            ) ||
+
+                            !Number.isFinite(
+                                accuracy
+                            ) ||
+
+                            lat === 0 ||
+
+                            lon === 0 ||
+
+                            accuracy <= 0
+
+                        ){
+
+                            console.warn(
+                                "⚠️ Ignoring invalid Wildlife GPS fix",
+                                {
+                                    lat,
+                                    lon,
+                                    accuracy
+                                }
+                            );
+
+
+                            return;
+
+                        }
+
+
+                        console.log(
+                            "📍 WILDLIFE GPS UPDATE:",
+                            {
+                                lat,
+                                lon,
+                                accuracy:
+                                    accuracy + "m"
+                            }
+                        );
+
+
+                        // ==========================================
+                        // KEEP BEST ACCURACY
+                        // ==========================================
+
+                        if(
+
+                            accuracy <
+                            bestAccuracy
+
+                        ){
+
+                            bestAccuracy =
+                                accuracy;
+
+
+                            bestPosition =
+                                position;
+
+
+                            console.log(
+                                "🏆 NEW BEST WILDLIFE GPS:",
+                                {
+                                    lat,
+                                    lon,
+                                    accuracy:
+                                        accuracy + "m"
+                                }
+                            );
+
+                        }
+
+                    },
+
+
+                    function(error){
+
+                        console.warn(
+                            "⚠️ Wildlife GPS failed:",
+                            error.message
+                        );
+
+                    },
+
+
+                    {
+
+                        enableHighAccuracy:
+                            true,
+
+                        timeout:
+                            10000,
+
+                        maximumAge:
+                            0
+
+                    }
+
+                );
+
+
+            // ==================================================
+            // COLLECT GPS FOR FULL 5 SECONDS
+            // ==================================================
+
+            await new Promise(
+                resolve => {
+
+                    setTimeout(
+                        resolve,
+                        5000
+                    );
+
+                }
+            );
+
+
+            // ==================================================
+            // STOP GPS WATCH
+            // ==================================================
+
+            gpsFinished =
+                true;
+
+
+            navigator.geolocation
+                .clearWatch(
+                    watchId
+                );
+
+
+            // ==================================================
+            // BEST GPS FOUND
+            // ==================================================
+
+            if(
+                bestPosition
+            ){
+
+                const finalLat =
+
+                    Number(
+                        bestPosition
+                            .coords
+                            .latitude
+                    );
+
+
+                const finalLon =
+
+                    Number(
+                        bestPosition
+                            .coords
+                            .longitude
+                    );
+
+
+                const finalAccuracy =
+
+                    Number(
+                        bestPosition
+                            .coords
+                            .accuracy
+                    );
+
+
+                gps = {
+
+                    lat:
+                        finalLat,
+
+                    lng:
+                        finalLon,
+
+                    accuracy:
+                        finalAccuracy,
+
+                    speed:
+                        bestPosition
+                            .coords
+                            .speed,
+
+                    heading:
+                        bestPosition
+                            .coords
+                            .heading,
+
+                    timestamp:
+                        bestPosition
+                            .timestamp ||
+                        Date.now()
+
+                };
+
+
+                gpsLat =
+                    finalLat;
+
+
+                gpsLon =
+                    finalLon;
+
+
+                // ==============================================
+                // UPDATE LATEST GPS CACHE
+                // ==============================================
+
+                window.latestGps =
+                    gps;
+
+
+                // ==============================================
+                // SAVE LOCAL GPS CACHE
+                // ==============================================
+
+                localStorage.setItem(
+                    "lastLat",
+                    String(
+                        finalLat
+                    )
+                );
+
+
+                localStorage.setItem(
+                    "lastLon",
+                    String(
+                        finalLon
+                    )
+                );
+
+
+                console.log(
+                    "✅ WILDLIFE FINAL BEST GPS:",
+                    {
+                        lat:
+                            finalLat,
+
+                        lon:
+                            finalLon,
+
+                        accuracy:
+                            finalAccuracy + "m"
+                    }
+                );
+
+            }
+
+            else{
+
+                console.error(
+                    "❌ Wildlife GPS unavailable — no valid GPS fix received after 5 second scan"
+                );
+
+
+                gps = {
+
+                    lat: "",
+
+                    lng: ""
+
+                };
+
+            }
+
+        }
 
     }
 
 }
 
-    // ==================================================
-    // DATE & TIME
-    // ==================================================
 
-    const now =
+// ==================================================
+// DATE & TIME
+// ==================================================
 
-        new Date();
+const now =
 
-    window.wildlifeDate =
+    new Date();
 
-        now;
+window.wildlifeDate =
 
-    window.wildlifeTime =
+    now;
 
-        now.toLocaleTimeString();
+window.wildlifeTime =
 
-    // ==================================================
-    // STORE REPORTER
-    // ==================================================
+    now.toLocaleTimeString();
 
-    window.wildlifeReporter = {
+// ==================================================
+// STORE REPORTER
+// ==================================================
 
-        leader :
+window.wildlifeReporter = {
 
-            user.rawName ||
+    leader :
 
-            user.name ||
+        user.rawName ||
 
-            "",
+        user.name ||
 
-        phone :
+        "",
 
-            user.phone ||
+    phone :
 
-            "",
+        user.phone ||
 
-        designation :
+        "",
 
-            user.designation ||
+    designation :
 
-            user.role ||
+        user.designation ||
 
-            "",
+        user.role ||
 
-        beat :
+        "",
 
-            user.beat ||
+    beat :
 
-            "",
+        user.beat ||
 
-        range :
+        "",
 
-            user.range ||
+    range :
 
-            "",
+        user.range ||
 
-        division :
+        "",
 
-            user.division ||
+    division :
 
-            "",
+        user.division ||
 
-        circle :
+        "",
 
-            user.circle ||
+    circle :
 
-            "",
+        user.circle ||
 
-        sessionId :
+        "",
 
-            window.sessionId ||
+    sessionId :
 
-            ""
+        window.sessionId ||
 
-    };
+        ""
 
-    // ==================================================
-    // STORE GPS
-    // ==================================================
+};
+
+// ==================================================
+// STORE GPS
+// ==================================================
+
+document
+    .getElementById(
+        "w-lat"
+    )
+    .value =
+
+    gps.lat ??
+
+    gps.latitude ??
+
+    "";
+
+document
+    .getElementById(
+        "w-lon"
+    )
+    .value =
+
+    gps.lng ??
+
+    gps.lon ??
+
+    gps.longitude ??
+
+    "";
+
+// ==================================================
+// DEFAULTS
+// ==================================================
+
+document
+    .getElementById(
+        "w-count"
+    )
+    .value = 1;
+
+document
+    .getElementById(
+        "w-animal"
+    )
+    .selectedIndex = 0;
+
+document
+    .getElementById(
+        "w-age"
+    )
+    .selectedIndex = 0;
+
+document
+    .getElementById(
+        "w-sex"
+    )
+    .selectedIndex = 0;
+
+document
+    .getElementById(
+        "w-behaviour"
+    )
+    .selectedIndex = 0;
+
+document
+    .getElementById(
+        "w-dir"
+    )
+    .selectedIndex = 0;
+
+// ==================================================
+// OTHER ANIMAL
+// ==================================================
+
+const otherDiv =
+
+    document.getElementById(
+        "otherAnimalDiv"
+    );
+
+if(otherDiv){
+
+    otherDiv.style.display =
+
+        "none";
+
+}
+
+const otherAnimal =
+
+    document.getElementById(
+        "w-otherAnimal"
+    );
+
+if(otherAnimal){
+
+    otherAnimal.value = "";
+
+}
+
+// ==================================================
+// REMARKS
+// ==================================================
+
+document
+    .getElementById(
+        "w-remarks"
+    )
+    .value = "";
+
+// ==================================================
+// PHOTO
+// ==================================================
+
+document
+    .getElementById(
+        "w-photo"
+    )
+    .value = "";
+
+if(
+
+    document.getElementById(
+        "w-video"
+    )
+
+){
 
     document
         .getElementById(
-            "w-lat"
-        )
-        .value =
-
-        gps.lat ??
-
-        gps.latitude ??
-
-        "";
-
-    document
-        .getElementById(
-            "w-lon"
-        )
-        .value =
-
-        gps.lng ??
-
-        gps.lon ??
-
-        gps.longitude ??
-
-        "";
-
-    // ==================================================
-    // DEFAULTS
-    // ==================================================
-
-    document
-        .getElementById(
-            "w-count"
-        )
-        .value = 1;
-
-    document
-        .getElementById(
-            "w-animal"
-        )
-        .selectedIndex = 0;
-
-    document
-        .getElementById(
-            "w-age"
-        )
-        .selectedIndex = 0;
-
-    document
-        .getElementById(
-            "w-sex"
-        )
-        .selectedIndex = 0;
-
-    document
-        .getElementById(
-            "w-behaviour"
-        )
-        .selectedIndex = 0;
-
-    document
-        .getElementById(
-            "w-dir"
-        )
-        .selectedIndex = 0;
-
-    // ==================================================
-    // OTHER ANIMAL
-    // ==================================================
-
-    const otherDiv =
-
-        document.getElementById(
-            "otherAnimalDiv"
-        );
-
-    if(otherDiv){
-
-        otherDiv.style.display =
-
-            "none";
-
-    }
-
-    const otherAnimal =
-
-        document.getElementById(
-            "w-otherAnimal"
-        );
-
-    if(otherAnimal){
-
-        otherAnimal.value = "";
-
-    }
-
-    // ==================================================
-    // REMARKS
-    // ==================================================
-
-    document
-        .getElementById(
-            "w-remarks"
-        )
-        .value = "";
-
-    // ==================================================
-    // PHOTO
-    // ==================================================
-
-    document
-        .getElementById(
-            "w-photo"
-        )
-        .value = "";
-
-    if(
-
-        document.getElementById(
             "w-video"
         )
+        .value = "";
 
-    ){
+}
 
-        document
-            .getElementById(
-                "w-video"
-            )
-            .value = "";
+if(
 
-    }
+    document.getElementById(
+        "w-audio"
+    )
 
-    if(
-
-        document.getElementById(
-            "w-audio"
-        )
-
-    ){
-
-        document
-            .getElementById(
-                "w-audio"
-            )
-            .value = "";
-
-    }
-
-    // ==================================================
-    // FLAGS
-    // ==================================================
-
-    [
-
-        "w-injured",
-
-        "w-dead",
-
-        "w-conflict",
-
-        "w-rescue",
-
-        "w-vet"
-
-    ]
-
-    .forEach(function(id){
-
-        const el =
-
-            document.getElementById(
-                id
-            );
-
-        if(el){
-
-            el.checked = false;
-
-        }
-
-    });
-
-    // ==================================================
-    // SUBMIT BUTTON
-    // ==================================================
-
-    if(
-
-        typeof setSubmitLoading ===
-
-        "function"
-
-    ){
-
-        setSubmitLoading(
-
-            false
-
-        );
-
-    }
-
-    // ==================================================
-    // FOCUS
-    // ==================================================
+){
 
     document
         .getElementById(
-            "w-animal"
+            "w-audio"
         )
-        .focus();
+        .value = "";
+
+}
+
+// ==================================================
+// FLAGS
+// ==================================================
+
+[
+
+    "w-injured",
+
+    "w-dead",
+
+    "w-conflict",
+
+    "w-rescue",
+
+    "w-vet"
+
+]
+
+.forEach(function(id){
+
+    const el =
+
+        document.getElementById(
+            id
+        );
+
+    if(el){
+
+        el.checked = false;
+
+    }
+
+});
+
+// ==================================================
+// SUBMIT BUTTON
+// ==================================================
+
+if(
+
+    typeof setSubmitLoading ===
+
+    "function"
+
+){
+
+    setSubmitLoading(
+
+        false
+
+    );
+
+}
+
+// ==================================================
+// FOCUS
+// ==================================================
+
+document
+    .getElementById(
+        "w-animal"
+    )
+    .focus();
 
 }
 function closeWildlifeForm(){
