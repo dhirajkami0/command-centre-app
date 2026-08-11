@@ -47081,6 +47081,246 @@ function isMarkerRoleVisible(target){
     return visible;
 
 }
+
+    // ============================================================
+// 🗺 SELECTED GIS VISIBILITY
+// ------------------------------------------------------------
+// Checks whether the target belongs to the currently selected
+// GIS level / polygon.
+//
+// This is SEPARATE from role visibility.
+// ============================================================
+
+function isMarkerSelectedGISVisible(
+    target
+){
+
+    target =
+        target ||
+        {};
+
+
+    // ========================================================
+    // CURRENT GIS CONTEXT
+    // ========================================================
+
+    const ctx =
+        window.activePopupContext ||
+        {};
+
+
+    const selectedLevel =
+        String(
+            ctx.level ||
+            ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    const selectedValue =
+        normalizeMarkerScopeValue(
+            ctx.name ||
+            ctx.value ||
+            ctx.selected ||
+            ""
+        );
+
+
+    // ========================================================
+    // NO GIS FILTER
+    // --------------------------------------------------------
+    // If no GIS is selected, do not restrict the marker here.
+    // Role visibility still applies.
+    // ========================================================
+
+    if(
+        !selectedLevel ||
+        !selectedValue
+    ){
+
+        return true;
+
+    }
+
+
+    // ========================================================
+    // TARGET GIS VALUES
+    // ========================================================
+
+    const targetDivision =
+        normalizeMarkerScopeValue(
+            target.division ||
+            target.Division ||
+            ""
+        );
+
+
+    const targetRange =
+        normalizeMarkerScopeValue(
+            target.range ||
+            target.Range ||
+            ""
+        );
+
+
+    const targetBeat =
+        normalizeMarkerScopeValue(
+            target.beat ||
+            target.Beat ||
+            ""
+        );
+
+
+    const targetCompartment =
+        normalizeMarkerScopeValue(
+            target.compartment ||
+            target.Compartment ||
+            ""
+        );
+
+
+    // ========================================================
+    // CIRCLE
+    // ========================================================
+
+    if(
+        selectedLevel === "circle"
+    ){
+
+        const targetCircle =
+            normalizeMarkerScopeValue(
+                target.circle ||
+                target.Circle ||
+                ""
+            );
+
+        return (
+            !!targetCircle &&
+            targetCircle ===
+            selectedValue
+        );
+
+    }
+
+
+    // ========================================================
+    // DIVISION
+    // ========================================================
+
+    if(
+        selectedLevel === "division"
+    ){
+
+        return (
+            !!targetDivision &&
+            targetDivision ===
+            selectedValue
+        );
+
+    }
+
+
+    // ========================================================
+    // RANGE
+    // ========================================================
+
+    if(
+        selectedLevel === "range"
+    ){
+
+        return (
+            !!targetRange &&
+            targetRange ===
+            selectedValue
+        );
+
+    }
+
+
+    // ========================================================
+    // BEAT
+    // ========================================================
+
+    if(
+        selectedLevel === "beat"
+    ){
+
+        return (
+            !!targetBeat &&
+            targetBeat ===
+            selectedValue
+        );
+
+    }
+
+
+    // ========================================================
+    // COMPARTMENT
+    // ========================================================
+
+    if(
+        selectedLevel === "compartment"
+    ){
+
+        return (
+            !!targetCompartment &&
+            targetCompartment ===
+            selectedValue
+        );
+
+    }
+
+
+    // ========================================================
+    // UNKNOWN GIS LEVEL
+    // ========================================================
+
+    return true;
+
+}
+    // ============================================================
+// 🔐 FINAL WILDLIFE / IRREGULARITY VISIBILITY
+// ============================================================
+
+function isMarkerVisible(
+    target
+){
+
+    // --------------------------------------------------------
+    // 1. ROLE VISIBILITY
+    // --------------------------------------------------------
+
+    if(
+        !isMarkerRoleVisible(
+            target
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // 2. SELECTED GIS VISIBILITY
+    // --------------------------------------------------------
+
+    if(
+        !isMarkerSelectedGISVisible(
+            target
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    return true;
+
+}
+    
     // ============================================================
 // EXISTING WILDLIFE LOADER
 // ============================================================
@@ -47544,7 +47784,26 @@ const openWildlifePopupId =
 
                 sighting.sighting_id;
 
+if(
+    !isMarkerVisible(
+        sighting
+    )
+){
 
+    if(
+        window.wildlifeMarkers[id]
+    ){
+
+        wildlifeLayer.removeLayer(
+            window.wildlifeMarkers[id]
+        );
+
+        delete
+            window.wildlifeMarkers[id];
+    }
+
+    continue;
+}
             // =================================================
             // 24 HOUR MARKER LIFE
             // =================================================
@@ -55936,7 +56195,16 @@ function listenIrregularities(){
             return;
 
         }
+if(
+    !isMarkerVisible(e)
+){
 
+    removeIrregularityMarker(
+        key
+    );
+
+    return;
+}
 
         /* ======================================================
            STATUS
