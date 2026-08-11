@@ -1,8 +1,8 @@
 {
   "application": "GreenGuard",
-  "version": "20260731133621",
-  "buildDate": "2026-07-31T13:36:30.093Z",
+  "version": "20260811135925",
+  "buildDate": "2026-08-11T13:59:39.677Z",
   "nodeVersion": "v24.14.1",
   "platform": "win32",
-  "buildTimeSeconds": "8.43"
+  "buildTimeSeconds": "14.19"
 }

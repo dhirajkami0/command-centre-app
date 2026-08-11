@@ -1,225 +1,391 @@
 /* =========================================
-   🔥 GREENGUARD SERVICE WORKER (SMART UPDATE)
+🔥 GREENGUARD SERVICE WORKER
+USER-CONTROLLED UPDATE
 ========================================= */
 
-const CACHE_NAME = "GreenGuard-20260731133621"; // 🔥 CHANGE EVERY UPDATE
+
+const CACHE_NAME =
+    "GreenGuard-20260811135925";
+
 
 const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./css/leaflet.css",
-  "./js/leaflet.js",
-  "./js/leaflet-omnivore.min.js",
-  "./js/shp.js",
-  "./js/leaflet-kml.js",
-  "./kml/Compartments.kml",
-  "./css/images/layers.png",
-  "./css/images/layers-2x.png",
-  "./css/images/marker-icon.png",
-  "./css/images/marker-icon-2x.png",
-  "./css/images/marker-shadow.png",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+
+    "./",
+
+    "./index.html",
+
+    "./manifest.json",
+
+    "./css/leaflet.css",
+
+    "./js/leaflet.js",
+
+    "./js/leaflet-omnivore.min.js",
+
+    "./js/shp.js",
+
+    "./js/leaflet-kml.js",
+
+    "./kml/Compartments.kml",
+
+    "./css/images/layers.png",
+
+    "./css/images/layers-2x.png",
+
+    "./css/images/marker-icon.png",
+
+    "./css/images/marker-icon-2x.png",
+
+    "./css/images/marker-shadow.png",
+
+    "./icons/icon-192.png",
+
+    "./icons/icon-512.png"
+
 ];
 
-/* =========================================
-   📥 INSTALL
-========================================= */
-self.addEventListener("install", event => {
 
-  console.log("📦 SW Installing...");
+// =========================================
+// 📥 INSTALL
+// =========================================
+//
+// IMPORTANT:
+//
+// DO NOT call self.skipWaiting() here.
+//
+// The new worker must WAIT until the user
+// presses the Update button.
+// =========================================
 
-  // =====================================
-  // 🔥 FORCE IMMEDIATE UPDATE
-  // =====================================
-  self.skipWaiting();
+self.addEventListener(
+    "install",
+    function(event){
 
-  event.waitUntil(
+        console.log(
+            "📦 GreenGuard SW Installing..."
+        );
 
-    caches.open(CACHE_NAME)
-      .then(cache => {
 
-        console.log("📦 Caching App Shell");
+        event.waitUntil(
 
-        return cache.addAll(APP_SHELL);
+            caches.open(
+                CACHE_NAME
+            )
 
-      })
+            .then(
+                function(cache){
 
-  );
+                    console.log(
+                        "📦 Caching App Shell"
+                    );
 
-});
 
-/* =========================================
-   🚀 ACTIVATE
-========================================= */
-self.addEventListener("activate", event => {
+                    return cache.addAll(
+                        APP_SHELL
+                    );
 
-  console.log("🚀 SW Activated");
+                }
+            )
 
-  event.waitUntil(
+        );
 
-    caches.keys().then(keys =>
+    }
+);
 
-      Promise.all(
 
-        keys.map(key => {
+// =========================================
+// 🚀 ACTIVATE
+// =========================================
 
-          if (key !== CACHE_NAME) {
+self.addEventListener(
+    "activate",
+    function(event){
 
-            console.log(
-              "🧹 Deleting old cache:",
-              key
-            );
+        console.log(
+            "🚀 GreenGuard SW Activated"
+        );
 
-            return caches.delete(key);
 
-          }
+        event.waitUntil(
 
-        })
+            caches.keys()
 
-      )
+                .then(
+                    function(keys){
 
-    )
+                        return Promise.all(
 
-  );
+                            keys.map(
+                                function(key){
 
-  // =====================================
-  // 🔥 TAKE CONTROL IMMEDIATELY
-  // =====================================
-  self.clients.claim();
+                                    if (
+                                        key !==
+                                        CACHE_NAME
+                                    ){
 
-});
+                                        console.log(
+                                            "🧹 Deleting old cache:",
+                                            key
+                                        );
 
-/* =========================================
-   🔄 SKIP WAITING (ON USER ACTION)
-========================================= */
-self.addEventListener("message", event => {
 
-  if (
-    event.data &&
-    event.data.action === "skipWaiting"
-  ) {
+                                        return caches.delete(
+                                            key
+                                        );
 
-    console.log("⚡ Skip Waiting Triggered");
+                                    }
 
-    self.skipWaiting();
+                                }
+                            )
 
-  }
+                        );
 
-});
+                    }
+                )
 
-/* =========================================
-   🌐 FETCH
-========================================= */
-self.addEventListener("fetch", event => {
+        );
 
-  const req = event.request;
 
-  /* ❌ Skip API */
-  if (
-    req.url.includes("script.google.com")
-  ) return;
+        // ==================================================
+        // IMPORTANT
+        // ==================================================
+        //
+        // Once the user has explicitly activated the new
+        // Service Worker, it may claim the clients.
+        //
+        // ==================================================
 
-  /* ❌ Only GET */
-  if (req.method !== "GET") return;
+        self.clients.claim();
 
-  /* =========================================
-     📄 HTML → NETWORK FIRST
-  ========================================= */
-  if (req.mode === "navigate") {
+    }
+);
 
-    event.respondWith(
 
-      fetch(req)
+// =========================================
+// 🔄 USER-CONTROLLED SKIP WAITING
+// =========================================
+//
+// ONLY the webpage Update button sends this message.
+//
+// =========================================
 
-        .then(res => {
-
-          console.log(
-            "🌐 Fresh HTML:",
-            req.url
-          );
-
-          const clone = res.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => {
-
-              cache.put(
-                "./index.html",
-                clone
-              );
-
-            });
-
-          return res;
-
-        })
-
-        .catch(() => {
-
-          console.log(
-            "📦 Offline HTML Cache Used"
-          );
-
-          return caches.match("./index.html");
-
-        })
-
-    );
-
-    return;
-
-  }
-
-  /* =========================================
-     📦 STATIC FILES → NETWORK FIRST
-  ========================================= */
-  event.respondWith(
-
-    fetch(req)
-
-      .then(res => {
-
-        // =====================================
-        // 🔥 VALID RESPONSE
-        // =====================================
+self.addEventListener(
+    "message",
+    function(event){
 
         if (
-          res &&
-          res.status === 200
-        ) {
+            event.data &&
+            event.data.action ===
+            "skipWaiting"
+        ){
 
-          const clone = res.clone();
+            console.log(
+                "⚡ User requested Service Worker activation"
+            );
 
-          caches.open(CACHE_NAME)
-            .then(cache => {
 
-              cache.put(req, clone);
-
-            });
+            self.skipWaiting();
 
         }
 
-        return res;
+    }
+);
 
-      })
 
-      // =====================================
-      // 🔥 FALLBACK TO CACHE
-      // =====================================
+// =========================================
+// 🌐 FETCH
+// =========================================
 
-      .catch(() => {
+self.addEventListener(
+    "fetch",
+    function(event){
 
-        console.log(
-          "📦 Cache Fallback:",
-          req.url
+        const req =
+            event.request;
+
+
+        // =====================================
+        // ❌ SKIP GOOGLE APPS SCRIPT
+        // =====================================
+
+        if (
+            req.url.includes(
+                "script.google.com"
+            )
+        ){
+
+            return;
+
+        }
+
+
+        // =====================================
+        // ❌ ONLY GET
+        // =====================================
+
+        if (
+            req.method !==
+            "GET"
+        ){
+
+            return;
+
+        }
+
+
+        // =====================================
+        // 📄 HTML NAVIGATION
+        // =====================================
+        //
+        // Network first.
+        //
+        // This means manual reload gets the latest
+        // available HTML when online.
+        //
+        // =====================================
+
+        if (
+            req.mode ===
+            "navigate"
+        ){
+
+            event.respondWith(
+
+                fetch(req)
+
+                    .then(
+                        function(response){
+
+                            console.log(
+                                "🌐 Fresh HTML:",
+                                req.url
+                            );
+
+
+                            if (
+                                response &&
+                                response.status ===
+                                200
+                            ){
+
+                                const clone =
+                                    response.clone();
+
+
+                                caches.open(
+                                    CACHE_NAME
+                                )
+                                .then(
+                                    function(cache){
+
+                                        cache.put(
+                                            "./index.html",
+                                            clone
+                                        );
+
+                                    }
+                                );
+
+                            }
+
+
+                            return response;
+
+                        }
+                    )
+
+                    .catch(
+                        function(){
+
+                            console.log(
+                                "📦 Offline HTML cache used"
+                            );
+
+
+                            return caches.match(
+                                "./index.html"
+                            );
+
+                        }
+                    )
+
+            );
+
+
+            return;
+
+        }
+
+
+        // =====================================
+        // 📦 STATIC FILES
+        // =====================================
+        //
+        // Network first.
+        //
+        // If network succeeds, cache the latest
+        // resource.
+        //
+        // If network fails, use cache.
+        //
+        // =====================================
+
+        event.respondWith(
+
+            fetch(req)
+
+                .then(
+                    function(response){
+
+                        if (
+                            response &&
+                            response.status ===
+                            200
+                        ){
+
+                            const clone =
+                                response.clone();
+
+
+                            caches.open(
+                                CACHE_NAME
+                            )
+                            .then(
+                                function(cache){
+
+                                    cache.put(
+                                        req,
+                                        clone
+                                    );
+
+                                }
+                            );
+
+                        }
+
+
+                        return response;
+
+                    }
+                )
+
+                .catch(
+                    function(){
+
+                        console.log(
+                            "📦 Cache fallback:",
+                            req.url
+                        );
+
+
+                        return caches.match(
+                            req
+                        );
+
+                    }
+                )
+
         );
 
-        return caches.match(req);
-
-      })
-
-  );
-
-});
+    }
+);

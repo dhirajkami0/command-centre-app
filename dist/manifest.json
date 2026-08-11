@@ -1,6 +1,6 @@
 {
-  "name": "GreenGuard",
-  "short_name": "GGuard",
+  "name": "BTRGuard",
+  "short_name": "BTRGuard",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
