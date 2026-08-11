@@ -41766,7 +41766,87 @@ async function loadIrregularities(){
                         return;
 
                     }
+// =====================================================
+// 🔐 IRREGULARITY MARKER VISIBILITY
+// =====================================================
+//
+// SAME RULE AS STAFF / WILDLIFE:
+//
+// ADMIN
+//     → ALL
+//
+// DFO / ADFO
+//     → SAME DIVISION
+//
+// OTHER
+//     → SELF / SAME RANGE
+//
+// SELECTED GIS
+//     → TARGET MUST MATCH ACTIVE GIS FILTER
+//
+// NO DEPREDATION / RESCUE EXCEPTION
+// =====================================================
 
+if(
+    !isMarkerVisible(
+        e
+    )
+){
+
+    // -------------------------------------------------
+    // REMOVE EXISTING MARKER IF IT WAS PREVIOUSLY
+    // VISIBLE
+    // -------------------------------------------------
+
+    const existingMarker =
+        window.irregularityMarkers?.[
+            key
+        ];
+
+    if(
+        existingMarker
+    ){
+
+        try{
+
+            if(
+                window.activeIrregularityPopupKey ===
+                key
+            ){
+
+                window.activeIrregularityPopupKey =
+                    null;
+
+                window.activeIrregularityPopupMarker =
+                    null;
+
+            }
+
+            irregularityLayer.removeLayer(
+                existingMarker
+            );
+
+        }
+        catch(err){
+
+            console.warn(
+                "⚠️ Irregularity marker removal failed:",
+                key,
+                err
+            );
+
+        }
+
+        delete
+            window.irregularityMarkers[
+                key
+            ];
+
+    }
+
+    return;
+
+}
 
                     /* =================================================
                        STATUS
@@ -47390,44 +47470,32 @@ const openWildlifePopupId =
 
     try{
 
-        // =====================================================
-        // ADMIN ONLY
-        // =====================================================
+// =====================================================
+// 🔐 WILDLIFE VISIBILITY
+// -----------------------------------------------------
+// Visibility is decided PER RECORD by:
+//     isMarkerVisible(record)
+//
+// Do NOT restrict the whole Wildlife module to ADMIN.
+//
+// ADMIN:
+//     ALL
+//
+// DFO / ADFO:
+//     SAME DIVISION
+//
+// OTHER:
+//     SELF / SAME RANGE
+//
+// SELECTED GIS:
+//     MUST MATCH ACTIVE GIS FILTER
+//
+// NO DEPREDATION / RESCUE EXCEPTION
+// =====================================================
 
-        const role =
-
-            String(
-
-                window.userProfile?.role ||
-
-                ""
-
-            )
-
-            .trim()
-
-            .toUpperCase();
-
-
-        if(
-
-            role !== "ADMIN"
-
-        ){
-
-            wildlifeLayer.clearLayers();
-
-            window.wildlifeMarkers = {};
-
-            window.activeWildlifePopupId =
-                null;
-
-            window.activeWildlifePopupMarker =
-                null;
-
-            return [];
-
-        }
+console.log(
+    "🔐 Wildlife visibility uses marker-level authorization"
+);
 
 
         // =====================================================
@@ -48069,7 +48137,74 @@ if(
                 </div>
                 `;
 
+// =====================================================
+// 🔐 WILDLIFE MARKER VISIBILITY
+// =====================================================
 
+if(
+    !isMarkerVisible(
+        e
+    )
+){
+
+    // -------------------------------------------------
+    // REMOVE EXISTING MARKER IF IT WAS PREVIOUSLY
+    // VISIBLE BUT IS NO LONGER AUTHORIZED
+    // -------------------------------------------------
+
+    const existingMarker =
+        window.wildlifeMarkers?.[
+            key
+        ];
+
+    if(
+        existingMarker
+    ){
+
+        try{
+
+            if(
+                window.activeWildlifePopupId ===
+                key
+            ){
+
+                window.activeWildlifePopupId =
+                    null;
+
+                window.activeWildlifePopupMarker =
+                    null;
+
+            }
+
+            wildlifeLayer.removeLayer(
+                existingMarker
+            );
+
+        }
+        catch(err){
+
+            console.warn(
+                "⚠️ Wildlife marker removal failed:",
+                key,
+                err
+            );
+
+        }
+
+        delete
+            window.wildlifeMarkers[
+                key
+            ];
+
+    }
+
+    // -------------------------------------------------
+    // DO NOT CREATE MARKER
+    // -------------------------------------------------
+
+    return;
+
+}
             // =================================================
             // EXISTING MARKER
             // =================================================
