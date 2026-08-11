@@ -11380,7 +11380,11 @@ function showUpdateUI(){
 
 /* ======================================================
    🎯 HIDE UPDATE UI
-   ====================================================== */
+   ------------------------------------------------------
+   Used when:
+   1. User clicks Cancel
+   2. Update finishes successfully
+====================================================== */
 
 function hideUpdateUI(){
 
@@ -11389,6 +11393,22 @@ function hideUpdateUI(){
             "updateBanner"
         );
 
+
+    const button =
+        document.getElementById(
+            "updateBtn"
+        );
+
+
+    const cancelButton =
+        document.getElementById(
+            "updateCancelBtn"
+        );
+
+
+    /* ==================================================
+       HIDE UPDATE BANNER
+    ================================================== */
 
     if(
         banner
@@ -11400,11 +11420,9 @@ function hideUpdateUI(){
     }
 
 
-    const button =
-        document.getElementById(
-            "updateBtn"
-        );
-
+    /* ==================================================
+       HIDE UPDATE BUTTON
+    ================================================== */
 
     if(
         button
@@ -11413,23 +11431,28 @@ function hideUpdateUI(){
         button.disabled =
             false;
 
+
         button.style.pointerEvents =
             "auto";
+
 
         button.style.opacity =
             "1";
 
+
         button.style.cursor =
             "pointer";
+
+
+        button.style.display =
+            "none";
 
     }
 
 
-    const cancelButton =
-        document.getElementById(
-            "updateCancelBtn"
-        );
-
+    /* ==================================================
+       HIDE CANCEL BUTTON
+    ================================================== */
 
     if(
         cancelButton
@@ -11438,16 +11461,28 @@ function hideUpdateUI(){
         cancelButton.disabled =
             false;
 
+
         cancelButton.style.pointerEvents =
             "auto";
+
 
         cancelButton.style.opacity =
             "1";
 
+
         cancelButton.style.cursor =
             "pointer";
 
+
+        cancelButton.style.display =
+            "none";
+
     }
+
+
+    console.log(
+        "🧹 Update UI hidden"
+    );
 
 }
 /* ======================================================
