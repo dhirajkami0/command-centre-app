@@ -2952,6 +2952,10 @@ function(){
 window.calculatePatrolDistanceKm =
 function(points){
 
+    // ==========================================
+    // BASIC VALIDATION
+    // ==========================================
+
     if(
         !Array.isArray(points) ||
         points.length < 2
@@ -2959,15 +2963,35 @@ function(points){
         return 0;
     }
 
+
+    // ==========================================
+    // TOTAL DISTANCE
+    // ==========================================
+
     let totalMeters = 0;
 
+
+    // ==========================================
+    // PREVIOUS VALID POINT
+    // ==========================================
+
     let previous = null;
+
+
+    // ==========================================
+    // PROCESS POINTS IN ORDER
+    // ==========================================
 
     for(const p of points){
 
         if(!p){
             continue;
         }
+
+
+        // ======================================
+        // VALIDATE GPS
+        // ======================================
 
         const lat = Number(p.lat);
         const lon = Number(p.lon);
@@ -2983,68 +3007,134 @@ function(points){
             continue;
         }
 
-        // breakTrack means:
-        // DON'T connect previous segment to this point.
+
+        // ======================================
+        // BREAK TRACK
+        // ======================================
+        //
+        // IMPORTANT:
+        // A break point must NOT be connected
+        // to the previous point OR used as the
+        // starting point of the next segment.
+        //
+        // Therefore:
+        //
+        // previous = null
+        //
+        // The next valid GPS point starts a
+        // completely new segment.
+        // ======================================
+
         if(p.breakTrack === true){
 
-            previous = {
-                lat,
-                lon,
-                time: Number(p.time || 0)
-            };
+            previous = null;
 
             continue;
         }
+
+
+        // ======================================
+        // FIRST POINT OF A SEGMENT
+        // ======================================
 
         if(!previous){
 
             previous = {
                 lat,
                 lon,
-                time: Number(p.time || 0)
+                time: Number(
+                    p.time ??
+                    p.timestamp ??
+                    0
+                )
             };
 
             continue;
         }
 
+
+        // ======================================
+        // CURRENT TIME
+        // ======================================
+
+        const previousTime =
+            Number(
+                previous.time || 0
+            );
+
+        const currentTime =
+            Number(
+                p.time ??
+                p.timestamp ??
+                0
+            );
+
+
+        // ======================================
+        // CALCULATE DISTANCE
+        // ======================================
+
         let meters = 0;
 
-        try {
+        try{
 
-            // Leaflet's geodesic distance
+            // ----------------------------------
+            // LEAFLET GEODESIC DISTANCE
+            // ----------------------------------
+
             if(
                 window.map &&
-                typeof window.map.distance === "function"
+                typeof window.map.distance ===
+                    "function"
             ){
 
                 meters =
                     window.map.distance(
-                        [previous.lat, previous.lon],
-                        [lat, lon]
+                        [
+                            previous.lat,
+                            previous.lon
+                        ],
+                        [
+                            lat,
+                            lon
+                        ]
                     );
 
-            } else {
+            }
 
-                // ==========================================
-                // FALLBACK HAVERSINE
-                // ==========================================
+            // ----------------------------------
+            // HAVERSINE FALLBACK
+            // ----------------------------------
+
+            else{
 
                 const R = 6371000;
 
                 const toRad =
-                    deg => deg * Math.PI / 180;
+                    deg =>
+                        deg * Math.PI / 180;
 
                 const dLat =
-                    toRad(lat - previous.lat);
+                    toRad(
+                        lat -
+                        previous.lat
+                    );
 
                 const dLon =
-                    toRad(lon - previous.lon);
+                    toRad(
+                        lon -
+                        previous.lon
+                    );
 
                 const lat1 =
-                    toRad(previous.lat);
+                    toRad(
+                        previous.lat
+                    );
 
                 const lat2 =
-                    toRad(lat);
+                    toRad(
+                        lat
+                    );
 
                 const a =
                     Math.sin(dLat / 2) ** 2 +
@@ -3061,71 +3151,133 @@ function(points){
                     );
             }
 
-        } catch(err){
+        }
+        catch(err){
 
             meters = 0;
         }
 
-        // ==========================================
-        // GPS JUMP PROTECTION
-        // ==========================================
+
+        // ======================================
+        // INVALID DISTANCE
+        // ======================================
 
         if(
-            Number.isFinite(meters) &&
-            meters >= 0
+            !Number.isFinite(meters) ||
+            meters < 0
         ){
 
-            const previousTime =
-                Number(previous.time || 0);
+            // Do NOT move previous point
+            // when calculation fails.
 
-            const currentTime =
-                Number(p.time || 0);
+            continue;
+        }
 
-            let acceptSegment = true;
 
-            // --------------------------------------
-            // If timestamps available, reject
-            // physically impossible jumps.
-            // --------------------------------------
-            if(
-                previousTime > 0 &&
-                currentTime > previousTime
-            ){
+        // ======================================
+        // GPS JUMP / IMPOSSIBLE SPEED CHECK
+        // ======================================
 
-                const seconds =
-                    (currentTime - previousTime) / 1000;
+        let acceptSegment = true;
 
-                if(seconds > 0){
 
-                    const speedKmh =
-                        (meters / seconds) * 3.6;
+        // --------------------------------------
+        // TIMESTAMP-BASED SPEED CHECK
+        // --------------------------------------
 
-                    // Forest patrol safety threshold.
-                    // Prevent GPS spikes from adding km.
-                    if(speedKmh > 120){
-                        acceptSegment = false;
-                    }
+        if(
+            previousTime > 0 &&
+            currentTime > previousTime
+        ){
+
+            const seconds =
+                (
+                    currentTime -
+                    previousTime
+                ) / 1000;
+
+
+            if(seconds > 0){
+
+                const speedKmh =
+                    (
+                        meters /
+                        seconds
+                    ) * 3.6;
+
+
+                // --------------------------------
+                // IMPOSSIBLE GPS MOVEMENT
+                // --------------------------------
+
+                if(
+                    speedKmh > 120
+                ){
+
+                    acceptSegment = false;
                 }
             }
+        }
 
-            // Absolute segment protection.
-// Absolute segment protection.
-// Keep identical to validTrack teleport protection.
-if(meters > 500){
-    acceptSegment = false;
-}
 
-            if(acceptSegment){
-                totalMeters += meters;
+        // --------------------------------------
+        // ABSOLUTE GPS JUMP PROTECTION
+        // --------------------------------------
+        //
+        // If timestamps are unavailable,
+        // retain the 500m protection.
+        //
+        // If timestamps ARE available,
+        // the speed test is the primary test.
+        //
+        // This prevents a legitimate >500m
+        // movement during a longer GPS interval
+        // from automatically being discarded.
+        // --------------------------------------
+
+        if(
+            previousTime <= 0 ||
+            currentTime <= previousTime
+        ){
+
+            if(meters > 500){
+
+                acceptSegment = false;
             }
         }
+
+
+        // ======================================
+        // ADD VALID DISTANCE
+        // ======================================
+
+        if(acceptSegment){
+
+            totalMeters += meters;
+        }
+
+
+        // ======================================
+        // IMPORTANT
+        // ======================================
+        //
+        // Move forward only after processing
+        // the current point.
+        //
+        // This keeps the GPS sequence intact.
+        // ======================================
 
         previous = {
             lat,
             lon,
-            time: Number(p.time || 0)
+            time: currentTime
         };
     }
+
+
+    // ==========================================
+    // RETURN KM
+    // ==========================================
 
     return totalMeters / 1000;
 };
