@@ -25813,24 +25813,161 @@ function getLiveStaffCountForCurrentPolygon(){
     .length;
 
 }
-   function getMonthlyStatusTitle() {
+function getMonthlyStatusTitle(){
 
   const now =
     new Date();
 
- const monthYear =
-  now.toLocaleString(
-    "en-IN",
-    {
-      month:"long"
+  const monthYear =
+    now.toLocaleString(
+      "en-IN",
+      {
+        month:"long"
+      }
+    ).toUpperCase()
+    +
+    "/"
+    +
+    String(
+      now.getFullYear()
+    ).slice(-2);
+
+  const profile =
+    window.userProfile || {};
+
+  const role =
+    String(
+      profile.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+  // =========================================================
+  // 🟠 CCF
+  // =========================================================
+
+  if(role === "CCF"){
+
+    const level =
+      String(
+        window.activePopupContext?.level ||
+        "division"
+      )
+      .trim()
+      .toLowerCase();
+
+    // -------------------------------------------------------
+    // CCF → SPECIFIC DIVISION SELECTED
+    // -------------------------------------------------------
+
+    if(
+      level === "division"
+      &&
+      window.gisFilter?.division
+      &&
+      String(
+        window.gisFilter.division
+      ).toUpperCase() !== "ALL"
+    ){
+
+      return (
+        String(
+          window.gisFilter.division
+        ).trim()
+        +
+        " MONTHLY STATUS - "
+        +
+        monthYear
+      );
+
     }
-  ).toUpperCase()
-  +
-  "/"
-  +
-  String(
-    now.getFullYear()
-  ).slice(-2);
+
+    // -------------------------------------------------------
+    // CCF → RANGE
+    // -------------------------------------------------------
+
+    if(
+      level === "range"
+      &&
+      window.gisFilter?.range
+    ){
+
+      return (
+        String(
+          window.gisFilter.range
+        ).trim()
+        +
+        " MONTHLY STATUS - "
+        +
+        monthYear
+      );
+
+    }
+
+    // -------------------------------------------------------
+    // CCF → BEAT
+    // -------------------------------------------------------
+
+    if(
+      level === "beat"
+      &&
+      window.gisFilter?.beat
+    ){
+
+      return (
+        String(
+          window.gisFilter.beat
+        ).trim()
+        +
+        " MONTHLY STATUS - "
+        +
+        monthYear
+      );
+
+    }
+
+    // -------------------------------------------------------
+    // CCF → COMPARTMENT
+    // -------------------------------------------------------
+
+    if(
+      level === "compartment"
+      &&
+      window.gisFilter?.compartment
+    ){
+
+      return (
+        String(
+          window.gisFilter.compartment
+        ).trim()
+        +
+        " MONTHLY STATUS - "
+        +
+        monthYear
+      );
+
+    }
+
+    // -------------------------------------------------------
+    // CCF DEFAULT
+    // -------------------------------------------------------
+
+    return (
+      String(
+        profile.circle ||
+        "CIRCLE"
+      ).trim().toUpperCase()
+      +
+      " CIRCLE MONTHLY STATUS - "
+      +
+      monthYear
+    );
+
+  }
+
+  // =========================================================
+  // EXISTING FLOW — COMPARTMENT
+  // =========================================================
 
   const level =
     String(
@@ -25839,7 +25976,7 @@ function getLiveStaffCountForCurrentPolygon(){
     )
     .toLowerCase();
 
-  if (level === "compartment") {
+  if(level === "compartment"){
 
     return (
       String(
@@ -25851,9 +25988,10 @@ function getLiveStaffCountForCurrentPolygon(){
       +
       monthYear
     );
+
   }
 
-  if (level === "beat") {
+  if(level === "beat"){
 
     return (
       String(
@@ -25865,9 +26003,10 @@ function getLiveStaffCountForCurrentPolygon(){
       +
       monthYear
     );
+
   }
 
-  if (level === "range") {
+  if(level === "range"){
 
     return (
       String(
@@ -25879,9 +26018,10 @@ function getLiveStaffCountForCurrentPolygon(){
       +
       monthYear
     );
+
   }
 
-  if (level === "division") {
+  if(level === "division"){
 
     return (
       String(
@@ -25893,6 +26033,7 @@ function getLiveStaffCountForCurrentPolygon(){
       +
       monthYear
     );
+
   }
 
   return (
@@ -27097,6 +27238,10 @@ function addMonthlyStatusCard() {
 
 function getLiveStaffForCurrentPolygon(){
 
+  // =========================================================
+  // CURRENT GIS LEVEL
+  // =========================================================
+
   const level =
 
     String(
@@ -27105,18 +27250,199 @@ function getLiveStaffForCurrentPolygon(){
     )
     .toLowerCase();
 
+
+  // =========================================================
+  // CURRENT ROLE
+  // =========================================================
+
+  const role =
+
+    String(
+      window.userProfile?.role ||
+      ""
+    )
+    .trim()
+    .toUpperCase();
+
+
+  // =========================================================
+  // LIVE STAFF
+  //
+  // Existing source remains unchanged.
+  // Only staff with active duty are considered.
+  // =========================================================
+
   let staffList =
 
     Object.values(
       window.liveStaffCache || {}
     )
     .filter(
-      s => s?.dutyActive === true
+      s =>
+        s &&
+        s.dutyActive === true
     );
 
-  // ====================================
+
+  // =========================================================
+  // 🟠 CCF AUTHORIZED DIVISIONS
+  //
+  // CCF must NEVER see live staff belonging to a division
+  // outside the CCF's authorized divisions.
+  //
+  // This is an additional security/filter layer.
+  // Existing GIS level filtering continues afterwards.
+  // =========================================================
+
+  if(
+    role === "CCF"
+  ){
+
+    let authorizedDivisions =
+
+      window.userProfile?.divisions ||
+      [];
+
+
+    // -------------------------------------------------------
+    // SUPPORT STRING
+    //
+    // Example:
+    // "BTR_W,BTR_E"
+    // -------------------------------------------------------
+
+    if(
+      typeof authorizedDivisions ===
+      "string"
+    ){
+
+      authorizedDivisions =
+
+        authorizedDivisions
+          .split(",")
+          .map(
+            d =>
+              String(
+                d || ""
+              ).trim()
+          )
+          .filter(
+            Boolean
+          );
+
+    }
+
+
+    // -------------------------------------------------------
+    // NORMALIZE DIVISIONS
+    // -------------------------------------------------------
+
+    authorizedDivisions =
+
+      authorizedDivisions
+        .map(
+          d => {
+
+            if(
+              typeof normalizeDivision ===
+              "function"
+            ){
+
+              return normalizeDivision(
+                d
+              );
+
+            }
+
+            return String(
+              d || ""
+            )
+            .trim()
+            .toUpperCase();
+
+          }
+        )
+        .filter(
+          Boolean
+        );
+
+
+    // -------------------------------------------------------
+    // REMOVE DUPLICATES
+    // -------------------------------------------------------
+
+    authorizedDivisions =
+
+      [
+        ...new Set(
+          authorizedDivisions
+        )
+      ];
+
+
+    // -------------------------------------------------------
+    // CCF SECURITY FILTER
+    //
+    // If no authorized divisions are available, return no
+    // staff rather than accidentally exposing all staff.
+    // -------------------------------------------------------
+
+    if(
+      authorizedDivisions.length === 0
+    ){
+
+      console.warn(
+        "⚠️ CCF LIVE STAFF: NO AUTHORIZED DIVISIONS"
+      );
+
+      return [];
+
+    }
+
+
+    // -------------------------------------------------------
+    // KEEP ONLY STAFF FROM AUTHORIZED DIVISIONS
+    // -------------------------------------------------------
+
+    staffList =
+
+      staffList.filter(
+        staff => {
+
+          const staffDivision =
+
+            typeof normalizeDivision ===
+            "function"
+
+            ? normalizeDivision(
+                staff.division || ""
+              )
+
+            : String(
+                staff.division || ""
+              )
+              .trim()
+              .toUpperCase();
+
+
+          return authorizedDivisions.includes(
+            staffDivision
+          );
+
+        }
+      );
+
+  }
+
+
+  // =========================================================
   // BTR
-  // ====================================
+  //
+  // Existing behaviour preserved.
+  //
+  // For CCF, the authorization filter above has already
+  // restricted the list to authorized divisions.
+  // =========================================================
 
   if(
     level === "btr"
@@ -27126,84 +27452,225 @@ function getLiveStaffForCurrentPolygon(){
 
   }
 
-  // ====================================
+
+  // =========================================================
   // DIVISION
-  // ====================================
+  // =========================================================
 
   if(
     level === "division"
   ){
 
+    const selectedDivision =
+
+      typeof normalizeDivision ===
+      "function"
+
+      ? normalizeDivision(
+          window.gisFilter
+            ?.division || ""
+        )
+
+      : String(
+          window.gisFilter
+            ?.division || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    // -------------------------------------------------------
+    // CCF ADDITIONAL SAFETY
+    //
+    // Even if gisFilter is changed manually/programmatically,
+    // CCF cannot get staff from an unauthorized division.
+    // -------------------------------------------------------
+
+    if(
+      role === "CCF"
+    ){
+
+      let authorizedDivisions =
+
+        window.userProfile?.divisions ||
+        [];
+
+
+      if(
+        typeof authorizedDivisions ===
+        "string"
+      ){
+
+        authorizedDivisions =
+
+          authorizedDivisions
+            .split(",")
+            .map(
+              d =>
+                String(
+                  d || ""
+                ).trim()
+            )
+            .filter(
+              Boolean
+            );
+
+      }
+
+
+      authorizedDivisions =
+
+        authorizedDivisions
+          .map(
+            d =>
+
+              typeof normalizeDivision ===
+              "function"
+
+              ? normalizeDivision(d)
+
+              : String(
+                  d || ""
+                )
+                .trim()
+                .toUpperCase()
+          )
+          .filter(
+            Boolean
+          );
+
+
+      if(
+        !authorizedDivisions.includes(
+          selectedDivision
+        )
+      ){
+
+        return [];
+
+      }
+
+    }
+
+
     return staffList.filter(
       s =>
 
-        normalizeDivision(
-          s.division || ""
+        (
+          typeof normalizeDivision ===
+          "function"
+
+          ? normalizeDivision(
+              s.division || ""
+            )
+
+          : String(
+              s.division || ""
+            )
+            .trim()
+            .toUpperCase()
         )
 
         ===
 
-        normalizeDivision(
-          window.gisFilter
-            ?.division || ""
-        )
+        selectedDivision
     );
 
   }
 
-  // ====================================
+
+  // =========================================================
   // RANGE
-  // ====================================
+  // =========================================================
 
   if(
     level === "range"
   ){
+
+    const selectedRange =
+
+      String(
+        window.gisFilter
+          ?.range || ""
+      )
+      .trim();
+
 
     return staffList.filter(
       s =>
 
         String(
           s.range || ""
-        ).trim()
+        )
+        .trim()
 
         ===
 
-        String(
-          window.gisFilter
-            ?.range || ""
-        ).trim()
+        selectedRange
     );
 
   }
 
-  // ====================================
+
+  // =========================================================
   // BEAT
-  // ====================================
+  // =========================================================
 
   if(
     level === "beat"
   ){
 
-    return staffList.filter(
-      s =>
+    const selectedBeat =
 
-        normalizeBeatName(
-          s.beat || ""
-        )
+      typeof normalizeBeatName ===
+      "function"
 
-        ===
-
-        normalizeBeatName(
+      ? normalizeBeatName(
           window.gisFilter
             ?.beat || ""
         )
+
+      : String(
+          window.gisFilter
+            ?.beat || ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    return staffList.filter(
+      s => {
+
+        const staffBeat =
+
+          typeof normalizeBeatName ===
+          "function"
+
+          ? normalizeBeatName(
+              s.beat || ""
+            )
+
+          : String(
+              s.beat || ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        return (
+          staffBeat ===
+          selectedBeat
+        );
+
+      }
     );
 
   }
 
-  // ====================================
+
+  // =========================================================
   // COMPARTMENT
-  // ====================================
+  // =========================================================
 
   if(
     level === "compartment"
@@ -27211,6 +27678,11 @@ function getLiveStaffForCurrentPolygon(){
 
     const geometry =
       window.currentSelectedGeometry;
+
+
+    // -------------------------------------------------------
+    // NO SELECTED GEOMETRY
+    // -------------------------------------------------------
 
     if(
       !geometry
@@ -27220,9 +27692,15 @@ function getLiveStaffForCurrentPolygon(){
 
     }
 
+
+    // -------------------------------------------------------
+    // BUILD TURF POLYGON FEATURE
+    // -------------------------------------------------------
+
     const polygon = {
 
-      type:"Feature",
+      type:
+        "Feature",
 
       geometry,
 
@@ -27230,23 +27708,52 @@ function getLiveStaffForCurrentPolygon(){
 
     };
 
+
+    // -------------------------------------------------------
+    // POINT-IN-POLYGON
+    //
+    // Existing behaviour preserved.
+    // -------------------------------------------------------
+
     return staffList.filter(
       staff => {
 
         try{
 
+          const lat =
+            Number(
+              staff.lat
+            );
+
+          const lng =
+            Number(
+              staff.lng
+            );
+
+
+          // ---------------------------------------------------
+          // INVALID GPS
+          // ---------------------------------------------------
+
+          if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ){
+
+            return false;
+
+          }
+
+
           const point =
             turf.point([
 
-              Number(
-                staff.lng
-              ),
+              lng,
 
-              Number(
-                staff.lat
-              )
+              lat
 
             ]);
+
 
           return turf.booleanPointInPolygon(
             point,
@@ -27266,16 +27773,62 @@ function getLiveStaffForCurrentPolygon(){
 
   }
 
+
+  // =========================================================
+  // DEFAULT
+  //
+  // Existing fallback behaviour preserved.
+  // =========================================================
+
   return staffList;
 
 }
-   async function showMonthlyLiveStaff(){
+async function showMonthlyLiveStaff(){
 
   try{
 
-   const staffList =
+    // =========================================================
+    // 🔥 LIVE STAFF SOURCE
+    //
+    // IMPORTANT:
+    // getLiveStaffForCurrentPolygon() already applies:
+    //
+    // CCF → authorized divisions
+    // CCF → selected division
+    // Range
+    // Beat
+    // Compartment
+    //
+    // Therefore DO NOT add another role filter here.
+    // =========================================================
 
-  getLiveStaffForCurrentPolygon();
+    const staffList =
+
+      getLiveStaffForCurrentPolygon();
+
+
+    // =========================================================
+    // 🔒 SAFETY
+    // =========================================================
+
+    if(
+      !Array.isArray(
+        staffList
+      )
+    ){
+
+      console.warn(
+        "⚠️ LIVE STAFF LIST INVALID"
+      );
+
+      return;
+
+    }
+
+
+    // =========================================================
+    // 🔄 SORT — MOST RECENT GPS FIRST
+    // =========================================================
 
     staffList.sort(
       (a,b) => {
@@ -27288,6 +27841,7 @@ function getLiveStaffForCurrentPolygon(){
             0
           );
 
+
         const tb =
 
           Number(
@@ -27296,10 +27850,130 @@ function getLiveStaffForCurrentPolygon(){
             0
           );
 
+
         return tb - ta;
 
       }
     );
+
+
+    // =========================================================
+    // 🟠 CCF CONTEXT
+    //
+    // Only used for the heading.
+    // Filtering itself is already done above.
+    // =========================================================
+
+    const role =
+
+      String(
+        window.userProfile?.role ||
+        ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const level =
+
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      )
+      .trim()
+      .toLowerCase();
+
+
+    let scopeTitle =
+      "LIVE DUTY TEAM";
+
+
+    if(
+      role === "CCF"
+    ){
+
+      if(
+        level === "division"
+      ){
+
+        const selectedDivision =
+
+          String(
+            window.gisFilter?.division ||
+            ""
+          ).trim();
+
+
+        if(
+          selectedDivision &&
+          selectedDivision.toUpperCase() !==
+          "ALL"
+        ){
+
+          scopeTitle =
+            "LIVE DUTY TEAM — " +
+            selectedDivision;
+
+        }
+
+        else{
+
+          scopeTitle =
+            "LIVE DUTY TEAM — " +
+            String(
+              window.userProfile?.circle ||
+              "CCF"
+            ).toUpperCase();
+
+        }
+
+      }
+
+      else if(
+        level === "range"
+      ){
+
+        scopeTitle =
+          "LIVE DUTY TEAM — " +
+          String(
+            window.gisFilter?.range ||
+            "RANGE"
+          ).trim();
+
+      }
+
+      else if(
+        level === "beat"
+      ){
+
+        scopeTitle =
+          "LIVE DUTY TEAM — " +
+          String(
+            window.gisFilter?.beat ||
+            "BEAT"
+          ).trim();
+
+      }
+
+      else if(
+        level === "compartment"
+      ){
+
+        scopeTitle =
+          "LIVE DUTY TEAM — " +
+          String(
+            window.gisFilter?.compartment ||
+            "COMPARTMENT"
+          ).trim();
+
+      }
+
+    }
+
+
+    // =========================================================
+    // 🧱 BUILD HTML
+    // =========================================================
 
     let html =
 
@@ -27312,20 +27986,105 @@ function getLiveStaffForCurrentPolygon(){
           color:white;
         "
       >
+
         <h3
           style="
             margin:0 0 12px 0;
             text-align:center;
           "
         >
-          LIVE DUTY TEAM
+
+          ${scopeTitle}
+
           (${staffList.length})
+
         </h3>
       `;
 
-    for(const staff of staffList){
 
-      let lastTime = "--";
+    // =========================================================
+    // ❌ NO STAFF
+    // =========================================================
+
+    if(
+      staffList.length === 0
+    ){
+
+      html += `
+
+        <div
+          style="
+            padding:25px 10px;
+            text-align:center;
+            color:#aaa;
+          "
+        >
+
+          <div
+            style="
+              font-size:28px;
+              margin-bottom:8px;
+            "
+          >
+            👤
+          </div>
+
+          <div>
+            No staff currently on active duty
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+
+    // =========================================================
+    // 👮 STAFF LIST
+    // =========================================================
+
+    for(
+      const staff
+      of staffList
+    ){
+
+      // =======================================================
+      // NAME
+      // =======================================================
+
+      const staffName =
+
+        staff.name
+        ||
+        staff.cleanName
+        ||
+        "Unknown";
+
+
+      // =======================================================
+      // GPS
+      // =======================================================
+
+      const lat =
+        Number(
+          staff.lat || 0
+        );
+
+
+      const lng =
+        Number(
+          staff.lng || 0
+        );
+
+
+      // =======================================================
+      // LAST TIME
+      // =======================================================
+
+      let lastTime =
+        "--";
+
 
       try{
 
@@ -27337,25 +28096,39 @@ function getLiveStaffForCurrentPolygon(){
             0
           );
 
-        if(ts){
+
+        if(
+          ts &&
+          Number.isFinite(ts)
+        ){
 
           lastTime =
 
             new Date(ts)
-            .toLocaleTimeString(
-              "en-IN",
-              {
-                hour:"2-digit",
-                minute:"2-digit",
-                hour12:true
-              }
-            );
+              .toLocaleTimeString(
+                "en-IN",
+                {
+                  hour:
+                    "2-digit",
+
+                  minute:
+                    "2-digit",
+
+                  hour12:
+                    true
+                }
+              );
 
         }
 
       }
 
       catch(e){}
+
+
+      // =======================================================
+      // STAFF BLOCK
+      // =======================================================
 
       html += `
 
@@ -27367,18 +28140,24 @@ function getLiveStaffForCurrentPolygon(){
           "
         >
 
+          <!-- ============================================= -->
+          <!-- 👤 NAME -->
+          <!-- ============================================= -->
+
           <div>
+
             👤
+
             <b>
-              ${
-                staff.name
-                ||
-                staff.cleanName
-                ||
-                "Unknown"
-              }
+              ${staffName}
             </b>
+
           </div>
+
+
+          <!-- ============================================= -->
+          <!-- 🏢 DIVISION -->
+          <!-- ============================================= -->
 
           ${
             staff.division
@@ -27396,6 +28175,11 @@ function getLiveStaffForCurrentPolygon(){
             ""
           }
 
+
+          <!-- ============================================= -->
+          <!-- 🌿 RANGE -->
+          <!-- ============================================= -->
+
           ${
             staff.range
 
@@ -27412,6 +28196,11 @@ function getLiveStaffForCurrentPolygon(){
             ""
           }
 
+
+          <!-- ============================================= -->
+          <!-- 📍 BEAT -->
+          <!-- ============================================= -->
+
           ${
             staff.beat
 
@@ -27427,6 +28216,11 @@ function getLiveStaffForCurrentPolygon(){
 
             ""
           }
+
+
+          <!-- ============================================= -->
+          <!-- 🎯 COMPARTMENT -->
+          <!-- ============================================= -->
 
           ${
             staff.compartment
@@ -27445,6 +28239,11 @@ function getLiveStaffForCurrentPolygon(){
             ""
           }
 
+
+          <!-- ============================================= -->
+          <!-- 🚨 DUTY TYPE -->
+          <!-- ============================================= -->
+
           ${
             staff.dutyType
 
@@ -27462,6 +28261,11 @@ function getLiveStaffForCurrentPolygon(){
             ""
           }
 
+
+          <!-- ============================================= -->
+          <!-- 📌 GPS -->
+          <!-- ============================================= -->
+
           <div>
 
             📌 GPS:
@@ -27471,16 +28275,10 @@ function getLiveStaffForCurrentPolygon(){
               onclick='
                 zoomToLiveStaff(
                   ${JSON.stringify(
-                    staff.name ||
-                    staff.cleanName ||
-                    "Staff"
+                    staffName
                   )},
-                  ${Number(
-                    staff.lat || 0
-                  )},
-                  ${Number(
-                    staff.lng || 0
-                  )}
+                  ${lat},
+                  ${lng}
                 )
               '
 
@@ -27495,27 +28293,45 @@ function getLiveStaffForCurrentPolygon(){
 
             >
 
-              ${Number(
-                staff.lat || 0
-              ).toFixed(6)},
-              ${Number(
-                staff.lng || 0
-              ).toFixed(6)}
+              ${lat.toFixed(6)},
+              ${lng.toFixed(6)}
 
             </span>
 
           </div>
 
+
+          <!-- ============================================= -->
+          <!-- 🕒 LAST UPDATE -->
+          <!-- ============================================= -->
+
           <div>
+
             🕒 ${lastTime}
+
           </div>
 
         </div>
 
       `;
+
     }
 
-    html += `</div>`;
+
+    // =========================================================
+    // CLOSE HTML
+    // =========================================================
+
+    html += `
+
+      </div>
+
+    `;
+
+
+    // =========================================================
+    // 🧹 REMOVE EXISTING MODAL
+    // =========================================================
 
     const old =
 
@@ -27523,17 +28339,30 @@ function getLiveStaffForCurrentPolygon(){
         "liveDutyTeamModal"
       );
 
-    if(old){
+
+    if(
+      old
+    ){
+
       old.remove();
+
     }
 
+
+    // =========================================================
+    // 🪟 CREATE MODAL
+    // =========================================================
+
     const modal =
+
       document.createElement(
         "div"
       );
 
+
     modal.id =
       "liveDutyTeamModal";
+
 
     modal.innerHTML = `
 
@@ -27588,9 +28417,53 @@ function getLiveStaffForCurrentPolygon(){
 
     `;
 
+
+    // =========================================================
+    // 📌 ADD MODAL
+    // =========================================================
+
     document.body.appendChild(
       modal
     );
+
+
+    // =========================================================
+    // DEBUG — ONLY CCF
+    // =========================================================
+
+    if(
+      role === "CCF"
+    ){
+
+      console.log(
+        "🟠 CCF LIVE DUTY MODAL",
+        {
+          circle:
+            window.userProfile?.circle,
+
+          authorizedDivisions:
+            window.userProfile?.divisions,
+
+          level,
+
+          division:
+            window.gisFilter?.division,
+
+          range:
+            window.gisFilter?.range,
+
+          beat:
+            window.gisFilter?.beat,
+
+          compartment:
+            window.gisFilter?.compartment,
+
+          visibleStaff:
+            staffList.length
+        }
+      );
+
+    }
 
   }
 
@@ -27604,6 +28477,12 @@ function getLiveStaffForCurrentPolygon(){
   }
 
 }
+
+
+// ============================================================
+// 🧹 CLEAR LIVE STAFF MARKER
+// ============================================================
+
 function clearLiveStaffMarker(){
 
   if(
@@ -27618,6 +28497,7 @@ function clearLiveStaffMarker(){
       null;
 
   }
+
 
   if(
     window.liveStaffHighlight
