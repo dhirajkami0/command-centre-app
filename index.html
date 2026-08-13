@@ -27008,9 +27008,83 @@ async function showMonthlyLiveStaff(){
       const staff of staffList
     ){
 
-      // ================================================
+
+      // ==================================================
+      // 📍 CURRENT GIS LOCATION
+      // --------------------------------------------------
+      // Resolve ACTUAL CURRENT LOCATION from live GPS.
+      //
+      // IMPORTANT:
+      // This is separate from:
+      //     staff.division
+      //     staff.range
+      //     staff.beat
+      //     staff.compartment
+      //
+      // Those remain the STAFF ASSIGNMENT.
+      //
+      // resolveCurrentGIS() gives the actual GIS position.
+      // ==================================================
+
+      let currentGIS =
+        null;
+
+
+      try{
+
+        const currentLat =
+          Number(
+            staff.lat
+          );
+
+        const currentLng =
+          Number(
+            staff.lng
+          );
+
+
+        if(
+          Number.isFinite(
+            currentLat
+          ) &&
+          Number.isFinite(
+            currentLng
+          ) &&
+          currentLat !== 0 &&
+          currentLng !== 0 &&
+          typeof window.resolveCurrentGIS ===
+            "function"
+        ){
+
+          currentGIS =
+            window.resolveCurrentGIS(
+              currentLat,
+              currentLng
+            );
+
+        }
+
+      }
+
+      catch(err){
+
+        console.warn(
+          "⚠ Current GIS resolution failed:",
+          staff.name ||
+          staff.cleanName ||
+          "Unknown",
+          err
+        );
+
+        currentGIS =
+          null;
+
+      }
+
+
+      // ==================================================
       // 🕒 LAST GPS TIME
-      // ================================================
+      // ==================================================
 
       let lastTime =
         "--";
@@ -27046,9 +27120,9 @@ async function showMonthlyLiveStaff(){
       catch(e){}
 
 
-      // ================================================
+      // ==================================================
       // 🟢 DUTY START DATE + TIME
-      // ================================================
+      // ==================================================
 
       let dutyStarted =
         "Unknown";
@@ -27114,9 +27188,9 @@ async function showMonthlyLiveStaff(){
       }
 
 
-      // ================================================
+      // ==================================================
       // ⏳ DUTY DURATION
-      // ================================================
+      // ==================================================
 
       let dutyDuration =
         "Unknown";
@@ -27184,6 +27258,318 @@ async function showMonthlyLiveStaff(){
           "⚠ Duty duration failed",
           e
         );
+
+      }
+
+
+      // ==================================================
+      // 📍 BUILD CURRENT LOCATION DISPLAY
+      // ==================================================
+
+      let currentLocationHtml =
+        "";
+
+
+      if(
+        currentGIS
+      ){
+
+        // ==================================================
+        // 🌲 FOREST CURRENT LOCATION
+        // ==================================================
+
+        if(
+          currentGIS.compartment ||
+          currentGIS.beat ||
+          currentGIS.range ||
+          currentGIS.division
+        ){
+
+          currentLocationHtml = `
+
+            <div
+              style="
+                margin-top:8px;
+                padding:8px;
+                background:rgba(0,180,120,.10);
+                border-left:3px solid #52e6a5;
+                border-radius:5px;
+              "
+            >
+
+              <div
+                style="
+                  color:#52e6a5;
+                  font-weight:700;
+                  margin-bottom:4px;
+                "
+              >
+                📍 CURRENT LOCATION
+              </div>
+
+
+              ${
+                currentGIS.division
+                ?
+                `
+                <div>
+                  🏢 Division:
+                  <b>
+                    ${currentGIS.division}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.range
+                ?
+                `
+                <div>
+                  🌿 Range:
+                  <b>
+                    ${currentGIS.range}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.beat
+                ?
+                `
+                <div>
+                  🧭 Beat:
+                  <b>
+                    ${currentGIS.beat}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.compartment
+                ?
+                `
+                <div>
+                  🌲 Compartment:
+                  <b>
+                    ${currentGIS.compartment}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.village
+                ?
+                `
+                <div>
+                  🏡 Village:
+                  <b>
+                    ${currentGIS.village}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.nearestPoint
+                ?
+                `
+                <div>
+                  📌 Near:
+                  <b>
+                    ${currentGIS.nearestPoint}
+                  </b>
+
+                  ${
+                    currentGIS.distanceMeters != null
+                    ?
+                    ` (${currentGIS.distanceMeters} m)`
+                    :
+                    ""
+                  }
+
+                </div>
+                `
+                :
+                ""
+              }
+
+            </div>
+
+          `;
+
+        }
+
+
+        // ==================================================
+        // 🏡 VILLAGE CURRENT LOCATION
+        // ==================================================
+
+        else if(
+          currentGIS.village
+        ){
+
+          currentLocationHtml = `
+
+            <div
+              style="
+                margin-top:8px;
+                padding:8px;
+                background:rgba(255,193,7,.10);
+                border-left:3px solid #FFD166;
+                border-radius:5px;
+              "
+            >
+
+              <div
+                style="
+                  color:#FFD166;
+                  font-weight:700;
+                  margin-bottom:4px;
+                "
+              >
+                📍 CURRENT LOCATION
+              </div>
+
+
+              <div>
+                🏡 Village:
+                <b>
+                  ${currentGIS.village}
+                </b>
+              </div>
+
+
+              ${
+                currentGIS.block
+                ?
+                `
+                <div>
+                  🗺 Block:
+                  <b>
+                    ${currentGIS.block}
+                  </b>
+                </div>
+                `
+                :
+                ""
+              }
+
+
+              ${
+                currentGIS.nearestPoint
+                ?
+                `
+                <div>
+                  📌 Near:
+                  <b>
+                    ${currentGIS.nearestPoint}
+                  </b>
+
+                  ${
+                    currentGIS.distanceMeters != null
+                    ?
+                    ` (${currentGIS.distanceMeters} m)`
+                    :
+                    ""
+                  }
+
+                </div>
+                `
+                :
+                ""
+              }
+
+            </div>
+
+          `;
+
+        }
+
+
+        // ==================================================
+        // 📌 GIS RESOLVED BUT OUTSIDE KNOWN POLYGONS
+        // ==================================================
+
+        else{
+
+          currentLocationHtml = `
+
+            <div
+              style="
+                margin-top:8px;
+                padding:8px;
+                background:rgba(127,223,255,.08);
+                border-left:3px solid #7fdfff;
+                border-radius:5px;
+              "
+            >
+
+              <div
+                style="
+                  color:#7fdfff;
+                  font-weight:700;
+                  margin-bottom:4px;
+                "
+              >
+                📍 CURRENT LOCATION
+              </div>
+
+
+              ${
+                currentGIS.nearestPoint
+                ?
+                `
+                <div>
+                  📌 Near:
+                  <b>
+                    ${currentGIS.nearestPoint}
+                  </b>
+
+                  ${
+                    currentGIS.distanceMeters != null
+                    ?
+                    ` (${currentGIS.distanceMeters} m)`
+                    :
+                    ""
+                  }
+
+                </div>
+                `
+                :
+                `
+                <div>
+                  📌 GIS:
+                  <b>
+                    Outside mapped area
+                  </b>
+                </div>
+                `
+              }
+
+            </div>
+
+          `;
+
+        }
 
       }
 
@@ -27281,6 +27667,13 @@ async function showMonthlyLiveStaff(){
             :
             ""
           }
+
+
+          <!-- ====================================== -->
+          <!-- 📍 CURRENT GIS LOCATION -->
+          <!-- ====================================== -->
+
+          ${currentLocationHtml}
 
 
           <!-- ====================================== -->
