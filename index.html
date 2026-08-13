@@ -8439,6 +8439,49 @@ function waitForAndroidBridge(timeout = 8000){
   });
 }
 // ============================================================
+// 🟠 CIRCLE → DIVISION AUTHORIZATION MAP
+// ------------------------------------------------------------
+// Used only for CCF jurisdiction.
+// Firestore staff_profiles are NOT modified.
+// Existing ADMIN / DFO / ADFO / STAFF / TEAM LEADER
+// authorization logic remains unchanged.
+// ============================================================
+
+const CIRCLE_DIVISION_MAP = {
+
+  "BTR": [
+    "BTR_W",
+    "BTR_E"
+  ],
+
+  "WLN": [
+    "JALDAPARA",
+    "GORUMARA",
+    "DARJEELING"
+  ]
+
+};
+
+
+// ============================================================
+// 🟠 GET DIVISIONS FOR CIRCLE
+// ============================================================
+
+function getDivisionsForCircle(circle){
+
+  const key =
+    String(circle || "")
+      .trim()
+      .toUpperCase();
+
+  return [
+    ...(CIRCLE_DIVISION_MAP[key] || [])
+  ];
+
+}
+
+
+// ============================================================
 // 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
 // ============================================================
 function loadProfile(){
@@ -8520,8 +8563,11 @@ function loadProfile(){
     // ============================================================
 
     if(
+
         profile &&
+
         profile.status === "error" &&
+
         (
             profile.code === "ACCESS_BLOCKED" ||
             profile.code === "PROFILE_NOT_FOUND" ||
@@ -8632,6 +8678,7 @@ function loadProfile(){
         return;
     }
 
+
     // ============================================================
     // 🔥 OFFLINE FALLBACK
     // ============================================================
@@ -8646,23 +8693,53 @@ function loadProfile(){
 
       if(saved){
 
-window.userProfile =
+        window.userProfile =
 
-JSON.parse(saved);
+          JSON.parse(saved);
 
-window.userProfile.uid ||= "";
+        window.userProfile.uid ||= "";
 
-window.userProfile.villagerId ||= "";
+        window.userProfile.villagerId ||= "";
 
-window.userProfile.village ||= "";
+        window.userProfile.village ||= "";
 
-window.userProfile.villageCode ||= "";
+        window.userProfile.villageCode ||= "";
 
-window.userProfile.block ||= "";
+        window.userProfile.block ||= "";
 
-window.userProfile.district ||= "";
+        window.userProfile.district ||= "";
 
-window.userProfile.state ||= "";
+        window.userProfile.state ||= "";
+
+        // ======================================================
+        // 🟠 OFFLINE CCF AUTHORIZED DIVISIONS
+        // ======================================================
+
+        if(
+
+          String(
+            window.userProfile.role || ""
+          )
+          .trim()
+          .toUpperCase()
+
+          ===
+
+          "CCF"
+
+        ){
+
+          window.userProfile.divisions =
+            getDivisionsForCircle(
+              window.userProfile.circle
+            );
+
+          console.log(
+            "🟠 OFFLINE CCF AUTHORIZED DIVISIONS:",
+            window.userProfile.divisions
+          );
+
+        }
 
         // ======================================================
         // 🔒 STAFF GIS LOCK
@@ -8787,6 +8864,7 @@ window.userProfile.state ||= "";
       return;
     }
 
+
     // ============================================================
     // ❌ INVALID PROFILE
     // ============================================================
@@ -8816,6 +8894,7 @@ window.userProfile.state ||= "";
 
       return;
     }
+
 
     // ============================================================
     // 🔥 FINAL PROFILE
@@ -8862,24 +8941,24 @@ window.userProfile.state ||= "";
     // 🔒 STAFF GIS LOCK
     // ============================================================
 
-const role = finalProfile.role;
+    const role = finalProfile.role;
 
-const isStaff =
+    const isStaff =
 
-[
-    "ADMIN",
-    "STAFF",
-    "TEAM LEADER",
-    "RANGER",
-    "FOREST GUARD",
-    "BEAT OFFICER",
-    "DEPUTY RANGER",
-    "FORESTER"
-]
+    [
+      "ADMIN",
+      "STAFF",
+      "TEAM LEADER",
+      "RANGER",
+      "FOREST GUARD",
+      "BEAT OFFICER",
+      "DEPUTY RANGER",
+      "FORESTER"
+    ]
 
-.includes(role);
+    .includes(role);
 
-if(isStaff){
+    if(isStaff){
 
       window.gisFilter = {
 
@@ -8910,8 +8989,53 @@ if(isStaff){
     // 💾 SAVE PROFILE
     // ============================================================
 
+    // ============================================================
+    // 💾 SAVE PROFILE
+    // ============================================================
+
     window.userProfile =
       finalProfile;
+
+
+    // ============================================================
+    // 🟠 CCF AUTHORIZED DIVISIONS
+    // ============================================================
+
+    if(
+
+      String(
+        finalProfile.role || ""
+      )
+      .trim()
+      .toUpperCase()
+
+      ===
+
+      "CCF"
+
+    ){
+
+      finalProfile.divisions =
+        getDivisionsForCircle(
+          finalProfile.circle
+        );
+
+      window.userProfile.divisions =
+        finalProfile.divisions;
+
+      console.log(
+        "🟠 CCF AUTHORIZED DIVISIONS:",
+        {
+          circle:
+            finalProfile.circle,
+
+          divisions:
+            finalProfile.divisions
+        }
+      );
+
+    }
+
 
     localStorage.setItem(
 
@@ -94114,6 +94238,9 @@ function updateNetworkStatus(status) {
 
 
 // ================= PROFILE NORMALIZER =================
+
+
+
 // ============================================================
 // 🔥 NORMALIZE USER PROFILE
 //
