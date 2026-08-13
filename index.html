@@ -37440,729 +37440,1033 @@ console.error(
 }
 
 }
-function renderFilteredCompartments(){
+function renderFilteredCompartments() {
 
-try {
-// ==================================================
-// 🟡 VILLAGER
-// NO COMPARTMENTS
-// ==================================================
+    try {
 
-const role =
+        // ============================================================
+        // 🛡️ BASIC MAP CHECK
+        // ============================================================
 
-    String(
-        window.userProfile?.role || ""
-    )
-    .trim()
-    .toUpperCase();
+        if (!window.map) {
 
-if(role === "VILLAGER"){
-
-    try{
-
-        if(window.compartmentLayer){
-
-            window.map.removeLayer(
-                window.compartmentLayer
+            console.warn(
+                "⚠ Map not available for compartment rendering"
             );
 
-            window.compartmentLayer = null;
+            return;
 
         }
 
-    }
-    catch(e){}
 
-    console.log(
-        "🟡 Villager → Compartments disabled"
-    );
+        // ============================================================
+        // 🛡️ BASIC FILTER CHECK
+        // ============================================================
 
-    return;
+        if (!window.gisFilter) {
 
-}
-let allFeatures =
+            console.warn(
+                "⚠ gisFilter not available"
+            );
 
-window.allCompartmentFeatures || [];
+            return;
 
-// ==================================================
-// 🟠 CCF CIRCLE FILTER
-// FINAL AUTHORIZATION-BASED VERSION
-// ==================================================
-
-if(
-    role === "CCF"
-){
-
-    // ----------------------------------------------
-    // Ensure current authorization
-    // ----------------------------------------------
-
-    if(
-        typeof initializeCCFAuthorization ===
-        "function"
-    ){
-
-        initializeCCFAuthorization();
-
-    }
+        }
 
 
-    let authorizedDivisions = [];
+        // ============================================================
+        // 🟡 VILLAGER
+        // NO COMPARTMENTS
+        // ============================================================
 
-
-    if(
-        typeof ccfAuthorizedDivisions !==
-        "undefined" &&
-
-        Array.isArray(
-            ccfAuthorizedDivisions
+        const role = String(
+            window.userProfile?.role || ""
         )
-    ){
+            .trim()
+            .toUpperCase();
 
-        authorizedDivisions =
 
-            ccfAuthorizedDivisions
+        if (role === "VILLAGER") {
 
-                .map(function(division){
+            try {
 
-                    return normalizeDivision(
-                        division
+                if (window.compartmentLayer) {
+
+                    window.map.removeLayer(
+                        window.compartmentLayer
                     );
 
-                })
+                    window.compartmentLayer = null;
 
-                .filter(Boolean);
+                }
 
-    }
+            }
+            catch (e) {}
+
+            console.log(
+                "🟡 Villager → Compartments disabled"
+            );
+
+            return;
+
+        }
 
 
-    authorizedDivisions = [
-        ...new Set(
-            authorizedDivisions
+        // ============================================================
+        // 🔥 CRITICAL FIX
+        //
+        // DO NOT SHOW ANY COMPARTMENT GEOJSON UNTIL A RANGE
+        // BUTTON HAS ACTUALLY BEEN SELECTED.
+        //
+        // Division selection alone MUST NOT display compartments.
+        //
+        // ============================================================
+
+        const selectedRange = String(
+            window.gisFilter.range || ""
         )
-    ];
+            .trim();
 
 
-    const authorizedSet =
-        new Set(
-            authorizedDivisions
+        const rangeNotSelected =
+            !selectedRange ||
+            selectedRange === "ALL" ||
+            selectedRange === "all" ||
+            selectedRange === "-";
+
+
+        if (rangeNotSelected) {
+
+            // --------------------------------------------------------
+            // REMOVE OLD COMPARTMENT LAYER
+            // --------------------------------------------------------
+
+            try {
+
+                if (window.compartmentLayer) {
+
+                    window.map.removeLayer(
+                        window.compartmentLayer
+                    );
+
+                    window.compartmentLayer = null;
+
+                }
+
+            }
+            catch (e) {
+
+                console.warn(
+                    "⚠ Could not remove compartment layer",
+                    e
+                );
+
+            }
+
+
+            // --------------------------------------------------------
+            // RESET COMPARTMENT BUTTON AREA
+            // --------------------------------------------------------
+
+            try {
+
+                const compartmentContainer =
+                    document.getElementById(
+                        "compartmentButtons"
+                    );
+
+                if (compartmentContainer) {
+
+                    compartmentContainer.innerHTML = "";
+
+                    compartmentContainer.style.display =
+                        "none";
+
+                }
+
+            }
+            catch (e) {}
+
+
+            console.log(
+                "⏳ No Range selected → Compartment GeoJSON hidden"
+            );
+
+            return;
+
+        }
+
+
+        // ============================================================
+        // 📦 ALL COMPARTMENT FEATURES
+        // ============================================================
+
+        let allFeatures =
+            window.allCompartmentFeatures || [];
+
+
+        if (!Array.isArray(allFeatures)) {
+
+            allFeatures = [];
+
+        }
+
+
+        // ============================================================
+        // 🟠 CCF AUTHORIZATION
+        //
+        // CCF can only see authorized divisions.
+        // ============================================================
+
+        if (role === "CCF") {
+
+            // --------------------------------------------------------
+            // ENSURE CCF AUTHORIZATION
+            // --------------------------------------------------------
+
+            if (
+                typeof initializeCCFAuthorization ===
+                "function"
+            ) {
+
+                initializeCCFAuthorization();
+
+            }
+
+
+            let authorizedDivisions = [];
+
+
+            if (
+                typeof ccfAuthorizedDivisions !==
+                    "undefined" &&
+
+                Array.isArray(
+                    ccfAuthorizedDivisions
+                )
+            ) {
+
+                authorizedDivisions =
+                    ccfAuthorizedDivisions
+                        .map(function (division) {
+
+                            return normalizeDivision(
+                                division
+                            );
+
+                        })
+                        .filter(Boolean);
+
+            }
+
+
+            authorizedDivisions = [
+                ...new Set(
+                    authorizedDivisions
+                )
+            ];
+
+
+            const authorizedSet =
+                new Set(
+                    authorizedDivisions
+                );
+
+
+            // --------------------------------------------------------
+            // ONLY AUTHORIZED DIVISIONS
+            // --------------------------------------------------------
+
+            allFeatures =
+                allFeatures.filter(
+                    function (feature) {
+
+                        const props =
+                            feature.properties || {};
+
+
+                        const division =
+                            normalizeDivision(
+
+                                props.Division ||
+
+                                props.division ||
+
+                                ""
+
+                            );
+
+
+                        return authorizedSet.has(
+                            division
+                        );
+
+                    }
+                );
+
+
+            console.log(
+                "🟠 CCF COMPARTMENT AUTHORIZATION:",
+                authorizedDivisions,
+                "| FEATURES:",
+                allFeatures.length
+            );
+
+        }
+
+
+        // ============================================================
+        // 🔥 RANGE FILTER
+        //
+        // THIS IS THE SECOND CRITICAL FIX.
+        //
+        // After selecting a Range, ONLY that Range's compartment
+        // polygons are rendered.
+        // ============================================================
+
+        const normalizedSelectedRange =
+            selectedRange
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .trim();
+
+
+        allFeatures =
+            allFeatures.filter(
+                function (feature) {
+
+                    try {
+
+                        const props =
+                            feature.properties || {};
+
+
+                        const featureRange =
+                            String(
+
+                                props.range ||
+
+                                props.Range ||
+
+                                ""
+
+                            )
+                                .toLowerCase()
+                                .replace(/\s+/g, " ")
+                                .trim();
+
+
+                        return (
+                            featureRange ===
+                            normalizedSelectedRange
+                        );
+
+                    }
+                    catch (e) {
+
+                        return false;
+
+                    }
+
+                }
+            );
+
+
+        console.log(
+            "🟢 RANGE COMPARTMENT FILTER:",
+            selectedRange,
+            "| FEATURES:",
+            allFeatures.length
         );
 
 
-    // ----------------------------------------------
-    // CCF sees ONLY authorized divisions
-    // ----------------------------------------------
+        // ============================================================
+        // ❌ NO COMPARTMENTS FOR THIS RANGE
+        // ============================================================
 
-    allFeatures =
-        allFeatures.filter(
-            function(feature){
+        if (allFeatures.length === 0) {
 
-                const props =
-                    feature.properties || {};
+            console.warn(
+                "⚠ No compartment features found for Range:",
+                selectedRange
+            );
 
 
-                const division =
+            try {
 
-                    normalizeDivision(
+                if (window.compartmentLayer) {
 
-                        props.Division ||
+                    window.map.removeLayer(
+                        window.compartmentLayer
+                    );
 
-                        props.division ||
+                    window.compartmentLayer = null;
 
-                        ""
+                }
 
+            }
+            catch (e) {}
+
+
+            try {
+
+                const compartmentContainer =
+                    document.getElementById(
+                        "compartmentButtons"
                     );
 
 
-                return authorizedSet.has(
-                    division
+                if (compartmentContainer) {
+
+                    compartmentContainer.innerHTML = "";
+
+                    compartmentContainer.style.display =
+                        "none";
+
+                }
+
+            }
+            catch (e) {}
+
+
+            return;
+
+        }
+
+
+        // ============================================================
+        // 👁 INITIALIZE HIDDEN STATES
+        // ============================================================
+
+        if (!window.hiddenRanges) {
+
+            window.hiddenRanges =
+                new Set();
+
+        }
+
+
+        if (!window.hiddenBeats) {
+
+            window.hiddenBeats =
+                new Set();
+
+        }
+
+
+        // ============================================================
+        // 👁 FILTER HIDDEN RANGE / BEAT
+        //
+        // Since we already filtered by selected range above,
+        // hiddenRanges is still respected.
+        // ============================================================
+
+        const features =
+            allFeatures.filter(
+                function (feature) {
+
+                    try {
+
+                        const props =
+                            feature.properties || {};
+
+
+                        const beat =
+                            String(
+
+                                props.beat ||
+
+                                props.Beat ||
+
+                                ""
+
+                            ).trim();
+
+
+                        const range =
+                            String(
+
+                                props.range ||
+
+                                props.Range ||
+
+                                ""
+
+                            ).trim();
+
+
+                        // ------------------------------------------------
+                        // HIDDEN RANGE
+                        // ------------------------------------------------
+
+                        if (
+                            window.hiddenRanges.has(
+                                range
+                            )
+                        ) {
+
+                            return false;
+
+                        }
+
+
+                        // ------------------------------------------------
+                        // HIDDEN BEAT
+                        // ------------------------------------------------
+
+                        if (
+                            window.hiddenBeats.has(
+                                beat
+                            )
+                        ) {
+
+                            return false;
+
+                        }
+
+
+                        return true;
+
+                    }
+                    catch (e) {
+
+                        return true;
+
+                    }
+
+                }
+            );
+
+
+        // ============================================================
+        // ❌ EVERYTHING HIDDEN
+        // ============================================================
+
+        if (features.length === 0) {
+
+            console.warn(
+                "⚠ All compartments hidden for Range:",
+                selectedRange
+            );
+
+
+            try {
+
+                if (window.compartmentLayer) {
+
+                    window.map.removeLayer(
+                        window.compartmentLayer
+                    );
+
+                    window.compartmentLayer = null;
+
+                }
+
+            }
+            catch (e) {}
+
+
+            return;
+
+        }
+
+
+        // ============================================================
+        // 📱 MOBILE
+        // ============================================================
+
+        const isMobile =
+            L.Browser.mobile;
+
+
+        // ============================================================
+        // 🎨 COMPARTMENT STYLE ENGINE
+        // ============================================================
+
+        function getCompartmentStyle(feature) {
+
+            const props =
+                feature.properties || {};
+
+
+            const beat =
+                String(
+
+                    props.Beat ||
+
+                    props.beat ||
+
+                    ""
+
+                ).trim();
+
+
+            const compartment =
+                String(
+
+                    props.compartment ||
+
+                    props.compartmen ||
+
+                    props.Compartment ||
+
+                    ""
+
+                ).trim();
+
+
+            // --------------------------------------------------------
+            // DEFAULT
+            // --------------------------------------------------------
+
+            let color =
+                "#ff9100";
+
+
+            let weight =
+                isMobile
+                    ? 2.4
+                    : 3.2;
+
+
+            let fillOpacity =
+                0.008;
+
+
+            // --------------------------------------------------------
+            // 🟨 ACTIVE BEAT
+            // --------------------------------------------------------
+
+            if (
+
+                window.gisFilter.beat !== "ALL" &&
+
+                normalizeBeatName(beat) ===
+                normalizeBeatName(
+                    window.gisFilter.beat
+                )
+
+            ) {
+
+                color =
+                    "#ff5e00";
+
+
+                weight =
+                    isMobile
+                        ? 4.2
+                        : 5.1;
+
+
+                fillOpacity =
+                    0.022;
+
+            }
+
+
+            // --------------------------------------------------------
+            // 🟪 ACTIVE COMPARTMENT
+            // --------------------------------------------------------
+
+            if (
+
+                window.gisFilter.compartment !==
+                    "ALL" &&
+
+                compartment ===
+                window.gisFilter.compartment
+
+            ) {
+
+                color =
+                    "#d500f9";
+
+
+                weight =
+                    isMobile
+                        ? 5.5
+                        : 7;
+
+
+                fillOpacity =
+                    0.045;
+
+            }
+
+
+            return {
+
+                color : color,
+
+                weight : weight,
+
+                opacity : 1,
+
+                fillColor : color,
+
+                fillOpacity : fillOpacity,
+
+                lineJoin : "round",
+
+                lineCap : "round"
+
+            };
+
+        }
+
+
+        // ============================================================
+        // 🔥 REMOVE OLD COMPARTMENT LAYER
+        // ============================================================
+
+        try {
+
+            if (window.compartmentLayer) {
+
+                window.map.removeLayer(
+                    window.compartmentLayer
                 );
+
+                window.compartmentLayer = null;
+
+            }
+
+        }
+        catch (e) {}
+
+
+        // ============================================================
+        // 🔥 CREATE ONLY CURRENT RANGE COMPARTMENT LAYER
+        // ============================================================
+
+        console.log(
+            "🛰 Rendering compartments for selected Range:",
+            selectedRange
+        );
+
+
+        window.compartmentLayer =
+            L.geoJSON(
+                features,
+                {
+
+                    renderer : L.svg(),
+
+                    interactive : true,
+
+                    smoothFactor : 2,
+
+
+                    // ------------------------------------------------
+                    // STYLE
+                    // ------------------------------------------------
+
+                    style :
+                        getCompartmentStyle,
+
+
+                    // ------------------------------------------------
+                    // FEATURE EVENTS
+                    // ------------------------------------------------
+
+                    onEachFeature :
+                        function (
+                            feature,
+                            layer
+                        ) {
+
+                            try {
+
+                                // ----------------------------------------
+                                // UNIVERSAL TOOLTIP
+                                // ----------------------------------------
+
+                                bindUniversalTooltip(
+                                    feature,
+                                    layer
+                                );
+
+
+                                // ----------------------------------------
+                                // PROPERTIES
+                                // ----------------------------------------
+
+                                const props =
+                                    feature.properties || {};
+
+
+                                const compartment =
+
+                                    props.compartment ||
+
+                                    props.compartmen ||
+
+                                    props.Compartment ||
+
+                                    "-";
+
+
+                                // ----------------------------------------
+                                // ORIGINAL STYLE
+                                // ----------------------------------------
+
+                                const originalStyle =
+                                    getCompartmentStyle(
+                                        feature
+                                    );
+
+
+                                // ----------------------------------------
+                                // HOVER
+                                // ----------------------------------------
+
+                                layer.on(
+                                    "mouseover",
+                                    function () {
+
+                                        layer.setStyle({
+
+                                            weight :
+                                                originalStyle.weight +
+                                                1.2,
+
+                                            fillOpacity :
+                                                originalStyle.fillOpacity +
+                                                0.02
+
+                                        });
+
+
+                                        layer.bringToFront();
+
+                                    }
+                                );
+
+
+                                layer.on(
+                                    "mouseout",
+                                    function () {
+
+                                        layer.setStyle(
+                                            originalStyle
+                                        );
+
+                                    }
+                                );
+
+
+                                // ----------------------------------------
+                                // 🚫 COMPARTMENT ANALYTICS CLICK
+                                // ----------------------------------------
+
+                                layer.on(
+                                    "click",
+                                    function (e) {
+
+                                        try {
+
+                                            L.DomEvent
+                                                .stopPropagation(
+                                                    e
+                                                );
+
+
+                                            console.debug(
+
+                                                "📦 Compartment analytics click disabled:",
+
+                                                compartment
+
+                                            );
+
+                                        }
+                                        catch (err) {
+
+                                            console.error(
+
+                                                "❌ COMPARTMENT POLYGON CLICK",
+
+                                                err
+
+                                            );
+
+                                        }
+
+                                    }
+                                );
+
+                            }
+                            catch (err) {
+
+                                console.error(
+                                    "❌ Compartment feature setup failed",
+                                    err
+                                );
+
+                            }
+
+                        }
+
+                }
+            )
+            .addTo(
+                window.map
+            );
+
+
+        // ============================================================
+        // 🔥 ACTIVE COMPARTMENT → TOPMOST
+        // ============================================================
+
+        window.compartmentLayer.eachLayer(
+            function (layer) {
+
+                try {
+
+                    const props =
+                        layer.feature?.properties ||
+                        {};
+
+
+                    const comp =
+                        String(
+
+                            props.compartment ||
+
+                            props.compartmen ||
+
+                            props.Compartment ||
+
+                            ""
+
+                        ).trim();
+
+
+                    // ------------------------------------------------
+                    // SHARP RENDER
+                    // ------------------------------------------------
+
+                    layer.setStyle({
+
+                        lineJoin :
+                            "round",
+
+                        lineCap :
+                            "round"
+
+                    });
+
+
+                    // ------------------------------------------------
+                    // ACTIVE COMPARTMENT
+                    // ------------------------------------------------
+
+                    if (
+
+                        window.gisFilter.compartment !==
+                            "ALL" &&
+
+                        comp ===
+                        window.gisFilter.compartment
+
+                    ) {
+
+                        layer.setStyle({
+
+                            color :
+                                "#d500f9",
+
+                            weight :
+                                5,
+
+                            opacity :
+                                1,
+
+                            fillColor :
+                                "#ff1744",
+
+                            fillOpacity :
+                                0.010,
+
+                            lineJoin :
+                                "round",
+
+                            lineCap :
+                                "round"
+
+                        });
+
+
+                        layer.bringToFront();
+
+
+                        requestAnimationFrame(
+                            function () {
+
+                                try {
+
+                                    layer.bringToFront();
+
+                                }
+                                catch (e) {}
+
+                            }
+                        );
+
+                    }
+
+                }
+                catch (e) {}
 
             }
         );
 
 
-    console.log(
-        "🟠 CCF COMPARTMENT AUTHORIZATION:",
-        authorizedDivisions,
-        "| FEATURES:",
-        allFeatures.length
-    );
+        // ============================================================
+        // 🔥 OFFENCE INTERACTION OWNERSHIP
+        // ============================================================
 
-}// ==================================================
-// ❌ EMPTY
-// ==================================================
+        if (
 
-if(allFeatures.length === 0){
+            window.__offenceMapInteractionActive ===
+                true &&
 
-console.warn("⚠ No compartment features");
+            typeof window
+                .setOffenceMapInteractionMode ===
+                "function"
 
-// ==============================================
-// 🔥 REMOVE OLD LAYER
-// ==============================================
+        ) {
 
-try {
+            window
+                .setOffenceMapInteractionMode(
+                    true
+                );
 
-if(window.compartmentLayer){
+        }
 
-window.map.removeLayer(window.compartmentLayer);
 
-window.compartmentLayer = null;
+        // ============================================================
+        // ✅ DONE
+        // ============================================================
 
-}
-
-} catch(e){}
-
-return;
-}
-
-// ==================================================
-// 👁 INIT HIDDEN STATES
-// ==================================================
-
-if(!window.hiddenRanges){
-
-window.hiddenRanges =
-  new Set();
-
-}
-
-if(!window.hiddenBeats){
-
-window.hiddenBeats =
-  new Set();
-
-}
-
-// ==================================================
-// 👁 FILTER HIDDEN
-// ==================================================
-
-const features =
-
-allFeatures.filter(f => {
-
-try {
-
-const props =
-  f.properties || {};
-
-const beat =
-
-  String(
-
-    props.beat ||
-
-    props.Beat ||
-
-    ""
-
-  ).trim();
-
-const range =
-
-  String(
-
-    props.range ||
-
-    props.Range ||
-
-    ""
-
-  ).trim();
-
-// ==============================================
-// 🙈 HIDDEN RANGE
-// ==============================================
-
-if(
-  window.hiddenRanges.has(range)
-){
-
-  return false;
-
-}
-
-// ==============================================
-// 🙈 HIDDEN BEAT
-// ==============================================
-
-if(
-  window.hiddenBeats.has(beat)
-){
-
-  return false;
-
-}
-
-return true;
-
-}
-
-catch(e){
-
-return true;
-
-}
-
-});
-
-// ==================================================
-// ❌ AFTER FILTER EMPTY
-// ==================================================
-
-if(features.length === 0){
-
-console.warn(
-  "⚠ All compartments hidden"
-);
-
-try {
-
-if(window.compartmentLayer){
-
-window.map.removeLayer(
-  window.compartmentLayer
-);
-
-window.compartmentLayer = null;
-
-}
-
-} catch(e){}
-
-return;
-}
-
-const isMobile = L.Browser.mobile;
-
-// ==================================================
-// 🎨 STYLE ENGINE
-// ==================================================
-
-function getCompartmentStyle(feature){
-
-const props = feature.properties || {};
-
-const beat =
-
-String(
-
-props.Beat ||
-
-props.beat ||
-
-""
-
-).trim();
-
-const compartment =
-
-String(
-
-props.compartment ||
-
-props.compartmen ||
-
-""
-
-).trim();
-
-// ==============================================
-// 🌍 DEFAULT COMPARTMENTS
-// ==============================================
-
-let color = "#ff9100";
-
-let weight = isMobile ? 2.4 : 3.2;
-
-let fillOpacity = 0.008;
-
-// ==============================================
-// 🟨 ACTIVE BEAT COMPARTMENTS
-// ==============================================
-
-if(
-
-window.gisFilter.beat !== "ALL"
-
-&&
-
-normalizeBeatName(beat)
-
-===
-
-normalizeBeatName(window.gisFilter.beat)
-
-){
-
-// ==========================================
-// 🔥 STRONG ORANGE
-// ==========================================
-
-color = "#ff5e00";
-
-weight = isMobile ? 4.2 : 5.1;
-
-fillOpacity = 0.022;
-
-}
-
-// ==============================================
-// 🟪 ACTIVE COMPARTMENT
-// ULTRA DISTINCT TACTICAL TARGET
-// ==============================================
-
-if(
-
-window.gisFilter.compartment !== "ALL"
-
-&&
-
-compartment === window.gisFilter.compartment
-
-){
-
-// ==========================================
-// 🔥 NEON VIOLET-WHITE
-// ==========================================
-
-color = "#d500f9";
-
-// ==========================================
-// 🔥 MAXIMUM VISUAL ISOLATION
-// ==========================================
-
-weight = isMobile ? 5.5 : 7;
-
-fillOpacity = 0.045;
-
-}
-
-return {
-
-color,
-weight,
-
-opacity : 1,
-
-fillColor : color,
-
-fillOpacity,
-
-lineJoin : "round",
-
-lineCap : "round"
-
-};
-
-}
-
-// ==================================================
-// 🔥 REMOVE OLD RANGE COMPARTMENTS
-// ==================================================
-
-try {
-
-if(window.compartmentLayer){
-
-window.map.removeLayer(window.compartmentLayer);
-
-window.compartmentLayer = null;
-
-}
-
-} catch(e){}
-
-// ==================================================
-// 🔥 CREATE NEW RANGE COMPARTMENT LAYER
-// ==================================================
-
-console.log("🛰 Rebuilding compartment layer");
-
-window.compartmentLayer =
-
-L.geoJSON(features,{
-
-renderer : L.svg(),
-
-interactive : true,
-
-smoothFactor : 2,
-
-style : getCompartmentStyle,
-
-onEachFeature(feature,layer){
-
-// ==================================================
-// 🛰 TOOLTIP INTEGRATION
-// ==================================================
-
-bindUniversalTooltip(
-feature,
-layer
-);
-
-// ==================================================
-// 🔥 ORIGINAL LOGIC
-// ==================================================
-
-const props = feature.properties || {};
-
-const compartment =
-
-props.compartment ||
-
-props.compartmen ||
-
-props.Compartment ||
-
-"-";
-
-// ==============================================
-// 🔥 ORIGINAL STYLE CACHE
-// ==============================================
-
-const originalStyle =
-
-getCompartmentStyle(feature);
-
-// ==============================================
-// 🔥 HOVER ONLY
-// ==============================================
-
-layer.on("mouseover",function(){
-
-layer.setStyle({
-
-weight : originalStyle.weight + 1.2,
-
-fillOpacity : originalStyle.fillOpacity + 0.02
-
-});
-
-layer.bringToFront();
-
-});
-
-layer.on("mouseout",function(){
-
-layer.setStyle(originalStyle);
-
-});
-
-// ==============================================
-// 🚫 COMPARTMENT ANALYTICS CLICK DISABLED
-//
-// IMPORTANT:
-//
-// Only the old analytics-panel opening action
-// has been disabled.
-//
-// The click is still captured here so that
-// clicking this GIS polygon does NOT bubble
-// into the general background map click.
-//
-// No call is made to:
-// showCompartmentAnalyticsPanel()
-// showBTRAnalyticsPanel()
-//
-// All other compartment behaviour remains.
-// ==============================================
-
-layer.on(
-
-"click",
-
-function(e){
-
-try{
-
-// ==========================================
-// STOP CLICK FROM REACHING BACKGROUND MAP
-// ==========================================
-
-L.DomEvent.stopPropagation(
-e
-);
-
-// ==========================================
-// DEBUG ONLY
-// ==========================================
-
-console.debug(
-
-"📦 Compartment analytics click disabled:",
-
-compartment
-
-);
-
-}
-
-catch(err){
-
-console.error(
-
-"❌ COMPARTMENT POLYGON CLICK",
-
-err
-
-);
-
-}
-
-}
-
-);
-
-}
-
-})
-
-.addTo(window.map);
-
-// ==================================================
-// 🔥 ACTIVE COMPARTMENT ABOVE ALL
-// TRUE FEATURE-LEVEL Z-ORDER
-// ==================================================
-
-window.compartmentLayer.eachLayer(layer => {
-
-try {
-
-const props = layer.feature?.properties || {};
-
-const comp =
-
-String(
-
-props.compartment ||
-
-props.compartmen ||
-
-""
-
-).trim();
-
-// ==============================================
-// 🔥 SHARP RENDER FIX
-// ==============================================
-
-layer.setStyle({
-
-lineJoin : "round",
-
-lineCap : "round"
-
-});
-
-// ==============================================
-// 🟥 ACTIVE COMPARTMENT
-// ==============================================
-
-if(
-
-window.gisFilter.compartment !== "ALL"
-
-&&
-
-comp === window.gisFilter.compartment
-
-){
-
-layer.setStyle({
-
-color : "#d500f9",
-
-weight : 5,
-
-opacity : 1,
-
-fillColor : "#ff1744",
-
-fillOpacity : 0.010,
-
-lineJoin : "round",
-
-lineCap : "round"
-
-});
-
-// ==========================================
-// 🔥 TRUE TOPMOST
-// ==========================================
-
-layer.bringToFront();
-
-requestAnimationFrame(() => {
-
-try {
-
-layer.bringToFront();
-
-} catch(e){}
-
-});
-
-}
-
-}
-
-catch(e){}
-
-});
-
-// ==================================================
-// 🔥 RE-APPLY OFFENCE INTERACTION OWNERSHIP
-//
-// renderFilteredCompartments() recreates the
-// compartment SVG paths.
-//
-// If offence mode is active, prevent those new
-// compartment paths from intercepting offence clicks.
-// ==================================================
-
-if (
-
-    window.__offenceMapInteractionActive ===
-        true &&
-
-    typeof window
-        .setOffenceMapInteractionMode ===
-        "function"
-
-) {
-
-    window
-        .setOffenceMapInteractionMode(
-            true
+        console.log(
+            "✅ Compartment layer rebuilt for Range:",
+            selectedRange,
+            "| FEATURES:",
+            features.length
         );
 
-}
+    }
+    catch (e) {
 
+        console.error(
+            "❌ renderFilteredCompartments",
+            e
+        );
 
-// ==================================================
-// ✅ DONE
-// ==================================================
+    }
 
-console.log(
-    "✅ Compartment layer rebuilt"
-);
-
-}
-
-catch(e){
-
-console.error(
-    "❌ renderFilteredCompartments",
-    e
-);
-
-}
-
-}
-// ======================================================
+}// ======================================================
 // 🟨 BEAT BUTTONS
 // ======================================================
 
