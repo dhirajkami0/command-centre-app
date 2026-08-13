@@ -26941,19 +26941,22 @@ function getLiveStaffForCurrentPolygon(){
   return staffList;
 
 }
-   async function showMonthlyLiveStaff(){
+async function showMonthlyLiveStaff(){
 
   try{
 
-   const staffList =
+    const staffList =
+      getLiveStaffForCurrentPolygon();
 
-  getLiveStaffForCurrentPolygon();
+
+    // ==================================================
+    // 🔽 SORT — MOST RECENT GPS FIRST
+    // ==================================================
 
     staffList.sort(
       (a,b) => {
 
         const ta =
-
           Number(
             a.updatedAt ||
             a.lastSeen ||
@@ -26961,7 +26964,6 @@ function getLiveStaffForCurrentPolygon(){
           );
 
         const tb =
-
           Number(
             b.updatedAt ||
             b.lastSeen ||
@@ -26972,6 +26974,7 @@ function getLiveStaffForCurrentPolygon(){
 
       }
     );
+
 
     let html =
 
@@ -26984,6 +26987,7 @@ function getLiveStaffForCurrentPolygon(){
           color:white;
         "
       >
+
         <h3
           style="
             margin:0 0 12px 0;
@@ -26995,39 +26999,198 @@ function getLiveStaffForCurrentPolygon(){
         </h3>
       `;
 
-    for(const staff of staffList){
 
-      let lastTime = "--";
+    // ==================================================
+    // 👮 EACH LIVE STAFF
+    // ==================================================
+
+    for(
+      const staff of staffList
+    ){
+
+      // ================================================
+      // 🕒 LAST GPS TIME
+      // ================================================
+
+      let lastTime =
+        "--";
+
 
       try{
 
         const ts =
-
           Number(
             staff.updatedAt ||
             staff.lastSeen ||
             0
           );
 
+
         if(ts){
 
           lastTime =
-
             new Date(ts)
-            .toLocaleTimeString(
-              "en-IN",
-              {
-                hour:"2-digit",
-                minute:"2-digit",
-                hour12:true
-              }
-            );
+              .toLocaleTimeString(
+                "en-IN",
+                {
+                  hour:"2-digit",
+                  minute:"2-digit",
+                  hour12:true
+                }
+              );
 
         }
 
       }
 
       catch(e){}
+
+
+      // ================================================
+      // 🟢 DUTY START DATE + TIME
+      // ================================================
+
+      let dutyStarted =
+        "Unknown";
+
+
+      let dutyStartMs =
+        0;
+
+
+      try{
+
+        if(
+          staff.sessionId
+        ){
+
+          dutyStartMs =
+            Number(
+
+              String(
+                staff.sessionId
+              )
+              .split("_")
+              .pop()
+
+            );
+
+
+          if(
+            !isNaN(
+              dutyStartMs
+            )
+          ){
+
+            dutyStarted =
+              new Date(
+                dutyStartMs
+              )
+              .toLocaleString(
+                "en-IN",
+                {
+                  day:"2-digit",
+                  month:"2-digit",
+                  year:"numeric",
+                  hour:"2-digit",
+                  minute:"2-digit",
+                  hour12:true
+                }
+              );
+
+          }
+
+        }
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Duty start parse failed",
+          e
+        );
+
+      }
+
+
+      // ================================================
+      // ⏳ DUTY DURATION
+      // ================================================
+
+      let dutyDuration =
+        "Unknown";
+
+
+      try{
+
+        if(
+          dutyStartMs &&
+          !isNaN(
+            dutyStartMs
+          )
+        ){
+
+          const diffMs =
+            Math.max(
+              0,
+              Date.now() -
+              dutyStartMs
+            );
+
+
+          const totalMin =
+            Math.floor(
+              diffMs /
+              60000
+            );
+
+
+          const hrs =
+            Math.floor(
+              totalMin /
+              60
+            );
+
+
+          const mins =
+            totalMin %
+            60;
+
+
+          if(
+            hrs > 0
+          ){
+
+            dutyDuration =
+              `${hrs} hr ${mins} min`;
+
+          }
+
+          else{
+
+            dutyDuration =
+              `${mins} min`;
+
+          }
+
+        }
+
+      }
+
+      catch(e){
+
+        console.warn(
+          "⚠ Duty duration failed",
+          e
+        );
+
+      }
+
+
+      // ==================================================
+      // 👤 STAFF CARD
+      // ==================================================
 
       html += `
 
@@ -27052,94 +27215,117 @@ function getLiveStaffForCurrentPolygon(){
             </b>
           </div>
 
+
           ${
             staff.division
-
             ?
-
             `
             <div>
               🏢 ${staff.division}
             </div>
             `
-
             :
-
             ""
           }
 
+
           ${
             staff.range
-
             ?
-
             `
             <div>
               🌿 ${staff.range}
             </div>
             `
-
             :
-
             ""
           }
 
+
           ${
             staff.beat
-
             ?
-
             `
             <div>
               📍 ${staff.beat}
             </div>
             `
-
             :
-
             ""
           }
 
+
           ${
             staff.compartment
-
             ?
-
             `
             <div>
               🎯 Assigned Area:
               ${staff.compartment}
             </div>
             `
-
             :
-
             ""
           }
 
+
           ${
             staff.dutyType
-
             ?
-
             `
             <div>
               🚨 Duty:
               ${staff.dutyType}
             </div>
             `
-
             :
-
             ""
           }
+
+
+          <!-- ====================================== -->
+          <!-- 🟢 DUTY STARTED -->
+          <!-- ====================================== -->
+
+          <div
+            style="
+              color:#7CFF9B;
+              font-weight:600;
+            "
+          >
+            🟢 Duty Started:
+            <b>
+              ${dutyStarted}
+            </b>
+          </div>
+
+
+          <!-- ====================================== -->
+          <!-- ⏳ DUTY DURATION -->
+          <!-- ====================================== -->
+
+          <div
+            style="
+              color:#FFD166;
+              font-weight:600;
+            "
+          >
+            ⏳ Duty Duration:
+            <b>
+              ${dutyDuration}
+            </b>
+          </div>
+
+
+          <!-- ====================================== -->
+          <!-- 📌 GPS -->
+          <!-- ====================================== -->
 
           <div>
 
             📌 GPS:
 
             <span
-
               onclick='
                 zoomToLiveStaff(
                   ${JSON.stringify(
@@ -27148,64 +27334,95 @@ function getLiveStaffForCurrentPolygon(){
                     "Staff"
                   )},
                   ${Number(
-                    staff.lat || 0
+                    staff.lat ||
+                    0
                   )},
                   ${Number(
-                    staff.lng || 0
+                    staff.lng ||
+                    0
                   )}
                 )
               '
-
-              style='
+              style="
                 cursor:pointer;
                 color:#7fdfff;
                 text-decoration:underline;
                 font-weight:700;
-              '
-
-              title='Zoom to location'
-
+              "
+              title="Zoom to location"
             >
 
               ${Number(
-                staff.lat || 0
+                staff.lat ||
+                0
               ).toFixed(6)},
+
               ${Number(
-                staff.lng || 0
+                staff.lng ||
+                0
               ).toFixed(6)}
 
             </span>
 
           </div>
 
+
+          <!-- ====================================== -->
+          <!-- 🕒 LAST GPS -->
+          <!-- ====================================== -->
+
           <div>
-            🕒 ${lastTime}
+
+            🕒 Last GPS Update:
+
+            <b>
+              ${lastTime}
+            </b>
+
           </div>
+
 
         </div>
 
       `;
+
     }
 
-    html += `</div>`;
+
+    html +=
+      `</div>`;
+
+
+    // ==================================================
+    // 🧹 REMOVE OLD MODAL
+    // ==================================================
 
     const old =
-
       document.getElementById(
         "liveDutyTeamModal"
       );
 
+
     if(old){
+
       old.remove();
+
     }
+
+
+    // ==================================================
+    // 🪟 CREATE MODAL
+    // ==================================================
 
     const modal =
       document.createElement(
         "div"
       );
 
+
     modal.id =
       "liveDutyTeamModal";
+
 
     modal.innerHTML = `
 
@@ -27259,6 +27476,7 @@ function getLiveStaffForCurrentPolygon(){
       </div>
 
     `;
+
 
     document.body.appendChild(
       modal
