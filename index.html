@@ -30148,16 +30148,17 @@ function createGISButton(
 // ======================================================
 
 async function loadRangeKML(){
-console.time(
-  "LOAD_RANGE_KML_TOTAL"
-);
+
+  console.time(
+    "LOAD_RANGE_KML_TOTAL"
+  );
+
   try {
 
     const profile =
       window.userProfile || {};
 
     const role =
-
       String(
         profile.role || ""
       )
@@ -30165,26 +30166,25 @@ console.time(
       .toUpperCase();
 
     const division =
-
       normalizeDivision(
-
         profile.division || ""
-
       );
 
     const range =
-
       String(
         profile.range || ""
       ).trim();
 
     let url = "";
 
+
     // ==================================================
     // 👑 ADMIN
     // ==================================================
 
-    if(role === "ADMIN"){
+    if(
+      role === "ADMIN"
+    ){
 
       window.gisFilter = {
 
@@ -30195,11 +30195,14 @@ console.time(
         beat:"ALL",
 
         compartment:"ALL"
+
       };
 
       url =
         "./geojson/master.geojson";
+
     }
+
 
     // ==================================================
     // 🟣 DFO / ADFO
@@ -30224,6 +30227,7 @@ console.time(
         beat:"ALL",
 
         compartment:"ALL"
+
       };
 
       url =
@@ -30231,10 +30235,12 @@ console.time(
         `./geojson/${
           division
         }/master.geojson`;
+
     }
 
+
     // ==================================================
-    // 👮 STAFF
+    // 👮 STAFF / TEAM LEADER
     // ==================================================
 
     else {
@@ -30248,6 +30254,7 @@ console.time(
         beat:"ALL",
 
         compartment:"ALL"
+
       };
 
       url =
@@ -30257,67 +30264,147 @@ console.time(
         }/${
           encodeURIComponent(range)
         }.geojson`;
+
     }
+
 
     console.log(
       "📥 GIS URL:",
       url
     );
 
+
     const res =
       await fetch(url);
 
-    if(!res.ok){
+
+    if(
+      !res.ok
+    ){
 
       throw new Error(
         "❌ GIS fetch failed"
       );
+
     }
+
 
     const data =
       await res.json();
 
+
     window.allGISFeatures =
       data.features || [];
+
+
+    // ==================================================
+    // 🔐 ADMIN GIS FILTER
+    // ONLY BTR_W AND BTR_E
+    //
+    // master.geojson may contain:
+    // JALDPARA
+    // GORUMARA
+    // OTHER DIVISIONS
+    //
+    // ADMIN MUST NOT SEE THEM.
+    // ==================================================
+
+    if(
+      role === "ADMIN"
+    ){
+
+      window.allGISFeatures =
+        window.allGISFeatures.filter(
+          feature => {
+
+            const featureDivision =
+
+              String(
+
+                feature.properties?.Division ||
+
+                feature.properties?.division ||
+
+                ""
+
+              )
+              .trim()
+              .toUpperCase();
+
+
+            return (
+
+              featureDivision ===
+              "BTR_W"
+
+              ||
+
+              featureDivision ===
+              "BTR_E"
+
+            );
+
+          }
+        );
+
+
+      console.log(
+        "🔐 ADMIN GIS FILTER:",
+        "BTR_W + BTR_E ONLY"
+      );
+
+      console.log(
+        "📊 ADMIN FEATURES:",
+        window.allGISFeatures.length
+      );
+
+    }
+
 
     // ==================================================
     // 🎨 RENDER GIS
     // ==================================================
-console.time(
-  "INITIAL_GIS_RENDER"
-);
 
-renderFilteredGIS();
+    console.time(
+      "INITIAL_GIS_RENDER"
+    );
 
-centerMap();
 
-console.timeEnd(
-  "INITIAL_GIS_RENDER"
-);
+    renderFilteredGIS();
 
-// ====================================
-// 🔥 BACKGROUND COMPARTMENT PRELOAD
-// ====================================
+    centerMap();
 
-preloadAllCompartments()
 
-.then(()=>{
+    console.timeEnd(
+      "INITIAL_GIS_RENDER"
+    );
 
-  console.log(
-    "✅ BACKGROUND COMPARTMENTS READY:",
-    window.allCompartmentFeatures?.length
-  );
 
-})
+    // ====================================
+    // 🔥 BACKGROUND COMPARTMENT PRELOAD
+    // ====================================
 
-.catch(err=>{
+    preloadAllCompartments()
 
-  console.error(
-    "❌ BACKGROUND PRELOAD FAILED",
-    err
-  );
+    .then(()=>{
 
-});
+      console.log(
+        "✅ BACKGROUND COMPARTMENTS READY:",
+        window.allCompartmentFeatures?.length
+      );
+
+    })
+
+    .catch(err=>{
+
+      console.error(
+        "❌ BACKGROUND PRELOAD FAILED",
+        err
+      );
+
+    });
+
+
     // ==================================================
     // 👮 STAFF LOAD COMPARTMENTS
     // ==================================================
@@ -30335,179 +30422,207 @@ preloadAllCompartments()
       await loadCompartmentsForRange();
 
       renderFilteredCompartments();
+
     }
+
 
     // ==================================================
     // 🔘 BUTTONS
     // ==================================================
 
+
     // ==========================================
-// 👑 ADMIN
-// ==========================================
+    // 👑 ADMIN
+    // ==========================================
 
-if(
+    if(
 
-  role === "ADMIN"
+      role === "ADMIN"
 
-){
+    ){
 
-  // ======================================
-  // 👁 DIVISION BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 DIVISION BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "flex";
 
-  await populateDivisionButtons();
 
-  // ======================================
-  // ❌ LOWER HIDE
-  // ======================================
+      await populateDivisionButtons();
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "none";
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "none";
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
-}
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "none";
 
-// ==========================================
-// 🟣 DFO / ADFO
-// ==========================================
 
-else if(
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
 
-  role === "DFO"
 
-  ||
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
 
-  role === "ADFO"
+    }
 
-){
 
-  // ======================================
-  // 👁 DIVISION BUTTON
-  // ======================================
+    // ==========================================
+    // 🟣 DFO / ADFO
+    // ==========================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "flex";
+    else if(
 
-  await populateDivisionButtons();
+      role === "DFO"
 
-  // ======================================
-  // 👁 RANGE BUTTONS
-  // ======================================
+      ||
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "flex";
+      role === "ADFO"
 
-  await populateRangeButtons();
+    ){
 
-  // ======================================
-  // ❌ LOWER HIDE
-  // ======================================
+      // ======================================
+      // 👁 DIVISION BUTTON
+      // ======================================
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "flex";
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
-}
 
-// ==========================================
-// 👮 STAFF / TEAM LEADER
-// ==========================================
+      await populateDivisionButtons();
 
-else if(
 
-  role === "STAFF"
+      // ======================================
+      // 👁 RANGE BUTTONS
+      // ======================================
 
-  ||
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
 
-  role === "TEAM LEADER"
 
-){
+      await populateRangeButtons();
 
-  // ======================================
-  // ❌ HIDE DIVISION BUTTONS
-  // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "none";
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
 
-  // ======================================
-  // 👁 RANGE BUTTON
-  // ======================================
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "flex";
 
-  // ======================================
-  // 👁 BEAT BUTTONS
-  // ======================================
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "flex";
+    }
 
-  // ======================================
-  // ❌ HIDE COMP BUTTONS INITIALLY
-  // ======================================
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
+    // ==========================================
+    // 👮 STAFF / TEAM LEADER
+    // ==========================================
 
-  // ======================================
-  // 🔘 RANGE BUTTON
-  // ======================================
+    else if(
 
-  await populateRangeButtons();
+      role === "STAFF"
 
-  // ======================================
-  // 🔘 BEAT BUTTONS
-  // ======================================
+      ||
 
-  await populateBeatButtons();
-}
+      role === "TEAM LEADER"
+
+    ){
+
+      // ======================================
+      // ❌ HIDE DIVISION BUTTONS
+      // ======================================
+
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "none";
+
+
+      // ======================================
+      // 👁 RANGE BUTTON
+      // ======================================
+
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
+
+
+      // ======================================
+      // 👁 BEAT BUTTONS
+      // ======================================
+
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "flex";
+
+
+      // ======================================
+      // ❌ HIDE COMP BUTTONS INITIALLY
+      // ======================================
+
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
+
+
+      // ======================================
+      // 🔘 RANGE BUTTON
+      // ======================================
+
+      await populateRangeButtons();
+
+
+      // ======================================
+      // 🔘 BEAT BUTTONS
+      // ======================================
+
+      await populateBeatButtons();
+
+    }
+
+
     console.log(
       "✅ GIS READY"
     );
 
-  } catch(e){
+
+  }
+
+  catch(e){
 
     console.error(
       "❌ loadRangeKML Error:",
       e
     );
-  }
-}
 
+  }
+
+}
 // =====================================================
 // 🌍 LOAD BTR ANALYTICS
 // =====================================================
