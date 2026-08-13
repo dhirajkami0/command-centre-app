@@ -8488,10 +8488,59 @@ function loadProfile(){
 
   console.log("🔁 loadProfile() called");
 
+
+  // ============================================================
+  // 🟠 CCF RUNTIME JURISDICTION
+  // ------------------------------------------------------------
+  // If profile already exists, do NOT reload it.
+  // But make sure CCF gets its runtime division list.
+  // ============================================================
+
   if(window.userProfile){
+
+    const existingRole =
+
+      String(
+        window.userProfile.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    if(existingRole === "CCF"){
+
+      window.userProfile.divisions =
+
+        getDivisionsForCircle(
+          window.userProfile.circle
+        );
+
+      console.log(
+        "🟠 EXISTING CCF PROFILE → DIVISIONS RESTORED:",
+        {
+          circle:
+            window.userProfile.circle,
+
+          divisions:
+            window.userProfile.divisions
+        }
+      );
+
+    }
+
 
     console.log(
       "✅ Already logged in → skip loadProfile"
+    );
+
+    return;
+  }
+
+
+  if(authFlowRunning){
+
+    console.warn(
+      "⛔ Skipping loadProfile (auth running)"
     );
 
     return;
