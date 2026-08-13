@@ -7246,6 +7246,57 @@ const DEBUG = false;
 // 🔐 SAFE BACKEND
 // PHONE-ONLY LOGIN / PROFILE LOOKUP
 // ============================================================
+// ============================================================
+// 🔥 SAFE BACKEND
+// PHONE-ONLY LOGIN / PROFILE AUTHENTICATION
+//
+// FLOW:
+//
+// login()
+//   ↓
+// safeBackend("GET_PROFILE", { phone })
+//   ↓
+// handleGetProfile()
+//   ↓
+// findProfileWithRetry("staff_profiles", phone)
+//   ↓
+// ACTIVE PROFILE
+//
+// IMPORTANT:
+// • NO deviceId
+// • NO Google Sheet lookup
+// • NO villager_profiles fallback
+// • NO old findProfile()
+// • Network failure → null
+// • Explicit authorization failure → error object
+// ============================================================
+
+// ============================================================
+// 🔥 SAFE BACKEND
+// PHONE-ONLY AUTHENTICATION
+//
+// CURRENT DESIGN:
+//
+// login()
+//     ↓
+// safeBackend("GET_PROFILE", { phone })
+//     ↓
+// handleGetProfile()
+//     ↓
+// findProfileWithRetry("staff_profiles", phone)
+//     ↓
+// ACTIVE PROFILE
+//
+// IMPORTANT:
+// • PHONE ONLY
+// • NO deviceId
+// • NO Google Sheet
+// • NO villager_profiles fallback
+// • NO old findProfile()
+// • Network failure → null
+// • Explicit denial → error object
+// ============================================================
+
 async function safeBackend(
   action,
   payload = {}
@@ -7254,7 +7305,7 @@ async function safeBackend(
   try{
 
     // ==========================================================
-    // 🔥 ONLY SUPPORTED BACKEND ACTION
+    // 🔐 ONLY LOGIN PROFILE LOOKUP
     // ==========================================================
 
     if(
@@ -7267,13 +7318,13 @@ async function safeBackend(
       ){
 
         console.warn(
-          `⚠ Unsupported backend action: ${action}`
+          "⚠ Unsupported backend action:",
+          action
         );
 
       }
 
       return null;
-
     }
 
 
@@ -7284,11 +7335,8 @@ async function safeBackend(
     let waitCount = 0;
 
     while(
-
       !window.firebaseReady &&
-
       waitCount < 50
-
     ){
 
       await new Promise(
@@ -7313,16 +7361,15 @@ async function safeBackend(
     ){
 
       console.warn(
-        "❌ Firebase not ready after waiting"
+        "❌ Firebase not ready"
       );
 
       return null;
-
     }
 
 
     // ==========================================================
-    // 🔥 PHONE
+    // 📱 PHONE
     // ==========================================================
 
     const phone =
@@ -7330,12 +7377,10 @@ async function safeBackend(
       String(
         payload?.phone || ""
       )
-
       .replace(
         /\D/g,
         ""
       )
-
       .trim();
 
 
@@ -7347,51 +7392,45 @@ async function safeBackend(
       phone.length < 10
     ){
 
-      console.warn(
-        "❌ Invalid phone supplied to safeBackend"
-      );
-
       return {
-        status:"error",
-        code:"INVALID_PHONE",
-        error:"INVALID_PHONE"
+
+        status:
+          "error",
+
+        code:
+          "INVALID_PHONE",
+
+        error:
+          "INVALID_PHONE"
+
       };
 
     }
 
 
     // ==========================================================
-    // 🔎 DEBUG
+    // 🔐 AUTHORITATIVE PROFILE HANDLER
     // ==========================================================
 
     if(
-      typeof DEBUG !== "undefined" &&
-      DEBUG
+      typeof handleGetProfile !==
+      "function"
     ){
 
-      console.log(
-        "📱 Firestore profile lookup:",
-        phone
+      console.error(
+        "❌ handleGetProfile() not available"
       );
 
+      return null;
     }
 
 
-    // ==========================================================
-    // 🔥 AUTHORITATIVE PROFILE LOOKUP
-    //
-    // handleGetProfile()
-    //        ↓
-    // findProfileWithRetry()
-    //        ↓
-    // staff_profiles
-    // ==========================================================
-
-    const result =
+    const profile =
 
       await handleGetProfile({
 
-        phone: phone
+        phone:
+          phone
 
       });
 
@@ -7400,120 +7439,40 @@ async function safeBackend(
     // 📴 NETWORK / FIRESTORE FAILURE
     //
     // IMPORTANT:
-    // null does NOT mean unauthorized.
-    //
-    // It means:
-    // Firebase unavailable / network problem /
-    // Firestore request failed after retries.
+    // null is NOT "not authorized".
+    // It means the backend could not be reached.
     // ==========================================================
 
     if(
-      result === null
+      profile === null
     ){
 
       console.warn(
-        "📴 GET_PROFILE unavailable → preserving offline path"
+        "📴 Profile lookup unavailable:",
+        phone
       );
 
       return null;
-
     }
 
 
     // ==========================================================
-    // ⛔ EXPLICIT AUTHORIZATION FAILURE
-    //
-    // These are real server responses.
+    // 🔥 RETURN AUTHORITATIVE RESULT
     // ==========================================================
 
-    if(
-      result.status === "error"
-    ){
-
-      if(
-        result.code === "ACCESS_BLOCKED" ||
-        result.code === "PROFILE_NOT_FOUND" ||
-        result.code === "NOT_AUTHORIZED" ||
-        result.error === "ACCESS_BLOCKED" ||
-        result.error === "PROFILE_NOT_FOUND" ||
-        result.error === "NOT_AUTHORIZED"
-      ){
-
-        console.warn(
-          "⛔ Explicit profile authorization response:",
-          result.code ||
-          result.error
-        );
-
-        return result;
-
-      }
-
-
-      // ========================================================
-      // OTHER BACKEND ERROR
-      // ========================================================
-
-      console.warn(
-        "⚠ GET_PROFILE backend error:",
-        result
-      );
-
-      return result;
-
-    }
-
-
-    // ==========================================================
-    // ✅ ACTIVE PROFILE
-    // ==========================================================
-
-    if(
-      result.status === "ok"
-    ){
-
-      if(
-        typeof DEBUG !== "undefined" &&
-        DEBUG
-      ){
-
-        console.log(
-          "✅ ACTIVE PROFILE RECEIVED:",
-          result.cleanName ||
-          result.name ||
-          phone
-        );
-
-      }
-
-      return result;
-
-    }
-
-
-    // ==========================================================
-    // ⚠ UNKNOWN RESPONSE
-    // ==========================================================
-
-    console.warn(
-      "⚠ Unknown GET_PROFILE response:",
-      result
-    );
-
-    return result;
+    return profile;
 
   }
 
   catch(err){
 
     // ==========================================================
-    // 📴 NETWORK / FIRESTORE / RUNTIME FAILURE
-    //
-    // NEVER convert this into NOT_AUTHORIZED.
+    // 🛡 NEVER CONVERT NETWORK ERROR
+    // INTO "NOT AUTHORIZED"
     // ==========================================================
 
     console.error(
-      "❌ safeBackend GET_PROFILE exception:",
+      "❌ safeBackend failed:",
       err
     );
 
@@ -7525,265 +7484,6 @@ async function safeBackend(
 // 🔥 FIND PROFILE (STAFF → VILLAGER)
 // ============================================================
 
-async function findProfile(
-    collectionName
-){
-
-    const q =
-
-        window.fb.query(
-
-            window.fb.collection(
-                window.db,
-                collectionName
-            ),
-
-            window.fb.where(
-                "phone",
-                "==",
-                phone
-            )
-
-        );
-
-    return await window.fb.getDocs(q);
-
-}
-
-let loginType =
-    "STAFF";
-
-let snap =
-
-    await findProfile(
-        "staff_profiles"
-    );
-
-// ============================================================
-// NOT STAFF → TRY VILLAGER
-// ============================================================
-
-if(
-
-    snap.empty
-
-){
-
-    console.log(
-        "🔍 Not found in staff_profiles. Checking villager_profiles..."
-    );
-
-    snap =
-
-        await findProfile(
-            "villager_profiles"
-        );
-
-    loginType =
-        "VILLAGER";
-
-}
-
-    // ============================================================
-    // ❌ USER NOT FOUND
-    // ============================================================
-if(snap.empty){
-
-  console.warn(
-    "⛔ PROFILE NOT FOUND:",
-    phone
-  );
-
-  return {
-
-    error: true,
-
-    status: "error",
-
-    code: "PROFILE_NOT_FOUND",
-
-    accessStatus: "MISSING"
-  };
-}
-
-// ============================================================
-// 🔥 PROFILE
-// ============================================================
-
-// ============================================================
-// 🔥 PROFILE
-// ============================================================
-
-const profileDoc =
-    snap.docs[0];
-
-const data =
-    profileDoc.data() || {};
-
-// ============================================================
-// LOGIN TYPE
-// ============================================================
-
-console.log(
-    "✅ Login Type:",
-    loginType
-);
-
-console.log(
-    "📄 Collection:",
-    loginType === "STAFF"
-        ? "staff_profiles"
-        : "villager_profiles"
-);
-
-console.log(
-    "👤 Profile:",
-    data
-);
-
-
-// ============================================================
-// 🔐 ACCESS STATUS
-// ------------------------------------------------------------
-// staff_profiles is the authority.
-//
-// ACTIVE  → allow
-// BLOCKED → deny
-// Missing/blank/other value → deny
-// ============================================================
-
-const accessStatus =
-  String(
-    data.accessStatus || ""
-  )
-  .trim()
-  .toUpperCase();
-
-
-// ============================================================
-// 🔍 AUTH DIAGNOSTIC
-// ============================================================
-
-console.log(
-    "🔐 AUTH:",
-    {
-        loginType,
-        documentId:
-            profileDoc.id,
-        phone,
-        name:
-            data.name || "",
-        accessStatus
-    }
-);
-
-
-// ============================================================
-// ⛔ ACCESS NOT ACTIVE
-// ============================================================
-
-if(
-  accessStatus !== "ACTIVE"
-){
-
-  console.warn(
-    "⛔ STAFF ACCESS DENIED:",
-    profileDoc.id,
-    accessStatus || "STATUS_MISSING"
-  );
-
-  return {
-
-    error: true,
-
-    status: "error",
-
-    code:
-      accessStatus === "BLOCKED"
-        ? "ACCESS_BLOCKED"
-        : "ACCESS_NOT_ACTIVE",
-
-    accessStatus:
-      accessStatus || "MISSING"
-  };
-}
-
-
-// ============================================================
-// ✅ ACCESS ACTIVE
-// ============================================================
-
-if(DEBUG){
-
-  console.log(
-    "✅ Firestore profile authorized:",
-    data
-  );
-}
-
-
-// ============================================================
-// 🔥 RETURN SAME PROFILE STRUCTURE
-// IMPORTANT:
-// Existing app flow remains unchanged.
-// ============================================================
-
-return {
-
-  status:
-    "ok",
-
-  name:
-    data.name || "",
-
-  cleanName:
-    data.cleanName ||
-
-    cleanName(
-      data.name
-    ),
-
- role:
-
-    data.role ||
-
-    loginType,
-
-  beat:
-    data.beat || "",
-
-  phone:
-    data.phone || phone,
-
-  accessStatus:
-    accessStatus,
-
-  // ============================================================
-  // 🌍 GIS HIERARCHY
-  // ============================================================
-
-  circle:
-    data.circle || "",
-
-  division:
-    data.division || "",
-
-  range:
-    data.range || ""
-};
-
-  }
-
-  catch(err){
-
-    console.error(
-      `❌ ${action} failed:`,
-      err
-    );
-
-    return null;
-  }
-}  
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
