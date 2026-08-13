@@ -76298,31 +76298,20 @@ loadPatrolTracks();
         }
       }, 400);
     } 
-    // ============================================================
-// 🔐 FIRESTORE PROFILE LOOKUP
+// ============================================================
+// 🔥 FIRESTORE PROFILE LOOKUP
 // PHONE-ONLY AUTHENTICATION
 //
-// Flow:
-//
-// login()
-//   ↓
-// safeBackend("GET_PROFILE", { phone })
-//   ↓
-// handleGetProfile()
-//   ↓
-// findProfileWithRetry()
-//   ↓
-// Firestore: staff_profiles
-//
-// Returns:
-//   ACTIVE profile       → { status:"ok", ...profile }
-//   Existing but blocked → { status:"error", code:"ACCESS_BLOCKED" }
-//   Phone not found      → { status:"error", code:"PROFILE_NOT_FOUND" }
-//   Network/Firestore    → null
-//
-// IMPORTANT:
-// No device ID is used.
-// No Google Sheet is used.
+// CURRENT DESIGN:
+// • Phone number only
+// • No deviceId
+// • staff_profiles is authoritative
+// • ACTIVE profile → allow
+// • Existing profile but not ACTIVE → ACCESS_BLOCKED
+// • Phone missing → PROFILE_NOT_FOUND
+// • Network / Firestore timeout → null
+// • Maximum 3 attempts
+// • Each Firestore attempt has its own timeout
 // ============================================================
 
 async function findProfileWithRetry(
@@ -76330,18 +76319,11 @@ async function findProfileWithRetry(
   targetPhone
 ){
 
-  // ==========================================================
-  // 📱 NORMALIZE PHONE
-  // ==========================================================
-
   const phone =
     String(
       targetPhone || ""
     )
-    .replace(
-      /\D/g,
-      ""
-    )
+    .replace(/\D/g, "")
     .trim();
 
 
@@ -76353,26 +76335,16 @@ async function findProfileWithRetry(
     phone.length < 10
   ){
 
-    console.warn(
-      "⚠ Invalid phone for profile lookup:",
-      targetPhone
-    );
-
     return {
-
       status:"error",
-
-      code:"INVALID_PHONE",
-
-      error:"INVALID_PHONE"
-
+      code:"INVALID_PHONE"
     };
 
   }
 
 
   // ==========================================================
-  // ❌ FIREBASE OBJECTS NOT READY
+  // 🔥 FIREBASE AVAILABILITY
   // ==========================================================
 
   if(
@@ -76381,7 +76353,7 @@ async function findProfileWithRetry(
   ){
 
     console.warn(
-      "⚠ Firebase objects unavailable"
+      "⚠ Firestore unavailable"
     );
 
     return null;
@@ -76390,11 +76362,7 @@ async function findProfileWithRetry(
 
 
   // ==========================================================
-  // 🔎 FIRESTORE QUERY
-  //
-  // IMPORTANT:
-  // This assumes staff_profiles.phone is stored
-  // in the same normalized digits-only format.
+  // 🔥 BUILD QUERY
   // ==========================================================
 
   let q;
@@ -76418,11 +76386,10 @@ async function findProfileWithRetry(
       );
 
   }
-
   catch(err){
 
     console.error(
-      "❌ Failed to create profile query:",
+      "❌ Firestore query construction failed:",
       err
     );
 
@@ -76431,16 +76398,12 @@ async function findProfileWithRetry(
   }
 
 
-  // ==========================================================
-  // 🔁 RETRY CONFIGURATION
-  //
-  // Attempt 1 → immediate
-  // Attempt 2 → 800 ms
-  // Attempt 3 → 1600 ms
-  // ==========================================================
-
   let lastError = null;
 
+
+  // ==========================================================
+  // 🔁 THREE AUTHORIZATION LOOKUP ATTEMPTS
+  // ==========================================================
 
   for(
     let attempt = 1;
@@ -76450,35 +76413,152 @@ async function findProfileWithRetry(
 
     try{
 
-      // ========================================================
-      // 🔥 FIRESTORE READ
-      // ========================================================
+      console.log(
+        `🔐 PROFILE LOOKUP ${attempt}/3:`,
+        phone
+      );
+
+
+      // ======================================================
+      // ⏱ FIRESTORE REQUEST TIMEOUT
+      // ------------------------------------------------------
+      // IMPORTANT:
+      // getDocs() previously had no timeout.
+      // A hanging request could therefore block the
+      // entire retry chain indefinitely.
+      // ======================================================
+
+      const FIRESTORE_TIMEOUT =
+        8000;
+
+
+      const timeoutPromise =
+        new Promise(
+          resolve => {
+
+            setTimeout(
+              () => {
+
+                resolve({
+                  __firestoreTimeout:true
+                });
+
+              },
+              FIRESTORE_TIMEOUT
+            );
+
+          }
+        );
+
+
+      const firestorePromise =
+        window.fb.getDocs(q);
+
+
+      const result =
+        await Promise.race([
+          firestorePromise,
+          timeoutPromise
+        ]);
+
+
+      // ======================================================
+      // ⏱ REQUEST TIMED OUT
+      // ======================================================
+
+      if(
+        result &&
+        result.__firestoreTimeout
+      ){
+
+        lastError =
+          new Error(
+            `Firestore timeout after ${FIRESTORE_TIMEOUT}ms`
+          );
+
+        console.warn(
+          `⚠ PROFILE LOOKUP TIMEOUT ${attempt}/3:`,
+          phone
+        );
+
+        if(
+          attempt < 3
+        ){
+
+          await new Promise(
+            resolve =>
+              setTimeout(
+                resolve,
+                800 * attempt
+              )
+          );
+
+        }
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // 🔥 FIRESTORE RESPONSE RECEIVED
+      // ======================================================
 
       const snap =
-        await window.fb.getDocs(
-          q
-        );
+        result;
 
 
       console.log(
         `🔐 PROFILE LOOKUP ${attempt}/3:`,
         phone,
         "docs:",
-        snap.size
+        snap?.size
       );
 
 
-      // ========================================================
-      // 🔎 SEARCH ALL MATCHING DOCUMENTS
-      //
-      // Never blindly use:
-      // snap.docs[0]
-      //
-      // because duplicate phone records may exist.
-      // ========================================================
+      // ======================================================
+      // ❌ INVALID SNAPSHOT
+      // ======================================================
 
-      let activeProfile = null;
+      if(
+        !snap ||
+        !Array.isArray(snap.docs)
+      ){
 
+        console.warn(
+          "⚠ Invalid Firestore snapshot"
+        );
+
+        lastError =
+          new Error(
+            "Invalid Firestore snapshot"
+          );
+
+        if(
+          attempt < 3
+        ){
+
+          await new Promise(
+            resolve =>
+              setTimeout(
+                resolve,
+                800 * attempt
+              )
+          );
+
+        }
+
+        continue;
+
+      }
+
+
+      // ======================================================
+      // 🔎 SEARCH ALL MATCHING PROFILES
+      // ------------------------------------------------------
+      // Important for 1,000+ staff and possible duplicates.
+      // Do NOT blindly use snap.docs[0].
+      // ======================================================
 
       for(
         const docSnap of snap.docs
@@ -76488,39 +76568,32 @@ async function findProfileWithRetry(
           docSnap.data() || {};
 
 
-        // ======================================================
-        // 🔐 CHECK AUTHORIZATION STATUS
-        //
-        // Supports either:
-        // accessStatus: "ACTIVE"
-        //
-        // OR:
-        // status: "ACTIVE"
-        // ======================================================
-
-        const status =
+        const accessStatus =
           String(
-
             candidate.accessStatus ||
-
             candidate.status ||
-
             ""
-
           )
           .trim()
           .toUpperCase();
 
 
-        // ======================================================
-        // ✅ ACTIVE PROFILE FOUND
-        // ======================================================
+        // ====================================================
+        // ✅ ACTIVE PROFILE
+        // ====================================================
 
         if(
-          status === "ACTIVE"
+          accessStatus === "ACTIVE"
         ){
 
-          activeProfile = {
+          console.log(
+            "✅ ACTIVE PROFILE FOUND:",
+            phone,
+            docSnap.id
+          );
+
+
+          return {
 
             status:"ok",
 
@@ -76531,44 +76604,21 @@ async function findProfileWithRetry(
 
           };
 
-
-          break;
-
         }
 
       }
 
 
-      // ========================================================
-      // ✅ RETURN ACTIVE PROFILE
-      // ========================================================
-
-      if(
-        activeProfile
-      ){
-
-        console.log(
-          "✅ ACTIVE PROFILE FOUND:",
-          phone,
-          activeProfile.id
-        );
-
-        return activeProfile;
-
-      }
-
-
-      // ========================================================
-      // ⛔ MATCHING PHONE EXISTS
-      // BUT NO ACTIVE PROFILE
-      // ========================================================
+      // ======================================================
+      // ⛔ MATCHING PHONE BUT NO ACTIVE PROFILE
+      // ======================================================
 
       if(
         !snap.empty
       ){
 
         console.warn(
-          "⛔ PROFILE FOUND BUT NONE ACTIVE:",
+          "⛔ PROFILE FOUND BUT NOT ACTIVE:",
           phone
         );
 
@@ -76586,12 +76636,12 @@ async function findProfileWithRetry(
       }
 
 
-      // ========================================================
-      // ❌ PHONE DOES NOT EXIST
-      // ========================================================
+      // ======================================================
+      // ❌ PHONE NOT FOUND
+      // ======================================================
 
       console.warn(
-        "⚠ PHONE NOT FOUND:",
+        "⛔ PHONE NOT FOUND:",
         phone
       );
 
@@ -76607,55 +76657,31 @@ async function findProfileWithRetry(
       };
 
     }
-
     catch(err){
-
-      // ========================================================
-      // ⚠ FIRESTORE / NETWORK FAILURE
-      //
-      // IMPORTANT:
-      // Do NOT return PROFILE_NOT_FOUND here.
-      //
-      // A network failure is NOT an authorization failure.
-      // ========================================================
 
       lastError =
         err;
 
 
       console.warn(
-
         `⚠ PROFILE LOOKUP FAILED ${attempt}/3:`,
-
         err
-
       );
 
 
-      // ========================================================
-      // 🔁 RETRY
-      // ========================================================
+      // ======================================================
+      // 🔁 RETRY BACKOFF
+      // ======================================================
 
       if(
         attempt < 3
       ){
 
-        const retryDelay =
-          800 * attempt;
-
-
-        console.log(
-
-          `⏳ Retrying profile lookup in ${retryDelay} ms...`
-
-        );
-
-
         await new Promise(
           resolve =>
             setTimeout(
               resolve,
-              retryDelay
+              800 * attempt
             )
         );
 
@@ -76667,31 +76693,26 @@ async function findProfileWithRetry(
 
 
   // ==========================================================
-  // 📴 ALL 3 ATTEMPTS FAILED
+  // 📴 ALL ATTEMPTS FAILED
+  // ----------------------------------------------------------
+  // IMPORTANT:
+  // This is NOT authorization revocation.
   //
-  // null = NETWORK / FIRESTORE FAILURE
+  // safeBackend() will receive null.
   //
-  // This is deliberately different from:
-  //
-  // PROFILE_NOT_FOUND
-  // ACCESS_BLOCKED
-  //
-  // Therefore login/offline fallback is protected.
+  // Login/background refresh can then preserve cached
+  // authentication where appropriate.
   // ==========================================================
 
   console.error(
-
     "❌ PROFILE LOOKUP FAILED AFTER 3 ATTEMPTS:",
-
     lastError
-
   );
 
 
   return null;
 
-}
-// ============================================================
+}// ============================================================
 // 🔐 GET PROFILE
 // PHONE-ONLY AUTHENTICATION
 // Firestore → staff_profiles → ACTIVE PROFILE
