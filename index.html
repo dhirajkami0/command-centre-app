@@ -8514,25 +8514,25 @@ if(window.userProfile){
     .toUpperCase();
 
 
-  if(existingRole === "CCF"){
+if(existingRole === "CCF"){
 
-    ccfAuthorizedDivisions =
+  ccfAuthorizedDivisions =
 
-      getDivisionsForCircle(
-        window.userProfile.circle
-      )
+    getDivisionsForCircle(
+      window.userProfile.circle
+    )
 
-      .map(function(division){
+    .map(function(division){
 
-        return normalizeStaffScopeValue(
-          division
-        );
+      return normalizeDivision(
+        division
+      );
 
-      })
+    })
 
-      .filter(Boolean);
+    .filter(Boolean);
 
-  }
+}
 
 
   return;
@@ -9411,7 +9411,7 @@ if(
 
     .map(function(division){
 
-      return normalizeStaffScopeValue(
+      return normalizeDivision(
         division
       );
 
@@ -61762,27 +61762,19 @@ const myRange =
 
 const ccfAuthorizedDivisions =
 
-    Array.isArray(
-        window.userProfile?.divisions
+    getDivisionsForCircle(
+        window.userProfile?.circle
     )
 
-    ?
+    .map(function(division){
 
-    window.userProfile.divisions
+        return normalizeDivision(
+            division
+        );
 
-        .map(function(division){
+    })
 
-            return normalizeStaffScopeValue(
-                division
-            );
-
-        })
-
-        .filter(Boolean)
-
-    :
-
-    [];
+    .filter(Boolean);
 // ==============================================
 // 👮 TARGET NAME
 // ==============================================
