@@ -8464,6 +8464,13 @@ const CIRCLE_DIVISION_MAP = {
 
 
 // ============================================================
+// 🟠 CURRENT CCF AUTHORIZED DIVISIONS
+// ============================================================
+
+let ccfAuthorizedDivisions = [];
+
+
+// ============================================================
 // 🟠 GET DIVISIONS FOR CIRCLE
 // ============================================================
 
@@ -8496,45 +8503,40 @@ function loadProfile(){
   // But make sure CCF gets its runtime division list.
   // ============================================================
 
-  if(window.userProfile){
+if(window.userProfile){
 
-    const existingRole =
+  const existingRole =
 
-      String(
-        window.userProfile.role || ""
+    String(
+      window.userProfile.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+
+  if(existingRole === "CCF"){
+
+    ccfAuthorizedDivisions =
+
+      getDivisionsForCircle(
+        window.userProfile.circle
       )
-      .trim()
-      .toUpperCase();
 
+      .map(function(division){
 
-    if(existingRole === "CCF"){
-
-      window.userProfile.divisions =
-
-        getDivisionsForCircle(
-          window.userProfile.circle
+        return normalizeStaffScopeValue(
+          division
         );
 
-      console.log(
-        "🟠 EXISTING CCF PROFILE → DIVISIONS RESTORED:",
-        {
-          circle:
-            window.userProfile.circle,
+      })
 
-          divisions:
-            window.userProfile.divisions
-        }
-      );
+      .filter(Boolean);
 
-    }
-
-
-    console.log(
-      "✅ Already logged in → skip loadProfile"
-    );
-
-    return;
   }
+
+
+  return;
+}
 
 
   if(authFlowRunning){
@@ -9397,27 +9399,27 @@ function login(){
       // Existing other roles are untouched.
       // ========================================================
 
-      if(
-        finalProfile.role === "CCF"
-      ){
+if(
+  finalProfile.role === "CCF"
+){
 
-        finalProfile.divisions =
-          getDivisionsForCircle(
-            finalProfile.circle
-          );
+  ccfAuthorizedDivisions =
 
-        console.log(
-          "🟠 CCF LOGIN AUTHORIZATION:",
-          {
-            circle:
-              finalProfile.circle,
+    getDivisionsForCircle(
+      finalProfile.circle
+    )
 
-            divisions:
-              finalProfile.divisions
-          }
-        );
+    .map(function(division){
 
-      }
+      return normalizeStaffScopeValue(
+        division
+      );
+
+    })
+
+    .filter(Boolean);
+
+}
 
 
       // ========================================================
