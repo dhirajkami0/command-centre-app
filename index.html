@@ -72964,6 +72964,949 @@ async function submitToServer(
     }
 
 }
+// ============================================================
+// 🔥 LOAD PROFILE
+// PHONE-ONLY LOGIN / BOOT / OFFLINE FALLBACK
+//
+// CURRENT GREENguard DESIGN
+//
+// • Phone number only
+// • No deviceId
+// • No Google Sheet lookup
+// • Firestore staff_profiles through safeBackend()
+// • ACTIVE → allow
+// • ACCESS_BLOCKED → revoke
+// • PROFILE_NOT_FOUND → revoke
+// • NOT_AUTHORIZED → revoke
+// • null → network / Firebase failure → use cached profile
+// • Cached profile is NEVER used to override explicit revocation
+// • Duty / patrol / GPS data are NOT cleared
+// • Existing login() remains unchanged
+// ============================================================
+
+async function loadProfile(){
+
+  console.log(
+    "🔁 loadProfile() called"
+  );
+
+
+  // ============================================================
+  // 🔒 PROFILE ALREADY LOADED
+  // ============================================================
+
+  if(
+    window.userProfile
+  ){
+
+    console.log(
+      "✅ Already logged in → skip loadProfile"
+    );
+
+    return;
+  }
+
+
+  // ============================================================
+  // 🔒 AUTH FLOW ALREADY RUNNING
+  // ============================================================
+
+  if(
+    typeof authFlowRunning !== "undefined" &&
+    authFlowRunning
+  ){
+
+    console.warn(
+      "⛔ Skipping loadProfile (auth running)"
+    );
+
+    return;
+  }
+
+
+  // ============================================================
+  // 🔐 START AUTH FLOW
+  // ============================================================
+
+  authFlowRunning = true;
+
+
+  try{
+
+    // ==========================================================
+    // 📱 GET SAVED PHONE
+    // ==========================================================
+
+    const phone =
+      String(
+        localStorage.getItem(
+          "userPhone"
+        ) || ""
+      )
+      .replace(/\D/g,"")
+      .trim();
+
+
+    // ==========================================================
+    // ❌ NO SAVED PHONE
+    // ==========================================================
+
+    if(
+      phone.length < 10
+    ){
+
+      console.log(
+        "📱 No saved phone → showing login"
+      );
+
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+
+      }
+
+
+      return;
+    }
+
+
+    console.log(
+      "📱 Saved phone:",
+      phone
+    );
+
+
+    // ==========================================================
+    // 🔥 ONLINE FIRESTORE PROFILE CHECK
+    // ==========================================================
+    //
+    // IMPORTANT:
+    //
+    // Only phone is sent.
+    //
+    // NO deviceId.
+    // NO Android device identifier.
+    // NO Google Sheet.
+    // ==========================================================
+
+    let profile = null;
+
+
+    try{
+
+      profile =
+        await safeBackend(
+          "GET_PROFILE",
+          {
+            phone: phone
+          }
+        );
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ GET_PROFILE failed:",
+        err
+      );
+
+      profile = null;
+
+    }
+
+
+    // ==========================================================
+    // ⛔ EXPLICIT AUTHORIZATION FAILURE
+    // ==========================================================
+    //
+    // IMPORTANT:
+    //
+    // These are REAL Firestore responses.
+    //
+    // Do NOT fall back to cached profile here.
+    //
+    // This prevents a genuinely revoked staff member from
+    // continuing to use an old cached authorization.
+    // ==========================================================
+
+    const explicitRevocation =
+      profile &&
+      profile.status === "error" &&
+      (
+        profile.code === "ACCESS_BLOCKED" ||
+        profile.code === "PROFILE_NOT_FOUND" ||
+        profile.code === "NOT_AUTHORIZED" ||
+        profile.code === "ACCESS_NOT_ACTIVE" ||
+        profile.error === "NOT_AUTHORIZED" ||
+        profile.error === "ACCESS_BLOCKED"
+      );
+
+
+    if(
+      explicitRevocation
+    ){
+
+      console.warn(
+        "⛔ APP ACCESS REVOKED:",
+        phone,
+        profile.code ||
+        profile.error
+      );
+
+
+      // ========================================================
+      // 🧹 CLEAR AUTHENTICATION CACHE ONLY
+      // ========================================================
+      //
+      // DO NOT clear:
+      //
+      // • dutyActive
+      // • sessionId
+      // • offlineGPS
+      // • patrol history
+      // • GPS queue
+      // ========================================================
+
+      if(
+        typeof clearLocalSession === "function"
+      ){
+
+        clearLocalSession();
+
+      }
+      else{
+
+        localStorage.removeItem(
+          "userPhone"
+        );
+
+        localStorage.removeItem(
+          "userProfile"
+        );
+
+        window.userProfile = null;
+
+        window.__appBootRequested =
+          false;
+
+      }
+
+
+      loginCompleted = false;
+
+
+      // ========================================================
+      // 📱 CLEAR APK AUTH CACHE IF AVAILABLE
+      // ========================================================
+
+      try{
+
+        if(
+          typeof waitForAndroidBridge === "function"
+        ){
+
+          const bridgeReady =
+            await waitForAndroidBridge();
+
+
+          if(
+            bridgeReady &&
+            window.Android
+          ){
+
+            if(
+              typeof Android.clearUserProfile ===
+              "function"
+            ){
+
+              Android.clearUserProfile();
+
+            }
+
+
+            if(
+              typeof Android.clearPhone ===
+              "function"
+            ){
+
+              Android.clearPhone();
+
+            }
+
+          }
+
+        }
+
+      }
+      catch(err){
+
+        console.warn(
+          "⚠ APK revoke cleanup skipped:",
+          err
+        );
+
+      }
+
+
+      // ========================================================
+      // 🔐 SHOW LOGIN
+      // ========================================================
+
+      loginShownOnce = false;
+
+
+      if(
+        !loginModalLocked
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+
+      }
+
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 📴 NETWORK / FIRESTORE UNAVAILABLE
+    // ==========================================================
+    //
+    // safeBackend() returns null after retry failure.
+    //
+    // This is NOT an authorization failure.
+    //
+    // Therefore cached authentication may be used.
+    // ==========================================================
+
+    if(
+      !profile
+    ){
+
+      console.warn(
+        "📴 Firestore unavailable → checking cached profile"
+      );
+
+
+      const localSession =
+        typeof getLocalSession === "function"
+          ? getLocalSession()
+          : null;
+
+
+      // ========================================================
+      // 📦 CACHED PROFILE AVAILABLE
+      // ========================================================
+
+      if(
+        localSession &&
+        localSession.profile
+      ){
+
+        const offlineProfile =
+          typeof normalizeUserProfile === "function"
+            ? normalizeUserProfile(
+                localSession.profile
+              )
+            : localSession.profile;
+
+
+        if(
+          offlineProfile
+        ){
+
+          window.userProfile =
+            offlineProfile;
+
+
+          // ====================================================
+          // 🔒 STAFF GIS LOCK
+          // ====================================================
+
+          if(
+            typeof applyStaffGISLock === "function"
+          ){
+
+            applyStaffGISLock(
+              offlineProfile
+            );
+
+          }
+
+
+          // ====================================================
+          // 📴 OFFLINE STATUS
+          // ====================================================
+
+          updateNetworkStatus(
+            "offline"
+          );
+
+
+          // ====================================================
+          // 🎛 ROLE CONTROL
+          // ====================================================
+
+          applyRoleControl();
+
+
+          // ====================================================
+          // 📱 SEND CACHED PROFILE TO APK
+          // ====================================================
+
+          try{
+
+            if(
+              typeof waitForAndroidBridge === "function"
+            ){
+
+              const bridgeReady =
+                await waitForAndroidBridge();
+
+
+              if(
+                bridgeReady &&
+                window.Android &&
+                typeof Android.saveUserProfile ===
+                "function"
+              ){
+
+                Android.saveUserProfile(
+                  JSON.stringify(
+                    offlineProfile
+                  )
+                );
+
+              }
+
+            }
+
+          }
+          catch(err){
+
+            console.warn(
+              "⚠ Offline APK profile sync skipped:",
+              err
+            );
+
+          }
+
+
+          // ====================================================
+          // 🚀 SINGLE APP BOOT
+          // ====================================================
+
+          if(
+            !window.__appBootRequested
+          ){
+
+            window.__appBootRequested =
+              true;
+
+            startApp();
+
+          }
+
+
+          console.log(
+            "✅ OFFLINE PROFILE RESTORED:",
+            offlineProfile.cleanName ||
+            offlineProfile.rawName ||
+            phone
+          );
+
+
+          return;
+
+        }
+
+      }
+
+
+      // ========================================================
+      // ❌ NO CACHE
+      // ========================================================
+
+      console.warn(
+        "⚠ No cached profile available"
+      );
+
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+
+      }
+
+
+      return;
+    }
+
+
+    // ==========================================================
+    // ❌ OTHER BACKEND ERROR
+    // ==========================================================
+    //
+    // Do not treat an unknown backend error as revocation.
+    // Try cached profile instead.
+    // ==========================================================
+
+    if(
+      profile.status === "error" ||
+      profile.error
+    ){
+
+      console.warn(
+        "⚠ Non-authoritative profile error:",
+        profile
+      );
+
+
+      const localSession =
+        typeof getLocalSession === "function"
+          ? getLocalSession()
+          : null;
+
+
+      if(
+        localSession &&
+        localSession.profile
+      ){
+
+        const fallbackProfile =
+          typeof normalizeUserProfile === "function"
+            ? normalizeUserProfile(
+                localSession.profile
+              )
+            : localSession.profile;
+
+
+        if(
+          fallbackProfile
+        ){
+
+          window.userProfile =
+            fallbackProfile;
+
+
+          if(
+            typeof applyStaffGISLock === "function"
+          ){
+
+            applyStaffGISLock(
+              fallbackProfile
+            );
+
+          }
+
+
+          updateNetworkStatus(
+            "offline"
+          );
+
+          applyRoleControl();
+
+
+          if(
+            !window.__appBootRequested
+          ){
+
+            window.__appBootRequested =
+              true;
+
+            startApp();
+
+          }
+
+
+          console.warn(
+            "📦 Cached profile used after backend error"
+          );
+
+
+          return;
+        }
+
+      }
+
+
+      // No usable cache
+
+      if(
+        !loginModalLocked &&
+        !loginShownOnce
+      ){
+
+        loginShownOnce = true;
+
+        showLogin();
+
+      }
+
+
+      return;
+    }
+
+
+    // ==========================================================
+    // ✅ ONLINE PROFILE MUST BE OK
+    // ==========================================================
+
+    if(
+      profile.status !== "ok"
+    ){
+
+      console.warn(
+        "⚠ Invalid GET_PROFILE response:",
+        profile
+      );
+
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 🔥 NORMALIZE ONLINE PROFILE
+    // ==========================================================
+
+    const finalProfile =
+      typeof normalizeUserProfile === "function"
+        ? normalizeUserProfile(
+            profile
+          )
+        : profile;
+
+
+    // ==========================================================
+    // ❌ INVALID NORMALIZED PROFILE
+    // ==========================================================
+
+    if(
+      !finalProfile ||
+      !finalProfile.phone
+    ){
+
+      console.warn(
+        "⚠ Invalid normalized profile"
+      );
+
+
+      return;
+    }
+
+
+    // ==========================================================
+    // 🔒 APPLY STAFF GIS LOCK
+    // ==========================================================
+
+    if(
+      typeof applyStaffGISLock === "function"
+    ){
+
+      applyStaffGISLock(
+        finalProfile
+      );
+
+    }
+
+
+    // ==========================================================
+    // 💾 SAVE ONLINE SESSION
+    // ==========================================================
+
+    if(
+      typeof saveLocalSession === "function"
+    ){
+
+      saveLocalSession(
+        finalProfile
+      );
+
+    }
+    else{
+
+      localStorage.setItem(
+        "userPhone",
+        String(
+          finalProfile.phone
+        ).trim()
+      );
+
+      localStorage.setItem(
+        "userProfile",
+        JSON.stringify(
+          finalProfile
+        )
+      );
+
+    }
+
+
+    // ==========================================================
+    // 🔥 GLOBAL PROFILE
+    // ==========================================================
+
+    window.userProfile =
+      finalProfile;
+
+
+    // ==========================================================
+    // 🔐 LOGIN STATE
+    // ==========================================================
+
+    loginCompleted =
+      true;
+
+
+    // ==========================================================
+    // 🌐 ONLINE
+    // ==========================================================
+
+    updateNetworkStatus(
+      "online"
+    );
+
+
+    // ==========================================================
+    // 🎛 ROLE CONTROL
+    // ==========================================================
+
+    applyRoleControl();
+
+
+    // ==========================================================
+    // 📱 SEND PROFILE + PHONE TO APK
+    // ==========================================================
+    //
+    // Phone only.
+    // No deviceId.
+    // ==========================================================
+
+    try{
+
+      if(
+        typeof waitForAndroidBridge === "function"
+      ){
+
+        const bridgeReady =
+          await waitForAndroidBridge();
+
+
+        if(
+          bridgeReady &&
+          window.Android
+        ){
+
+          if(
+            typeof Android.saveUserProfile ===
+            "function"
+          ){
+
+            Android.saveUserProfile(
+              JSON.stringify(
+                finalProfile
+              )
+            );
+
+          }
+
+
+          if(
+            typeof Android.savePhone ===
+            "function"
+          ){
+
+            Android.savePhone(
+              finalProfile.phone
+            );
+
+          }
+
+        }
+
+      }
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ PROFILE APK SYNC FAILED:",
+        err
+      );
+
+    }
+
+
+    // ==========================================================
+    // 🔐 HIDE LOGIN
+    // ==========================================================
+
+    hideLogin();
+
+
+    // ==========================================================
+    // 🚀 SINGLE APP BOOT
+    // ==========================================================
+
+    if(
+      !window.__appBootRequested
+    ){
+
+      window.__appBootRequested =
+        true;
+
+      startApp();
+
+    }
+
+
+    console.log(
+      "✅ PROFILE LOADED:",
+      finalProfile.cleanName ||
+      finalProfile.rawName ||
+      finalProfile.phone
+    );
+
+  }
+  catch(err){
+
+    // ==========================================================
+    // ❌ UNEXPECTED LOAD ERROR
+    // ==========================================================
+
+    console.error(
+      "❌ loadProfile() exception:",
+      err
+    );
+
+
+    // ==========================================================
+    // 📴 LAST-SAFE LOCAL FALLBACK
+    // ==========================================================
+
+    try{
+
+      const localSession =
+        typeof getLocalSession === "function"
+          ? getLocalSession()
+          : null;
+
+
+      if(
+        localSession &&
+        localSession.profile
+      ){
+
+        const fallbackProfile =
+          typeof normalizeUserProfile === "function"
+            ? normalizeUserProfile(
+                localSession.profile
+              )
+            : localSession.profile;
+
+
+        if(
+          fallbackProfile
+        ){
+
+          window.userProfile =
+            fallbackProfile;
+
+
+          if(
+            typeof applyStaffGISLock === "function"
+          ){
+
+            applyStaffGISLock(
+              fallbackProfile
+            );
+
+          }
+
+
+          updateNetworkStatus(
+            "offline"
+          );
+
+          applyRoleControl();
+
+
+          if(
+            !window.__appBootRequested
+          ){
+
+            window.__appBootRequested =
+              true;
+
+            startApp();
+
+          }
+
+
+          console.warn(
+            "📴 Cached profile restored after exception"
+          );
+
+
+          return;
+
+        }
+
+      }
+
+    }
+    catch(fallbackErr){
+
+      console.error(
+        "❌ Local profile fallback failed:",
+        fallbackErr
+      );
+
+    }
+
+
+    // ==========================================================
+    // 🔐 NO USABLE SESSION
+    // ==========================================================
+
+    if(
+      !loginModalLocked &&
+      !loginShownOnce
+    ){
+
+      loginShownOnce = true;
+
+      showLogin();
+
+    }
+
+  }
+  finally{
+
+    // ==========================================================
+    // 🔓 RELEASE AUTH FLOW LOCK
+    // ==========================================================
+
+    authFlowRunning =
+      false;
+
+  }
+
+}
     // ============================================================
 // 📍 FIND NEAREST NAMED VILLAGE / LOCATION
 // Uses existing window.__villageCache
