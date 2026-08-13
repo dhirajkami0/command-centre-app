@@ -30146,7 +30146,6 @@ function createGISButton(
 // ======================================================
 // 🌍 LOAD GIS SYSTEM
 // ======================================================
-
 async function loadRangeKML(){
 
   console.time(
@@ -30180,7 +30179,7 @@ async function loadRangeKML(){
 
     // ==================================================
     // 👑 ADMIN
-    // BTR_W + BTR_E ONLY
+    // ONLY BTR_W + BTR_E
     // ==================================================
 
     if(
@@ -30199,16 +30198,17 @@ async function loadRangeKML(){
 
       };
 
-      // Keep existing master GIS
-      url =
-        "./geojson/master.geojson";
+      // ADMIN DOES NOT LOAD GLOBAL master.geojson
+      // ADMIN LOADS ONLY BTR_W + BTR_E BELOW
+
+      url = "";
 
     }
 
 
     // ==================================================
     // 🟣 DFO / ADFO
-    // HIS DIVISION ONLY
+    // HIS DIVISION
     // ==================================================
 
     else if(
@@ -30273,103 +30273,171 @@ async function loadRangeKML(){
 
 
     // ==================================================
-    // 📥 GIS URL
+    // 📥 GIS LOAD
     // ==================================================
 
     console.log(
-      "📥 GIS URL:",
-      url
+      "📥 GIS ROLE:",
+      role
     );
 
 
     // ==================================================
-    // 📥 FETCH GIS
-    // ==================================================
-
-    const res =
-      await fetch(url);
-
-
-    if(
-      !res.ok
-    ){
-
-      throw new Error(
-        "❌ GIS fetch failed: " +
-        res.status +
-        " " +
-        res.statusText
-      );
-
-    }
-
-
-    const data =
-      await res.json();
-
-
-    window.allGISFeatures =
-      data.features || [];
-
-
-    // ==================================================
-    // 🔐 ADMIN GIS FILTER
-    // ONLY BTR_W + BTR_E
+    // 👑 ADMIN
+    // LOAD BTR_W + BTR_E ONLY
     // ==================================================
 
     if(
       role === "ADMIN"
     ){
 
-      window.allGISFeatures =
-        window.allGISFeatures.filter(
-          feature => {
+      console.log(
+        "👑 ADMIN GIS LOAD:"
+      );
 
-            const props =
-              feature.properties || {};
+      console.log(
+        "📥 BTR_W:",
+        "./geojson/BTR_W/master.geojson"
+      );
 
-
-            const featureDivision =
-
-              String(
-
-                props.Division ||
-
-                props.division ||
-
-                props.DIVISION ||
-
-                ""
-
-              )
-              .trim()
-              .toUpperCase();
+      console.log(
+        "📥 BTR_E:",
+        "./geojson/BTR_E/master.geojson"
+      );
 
 
-            return (
+      const [
 
-              featureDivision ===
-              "BTR_W"
+        btrWRes,
 
-              ||
+        btrERes
 
-              featureDivision ===
-              "BTR_E"
+      ] = await Promise.all([
 
-            );
+        fetch(
+          "./geojson/BTR_W/master.geojson"
+        ),
 
-          }
+        fetch(
+          "./geojson/BTR_E/master.geojson"
+        )
+
+      ]);
+
+
+      if(
+        !btrWRes.ok
+      ){
+
+        throw new Error(
+          "❌ BTR_W GIS fetch failed: " +
+          btrWRes.status
         );
+
+      }
+
+
+      if(
+        !btrERes.ok
+      ){
+
+        throw new Error(
+          "❌ BTR_E GIS fetch failed: " +
+          btrERes.status
+        );
+
+      }
+
+
+      const [
+
+        btrWData,
+
+        btrEData
+
+      ] = await Promise.all([
+
+        btrWRes.json(),
+
+        btrERes.json()
+
+      ]);
+
+
+      // ==============================================
+      // MERGE BTR_W + BTR_E
+      // ==============================================
+
+      window.allGISFeatures = [
+
+        ...(btrWData.features || []),
+
+        ...(btrEData.features || [])
+
+      ];
 
 
       console.log(
-        "🔐 ADMIN GIS FILTER:",
-        "BTR_W + BTR_E ONLY"
+        "📊 BTR_W FEATURES:",
+        (btrWData.features || []).length
       );
 
 
       console.log(
-        "📊 ADMIN GIS FEATURES:",
+        "📊 BTR_E FEATURES:",
+        (btrEData.features || []).length
+      );
+
+
+      console.log(
+        "📊 ADMIN TOTAL FEATURES:",
+        window.allGISFeatures.length
+      );
+
+
+    }
+
+
+    // ==================================================
+    // 🟣 DFO / ADFO / STAFF / TEAM LEADER
+    // ==================================================
+
+    else {
+
+      console.log(
+        "📥 GIS URL:",
+        url
+      );
+
+
+      const res =
+        await fetch(url);
+
+
+      if(
+        !res.ok
+      ){
+
+        throw new Error(
+          "❌ GIS fetch failed: " +
+          res.status +
+          " " +
+          res.statusText
+        );
+
+      }
+
+
+      const data =
+        await res.json();
+
+
+      window.allGISFeatures =
+        data.features || [];
+
+
+      console.log(
+        "📊 GIS FEATURES:",
         window.allGISFeatures.length
       );
 
@@ -30422,7 +30490,7 @@ async function loadRangeKML(){
 
     // ==================================================
     // 👮 STAFF / TEAM LEADER
-    // LOAD RANGE COMPARTMENTS
+    // LOAD COMPARTMENTS FOR RANGE
     // ==================================================
 
     if(
@@ -30459,6 +30527,7 @@ async function loadRangeKML(){
 
       // ======================================
       // 👁 DIVISION BUTTONS
+      // BTR_W + BTR_E ONLY
       // ======================================
 
       document.getElementById(
