@@ -15921,20 +15921,98 @@ async function preloadAllCompartments() {
       if (!window.masterGridLoading && (!window.masterGrid || Object.keys(window.masterGrid).length === 0)) {
         window.masterGridLoading = true;
 
-        setTimeout(async () => {
-          try {
-            await loadMasterGrid();
-            console.log("✅ MASTER GRID LOADED");
-            await buildCellToGridLookup();
-            window.__ANALYTICS_READY__ = true;
-            console.log("✅ ANALYTICS READY");
-            console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
-          } catch (err) {
-            console.error("❌ Grid preload failed", err);
-          } finally {
-            window.masterGridLoading = false;
-          }
-        }, 0);
+setTimeout(async () => {
+
+  try {
+
+    // ==========================================
+    // 🔥 WAIT FOR FIREBASE TO BE READY
+    // BACKGROUND GRID ONLY
+    // ==========================================
+
+    let attempts = 0;
+
+    while(
+      (
+        !window.fb ||
+        typeof window.fb.getDocs !== "function" ||
+        typeof window.fb.collection !== "function" ||
+        !window.db
+      ) &&
+      attempts < 60
+    ){
+
+      await new Promise(
+        resolve =>
+          setTimeout(resolve, 250)
+      );
+
+      attempts++;
+
+    }
+
+    // ==========================================
+    // ❌ FIREBASE STILL NOT READY
+    // ==========================================
+
+    if(
+      !window.fb ||
+      typeof window.fb.getDocs !== "function" ||
+      typeof window.fb.collection !== "function" ||
+      !window.db
+    ){
+
+      console.warn(
+        "⚠ MASTER GRID WAIT: Firebase not ready"
+      );
+
+      return;
+
+    }
+
+    // ==========================================
+    // 🔥 LOAD MASTER GRID
+    // ==========================================
+
+    await loadMasterGrid();
+
+    console.log(
+      "✅ MASTER GRID LOADED"
+    );
+
+    // ==========================================
+    // 🔥 BUILD CELL LOOKUP
+    // ==========================================
+
+    await buildCellToGridLookup();
+
+    window.__ANALYTICS_READY__ = true;
+
+    console.log(
+      "✅ ANALYTICS READY"
+    );
+
+    console.log(
+      "✅ CELL → GRID LOOKUP READY",
+      Object.keys(
+        window.cellToGridId || {}
+      ).length
+    );
+
+  } catch(err){
+
+    console.error(
+      "❌ Grid preload failed",
+      err
+    );
+
+  } finally {
+
+    window.masterGridLoading = false;
+
+  }
+
+}, 0);
       } else {
         console.log("⏭ GRID already available");
         if (
