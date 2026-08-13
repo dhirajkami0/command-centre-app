@@ -65278,15 +65278,59 @@ else if(
 
 
 // ==============================================
-// 🟩 4. DFO / ADFO — NORMAL TARGETS
+// 🟩 4. CCF — HIS DIVISION ONLY
 // ==============================================
 //
-// Normal staff:
-// SAME DIVISION only.
+// CCF:
+// HIS DIVISION
+//      ↓
+// ALL RANGES
+//      ↓
+// ALL BEATS
+//      ↓
+// ALL COMPARTMENTS
+//      ↓
+// ALL STAFF
 //
-// Emergency staff never reach this block,
-// because they were already accepted above.
+// IMPORTANT:
+// CCF IS NOT LIMITED TO HIS OWN RANGE.
+// ==============================================
+
+else if(
+    role === "CCF"
+){
+
+    if(
+        sameDivision
+    ){
+
+        staffVisible =
+            true;
+
+        visibilityReason =
+            "CCF SAME DIVISION - ALL RANGES";
+
+    }
+
+    else {
+
+        staffVisible =
+            false;
+
+        visibilityReason =
+            "CCF BLOCKED OTHER DIVISION";
+
+    }
+
+}
+
+
+// ==============================================
+// 🟩 5. DFO / ADFO — SAME DIVISION
+// ==============================================
 //
+// DFO / ADFO:
+// HIS DIVISION ONLY
 // ==============================================
 
 else if(
@@ -65320,32 +65364,11 @@ else if(
 
 
 // ==============================================
-// 👮 5. TEAM LEADER / FR / FG / OTHER
+// 👮 6. TEAM LEADER / FR / FG / OTHER
 // ==============================================
 //
 // NORMAL STAFF:
-// SAME RANGE only.
-//
-// Example:
-//
-// Viewer:
-// TEAM LEADER
-// EastDamanpur
-//
-// Target:
-// Foot Patrolling
-// WestDamanpur
-//
-// → HIDDEN
-//
-// But:
-//
-// Target:
-// Depredation Duty
-// WestDamanpur
-//
-// → already accepted by Rule #1.
-//
+// SAME RANGE ONLY
 // ==============================================
 
 else {
@@ -65373,7 +65396,6 @@ else {
     }
 
 }
-
 
 // ==============================================
 // 🔒 REJECT TARGET
