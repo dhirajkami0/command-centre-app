@@ -8374,6 +8374,29 @@ function waitForAndroidBridge(timeout = 8000){
 // PHONE-ONLY AUTHENTICATION
 // ============================================================
 
+// ============================================================
+// 🔐 LOGIN
+// PHONE-ONLY AUTHENTICATION
+//
+// FIRST LOGIN
+//   Internet required
+//   ↓
+//   Firestore ACTIVE profile
+//   ↓
+//   Save local session
+//
+// SUBSEQUENT LOGIN
+//   Internet available
+//   ↓
+//   Firestore ACTIVE profile
+//
+// SUBSEQUENT LOGIN OFFLINE
+//   ↓
+//   Same saved phone + cached profile
+//   ↓
+//   LOGIN OFFLINE IMMEDIATELY
+// ============================================================
+
 function login(){
 
   console.log("🔐 login() called");
@@ -8382,36 +8405,27 @@ function login(){
   // 🔒 ALREADY LOGGED IN
   // ============================================================
 
-  if(
-    loginCompleted ||
-    window.userProfile
-  ){
+  if(loginCompleted){
 
     console.warn(
       "⛔ Login already completed"
     );
 
     return;
-
   }
-
 
   // ============================================================
   // 🔒 PREVENT DOUBLE LOGIN
   // ============================================================
 
-  if(
-    loginInProgress
-  ){
+  if(loginInProgress){
 
     console.warn(
       "⛔ Login already in progress"
     );
 
     return;
-
   }
-
 
   // ============================================================
   // 📱 LOGIN INPUT
@@ -8427,7 +8441,6 @@ function login(){
       "loginBtn"
     );
 
-
   const phone =
     input
       ? String(
@@ -8437,37 +8450,23 @@ function login(){
         .trim()
       : "";
 
-
   // ============================================================
-  // ❌ PHONE VALIDATION
+  // ❌ INVALID PHONE
   // ============================================================
 
-  if(
-    phone.length < 10
-  ){
+  if(phone.length < 10){
 
     alert(
       "Enter valid phone number"
     );
 
     return;
-
   }
 
+  loginInProgress = true;
 
   // ============================================================
-  // 🔒 LOCK LOGIN
-  // ============================================================
-
-  loginInProgress =
-    true;
-
-  authFlowRunning =
-    true;
-
-
-  // ============================================================
-  // 🔄 LOGIN BUTTON
+  // 🔥 UI LOCK
   // ============================================================
 
   if(btn){
@@ -8475,729 +8474,74 @@ function login(){
     btn.innerText =
       "⏳ Logging...";
 
-    btn.disabled =
-      true;
-
+    btn.disabled = true;
   }
-
 
   if(input){
 
-    input.disabled =
-      true;
-
+    input.disabled = true;
   }
 
-
-  console.log(
-    "📱 Firestore lookup:",
-    phone
-  );
-
-
   // ============================================================
-  // 🔥 PROFILE LOOKUP
-  //
-  // PRIMARY:
-  //     safeBackend("GET_PROFILE")
-  //
-  // FALLBACK:
-  //     findProfileWithRetry()
+  // 📴 OFFLINE FAST PATH
   //
   // IMPORTANT:
-  // Direct Firestore success must NOT be converted
-  // into "Unable to connect" merely because safeBackend
-  // returned null.
+  //
+  // If this phone has already logged in successfully before,
+  // use the cached profile immediately when there is no network.
+  //
+  // This avoids waiting for:
+  //
+  // 3 Firestore attempts
+  // × timeout
+  //
   // ============================================================
 
-  Promise.resolve()
-
-  .then(
-    async () => {
-
-      let profile = null;
-
-
-      // ========================================================
-      // 1️⃣ PRIMARY BACKEND LOOKUP
-      // ========================================================
-
-      try{
-
-        profile =
-          await safeBackend(
-            "GET_PROFILE",
-            {
-              phone: phone
-            }
-          );
-
-        console.log(
-          "📡 GET_PROFILE result:",
-          profile
-        );
-
-      }
-      catch(err){
-
-        console.warn(
-          "⚠ GET_PROFILE primary lookup failed:",
-          err
-        );
-
-        profile =
-          null;
-
-      }
-
-
-      // ========================================================
-      // 2️⃣ DIRECT FIRESTORE FALLBACK
-      // ========================================================
-      //
-      // If safeBackend returns null/undefined, do NOT
-      // immediately show "Unable to connect".
-      //
-      // Your direct Firestore test already proves that
-      // findProfileWithRetry() can locate the profile.
-      // ========================================================
-
-      if(
-        profile === null ||
-        typeof profile === "undefined"
-      ){
-
-        console.warn(
-          "⚠ safeBackend returned no profile"
-        );
-
-        console.log(
-          "🔎 Trying direct Firestore profile lookup:",
-          phone
-        );
-
-
-        try{
-
-          if(
-            typeof findProfileWithRetry ===
-            "function"
-          ){
-
-            const directResult =
-              await findProfileWithRetry(
-                "staff_profiles",
-                phone
-              );
-
-
-            console.log(
-              "🔎 Direct Firestore lookup result:",
-              directResult
-            );
-
-
-            // ==================================================
-            // DIRECT RESULT → PROFILE
-            // ==================================================
-
-            if(
-              directResult &&
-              directResult.status === "ok"
-            ){
-
-              // -----------------------------------------------
-              // Case 1:
-              // findProfileWithRetry already returned profile
-              // -----------------------------------------------
-
-              if(
-                directResult.profile
-              ){
-
-                profile =
-                  directResult.profile;
-
-              }
-
-              // -----------------------------------------------
-              // Case 2:
-              // result itself is the profile
-              // -----------------------------------------------
-
-              else if(
-                directResult.name ||
-                directResult.cleanName ||
-                directResult.phone ||
-                directResult.role
-              ){
-
-                profile =
-                  directResult;
-
-              }
-
-              // -----------------------------------------------
-              // Case 3:
-              // returned document/profile object
-              // -----------------------------------------------
-
-              else if(
-                directResult.data
-              ){
-
-                profile =
-                  directResult.data;
-
-              }
-
-            }
-
-
-            // ==================================================
-            // ALSO ACCEPT ACTIVE PROFILE RESULT
-            // ==================================================
-
-            if(
-              !profile &&
-              directResult &&
-              directResult.activeProfile
-            ){
-
-              profile =
-                directResult.activeProfile;
-
-            }
-
-
-            // ==================================================
-            // ALSO ACCEPT DOC RESULT
-            // ==================================================
-
-            if(
-              !profile &&
-              directResult &&
-              directResult.doc
-            ){
-
-              profile =
-                directResult.doc;
-
-            }
-
-
-            // ==================================================
-            // DIRECT FIRESTORE SUCCESS
-            // ==================================================
-
-            if(profile){
-
-              console.log(
-                "🟢 FIRESTORE DIRECT QUERY SUCCESS",
-                profile
-              );
-
-            }
-            else{
-
-              console.warn(
-                "⚠ Direct Firestore lookup returned no usable profile"
-              );
-
-            }
-
-          }
-          else{
-
-            console.error(
-              "❌ findProfileWithRetry is not available"
-            );
-
-          }
-
-        }
-        catch(err){
-
-          console.error(
-            "❌ Direct Firestore profile lookup failed:",
-            err
-          );
-
-        }
-
-      }
-
-
-      // ========================================================
-      // 3️⃣ NETWORK / FIRESTORE FAILURE
-      // ========================================================
-
-      if(
-        profile === null ||
-        typeof profile === "undefined"
-      ){
-
-        console.warn(
-          "📴 GET_PROFILE unavailable"
-        );
-
-
-        // ------------------------------------------------------
-        // EXISTING LOCAL SESSION
-        // ------------------------------------------------------
-
-        const saved =
-          getLocalSession();
-
-
-        if(
-          saved &&
-          String(saved.phone || "").replace(/\D/g,"") ===
-          phone
-        ){
-
-          console.log(
-            "📴 Network unavailable → using cached profile"
-          );
-
-
-          window.userProfile =
-            saved.profile;
-
-
-          // ----------------------------------------------------
-          // GIS LOCK
-          // ----------------------------------------------------
-
-          applyStaffGISLock(
-            window.userProfile
-          );
-
-
-          // ----------------------------------------------------
-          // OFFLINE STATUS
-          // ----------------------------------------------------
-
-          updateNetworkStatus(
-            "offline"
-          );
-
-
-          // ----------------------------------------------------
-          // ROLE CONTROL
-          // ----------------------------------------------------
-
-          applyRoleControl();
-
-
-          // ----------------------------------------------------
-          // HIDE LOGIN
-          // ----------------------------------------------------
-
-          hideLogin();
-
-
-          // ----------------------------------------------------
-          // APP BOOT
-          // ----------------------------------------------------
-
-          if(
-            !window.__APP_BOOTED_ONCE__
-          ){
-
-            window.__APP_BOOTED_ONCE__ =
-              true;
-
-            window.__LOGIN_JUST_FINISHED__ =
-              true;
-
-            startApp();
-
-          }
-
-
-          // ----------------------------------------------------
-          // DUTY CONTROL
-          // ----------------------------------------------------
-
-          if(
-            typeof initDutyControl ===
-            "function"
-          ){
-
-            try{
-
-              initDutyControl();
-
-            }
-            catch(e){
-
-              console.warn(
-                "⚠ initDutyControl offline:",
-                e
-              );
-
-            }
-
-          }
-
-
-          return;
-
-        }
-
-
-        // ------------------------------------------------------
-        // NO CACHED PROFILE
-        // ------------------------------------------------------
-
-        console.error(
-          "❌ PROFILE LOOKUP FAILED — no server profile and no cached profile:",
-          phone
-        );
-
-
-        alert(
-          "⚠ Unable to connect to GreenGuard server. Please check your internet connection and try again."
-        );
-
-
-        return;
-
-      }
-
-
-      // ========================================================
-      // 4️⃣ EXPLICIT AUTHORIZATION DENIAL
-      // ========================================================
-
-      const explicitDenial =
-
-        profile.status === "error" &&
-
-        (
-
-          profile.code ===
-            "ACCESS_BLOCKED"
-
-          ||
-
-          profile.code ===
-            "PROFILE_NOT_FOUND"
-
-          ||
-
-          profile.code ===
-            "NOT_AUTHORIZED"
-
-          ||
-
-          profile.error ===
-            "ACCESS_BLOCKED"
-
-          ||
-
-          profile.error ===
-            "NOT_AUTHORIZED"
-
-          ||
-
-          profile.error ===
-            "PROFILE_NOT_FOUND"
-
-        );
-
-
-      if(
-        explicitDenial
-      ){
-
-        console.warn(
-          "⛔ LOGIN DENIED:",
-          phone,
-          profile.code ||
-          profile.error
-        );
-
-
-        // ------------------------------------------------------
-        // CLEAR ONLY CONFIRMED AUTHORIZATION FAILURE
-        // ------------------------------------------------------
-
-        clearLocalSession();
-
-
-        // ------------------------------------------------------
-        // ANDROID CLEANUP
-        // ------------------------------------------------------
-
-        try{
-
-          const bridgeReady =
-
-            typeof waitForAndroidBridge ===
-            "function"
-
-              ? await waitForAndroidBridge()
-
-              : !!window.Android;
-
-
-          if(
-            bridgeReady &&
-            window.Android
-          ){
-
-            if(
-              typeof Android.clearUserProfile ===
-              "function"
-            ){
-
-              Android.clearUserProfile();
-
-            }
-
-
-            if(
-              typeof Android.clearPhone ===
-              "function"
-            ){
-
-              Android.clearPhone();
-
-            }
-
-          }
-
-        }
-        catch(e){
-
-          console.warn(
-            "⚠ Android cleanup skipped:",
-            e
-          );
-
-        }
-
-
-        // ------------------------------------------------------
-        // RESET LOGIN STATE
-        // ------------------------------------------------------
-
-        loginCompleted =
-          false;
-
-        window.__APP_BOOTED_ONCE__ =
-          false;
-
-        window.__appBootRequested =
-          false;
-
-
-        alert(
-          "⛔ This mobile number is not authorized to use GreenGuard."
-        );
-
-
-        return;
-
-      }
-
-
-      // ========================================================
-      // 5️⃣ OTHER BACKEND ERROR
-      // ========================================================
-
-      if(
-        profile.status === "error" ||
-        profile.error
-      ){
-
-        console.warn(
-          "⚠ GET_PROFILE backend error:",
-          profile
-        );
-
-
-        alert(
-          profile.message ||
-          "⚠ Unable to verify login. Please try again."
-        );
-
-
-        return;
-
-      }
-
-
-      // ========================================================
-      // 6️⃣ ACTIVE PROFILE RECEIVED
-      // ========================================================
-
-      console.log(
-        "🔐 PROFILE LOOKUP SUCCESS:",
-        phone
-      );
-
-      console.log(
-        "👤 Profile:",
-        profile
-      );
-
-
-      // ========================================================
-      // 7️⃣ NORMALIZE PROFILE
-      // ========================================================
-
-      const finalProfile =
-
-        typeof normalizeUserProfile ===
-        "function"
-
-          ? normalizeUserProfile(
-              profile
-            )
-
-          : {
-
-              uid:
-                profile.uid ||
-                "",
-
-              villagerId:
-                profile.villagerId ||
-                "",
-
-              rawName:
-                profile.name ||
-                "",
-
-              cleanName:
-                profile.cleanName ||
-
-                (
-                  typeof cleanName ===
-                  "function"
-
-                    ? cleanName(
-                        profile.name ||
-                        ""
-                      )
-
-                    : profile.name ||
-                      ""
-                ),
-
-              role:
-                String(
-                  profile.role ||
-                  ""
-                )
-                .trim()
-                .toUpperCase(),
-
-              phone:
-                profile.phone ||
-                phone,
-
-              village:
-                profile.village ||
-                "",
-
-              villageCode:
-                profile.villageCode ||
-                "",
-
-              beat:
-                profile.beat ||
-                "",
-
-              range:
-                profile.range ||
-                "",
-
-              division:
-                profile.division ||
-                "",
-
-              circle:
-                profile.circle ||
-                "",
-
-              block:
-                profile.block ||
-                "",
-
-              district:
-                profile.district ||
-                "",
-
-              state:
-                profile.state ||
-                ""
-
-            };
-
-
-      // ========================================================
-      // 8️⃣ PROFILE SAFETY CHECK
-      // ========================================================
-
-      if(
-        !finalProfile
-      ){
-
-        console.error(
-          "❌ normalizeUserProfile returned empty profile"
-        );
-
-
-        alert(
-          "❌ Invalid staff profile"
-        );
-
-
-        return;
-
-      }
-
-
-      // ========================================================
-      // 9️⃣ ENSURE PHONE
-      // ========================================================
-
-      const finalPhone =
-        String(
-          finalProfile.phone ||
-          phone
+  const localSession =
+    getLocalSession();
+
+  const savedPhone =
+    localSession
+      ? String(
+          localSession.phone || ""
         )
         .replace(/\D/g,"")
-        .trim();
+        .trim()
+      : "";
 
+  const hasMatchingCache =
+    !!(
+      localSession &&
+      localSession.profile &&
+      savedPhone === phone
+    );
+
+  if(
+    !navigator.onLine &&
+    hasMatchingCache
+  ){
+
+    console.warn(
+      "📴 OFFLINE LOGIN → using cached profile:",
+      phone
+    );
+
+    try{
+
+      const finalProfile =
+        normalizeUserProfile(
+          localSession.profile
+        );
 
       if(
-        finalPhone.length < 10
+        !finalProfile ||
+        !finalProfile.phone
       ){
 
-        console.error(
-          "❌ Profile contains invalid phone:",
-          finalProfile
+        throw new Error(
+          "Cached profile is invalid"
         );
-
-
-        alert(
-          "❌ Invalid staff profile"
-        );
-
-
-        return;
-
       }
-
-
-      finalProfile.phone =
-        finalPhone;
-
 
       // ========================================================
       // 🔒 APPLY STAFF GIS LOCK
@@ -9207,12 +8551,370 @@ function login(){
         finalProfile
       );
 
+      // ========================================================
+      // 🔥 SET GLOBAL PROFILE
+      // ========================================================
 
-      console.log(
-        "🔒 GIS FILTER:",
-        window.gisFilter
+      window.userProfile =
+        finalProfile;
+
+      // ========================================================
+      // 🔥 SESSION STATE
+      // ========================================================
+
+      loginCompleted =
+        true;
+
+      // ========================================================
+      // 🌐 NETWORK STATE
+      // ========================================================
+
+      updateNetworkStatus(
+        "offline"
       );
 
+      // ========================================================
+      // 🎨 ROLE CONTROL
+      // ========================================================
+
+      applyRoleControl();
+
+      // ========================================================
+      // 🔥 HIDE LOGIN
+      // ========================================================
+
+      hideLogin();
+
+      // ========================================================
+      // 🚀 START APP ONCE
+      // ========================================================
+
+      if(
+        !window.__APP_BOOTED_ONCE__
+      ){
+
+        window.__APP_BOOTED_ONCE__ =
+          true;
+
+        window.__LOGIN_JUST_FINISHED__ =
+          true;
+
+        startApp();
+      }
+
+      // ========================================================
+      // 🛡 DUTY CONTROL
+      // ========================================================
+
+      if(
+        typeof initDutyControl ===
+        "function"
+      ){
+
+        initDutyControl();
+      }
+
+      console.log(
+        "🟢 OFFLINE LOGIN SUCCESS:",
+        finalProfile.cleanName ||
+        finalProfile.rawName ||
+        phone
+      );
+
+    }
+    catch(err){
+
+      console.error(
+        "❌ OFFLINE CACHE LOGIN FAILED:",
+        err
+      );
+
+      alert(
+        "❌ Saved login profile is invalid. Please connect to the Internet and login again."
+      );
+
+    }
+    finally{
+
+      if(btn){
+
+        btn.innerText =
+          "Login";
+
+        btn.disabled =
+          false;
+      }
+
+      if(input){
+
+        input.disabled =
+          false;
+      }
+
+      loginInProgress =
+        false;
+
+      authFlowRunning =
+        false;
+    }
+
+    return;
+  }
+
+  // ============================================================
+  // 🌐 NORMAL ONLINE LOGIN
+  //
+  // First login OR cached phone with Internet available.
+  // Firestore remains authoritative.
+  // ============================================================
+
+  console.log(
+    "🌐 ONLINE LOGIN → Firestore verification:",
+    phone
+  );
+
+  safeBackend(
+    "GET_PROFILE",
+    {
+      phone: phone
+    }
+  )
+
+  .then(
+    function(profile){
+
+      // ========================================================
+      // 📴 FIRESTORE / NETWORK UNAVAILABLE
+      // ========================================================
+
+      if(!profile){
+
+        console.warn(
+          "📴 Firestore unavailable during login"
+        );
+
+        // ======================================================
+        // SECONDARY CACHE FALLBACK
+        //
+        // This also handles cases where navigator.onLine
+        // incorrectly reports true while Firestore is unreachable.
+        // ======================================================
+
+        const cached =
+          getLocalSession();
+
+        const cachedPhone =
+          cached
+            ? String(
+                cached.phone || ""
+              )
+              .replace(/\D/g,"")
+              .trim()
+            : "";
+
+        if(
+          cached &&
+          cached.profile &&
+          cachedPhone === phone
+        ){
+
+          try{
+
+            const finalProfile =
+              normalizeUserProfile(
+                cached.profile
+              );
+
+            if(
+              !finalProfile ||
+              !finalProfile.phone
+            ){
+
+              throw new Error(
+                "Cached profile invalid"
+              );
+            }
+
+            applyStaffGISLock(
+              finalProfile
+            );
+
+            window.userProfile =
+              finalProfile;
+
+            loginCompleted =
+              true;
+
+            updateNetworkStatus(
+              "offline"
+            );
+
+            applyRoleControl();
+
+            hideLogin();
+
+            if(
+              !window.__APP_BOOTED_ONCE__
+            ){
+
+              window.__APP_BOOTED_ONCE__ =
+                true;
+
+              window.__LOGIN_JUST_FINISHED__ =
+                true;
+
+              startApp();
+            }
+
+            if(
+              typeof initDutyControl ===
+              "function"
+            ){
+
+              initDutyControl();
+            }
+
+            console.log(
+              "🟢 OFFLINE FALLBACK LOGIN SUCCESS:",
+              finalProfile.cleanName ||
+              finalProfile.rawName ||
+              phone
+            );
+
+            return;
+          }
+          catch(err){
+
+            console.error(
+              "❌ Cached profile fallback failed:",
+              err
+            );
+          }
+        }
+
+        alert(
+          "❌ Unable to connect to GreenGuard server. First login requires Internet."
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // ⛔ EXPLICIT AUTHORIZATION FAILURE
+      //
+      // ONLY these responses revoke access.
+      // ========================================================
+
+      const explicitDenial =
+        profile.status === "error" &&
+        (
+          profile.code === "ACCESS_BLOCKED" ||
+          profile.code === "PROFILE_NOT_FOUND" ||
+          profile.code === "NOT_AUTHORIZED" ||
+          profile.error === "ACCESS_BLOCKED" ||
+          profile.error === "PROFILE_NOT_FOUND" ||
+          profile.error === "NOT_AUTHORIZED"
+        );
+
+      if(explicitDenial){
+
+        console.warn(
+          "⛔ LOGIN DENIED:",
+          phone,
+          profile.code ||
+          profile.error
+        );
+
+        clearLocalSession();
+
+        loginCompleted =
+          false;
+
+        alert(
+          profile.code === "ACCESS_BLOCKED"
+            ? "⛔ Access to GreenGuard has been revoked."
+            : "⛔ This mobile number is not authorized to use GreenGuard."
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // ❌ OTHER ERROR
+      // ========================================================
+
+      if(
+        profile.status === "error" ||
+        profile.error
+      ){
+
+        console.warn(
+          "⚠ Login backend error:",
+          profile
+        );
+
+        alert(
+          profile.message ||
+          profile.error ||
+          "Login failed"
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // ✅ ACTIVE PROFILE
+      // ========================================================
+
+      if(
+        profile.status !== "ok"
+      ){
+
+        console.warn(
+          "⚠ Invalid login response:",
+          profile
+        );
+
+        alert(
+          "❌ Login failed"
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // 🔥 NORMALIZE PROFILE
+      // ========================================================
+
+      const finalProfile =
+        normalizeUserProfile(
+          profile
+        );
+
+      if(
+        !finalProfile ||
+        !finalProfile.phone
+      ){
+
+        alert(
+          "❌ Invalid staff profile"
+        );
+
+        return;
+      }
+
+      // ========================================================
+      // 🔒 STAFF GIS LOCK
+      // ========================================================
+
+      applyStaffGISLock(
+        finalProfile
+      );
+
+      console.log(
+        "🔒 GIS LOCK:",
+        window.gisFilter
+      );
 
       // ========================================================
       // 💾 SAVE LOCAL SESSION
@@ -9222,7 +8924,6 @@ function login(){
         finalProfile
       );
 
-
       // ========================================================
       // 🌐 GLOBAL PROFILE
       // ========================================================
@@ -9230,156 +8931,77 @@ function login(){
       window.userProfile =
         finalProfile;
 
-
       // ========================================================
-      // 🔒 LOGIN SESSION COMPLETE
+      // 🔐 SESSION LOCK
       // ========================================================
 
       loginCompleted =
         true;
 
-
       // ========================================================
-      // 📱 ANDROID — PHONE + PROFILE
+      // 📱 ANDROID PHONE ONLY
       // ========================================================
 
       try{
 
         if(
-          window.Android
+          window.Android &&
+          typeof Android.savePhone ===
+          "function"
         ){
 
-          if(
-            typeof Android.savePhone ===
-            "function"
-          ){
-
-            Android.savePhone(
-              finalPhone
-            );
-
-
-            console.log(
-              "📱 Phone saved to Android:",
-              finalPhone
-            );
-
-          }
-
-
-          if(
-            typeof Android.saveUserProfile ===
-            "function"
-          ){
-
-            Android.saveUserProfile(
-              JSON.stringify(
-                finalProfile
-              )
-            );
-
-
-            console.log(
-              "✅ Profile sent to Android"
-            );
-
-          }
-
-        }
-        else{
-
-          console.warn(
-            "⚠ Android bridge unavailable"
+          Android.savePhone(
+            finalProfile.phone
           );
 
+          console.log(
+            "📱 Phone sent to Android:",
+            finalProfile.phone
+          );
         }
 
       }
-      catch(e){
+      catch(err){
 
         console.warn(
-          "⚠ Android bridge error:",
-          e
+          "⚠ Android phone save failed:",
+          err
         );
-
       }
 
-
       // ========================================================
-      // 👋 HIDE LOGIN
+      // 🔥 HIDE LOGIN
       // ========================================================
 
       hideLogin();
 
-
       // ========================================================
-      // 🌐 ONLINE STATUS
+      // 🌐 ONLINE
       // ========================================================
 
       updateNetworkStatus(
         "online"
       );
 
-
       // ========================================================
-      // 🎭 ROLE CONTROL
+      // 🎨 ROLE CONTROL
       // ========================================================
 
       applyRoleControl();
 
-
       // ========================================================
-      // 👤 ROLE
-      // ========================================================
-
-      const role =
-        String(
-          finalProfile.role ||
-          ""
-        )
-        .trim()
-        .toUpperCase();
-
-
-      console.log(
-        "👤 LOGIN ROLE:",
-        role
-      );
-
-
-      // ========================================================
-      // 🟡 VILLAGER
+      // 🗺️ GIS
       // ========================================================
 
       if(
-        role === "VILLAGER"
+        finalProfile.role !==
+        "VILLAGER"
       ){
 
-        console.log(
-          "🟡 Villager Mode → Forest GIS skipped"
-        );
-
-      }
-
-
-      // ========================================================
-      // 🌲 FOREST USER
-      // ========================================================
-
-      else{
-
-        // ------------------------------------------------------
-        // Delay GIS/UI work so login completes first.
-        // ------------------------------------------------------
-
         setTimeout(
-          async () => {
+          async function(){
 
             try{
-
-              // =================================================
-              // 🗺 RENDER FILTERED GIS
-              // =================================================
 
               if(
                 typeof renderFilteredGIS ===
@@ -9387,196 +9009,89 @@ function login(){
               ){
 
                 renderFilteredGIS();
-
               }
-
-
-              // =================================================
-              // 📍 FIT MAP TO GIS
-              // =================================================
-
-              try{
-
-                if(
-                  window.gisLayer &&
-
-                  typeof window.gisLayer.getBounds ===
-                  "function" &&
-
-                  typeof window.gisLayer.getLayers ===
-                  "function"
-                ){
-
-                  const layers =
-                    window.gisLayer.getLayers();
-
-
-                  if(
-                    layers &&
-                    layers.length > 0
-                  ){
-
-                    const bounds =
-                      window.gisLayer.getBounds();
-
-
-                    if(
-                      bounds &&
-                      bounds.isValid()
-                    ){
-
-                      window.map.fitBounds(
-                        bounds,
-                        {
-                          padding:[
-                            40,
-                            40
-                          ],
-
-                          maxZoom:15,
-
-                          animate:true
-                        }
-                      );
-
-                    }
-
-                  }
-
-                }
-
-              }
-              catch(e){
-
-                console.warn(
-                  "⚠ GIS map fit skipped:",
-                  e
-                );
-
-              }
-
-
-              // =================================================
-              // 👮 STAFF / TEAM LEADER GIS DATA
-              // =================================================
-
-              const isStaffOrTL = [
-
-                "ADMIN",
-                "STAFF",
-                "TEAM LEADER",
-                "RANGER",
-                "FOREST GUARD",
-                "BEAT OFFICER",
-                "DEPUTY RANGER",
-                "FORESTER"
-
-              ].includes(
-                role
-              );
-
 
               if(
-                isStaffOrTL
+                window.gisLayer &&
+                window.gisLayer.getBounds &&
+                window.gisLayer.getLayers &&
+                window.gisLayer.getLayers().length > 0
               ){
 
-                // ----------------------------------------------
-                // BEAT BUTTONS
-                // ----------------------------------------------
+                const bounds =
+                  window.gisLayer.getBounds();
+
+                if(
+                  bounds &&
+                  bounds.isValid()
+                ){
+
+                  window.map.fitBounds(
+                    bounds,
+                    {
+                      padding:[40,40],
+                      maxZoom:15,
+                      animate:true
+                    }
+                  );
+                }
+              }
+
+              const isStaffOrTL =
+                [
+                  "ADMIN",
+                  "STAFF",
+                  "TEAM LEADER",
+                  "RANGER",
+                  "FOREST GUARD",
+                  "BEAT OFFICER",
+                  "DEPUTY RANGER",
+                  "FORESTER"
+                ].includes(
+                  finalProfile.role
+                );
+
+              if(isStaffOrTL){
 
                 if(
                   typeof populateBeatButtons ===
                   "function"
                 ){
 
-                  try{
-
-                    await populateBeatButtons();
-
-                  }
-                  catch(e){
-
-                    console.warn(
-                      "⚠ Beat buttons failed:",
-                      e
-                    );
-
-                  }
-
+                  await populateBeatButtons();
                 }
-
-
-                // ----------------------------------------------
-                // COMPARTMENTS
-                // ----------------------------------------------
 
                 if(
                   typeof loadCompartmentsForRange ===
                   "function"
                 ){
 
-                  try{
-
-                    await loadCompartmentsForRange();
-
-                  }
-                  catch(e){
-
-                    console.warn(
-                      "⚠ Compartment loading failed:",
-                      e
-                    );
-
-                  }
-
+                  await loadCompartmentsForRange();
                 }
-
-
-                // ----------------------------------------------
-                // COMPARTMENT RENDER
-                // ----------------------------------------------
 
                 if(
                   typeof renderFilteredCompartments ===
                   "function"
                 ){
 
-                  try{
-
-                    renderFilteredCompartments();
-
-                  }
-                  catch(e){
-
-                    console.warn(
-                      "⚠ Compartment render failed:",
-                      e
-                    );
-
-                  }
-
+                  renderFilteredCompartments();
                 }
-
               }
 
             }
-            catch(e){
+            catch(err){
 
-              console.error(
-                "❌ Post-login GIS initialization failed:",
-                e
+              console.warn(
+                "⚠ Login GIS initialization failed:",
+                err
               );
 
             }
 
           },
-
-          500
-
+          1500
         );
-
       }
-
 
       // ========================================================
       // 🚀 SINGLE APP BOOT
@@ -9593,99 +9108,111 @@ function login(){
           true;
 
         startApp();
-
       }
 
-
-      // ========================================================
-      // 🟢 DUTY CONTROL
-      // ========================================================
-
-      if(
-        typeof initDutyControl ===
-        "function"
-      ){
-
-        try{
-
-          initDutyControl();
-
-        }
-        catch(e){
-
-          console.warn(
-            "⚠ initDutyControl failed:",
-            e
-          );
-
-        }
-
-      }
-
-
-      // ========================================================
-      // ✅ FINAL SUCCESS
-      // ========================================================
-
       console.log(
-        "📱 Firestore lookup:",
-        finalPhone
-      );
-
-      console.log(
-        "🔐 PROFILE LOOKUP SUCCESS:",
-        finalPhone,
-        "docs: 1"
-      );
-
-      console.log(
-        "✅ ACTIVE PROFILE FOUND:",
-        finalPhone,
+        "✅ Login success:",
         finalProfile.cleanName ||
         finalProfile.rawName ||
-        finalPhone
-      );
-
-      console.log(
-        "✅ Login success"
+        phone
       );
 
     }
-
   )
 
-
-  // ============================================================
-  // ❌ UNEXPECTED ERROR
-  // ============================================================
-
   .catch(
-    err => {
+    function(err){
 
       console.error(
         "❌ LOGIN / PROFILE ERROR:",
         err
       );
 
+      // ========================================================
+      // 🔥 LAST CACHE FALLBACK
+      // ========================================================
 
-      // IMPORTANT:
-      // Do NOT clear local session here.
-      // An exception is not proof of authorization failure.
+      const cached =
+        getLocalSession();
+
+      const cachedPhone =
+        cached
+          ? String(
+              cached.phone || ""
+            )
+            .replace(/\D/g,"")
+            .trim()
+          : "";
+
+      if(
+        cached &&
+        cached.profile &&
+        cachedPhone === phone
+      ){
+
+        try{
+
+          const finalProfile =
+            normalizeUserProfile(
+              cached.profile
+            );
+
+          applyStaffGISLock(
+            finalProfile
+          );
+
+          window.userProfile =
+            finalProfile;
+
+          loginCompleted =
+            true;
+
+          updateNetworkStatus(
+            "offline"
+          );
+
+          applyRoleControl();
+
+          hideLogin();
+
+          if(
+            !window.__APP_BOOTED_ONCE__
+          ){
+
+            window.__APP_BOOTED_ONCE__ =
+              true;
+
+            window.__LOGIN_JUST_FINISHED__ =
+              true;
+
+            startApp();
+          }
+
+          console.log(
+            "🟢 CACHE FALLBACK LOGIN SUCCESS"
+          );
+
+          return;
+
+        }
+        catch(cacheErr){
+
+          console.error(
+            "❌ Cache fallback failed:",
+            cacheErr
+          );
+        }
+      }
 
       alert(
-        "⚠ Login could not be completed. Please try again."
+        "❌ Unable to login to BTR server."
       );
 
     }
   )
 
-
-  // ============================================================
-  // 🔓 ALWAYS RELEASE LOGIN LOCK
-  // ============================================================
-
   .finally(
-    () => {
+    function(){
 
       loginInProgress =
         false;
@@ -9693,38 +9220,23 @@ function login(){
       authFlowRunning =
         false;
 
+      if(btn){
 
-      // --------------------------------------------------------
-      // Restore UI only if login failed.
-      // --------------------------------------------------------
+        btn.innerText =
+          "Login";
 
-      if(
-        !loginCompleted
-      ){
+        btn.disabled =
+          false;
+      }
 
-        if(btn){
+      if(input){
 
-          btn.innerText =
-            "Login";
-
-          btn.disabled =
-            false;
-
-        }
-
-
-        if(input){
-
-          input.disabled =
-            false;
-
-        }
-
+        input.disabled =
+          false;
       }
 
     }
   );
-
 }// ============================================================
 // 🔥 SHOW LOGIN
 // FINAL HARDENED VERSION
