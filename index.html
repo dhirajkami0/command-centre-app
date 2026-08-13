@@ -30532,16 +30532,186 @@ async function loadRangeKML(){
     }
 
     // ==================================================
-    // 🟣 CCF
+    // 🟠 CCF
     // --------------------------------------------------
     // CCF can see ALL DIVISIONS assigned to CCF
+    // CCF divisions are derived from existing
+    // CIRCLE → DIVISION authorization.
     // ==================================================
 
     else if(role === "CCF"){
 
+      // ==================================================
+      // 🔐 GET CCF AUTHORIZED DIVISIONS
+      // ==================================================
+
+      let ccfDivisions = [];
+
+      // --------------------------------------------------
+      // 1. Prefer already resolved global authorization
+      // --------------------------------------------------
+
+      if(
+        Array.isArray(
+          ccfAuthorizedDivisions
+        )
+        &&
+        ccfAuthorizedDivisions.length > 0
+      ){
+
+        ccfDivisions = [
+          ...ccfAuthorizedDivisions
+        ];
+
+      }
+
+      // --------------------------------------------------
+      // 2. Otherwise use runtime profile.divisions
+      // --------------------------------------------------
+
+      else if(
+        Array.isArray(
+          profile.divisions
+        )
+      ){
+
+        ccfDivisions =
+          [
+            ...profile.divisions
+          ];
+
+      }
+
+      // --------------------------------------------------
+      // 3. Support comma-separated profile.divisions
+      // --------------------------------------------------
+
+      else if(
+        typeof profile.divisions ===
+        "string"
+      ){
+
+        ccfDivisions =
+
+          profile.divisions
+            .split(",")
+            .map(
+              d => d.trim()
+            )
+            .filter(Boolean);
+
+      }
+
+      // --------------------------------------------------
+      // 4. Circle → Division resolver
+      // --------------------------------------------------
+
+      if(
+        ccfDivisions.length === 0
+        &&
+        typeof getDivisionsForCircle ===
+        "function"
+      ){
+
+        ccfDivisions =
+
+          getDivisionsForCircle(
+            profile.circle
+          );
+
+      }
+
+      // --------------------------------------------------
+      // 5. Single division fallback
+      // --------------------------------------------------
+
+      if(
+        (
+          !Array.isArray(
+            ccfDivisions
+          )
+          ||
+          ccfDivisions.length === 0
+        )
+        &&
+        profile.division
+      ){
+
+        ccfDivisions = [
+          profile.division
+        ];
+
+      }
+
+      // ==================================================
+      // 🔹 NORMALIZE
+      // ==================================================
+
+      ccfDivisions =
+
+        ccfDivisions
+
+          .map(
+            d =>
+              normalizeDivision(d)
+          )
+
+          .filter(Boolean);
+
+      // ==================================================
+      // 🔹 REMOVE DUPLICATES
+      // ==================================================
+
+      ccfDivisions =
+
+        [
+          ...new Set(
+            ccfDivisions
+          )
+        ];
+
+      // ==================================================
+      // ❌ CCF HAS NO AUTHORIZED DIVISION
+      // ==================================================
+
+      if(
+        ccfDivisions.length === 0
+      ){
+
+        throw new Error(
+          "❌ CCF has no authorized divisions"
+        );
+
+      }
+
+      // ==================================================
+      // 🔐 KEEP GLOBAL CCF AUTHORIZATION ALIGNED
+      // ==================================================
+
+      ccfAuthorizedDivisions =
+
+        [
+          ...ccfDivisions
+        ];
+
+      // ==================================================
+      // 🔐 CCF GIS FILTER
+      // --------------------------------------------------
+      // IMPORTANT:
+      // Do NOT use ALL here.
+      //
+      // The CCF may have multiple authorized divisions,
+      // but the active filter starts with the first
+      // authorized division.
+      //
+      // allGISFeatures below contains ALL authorized
+      // division features.
+      // ==================================================
+
       window.gisFilter = {
 
-        division:"ALL",
+        division:
+          ccfDivisions[0],
 
         range:"ALL",
 
@@ -30550,85 +30720,22 @@ async function loadRangeKML(){
         compartment:"ALL"
       };
 
-      // ================================================
-      // 🔹 GET CCF DIVISIONS
-      // ================================================
-
-      let ccfDivisions =
-        profile.divisions || [];
-
-      // Support comma-separated divisions also
-      if(
-        typeof ccfDivisions === "string"
-      ){
-
-        ccfDivisions =
-          ccfDivisions
-            .split(",")
-            .map(
-              d => d.trim()
-            )
-            .filter(Boolean);
-      }
-
-      // Support single division as fallback
-      if(
-        !Array.isArray(ccfDivisions) ||
-        ccfDivisions.length === 0
-      ){
-
-        if(
-          profile.division
-        ){
-
-          ccfDivisions = [
-            profile.division
-          ];
-
-        } else {
-
-          ccfDivisions = [];
-        }
-      }
-
-      // ================================================
-      // 🔹 NORMALIZE DIVISION NAMES
-      // ================================================
-
-      ccfDivisions =
-        ccfDivisions
-          .map(
-            d =>
-              normalizeDivision(d)
-          )
-          .filter(Boolean);
-
-      // Remove duplicates
-      ccfDivisions =
-        [
-          ...new Set(
-            ccfDivisions
-          )
-        ];
-
-      console.log(
-        "🟣 CCF DIVISIONS:",
-        ccfDivisions
-      );
-
-      // ================================================
+      // ==================================================
       // 🔥 LOAD ALL CCF DIVISION MASTER GEOJSON
-      // ================================================
+      // ==================================================
 
       const divisionFeatures = [];
 
       for(
-        const ccfDivision of ccfDivisions
+        const ccfDivision
+        of ccfDivisions
       ){
 
         const divisionUrl =
           `./geojson/${
-            ccfDivision
+            encodeURIComponent(
+              ccfDivision
+            )
           }/master.geojson`;
 
         console.log(
@@ -30666,24 +30773,36 @@ async function loadRangeKML(){
           divisionFeatures.push(
             ...divisionData.features
           );
+
         }
+
       }
 
-      // ================================================
+      // ==================================================
       // 🔥 CCF COMBINED GIS
-      // ================================================
+      // ==================================================
 
       window.allGISFeatures =
         divisionFeatures;
+
+      console.log(
+        "🟠 CCF AUTHORIZED DIVISIONS:",
+        ccfDivisions
+      );
+
+      console.log(
+        "🟠 CCF ACTIVE GIS DIVISION:",
+        window.gisFilter.division
+      );
 
       console.log(
         "🟣 CCF GIS FEATURES:",
         window.allGISFeatures.length
       );
 
-      // ================================================
+      // ==================================================
       // 🎨 RENDER GIS
-      // ================================================
+      // ==================================================
 
       console.time(
         "INITIAL_GIS_RENDER"
@@ -30697,9 +30816,9 @@ async function loadRangeKML(){
         "INITIAL_GIS_RENDER"
       );
 
-      // ================================================
+      // ==================================================
       // 🔥 BACKGROUND COMPARTMENT PRELOAD
-      // ================================================
+      // ==================================================
 
       preloadAllCompartments()
 
@@ -30828,9 +30947,9 @@ async function loadRangeKML(){
         "INITIAL_GIS_RENDER"
       );
 
-      // ====================================
+      // ==================================================
       // 🔥 BACKGROUND COMPARTMENT PRELOAD
-      // ====================================
+      // ==================================================
 
       preloadAllCompartments()
 
@@ -30878,206 +30997,206 @@ async function loadRangeKML(){
     // ==================================================
 
     // ==========================================
-// 👑 ADMIN
-// ==========================================
+    // 👑 ADMIN
+    // ==========================================
 
-if(
+    if(
 
-  role === "ADMIN"
+      role === "ADMIN"
 
-){
+    ){
 
-  // ======================================
-  // 👁 DIVISION BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 DIVISION BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "flex";
 
-  await populateDivisionButtons();
+      await populateDivisionButtons();
 
-  // ======================================
-  // ❌ LOWER HIDE
-  // ======================================
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
-}
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
+    }
 
-// ==========================================
-// 🟣 CCF
-// ==========================================
+    // ==========================================
+    // 🟠 CCF
+    // ==========================================
 
-else if(
+    else if(
 
-  role === "CCF"
+      role === "CCF"
 
-){
+    ){
 
-  // ======================================
-  // 👁 CCF DIVISION BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 CCF DIVISION BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "flex";
 
-  await populateDivisionButtons();
+      await populateDivisionButtons();
 
-  // ======================================
-  // 👁 RANGE BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 RANGE BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
 
-  await populateRangeButtons();
+      await populateRangeButtons();
 
-  // ======================================
-  // ❌ LOWER HIDE
-  // ======================================
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
-}
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
+    }
 
-// ==========================================
-// 🟣 DFO / ADFO
-// ==========================================
+    // ==========================================
+    // 🟣 DFO / ADFO
+    // ==========================================
 
-else if(
+    else if(
 
-  role === "DFO"
+      role === "DFO"
 
-  ||
+      ||
 
-  role === "ADFO"
+      role === "ADFO"
 
-){
+    ){
 
-  // ======================================
-  // 👁 DIVISION BUTTON
-  // ======================================
+      // ======================================
+      // 👁 DIVISION BUTTON
+      // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "flex";
 
-  await populateDivisionButtons();
+      await populateDivisionButtons();
 
-  // ======================================
-  // 👁 RANGE BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 RANGE BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
 
-  await populateRangeButtons();
+      await populateRangeButtons();
 
-  // ======================================
-  // ❌ LOWER HIDE
-  // ======================================
+      // ======================================
+      // ❌ LOWER HIDE
+      // ======================================
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
-}
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
+    }
 
-// ==========================================
-// 👮 STAFF / TEAM LEADER
-// ==========================================
+    // ==========================================
+    // 👮 STAFF / TEAM LEADER
+    // ==========================================
 
-else if(
+    else if(
 
-  role === "STAFF"
+      role === "STAFF"
 
-  ||
+      ||
 
-  role === "TEAM LEADER"
+      role === "TEAM LEADER"
 
-){
+    ){
 
-  // ======================================
-  // ❌ HIDE DIVISION BUTTONS
-  // ======================================
+      // ======================================
+      // ❌ HIDE DIVISION BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "divisionButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "divisionButtons"
+      ).style.display =
+        "none";
 
-  // ======================================
-  // 👁 RANGE BUTTON
-  // ======================================
+      // ======================================
+      // 👁 RANGE BUTTON
+      // ======================================
 
-  document.getElementById(
-    "rangeButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
 
-  // ======================================
-  // 👁 BEAT BUTTONS
-  // ======================================
+      // ======================================
+      // 👁 BEAT BUTTONS
+      // ======================================
 
-  document.getElementById(
-    "beatButtons"
-  ).style.display =
-    "flex";
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "flex";
 
-  // ======================================
-  // ❌ HIDE COMP BUTTONS INITIALLY
-  // ======================================
+      // ======================================
+      // ❌ HIDE COMP BUTTONS INITIALLY
+      // ======================================
 
-  document.getElementById(
-    "compartmentButtons"
-  ).style.display =
-    "none";
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
 
-  // ======================================
-  // 🔘 RANGE BUTTON
-  // ======================================
+      // ======================================
+      // 🔘 RANGE BUTTON
+      // ======================================
 
-  await populateRangeButtons();
+      await populateRangeButtons();
 
-  // ======================================
-  // 🔘 BEAT BUTTONS
-  // ======================================
+      // ======================================
+      // 🔘 BEAT BUTTONS
+      // ======================================
 
-  await populateBeatButtons();
-}
+      await populateBeatButtons();
+    }
 
     console.log(
       "✅ GIS READY"
@@ -31089,7 +31208,9 @@ else if(
       "❌ loadRangeKML Error:",
       e
     );
+
   }
+
 }
 
 // =====================================================
