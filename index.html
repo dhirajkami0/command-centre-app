@@ -61744,7 +61744,43 @@ const myRange =
         window.userProfile?.range || ""
     );
 
+// ==============================================
+// 🟠 CCF AUTHORIZED DIVISIONS
+// ==============================================
+// CCF authorization comes from:
+//
+// Circle
+//   ↓
+// CIRCLE_DIVISION_MAP
+//   ↓
+// window.userProfile.divisions
+//
+// Normalize the values exactly like target divisions.
+// ==============================================
 
+const ccfAuthorizedDivisions =
+
+    Array.isArray(
+        window.userProfile?.divisions
+    )
+
+    ?
+
+    window.userProfile.divisions
+
+        .map(function(division){
+
+            return normalizeStaffScopeValue(
+                division
+            );
+
+        })
+
+        .filter(Boolean)
+
+    :
+
+    [];
 // ==============================================
 // 👮 TARGET NAME
 // ==============================================
