@@ -8951,35 +8951,55 @@ function loadProfile(){
 
     const finalProfile = {
 
-      rawName:
-        profile.name,
+  rawName:
+    profile.name,
 
-      cleanName:
+  cleanName:
 
-        profile.cleanName ||
+    profile.cleanName ||
 
-        cleanName(
-          profile.name
-        ),
+    cleanName(
+      profile.name
+    ),
 
-      role:
-        profile.role,
+  role:
+    profile.role,
 
-      beat:
-        profile.beat,
+  beat:
+    profile.beat,
 
-      phone:
-        profile.phone,
+  phone:
+    profile.phone,
 
-      circle:
-        profile.circle || "",
+  circle:
+    profile.circle || "",
 
-      division:
-        profile.division || "",
+  division:
+    profile.division || "",
 
-      range:
-        profile.range || ""
-    };
+  range:
+    profile.range || "",
+
+  // ==========================================================
+  // 🟠 CCF AUTHORIZED DIVISIONS
+  // ----------------------------------------------------------
+  // Existing Firestore fields are untouched.
+  // This is runtime-only authorization data.
+  // ==========================================================
+
+  divisions:
+    String(
+      profile.role || ""
+    )
+    .trim()
+    .toUpperCase() === "CCF"
+
+      ? getDivisionsForCircle(
+          profile.circle
+        )
+
+      : []
+};
 
     // ============================================================
     // 🌍 NORMALIZE DIVISION
@@ -9367,6 +9387,39 @@ function login(){
               profile.state || ""
       };
 
+
+      // ========================================================
+      // 🟠 CCF AUTHORIZED DIVISIONS
+      // --------------------------------------------------------
+      // CCF jurisdiction comes from Circle.
+      //
+      // Firestore staff_profiles is NOT modified.
+      // Existing other roles are untouched.
+      // ========================================================
+
+      if(
+        finalProfile.role === "CCF"
+      ){
+
+        finalProfile.divisions =
+          getDivisionsForCircle(
+            finalProfile.circle
+          );
+
+        console.log(
+          "🟠 CCF LOGIN AUTHORIZATION:",
+          {
+            circle:
+              finalProfile.circle,
+
+            divisions:
+              finalProfile.divisions
+          }
+        );
+
+      }
+
+
       // ========================================================
       // 🔒 STAFF GIS LOCK
       // ========================================================
@@ -9471,126 +9524,124 @@ function login(){
         "online"
       );
 
-// ========================================================
-// 🔥 ROLE CONTROL
-// ========================================================
-applyRoleControl();
+      // ========================================================
+      // 🔥 ROLE CONTROL
+      // ========================================================
+      applyRoleControl();
 
-// ========================================================
-// 🟡 VILLAGER
-// No Forest GIS
-// ========================================================
+      // ========================================================
+      // 🟡 VILLAGER
+      // No Forest GIS
+      // ========================================================
 
+      if(role === "VILLAGER"){
 
+          console.log(
+              "🟡 Villager Mode → Skip Forest GIS"
+          );
 
-if(role === "VILLAGER"){
+      }
+      else{
 
-    console.log(
-        "🟡 Villager Mode → Skip Forest GIS"
-    );
+          setTimeout(async () => {
 
-}
-else{
+              try{
 
-    setTimeout(async () => {
+                  if(
+                      typeof renderFilteredGIS ===
+                      "function"
+                  ){
 
-        try{
+                      renderFilteredGIS();
 
-            if(
-                typeof renderFilteredGIS ===
-                "function"
-            ){
+                  }
 
-                renderFilteredGIS();
+                  try{
 
-            }
+                      if(
+                          window.gisLayer &&
+                          window.gisLayer.getBounds &&
+                          window.gisLayer.getLayers().length > 0
+                      ){
 
-            try{
+                          const bounds =
+                              window.gisLayer.getBounds();
 
-                if(
-                    window.gisLayer &&
-                    window.gisLayer.getBounds &&
-                    window.gisLayer.getLayers().length > 0
-                ){
+                          if(bounds.isValid()){
 
-                    const bounds =
-                        window.gisLayer.getBounds();
+                              window.map.fitBounds(
+                                  bounds,
+                                  {
+                                      padding:[40,40],
+                                      maxZoom:15,
+                                      animate:true
+                                  }
+                              );
 
-                    if(bounds.isValid()){
+                          }
 
-                        window.map.fitBounds(
-                            bounds,
-                            {
-                                padding:[40,40],
-                                maxZoom:15,
-                                animate:true
-                            }
-                        );
+                      }
 
-                    }
+                  }catch(e){
 
-                }
+                      console.error(e);
 
-            }catch(e){
+                  }
 
-                console.error(e);
+                  const isStaffOrTL = [
 
-            }
+                      "ADMIN",
+                      "STAFF",
+                      "TEAM LEADER",
+                      "RANGER",
+                      "FOREST GUARD",
+                      "BEAT OFFICER",
+                      "DEPUTY RANGER",
+                      "FORESTER"
 
-            const isStaffOrTL = [
+                  ].includes(role);
 
-                "ADMIN",
-                "STAFF",
-                "TEAM LEADER",
-                "RANGER",
-                "FOREST GUARD",
-                "BEAT OFFICER",
-                "DEPUTY RANGER",
-                "FORESTER"
+                  if(isStaffOrTL){
 
-            ].includes(role);
+                      if(
+                          typeof populateBeatButtons ===
+                          "function"
+                      ){
 
-            if(isStaffOrTL){
+                          await populateBeatButtons();
 
-                if(
-                    typeof populateBeatButtons ===
-                    "function"
-                ){
+                      }
 
-                    await populateBeatButtons();
+                      if(
+                          typeof loadCompartmentsForRange ===
+                          "function"
+                      ){
 
-                }
+                          await loadCompartmentsForRange();
 
-                if(
-                    typeof loadCompartmentsForRange ===
-                    "function"
-                ){
+                      }
 
-                    await loadCompartmentsForRange();
+                      if(
+                          typeof renderFilteredCompartments ===
+                          "function"
+                      ){
 
-                }
+                          renderFilteredCompartments();
 
-                if(
-                    typeof renderFilteredCompartments ===
-                    "function"
-                ){
+                      }
 
-                    renderFilteredCompartments();
+                  }
 
-                }
+              }
+              catch(e){
 
-            }
+                  console.error(e);
 
-        }
-        catch(e){
+              }
 
-            console.error(e);
+          },1500);
 
-        }
-
-    },1500);
-
-}
+      }
 
       // ========================================================
       // 🔥 SINGLE APP BOOT
@@ -9607,6 +9658,7 @@ else{
       console.log(
         "✅ Login success"
       );
+
     })
 
     .catch(err => {
