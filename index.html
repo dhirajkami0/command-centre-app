@@ -30148,9 +30148,11 @@ function createGISButton(
 // ======================================================
 
 async function loadRangeKML(){
-console.time(
-  "LOAD_RANGE_KML_TOTAL"
-);
+
+  console.time(
+    "LOAD_RANGE_KML_TOTAL"
+  );
+
   try {
 
     const profile =
@@ -30199,6 +30201,198 @@ console.time(
 
       url =
         "./geojson/master.geojson";
+    }
+
+    // ==================================================
+    // 🟣 CCF
+    // --------------------------------------------------
+    // CCF can see ALL DIVISIONS assigned to CCF
+    // ==================================================
+
+    else if(role === "CCF"){
+
+      window.gisFilter = {
+
+        division:"ALL",
+
+        range:"ALL",
+
+        beat:"ALL",
+
+        compartment:"ALL"
+      };
+
+      // ================================================
+      // 🔹 GET CCF DIVISIONS
+      // ================================================
+
+      let ccfDivisions =
+        profile.divisions || [];
+
+      // Support comma-separated divisions also
+      if(
+        typeof ccfDivisions === "string"
+      ){
+
+        ccfDivisions =
+          ccfDivisions
+            .split(",")
+            .map(
+              d => d.trim()
+            )
+            .filter(Boolean);
+      }
+
+      // Support single division as fallback
+      if(
+        !Array.isArray(ccfDivisions) ||
+        ccfDivisions.length === 0
+      ){
+
+        if(
+          profile.division
+        ){
+
+          ccfDivisions = [
+            profile.division
+          ];
+
+        } else {
+
+          ccfDivisions = [];
+        }
+      }
+
+      // ================================================
+      // 🔹 NORMALIZE DIVISION NAMES
+      // ================================================
+
+      ccfDivisions =
+        ccfDivisions
+          .map(
+            d =>
+              normalizeDivision(d)
+          )
+          .filter(Boolean);
+
+      // Remove duplicates
+      ccfDivisions =
+        [
+          ...new Set(
+            ccfDivisions
+          )
+        ];
+
+      console.log(
+        "🟣 CCF DIVISIONS:",
+        ccfDivisions
+      );
+
+      // ================================================
+      // 🔥 LOAD ALL CCF DIVISION MASTER GEOJSON
+      // ================================================
+
+      const divisionFeatures = [];
+
+      for(
+        const ccfDivision of ccfDivisions
+      ){
+
+        const divisionUrl =
+          `./geojson/${
+            ccfDivision
+          }/master.geojson`;
+
+        console.log(
+          "📥 CCF GIS URL:",
+          divisionUrl
+        );
+
+        const divisionRes =
+          await fetch(
+            divisionUrl
+          );
+
+        if(
+          !divisionRes.ok
+        ){
+
+          console.warn(
+            "⚠️ CCF division GIS fetch failed:",
+            ccfDivision,
+            divisionUrl
+          );
+
+          continue;
+        }
+
+        const divisionData =
+          await divisionRes.json();
+
+        if(
+          Array.isArray(
+            divisionData.features
+          )
+        ){
+
+          divisionFeatures.push(
+            ...divisionData.features
+          );
+        }
+      }
+
+      // ================================================
+      // 🔥 CCF COMBINED GIS
+      // ================================================
+
+      window.allGISFeatures =
+        divisionFeatures;
+
+      console.log(
+        "🟣 CCF GIS FEATURES:",
+        window.allGISFeatures.length
+      );
+
+      // ================================================
+      // 🎨 RENDER GIS
+      // ================================================
+
+      console.time(
+        "INITIAL_GIS_RENDER"
+      );
+
+      renderFilteredGIS();
+
+      centerMap();
+
+      console.timeEnd(
+        "INITIAL_GIS_RENDER"
+      );
+
+      // ================================================
+      // 🔥 BACKGROUND COMPARTMENT PRELOAD
+      // ================================================
+
+      preloadAllCompartments()
+
+      .then(()=>{
+
+        console.log(
+          "✅ BACKGROUND COMPARTMENTS READY:",
+          window.allCompartmentFeatures?.length
+        );
+
+      })
+
+      .catch(err=>{
+
+        console.error(
+          "❌ BACKGROUND PRELOAD FAILED",
+          err
+        );
+
+      });
+
     }
 
     // ==================================================
@@ -30259,65 +30453,79 @@ console.time(
         }.geojson`;
     }
 
-    console.log(
-      "📥 GIS URL:",
-      url
-    );
+    // ==================================================
+    // 🔥 NORMAL GIS FETCH
+    // --------------------------------------------------
+    // CCF already loaded GIS above
+    // ==================================================
 
-    const res =
-      await fetch(url);
+    if(
+      role !== "CCF"
+    ){
 
-    if(!res.ok){
-
-      throw new Error(
-        "❌ GIS fetch failed"
+      console.log(
+        "📥 GIS URL:",
+        url
       );
+
+      const res =
+        await fetch(url);
+
+      if(!res.ok){
+
+        throw new Error(
+          "❌ GIS fetch failed"
+        );
+      }
+
+      const data =
+        await res.json();
+
+      window.allGISFeatures =
+        data.features || [];
+
+      // ==================================================
+      // 🎨 RENDER GIS
+      // ==================================================
+
+      console.time(
+        "INITIAL_GIS_RENDER"
+      );
+
+      renderFilteredGIS();
+
+      centerMap();
+
+      console.timeEnd(
+        "INITIAL_GIS_RENDER"
+      );
+
+      // ====================================
+      // 🔥 BACKGROUND COMPARTMENT PRELOAD
+      // ====================================
+
+      preloadAllCompartments()
+
+      .then(()=>{
+
+        console.log(
+          "✅ BACKGROUND COMPARTMENTS READY:",
+          window.allCompartmentFeatures?.length
+        );
+
+      })
+
+      .catch(err=>{
+
+        console.error(
+          "❌ BACKGROUND PRELOAD FAILED",
+          err
+        );
+
+      });
+
     }
 
-    const data =
-      await res.json();
-
-    window.allGISFeatures =
-      data.features || [];
-
-    // ==================================================
-    // 🎨 RENDER GIS
-    // ==================================================
-console.time(
-  "INITIAL_GIS_RENDER"
-);
-
-renderFilteredGIS();
-
-centerMap();
-
-console.timeEnd(
-  "INITIAL_GIS_RENDER"
-);
-
-// ====================================
-// 🔥 BACKGROUND COMPARTMENT PRELOAD
-// ====================================
-
-preloadAllCompartments()
-
-.then(()=>{
-
-  console.log(
-    "✅ BACKGROUND COMPARTMENTS READY:",
-    window.allCompartmentFeatures?.length
-  );
-
-})
-
-.catch(err=>{
-
-  console.error(
-    "❌ BACKGROUND PRELOAD FAILED",
-    err
-  );
-
-});
     // ==================================================
     // 👮 STAFF LOAD COMPARTMENTS
     // ==================================================
@@ -30370,6 +30578,53 @@ if(
     "rangeButtons"
   ).style.display =
     "none";
+
+  document.getElementById(
+    "beatButtons"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "compartmentButtons"
+  ).style.display =
+    "none";
+}
+
+// ==========================================
+// 🟣 CCF
+// ==========================================
+
+else if(
+
+  role === "CCF"
+
+){
+
+  // ======================================
+  // 👁 CCF DIVISION BUTTONS
+  // ======================================
+
+  document.getElementById(
+    "divisionButtons"
+  ).style.display =
+    "flex";
+
+  await populateDivisionButtons();
+
+  // ======================================
+  // 👁 RANGE BUTTONS
+  // ======================================
+
+  document.getElementById(
+    "rangeButtons"
+  ).style.display =
+    "flex";
+
+  await populateRangeButtons();
+
+  // ======================================
+  // ❌ LOWER HIDE
+  // ======================================
 
   document.getElementById(
     "beatButtons"
@@ -30495,6 +30750,7 @@ else if(
 
   await populateBeatButtons();
 }
+
     console.log(
       "✅ GIS READY"
     );
@@ -31206,51 +31462,355 @@ async function populateDivisionButtons(){
     // 👑 ADMIN
     // ==========================================
 
-  if(role === "ADMIN"){
+    if(role === "ADMIN"){
 
-  const divisions = [
+      const divisions = [
 
-    "ALL",
+        "ALL",
 
-    ...new Set(
+        ...new Set(
 
-      (window.allGISFeatures || [])
+          (window.allGISFeatures || [])
 
-      .map(f =>
+          .map(f =>
 
-        normalizeDivision(
+            normalizeDivision(
 
-          f.properties?.Division ||
+              f.properties?.Division ||
 
-          f.properties?.division ||
+              f.properties?.division ||
 
-          ""
+              ""
+
+            )
+
+          )
+
+          .filter(Boolean)
 
         )
 
-      )
+      ];
 
-      .filter(Boolean)
+      divisions.forEach(div=>{
 
-    )
+        container.innerHTML +=
 
-  ];
+          createGISButton(
 
-  divisions.forEach(div=>{
+            div,
 
-    container.innerHTML +=
+            window.gisFilter.division === div
 
-      createGISButton(
+          );
 
-        div,
+      });
 
-        window.gisFilter.division === div
+    }
 
+    // ==========================================
+    // 🟠 CCF
+    // ------------------------------------------------
+    // CCF can see ONLY his authorized divisions.
+    //
+    // Example:
+    // divisions = ["BTR_W","BTR_E"]
+    //
+    // CCF will NOT see other divisions.
+    // ==========================================
+
+    else if(role === "CCF"){
+
+      // ========================================
+      // 🔐 GET CCF AUTHORIZED DIVISIONS
+      // ========================================
+
+      let ccfDivisions =
+
+        window.userProfile?.divisions || [];
+
+      // ========================================
+      // SUPPORT STRING
+      //
+      // Example:
+      // "BTR_W,BTR_E"
+      // ========================================
+
+      if(
+        typeof ccfDivisions === "string"
+      ){
+
+        ccfDivisions =
+
+          ccfDivisions
+            .split(",")
+            .map(
+              d => d.trim()
+            )
+            .filter(Boolean);
+
+      }
+
+      // ========================================
+      // FALLBACK TO SINGLE DIVISION
+      // ========================================
+
+      if(
+        !Array.isArray(ccfDivisions) ||
+        ccfDivisions.length === 0
+      ){
+
+        const fallbackDivision =
+
+          normalizeDivision(
+
+            window.userProfile?.division || ""
+
+          );
+
+        if(
+          fallbackDivision
+        ){
+
+          ccfDivisions = [
+
+            fallbackDivision
+
+          ];
+
+        } else {
+
+          ccfDivisions = [];
+
+        }
+
+      }
+
+      // ========================================
+      // NORMALIZE + REMOVE DUPLICATES
+      // ========================================
+
+      ccfDivisions =
+
+        [
+          ...new Set(
+
+            ccfDivisions
+
+              .map(
+                d =>
+                  normalizeDivision(d)
+              )
+
+              .filter(Boolean)
+
+          )
+        ];
+
+      console.log(
+        "🟠 CCF AUTHORIZED DIVISIONS:",
+        ccfDivisions
       );
 
-  });
+      // ========================================
+      // CREATE ONLY CCF DIVISION BUTTONS
+      // ========================================
 
-}
+      ccfDivisions.forEach(
+        div => {
+
+          container.innerHTML +=
+
+            createGISButton(
+
+              div,
+
+              window.gisFilter.division === div
+
+            );
+
+        }
+      );
+
+      // ========================================
+      // 🔥 FORCE CURRENT FILTER
+      //
+      // If current GIS filter is not one of
+      // the CCF's divisions, select first
+      // authorized division.
+      // ========================================
+
+      const currentDivision =
+
+        normalizeDivision(
+
+          window.gisFilter?.division || ""
+
+        );
+
+      const validCurrentDivision =
+
+        ccfDivisions.includes(
+          currentDivision
+        );
+
+      if(
+        !validCurrentDivision &&
+        ccfDivisions.length > 0
+      ){
+
+        window.gisFilter = {
+
+          division:
+            ccfDivisions[0],
+
+          range:"ALL",
+
+          beat:"ALL",
+
+          compartment:"ALL"
+
+        };
+
+      }
+
+      // ========================================
+      // 🔥 RESET EYE STATES
+      // ========================================
+
+      window.hiddenRanges =
+        new Set();
+
+      window.hiddenBeats =
+        new Set();
+
+      // ========================================
+      // 🌍 POPUP AUTHORITY
+      // ========================================
+
+      const activeDivision =
+
+        normalizeDivision(
+
+          window.gisFilter?.division || ""
+
+        );
+
+      window.activePopupContext = {
+
+        level :
+          "division",
+
+        division :
+          activeDivision,
+
+        range :
+          "ALL",
+
+        beat :
+          "ALL",
+
+        compartment :
+          "ALL"
+
+      };
+
+      // ========================================
+      // 🌍 SAVE SELECTED DIVISION GEOMETRY
+      // ========================================
+
+      const matchingFeature =
+
+        (
+          window.allGISFeatures || []
+        )
+        .find(f => {
+
+          const div =
+            normalizeDivision(
+
+              f.properties?.Division ||
+
+              f.properties?.division ||
+
+              ""
+
+            );
+
+          return div ===
+            activeDivision;
+
+        });
+
+      window.currentSelectedGeometry =
+
+        matchingFeature?.geometry ||
+        null;
+
+      window.currentHistoryGeometryId =
+
+        `division_${
+          String(activeDivision)
+            .trim()
+            .replace(
+              /\s+/g,
+              "_"
+            )
+        }`;
+
+      console.log(
+        "🟠 CCF DIVISION GEOMETRY SAVED:",
+        activeDivision
+      );
+
+      console.log(
+        window.currentSelectedGeometry
+      );
+
+      loadPolygonWeather();
+
+      // ========================================
+      // 📦 LOAD RANGE COMPARTMENTS
+      // ========================================
+
+      await loadCompartmentsForRange();
+
+      // ========================================
+      // 🎨 STYLE UPDATE
+      // ========================================
+
+      renderFilteredGIS();
+
+      renderFilteredCompartments();
+
+      centerMap();
+
+      // ========================================
+      // 👁 RANGE BUTTONS
+      // ========================================
+
+      document.getElementById(
+        "rangeButtons"
+      ).style.display =
+        "flex";
+
+      await populateRangeButtons();
+
+      // ========================================
+      // ❌ LOWER HIDE
+      // ========================================
+
+      document.getElementById(
+        "beatButtons"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "compartmentButtons"
+      ).style.display =
+        "none";
+
+    }
 
     // ==========================================
     // 🟣 DFO / ADFO
@@ -31276,7 +31836,9 @@ async function populateDivisionButtons(){
       // ======================================
       // 🔥 FORCE DIVISION FILTER
       // ======================================
-clearHeatmapBoundaryCache();
+
+      clearHeatmapBoundaryCache();
+
       window.gisFilter = {
 
         division : division,
@@ -31345,12 +31907,13 @@ clearHeatmapBoundaryCache();
       window.currentSelectedGeometry =
 
         matchingFeature?.geometry || null;
-    window.currentHistoryGeometryId =
-  `division_${
-    String(division)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
+
+      window.currentHistoryGeometryId =
+        `division_${
+          String(division)
+            .trim()
+            .replace(/\s+/g,"_")
+        }`;
 
       console.log(
         "🌍 Division geometry saved"
@@ -31359,6 +31922,7 @@ clearHeatmapBoundaryCache();
       console.log(
         window.currentSelectedGeometry
       );
+
       loadPolygonWeather();
 
       console.log(
@@ -31458,7 +32022,9 @@ clearHeatmapBoundaryCache();
             normalizeDivision(
               this.dataset.value
             );
-clearHeatmapBoundaryCache();
+
+          clearHeatmapBoundaryCache();
+
           // ====================================
           // ♻ RESET FILTERS
           // ====================================
@@ -31541,65 +32107,70 @@ clearHeatmapBoundaryCache();
           // 🌍 SAVE PLANET AOI
           // ====================================
 
-         if(division === "ALL"){
+          if(division === "ALL"){
 
-  window.currentSelectedGeometry =
+            window.currentSelectedGeometry =
 
-    window.rootLayer
-    ?.toGeoJSON()
-    ?.features?.[0]
-    ?.geometry || null;
+              window.rootLayer
+              ?.toGeoJSON()
+              ?.features?.[0]
+              ?.geometry || null;
 
-  window.currentHistoryGeometryId =
-    "btr_ALL";
+            window.currentHistoryGeometryId =
+              "btr_ALL";
 
-  console.log(
-    "🌍 ROOT AOI SAVED"
-  );
-}
+            console.log(
+              "🌍 ROOT AOI SAVED"
+            );
 
-else {
+          }
 
-  const matchingFeature =
+          else {
 
-    (
-      window.allGISFeatures || []
-    )
-    .find(f => {
+            const matchingFeature =
 
-      const div = normalizeDivision(
+              (
+                window.allGISFeatures || []
+              )
+              .find(f => {
 
-        f.properties?.Division ||
+                const div = normalizeDivision(
 
-        f.properties?.division ||
+                  f.properties?.Division ||
 
-        ""
+                  f.properties?.division ||
 
-      );
+                  ""
 
-      return div === division;
+                );
 
-    });
+                return div === division;
 
-  window.currentSelectedGeometry =
+              });
 
-    matchingFeature?.geometry || null;
+            window.currentSelectedGeometry =
 
- window.currentHistoryGeometryId =
-  `division_${
-    String(division)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
+              matchingFeature?.geometry || null;
 
-  console.log(
-    "🟩 Division geometry saved"
-  );
-}
+            window.currentHistoryGeometryId =
+              `division_${
+                String(division)
+                  .trim()
+                  .replace(/\s+/g,"_")
+              }`;
+
+            console.log(
+              "🟩 Division geometry saved"
+            );
+
+          }
+
           console.log(
             window.currentSelectedGeometry
           );
-loadPolygonWeather();
+
+          loadPolygonWeather();
+
           // ====================================
           // 🧹 RESET COMPARTMENTS
           // ====================================
@@ -31617,9 +32188,9 @@ loadPolygonWeather();
 
           centerMap();
 
-          // ====================================
+          // ======================================
           // 👁 RANGE BUTTONS
-          // ====================================
+          // ======================================
 
           if(division !== "ALL"){
 
@@ -31629,6 +32200,7 @@ loadPolygonWeather();
               "flex";
 
             await populateRangeButtons();
+
           }
 
           else {
@@ -31639,9 +32211,9 @@ loadPolygonWeather();
               "none";
           }
 
-          // ====================================
+          // ======================================
           // ❌ LOWER HIDE
-          // ====================================
+          // ======================================
 
           document.getElementById(
             "beatButtons"
@@ -31665,7 +32237,9 @@ loadPolygonWeather();
             e
           );
         }
+
       };
+
     });
 
   } catch(e){
@@ -31674,9 +32248,11 @@ loadPolygonWeather();
       "❌ populateDivisionButtons",
       e
     );
+
   }
+
 }
- async function populateRangeButtons(){
+async function populateRangeButtons(){
 
   try {
 
@@ -31703,7 +32279,7 @@ loadPolygonWeather();
       .toUpperCase();
 
     // ==========================================
-    // 👮 STAFF / TEAM LEADER
+    // 🟣 STAFF / TEAM LEADER / CCF
     // ==========================================
 
     if(
@@ -31717,6 +32293,10 @@ loadPolygonWeather();
       &&
 
       role !== "ADFO"
+
+      &&
+
+      role !== "CCF"
 
     ){
 
@@ -31857,7 +32437,9 @@ loadPolygonWeather();
 
         rangeBtn.style.background =
           "#00c853";
-clearHeatmapBoundaryCache();
+
+        clearHeatmapBoundaryCache();
+
         window.gisFilter.range =
           range;
 
@@ -31931,26 +32513,29 @@ clearHeatmapBoundaryCache();
             return r === range;
 
           });
-window.currentSelectedGeometry =
 
-  matchingFeature?.geometry || null;
+        window.currentSelectedGeometry =
 
-window.currentHistoryGeometryId =
-  `range_${
-    String(range)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
+          matchingFeature?.geometry || null;
 
-console.log(
-  "🟩 Range geometry saved"
-);
+        window.currentHistoryGeometryId =
+          `range_${
+            String(range)
+              .trim()
+              .replace(/\s+/g,"_")
+          }`;
+
+        console.log(
+          "🟩 Range geometry saved"
+        );
 
         console.log(
           window.currentSelectedGeometry
         );
-// 🌦 LOAD POLYGON WEATHER
-loadPolygonWeather();
+
+        // 🌦 LOAD POLYGON WEATHER
+        loadPolygonWeather();
+
         // ====================================
         // 📦 LOAD RANGE COMPARTMENTS
         // ====================================
@@ -31996,180 +32581,6 @@ loadPolygonWeather();
         // ====================================
 
         await populateCompartmentButtons();
-
-        // ====================================
-        // 🖱 RANGE CLICK
-        // ====================================
-
-        rangeBtn.onclick =
-        async function(){
-
-          try {
-
-            this.style.background =
-              "#00c853";
-
-            // ====================================
-            // 🔥 RESET LOWER HIERARCHY
-            // ====================================
-
-            window.gisFilter.beat =
-              "ALL";
-
-            window.gisFilter.compartment =
-              "ALL";
-
-            // ====================================
-            // 🔥 RESET CHILD EYES
-            // ====================================
-
-            window.hiddenBeats =
-              new Set();
-
-            document
-            .querySelectorAll(
-              ".beat-eye-btn"
-            )
-            .forEach(btn => {
-
-              btn.innerHTML = "👁";
-
-            });
-
-            // ====================================
-            // 🌳 RANGE FILTER
-            // ====================================
-clearHeatmapBoundaryCache();
-            window.gisFilter.range =
-              range;
-
-            window.activePopupContext = {
-
-              level : "range",
-
-              division : division,
-
-              range : range,
-
-              beat : "ALL",
-
-              compartment : "ALL"
-
-            };
-
-            // ====================================
-            // 🟩 SAVE RANGE GEOMETRY
-            // ====================================
-
-            const matchingFeature =
-
-              (
-                window.allGISFeatures || []
-              )
-              .find(f => {
-
-                const r =
-
-                  String(
-
-                    f.properties?.Range ||
-
-                    f.properties?.range ||
-
-                    ""
-
-                  ).trim();
-
-                return r === range;
-
-              });
-
-          window.currentSelectedGeometry =
-
-  matchingFeature?.geometry || null;
-
-window.currentHistoryGeometryId =
-  `range_${
-    String(range)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
-
-console.log(
-  "🟩 Range geometry saved"
-);
-
-            console.log(
-              window.currentSelectedGeometry
-            );
-// 🌦 LOAD POLYGON WEATHER
-loadPolygonWeather();
-            console.log(
-              "🎯 RANGE POPUP MODE ENABLED"
-            );
-
-            // ====================================
-            // 📦 LOAD RANGE COMPARTMENTS
-            // ====================================
-
-            await loadCompartmentsForRange();
-
-            // ====================================
-            // 🎨 STYLE UPDATE ONLY
-            // ====================================
-
-            renderFilteredGIS();
-
-            renderFilteredCompartments();
-
-            centerMap();
-
-            // ====================================
-            // 👁 SHOW BEAT BUTTONS
-            // ====================================
-
-            document.getElementById(
-              "beatButtons"
-            ).style.display =
-              "flex";
-
-            // ====================================
-            // 🔘 BUILD BEAT BUTTONS
-            // ====================================
-
-            await populateBeatButtons();
-
-            // ====================================
-            // 👁 SHOW COMP BUTTONS
-            // ====================================
-
-            document.getElementById(
-              "compartmentButtons"
-            ).style.display =
-              "flex";
-
-            // ====================================
-            // 🔘 BUILD COMP BUTTONS
-            // ====================================
-
-            await populateCompartmentButtons();
-
-            console.log(
-              "✅ Range Restored"
-            );
-
-          }
-
-          catch(e){
-
-            console.error(
-              "❌ Range restore failed",
-              e
-            );
-
-          }
-
-        };
 
       }
 
@@ -32240,6 +32651,7 @@ loadPolygonWeather();
       if(range){
 
         ranges.add(range);
+
       }
 
     });
@@ -32401,7 +32813,9 @@ loadPolygonWeather();
 
           const range =
             this.dataset.value;
-clearHeatmapBoundaryCache();
+
+          clearHeatmapBoundaryCache();
+
           const division =
             normalizeDivision(
               window.gisFilter.division
@@ -32488,24 +32902,26 @@ clearHeatmapBoundaryCache();
 
           window.currentSelectedGeometry =
 
-  matchingFeature?.geometry || null;
+            matchingFeature?.geometry ||
+            null;
 
-window.currentHistoryGeometryId =
-  `range_${
-    String(range)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
+          window.currentHistoryGeometryId =
+            `range_${
+              String(range)
+                .trim()
+                .replace(/\s+/g,"_")
+            }`;
 
-console.log(
-  "🟩 Range geometry saved"
-);
+          console.log(
+            "🟩 Range geometry saved"
+          );
 
           console.log(
             window.currentSelectedGeometry
           );
 
           loadPolygonWeather();
+
           console.log(
             "🎯 POPUP LEVEL: RANGE"
           );
@@ -35458,6 +35874,18 @@ async function populateBeatButtons(){
     }
 
     // ==========================================
+    // 👤 ROLE
+    // ==========================================
+
+    const role =
+
+      String(
+        window.userProfile?.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+    // ==========================================
     // 🧹 RESET
     // ==========================================
 
@@ -35521,6 +35949,64 @@ async function populateBeatButtons(){
         ).trim();
 
       // ======================================
+      // 🟦 DIVISION
+      // ======================================
+
+      const featureDivision =
+
+        normalizeDivision(
+
+          f.properties?.Division ||
+
+          f.properties?.division ||
+
+          ""
+
+        );
+
+      // ======================================
+      // 🟣 CCF
+      // ------------------------------------------------
+      // CCF can see beats ONLY from his currently
+      // authorized GIS divisions.
+      //
+      // window.allGISFeatures has already been
+      // loaded for the CCF jurisdiction.
+      //
+      // Therefore this additional check prevents
+      // an unrelated division from entering the
+      // beat list if such data exists in the array.
+      // ======================================
+
+      if(
+        role === "CCF"
+      ){
+
+        const currentDivision =
+
+          normalizeDivision(
+
+            window.gisFilter?.division || ""
+
+          );
+
+        if(
+
+          currentDivision !== "ALL"
+
+          &&
+
+          featureDivision !==
+          currentDivision
+
+        ){
+
+          return;
+        }
+
+      }
+
+      // ======================================
       // ✅ ONLY CURRENT RANGE BEATS
       // ======================================
 
@@ -35534,7 +36020,9 @@ async function populateBeatButtons(){
       ){
 
         beats.add(beat);
+
       }
+
     });
 
     // ==========================================
@@ -35637,6 +36125,7 @@ async function populateBeatButtons(){
         </div>
 
       `;
+
     });
 
     // ==========================================
@@ -35779,7 +36268,9 @@ async function populateBeatButtons(){
           // ====================================
           // 🟨 SET FILTER
           // ====================================
-clearHeatmapBoundaryCache();
+
+          clearHeatmapBoundaryCache();
+
           window.gisFilter.beat =
             this.dataset.value;
 
@@ -35842,33 +36333,37 @@ clearHeatmapBoundaryCache();
                 normalizeBeatName(
                   this.dataset.value
                 )
+
               );
 
             });
 
-        window.currentSelectedGeometry =
+          window.currentSelectedGeometry =
 
-  matchingFeature?.geometry || null;
+            matchingFeature?.geometry ||
+            null;
 
-// ====================================
-// 📜 HISTORY GEOMETRY
-// ====================================
+          // ====================================
+          // 📜 HISTORY GEOMETRY
+          // ====================================
 
-window.currentHistoryGeometryId =
-  `beat_${
-    String(this.dataset.value)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
-console.log(
-  "🟨 Beat geometry saved"
-);
+          window.currentHistoryGeometryId =
+            `beat_${
+              String(this.dataset.value)
+                .trim()
+                .replace(/\s+/g,"_")
+            }`;
+
+          console.log(
+            "🟨 Beat geometry saved"
+          );
 
           console.log(
             window.currentSelectedGeometry
           );
 
           loadPolygonWeather();
+
           // ====================================
           // 🔥 RESET COMPARTMENT BUTTONS
           // ====================================
@@ -35907,14 +36402,19 @@ console.log(
             window.gisFilter.beat
           );
 
-        } catch(e){
+        }
+
+        catch(e){
 
           console.error(
             "❌ Beat click failed",
             e
           );
+
         }
+
       };
+
     });
 
     console.log(
@@ -35922,13 +36422,17 @@ console.log(
       beats.size
     );
 
-  } catch(e){
+  }
+
+  catch(e){
 
     console.error(
       "❌ populateBeatButtons",
       e
     );
+
   }
+
 }// ======================================================
 // 🚀 LOAD GIS
 // ======================================================
@@ -36164,6 +36668,18 @@ async function populateCompartmentButtons(){
     }
 
     // ==========================================
+    // 👤 ROLE
+    // ==========================================
+
+    const role =
+
+      String(
+        window.userProfile?.role || ""
+      )
+      .trim()
+      .toUpperCase();
+
+    // ==========================================
     // 🧹 RESET
     // ==========================================
 
@@ -36185,6 +36701,38 @@ async function populateCompartmentButtons(){
 
         const props =
           f.properties || {};
+
+        // ======================================
+        // 🟦 FEATURE DIVISION
+        // ======================================
+
+        const featureDivision =
+
+          normalizeDivision(
+
+            props.division ||
+
+            props.Division ||
+
+            ""
+
+          );
+
+        // ======================================
+        // 🟩 FEATURE RANGE
+        // ======================================
+
+        const featureRange =
+
+          String(
+
+            props.range ||
+
+            props.Range ||
+
+            ""
+
+          ).trim();
 
         // ======================================
         // 🟨 FEATURE BEAT
@@ -36221,6 +36769,78 @@ async function populateCompartmentButtons(){
           ).trim();
 
         // ======================================
+        // 🟠 CCF ONLY
+        // --------------------------------------
+        // CCF can see compartments only inside:
+        //
+        // CCF AUTHORIZED DIVISION
+        //        ↓
+        // CURRENT RANGE
+        //        ↓
+        // CURRENT BEAT
+        //
+        // Other roles remain unchanged.
+        // ======================================
+
+        if(
+          role === "CCF"
+        ){
+
+          const currentDivision =
+
+            normalizeDivision(
+
+              window.gisFilter?.division || ""
+
+            );
+
+          const currentRange =
+
+            String(
+
+              window.gisFilter?.range || ""
+
+            ).trim();
+
+          // ------------------------------------
+          // DIVISION CHECK
+          // ------------------------------------
+
+          if(
+
+            currentDivision !== "ALL"
+
+            &&
+
+            featureDivision !==
+            currentDivision
+
+          ){
+
+            return;
+          }
+
+          // ------------------------------------
+          // RANGE CHECK
+          // ------------------------------------
+
+          if(
+
+            currentRange !== "ALL"
+
+            &&
+
+            featureRange !==
+            currentRange
+
+          ){
+
+            return;
+          }
+
+        }
+
+        // ======================================
         // ✅ ONLY CURRENT BEAT BUTTONS
         // ======================================
 
@@ -36237,6 +36857,7 @@ async function populateCompartmentButtons(){
         }
 
       } catch(e){}
+
     });
 
     // ==========================================
@@ -36350,7 +36971,9 @@ async function populateCompartmentButtons(){
           // ====================================
           // 🟧 ACTIVE FILTER
           // ====================================
-clearHeatmapBoundaryCache();
+
+          clearHeatmapBoundaryCache();
+
           window.gisFilter.compartment =
             this.dataset.value;
 
@@ -36394,6 +37017,42 @@ clearHeatmapBoundaryCache();
               const props =
                 f.properties || {};
 
+              // ==================================
+              // 🟦 FEATURE DIVISION
+              // ==================================
+
+              const featureDivision =
+
+                normalizeDivision(
+
+                  props.division ||
+
+                  props.Division ||
+
+                  ""
+
+                );
+
+              // ==================================
+              // 🟩 FEATURE RANGE
+              // ==================================
+
+              const featureRange =
+
+                String(
+
+                  props.range ||
+
+                  props.Range ||
+
+                  ""
+
+                ).trim();
+
+              // ==================================
+              // 🟨 COMPARTMENT
+              // ==================================
+
               const comp =
 
                 String(
@@ -36408,32 +37067,96 @@ clearHeatmapBoundaryCache();
 
                 ).trim();
 
+              // ==================================
+              // 🟠 CCF AUTHORIZATION
+              // ==================================
+
+              if(
+                role === "CCF"
+              ){
+
+                const currentDivision =
+
+                  normalizeDivision(
+
+                    window.gisFilter?.division || ""
+
+                  );
+
+                const currentRange =
+
+                  String(
+
+                    window.gisFilter?.range || ""
+
+                  ).trim();
+
+                if(
+
+                  currentDivision !== "ALL"
+
+                  &&
+
+                  featureDivision !==
+                  currentDivision
+
+                ){
+
+                  return false;
+                }
+
+                if(
+
+                  currentRange !== "ALL"
+
+                  &&
+
+                  featureRange !==
+                  currentRange
+
+                ){
+
+                  return false;
+                }
+
+              }
+
+              // ==================================
+              // 🟧 COMPARTMENT MATCH
+              // ==================================
+
               return (
-                comp === this.dataset.value
+
+                comp ===
+                this.dataset.value
+
               );
 
             });
 
-       window.currentSelectedGeometry =
+          window.currentSelectedGeometry =
 
-  matchingFeature?.geometry || null;
+            matchingFeature?.geometry || null;
 
-// ====================================
-// 📜 HISTORY GEOMETRY
-// ====================================
+          // ====================================
+          // 📜 HISTORY GEOMETRY
+          // ====================================
 
-window.currentHistoryGeometryId =
-  `compartment_${
-    String(this.dataset.value)
-      .trim()
-      .replace(/\s+/g,"_")
-  }`;
-console.log(
-  "📦 Compartment geometry saved"
-);
+          window.currentHistoryGeometryId =
+            `compartment_${
+              String(this.dataset.value)
+                .trim()
+                .replace(/\s+/g,"_")
+            }`;
+
+          console.log(
+            "📦 Compartment geometry saved"
+          );
+
           console.log(
             window.currentSelectedGeometry
           );
+
           loadPolygonWeather();
 
           // ====================================
@@ -60904,6 +61627,49 @@ else if(
 // Emergency staff never reach this block,
 // because they were already accepted above.
 //
+// ==============================================
+
+// ==============================================
+// 🟠 4. CCF — OWN AUTHORIZED DIVISIONS
+// ==============================================
+
+else if(
+    role === "CCF"
+){
+
+    // TEMPORARY VERSION:
+    // CCF must be checked against his
+    // authorized division list.
+
+    if(
+        ccfAuthorizedDivisions.includes(
+            staffDivision
+        )
+    ){
+
+        staffVisible =
+            true;
+
+        visibilityReason =
+            "CCF AUTHORIZED DIVISION";
+
+    }
+
+    else {
+
+        staffVisible =
+            false;
+
+        visibilityReason =
+            "BLOCKED OUTSIDE CCF DIVISIONS";
+
+    }
+
+}
+
+
+// ==============================================
+// 🟩 5. DFO / ADFO
 // ==============================================
 
 else if(
