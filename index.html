@@ -8514,30 +8514,53 @@ if(window.userProfile){
     .toUpperCase();
 
 
-if(existingRole === "CCF"){
+  if(existingRole === "CCF"){
 
-  ccfAuthorizedDivisions =
+    ccfAuthorizedDivisions =
 
-    getDivisionsForCircle(
-      window.userProfile.circle
-    )
+      getDivisionsForCircle(
+        window.userProfile.circle
+      )
 
-    .map(function(division){
+      .map(function(division){
 
-      return normalizeDivision(
-        division
-      );
+        return normalizeDivision(
+          division
+        );
 
-    })
+      })
 
-    .filter(Boolean);
+      .filter(Boolean);
 
-}
+
+    // ========================================================
+    // 🟠 CCF GIS INITIAL FILTER
+    // ========================================================
+
+    if(
+      ccfAuthorizedDivisions.length > 0
+    ){
+
+      window.gisFilter = {
+
+        division:
+          ccfAuthorizedDivisions[0],
+
+        range:"ALL",
+
+        beat:"ALL",
+
+        compartment:"ALL"
+
+      };
+
+    }
+
+  }
 
 
   return;
 }
-
 
   if(authFlowRunning){
 
