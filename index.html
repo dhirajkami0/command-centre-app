@@ -63421,35 +63421,6 @@ if(
             // 🔥 ICON
             // ==============================================
             // ==============================================
-// 🔥 ICON (ALWAYS GREEN)
-// ==============================================
-const icon = L.divIcon({
-
-  html:`
-
-  <div class="markerWrap">
-
-    <div class="radarPulse"></div>
-
-    <div class="markerCore">
-
-      <i class="fa-solid fa-person-military-pointing"
-        style="
-          color:#00ff00;
-          font-size:17px;
-        ">
-      </i>
-
-    </div>
-
-  </div>
-
-  `,
-
-  iconSize:[30,30],
-
-  iconAnchor:[15,15]
-});
 // ==============================================
 // 🔥 TEAM
 // ==============================================
@@ -63748,6 +63719,174 @@ if(ageMs > 60000){
 
   liveSpeed = 0;
 }
+
+// ============================================================
+// 🛰️ LIVE STAFF MARKER STATE
+// ------------------------------------------------------------
+// ONLY FRONTEND VISUAL STATE
+//
+// 🟢 LIVE    <= 5 minutes  → existing radar ON
+// 🟡 STALE   > 5 < 30 min  → radar OFF, yellow/faded
+// 🔴 OFFLINE >= 30 minutes → radar OFF, red/strongly faded
+//
+// IMPORTANT:
+// This does NOT stop GPS.
+// This does NOT change dutyActive.
+// This does NOT modify Firestore.
+// ============================================================
+
+const LIVE_MARKER_MAX_AGE =
+    5 * 60 * 1000;
+
+const OFFLINE_MARKER_MAX_AGE =
+    30 * 60 * 1000;
+
+
+let markerState =
+    "LIVE";
+
+if(
+    !lastSeen ||
+    ageMs >= OFFLINE_MARKER_MAX_AGE
+){
+
+    markerState =
+        "OFFLINE";
+
+}
+else if(
+    ageMs > LIVE_MARKER_MAX_AGE
+){
+
+    markerState =
+        "STALE";
+
+}
+
+
+// ============================================================
+// 🎨 MARKER VISUAL SETTINGS
+// ============================================================
+
+let markerColor =
+    "#00ff00";
+
+let markerOpacity =
+    "1";
+
+let radarHtml =
+    `<div class="radarPulse"></div>`;
+
+
+if(
+    markerState === "STALE"
+){
+
+    markerColor =
+        "#ffd600";
+
+    markerOpacity =
+        "0.55";
+
+    radarHtml =
+        "";
+
+}
+
+
+else if(
+    markerState === "OFFLINE"
+){
+
+    markerColor =
+        "#ff0000";
+
+    markerOpacity =
+        "0.35";
+
+    radarHtml =
+        "";
+
+}
+
+
+// ============================================================
+// 🔥 CREATE MARKER ICON
+// ------------------------------------------------------------
+// LIVE uses EXACTLY the existing icon + radar.
+// STALE/OFFLINE use the SAME icon but without radar.
+// ============================================================
+
+const icon =
+    L.divIcon({
+
+        html: `
+
+        <div
+            class="markerWrap"
+            style="
+                opacity:${markerOpacity};
+            "
+        >
+
+            ${radarHtml}
+
+            <div class="markerCore">
+
+                <i
+                    class="fa-solid fa-person-military-pointing"
+                    style="
+                        color:${markerColor};
+                        font-size:17px;
+                    "
+                ></i>
+
+            </div>
+
+        </div>
+
+        `,
+
+        iconSize:[
+            30,
+            30
+        ],
+
+        iconAnchor:[
+            15,
+            15
+        ]
+
+    });
+
+
+// ============================================================
+// 🔎 DEBUG
+// ============================================================
+
+console.log(
+    "🛰 STAFF MARKER STATE:",
+    {
+        name:
+            s.cleanName ||
+            s.name,
+
+        markerState,
+
+        ageMinutes:
+            Number(
+                (
+                    ageMs /
+                    60000
+                ).toFixed(1)
+            ),
+
+        lastSeen,
+
+        radar:
+            markerState === "LIVE"
+    }
+);
 // ==============================================
 // 🔥 FIX LAST UPDATE TIME
 // ==============================================// ==============================================
@@ -64014,6 +64153,15 @@ const staffDistanceKey =
         s.name ||
         ""
     );
+
+// ============================================================
+// 📡 FIRESTORE PATROL SESSION
+// ============================================================
+
+const patrolSessionId =
+    String(
+        s.sessionId || ""
+    ).trim();
 // ==============================================
 // 🔥 POPUP
 // ==============================================
@@ -64312,7 +64460,16 @@ const popup = `
     </b>
 </div>
 
-    <div style="
+<div style="
+    margin-bottom:3px;
+">
+    📍 Patrol Points:
+
+    <b id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}">
+        Checking...
+    </b>
+</div>
+<div style="
       margin-bottom:3px;
       font-weight:600;
       color:#1b5e20;
@@ -64341,11 +64498,134 @@ const popup = `
 
   </div>
 
-</div>`;       // ==============================================
+</div>`;
+
+
+// ============================================================
+// 📍 PATROL POINT COUNT
+// ============================================================
+
+(async function(){
+
+    try{
+
+        const pointsElement =
+            document.getElementById(
+                "staffPatrolPoints_" +
+                encodeURIComponent(
+                    staffDistanceKey
+                )
+            );
+
+
+        if(!pointsElement){
+
+            return;
+
+        }
+
+
+        // ========================================================
+        // NO SESSION
+        // ========================================================
+
+        if(!patrolSessionId){
+
+            pointsElement.textContent =
+                "N/A";
+
+            return;
+
+        }
+
+
+        // ========================================================
+        // READ PATROL SESSION
+        // ========================================================
+
+        const sessionRef =
+            window.fb.doc(
+                window.db,
+                "patrol_tracks",
+                patrolSessionId
+            );
+
+
+        const sessionSnap =
+            await window.fb.getDoc(
+                sessionRef
+            );
+
+
+        if(!sessionSnap.exists()){
+
+            pointsElement.textContent =
+                "0";
+
+            return;
+
+        }
+
+
+        const session =
+            sessionSnap.data() || {};
+
+
+        // ========================================================
+        // POINT COUNT
+        // ========================================================
+
+        const pointCount =
+            Number(
+                session.pointCount || 0
+            );
+
+
+        pointsElement.textContent =
+            pointCount.toLocaleString();
+
+
+        console.log(
+            "📍 PATROL POINT COUNT:",
+            staffDistanceKey,
+            patrolSessionId,
+            pointCount
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Patrol point count lookup failed:",
+            staffDistanceKey,
+            err
+        );
+
+
+        const pointsElement =
+            document.getElementById(
+                "staffPatrolPoints_" +
+                encodeURIComponent(
+                    staffDistanceKey
+                )
+            );
+
+
+        if(pointsElement){
+
+            pointsElement.textContent =
+                "Error";
+
+        }
+
+    }
+
+})();
+// ==============================================
 // 🔥 MARKER CREATE/UPDATE
 // ==============================================
-if(
-  !window.staffMarkers[
+if(  !window.staffMarkers[
     s.cleanName
   ]
 ){
