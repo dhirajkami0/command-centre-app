@@ -8168,7 +8168,7 @@ async function login(){
 
 
   // ==========================================================
-  // SIMPLE VALIDATION ONLY
+  // SIMPLE VALIDATION
   // ==========================================================
 
   if(
@@ -8228,14 +8228,12 @@ async function login(){
     // ========================================================
     // ========================================================
     //
-    // IMPORTANT:
-    //
     // NO FIRESTORE
     // NO NETWORK
     // NO SERVER WAIT
     //
-    // If the same phone already has a cached profile,
-    // login immediately.
+    // If the same phone has a valid cached profile,
+    // authenticate immediately.
     //
     // ========================================================
 
@@ -8274,7 +8272,7 @@ async function login(){
 
 
           // ==================================================
-          // SAME PHONE?
+          // SAME PHONE
           // ==================================================
 
           if(
@@ -8326,7 +8324,9 @@ async function login(){
 
 
     // ========================================================
+    // ========================================================
     // ⚡ LOCAL LOGIN
+    // ========================================================
     // ========================================================
 
     if(
@@ -8362,9 +8362,7 @@ async function login(){
         // APPLY EXISTING AUTHENTICATED PROFILE HELPER
         // ====================================================
         //
-        // This keeps the helper you already added.
-        //
-        // It handles:
+        // Existing helper handles:
         //
         // • normalization
         // • GIS lock
@@ -8449,144 +8447,105 @@ async function login(){
 
 
           // ==================================================
-          // HIDE LOGIN IMMEDIATELY
+          // 🚀 USE COMMON AUTHENTICATION BOOT
           // ==================================================
-
-          hideLogin();
-
-
-          // ==================================================
-          // OFFLINE STATUS
+          //
+          // IMPORTANT:
+          //
+          // Do NOT duplicate:
+          //
+          // • hideLogin()
+          // • role control
+          // • Android sync
+          // • startApp()
+          // • GIS boot
+          //
+          // bootAfterAuthentication() handles those.
+          //
           // ==================================================
 
           if(
-            typeof updateNetworkStatus ===
+            typeof bootAfterAuthentication ===
             "function"
           ){
 
-            updateNetworkStatus(
-              "offline"
-            );
-
-          }
-
-
-          // ==================================================
-          // ROLE CONTROL
-          // ==================================================
-
-          if(
-            typeof applyRoleControl ===
-            "function"
-          ){
-
-            applyRoleControl();
-
-          }
-
-
-          // ==================================================
-          // START APP IMMEDIATELY
-          // ==================================================
-          //
-          // DO NOT WAIT FOR:
-          //
-          // • Firestore
-          // • GIS
-          // • Android
-          // • Server verification
-          //
-          // ==================================================
-
-          if(
-            !window.__APP_BOOTED_ONCE__
-          ){
-
-            window.__APP_BOOTED_ONCE__ =
-              true;
-
-            window.__LOGIN_JUST_FINISHED__ =
-              true;
+            const booted =
+              bootAfterAuthentication(
+                localProfile,
+                "LOCAL"
+              );
 
 
             if(
-              typeof startApp ===
-              "function"
+              !booted
             ){
 
-              startApp();
+              console.warn(
+                "⚠ Local authentication succeeded but app boot failed"
+              );
 
             }
 
           }
+          else{
+
+            // ==================================================
+            // SAFETY FALLBACK
+            // ==================================================
+
+            console.error(
+              "❌ bootAfterAuthentication() is missing"
+            );
 
 
-          // ==================================================
-          // GIS AFTER LOCAL LOGIN
-          // ==================================================
-          //
-          // Keep your existing post-login GIS logic.
-          // It is delayed so it NEVER blocks login.
-          //
-          // ==================================================
+            // --------------------------------------------------
+            // HIDE LOGIN
+            // --------------------------------------------------
 
-          setTimeout(
-            async function(){
-
-              try{
-
-                if(
-                  typeof renderFilteredGIS ===
-                  "function"
-                ){
-
-                  renderFilteredGIS();
-
-                }
+            hideLogin();
 
 
-                if(
-                  typeof populateBeatButtons ===
-                  "function"
-                ){
+            // --------------------------------------------------
+            // ROLE CONTROL
+            // --------------------------------------------------
 
-                  await populateBeatButtons();
+            if(
+              typeof applyRoleControl ===
+              "function"
+            ){
 
-                }
+              applyRoleControl();
 
-
-                if(
-                  typeof loadCompartmentsForRange ===
-                  "function"
-                ){
-
-                  await loadCompartmentsForRange();
-
-                }
+            }
 
 
-                if(
-                  typeof renderFilteredCompartments ===
-                  "function"
-                ){
+            // --------------------------------------------------
+            // SINGLE APP BOOT
+            // --------------------------------------------------
 
-                  renderFilteredCompartments();
+            if(
+              !window.__APP_BOOTED_ONCE__
+            ){
 
-                }
+              window.__APP_BOOTED_ONCE__ =
+                true;
 
-              }
-              catch(gisError){
+              window.__LOGIN_JUST_FINISHED__ =
+                true;
 
-                console.warn(
-                  "⚠ GIS post-login initialization:",
-                  gisError
-                );
+
+              if(
+                typeof startApp ===
+                "function"
+              ){
+
+                startApp();
 
               }
 
-            },
-            300
-          );
+            }
+
+          }
 
 
           // ==================================================
@@ -8599,7 +8558,7 @@ async function login(){
           //
           // User is already inside the application.
           //
-          // Server verification happens in background.
+          // Server verification is background only.
           //
           // ==================================================
 
@@ -8620,8 +8579,8 @@ async function login(){
                 }
                 else{
 
-                  console.log(
-                    "ℹ️ Background profile verifier not available"
+                  console.warn(
+                    "⚠ Background profile verifier not available"
                   );
 
                 }
@@ -8695,8 +8654,12 @@ async function login(){
 
     // ========================================================
     // ONE FAST RETRY
-    // --------------------------------------------------------
-    // Only for temporary startup/network failure.
+    // ========================================================
+    //
+    // ONLY server-required path.
+    //
+    // Local login NEVER reaches this retry.
+    //
     // ========================================================
 
     if(
@@ -8755,7 +8718,7 @@ async function login(){
 
 
     // ========================================================
-    // PHONE NOT AUTHORIZED
+    // SERVER ERROR / AUTHORIZATION
     // ========================================================
 
     if(
@@ -8873,7 +8836,7 @@ async function login(){
 
 
     // ========================================================
-    // NORMALIZE
+    // NORMALIZE SERVER PROFILE
     // ========================================================
 
     const finalProfile =
@@ -8886,6 +8849,10 @@ async function login(){
 
         : profile;
 
+
+    // ========================================================
+    // PROFILE NORMALIZATION FAILURE
+    // ========================================================
 
     if(
       !finalProfile
@@ -8948,7 +8915,7 @@ async function login(){
 
 
     // ========================================================
-    // IMPORTANT — PHONE MUST MATCH LOGIN NUMBER
+    // PHONE MUST MATCH LOGIN NUMBER
     // ========================================================
 
     if(
@@ -8979,51 +8946,99 @@ async function login(){
 
 
     // ========================================================
-    // GIS ROLE LOCK
+    // ========================================================
+    // 🌐 SERVER PROFILE ACCEPTED
+    // ========================================================
+    // ========================================================
+    //
+    // Use the SAME authentication helper as local login.
+    //
+    // This prevents duplicate authentication logic.
+    //
     // ========================================================
 
+    let serverApplied =
+      false;
+
+
     if(
-      typeof applyStaffGISLock ===
+      typeof applyAuthenticatedProfile ===
       "function"
     ){
 
-      applyStaffGISLock(
-        finalProfile
-      );
+      serverApplied =
+        applyAuthenticatedProfile(
+          finalProfile,
+          "SERVER"
+        );
+
+    }
+    else{
+
+      // ======================================================
+      // FALLBACK
+      // Keep existing behaviour if helper unavailable.
+      // ======================================================
+
+      if(
+        typeof applyStaffGISLock ===
+        "function"
+      ){
+
+        applyStaffGISLock(
+          finalProfile
+        );
+
+      }
+
+
+      if(
+        typeof saveLocalSession ===
+        "function"
+      ){
+
+        saveLocalSession(
+          finalProfile
+        );
+
+      }
+
+
+      window.userProfile =
+        finalProfile;
+
+
+      loginCompleted =
+        true;
+
+
+      serverApplied =
+        true;
 
     }
 
 
     // ========================================================
-    // SAVE LOCAL SESSION
+    // SERVER PROFILE COULD NOT BE APPLIED
     // ========================================================
 
     if(
-      typeof saveLocalSession ===
-      "function"
+      !serverApplied
     ){
 
-      saveLocalSession(
-        finalProfile
+      console.error(
+        "❌ Server profile could not be applied"
       );
 
+
+      alert(
+        "❌ Unable to apply staff profile."
+      );
+
+
+      return;
+
     }
-
-
-    // ========================================================
-    // GLOBAL PROFILE
-    // ========================================================
-
-    window.userProfile =
-      finalProfile;
-
-
-    // ========================================================
-    // LOGIN COMPLETE
-    // ========================================================
-
-    loginCompleted =
-      true;
 
 
     console.log(
@@ -9035,195 +9050,239 @@ async function login(){
 
 
     // ========================================================
-    // SAVE TO ANDROID
-    // --------------------------------------------------------
-    // DO NOT WAIT FOR ANDROID.
-    // Login must remain fast.
+    // 🚀 COMMON AUTHENTICATION BOOT
+    // ========================================================
+    //
+    // This handles:
+    //
+    // • role control
+    // • Android sync
+    // • hide login
+    // • single app boot
+    // • GIS post-login work
+    //
     // ========================================================
 
-    try{
+    if(
+      typeof bootAfterAuthentication ===
+      "function"
+    ){
+
+      const booted =
+        bootAfterAuthentication(
+          finalProfile,
+          "SERVER"
+        );
+
 
       if(
-        window.Android
+        !booted
       ){
 
-        if(
-          typeof Android.savePhone ===
-          "function"
-        ){
-
-          Android.savePhone(
-            finalProfile.phone
-          );
-
-        }
-
-
-        if(
-          typeof Android.saveUserProfile ===
-          "function"
-        ){
-
-          Android.saveUserProfile(
-            JSON.stringify(
-              finalProfile
-            )
-          );
-
-        }
+        console.warn(
+          "⚠ Server authentication succeeded but app boot failed"
+        );
 
       }
 
     }
-    catch(androidError){
+    else{
 
-      console.warn(
-        "⚠ Android profile cache skipped:",
-        androidError
+      // ==================================================
+      // SAFETY FALLBACK
+      // ==================================================
+
+      console.error(
+        "❌ bootAfterAuthentication() is missing"
       );
 
-    }
+
+      // --------------------------------------------------
+      // SAVE TO ANDROID
+      // --------------------------------------------------
+
+      try{
+
+        if(
+          window.Android
+        ){
+
+          if(
+            typeof Android.savePhone ===
+            "function"
+          ){
+
+            Android.savePhone(
+              finalProfile.phone
+            );
+
+          }
 
 
-    // ========================================================
-    // HIDE LOGIN IMMEDIATELY
-    // ========================================================
+          if(
+            typeof Android.saveUserProfile ===
+            "function"
+          ){
 
-    hideLogin();
+            Android.saveUserProfile(
+              JSON.stringify(
+                finalProfile
+              )
+            );
 
+          }
 
-    // ========================================================
-    // ONLINE
-    // ========================================================
+        }
 
-    if(
-      typeof updateNetworkStatus ===
-      "function"
-    ){
+      }
+      catch(androidError){
 
-      updateNetworkStatus(
-        "online"
-      );
+        console.warn(
+          "⚠ Android profile cache skipped:",
+          androidError
+        );
 
-    }
-
-
-    // ========================================================
-    // ROLE CONTROL
-    // ========================================================
-
-    if(
-      typeof applyRoleControl ===
-      "function"
-    ){
-
-      applyRoleControl();
-
-    }
+      }
 
 
-    // ========================================================
-    // START APP
-    // ========================================================
+      // --------------------------------------------------
+      // HIDE LOGIN
+      // --------------------------------------------------
 
-    if(
-      !window.__APP_BOOTED_ONCE__
-    ){
+      hideLogin();
 
-      window.__APP_BOOTED_ONCE__ =
-        true;
 
-      window.__LOGIN_JUST_FINISHED__ =
-        true;
-
+      // --------------------------------------------------
+      // ONLINE
+      // --------------------------------------------------
 
       if(
-        typeof startApp ===
+        typeof updateNetworkStatus ===
         "function"
       ){
 
-        startApp();
+        updateNetworkStatus(
+          "online"
+        );
 
       }
+
+
+      // --------------------------------------------------
+      // ROLE CONTROL
+      // --------------------------------------------------
+
+      if(
+        typeof applyRoleControl ===
+        "function"
+      ){
+
+        applyRoleControl();
+
+      }
+
+
+      // --------------------------------------------------
+      // SINGLE APP BOOT
+      // --------------------------------------------------
+
+      if(
+        !window.__APP_BOOTED_ONCE__
+      ){
+
+        window.__APP_BOOTED_ONCE__ =
+          true;
+
+        window.__LOGIN_JUST_FINISHED__ =
+          true;
+
+
+        if(
+          typeof startApp ===
+          "function"
+        ){
+
+          startApp();
+
+        }
+
+      }
+
+
+      // --------------------------------------------------
+      // GIS AFTER LOGIN
+      // --------------------------------------------------
+
+      setTimeout(
+        async function(){
+
+          try{
+
+            if(
+              typeof renderFilteredGIS ===
+              "function"
+            ){
+
+              renderFilteredGIS();
+
+            }
+
+
+            if(
+              typeof populateBeatButtons ===
+              "function"
+            ){
+
+              await populateBeatButtons();
+
+            }
+
+
+            if(
+              typeof loadCompartmentsForRange ===
+              "function"
+            ){
+
+              await loadCompartmentsForRange();
+
+            }
+
+
+            if(
+              typeof renderFilteredCompartments ===
+              "function"
+            ){
+
+              renderFilteredCompartments();
+
+            }
+
+          }
+          catch(gisError){
+
+            console.warn(
+              "⚠ GIS post-login initialization:",
+              gisError
+            );
+
+          }
+
+        },
+        300
+      );
 
     }
 
 
     // ========================================================
-    // GIS AFTER LOGIN
-    // --------------------------------------------------------
-    // Do NOT block login on GIS.
-    // ========================================================
-
-    setTimeout(
-      async function(){
-
-        try{
-
-          if(
-            typeof renderFilteredGIS ===
-            "function"
-          ){
-
-            renderFilteredGIS();
-
-          }
-
-
-          if(
-            typeof populateBeatButtons ===
-            "function"
-          ){
-
-            await populateBeatButtons();
-
-          }
-
-
-          if(
-            typeof loadCompartmentsForRange ===
-            "function"
-          ){
-
-            await loadCompartmentsForRange();
-
-          }
-
-
-          if(
-            typeof renderFilteredCompartments ===
-            "function"
-          ){
-
-            renderFilteredCompartments();
-
-          }
-
-        }
-        catch(gisError){
-
-          console.warn(
-            "⚠ GIS post-login initialization:",
-            gisError
-          );
-
-        }
-
-      },
-      300
-    );
-
-
-    // ========================================================
-    // SERVER PROFILE IS ALREADY VERIFIED HERE
+    // SERVER PROFILE IS ALREADY VERIFIED
     // ========================================================
     //
-    // No additional GET_PROFILE is needed.
+    // Do NOT call verifyProfileInBackground() here.
     //
-    // The profile just came from the server.
+    // GET_PROFILE just succeeded.
     //
     // ========================================================
-
 
   }
   catch(err){
@@ -76374,18 +76433,7 @@ function bootAfterAuthentication(
     // NETWORK STATUS
     // ========================================================
 
-    if(
-      typeof updateNetworkStatus ===
-      "function"
-    ){
 
-      updateNetworkStatus(
-        source === "LOCAL"
-          ? "offline"
-          : "online"
-      );
-
-    }
 
 
     // ========================================================
