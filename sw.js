@@ -5,7 +5,7 @@ USER-CONTROLLED UPDATE
 
 
 const CACHE_NAME =
-    "greenguard-v35";
+    "greenguard-v36";
 
 
 const APP_SHELL = [
