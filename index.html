@@ -64625,7 +64625,8 @@ const popup = `
 // ==============================================
 // 🔥 MARKER CREATE/UPDATE
 // ==============================================
-if(  !window.staffMarkers[
+if(
+  !window.staffMarkers[
     s.cleanName
   ]
 ){
@@ -64659,13 +64660,22 @@ if(  !window.staffMarkers[
     s.cleanName
   ]
 
-  .setLatLng([lat, lon])
+  .setLatLng(
+    [lat, lon]
+  )
+
+  // 🔥 IMPORTANT:
+  // Update the existing marker icon
+  // whenever markerState changes.
+  .setIcon(
+    icon
+  )
 
   .setPopupContent(
     popup
   );
-}
-// ============================================================
+
+}// ============================================================
 // 🖱 STAFF MARKER → INDIVIDUAL TRACK CONTROL
 // ------------------------------------------------------------
 // Leaflet bindPopup() remains responsible for popup toggle.
