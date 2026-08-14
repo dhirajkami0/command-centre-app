@@ -92071,11 +92071,29 @@ document.getElementById('form-modal').style.display = 'none';
 }
 
 
-    async function loadSessionPoints(
+async function loadSessionPoints(
   sessionId
 ){
 
   try{
+
+    // ============================================================
+    // 🔎 BASIC SESSION VALIDATION
+    // ============================================================
+
+    if(!sessionId){
+
+      console.warn(
+        "⚠ loadSessionPoints: missing sessionId"
+      );
+
+      return [];
+    }
+
+
+    // ============================================================
+    // 📍 LOAD ACTUAL FIRESTORE GPS POINTS
+    // ============================================================
 
     const q =
 
@@ -92093,40 +92111,443 @@ document.getElementById('form-modal').style.display = 'none';
         )
       );
 
+
     const snap =
 
       await window.fb.getDocs(q);
 
+
     const points = [];
 
-    snap.forEach(doc=>{
 
-      const p = doc.data();
+    snap.forEach(doc => {
+
+      const p =
+        doc.data();
+
+
+      // ----------------------------------------------------------
+      // VALID GPS
+      // ----------------------------------------------------------
+
+      const lat =
+        Number(p?.lat);
+
+      const lon =
+        Number(p?.lon);
+
 
       if(
-        isNaN(p?.lat) ||
-        isNaN(p?.lon)
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon)
       ){
+
         return;
       }
 
+
+      // ----------------------------------------------------------
+      // KEEP THE ORIGINAL GPS INFORMATION
+      // ----------------------------------------------------------
+      // IMPORTANT:
+      // Do NOT throw away accuracy / speed / breakTrack.
+      // calculatePatrolDistanceKm() uses these fields.
+      // ----------------------------------------------------------
+
       points.push({
 
-        lat:Number(p.lat),
+        id:
+          p?.id ??
+          doc.id,
 
-        lng:Number(p.lon),
+        lat:
+          lat,
 
-        ts:Number(
-          p.time || 0
-        )
+        lng:
+          lon,
+
+        lon:
+          lon,
+
+        ts:
+          Number(
+            p?.time ??
+            p?.timestamp ??
+            0
+          ),
+
+        time:
+          p?.time ??
+          p?.timestamp ??
+          0,
+
+        timestamp:
+          p?.timestamp ??
+          p?.time ??
+          0,
+
+        accuracy:
+          Number(
+            p?.accuracy
+          ),
+
+        speed:
+          Number(
+            p?.speed
+          ),
+
+        heading:
+          Number(
+            p?.heading
+          ),
+
+        breakTrack:
+          p?.breakTrack === true ||
+          p?.breakTrack === "true" ||
+          p?.breakTrack === 1 ||
+          p?.breakTrack === "1"
+
       });
 
     });
 
+
     console.log(
       "📍 Session points loaded:",
-      points.length
+      points.length,
+      sessionId
     );
+
+
+    // ============================================================
+    // 🔧 REPAIR PARENT PATROL SESSION SUMMARY
+    // ============================================================
+
+    if(points.length > 0){
+
+      try{
+
+        // --------------------------------------------------------
+        // 📊 ACTUAL POINT COUNT
+        // --------------------------------------------------------
+
+        const actualPointCount =
+          points.length;
+
+
+        // --------------------------------------------------------
+        // 📏 CALCULATE REAL PATROL DISTANCE
+        // --------------------------------------------------------
+        // Reuse the existing canonical distance engine.
+        // --------------------------------------------------------
+
+        let calculatedDistanceKm = 0;
+
+
+        if(
+          typeof window.calculatePatrolDistanceKm ===
+          "function"
+        ){
+
+          calculatedDistanceKm =
+            Number(
+              window.calculatePatrolDistanceKm(
+                points
+              )
+            ) || 0;
+
+        }
+        else{
+
+          console.warn(
+            "⚠ calculatePatrolDistanceKm unavailable"
+          );
+
+        }
+
+
+        // --------------------------------------------------------
+        // 🧹 BUILD SIMPLIFIED TRACK
+        // --------------------------------------------------------
+        // Reuse existing track cleaner when available.
+        // This prevents putting thousands of raw GPS points
+        // unnecessarily into the parent document.
+        // --------------------------------------------------------
+
+        let simplifiedTrack = [];
+
+
+        if(
+          typeof window.cleanTrackPoints ===
+          "function"
+        ){
+
+          try{
+
+            simplifiedTrack =
+              window.cleanTrackPoints(
+                points
+              ) || [];
+
+          }
+          catch(cleanErr){
+
+            console.warn(
+              "⚠ cleanTrackPoints failed:",
+              cleanErr
+            );
+
+            simplifiedTrack = [];
+
+          }
+
+        }
+
+
+        // --------------------------------------------------------
+        // 📄 READ CURRENT PARENT SESSION
+        // --------------------------------------------------------
+
+        const parentRef =
+
+          window.fb.doc(
+            window.db,
+            "patrol_tracks",
+            sessionId
+          );
+
+
+        const parentSnap =
+
+          await window.fb.getDoc(
+            parentRef
+          );
+
+
+        const parentData =
+
+          parentSnap.exists()
+            ? parentSnap.data()
+            : {};
+
+
+        const existingPointCount =
+          Number(
+            parentData?.pointCount || 0
+          );
+
+
+        const existingDistanceKm =
+          Number(
+            parentData?.distanceKm || 0
+          );
+
+
+        const existingTrackLength =
+          Array.isArray(
+            parentData?.simplifiedTrack
+          )
+            ? parentData.simplifiedTrack.length
+            : 0;
+
+
+        // --------------------------------------------------------
+        // 🔎 ONLY REPAIR WHEN NECESSARY
+        // --------------------------------------------------------
+        // This avoids writing the parent document every time
+        // the frontend loads the same session.
+        // --------------------------------------------------------
+
+        const countNeedsRepair =
+          existingPointCount !==
+          actualPointCount;
+
+
+        const distanceNeedsRepair =
+          Math.abs(
+            existingDistanceKm -
+            calculatedDistanceKm
+          ) > 0.001;
+
+
+        const trackNeedsRepair =
+          simplifiedTrack.length > 0 &&
+          existingTrackLength === 0;
+
+
+        if(
+          countNeedsRepair ||
+          distanceNeedsRepair ||
+          trackNeedsRepair
+        ){
+
+          const repairData = {
+
+            // ----------------------------------------------------
+            // ACTUAL NUMBER OF VALID FIRESTORE GPS POINTS
+            // ----------------------------------------------------
+
+            pointCount:
+              actualPointCount,
+
+
+            // ----------------------------------------------------
+            // ACTUAL CALCULATED PATROL DISTANCE
+            // ----------------------------------------------------
+
+            distanceKm:
+              Number(
+                calculatedDistanceKm.toFixed(3)
+              )
+
+          };
+
+
+          // ------------------------------------------------------
+          // ONLY WRITE SIMPLIFIED TRACK IF AVAILABLE
+          // ------------------------------------------------------
+
+          if(
+            Array.isArray(
+              simplifiedTrack
+            ) &&
+            simplifiedTrack.length > 0
+          ){
+
+            repairData.simplifiedTrack =
+              simplifiedTrack;
+
+          }
+
+
+          console.log(
+            "🔧 REPAIRING PATROL SESSION SUMMARY",
+            {
+              sessionId:
+                sessionId,
+
+              oldPointCount:
+                existingPointCount,
+
+              newPointCount:
+                actualPointCount,
+
+              oldDistanceKm:
+                existingDistanceKm,
+
+              newDistanceKm:
+                Number(
+                  calculatedDistanceKm.toFixed(3)
+                ),
+
+              oldTrackLength:
+                existingTrackLength,
+
+              newTrackLength:
+                simplifiedTrack.length
+            }
+          );
+
+
+          // ------------------------------------------------------
+          // 🔥 MERGE ONLY SUMMARY FIELDS
+          // ------------------------------------------------------
+          // IMPORTANT:
+          // We DO NOT overwrite:
+          //
+          // cleanName
+          // name
+          // rawName
+          // beat
+          // range
+          // division
+          // dutyActive
+          // sessionId
+          // startedAt
+          // updatedAt
+          // team
+          // status
+          // etc.
+          //
+          // Existing patrol session data remains untouched.
+          // ------------------------------------------------------
+
+          await window.fb.setDoc(
+
+            parentRef,
+
+            repairData,
+
+            {
+              merge:
+                true
+            }
+
+          );
+
+
+          console.log(
+            "✅ PATROL SESSION SUMMARY REPAIRED",
+            sessionId,
+            repairData
+          );
+
+        }
+        else{
+
+          console.log(
+            "✅ PATROL SESSION SUMMARY ALREADY CORRECT",
+            {
+              sessionId:
+                sessionId,
+
+              pointCount:
+                actualPointCount,
+
+              distanceKm:
+                Number(
+                  calculatedDistanceKm.toFixed(3)
+                ),
+
+              simplifiedTrack:
+                simplifiedTrack.length
+            }
+          );
+
+        }
+
+      }
+      catch(repairErr){
+
+        // --------------------------------------------------------
+        // IMPORTANT:
+        // SUMMARY REPAIR FAILURE MUST NEVER BREAK
+        // PATROL TRACK LOADING.
+        // --------------------------------------------------------
+
+        console.error(
+          "⚠ Patrol summary repair failed:",
+          repairErr
+        );
+
+      }
+
+    }
+    else{
+
+      console.log(
+        "ℹ No valid GPS points for session:",
+        sessionId
+      );
+
+    }
+
+
+    // ============================================================
+    // ✅ RETURN ORIGINAL POINT ARRAY
+    // ============================================================
+    // Existing map/track flow continues exactly as before.
+    // ============================================================
 
     return points;
 
@@ -92140,9 +92561,10 @@ document.getElementById('form-modal').style.display = 'none';
     );
 
     return [];
+
   }
-}
-async function submitEndDuty(event) {
+
+}async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
 
   try {
