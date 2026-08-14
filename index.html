@@ -64466,8 +64466,15 @@ const popup = `
     📍 Patrol Points:
 
     <b id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}">
-        Checking...
+        ${
+          Number(
+            window.staffPatrolPointCounts?.[
+              staffDistanceKey
+            ] || 0
+          ).toLocaleString()
+        }
     </b>
+
 </div>
 <div style="
       margin-bottom:3px;
@@ -64503,123 +64510,213 @@ const popup = `
 
 // ============================================================
 // 📍 PATROL POINT COUNT
+// ------------------------------------------------------------
+// Reads the ACTUAL Firestore points subcollection.
+//
+// patrol_tracks/{sessionId}/points
+//
+// This does NOT depend on the parent pointCount field.
+// It also does NOT depend on loadSessionPoints().
 // ============================================================
 
 (async function(){
 
-    try{
+  try{
 
-        const pointsElement =
-            document.getElementById(
-                "staffPatrolPoints_" +
-                encodeURIComponent(
-                    staffDistanceKey
-                )
-            );
+    // ==========================================================
+    // FIND POPUP POINT COUNT ELEMENT
+    // ----------------------------------------------------------
+    // Popup may not yet be open/rendered.
+    // Therefore we do NOT immediately depend on DOM here.
+    // ==========================================================
 
-
-        if(!pointsElement){
-
-            return;
-
-        }
+    const pointElementId =
+      "staffPatrolPoints_" +
+      encodeURIComponent(
+        staffDistanceKey
+      );
 
 
-        // ========================================================
-        // NO SESSION
-        // ========================================================
+    // ==========================================================
+    // NO SESSION
+    // ==========================================================
 
-        if(!patrolSessionId){
+    if(!patrolSessionId){
 
-            pointsElement.textContent =
-                "N/A";
+      console.log(
+        "ℹ️ No patrol session for:",
+        staffDistanceKey
+      );
 
-            return;
-
-        }
-
-
-        // ========================================================
-        // READ PATROL SESSION
-        // ========================================================
-
-        const sessionRef =
-            window.fb.doc(
-                window.db,
-                "patrol_tracks",
-                patrolSessionId
-            );
-
-
-        const sessionSnap =
-            await window.fb.getDoc(
-                sessionRef
-            );
-
-
-        if(!sessionSnap.exists()){
-
-            pointsElement.textContent =
-                "0";
-
-            return;
-
-        }
-
-
-        const session =
-            sessionSnap.data() || {};
-
-
-        // ========================================================
-        // POINT COUNT
-        // ========================================================
-
-        const pointCount =
-            Number(
-                session.pointCount || 0
-            );
-
-
-        pointsElement.textContent =
-            pointCount.toLocaleString();
-
-
-        console.log(
-            "📍 PATROL POINT COUNT:",
-            staffDistanceKey,
-            patrolSessionId,
-            pointCount
-        );
-
+      return;
 
     }
-    catch(err){
-
-        console.warn(
-            "⚠ Patrol point count lookup failed:",
-            staffDistanceKey,
-            err
-        );
 
 
-        const pointsElement =
-            document.getElementById(
-                "staffPatrolPoints_" +
-                encodeURIComponent(
-                    staffDistanceKey
-                )
-            );
+    // ==========================================================
+    // READ ACTUAL FIRESTORE POINTS
+    // ==========================================================
+
+    const pointsRef =
+      window.fb.collection(
+        window.db,
+        "patrol_tracks",
+        patrolSessionId,
+        "points"
+      );
 
 
-        if(pointsElement){
+    const pointsSnap =
+      await window.fb.getDocs(
+        pointsRef
+      );
 
-            pointsElement.textContent =
-                "Error";
+
+    const actualPointCount =
+      pointsSnap.size;
+
+
+    console.log(
+      "📍 ACTUAL FIRESTORE PATROL POINTS:",
+      {
+        staff:
+          staffDistanceKey,
+
+        sessionId:
+          patrolSessionId,
+
+        points:
+          actualPointCount
+      }
+    );
+
+
+    // ==========================================================
+    // UPDATE POPUP DOM
+    // ----------------------------------------------------------
+    // The popup may already be open.
+    // If it is not open, the value will be updated the next
+    // time the popup is opened through the popup HTML below.
+    // ==========================================================
+
+    const pointsElement =
+      document.getElementById(
+        pointElementId
+      );
+
+
+    if(pointsElement){
+
+      pointsElement.textContent =
+        actualPointCount.toLocaleString();
+
+    }
+
+
+    // ==========================================================
+    // STORE LATEST COUNT FOR THIS STAFF
+    // ----------------------------------------------------------
+    // This allows the popup to display the already-known count
+    // when it is opened later.
+    // ==========================================================
+
+    if(!window.staffPatrolPointCounts){
+
+      window.staffPatrolPointCounts =
+        {};
+
+    }
+
+
+    window.staffPatrolPointCounts[
+      staffDistanceKey
+    ] =
+      actualPointCount;
+
+
+    // ==========================================================
+    // UPDATE OPEN POPUP CONTENT
+    // ----------------------------------------------------------
+    // Rebuild the popup only when necessary.
+    // Existing popup structure remains unchanged.
+    // ==========================================================
+
+    const marker =
+      window.staffMarkers?.[
+        s.cleanName
+      ];
+
+
+    if(
+      marker &&
+      marker.isPopupOpen &&
+      typeof marker.getPopup ===
+        "function"
+    ){
+
+      const currentPopup =
+        marker.getPopup();
+
+
+      if(currentPopup){
+
+        const popupElement =
+          currentPopup.getElement();
+
+
+        const popupPointsElement =
+          popupElement?.querySelector(
+            "#" +
+            CSS.escape(
+              pointElementId
+            )
+          );
+
+
+        if(popupPointsElement){
+
+          popupPointsElement.textContent =
+            actualPointCount.toLocaleString();
 
         }
 
+      }
+
     }
+
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠️ Patrol point count lookup failed:",
+      staffDistanceKey,
+      patrolSessionId,
+      err
+    );
+
+
+    // ==========================================================
+    // DO NOT BREAK STAFF MARKER
+    // ==========================================================
+
+    const pointsElement =
+      document.getElementById(
+        "staffPatrolPoints_" +
+        encodeURIComponent(
+          staffDistanceKey
+        )
+      );
+
+
+    if(pointsElement){
+
+      pointsElement.textContent =
+        "Unavailable";
+
+    }
+
+  }
 
 })();
 // ==============================================
