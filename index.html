@@ -75298,19 +75298,20 @@ loadPatrolTracks();
       }, 400);
     } 
 // ============================================================
-// 🔥 FIRESTORE PROFILE LOOKUP
-// PHONE-ONLY AUTHENTICATION
+// 🔐 FAST PROFILE LOOKUP
+// ------------------------------------------------------------
+// PHONE → staff_profiles → ACTIVE PROFILE
 //
-// CURRENT DESIGN:
-// • Phone number only
-// • No deviceId
-// • staff_profiles is authoritative
-// • ACTIVE profile → allow
-// • Existing profile but not ACTIVE → ACCESS_BLOCKED
-// • Phone missing → PROFILE_NOT_FOUND
-// • Network / Firestore timeout → null
-// • Maximum 3 attempts
-// • Each Firestore attempt has its own timeout
+// Designed for 1000+ staff.
+// Does NOT download all staff.
+//
+// FIRST REQUEST:
+//   Give Firestore enough time to respond.
+//
+// TEMPORARY FAILURE:
+//   One quick retry.
+//
+// NO 3 × 8 second timeout chain.
 // ============================================================
 
 async function findProfileWithRetry(
@@ -75327,7 +75328,7 @@ async function findProfileWithRetry(
 
 
   // ==========================================================
-  // ❌ INVALID PHONE
+  // SIMPLE PHONE VALIDATION
   // ==========================================================
 
   if(
@@ -75335,15 +75336,18 @@ async function findProfileWithRetry(
   ){
 
     return {
+
       status:"error",
+
       code:"INVALID_PHONE"
+
     };
 
   }
 
 
   // ==========================================================
-  // 🔥 FIREBASE AVAILABILITY
+  // FIREBASE CHECK
   // ==========================================================
 
   if(
@@ -75361,7 +75365,7 @@ async function findProfileWithRetry(
 
 
   // ==========================================================
-  // 🔥 BUILD QUERY
+  // BUILD PHONE QUERY
   // ==========================================================
 
   let q;
@@ -75397,167 +75401,218 @@ async function findProfileWithRetry(
   }
 
 
-  let lastError = null;
-
-
   // ==========================================================
-  // 🔁 THREE AUTHORIZATION LOOKUP ATTEMPTS
+  // 🚀 FAST FIRST LOOKUP
+  // ----------------------------------------------------------
+  // No artificial 8-second Promise.race.
+  // Let Firestore return normally.
   // ==========================================================
 
-  for(
-    let attempt = 1;
-    attempt <= 3;
-    attempt++
-  ){
+  try{
 
-    try{
+    console.log(
+      "🔐 FAST PROFILE LOOKUP:",
+      phone
+    );
 
-      console.log(
-        `🔐 PROFILE LOOKUP ${attempt}/3:`,
+
+    const snap =
+      await window.fb.getDocs(
+        q
+      );
+
+
+    console.log(
+      "🔐 PROFILE LOOKUP:",
+      phone,
+      "docs:",
+      snap?.size
+    );
+
+
+    // ========================================================
+    // INVALID SNAPSHOT
+    // ========================================================
+
+    if(
+      !snap ||
+      !Array.isArray(
+        snap.docs
+      )
+    ){
+
+      console.warn(
+        "⚠ Invalid Firestore snapshot"
+      );
+
+      return null;
+
+    }
+
+
+    // ========================================================
+    // SEARCH MATCHING PROFILES
+    // ========================================================
+
+    for(
+      const docSnap of snap.docs
+    ){
+
+      const candidate =
+        docSnap.data() || {};
+
+
+      const accessStatus =
+        String(
+          candidate.accessStatus ||
+          candidate.status ||
+          ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+      // ======================================================
+      // ✅ ACTIVE
+      // ======================================================
+
+      if(
+        accessStatus ===
+        "ACTIVE"
+      ){
+
+        console.log(
+          "✅ ACTIVE PROFILE FOUND:",
+          phone,
+          docSnap.id
+        );
+
+
+        return {
+
+          status:"ok",
+
+          id:
+            docSnap.id,
+
+          ...candidate
+
+        };
+
+      }
+
+    }
+
+
+    // ========================================================
+    // ⛔ PHONE EXISTS BUT NOT ACTIVE
+    // ========================================================
+
+    if(
+      !snap.empty
+    ){
+
+      console.warn(
+        "⛔ PROFILE FOUND BUT NOT ACTIVE:",
         phone
       );
 
 
-      // ======================================================
-      // ⏱ FIRESTORE REQUEST TIMEOUT
-      // ------------------------------------------------------
-      // IMPORTANT:
-      // getDocs() previously had no timeout.
-      // A hanging request could therefore block the
-      // entire retry chain indefinitely.
-      // ======================================================
+      return {
 
-      const FIRESTORE_TIMEOUT =
-        8000;
+        status:"error",
 
+        code:
+          "ACCESS_BLOCKED",
 
-      const timeoutPromise =
-        new Promise(
-          resolve => {
+        error:
+          "ACCESS_BLOCKED"
 
-            setTimeout(
-              () => {
+      };
 
-                resolve({
-                  __firestoreTimeout:true
-                });
-
-              },
-              FIRESTORE_TIMEOUT
-            );
-
-          }
-        );
+    }
 
 
-      const firestorePromise =
-        window.fb.getDocs(q);
+    // ========================================================
+    // ❌ PHONE NOT FOUND
+    // ========================================================
+
+    console.warn(
+      "⛔ PHONE NOT FOUND:",
+      phone
+    );
 
 
-      const result =
-        await Promise.race([
-          firestorePromise,
-          timeoutPromise
-        ]);
+    return {
+
+      status:"error",
+
+      code:
+        "PROFILE_NOT_FOUND",
+
+      error:
+        "PROFILE_NOT_FOUND"
+
+    };
+
+  }
+
+  catch(err){
+
+    // ========================================================
+    // 🔄 ONE QUICK RETRY
+    // --------------------------------------------------------
+    // Only retry temporary Firestore/network failure.
+    // ========================================================
+
+    console.warn(
+      "⚠ FAST PROFILE LOOKUP FAILED:",
+      err
+    );
 
 
-      // ======================================================
-      // ⏱ REQUEST TIMED OUT
-      // ======================================================
-
-      if(
-        result &&
-        result.__firestoreTimeout
-      ){
-
-        lastError =
-          new Error(
-            `Firestore timeout after ${FIRESTORE_TIMEOUT}ms`
-          );
-
-        console.warn(
-          `⚠ PROFILE LOOKUP TIMEOUT ${attempt}/3:`,
-          phone
-        );
-
-        if(
-          attempt < 3
-        ){
-
-          await new Promise(
-            resolve =>
-              setTimeout(
-                resolve,
-                800 * attempt
-              )
-          );
-
-        }
-
-        continue;
-
-      }
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          500
+        )
+    );
 
 
-      // ======================================================
-      // 🔥 FIRESTORE RESPONSE RECEIVED
-      // ======================================================
+    try{
+
+      console.log(
+        "🔄 FAST PROFILE RETRY:",
+        phone
+      );
+
 
       const snap =
-        result;
+        await window.fb.getDocs(
+          q
+        );
 
 
       console.log(
-        `🔐 PROFILE LOOKUP ${attempt}/3:`,
+        "🔄 PROFILE RETRY:",
         phone,
         "docs:",
         snap?.size
       );
 
 
-      // ======================================================
-      // ❌ INVALID SNAPSHOT
-      // ======================================================
-
       if(
         !snap ||
-        !Array.isArray(snap.docs)
+        !Array.isArray(
+          snap.docs
+        )
       ){
 
-        console.warn(
-          "⚠ Invalid Firestore snapshot"
-        );
-
-        lastError =
-          new Error(
-            "Invalid Firestore snapshot"
-          );
-
-        if(
-          attempt < 3
-        ){
-
-          await new Promise(
-            resolve =>
-              setTimeout(
-                resolve,
-                800 * attempt
-              )
-          );
-
-        }
-
-        continue;
+        return null;
 
       }
 
-
-      // ======================================================
-      // 🔎 SEARCH ALL MATCHING PROFILES
-      // ------------------------------------------------------
-      // Important for 1,000+ staff and possible duplicates.
-      // Do NOT blindly use snap.docs[0].
-      // ======================================================
 
       for(
         const docSnap of snap.docs
@@ -75577,16 +75632,13 @@ async function findProfileWithRetry(
           .toUpperCase();
 
 
-        // ====================================================
-        // ✅ ACTIVE PROFILE
-        // ====================================================
-
         if(
-          accessStatus === "ACTIVE"
+          accessStatus ===
+          "ACTIVE"
         ){
 
           console.log(
-            "✅ ACTIVE PROFILE FOUND:",
+            "✅ ACTIVE PROFILE FOUND ON RETRY:",
             phone,
             docSnap.id
           );
@@ -75608,110 +75660,59 @@ async function findProfileWithRetry(
       }
 
 
-      // ======================================================
-      // ⛔ MATCHING PHONE BUT NO ACTIVE PROFILE
-      // ======================================================
-
       if(
         !snap.empty
       ){
-
-        console.warn(
-          "⛔ PROFILE FOUND BUT NOT ACTIVE:",
-          phone
-        );
-
 
         return {
 
           status:"error",
 
-          code:"ACCESS_BLOCKED",
+          code:
+            "ACCESS_BLOCKED",
 
-          error:"ACCESS_BLOCKED"
+          error:
+            "ACCESS_BLOCKED"
 
         };
 
       }
 
 
-      // ======================================================
-      // ❌ PHONE NOT FOUND
-      // ======================================================
-
-      console.warn(
-        "⛔ PHONE NOT FOUND:",
-        phone
-      );
-
-
       return {
 
         status:"error",
 
-        code:"PROFILE_NOT_FOUND",
+        code:
+          "PROFILE_NOT_FOUND",
 
-        error:"PROFILE_NOT_FOUND"
+        error:
+          "PROFILE_NOT_FOUND"
 
       };
 
     }
-    catch(err){
 
-      lastError =
-        err;
+    catch(retryError){
 
-
-      console.warn(
-        `⚠ PROFILE LOOKUP FAILED ${attempt}/3:`,
-        err
+      console.error(
+        "❌ PROFILE RETRY FAILED:",
+        retryError
       );
 
 
-      // ======================================================
-      // 🔁 RETRY BACKOFF
-      // ======================================================
+      // IMPORTANT:
+      // null = temporary Firestore/network problem.
+      // It is NOT "not authorized".
 
-      if(
-        attempt < 3
-      ){
-
-        await new Promise(
-          resolve =>
-            setTimeout(
-              resolve,
-              800 * attempt
-            )
-        );
-
-      }
+      return null;
 
     }
 
   }
 
-
-  // ==========================================================
-  // 📴 ALL ATTEMPTS FAILED
-  // ----------------------------------------------------------
-  // IMPORTANT:
-  // This is NOT authorization revocation.
-  //
-  // safeBackend() will receive null.
-  //
-  // Login/background refresh can then preserve cached
-  // authentication where appropriate.
-  // ==========================================================
-
-  console.error(
-    "❌ PROFILE LOOKUP FAILED AFTER 3 ATTEMPTS:",
-    lastError
-  );
-
-
-  return null;
-
-}// ============================================================
+}
+// ============================================================
 // 🔐 GET PROFILE
 // PHONE-ONLY AUTHENTICATION
 // Firestore → staff_profiles → ACTIVE PROFILE
