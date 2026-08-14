@@ -8101,7 +8101,7 @@ function waitForAndroidBridge(timeout = 8000){
 async function login(){
 
   console.log(
-    "🔐 GreenGuard login started"
+    "🔐 GreenGuard LOGIN — LOCAL FIRST → SERVER SECOND"
   );
 
 
@@ -8223,7 +8223,464 @@ async function login(){
   try{
 
     // ========================================================
-    // 🔥 GET PROFILE
+    // ========================================================
+    // ⚡ STEP 1 — LOCAL PROFILE FIRST
+    // ========================================================
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // NO FIRESTORE
+    // NO NETWORK
+    // NO SERVER WAIT
+    //
+    // If the same phone already has a cached profile,
+    // login immediately.
+    //
+    // ========================================================
+
+
+    let localProfile =
+      null;
+
+
+    try{
+
+      if(
+        typeof getLocalSession ===
+        "function"
+      ){
+
+        const localSession =
+          getLocalSession();
+
+
+        if(
+          localSession &&
+          localSession.profile
+        ){
+
+          const cachedPhone =
+            String(
+              localSession.phone ||
+              localSession.profile.phone ||
+              ""
+            )
+            .replace(
+              /\D/g,
+              ""
+            )
+            .trim();
+
+
+          // ==================================================
+          // SAME PHONE?
+          // ==================================================
+
+          if(
+            cachedPhone ===
+            phone
+          ){
+
+            localProfile =
+              typeof normalizeUserProfile ===
+              "function"
+
+                ? normalizeUserProfile(
+                    localSession.profile
+                  )
+
+                : localSession.profile;
+
+
+            console.log(
+              "⚡ LOCAL PROFILE FOUND:",
+              phone
+            );
+
+          }
+          else{
+
+            console.log(
+              "📦 Local profile belongs to another phone"
+            );
+
+          }
+
+        }
+
+      }
+
+    }
+    catch(localError){
+
+      console.warn(
+        "⚠ Local profile read failed:",
+        localError
+      );
+
+      localProfile =
+        null;
+
+    }
+
+
+    // ========================================================
+    // ⚡ LOCAL LOGIN
+    // ========================================================
+
+    if(
+      localProfile
+    ){
+
+      // ======================================================
+      // NORMALIZE LOCAL PHONE
+      // ======================================================
+
+      localProfile.phone =
+        String(
+          localProfile.phone ||
+          phone
+        )
+        .replace(
+          /\D/g,
+          ""
+        )
+        .trim();
+
+
+      // ======================================================
+      // FINAL LOCAL PHONE CHECK
+      // ======================================================
+
+      if(
+        localProfile.phone ===
+        phone
+      ){
+
+        // ====================================================
+        // APPLY EXISTING AUTHENTICATED PROFILE HELPER
+        // ====================================================
+        //
+        // This keeps the helper you already added.
+        //
+        // It handles:
+        //
+        // • normalization
+        // • GIS lock
+        // • local cache
+        // • window.userProfile
+        // • loginCompleted
+        //
+        // ====================================================
+
+        let localApplied =
+          false;
+
+
+        if(
+          typeof applyAuthenticatedProfile ===
+          "function"
+        ){
+
+          localApplied =
+            applyAuthenticatedProfile(
+              localProfile,
+              "LOCAL"
+            );
+
+        }
+        else{
+
+          // ==================================================
+          // FALLBACK
+          // Keep existing behaviour if helper is unavailable.
+          // ==================================================
+
+          if(
+            typeof applyStaffGISLock ===
+            "function"
+          ){
+
+            applyStaffGISLock(
+              localProfile
+            );
+
+          }
+
+
+          if(
+            typeof saveLocalSession ===
+            "function"
+          ){
+
+            saveLocalSession(
+              localProfile
+            );
+
+          }
+
+
+          window.userProfile =
+            localProfile;
+
+
+          loginCompleted =
+            true;
+
+
+          localApplied =
+            true;
+
+        }
+
+
+        // ====================================================
+        // LOCAL PROFILE SUCCESSFULLY APPLIED
+        // ====================================================
+
+        if(
+          localApplied
+        ){
+
+          console.log(
+            "⚡ LOCAL LOGIN SUCCESS — NO SERVER WAIT"
+          );
+
+
+          // ==================================================
+          // HIDE LOGIN IMMEDIATELY
+          // ==================================================
+
+          hideLogin();
+
+
+          // ==================================================
+          // OFFLINE STATUS
+          // ==================================================
+
+          if(
+            typeof updateNetworkStatus ===
+            "function"
+          ){
+
+            updateNetworkStatus(
+              "offline"
+            );
+
+          }
+
+
+          // ==================================================
+          // ROLE CONTROL
+          // ==================================================
+
+          if(
+            typeof applyRoleControl ===
+            "function"
+          ){
+
+            applyRoleControl();
+
+          }
+
+
+          // ==================================================
+          // START APP IMMEDIATELY
+          // ==================================================
+          //
+          // DO NOT WAIT FOR:
+          //
+          // • Firestore
+          // • GIS
+          // • Android
+          // • Server verification
+          //
+          // ==================================================
+
+          if(
+            !window.__APP_BOOTED_ONCE__
+          ){
+
+            window.__APP_BOOTED_ONCE__ =
+              true;
+
+            window.__LOGIN_JUST_FINISHED__ =
+              true;
+
+
+            if(
+              typeof startApp ===
+              "function"
+            ){
+
+              startApp();
+
+            }
+
+          }
+
+
+          // ==================================================
+          // GIS AFTER LOCAL LOGIN
+          // ==================================================
+          //
+          // Keep your existing post-login GIS logic.
+          // It is delayed so it NEVER blocks login.
+          //
+          // ==================================================
+
+          setTimeout(
+            async function(){
+
+              try{
+
+                if(
+                  typeof renderFilteredGIS ===
+                  "function"
+                ){
+
+                  renderFilteredGIS();
+
+                }
+
+
+                if(
+                  typeof populateBeatButtons ===
+                  "function"
+                ){
+
+                  await populateBeatButtons();
+
+                }
+
+
+                if(
+                  typeof loadCompartmentsForRange ===
+                  "function"
+                ){
+
+                  await loadCompartmentsForRange();
+
+                }
+
+
+                if(
+                  typeof renderFilteredCompartments ===
+                  "function"
+                ){
+
+                  renderFilteredCompartments();
+
+                }
+
+              }
+              catch(gisError){
+
+                console.warn(
+                  "⚠ GIS post-login initialization:",
+                  gisError
+                );
+
+              }
+
+            },
+            300
+          );
+
+
+          // ==================================================
+          // 🌐 SERVER SECOND
+          // ==================================================
+          //
+          // IMPORTANT:
+          //
+          // DO NOT await this.
+          //
+          // User is already inside the application.
+          //
+          // Server verification happens in background.
+          //
+          // ==================================================
+
+          setTimeout(
+            async function(){
+
+              try{
+
+                if(
+                  typeof verifyProfileInBackground ===
+                  "function"
+                ){
+
+                  await verifyProfileInBackground(
+                    phone
+                  );
+
+                }
+                else{
+
+                  console.log(
+                    "ℹ️ Background profile verifier not available"
+                  );
+
+                }
+
+              }
+              catch(backgroundError){
+
+                console.warn(
+                  "⚠ Background profile verification failed:",
+                  backgroundError
+                );
+
+              }
+
+            },
+            100
+          );
+
+
+          console.log(
+            "🚀 LOCAL-FIRST LOGIN COMPLETE"
+          );
+
+
+          return;
+
+        }
+
+      }
+
+
+      console.warn(
+        "⚠ Local profile could not be applied"
+      );
+
+    }
+
+
+    // ========================================================
+    // ========================================================
+    // 🌐 STEP 2 — SERVER
+    // ========================================================
+    // ========================================================
+    //
+    // Only reached when:
+    //
+    // • no local profile exists
+    // • local profile belongs to another phone
+    // • local profile is unusable
+    //
+    // ========================================================
+
+    console.log(
+      "🌐 No usable local profile → GET_PROFILE"
+    );
+
+
+    // ========================================================
+    // GET PROFILE
     // ========================================================
 
     let profile =
@@ -8237,7 +8694,7 @@ async function login(){
 
 
     // ========================================================
-    // 🔄 ONE FAST RETRY
+    // ONE FAST RETRY
     // --------------------------------------------------------
     // Only for temporary startup/network failure.
     // ========================================================
@@ -8273,7 +8730,7 @@ async function login(){
 
 
     // ========================================================
-    // ❌ SERVER TEMPORARILY UNAVAILABLE
+    // SERVER TEMPORARILY UNAVAILABLE
     // ========================================================
 
     if(
@@ -8298,12 +8755,12 @@ async function login(){
 
 
     // ========================================================
-    // ⛔ PHONE NOT AUTHORIZED
+    // PHONE NOT AUTHORIZED
     // ========================================================
 
     if(
       profile.status ===
-        "error"
+      "error"
     ){
 
       const code =
@@ -8316,13 +8773,22 @@ async function login(){
         .toUpperCase();
 
 
+      // ======================================================
+      // EXPLICIT AUTHORIZATION FAILURE
+      // ======================================================
+
       if(
         code ===
           "PROFILE_NOT_FOUND" ||
+
         code ===
           "ACCESS_BLOCKED" ||
+
         code ===
-          "NOT_AUTHORIZED"
+          "NOT_AUTHORIZED" ||
+
+        code ===
+          "ACCESS_NOT_ACTIVE"
       ){
 
         console.warn(
@@ -8332,7 +8798,29 @@ async function login(){
         );
 
 
-        clearLocalSession();
+        // ====================================================
+        // CLEAR AUTH CACHE ONLY
+        // ====================================================
+
+        if(
+          typeof clearLocalSession ===
+          "function"
+        ){
+
+          clearLocalSession();
+
+        }
+        else{
+
+          localStorage.removeItem(
+            "userPhone"
+          );
+
+          localStorage.removeItem(
+            "userProfile"
+          );
+
+        }
 
 
         loginCompleted =
@@ -8375,7 +8863,7 @@ async function login(){
 
 
     // ========================================================
-    // ✅ PROFILE RECEIVED
+    // PROFILE RECEIVED
     // ========================================================
 
     console.log(
@@ -8460,7 +8948,38 @@ async function login(){
 
 
     // ========================================================
-    // 🔒 GIS ROLE LOCK
+    // IMPORTANT — PHONE MUST MATCH LOGIN NUMBER
+    // ========================================================
+
+    if(
+      finalProfile.phone !==
+      phone
+    ){
+
+      console.error(
+        "❌ PROFILE PHONE MISMATCH:",
+        {
+          loginPhone:
+            phone,
+
+          profilePhone:
+            finalProfile.phone
+        }
+      );
+
+
+      alert(
+        "❌ Staff profile phone mismatch."
+      );
+
+
+      return;
+
+    }
+
+
+    // ========================================================
+    // GIS ROLE LOCK
     // ========================================================
 
     if(
@@ -8476,7 +8995,7 @@ async function login(){
 
 
     // ========================================================
-    // 💾 SAVE LOCAL SESSION
+    // SAVE LOCAL SESSION
     // ========================================================
 
     if(
@@ -8492,7 +9011,7 @@ async function login(){
 
 
     // ========================================================
-    // 🌐 GLOBAL PROFILE
+    // GLOBAL PROFILE
     // ========================================================
 
     window.userProfile =
@@ -8500,7 +9019,7 @@ async function login(){
 
 
     // ========================================================
-    // ✅ LOGIN COMPLETE
+    // LOGIN COMPLETE
     // ========================================================
 
     loginCompleted =
@@ -8508,7 +9027,7 @@ async function login(){
 
 
     console.log(
-      "✅ LOGIN SUCCESS:",
+      "✅ SERVER LOGIN SUCCESS:",
       finalProfile.cleanName ||
       finalProfile.name ||
       finalProfile.phone
@@ -8516,7 +9035,7 @@ async function login(){
 
 
     // ========================================================
-    // 📱 SAVE TO ANDROID
+    // SAVE TO ANDROID
     // --------------------------------------------------------
     // DO NOT WAIT FOR ANDROID.
     // Login must remain fast.
@@ -8567,14 +9086,14 @@ async function login(){
 
 
     // ========================================================
-    // 👋 HIDE LOGIN IMMEDIATELY
+    // HIDE LOGIN IMMEDIATELY
     // ========================================================
 
     hideLogin();
 
 
     // ========================================================
-    // 🌐 ONLINE
+    // ONLINE
     // ========================================================
 
     if(
@@ -8590,7 +9109,7 @@ async function login(){
 
 
     // ========================================================
-    // 🎭 ROLE CONTROL
+    // ROLE CONTROL
     // ========================================================
 
     if(
@@ -8604,7 +9123,7 @@ async function login(){
 
 
     // ========================================================
-    // 🚀 START APP
+    // START APP
     // ========================================================
 
     if(
@@ -8631,7 +9150,7 @@ async function login(){
 
 
     // ========================================================
-    // 🗺️ GIS AFTER LOGIN
+    // GIS AFTER LOGIN
     // --------------------------------------------------------
     // Do NOT block login on GIS.
     // ========================================================
@@ -8695,8 +9214,23 @@ async function login(){
     );
 
 
+    // ========================================================
+    // SERVER PROFILE IS ALREADY VERIFIED HERE
+    // ========================================================
+    //
+    // No additional GET_PROFILE is needed.
+    //
+    // The profile just came from the server.
+    //
+    // ========================================================
+
+
   }
   catch(err){
+
+    // ========================================================
+    // LOGIN FAILED
+    // ========================================================
 
     console.error(
       "❌ LOGIN FAILED:",
@@ -71080,7 +71614,7 @@ async function submitToServer(
 async function loadProfile(){
 
   console.log(
-    "🔁 loadProfile() called"
+    "🚀 loadProfile() — LOCAL FIRST → SERVER SECOND"
   );
 
 
@@ -71097,6 +71631,7 @@ async function loadProfile(){
     );
 
     return;
+
   }
 
 
@@ -71114,6 +71649,7 @@ async function loadProfile(){
     );
 
     return;
+
   }
 
 
@@ -71121,13 +71657,232 @@ async function loadProfile(){
   // 🔐 START AUTH FLOW
   // ============================================================
 
-  authFlowRunning = true;
+  authFlowRunning =
+    true;
 
 
   try{
 
     // ==========================================================
-    // 📱 GET SAVED PHONE
+    // 🔥 STEP 1 — LOCAL SESSION FIRST
+    // ==========================================================
+    //
+    // IMPORTANT:
+    //
+    // NO FIRESTORE
+    // NO BACKEND
+    // NO ANDROID WAIT
+    // NO NETWORK WAIT
+    //
+    // This is the fast startup path.
+    //
+    // ==========================================================
+
+    const localSession =
+      typeof getLocalSession === "function"
+
+        ? getLocalSession()
+
+        : null;
+
+
+    // ==========================================================
+    // ⚡ LOCAL PROFILE FOUND
+    // ==========================================================
+
+    if(
+      localSession &&
+      localSession.profile
+    ){
+
+      console.log(
+        "⚡ LOCAL PROFILE FOUND — BOOTING IMMEDIATELY"
+      );
+
+
+      const offlineProfile =
+        typeof normalizeUserProfile === "function"
+
+          ? normalizeUserProfile(
+              localSession.profile
+            )
+
+          : localSession.profile;
+
+
+      // ========================================================
+      // VALID LOCAL PROFILE
+      // ========================================================
+
+      if(
+        offlineProfile
+      ){
+
+        // ======================================================
+        // APPLY LOCAL PROFILE
+        // ======================================================
+
+        const applied =
+          typeof applyAuthenticatedProfile ===
+          "function"
+
+            ? applyAuthenticatedProfile(
+                offlineProfile,
+                "LOCAL"
+              )
+
+            : false;
+
+
+        // ======================================================
+        // LOCAL PROFILE SUCCESSFULLY APPLIED
+        // ======================================================
+
+        if(
+          applied
+        ){
+
+          console.log(
+            "⚡ LOCAL AUTHENTICATION COMPLETE"
+          );
+
+
+          // ====================================================
+          // 🚀 BOOT APP IMMEDIATELY
+          // ====================================================
+          //
+          // bootAfterAuthentication()
+          // does NOT wait for:
+          //
+          // • Firestore
+          // • Android bridge
+          // • background verification
+          //
+          // ====================================================
+
+          if(
+            typeof bootAfterAuthentication ===
+            "function"
+          ){
+
+            bootAfterAuthentication(
+              window.userProfile,
+              "LOCAL"
+            );
+
+          }
+          else{
+
+            // ==================================================
+            // SAFETY FALLBACK
+            // ==================================================
+
+            window.userProfile =
+              offlineProfile;
+
+
+            loginCompleted =
+              true;
+
+
+            updateNetworkStatus(
+              "offline"
+            );
+
+
+            applyRoleControl();
+
+
+            hideLogin();
+
+
+            if(
+              !window.__appBootRequested
+            ){
+
+              window.__appBootRequested =
+                true;
+
+              startApp();
+
+            }
+
+          }
+
+
+          // ====================================================
+          // 🌐 SERVER SECOND
+          // ====================================================
+          //
+          // IMPORTANT:
+          //
+          // The application is ALREADY running.
+          //
+          // Do NOT await verification.
+          //
+          // ====================================================
+
+          setTimeout(
+            function(){
+
+              try{
+
+                if(
+                  typeof verifyProfileInBackground ===
+                  "function"
+                ){
+
+                  verifyProfileInBackground(
+                    localSession.phone ||
+                    offlineProfile.phone
+                  );
+
+                }
+
+              }
+              catch(err){
+
+                console.warn(
+                  "⚠ Background profile verification skipped:",
+                  err
+                );
+
+              }
+
+            },
+            100
+          );
+
+
+          console.log(
+            "⚡ LOCAL-FIRST STARTUP COMPLETE"
+          );
+
+
+          return;
+
+        }
+
+      }
+
+
+      // ========================================================
+      // LOCAL PROFILE INVALID
+      // ========================================================
+
+      console.warn(
+        "⚠ Local profile exists but could not be applied"
+      );
+
+    }
+
+
+    // ==========================================================
+    // 🌐 STEP 2 — NO USABLE LOCAL PROFILE
+    // ==========================================================
+    //
+    // Only now do we touch the server.
+    //
     // ==========================================================
 
     const phone =
@@ -71158,7 +71913,8 @@ async function loadProfile(){
         !loginShownOnce
       ){
 
-        loginShownOnce = true;
+        loginShownOnce =
+          true;
 
         showLogin();
 
@@ -71166,29 +71922,22 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
     console.log(
-      "📱 Saved phone:",
+      "🌐 NO LOCAL PROFILE → SERVER PROFILE CHECK:",
       phone
     );
 
 
     // ==========================================================
-    // 🔥 ONLINE FIRESTORE PROFILE CHECK
-    // ==========================================================
-    //
-    // IMPORTANT:
-    //
-    // Only phone is sent.
-    //
-    // NO deviceId.
-    // NO Android device identifier.
-    // NO Google Sheet.
+    // 🌐 SERVER GET_PROFILE
     // ==========================================================
 
-    let profile = null;
+    let profile =
+      null;
 
 
     try{
@@ -71197,7 +71946,8 @@ async function loadProfile(){
         await safeBackend(
           "GET_PROFILE",
           {
-            phone: phone
+            phone:
+              phone
           }
         );
 
@@ -71209,7 +71959,8 @@ async function loadProfile(){
         err
       );
 
-      profile = null;
+      profile =
+        null;
 
     }
 
@@ -71218,26 +71969,34 @@ async function loadProfile(){
     // ⛔ EXPLICIT AUTHORIZATION FAILURE
     // ==========================================================
     //
-    // IMPORTANT:
+    // These are authoritative server responses.
     //
-    // These are REAL Firestore responses.
+    // DO NOT use cached authentication after these.
     //
-    // Do NOT fall back to cached profile here.
-    //
-    // This prevents a genuinely revoked staff member from
-    // continuing to use an old cached authorization.
     // ==========================================================
 
     const explicitRevocation =
       profile &&
-      profile.status === "error" &&
+      profile.status ===
+        "error" &&
       (
-        profile.code === "ACCESS_BLOCKED" ||
-        profile.code === "PROFILE_NOT_FOUND" ||
-        profile.code === "NOT_AUTHORIZED" ||
-        profile.code === "ACCESS_NOT_ACTIVE" ||
-        profile.error === "NOT_AUTHORIZED" ||
-        profile.error === "ACCESS_BLOCKED"
+        profile.code ===
+          "ACCESS_BLOCKED" ||
+
+        profile.code ===
+          "PROFILE_NOT_FOUND" ||
+
+        profile.code ===
+          "NOT_AUTHORIZED" ||
+
+        profile.code ===
+          "ACCESS_NOT_ACTIVE" ||
+
+        profile.error ===
+          "NOT_AUTHORIZED" ||
+
+        profile.error ===
+          "ACCESS_BLOCKED"
       );
 
 
@@ -71254,7 +72013,7 @@ async function loadProfile(){
 
 
       // ========================================================
-      // 🧹 CLEAR AUTHENTICATION CACHE ONLY
+      // 🧹 CLEAR AUTH CACHE ONLY
       // ========================================================
       //
       // DO NOT clear:
@@ -71264,10 +72023,12 @@ async function loadProfile(){
       // • offlineGPS
       // • patrol history
       // • GPS queue
+      //
       // ========================================================
 
       if(
-        typeof clearLocalSession === "function"
+        typeof clearLocalSession ===
+        "function"
       ){
 
         clearLocalSession();
@@ -71283,7 +72044,8 @@ async function loadProfile(){
           "userProfile"
         );
 
-        window.userProfile = null;
+        window.userProfile =
+          null;
 
         window.__appBootRequested =
           false;
@@ -71291,17 +72053,19 @@ async function loadProfile(){
       }
 
 
-      loginCompleted = false;
+      loginCompleted =
+        false;
 
 
       // ========================================================
-      // 📱 CLEAR APK AUTH CACHE IF AVAILABLE
+      // 📱 CLEAR APK AUTH CACHE
       // ========================================================
 
       try{
 
         if(
-          typeof waitForAndroidBridge === "function"
+          typeof waitForAndroidBridge ===
+          "function"
         ){
 
           const bridgeReady =
@@ -71351,14 +72115,16 @@ async function loadProfile(){
       // 🔐 SHOW LOGIN
       // ========================================================
 
-      loginShownOnce = false;
+      loginShownOnce =
+        false;
 
 
       if(
         !loginModalLocked
       ){
 
-        loginShownOnce = true;
+        loginShownOnce =
+          true;
 
         showLogin();
 
@@ -71366,6 +72132,7 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
@@ -71373,11 +72140,11 @@ async function loadProfile(){
     // 📴 NETWORK / FIRESTORE UNAVAILABLE
     // ==========================================================
     //
-    // safeBackend() returns null after retry failure.
+    // No local profile was usable above.
     //
-    // This is NOT an authorization failure.
+    // Therefore there is nothing with which we can authenticate
+    // offline.
     //
-    // Therefore cached authentication may be used.
     // ==========================================================
 
     if(
@@ -71385,151 +72152,7 @@ async function loadProfile(){
     ){
 
       console.warn(
-        "📴 Firestore unavailable → checking cached profile"
-      );
-
-
-      const localSession =
-        typeof getLocalSession === "function"
-          ? getLocalSession()
-          : null;
-
-
-      // ========================================================
-      // 📦 CACHED PROFILE AVAILABLE
-      // ========================================================
-
-      if(
-        localSession &&
-        localSession.profile
-      ){
-
-        const offlineProfile =
-          typeof normalizeUserProfile === "function"
-            ? normalizeUserProfile(
-                localSession.profile
-              )
-            : localSession.profile;
-
-
-        if(
-          offlineProfile
-        ){
-
-          window.userProfile =
-            offlineProfile;
-
-
-          // ====================================================
-          // 🔒 STAFF GIS LOCK
-          // ====================================================
-
-          if(
-            typeof applyStaffGISLock === "function"
-          ){
-
-            applyStaffGISLock(
-              offlineProfile
-            );
-
-          }
-
-
-          // ====================================================
-          // 📴 OFFLINE STATUS
-          // ====================================================
-
-          updateNetworkStatus(
-            "offline"
-          );
-
-
-          // ====================================================
-          // 🎛 ROLE CONTROL
-          // ====================================================
-
-          applyRoleControl();
-
-
-          // ====================================================
-          // 📱 SEND CACHED PROFILE TO APK
-          // ====================================================
-
-          try{
-
-            if(
-              typeof waitForAndroidBridge === "function"
-            ){
-
-              const bridgeReady =
-                await waitForAndroidBridge();
-
-
-              if(
-                bridgeReady &&
-                window.Android &&
-                typeof Android.saveUserProfile ===
-                "function"
-              ){
-
-                Android.saveUserProfile(
-                  JSON.stringify(
-                    offlineProfile
-                  )
-                );
-
-              }
-
-            }
-
-          }
-          catch(err){
-
-            console.warn(
-              "⚠ Offline APK profile sync skipped:",
-              err
-            );
-
-          }
-
-
-          // ====================================================
-          // 🚀 SINGLE APP BOOT
-          // ====================================================
-
-          if(
-            !window.__appBootRequested
-          ){
-
-            window.__appBootRequested =
-              true;
-
-            startApp();
-
-          }
-
-
-          console.log(
-            "✅ OFFLINE PROFILE RESTORED:",
-            offlineProfile.cleanName ||
-            offlineProfile.rawName ||
-            phone
-          );
-
-
-          return;
-
-        }
-
-      }
-
-
-      // ========================================================
-      // ❌ NO CACHE
-      // ========================================================
-
-      console.warn(
-        "⚠ No cached profile available"
+        "📴 Firestore unavailable and no usable local profile"
       );
 
 
@@ -71538,7 +72161,8 @@ async function loadProfile(){
         !loginShownOnce
       ){
 
-        loginShownOnce = true;
+        loginShownOnce =
+          true;
 
         showLogin();
 
@@ -71546,19 +72170,23 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
     // ==========================================================
-    // ❌ OTHER BACKEND ERROR
+    // ⚠ OTHER BACKEND ERROR
     // ==========================================================
     //
-    // Do not treat an unknown backend error as revocation.
-    // Try cached profile instead.
+    // Do NOT interpret unknown errors as revocation.
+    //
+    // If a local session suddenly became available, use it.
+    //
     // ==========================================================
 
     if(
-      profile.status === "error" ||
+      profile.status ===
+        "error" ||
       profile.error
     ){
 
@@ -71568,82 +72196,150 @@ async function loadProfile(){
       );
 
 
-      const localSession =
-        typeof getLocalSession === "function"
+      const fallbackSession =
+        typeof getLocalSession ===
+        "function"
+
           ? getLocalSession()
+
           : null;
 
 
       if(
-        localSession &&
-        localSession.profile
+        fallbackSession &&
+        fallbackSession.profile
       ){
 
         const fallbackProfile =
-          typeof normalizeUserProfile === "function"
+          typeof normalizeUserProfile ===
+          "function"
+
             ? normalizeUserProfile(
-                localSession.profile
+                fallbackSession.profile
               )
-            : localSession.profile;
+
+            : fallbackSession.profile;
 
 
         if(
           fallbackProfile
         ){
 
-          window.userProfile =
-            fallbackProfile;
+          console.warn(
+            "📦 Using cached profile after backend error"
+          );
+
+
+          const applied =
+            typeof applyAuthenticatedProfile ===
+            "function"
+
+              ? applyAuthenticatedProfile(
+                  fallbackProfile,
+                  "LOCAL"
+                )
+
+              : false;
 
 
           if(
-            typeof applyStaffGISLock === "function"
+            applied
           ){
 
-            applyStaffGISLock(
-              fallbackProfile
+            if(
+              typeof bootAfterAuthentication ===
+              "function"
+            ){
+
+              bootAfterAuthentication(
+                window.userProfile,
+                "LOCAL"
+              );
+
+            }
+            else{
+
+              window.userProfile =
+                fallbackProfile;
+
+              loginCompleted =
+                true;
+
+              updateNetworkStatus(
+                "offline"
+              );
+
+              applyRoleControl();
+
+              hideLogin();
+
+
+              if(
+                !window.__appBootRequested
+              ){
+
+                window.__appBootRequested =
+                  true;
+
+                startApp();
+
+              }
+
+            }
+
+
+            setTimeout(
+              function(){
+
+                try{
+
+                  if(
+                    typeof verifyProfileInBackground ===
+                    "function"
+                  ){
+
+                    verifyProfileInBackground(
+                      fallbackSession.phone ||
+                      fallbackProfile.phone
+                    );
+
+                  }
+
+                }
+                catch(err){
+
+                  console.warn(
+                    "⚠ Background verification skipped:",
+                    err
+                  );
+
+                }
+
+              },
+              100
             );
 
-          }
 
-
-          updateNetworkStatus(
-            "offline"
-          );
-
-          applyRoleControl();
-
-
-          if(
-            !window.__appBootRequested
-          ){
-
-            window.__appBootRequested =
-              true;
-
-            startApp();
+            return;
 
           }
 
-
-          console.warn(
-            "📦 Cached profile used after backend error"
-          );
-
-
-          return;
         }
 
       }
 
 
-      // No usable cache
+      // ========================================================
+      // NO USABLE CACHE
+      // ========================================================
 
       if(
         !loginModalLocked &&
         !loginShownOnce
       ){
 
-        loginShownOnce = true;
+        loginShownOnce =
+          true;
 
         showLogin();
 
@@ -71651,6 +72347,7 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
@@ -71659,7 +72356,8 @@ async function loadProfile(){
     // ==========================================================
 
     if(
-      profile.status !== "ok"
+      profile.status !==
+      "ok"
     ){
 
       console.warn(
@@ -71669,6 +72367,7 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
@@ -71677,10 +72376,13 @@ async function loadProfile(){
     // ==========================================================
 
     const finalProfile =
-      typeof normalizeUserProfile === "function"
+      typeof normalizeUserProfile ===
+      "function"
+
         ? normalizeUserProfile(
             profile
           )
+
         : profile;
 
 
@@ -71699,6 +72401,7 @@ async function loadProfile(){
 
 
       return;
+
     }
 
 
@@ -71707,7 +72410,8 @@ async function loadProfile(){
     // ==========================================================
 
     if(
-      typeof applyStaffGISLock === "function"
+      typeof applyStaffGISLock ===
+      "function"
     ){
 
       applyStaffGISLock(
@@ -71722,7 +72426,8 @@ async function loadProfile(){
     // ==========================================================
 
     if(
-      typeof saveLocalSession === "function"
+      typeof saveLocalSession ===
+      "function"
     ){
 
       saveLocalSession(
@@ -71732,12 +72437,17 @@ async function loadProfile(){
     }
     else{
 
+      // ========================================================
+      // SAFETY FALLBACK
+      // ========================================================
+
       localStorage.setItem(
         "userPhone",
         String(
           finalProfile.phone
         ).trim()
       );
+
 
       localStorage.setItem(
         "userProfile",
@@ -71782,63 +72492,24 @@ async function loadProfile(){
 
 
     // ==========================================================
-    // 📱 SEND PROFILE + PHONE TO APK
+    // 📱 APK PROFILE SYNC
     // ==========================================================
     //
-    // Phone only.
-    // No deviceId.
+    // IMPORTANT:
+    //
+    // Use the new NON-BLOCKING helper.
+    //
+    // Do NOT wait for Android bridge here.
+    //
     // ==========================================================
 
-    try{
+    if(
+      typeof syncProfileToAndroid ===
+      "function"
+    ){
 
-      if(
-        typeof waitForAndroidBridge === "function"
-      ){
-
-        const bridgeReady =
-          await waitForAndroidBridge();
-
-
-        if(
-          bridgeReady &&
-          window.Android
-        ){
-
-          if(
-            typeof Android.saveUserProfile ===
-            "function"
-          ){
-
-            Android.saveUserProfile(
-              JSON.stringify(
-                finalProfile
-              )
-            );
-
-          }
-
-
-          if(
-            typeof Android.savePhone ===
-            "function"
-          ){
-
-            Android.savePhone(
-              finalProfile.phone
-            );
-
-          }
-
-        }
-
-      }
-
-    }
-    catch(err){
-
-      console.warn(
-        "⚠ PROFILE APK SYNC FAILED:",
-        err
+      syncProfileToAndroid(
+        finalProfile
       );
 
     }
@@ -71862,13 +72533,21 @@ async function loadProfile(){
       window.__appBootRequested =
         true;
 
-      startApp();
+
+      if(
+        typeof startApp ===
+        "function"
+      ){
+
+        startApp();
+
+      }
 
     }
 
 
     console.log(
-      "✅ PROFILE LOADED:",
+      "✅ PROFILE LOADED FROM SERVER:",
       finalProfile.cleanName ||
       finalProfile.rawName ||
       finalProfile.phone
@@ -71894,8 +72573,11 @@ async function loadProfile(){
     try{
 
       const localSession =
-        typeof getLocalSession === "function"
+        typeof getLocalSession ===
+        "function"
+
           ? getLocalSession()
+
           : null;
 
 
@@ -71905,10 +72587,13 @@ async function loadProfile(){
       ){
 
         const fallbackProfile =
-          typeof normalizeUserProfile === "function"
+          typeof normalizeUserProfile ===
+          "function"
+
             ? normalizeUserProfile(
                 localSession.profile
               )
+
             : localSession.profile;
 
 
@@ -71916,46 +72601,104 @@ async function loadProfile(){
           fallbackProfile
         ){
 
-          window.userProfile =
-            fallbackProfile;
+          console.warn(
+            "📴 Exception → restoring local profile"
+          );
+
+
+          const applied =
+            typeof applyAuthenticatedProfile ===
+            "function"
+
+              ? applyAuthenticatedProfile(
+                  fallbackProfile,
+                  "LOCAL"
+                )
+
+              : false;
 
 
           if(
-            typeof applyStaffGISLock === "function"
+            applied
           ){
 
-            applyStaffGISLock(
-              fallbackProfile
+            if(
+              typeof bootAfterAuthentication ===
+              "function"
+            ){
+
+              bootAfterAuthentication(
+                window.userProfile,
+                "LOCAL"
+              );
+
+            }
+            else{
+
+              window.userProfile =
+                fallbackProfile;
+
+              loginCompleted =
+                true;
+
+              updateNetworkStatus(
+                "offline"
+              );
+
+              applyRoleControl();
+
+              hideLogin();
+
+
+              if(
+                !window.__appBootRequested
+              ){
+
+                window.__appBootRequested =
+                  true;
+
+                startApp();
+
+              }
+
+            }
+
+
+            setTimeout(
+              function(){
+
+                try{
+
+                  if(
+                    typeof verifyProfileInBackground ===
+                    "function"
+                  ){
+
+                    verifyProfileInBackground(
+                      localSession.phone ||
+                      fallbackProfile.phone
+                    );
+
+                  }
+
+                }
+                catch(err){
+
+                  console.warn(
+                    "⚠ Background verification skipped:",
+                    err
+                  );
+
+                }
+
+              },
+              100
             );
 
-          }
 
-
-          updateNetworkStatus(
-            "offline"
-          );
-
-          applyRoleControl();
-
-
-          if(
-            !window.__appBootRequested
-          ){
-
-            window.__appBootRequested =
-              true;
-
-            startApp();
+            return;
 
           }
-
-
-          console.warn(
-            "📴 Cached profile restored after exception"
-          );
-
-
-          return;
 
         }
 
@@ -71981,7 +72724,8 @@ async function loadProfile(){
       !loginShownOnce
     ){
 
-      loginShownOnce = true;
+      loginShownOnce =
+        true;
 
       showLogin();
 
@@ -74936,10 +75680,54 @@ async function handleGetProfile(params){
 
 
 // ============================================================
-// 💾 SAVE LOCAL SESSION
-// Stores ONLY the authenticated profile + phone.
-// No device ID.
+// 🔐 GREENGUARD LOCAL-FIRST AUTH CACHE
 // ============================================================
+//
+// DESIGN:
+//
+// LOCAL FIRST
+//     ↓
+// SERVER SECOND
+//
+// Existing keys are preserved:
+//
+//   userPhone
+//   userProfile
+//
+// Therefore this remains compatible with the existing app.
+//
+// IMPORTANT:
+//
+// Local profile means:
+//   "Previously authenticated profile"
+//
+// It does NOT mean:
+//   "Server currently confirms access"
+//
+// Server remains authoritative whenever it is reachable.
+//
+// ============================================================
+
+
+// ============================================================
+// 📱 NORMALIZE LOGIN PHONE
+// ============================================================
+
+function normalizeLoginPhone(phone){
+
+  return String(
+    phone || ""
+  )
+  .replace(/\D/g,"")
+  .trim();
+
+}
+
+
+// ============================================================
+// 💾 SAVE LOCAL SESSION
+// ============================================================
+
 function saveLocalSession(profile){
 
   if(
@@ -74957,12 +75745,14 @@ function saveLocalSession(profile){
 
   try{
 
+    // ========================================================
+    // PHONE
+    // ========================================================
+
     const phone =
-      String(
-        profile.phone || ""
-      )
-      .replace(/\D/g, "")
-      .trim();
+      normalizeLoginPhone(
+        profile.phone
+      );
 
 
     if(
@@ -74978,16 +75768,55 @@ function saveLocalSession(profile){
     }
 
 
+    // ========================================================
+    // NORMALIZE PROFILE
+    // ========================================================
+
     const normalizedProfile =
-      typeof normalizeUserProfile === "function"
-        ? normalizeUserProfile(profile)
+      typeof normalizeUserProfile ===
+      "function"
+
+        ? normalizeUserProfile(
+            profile
+          )
+
         : profile;
 
+
+    if(
+      !normalizedProfile
+    ){
+
+      console.warn(
+        "⚠ Cannot save session: invalid profile"
+      );
+
+      return false;
+
+    }
+
+
+    // ========================================================
+    // FORCE CORRECT PHONE
+    // ========================================================
+
+    normalizedProfile.phone =
+      phone;
+
+
+    // ========================================================
+    // SAVE PHONE
+    // ========================================================
 
     localStorage.setItem(
       "userPhone",
       phone
     );
+
+
+    // ========================================================
+    // SAVE PROFILE
+    // ========================================================
 
     localStorage.setItem(
       "userProfile",
@@ -74998,7 +75827,7 @@ function saveLocalSession(profile){
 
 
     console.log(
-      "💾 Local session saved:",
+      "💾 LOCAL AUTH CACHE SAVED:",
       phone
     );
 
@@ -75006,7 +75835,6 @@ function saveLocalSession(profile){
     return true;
 
   }
-
   catch(err){
 
     console.error(
@@ -75021,33 +75849,37 @@ function saveLocalSession(profile){
 }
 
 
-
 // ============================================================
 // 📂 GET LOCAL SESSION
-//
-// Used when:
-//   • app starts offline
-//   • Firebase temporarily unavailable
-//   • network is weak
-//
-// IMPORTANT:
-// This returns the LAST locally authenticated profile.
-// It does NOT claim that the profile is currently active
-// on the server.
 // ============================================================
+//
+// FAST.
+// NO NETWORK.
+// NO FIRESTORE.
+// NO BACKEND.
+// NO WAIT.
+//
+// ============================================================
+
 function getLocalSession(){
 
   try{
 
+    // ========================================================
+    // PHONE
+    // ========================================================
+
     const phone =
-      String(
+      normalizeLoginPhone(
         localStorage.getItem(
           "userPhone"
-        ) || ""
-      )
-      .replace(/\D/g, "")
-      .trim();
+        )
+      );
 
+
+    // ========================================================
+    // PROFILE
+    // ========================================================
 
     const raw =
       localStorage.getItem(
@@ -75055,12 +75887,12 @@ function getLocalSession(){
       );
 
 
-    // ==========================================================
-    // ❌ NO COMPLETE LOCAL SESSION
-    // ==========================================================
+    // ========================================================
+    // NO CACHE
+    // ========================================================
 
     if(
-      !phone ||
+      phone.length < 10 ||
       !raw
     ){
 
@@ -75069,9 +75901,9 @@ function getLocalSession(){
     }
 
 
-    // ==========================================================
-    // 📦 PARSE PROFILE
-    // ==========================================================
+    // ========================================================
+    // PARSE
+    // ========================================================
 
     const parsedProfile =
       JSON.parse(
@@ -75081,11 +75913,12 @@ function getLocalSession(){
 
     if(
       !parsedProfile ||
-      typeof parsedProfile !== "object"
+      typeof parsedProfile !==
+      "object"
     ){
 
       console.warn(
-        "⚠ Cached profile is invalid"
+        "⚠ Cached profile invalid"
       );
 
       return null;
@@ -75093,29 +75926,43 @@ function getLocalSession(){
     }
 
 
-    // ==========================================================
-    // 🔧 NORMALIZE PROFILE
-    // ==========================================================
+    // ========================================================
+    // NORMALIZE
+    // ========================================================
 
     const profile =
-      typeof normalizeUserProfile === "function"
+      typeof normalizeUserProfile ===
+      "function"
+
         ? normalizeUserProfile(
             parsedProfile
           )
+
         : parsedProfile;
 
 
-    // ==========================================================
-    // 📱 PHONE CONSISTENCY CHECK
-    // ==========================================================
+    if(
+      !profile
+    ){
+
+      return null;
+
+    }
+
+
+    // ========================================================
+    // PROFILE PHONE
+    // ========================================================
 
     const profilePhone =
-      String(
-        profile.phone || ""
-      )
-      .replace(/\D/g, "")
-      .trim();
+      normalizeLoginPhone(
+        profile.phone
+      );
 
+
+    // ========================================================
+    // PHONE CONSISTENCY
+    // ========================================================
 
     if(
       profilePhone &&
@@ -75131,20 +75978,29 @@ function getLocalSession(){
     }
 
 
-    // ==========================================================
-    // ✅ LOCAL SESSION
-    // ==========================================================
+    // ========================================================
+    // FORCE NORMALIZED PHONE
+    // ========================================================
+
+    profile.phone =
+      phone;
+
+
+    // ========================================================
+    // RETURN
+    // ========================================================
 
     return {
 
-      phone: phone,
+      phone:
+        phone,
 
-      profile: profile
+      profile:
+        profile
 
     };
 
   }
-
   catch(err){
 
     console.error(
@@ -75159,17 +76015,28 @@ function getLocalSession(){
 }
 
 
-
 // ============================================================
 // 🧹 CLEAR LOCAL SESSION
-//
-// Used ONLY for:
-//   • confirmed authorization revocation
-//   • explicit logout
-//   • invalid local session
-//
-// NEVER call this merely because Firebase/network failed.
 // ============================================================
+//
+// ONLY use for:
+//
+// • explicit logout
+// • confirmed server revocation
+// • corrupted/invalid local profile
+//
+// NEVER use merely because network failed.
+//
+// DO NOT clear:
+//
+// • dutyActive
+// • sessionId
+// • offlineGPS
+// • GPS queue
+// • patrol history
+//
+// ============================================================
+
 function clearLocalSession(){
 
   try{
@@ -75191,12 +76058,13 @@ function clearLocalSession(){
       false;
 
 
-    // ==========================================================
-    // RESET AUTH STATE IF THESE VARIABLES EXIST
-    // ==========================================================
+    window.__APP_BOOTED_ONCE__ =
+      false;
+
 
     if(
-      typeof loginCompleted !== "undefined"
+      typeof loginCompleted !==
+      "undefined"
     ){
 
       loginCompleted =
@@ -75206,7 +76074,8 @@ function clearLocalSession(){
 
 
     if(
-      typeof loginInProgress !== "undefined"
+      typeof loginInProgress !==
+      "undefined"
     ){
 
       loginInProgress =
@@ -75216,7 +76085,8 @@ function clearLocalSession(){
 
 
     if(
-      typeof authFlowRunning !== "undefined"
+      typeof authFlowRunning !==
+      "undefined"
     ){
 
       authFlowRunning =
@@ -75226,14 +76096,13 @@ function clearLocalSession(){
 
 
     console.log(
-      "🧹 Local session cleared"
+      "🧹 LOCAL AUTH CACHE CLEARED"
     );
 
 
     return true;
 
   }
-
   catch(err){
 
     console.error(
@@ -75246,8 +76115,801 @@ function clearLocalSession(){
   }
 
 }
+// ============================================================
+// ⚡ APPLY LOCAL / SERVER PROFILE
+// ============================================================
+
+function applyAuthenticatedProfile(
+  profile,
+  source = "LOCAL"
+){
+
+  try{
+
+    if(
+      !profile
+    ){
+
+      return false;
+
+    }
 
 
+    // ========================================================
+    // NORMALIZE
+    // ========================================================
+
+    const finalProfile =
+      typeof normalizeUserProfile ===
+      "function"
+
+        ? normalizeUserProfile(
+            profile
+          )
+
+        : profile;
+
+
+    if(
+      !finalProfile
+    ){
+
+      return false;
+
+    }
+
+
+    // ========================================================
+    // PHONE
+    // ========================================================
+
+    finalProfile.phone =
+      normalizeLoginPhone(
+        finalProfile.phone
+      );
+
+
+    if(
+      finalProfile.phone.length < 10
+    ){
+
+      return false;
+
+    }
+
+
+    // ========================================================
+    // GIS LOCK
+    // ========================================================
+
+    if(
+      typeof applyStaffGISLock ===
+      "function"
+    ){
+
+      applyStaffGISLock(
+        finalProfile
+      );
+
+    }
+
+
+    // ========================================================
+    // SAVE LOCAL
+    // ========================================================
+//
+// Even LOCAL login rewrites the cache.
+// This keeps the cache normalized.
+//
+
+    saveLocalSession(
+      finalProfile
+    );
+
+
+    // ========================================================
+    // GLOBAL PROFILE
+    // ========================================================
+
+    window.userProfile =
+      finalProfile;
+
+
+    // ========================================================
+    // LOGIN COMPLETE
+    // ========================================================
+
+    loginCompleted =
+      true;
+
+
+    console.log(
+      source === "LOCAL"
+
+        ? "⚡ LOCAL PROFILE APPLIED"
+
+        : "🌐 SERVER PROFILE APPLIED",
+
+      finalProfile.cleanName ||
+      finalProfile.name ||
+      finalProfile.phone
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.error(
+      "❌ applyAuthenticatedProfile failed:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// 📱 NON-BLOCKING ANDROID PROFILE CACHE
+// ============================================================
+
+function syncProfileToAndroid(
+  profile
+){
+
+  try{
+
+    if(
+      !window.Android
+    ){
+
+      return;
+
+    }
+
+
+    const phone =
+      normalizeLoginPhone(
+        profile.phone
+      );
+
+
+    // ========================================================
+    // PHONE
+    // ========================================================
+
+    if(
+      typeof Android.savePhone ===
+      "function"
+    ){
+
+      try{
+
+        Android.savePhone(
+          phone
+        );
+
+      }
+      catch(err){
+
+        console.warn(
+          "⚠ Android.savePhone failed:",
+          err
+        );
+
+      }
+
+    }
+
+
+    // ========================================================
+    // PROFILE
+    // ========================================================
+
+    if(
+      typeof Android.saveUserProfile ===
+      "function"
+    ){
+
+      try{
+
+        Android.saveUserProfile(
+          JSON.stringify(
+            profile
+          )
+        );
+
+      }
+      catch(err){
+
+        console.warn(
+          "⚠ Android.saveUserProfile failed:",
+          err
+        );
+
+      }
+
+    }
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ Android cache sync skipped:",
+      err
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// 🚀 BOOT AFTER AUTH
+// ============================================================
+//
+// IMPORTANT:
+//
+// This function does NOT wait for:
+//
+// • Firestore
+// • GIS
+// • Android bridge
+// • background verification
+//
+// ============================================================
+
+function bootAfterAuthentication(
+  profile,
+  source = "LOCAL"
+){
+
+  try{
+
+    // ========================================================
+    // NETWORK STATUS
+    // ========================================================
+
+    if(
+      typeof updateNetworkStatus ===
+      "function"
+    ){
+
+      updateNetworkStatus(
+        source === "LOCAL"
+          ? "offline"
+          : "online"
+      );
+
+    }
+
+
+    // ========================================================
+    // ROLE CONTROL
+    // ========================================================
+
+    if(
+      typeof applyRoleControl ===
+      "function"
+    ){
+
+      applyRoleControl();
+
+    }
+
+
+    // ========================================================
+    // ANDROID
+    //
+    // DO NOT WAIT
+    // ========================================================
+
+    syncProfileToAndroid(
+      profile
+    );
+
+
+    // ========================================================
+    // HIDE LOGIN
+    // ========================================================
+
+    hideLogin();
+
+
+    // ========================================================
+    // SINGLE APP BOOT
+    // ========================================================
+
+    if(
+      !window.__appBootRequested
+    ){
+
+      window.__appBootRequested =
+        true;
+
+      window.__APP_BOOTED_ONCE__ =
+        true;
+
+      window.__LOGIN_JUST_FINISHED__ =
+        true;
+
+
+      if(
+        typeof startApp ===
+        "function"
+      ){
+
+        /*
+         * IMPORTANT:
+         *
+         * Do not await this.
+         */
+
+        try{
+
+          startApp();
+
+        }
+        catch(err){
+
+          console.warn(
+            "⚠ startApp failed:",
+            err
+          );
+
+        }
+
+      }
+
+    }
+
+
+    // ========================================================
+    // GIS AFTER BOOT
+    // ========================================================
+
+    setTimeout(
+      async function(){
+
+        try{
+
+          if(
+            typeof renderFilteredGIS ===
+            "function"
+          ){
+
+            renderFilteredGIS();
+
+          }
+
+
+          if(
+            typeof populateBeatButtons ===
+            "function"
+          ){
+
+            await populateBeatButtons();
+
+          }
+
+
+          if(
+            typeof loadCompartmentsForRange ===
+            "function"
+          ){
+
+            await loadCompartmentsForRange();
+
+          }
+
+
+          if(
+            typeof renderFilteredCompartments ===
+            "function"
+          ){
+
+            renderFilteredCompartments();
+
+          }
+
+        }
+        catch(err){
+
+          console.warn(
+            "⚠ Post-login GIS initialization:",
+            err
+          );
+
+        }
+
+      },
+      300
+    );
+
+
+    console.log(
+      source === "LOCAL"
+        ? "⚡ APP BOOTED FROM LOCAL"
+        : "🌐 APP BOOTED FROM SERVER"
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.error(
+      "❌ bootAfterAuthentication failed:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// 🔍 SERVER PROFILE VERIFICATION
+// ============================================================
+//
+// This is deliberately SEPARATE from login.
+//
+// The user is already inside the application.
+//
+// ============================================================
+
+async function verifyProfileInBackground(
+  phone
+){
+
+  try{
+
+    phone =
+      normalizeLoginPhone(
+        phone
+      );
+
+
+    if(
+      phone.length < 10
+    ){
+
+      return;
+
+    }
+
+
+    console.log(
+      "🔄 BACKGROUND SERVER PROFILE CHECK:",
+      phone
+    );
+
+
+    const profile =
+      await safeBackend(
+        "GET_PROFILE",
+        {
+          phone:
+            phone
+        }
+      );
+
+
+    // ========================================================
+    // SERVER UNAVAILABLE
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // null = network/backend failure
+    //
+    // NOT revocation.
+    //
+    // Keep local session.
+    //
+
+    if(
+      profile === null ||
+      typeof profile ===
+      "undefined"
+    ){
+
+      console.warn(
+        "📴 SERVER UNAVAILABLE — LOCAL SESSION KEPT"
+      );
+
+      if(
+        typeof updateNetworkStatus ===
+        "function"
+      ){
+
+        updateNetworkStatus(
+          "offline"
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    // ========================================================
+    // EXPLICIT REVOCATION
+    // ========================================================
+
+    const code =
+      String(
+        profile.code ||
+        profile.error ||
+        ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const explicitlyRevoked =
+      profile.status ===
+        "error" &&
+
+      (
+        code ===
+          "PROFILE_NOT_FOUND" ||
+
+        code ===
+          "ACCESS_BLOCKED" ||
+
+        code ===
+          "NOT_AUTHORIZED" ||
+
+        code ===
+          "ACCESS_NOT_ACTIVE"
+      );
+
+
+    if(
+      explicitlyRevoked
+    ){
+
+      console.warn(
+        "⛔ SERVER REVOKED ACCESS:",
+        code
+      );
+
+
+      // ======================================================
+      // CLEAR ONLY AUTH CACHE
+      // ======================================================
+
+      clearLocalSession();
+
+
+      // ======================================================
+      // APK AUTH CACHE
+      // ======================================================
+
+      try{
+
+        if(
+          window.Android
+        ){
+
+          if(
+            typeof Android.clearUserProfile ===
+            "function"
+          ){
+
+            Android.clearUserProfile();
+
+          }
+
+
+          if(
+            typeof Android.clearPhone ===
+            "function"
+          ){
+
+            Android.clearPhone();
+
+          }
+
+        }
+
+      }
+      catch(err){
+
+        console.warn(
+          "⚠ Android revoke cleanup skipped:",
+          err
+        );
+
+      }
+
+
+      // ======================================================
+      // SHOW LOGIN
+      // ======================================================
+
+      loginShownOnce =
+        false;
+
+      loginModalLocked =
+        false;
+
+      loginUIShown =
+        false;
+
+
+      setTimeout(
+        function(){
+
+          try{
+
+            showLogin();
+
+          }
+          catch(err){
+
+            console.warn(
+              "⚠ Unable to show login after revocation:",
+              err
+            );
+
+          }
+
+        },
+        0
+      );
+
+
+      return;
+
+    }
+
+
+    // ========================================================
+    // SERVER PROFILE VALID
+    // ========================================================
+
+    if(
+      profile.status ===
+      "ok"
+    ){
+
+      const freshProfile =
+        typeof normalizeUserProfile ===
+        "function"
+
+          ? normalizeUserProfile(
+              profile
+            )
+
+          : profile;
+
+
+      if(
+        freshProfile
+      ){
+
+        freshProfile.phone =
+          normalizeLoginPhone(
+            freshProfile.phone ||
+            phone
+          );
+
+
+        // ====================================================
+        // UPDATE LOCAL CACHE
+        // ====================================================
+
+        saveLocalSession(
+          freshProfile
+        );
+
+
+        // ====================================================
+        // UPDATE GLOBAL PROFILE
+        // ====================================================
+
+        window.userProfile =
+          freshProfile;
+
+
+        // ====================================================
+        // SERVER ONLINE
+        // ====================================================
+
+        if(
+          typeof updateNetworkStatus ===
+          "function"
+        ){
+
+          updateNetworkStatus(
+            "online"
+          );
+
+        }
+
+
+        // ====================================================
+        // ROLE/GIS REFRESH
+        // ====================================================
+
+        if(
+          typeof applyStaffGISLock ===
+          "function"
+        ){
+
+          applyStaffGISLock(
+            freshProfile
+          );
+
+        }
+
+
+        if(
+          typeof applyRoleControl ===
+          "function"
+        ){
+
+          applyRoleControl();
+
+        }
+
+
+        // ====================================================
+        // UPDATE ANDROID CACHE
+        // ====================================================
+
+        syncProfileToAndroid(
+          freshProfile
+        );
+
+
+        console.log(
+          "✅ BACKGROUND PROFILE VERIFIED"
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    // ========================================================
+    // UNKNOWN SERVER RESPONSE
+    // ========================================================
+
+    console.warn(
+      "⚠ UNKNOWN PROFILE RESPONSE — LOCAL SESSION KEPT:",
+      profile
+    );
+
+  }
+  catch(err){
+
+    console.warn(
+      "📴 BACKGROUND PROFILE CHECK FAILED:",
+      err
+    );
+
+    /*
+     * VERY IMPORTANT:
+     *
+     * Never log the user out here.
+     */
+
+  }
+
+}
 
 // ============================================================
 // 🔒 APPLY STAFF GIS LOCK
