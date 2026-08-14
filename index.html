@@ -16299,9 +16299,9 @@ async function loadMasterGrid(){
     "loadMasterGrid EXECUTED"
   );
 
-  // ==========================================================
-  // 1. ALREADY IN MEMORY
-  // ==========================================================
+  // =====================================
+  // ✅ ALREADY LOADED IN MEMORY
+  // =====================================
 
   if(
     window.masterGrid &&
@@ -16314,7 +16314,7 @@ async function loadMasterGrid(){
       true;
 
     console.log(
-      "⚡ MASTER GRID MEMORY HIT:",
+      "⏭ MASTER GRID ALREADY LOADED:",
       Object.keys(
         window.masterGrid
       ).length
@@ -16325,9 +16325,9 @@ async function loadMasterGrid(){
   }
 
 
-  // ==========================================================
-  // 2. EXISTING LOAD IN PROGRESS
-  // ==========================================================
+  // =====================================
+  // ⏳ LOAD ALREADY IN PROGRESS
+  // =====================================
 
   if(
     window.__MASTER_GRID_PROMISE__
@@ -16343,25 +16343,73 @@ async function loadMasterGrid(){
   }
 
 
-  // ==========================================================
-  // 3. START SINGLE LOAD
-  // ==========================================================
+  // =====================================
+  // 🚀 START SINGLE MASTER GRID LOAD
+  // =====================================
 
   window.__MASTER_GRID_PROMISE__ =
 
     (async()=>{
 
       console.time(
-        "LOAD_MASTER_GRID_TOTAL"
+        "LOAD_MASTER_GRID"
       );
 
       try{
 
-        // ======================================================
-        // 4. TRY INDEXED DB FIRST
-        // ======================================================
+        // =====================================
+        // 🔥 FIREBASE READY CHECK
+        // =====================================
 
-        let cachedMasterGrid = null;
+        if(
+          !window.fb
+        ){
+
+          throw new Error(
+            "window.fb missing"
+          );
+
+        }
+
+        if(
+          typeof window.fb.getDocs
+          !== "function"
+        ){
+
+          throw new Error(
+            "window.fb.getDocs missing"
+          );
+
+        }
+
+        if(
+          typeof window.fb.collection
+          !== "function"
+        ){
+
+          throw new Error(
+            "window.fb.collection missing"
+          );
+
+        }
+
+        if(
+          !window.db
+        ){
+
+          throw new Error(
+            "window.db missing"
+          );
+
+        }
+
+
+        // =====================================
+        // ⚡ STEP 1 — TRY IDB CACHE FIRST
+        // =====================================
+
+        let cachedMasterGrid =
+          null;
 
         try{
 
@@ -16381,16 +16429,19 @@ async function loadMasterGrid(){
         catch(cacheErr){
 
           console.warn(
-            "⚠ Master grid IDB read failed:",
+            "⚠ MASTER GRID IDB READ FAILED:",
             cacheErr
           );
+
+          cachedMasterGrid =
+            null;
 
         }
 
 
-        // ======================================================
-        // 5. CACHE HIT
-        // ======================================================
+        // =====================================
+        // ⚡ STEP 2 — CACHE HIT
+        // =====================================
 
         if(
           cachedMasterGrid &&
@@ -16418,28 +16469,179 @@ async function loadMasterGrid(){
           );
 
 
-          // ====================================================
-          // IMPORTANT:
-          // DO NOT WAIT FOR FIRESTORE
-          // ====================================================
+          // ===================================
+          // 🔄 FIRESTORE VERIFY IN BACKGROUND
+          // ===================================
 
-          refreshMasterGridFromFirestore(
-            true
-          )
-          .catch(
-            function(err){
+          setTimeout(
+            async function(){
 
-              console.warn(
-                "⚠ Background master grid refresh failed:",
-                err
-              );
+              try{
 
-            }
+                console.time(
+                  "MASTER_GRID_BACKGROUND_VERIFY"
+                );
+
+
+                const snap =
+
+                  await window.fb.getDocs(
+
+                    window.fb.collection(
+                      window.db,
+                      "grid_master"
+                    )
+
+                  );
+
+
+                const freshMasterGrid =
+                  {};
+
+
+                snap.forEach(
+                  function(doc){
+
+                    const data =
+                      doc.data() || {};
+
+
+                    if(
+                      data.gridId
+                    ){
+
+                      freshMasterGrid[
+                        data.gridId
+                      ] =
+                        data;
+
+                    }
+
+                  }
+                );
+
+
+                const freshCount =
+                  Object.keys(
+                    freshMasterGrid
+                  ).length;
+
+
+                const currentCount =
+                  Object.keys(
+                    window.masterGrid ||
+                    {}
+                  ).length;
+
+
+                // =================================
+                // ONLY REPLACE IF DATA EXISTS
+                // =================================
+
+                if(
+                  freshCount > 0
+                ){
+
+                  window.masterGrid =
+                    freshMasterGrid;
+
+                  window.__ANALYTICS_READY__ =
+                    true;
+
+
+                  // ===============================
+                  // UPDATE IDB CACHE
+                  // ===============================
+
+                  try{
+
+                    if(
+                      typeof idbKeyval !==
+                      "undefined"
+                    ){
+
+                      await idbKeyval.set(
+                        "master_grid_cache_v1",
+                        freshMasterGrid
+                      );
+
+                      await idbKeyval.set(
+                        "master_grid_cache_timestamp_v1",
+                        Date.now()
+                      );
+
+                    }
+
+                  }
+                  catch(idbSaveErr){
+
+                    console.warn(
+                      "⚠ MASTER GRID IDB UPDATE FAILED:",
+                      idbSaveErr
+                    );
+
+                  }
+
+
+                  if(
+                    freshCount !==
+                    currentCount
+                  ){
+
+                    console.log(
+                      "🔄 MASTER GRID UPDATED:",
+                      currentCount,
+                      "→",
+                      freshCount
+                    );
+
+                  }
+                  else{
+
+                    console.log(
+                      "✅ MASTER GRID VERIFIED:",
+                      freshCount
+                    );
+
+                  }
+
+                }
+                else{
+
+                  console.warn(
+                    "⚠ FIRESTORE MASTER GRID EMPTY — KEEPING CACHE:",
+                    currentCount
+                  );
+
+                }
+
+
+                console.timeEnd(
+                  "MASTER_GRID_BACKGROUND_VERIFY"
+                );
+
+              }
+              catch(err){
+
+                console.warn(
+                  "⚠ MASTER GRID BACKGROUND VERIFY FAILED:",
+                  err
+                );
+
+              }
+
+            },
+            0
           );
 
 
+          // ===================================
+          // 🚀 IMPORTANT:
+          // RETURN CACHE IMMEDIATELY
+          // ===================================
+
           console.timeEnd(
-            "LOAD_MASTER_GRID_TOTAL"
+            "LOAD_MASTER_GRID"
           );
 
           return window.masterGrid;
@@ -16447,32 +16649,111 @@ async function loadMasterGrid(){
         }
 
 
-        // ======================================================
-        // 6. NO CACHE → FIRST LOAD FROM FIRESTORE
-        // ======================================================
-
-        console.log(
-          "🌐 MASTER GRID IDB MISS → Firestore first load"
-        );
-
-
-        const freshMasterGrid =
-          await fetchMasterGridFromFirestore();
-
-
-        window.masterGrid =
-          freshMasterGrid;
-
-        window.__ANALYTICS_READY__ =
-          true;
+        // =====================================
+        // 🌐 STEP 3 — NO CACHE
+        // FIRST EVER LOAD FROM FIRESTORE
+        // =====================================
 
         window.__MASTER_GRID_FROM_IDB__ =
           false;
 
+        console.log(
+          "🌐 MASTER GRID IDB MISS → FIRESTORE FIRST LOAD"
+        );
 
-        // ======================================================
-        // 7. SAVE FIRST FIRESTORE LOAD TO IDB
-        // ======================================================
+
+        console.log(
+          "FB EXISTS:",
+          !!window.fb
+        );
+
+        console.log(
+          "GETDOCS TYPE:",
+          typeof window.fb.getDocs
+        );
+
+        console.log(
+          "COLLECTION TYPE:",
+          typeof window.fb.collection
+        );
+
+        console.log(
+          "DB:",
+          window.db
+        );
+
+
+        // =====================================
+        // FIRESTORE LOAD
+        // =====================================
+
+        const snap =
+
+          await window.fb.getDocs(
+
+            window.fb.collection(
+              window.db,
+              "grid_master"
+            )
+
+          );
+
+
+        console.log(
+          "GRID MASTER DOCS:",
+          snap.size
+        );
+
+
+        const freshMasterGrid =
+          {};
+
+
+        snap.forEach(
+          function(doc){
+
+            const data =
+              doc.data() || {};
+
+
+            if(
+              data.gridId
+            ){
+
+              freshMasterGrid[
+                data.gridId
+              ] =
+                data;
+
+            }
+
+          }
+        );
+
+
+        // =====================================
+        // KEEP SAME MASTER GRID STRUCTURE
+        // =====================================
+
+        window.masterGrid =
+          freshMasterGrid;
+
+
+        console.log(
+          "✅ GRID LOADED:",
+          Object.keys(
+            window.masterGrid
+          ).length
+        );
+
+
+        window.__ANALYTICS_READY__ =
+          true;
+
+
+        // =====================================
+        // 💾 SAVE TO IDB
+        // =====================================
 
         try{
 
@@ -16483,7 +16764,7 @@ async function loadMasterGrid(){
 
             await idbKeyval.set(
               "master_grid_cache_v1",
-              freshMasterGrid
+              window.masterGrid
             );
 
             await idbKeyval.set(
@@ -16494,35 +16775,36 @@ async function loadMasterGrid(){
             console.log(
               "💾 MASTER GRID SAVED TO IDB:",
               Object.keys(
-                freshMasterGrid
+                window.masterGrid
               ).length
             );
 
           }
 
         }
-        catch(saveErr){
+        catch(idbSaveErr){
 
           console.warn(
-            "⚠ Master grid IDB save failed:",
-            saveErr
+            "⚠ MASTER GRID IDB SAVE FAILED:",
+            idbSaveErr
           );
 
         }
 
 
-        console.timeEnd(
-          "LOAD_MASTER_GRID_TOTAL"
-        );
-
-
         return window.masterGrid;
 
       }
+
+
+      // =====================================
+      // ❌ ERROR
+      // =====================================
+
       catch(err){
 
         console.error(
-          "❌ loadMasterGrid failed:",
+          "❌ loadMasterGrid",
           err
         );
 
@@ -16532,7 +16814,17 @@ async function loadMasterGrid(){
         throw err;
 
       }
+
+
+      // =====================================
+      // 🧹 CLEAN PROMISE
+      // =====================================
+
       finally{
+
+        console.timeEnd(
+          "LOAD_MASTER_GRID"
+        );
 
         window.__MASTER_GRID_PROMISE__ =
           null;
@@ -16541,6 +16833,10 @@ async function loadMasterGrid(){
 
     })();
 
+
+  // =====================================
+  // RETURN SAME MASTER GRID PROMISE
+  // =====================================
 
   return await
     window.__MASTER_GRID_PROMISE__;
