@@ -76201,17 +76201,24 @@ async function findProfileWithRetry(
   targetPhone
 ){
 
+  // ============================================================
+  // 📱 NORMALIZE PHONE
+  // ============================================================
+
   const phone =
     String(
       targetPhone || ""
     )
-    .replace(/\D/g, "")
+    .replace(
+      /\D/g,
+      ""
+    )
     .trim();
 
 
-  // ==========================================================
-  // SIMPLE PHONE VALIDATION
-  // ==========================================================
+  // ============================================================
+  // ❌ SIMPLE PHONE VALIDATION
+  // ============================================================
 
   if(
     phone.length < 10
@@ -76219,18 +76226,20 @@ async function findProfileWithRetry(
 
     return {
 
-      status:"error",
+      status:
+        "error",
 
-      code:"INVALID_PHONE"
+      code:
+        "INVALID_PHONE"
 
     };
 
   }
 
 
-  // ==========================================================
-  // FIREBASE CHECK
-  // ==========================================================
+  // ============================================================
+  // 🔥 FIREBASE CHECK
+  // ============================================================
 
   if(
     !window.fb ||
@@ -76246,9 +76255,9 @@ async function findProfileWithRetry(
   }
 
 
-  // ==========================================================
-  // BUILD PHONE QUERY
-  // ==========================================================
+  // ============================================================
+  // 🔎 BUILD PHONE QUERY
+  // ============================================================
 
   let q;
 
@@ -76283,12 +76292,67 @@ async function findProfileWithRetry(
   }
 
 
-  // ==========================================================
-  // 🚀 FAST FIRST LOOKUP
-  // ----------------------------------------------------------
-  // No artificial 8-second Promise.race.
-  // Let Firestore return normally.
-  // ==========================================================
+  // ============================================================
+  // 🔥 FIRESTORE REQUEST WITH SAFE TIMEOUT
+  // ============================================================
+  //
+  // IMPORTANT:
+  //
+  // The timeout does NOT cancel Firestore itself.
+  //
+  // It only prevents the login flow from waiting forever
+  // if the browser/WebView Firestore transport gets stuck.
+  //
+  // ============================================================
+
+  async function getProfileSnapshot(
+    query,
+    timeoutMs
+  ){
+
+    const timeoutPromise =
+      new Promise(
+        function(
+          _,
+          reject
+        ){
+
+          setTimeout(
+            function(){
+
+              reject(
+                new Error(
+                  "PROFILE_QUERY_TIMEOUT"
+                )
+              );
+
+            },
+            timeoutMs
+          );
+
+        }
+      );
+
+
+    const firestorePromise =
+      window.fb.getDocs(
+        query
+      );
+
+
+    return await Promise.race(
+      [
+        firestorePromise,
+        timeoutPromise
+      ]
+    );
+
+  }
+
+
+  // ============================================================
+  // 🚀 FIRST FIRESTORE LOOKUP
+  // ============================================================
 
   try{
 
@@ -76298,10 +76362,21 @@ async function findProfileWithRetry(
     );
 
 
+    console.time(
+      "PROFILE_FIRESTORE_QUERY"
+    );
+
+
     const snap =
-      await window.fb.getDocs(
-        q
+      await getProfileSnapshot(
+        q,
+        7000
       );
+
+
+    console.timeEnd(
+      "PROFILE_FIRESTORE_QUERY"
+    );
 
 
     console.log(
@@ -76312,9 +76387,9 @@ async function findProfileWithRetry(
     );
 
 
-    // ========================================================
+    // ==========================================================
     // INVALID SNAPSHOT
-    // ========================================================
+    // ==========================================================
 
     if(
       !snap ||
@@ -76332,9 +76407,9 @@ async function findProfileWithRetry(
     }
 
 
-    // ========================================================
+    // ==========================================================
     // SEARCH MATCHING PROFILES
-    // ========================================================
+    // ==========================================================
 
     for(
       const docSnap of snap.docs
@@ -76354,9 +76429,9 @@ async function findProfileWithRetry(
         .toUpperCase();
 
 
-      // ======================================================
-      // ✅ ACTIVE
-      // ======================================================
+      // ========================================================
+      // ✅ ACTIVE PROFILE
+      // ========================================================
 
       if(
         accessStatus ===
@@ -76372,7 +76447,8 @@ async function findProfileWithRetry(
 
         return {
 
-          status:"ok",
+          status:
+            "ok",
 
           id:
             docSnap.id,
@@ -76386,9 +76462,9 @@ async function findProfileWithRetry(
     }
 
 
-    // ========================================================
-    // ⛔ PHONE EXISTS BUT NOT ACTIVE
-    // ========================================================
+    // ==========================================================
+    // ⛔ PHONE EXISTS BUT PROFILE IS NOT ACTIVE
+    // ==========================================================
 
     if(
       !snap.empty
@@ -76402,7 +76478,8 @@ async function findProfileWithRetry(
 
       return {
 
-        status:"error",
+        status:
+          "error",
 
         code:
           "ACCESS_BLOCKED",
@@ -76415,9 +76492,9 @@ async function findProfileWithRetry(
     }
 
 
-    // ========================================================
+    // ==========================================================
     // ❌ PHONE NOT FOUND
-    // ========================================================
+    // ==========================================================
 
     console.warn(
       "⛔ PHONE NOT FOUND:",
@@ -76427,7 +76504,8 @@ async function findProfileWithRetry(
 
     return {
 
-      status:"error",
+      status:
+        "error",
 
       code:
         "PROFILE_NOT_FOUND",
@@ -76441,17 +76519,26 @@ async function findProfileWithRetry(
 
   catch(err){
 
-    // ========================================================
+    // ==========================================================
     // 🔄 ONE QUICK RETRY
-    // --------------------------------------------------------
-    // Only retry temporary Firestore/network failure.
-    // ========================================================
+    // ==========================================================
+    //
+    // This includes:
+    //
+    // • Firestore/network error
+    // • Firestore transport timeout
+    //
+    // ==========================================================
 
     console.warn(
       "⚠ FAST PROFILE LOOKUP FAILED:",
       err
     );
 
+
+    // ==========================================================
+    // SHORT RETRY DELAY
+    // ==========================================================
 
     await new Promise(
       resolve =>
@@ -76462,6 +76549,10 @@ async function findProfileWithRetry(
     );
 
 
+    // ==========================================================
+    // 🔄 RETRY FIRESTORE LOOKUP
+    // ==========================================================
+
     try{
 
       console.log(
@@ -76470,10 +76561,21 @@ async function findProfileWithRetry(
       );
 
 
+      console.time(
+        "PROFILE_FIRESTORE_RETRY"
+      );
+
+
       const snap =
-        await window.fb.getDocs(
-          q
+        await getProfileSnapshot(
+          q,
+          7000
         );
+
+
+      console.timeEnd(
+        "PROFILE_FIRESTORE_RETRY"
+      );
 
 
       console.log(
@@ -76483,6 +76585,10 @@ async function findProfileWithRetry(
         snap?.size
       );
 
+
+      // ========================================================
+      // INVALID SNAPSHOT
+      // ========================================================
 
       if(
         !snap ||
@@ -76495,6 +76601,10 @@ async function findProfileWithRetry(
 
       }
 
+
+      // ========================================================
+      // SEARCH ACTIVE PROFILE
+      // ========================================================
 
       for(
         const docSnap of snap.docs
@@ -76514,6 +76624,10 @@ async function findProfileWithRetry(
           .toUpperCase();
 
 
+        // ======================================================
+        // ✅ ACTIVE PROFILE FOUND ON RETRY
+        // ======================================================
+
         if(
           accessStatus ===
           "ACTIVE"
@@ -76528,7 +76642,8 @@ async function findProfileWithRetry(
 
           return {
 
-            status:"ok",
+            status:
+              "ok",
 
             id:
               docSnap.id,
@@ -76542,13 +76657,24 @@ async function findProfileWithRetry(
       }
 
 
+      // ========================================================
+      // ⛔ PHONE EXISTS BUT NOT ACTIVE
+      // ========================================================
+
       if(
         !snap.empty
       ){
 
+        console.warn(
+          "⛔ PROFILE FOUND BUT NOT ACTIVE ON RETRY:",
+          phone
+        );
+
+
         return {
 
-          status:"error",
+          status:
+            "error",
 
           code:
             "ACCESS_BLOCKED",
@@ -76561,9 +76687,20 @@ async function findProfileWithRetry(
       }
 
 
+      // ========================================================
+      // ❌ PHONE NOT FOUND ON RETRY
+      // ========================================================
+
+      console.warn(
+        "⛔ PHONE NOT FOUND ON RETRY:",
+        phone
+      );
+
+
       return {
 
-        status:"error",
+        status:
+          "error",
 
         code:
           "PROFILE_NOT_FOUND",
@@ -76577,15 +76714,27 @@ async function findProfileWithRetry(
 
     catch(retryError){
 
+      // ========================================================
+      // ❌ RETRY FAILED
+      // ========================================================
+
       console.error(
         "❌ PROFILE RETRY FAILED:",
         retryError
       );
 
 
-      // IMPORTANT:
-      // null = temporary Firestore/network problem.
-      // It is NOT "not authorized".
+      // ========================================================
+      // IMPORTANT
+      //
+      // null means:
+      //
+      // • temporary Firestore failure
+      // • network failure
+      // • Firestore transport timeout
+      //
+      // It does NOT mean unauthorized.
+      // ========================================================
 
       return null;
 
