@@ -63112,32 +63112,89 @@ if(
         );
 
 
-        // ====================================================
-        // ⚡ STEP 3A
-        // TRY INDEXEDDB FIRST
-        // ====================================================
+// ====================================================
+// ⚡ STEP 3A
+// WAIT FOR IDB → THEN TRY INDEXEDDB FIRST
+// ====================================================
+//
+// IMPORTANT:
+// Cell → Grid lookup is static startup data.
+// IDB must be ready before attempting the cache read.
+//
+// ====================================================
 
-        let cachedLookup =
-          null;
+let cachedLookup =
+  null;
 
 
-        try{
+// ====================================================
+// ⏳ WAIT FOR GREENGUARD IDB INITIALIZATION
+// ====================================================
 
-          cachedLookup =
-            await getCellToGridLookupFromIDB();
+try{
 
-        }
-        catch(cacheErr){
+  if(
+    window.__GG_IDB_READY__ !==
+    true
+  ){
 
-          console.warn(
-            "⚠ CELL → GRID IDB READ ERROR:",
-            cacheErr
-          );
+    if(
+      window.__GG_IDB_READY_PROMISE__
+    ){
 
-          cachedLookup =
-            null;
-        }
+      console.log(
+        "⏳ Waiting for GreenGuard IndexedDB → Cell/Grid..."
+      );
 
+      await
+        window.__GG_IDB_READY_PROMISE__;
+
+    }
+
+  }
+
+}
+catch(idbReadyErr){
+
+  console.warn(
+    "⚠ Cell → Grid IDB readiness wait failed:",
+    idbReadyErr
+  );
+
+}
+
+
+// ====================================================
+// 💾 TRY CELL → GRID IDB CACHE
+// ====================================================
+
+try{
+
+  if(
+    typeof window.idbKeyval !==
+      "undefined" &&
+
+    typeof window.idbKeyval.get ===
+      "function"
+  ){
+
+    cachedLookup =
+      await getCellToGridLookupFromIDB();
+
+  }
+
+}
+catch(cacheErr){
+
+  console.warn(
+    "⚠ CELL → GRID IDB READ ERROR:",
+    cacheErr
+  );
+
+  cachedLookup =
+    null;
+
+}
 
         // ====================================================
         // ⚡ IDB CACHE FOUND
