@@ -30795,50 +30795,156 @@ setTimeout(
     }
 
 
-    // ==========================================================
-    // INITIAL MONTHLY STATUS UPDATE
-    // ==========================================================
-    //
-    // IMPORTANT:
-    //
-    // We WAIT for this call to finish.
-    //
-    // Therefore the grid-ready refresh below can NEVER overlap
-    // with this initial update.
-    // ==========================================================
+// ==========================================================
+// ⚡ INITIAL MONTHLY STATUS
+// ----------------------------------------------------------
+// FIRST: restore existing IDB/RAM cache immediately.
+// DO NOT force the expensive authoritative calculation
+// during the first paint.
+// ==========================================================
+
+if(
+  !window.__MONTHLY_STATUS_RUNNING__
+){
+
+  window.__MONTHLY_STATUS_RUNNING__ =
+    true;
+
+  try{
+
+    const d =
+      new Date();
+
+    const monthKey =
+      `${d.getFullYear()}_${
+        String(
+          d.getMonth() + 1
+        ).padStart(2,"0")
+      }`;
+
+    const level =
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      ).toLowerCase();
+
+    const filterValue =
+      level === "compartment"
+        ? window.gisFilter?.compartment
+        : level === "beat"
+        ? window.gisFilter?.beat
+        : level === "range"
+        ? window.gisFilter?.range
+        : level === "division"
+        ? window.gisFilter?.division
+        : "";
+
+    const cacheKey =
+      `${monthKey}_${level}_${
+        filterValue || "all"
+      }`;
+
+    window.monthlyStatusCache ??=
+      {};
+
+    // ========================================================
+    // RAM FIRST
+    // ========================================================
+
+    let cached =
+      window.monthlyStatusCache[
+        cacheKey
+      ];
+
+    // ========================================================
+    // IDB SECOND
+    // ========================================================
 
     if(
-      !window.__MONTHLY_STATUS_RUNNING__
+      !cached
     ){
 
-      window.__MONTHLY_STATUS_RUNNING__ =
-        true;
-
-
-      try{
-
-        await updateMonthlyStatusCard();
-
-      }
-
-      catch(err){
-
-        console.error(
-          "❌ Initial Monthly Status",
-          err
+      cached =
+        await getMonthlyStatusFromIDB(
+          cacheKey
         );
 
-      }
+      if(
+        cached
+      ){
 
-      finally{
-
-        window.__MONTHLY_STATUS_RUNNING__ =
-          false;
+        window.monthlyStatusCache[
+          cacheKey
+        ] =
+          cached;
 
       }
 
     }
 
+    // ========================================================
+    // ⚡ IMMEDIATE PAINT
+    // ========================================================
+
+    if(
+      cached
+    ){
+
+      renderMonthlyStatusCard(
+        cached,
+        level
+      );
+
+      paintMonthlyStatusRuntime(
+        cached,
+        level
+      );
+
+      console.log(
+        "⚡ MONTHLY STATUS RESTORED FROM IDB/RAM",
+        {
+          cacheKey,
+          covered:
+            cached.totalCovered,
+          cells:
+            cached.totalCells,
+          area:
+            cached.areaHa,
+          compartments:
+            cached.visitedCompartments,
+          sessions:
+            cached.visitCount
+        }
+      );
+
+    }
+    else{
+
+      console.log(
+        "ℹ️ NO MONTHLY STATUS CACHE YET"
+      );
+
+    }
+
+  }
+
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Status Cache Restore Failed",
+      err
+    );
+
+  }
+
+  finally{
+
+    window.__MONTHLY_STATUS_RUNNING__ =
+      false;
+
+  }
+
+}
 
     // ==========================================================
     // WAIT FOR MASTER GRID
