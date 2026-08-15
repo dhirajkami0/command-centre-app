@@ -17563,40 +17563,105 @@ async function loadMasterGrid(){
         // ⚡ STEP 3A
         // TRY INDEXEDDB FIRST
         // ======================================================
+// ======================================================
+// ⚡ STEP 3A
+// WAIT FOR IDB → THEN TRY INDEXEDDB FIRST
+// ======================================================
+//
+// IMPORTANT:
+// IDB must be ready before attempting the cache read.
+// This prevents the startup race:
+//
+// loadMasterGrid()
+//       ↓
+// idbKeyval not ready
+//       ↓
+// false IDB MISS
+//       ↓
+// unnecessary Firestore load
+//
+// ======================================================
 
-        let cachedMasterGrid =
-          null;
-
-
-        try{
-
-          if(
-            typeof window.idbKeyval !==
-              "undefined" &&
-            typeof window.idbKeyval.get ===
-              "function"
-          ){
-
-            cachedMasterGrid =
-              await window.idbKeyval.get(
-                "master_grid_cache_v1"
-              );
-
-          }
-
-        }
-        catch(cacheErr){
-
-          console.warn(
-            "⚠ MASTER GRID IDB READ FAILED:",
-            cacheErr
-          );
+let cachedMasterGrid =
+  null;
 
 
-          cachedMasterGrid =
-            null;
+// ======================================================
+// ⏳ WAIT FOR GREENGUARD IDB INITIALIZATION
+// ======================================================
 
-        }
+try{
+
+  if(
+    window.__GG_IDB_READY__ !==
+    true
+  ){
+
+    if(
+      window.__GG_IDB_READY_PROMISE__
+    ){
+
+      console.log(
+        "⏳ Waiting for GreenGuard IndexedDB..."
+      );
+
+      await
+        window.__GG_IDB_READY_PROMISE__;
+
+    }
+
+  }
+
+}
+catch(idbReadyErr){
+
+  console.warn(
+    "⚠ IDB readiness wait failed:",
+    idbReadyErr
+  );
+
+}
+
+
+// ======================================================
+// 💾 VERIFY IDB API IS AVAILABLE
+// ======================================================
+
+try{
+
+  if(
+    typeof window.idbKeyval !==
+      "undefined" &&
+
+    typeof window.idbKeyval.get ===
+      "function"
+  ){
+
+    console.log(
+      "💾 MASTER GRID → TRYING IDB CACHE"
+    );
+
+
+    cachedMasterGrid =
+      await window.idbKeyval.get(
+        "master_grid_cache_v1"
+      );
+
+  }
+
+}
+catch(cacheErr){
+
+  console.warn(
+    "⚠ MASTER GRID IDB READ FAILED:",
+    cacheErr
+  );
+
+
+  cachedMasterGrid =
+    null;
+
+}
 
 
         // ======================================================
@@ -63035,8 +63100,23 @@ async function buildCellToGridLookup(){
       window.__CELL_TO_GRID_PROMISE__;
   }
 
+// ====================================================
+// ⏳ WAIT FOR GREENGUARD IDB READY
+// ====================================================
 
-  // ==========================================================
+if(
+  window.__GG_IDB_READY__ !== true &&
+  window.__GG_IDB_READY_PROMISE__
+){
+
+  console.log(
+    "⏳ Waiting for GreenGuard IndexedDB..."
+  );
+
+  await
+    window.__GG_IDB_READY_PROMISE__;
+
+}  // ==========================================================
   // 🚀 STEP 3
   // SINGLE LOAD PIPELINE
   // ==========================================================
