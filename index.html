@@ -7068,11 +7068,45 @@ async function safeBackend(
 
 
     // ==========================================================
-    // WAIT ONLY A SHORT TIME FOR FIREBASE
+    // ⚡ FAST FIRESTORE READINESS CHECK
+    // ----------------------------------------------------------
+    // Do NOT wait 3 seconds only for firebaseReady.
+    //
+    // Login actually requires these Firestore APIs:
+    //
+    //   window.fb.getDocs
+    //   window.fb.collection
+    //   window.fb.query
+    //   window.fb.where
+    //   window.db
+    //
+    // If they are already available, continue immediately.
+    //
+    // If Firebase is still loading, wait only briefly.
+    //
+    // This preserves startup protection without imposing
+    // an unnecessary fixed 3-second login delay.
+    // ==========================================================
+
+    const firestoreReady = () =>
+      !!window.fb &&
+      !!window.db &&
+      typeof window.fb.getDocs ===
+        "function" &&
+      typeof window.fb.collection ===
+        "function" &&
+      typeof window.fb.query ===
+        "function" &&
+      typeof window.fb.where ===
+        "function";
+
+
+    // ==========================================================
+    // WAIT ONLY IF ACTUAL FIRESTORE APIs ARE NOT READY
     // ==========================================================
 
     if(
-      !window.firebaseReady
+      !firestoreReady()
     ){
 
       const start =
@@ -7080,15 +7114,15 @@ async function safeBackend(
 
 
       while(
-        !window.firebaseReady &&
-        Date.now() - start < 3000
+        !firestoreReady() &&
+        Date.now() - start < 1500
       ){
 
         await new Promise(
           resolve =>
             setTimeout(
               resolve,
-              100
+              50
             )
         );
 
@@ -7098,15 +7132,15 @@ async function safeBackend(
 
 
     // ==========================================================
-    // FIREBASE STILL NOT READY
+    // FIRESTORE STILL NOT READY
     // ==========================================================
 
     if(
-      !window.firebaseReady
+      !firestoreReady()
     ){
 
       console.warn(
-        "⚠ Firebase still initializing"
+        "⚠ Firestore APIs still initializing"
       );
 
       return null;
@@ -7164,558 +7198,862 @@ async function safeBackend(
 
   }
 
-}// ============================================================
+}
+
+
+// ============================================================
 // 🔥 FIND PROFILE (STAFF → VILLAGER)
 // ============================================================
+
 
 /* ===============================
    🔧 GLOBAL UTILITIES (BACKEND)
 =============================== */
+
 window.processedKML = new Set(
-  JSON.parse(localStorage.getItem("processedKML") || "[]")
+  JSON.parse(
+    localStorage.getItem(
+      "processedKML"
+    ) || "[]"
+  )
 );
 
+
 window.backfillRunning = false;
+
+
 function cleanName(n){
-  return String(n || "")
+
+  return String(
+    n || ""
+  )
     .toUpperCase()
-    .replace(/\b(DR\.?|FR\.?|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g, "")
+    .replace(
+      /\b(DR\.?|FR\.?|FG|DL|BS|AS|FV|RO|DFO|RANGER|BANA\S*|ORD\w*)\b/g,
+      ""
+    )
     .split(",")[0]
     .split("(")[0]
     .split("-")[0]
     .split("/")[0]
-    .replace(/\./g,"")
-    .replace(/[^A-Z\s]/g,"")
-    .replace(/\s+/g," ")
+    .replace(
+      /\./g,
+      ""
+    )
+    .replace(
+      /[^A-Z\s]/g,
+      ""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
     .trim();
-} 
-   function applyRoleControl(){
+
+}
+
+
+// ============================================================
+// 🔐 ROLE CONTROL
+// ============================================================
+
+function applyRoleControl(){
 
   // ============================================================
   // 🔥 NORMALIZE ROLE
   // ============================================================
-  const role =
 
+  const role =
     String(
       window.userProfile?.role || ""
     )
-
     .trim()
-
     .toUpperCase();
+
 
   // ============================================================
   // 🔥 UI GROUPS
   // ============================================================
+
   const leaderButtons =
     document.querySelectorAll(
       ".leader-only"
     );
+
 
   const adminButtons =
     document.querySelectorAll(
       ".admin-only"
     );
 
+
   const staffButtons =
     document.querySelectorAll(
       ".staff-only"
     );
+
 
   const dutyBtn =
     document.getElementById(
       "dutyMainBtn"
     );
 
+
   // ============================================================
   // 🌍 GIS FILTER PANEL
   // ============================================================
-  const gisPanel =
 
+  const gisPanel =
     document.getElementById(
       "gisFilterPanel"
     );
 
+
   // ============================================================
   // 🌍 FILTER GROUPS
   // ============================================================
-  const divisionButtons =
 
+  const divisionButtons =
     document.getElementById(
       "divisionButtons"
     );
 
-  const rangeButtons =
 
+  const rangeButtons =
     document.getElementById(
       "rangeButtons"
     );
 
-  const beatButtons =
 
+  const beatButtons =
     document.getElementById(
       "beatButtons"
     );
 
-  const compartmentButtons =
 
+  const compartmentButtons =
     document.getElementById(
       "compartmentButtons"
     );
 
+
   // ============================================================
   // 🔴 ADMIN
   // ============================================================
-  if(role === "ADMIN"){
 
-    // ======================================
-    // 🔥 BUTTONS
-    // ======================================
-    leaderButtons.forEach(el => {
-
-      el.style.display = "flex";
-    });
-
-    adminButtons.forEach(el => {
-
-      if(el.id !== "clearKMLBtn"){
-
-        el.style.display = "flex";
-      }
-    });
-
-    staffButtons.forEach(el => {
-
-      el.style.display = "flex";
-    });
-
-    if(dutyBtn){
-
-      dutyBtn.style.display = "flex";
-    }
-
-    // ======================================
-    // 🌍 GIS PANEL
-    // ======================================
-    if(gisPanel){
-
-      gisPanel.style.display =
-        "block";
-    }
-
-    // ======================================
-    // 🌍 SHOW ALL FILTERS
-    // ======================================
-    if(divisionButtons){
-
-      divisionButtons.style.display =
-        "flex";
-    }
-
-    if(rangeButtons){
-
-      rangeButtons.style.display =
-        "flex";
-    }
-
-    if(beatButtons){
-
-      beatButtons.style.display =
-        "flex";
-    }
-
-    if(compartmentButtons){
-
-      compartmentButtons.style.display =
-        "flex";
-    }
-  }
-// ============================================================
-// 🟠 CCF
-// ============================================================
-else if(
-
-    role === "CCF"
-
-){
-
-    // ======================================
-    // 🔥 BUTTONS
-    // ======================================
-
-    leaderButtons.forEach(el => {
-
-        el.style.display = "flex";
-
-    });
-
-    adminButtons.forEach(el => {
-
-        el.style.display = "none";
-
-    });
-
-    staffButtons.forEach(el => {
-
-        el.style.display = "flex";
-
-    });
-
-    if(dutyBtn){
-
-        dutyBtn.style.display = "flex";
-
-    }
-
-    // ======================================
-    // 🌍 GIS PANEL
-    // ======================================
-
-    if(gisPanel){
-
-        gisPanel.style.display =
-            "block";
-
-    }
-
-    // ======================================
-    // ❌ CIRCLE LOCKED
-    // (CCF cannot change circle)
-    // ======================================
-
-    if(divisionButtons){
-
-        divisionButtons.style.display =
-            "flex";
-
-    }
-
-    if(rangeButtons){
-
-        rangeButtons.style.display =
-            "flex";
-
-    }
-
-    if(beatButtons){
-
-        beatButtons.style.display =
-            "flex";
-
-    }
-
-    if(compartmentButtons){
-
-        compartmentButtons.style.display =
-            "flex";
-
-    }
-
-}
-  // ============================================================
-  // 🟣 DFO / ADFO
-  // ============================================================
-  else if(
-
-    role === "DFO"
-
-    ||
-
-    role === "ADFO"
-
+  if(
+    role === "ADMIN"
   ){
 
     // ======================================
     // 🔥 BUTTONS
     // ======================================
-    leaderButtons.forEach(el => {
 
-      el.style.display = "flex";
-    });
+    leaderButtons.forEach(
+      el => {
 
-    adminButtons.forEach(el => {
+        el.style.display =
+          "flex";
 
-    el.style.display = "none";
+      }
+    );
 
-});
-staffButtons.forEach(el => {
 
-      el.style.display = "flex";
-    });
+    adminButtons.forEach(
+      el => {
 
-    if(dutyBtn){
+        if(
+          el.id !==
+          "clearKMLBtn"
+        ){
 
-      dutyBtn.style.display = "flex";
+          el.style.display =
+            "flex";
+
+        }
+
+      }
+    );
+
+
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "flex";
+
     }
+
 
     // ======================================
     // 🌍 GIS PANEL
     // ======================================
-    if(gisPanel){
+
+    if(
+      gisPanel
+    ){
 
       gisPanel.style.display =
         "block";
+
     }
+
+
+    // ======================================
+    // 🌍 SHOW ALL FILTERS
+    // ======================================
+
+    if(
+      divisionButtons
+    ){
+
+      divisionButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      rangeButtons
+    ){
+
+      rangeButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      beatButtons
+    ){
+
+      beatButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      compartmentButtons
+    ){
+
+      compartmentButtons.style.display =
+        "flex";
+
+    }
+
+  }
+
+
+  // ============================================================
+  // 🟠 CCF
+  // ============================================================
+
+  else if(
+    role === "CCF"
+  ){
+
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
+
+    leaderButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    adminButtons.forEach(
+      el => {
+
+        el.style.display =
+          "none";
+
+      }
+    );
+
+
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "flex";
+
+    }
+
+
+    // ======================================
+    // 🌍 GIS PANEL
+    // ======================================
+
+    if(
+      gisPanel
+    ){
+
+      gisPanel.style.display =
+        "block";
+
+    }
+
+
+    // ======================================
+    // ❌ CIRCLE LOCKED
+    // ======================================
+
+    if(
+      divisionButtons
+    ){
+
+      divisionButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      rangeButtons
+    ){
+
+      rangeButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      beatButtons
+    ){
+
+      beatButtons.style.display =
+        "flex";
+
+    }
+
+
+    if(
+      compartmentButtons
+    ){
+
+      compartmentButtons.style.display =
+        "flex";
+
+    }
+
+  }
+
+
+  // ============================================================
+  // 🟣 DFO / ADFO
+  // ============================================================
+
+  else if(
+    role === "DFO" ||
+    role === "ADFO"
+  ){
+
+    // ======================================
+    // 🔥 BUTTONS
+    // ======================================
+
+    leaderButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    adminButtons.forEach(
+      el => {
+
+        el.style.display =
+          "none";
+
+      }
+    );
+
+
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "flex";
+
+    }
+
+
+    // ======================================
+    // 🌍 GIS PANEL
+    // ======================================
+
+    if(
+      gisPanel
+    ){
+
+      gisPanel.style.display =
+        "block";
+
+    }
+
 
     // ======================================
     // ❌ DIVISION LOCKED
     // ======================================
-    if(divisionButtons){
+
+    if(
+      divisionButtons
+    ){
 
       divisionButtons.style.display =
         "none";
+
     }
+
 
     // ======================================
     // ✅ RANGE + BEAT + COMPARTMENT
     // ======================================
-    if(rangeButtons){
+
+    if(
+      rangeButtons
+    ){
 
       rangeButtons.style.display =
         "flex";
+
     }
 
-    if(beatButtons){
+
+    if(
+      beatButtons
+    ){
 
       beatButtons.style.display =
         "flex";
+
     }
 
-    if(compartmentButtons){
+
+    if(
+      compartmentButtons
+    ){
 
       compartmentButtons.style.display =
         "flex";
+
     }
+
   }
+
 
   // ============================================================
   // 🔵 TEAM LEADER
   // ============================================================
-  else if(role === "TEAM LEADER"){
+
+  else if(
+    role === "TEAM LEADER"
+  ){
 
     // ======================================
     // 🔥 BUTTONS
     // ======================================
-    leaderButtons.forEach(el => {
 
-      el.style.display = "flex";
-    });
+    leaderButtons.forEach(
+      el => {
 
-    adminButtons.forEach(el => {
+        el.style.display =
+          "flex";
 
-      el.style.display = "none";
-    });
+      }
+    );
 
-    staffButtons.forEach(el => {
 
-      el.style.display = "flex";
-    });
+    adminButtons.forEach(
+      el => {
 
-    if(dutyBtn){
+        el.style.display =
+          "none";
 
-      dutyBtn.style.display = "flex";
+      }
+    );
+
+
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "flex";
+
     }
+
 
     // ======================================
     // 🌍 GIS PANEL
     // ======================================
-    if(gisPanel){
+
+    if(
+      gisPanel
+    ){
 
       gisPanel.style.display =
         "block";
+
     }
+
 
     // ======================================
     // ❌ DIVISION LOCKED
     // ======================================
-    if(divisionButtons){
+
+    if(
+      divisionButtons
+    ){
 
       divisionButtons.style.display =
         "none";
+
     }
+
 
     // ======================================
     // ❌ RANGE LOCKED
     // ======================================
-    if(rangeButtons){
+
+    if(
+      rangeButtons
+    ){
 
       rangeButtons.style.display =
         "none";
+
     }
+
 
     // ======================================
     // ✅ BEAT + COMPARTMENT
     // ======================================
-    if(beatButtons){
+
+    if(
+      beatButtons
+    ){
 
       beatButtons.style.display =
         "flex";
+
     }
 
-    if(compartmentButtons){
+
+    if(
+      compartmentButtons
+    ){
 
       compartmentButtons.style.display =
         "flex";
+
     }
+
   }
+
 
   // ============================================================
   // 🟢 STAFF
   // ============================================================
-  else if(role === "STAFF"){
+
+  else if(
+    role === "STAFF"
+  ){
 
     // ======================================
     // 🔥 BUTTONS
     // ======================================
-    leaderButtons.forEach(el => {
 
-      el.style.display = "none";
-    });
+    leaderButtons.forEach(
+      el => {
 
-    adminButtons.forEach(el => {
+        el.style.display =
+          "none";
 
-      el.style.display = "none";
-    });
+      }
+    );
 
-    staffButtons.forEach(el => {
 
-      el.style.display = "flex";
-    });
+    adminButtons.forEach(
+      el => {
 
-    if(dutyBtn){
+        el.style.display =
+          "none";
 
-      dutyBtn.style.display = "flex";
+      }
+    );
+
+
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "flex";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "flex";
+
     }
+
 
     // ======================================
     // 🌍 GIS PANEL
     // ======================================
-    if(gisPanel){
+
+    if(
+      gisPanel
+    ){
 
       gisPanel.style.display =
         "block";
+
     }
+
 
     // ======================================
     // ❌ DIVISION LOCKED
     // ======================================
-    if(divisionButtons){
+
+    if(
+      divisionButtons
+    ){
 
       divisionButtons.style.display =
         "none";
+
     }
+
 
     // ======================================
     // ❌ RANGE LOCKED
     // ======================================
-    if(rangeButtons){
+
+    if(
+      rangeButtons
+    ){
 
       rangeButtons.style.display =
         "none";
+
     }
+
 
     // ======================================
     // ✅ BEAT + COMPARTMENT
     // ======================================
-    if(beatButtons){
+
+    if(
+      beatButtons
+    ){
 
       beatButtons.style.display =
         "flex";
+
     }
 
-    if(compartmentButtons){
+
+    if(
+      compartmentButtons
+    ){
 
       compartmentButtons.style.display =
         "flex";
+
     }
+
   }
 
-// ============================================================
-// 🟡 VILLAGER
-// ============================================================
-else if(role === "VILLAGER"){
+
+  // ============================================================
+  // 🟡 VILLAGER
+  // ============================================================
+
+  else if(
+    role === "VILLAGER"
+  ){
 
     // ========================================================
     // HIDE STAFF / ADMIN UI
     // ========================================================
 
-    leaderButtons.forEach(function(el){
+    leaderButtons.forEach(
+      function(el){
 
-        el.style.display = "none";
+        el.style.display =
+          "none";
 
-    });
+      }
+    );
 
-    adminButtons.forEach(function(el){
 
-        el.style.display = "none";
+    adminButtons.forEach(
+      function(el){
 
-    });
+        el.style.display =
+          "none";
 
-    staffButtons.forEach(function(el){
+      }
+    );
 
-        el.style.display = "none";
 
-    });
+    staffButtons.forEach(
+      function(el){
+
+        el.style.display =
+          "none";
+
+      }
+    );
+
 
     // ========================================================
     // HIDE DUTY
     // ========================================================
 
-    if(dutyBtn){
+    if(
+      dutyBtn
+    ){
 
-        dutyBtn.style.display = "none";
+      dutyBtn.style.display =
+        "none";
 
     }
+
 
     // ========================================================
     // HIDE GIS PANEL
     // ========================================================
 
-    if(gisPanel){
+    if(
+      gisPanel
+    ){
 
-        gisPanel.style.display = "none";
-
-    }
-
-    if(divisionButtons){
-
-        divisionButtons.style.display = "none";
+      gisPanel.style.display =
+        "none";
 
     }
 
-    if(rangeButtons){
 
-        rangeButtons.style.display = "none";
+    if(
+      divisionButtons
+    ){
 
-    }
-
-    if(beatButtons){
-
-        beatButtons.style.display = "none";
+      divisionButtons.style.display =
+        "none";
 
     }
 
-    if(compartmentButtons){
 
-        compartmentButtons.style.display = "none";
+    if(
+      rangeButtons
+    ){
+
+      rangeButtons.style.display =
+        "none";
 
     }
+
+
+    if(
+      beatButtons
+    ){
+
+      beatButtons.style.display =
+        "none";
+
+    }
+
+
+    if(
+      compartmentButtons
+    ){
+
+      compartmentButtons.style.display =
+        "none";
+
+    }
+
 
     // ========================================================
     // HIDE MONTHLY STATUS
     // ========================================================
 
     const monthlyCard =
+      document.getElementById(
+        "monthlyStatusCard"
+      );
 
-        document.getElementById(
-            "monthlyStatusCard"
-        );
 
-    if(monthlyCard){
+    if(
+      monthlyCard
+    ){
 
-        monthlyCard.style.display = "none";
+      monthlyCard.style.display =
+        "none";
 
     }
+
 
     // ========================================================
     // HIDE FOREST GIS LAYERS
@@ -7723,121 +8061,142 @@ else if(role === "VILLAGER"){
 
     [
 
-        window.divisionLayer,
+      window.divisionLayer,
 
-        window.rangeLayer,
+      window.rangeLayer,
 
-        window.beatLayer,
+      window.beatLayer,
 
-        window.compartmentLayer,
+      window.compartmentLayer,
 
-        window.villageBoundaryLayer,
+      window.villageBoundaryLayer,
 
-        window.masterGridLayer,
+      window.masterGridLayer,
 
-        window.gridLayer,
+      window.gridLayer,
 
-        window.coverageLayer,
+      window.coverageLayer,
 
-        window.analyticsLayer,
+      window.analyticsLayer,
 
-        window.monthHistoryLayer,
+      window.monthHistoryLayer,
 
-        window.monthHeatmapLayer,
+      window.monthHeatmapLayer,
 
-        window.historyLayer,
+      window.historyLayer,
 
-        window.heatmapLayer,
+      window.heatmapLayer,
 
-        window.gisLayer
+      window.gisLayer
 
     ]
-
-    .forEach(function(layer){
+    .forEach(
+      function(layer){
 
         if(
-
-            layer &&
-
-            map.hasLayer(layer)
-
+          layer &&
+          map.hasLayer(
+            layer
+          )
         ){
 
-            map.removeLayer(layer);
+          map.removeLayer(
+            layer
+          );
 
         }
 
-    });
+      }
+    );
+
 
     // ========================================================
     // SHOW REQUEST RRT
     // ========================================================
 
     const requestBtn =
+      document.getElementById(
+        "requestHelpBtn"
+      );
 
-        document.getElementById(
-            "requestHelpBtn"
-        );
 
-    if(requestBtn){
+    if(
+      requestBtn
+    ){
 
-        requestBtn.style.display = "flex";
+      requestBtn.style.display =
+        "flex";
 
     }
+
 
     // ========================================================
     // SHOW MY LOCATION
     // ========================================================
 
     const locBtn =
+      document.getElementById(
+        "locBtn"
+      );
 
-        document.getElementById(
-            "locBtn"
-        );
 
-    if(locBtn){
+    if(
+      locBtn
+    ){
 
-        locBtn.style.display = "flex";
+      locBtn.style.display =
+        "flex";
 
     }
+
 
     // ========================================================
     // SHOW WEATHER
     // ========================================================
 
     const weatherDrawer =
+      document.getElementById(
+        "weatherDrawer"
+      );
 
-        document.getElementById(
-            "weatherDrawer"
-        );
 
-    if(weatherDrawer){
+    if(
+      weatherDrawer
+    ){
 
-        weatherDrawer.style.display = "block";
+      weatherDrawer.style.display =
+        "block";
 
     }
+
 
     // ========================================================
     // SHOW LOGOUT
     // ========================================================
 
     const logoutBtn =
+      document.getElementById(
+        "logoutBtn"
+      );
 
-        document.getElementById(
-            "logoutBtn"
-        );
 
-    if(logoutBtn){
+    if(
+      logoutBtn
+    ){
 
-        logoutBtn.style.display = "block";
+      logoutBtn.style.display =
+        "block";
 
     }
+
 
     // ========================================================
     // KEEP HEC FEATURES ENABLED
     // ========================================================
 
-    window.HEC_ENABLED = true;
+    window.HEC_ENABLED =
+      true;
+
 
     // Villagers should still receive:
     //
@@ -7851,56 +8210,77 @@ else if(role === "VILLAGER"){
     //
     // Nothing is hidden here.
 
+
     console.log(
-        "✅ Villager UI Loaded"
+      "✅ Villager UI Loaded"
     );
 
-}
+  }
 
-// ============================================================
-// ❌ UNKNOWN ROLE
-// ============================================================
-else {
 
-    leaderButtons.forEach(el => {
+  // ============================================================
+  // ❌ UNKNOWN ROLE
+  // ============================================================
 
-        el.style.display = "none";
+  else {
 
-    });
+    leaderButtons.forEach(
+      el => {
 
-    adminButtons.forEach(el => {
+        el.style.display =
+          "none";
 
-        el.style.display = "none";
+      }
+    );
 
-    });
 
-    staffButtons.forEach(el => {
+    adminButtons.forEach(
+      el => {
 
-        el.style.display = "none";
+        el.style.display =
+          "none";
 
-    });
+      }
+    );
 
-    if(dutyBtn){
 
-        dutyBtn.style.display = "none";
+    staffButtons.forEach(
+      el => {
+
+        el.style.display =
+          "none";
+
+      }
+    );
+
+
+    if(
+      dutyBtn
+    ){
+
+      dutyBtn.style.display =
+        "none";
 
     }
 
-    if(gisPanel){
 
-        gisPanel.style.display = "none";
+    if(
+      gisPanel
+    ){
+
+      gisPanel.style.display =
+        "none";
 
     }
+
 
     console.warn(
-
-        "❌ Unknown role:",
-
-        role
-
+      "❌ Unknown role:",
+      role
     );
 
-}
+  }
+
 }// ================= LOAD PROFILE =================
 // ============================================================
 // 🔥 GLOBAL STATE (CRITICAL)
