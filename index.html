@@ -188,12 +188,23 @@
 <script src="./js/irregularity/irregularityUI.js"></script>
   
 <!-- ============================================================
-     🔥 GREENGUARD IDB INITIALIZATION
+     🔥 GREENGUARD PERSISTENT CACHE ENGINE
      ------------------------------------------------------------
+     MEMORY
+         ↓
+     INDEXEDDB
+         ↓
+     NETWORK BACKGROUND REFRESH
+
      IMPORTANT:
+     - Do NOT use localStorage for large datasets.
+     - localStorage remains for small auth/session values.
+     - IndexedDB stores GIS / Grid / Staff / static datasets.
+
+     IDB STARTUP READINESS:
      Create a global readiness Promise immediately.
      Other startup functions can safely wait for it.
-     ============================================================ -->
+============================================================ -->
 
 <script>
 
@@ -255,7 +266,6 @@
   );
 
 </script>
-
 <!-- ✅ OPTIONAL -->
 <script src="./js/leaflet-pip.min.js"></script>
 
@@ -265,6 +275,358 @@
 <script src="js/shp.js"></script>
 <script src="js/leaflet-kml.js"></script>
 -->
+<script>
+
+/* ============================================================
+   💾 GREENGUARD CACHE ENGINE
+   ------------------------------------------------------------
+   MEMORY = fastest
+   IDB    = persistent
+   NETWORK = background refresh
+============================================================ */
+
+window.GGCache =
+  window.GGCache || {};
+
+window.GGCache.VERSION =
+  "GG_STATIC_V1007";
+
+
+/* ============================================================
+   🔥 MEMORY CACHE
+============================================================ */
+
+window.GGMemory =
+  window.GGMemory || {};
+
+
+/* ============================================================
+   ⏳ WAIT FOR IDB
+============================================================ */
+
+window.GGCache.waitForIDB =
+  async function(){
+
+    if(
+      window.idbKeyval
+    ){
+      return true;
+    }
+
+    for(
+      let i = 0;
+      i < 50;
+      i++
+    ){
+
+      if(
+        window.idbKeyval
+      ){
+        return true;
+      }
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            20
+          )
+      );
+
+    }
+
+    console.warn(
+      "⚠ IndexedDB library unavailable"
+    );
+
+    return false;
+
+  };
+
+
+/* ============================================================
+   💾 SAVE
+============================================================ */
+
+window.GGCache.set =
+  async function(
+    key,
+    value
+  ){
+
+    try{
+
+      /* MEMORY */
+
+      window.GGMemory[key] =
+        value;
+
+
+      /* IDB */
+
+      const ready =
+        await window.GGCache
+          .waitForIDB();
+
+      if(
+        !ready
+      ){
+        return false;
+      }
+
+
+      await window.idbKeyval.set(
+        "GG:" +
+        window.GGCache.VERSION +
+        ":" +
+        key,
+        value
+      );
+
+
+      return true;
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ GGCache.set failed:",
+        key,
+        err
+      );
+
+      return false;
+
+    }
+
+  };
+
+
+/* ============================================================
+   📂 GET
+============================================================ */
+
+window.GGCache.get =
+  async function(
+    key
+  ){
+
+    try{
+
+      /* 1️⃣ MEMORY FIRST */
+
+      if(
+        Object.prototype
+          .hasOwnProperty
+          .call(
+            window.GGMemory,
+            key
+          )
+      ){
+
+        return window.GGMemory[key];
+
+      }
+
+
+      /* 2️⃣ IDB */
+
+      const ready =
+        await window.GGCache
+          .waitForIDB();
+
+      if(
+        !ready
+      ){
+        return null;
+      }
+
+
+      const value =
+        await window.idbKeyval.get(
+          "GG:" +
+          window.GGCache.VERSION +
+          ":" +
+          key
+        );
+
+
+      /* 3️⃣ RESTORE TO MEMORY */
+
+      if(
+        value !== undefined &&
+        value !== null
+      ){
+
+        window.GGMemory[key] =
+          value;
+
+      }
+
+
+      return value || null;
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ GGCache.get failed:",
+        key,
+        err
+      );
+
+      return null;
+
+    }
+
+  };
+
+
+/* ============================================================
+   🗑 REMOVE
+============================================================ */
+
+window.GGCache.remove =
+  async function(
+    key
+  ){
+
+    try{
+
+      delete window.GGMemory[key];
+
+      const ready =
+        await window.GGCache
+          .waitForIDB();
+
+      if(
+        !ready
+      ){
+        return false;
+      }
+
+      await window.idbKeyval.del(
+        "GG:" +
+        window.GGCache.VERSION +
+        ":" +
+        key
+      );
+
+      return true;
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ GGCache.remove failed:",
+        key,
+        err
+      );
+
+      return false;
+
+    }
+
+  };
+
+
+/* ============================================================
+   🧹 CLEAR GREENGUARD CACHE
+   ------------------------------------------------------------
+   IMPORTANT:
+   This does NOT clear:
+   - userProfile
+   - userPhone
+   - offline GPS
+============================================================ */
+
+window.GGCache.clear =
+  async function(){
+
+    try{
+
+      window.GGMemory = {};
+
+      const ready =
+        await window.GGCache
+          .waitForIDB();
+
+      if(
+        !ready
+      ){
+        return false;
+      }
+
+      const keys =
+        await window.idbKeyval.keys();
+
+      for(
+        const key of keys
+      ){
+
+        if(
+          String(key)
+            .startsWith(
+              "GG:"
+            )
+        ){
+
+          await window.idbKeyval.del(
+            key
+          );
+
+        }
+
+      }
+
+      console.log(
+        "🧹 GreenGuard cache cleared"
+      );
+
+      return true;
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ GGCache.clear failed:",
+        err
+      );
+
+      return false;
+
+    }
+
+  };
+
+
+/* ============================================================
+   📊 CACHE STATUS
+============================================================ */
+
+window.GGCache.status =
+  function(){
+
+    return {
+
+      version:
+        window.GGCache.VERSION,
+
+      memoryKeys:
+        Object.keys(
+          window.GGMemory || {}
+        )
+
+    };
+
+  };
+
+
+console.log(
+  "💾 GGCache engine loaded"
+);
+
+</script>
   <script>
     
     // ===============================
@@ -11353,26 +11715,105 @@ setTimeout(() => {
 
         
 
-        // ========================================================
-        // 👥 LOAD STAFF PROFILES
-        // ========================================================
+// ==========================================================
+// 👥 STAFF PROFILES
+// ==========================================================
+// CACHE FIRST
+// NETWORK SECOND
+//
+// IMPORTANT:
+// Firebase initialization MUST NOT wait for staff.
+// ==========================================================
 
-        if (
+try{
 
+  const cachedStaff =
+    await GGCache.get(
+      "staffProfiles"
+    );
+
+
+  /* ========================================================
+     ⚡ IMMEDIATE MEMORY RESTORE
+  ======================================================== */
+
+  if(
+    Array.isArray(
+      cachedStaff
+    ) &&
+    cachedStaff.length
+  ){
+
+    window.allStaffProfiles =
+      cachedStaff;
+
+    console.log(
+      "⚡ Staff profiles restored from IDB:",
+      cachedStaff.length
+    );
+
+  }
+
+
+  /* ========================================================
+     🌐 BACKGROUND REFRESH
+  ======================================================== */
+
+  setTimeout(
+    async function(){
+
+      try{
+
+        if(
           typeof loadAllStaffProfiles ===
           "function"
-
-        ) {
+        ){
 
           await loadAllStaffProfiles();
 
+
+          if(
+            Array.isArray(
+              window.allStaffProfiles
+            )
+          ){
+
+            await GGCache.set(
+              "staffProfiles",
+              window.allStaffProfiles
+            );
+
+            console.log(
+              "💾 Staff profiles updated in IDB"
+            );
+
+          }
+
         }
 
+      }
+      catch(err){
 
-        console.log(
-          "✅ Staff Profiles Loaded"
+        console.warn(
+          "⚠ Background staff refresh failed:",
+          err
         );
 
+      }
+
+    },
+    0
+  );
+
+}
+catch(err){
+
+  console.warn(
+    "⚠ Staff cache restore failed:",
+    err
+  );
+
+}
       }
 
       catch (err) {
@@ -16130,20 +16571,6 @@ await appendTrackToGeometries(
 // 📜 APPEND INTO GEOMETRY HISTORY
 // ======================================
 
-// ======================================
-// 📜 APPEND INTO GEOMETRY HISTORY
-// ENTERPRISE VERSION
-// ======================================
-
-// ======================================
-// 📜 APPEND INTO GEOMETRY HISTORY
-// FINAL ENTERPRISE VERSION
-// ======================================
-
-// ======================================
-// 📜 APPEND INTO GEOMETRY HISTORY
-// FINAL FIRESTORE SAFE ENTERPRISE VERSION
-// ======================================
 // ============================================================
 // 🔥 NORMALIZE + RESOLVE ANALYTICS CELL
 // ACCEPTS BOTH CURRENT AND LEGACY ORIENTATION
@@ -16226,11 +16653,6 @@ function resolveAnalyticsCell(cellId){
 
   return null;
 }
-// ======================================
-// 📜 APPEND INTO GEOMETRY HISTORY
-// FINAL FIRESTORE SAFE ENTERPRISE VERSION
-// ======================================
-
 // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // FINAL ENTERPRISE VERSION
@@ -17432,24 +17854,7 @@ async function buildAndStoreMasterGrid() {
     console.groupEnd();
   }
 }
-// ============================================================
-// 🤖 GREENGUARD AI ACCESS CONTROL
-//
-// ADMIN:
-//   ✓ Button exists
-//   ✓ Button attached directly to document.body
-//   ✓ Button visible
-//   ✓ Button clickable
-//
-// NON-ADMIN:
-//   ✓ Button hidden
-//   ✓ AI overlay closed
-//
-// Safe for:
-//   ✓ Desktop
-//   ✓ Android
-//   ✓ PWA
-//   ✓ Hard reload
+
 //   ✓ Delayed profile loading
 // ============================================================
 
@@ -17485,10 +17890,16 @@ async function loadMasterGrid(){
   );
 
 
+<<<<<<< HEAD
   // ============================================================
   // ⚡ STEP 1
   // ALREADY LOADED IN MEMORY
   // ============================================================
+=======
+  // =====================================
+  // ✅ ALREADY LOADED IN MEMORY
+  // =====================================
+>>>>>>> 012a8cb (Add IDB)
 
   if(
     window.masterGrid &&
@@ -17522,10 +17933,16 @@ async function loadMasterGrid(){
   }
 
 
+<<<<<<< HEAD
   // ============================================================
   // ⏳ STEP 2
   // LOAD ALREADY IN PROGRESS
   // ============================================================
+=======
+  // =====================================
+  // ⏳ LOAD ALREADY IN PROGRESS
+  // =====================================
+>>>>>>> 012a8cb (Add IDB)
 
   if(
     window.__MASTER_GRID_PROMISE__
@@ -17542,10 +17959,16 @@ async function loadMasterGrid(){
   }
 
 
+<<<<<<< HEAD
   // ============================================================
   // 🚀 STEP 3
   // START SINGLE MASTER GRID LOAD
   // ============================================================
+=======
+  // =====================================
+  // 🚀 START SINGLE MASTER GRID LOAD
+  // =====================================
+>>>>>>> 012a8cb (Add IDB)
 
   window.__MASTER_GRID_PROMISE__ =
 
@@ -17558,11 +17981,38 @@ async function loadMasterGrid(){
 
       try{
 
+<<<<<<< HEAD
 
         // ======================================================
         // ⚡ STEP 3A
         // TRY INDEXEDDB FIRST
         // ======================================================
+=======
+        // ==========================================================
+        // ⚡ STEP 1
+        // WAIT FOR IDB INITIALIZATION
+        // ==========================================================
+
+        if(
+          !window.idbKeyval &&
+          window.__GG_IDB_READY_PROMISE__
+        ){
+
+          console.log(
+            "⏳ Waiting for GreenGuard IndexedDB..."
+          );
+
+          await
+            window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        // ==========================================================
+        // ⚡ STEP 2
+        // TRY INDEXEDDB CACHE FIRST
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         let cachedMasterGrid =
           null;
@@ -17571,6 +18021,7 @@ async function loadMasterGrid(){
         try{
 
           if(
+<<<<<<< HEAD
             typeof idbKeyval !==
               "undefined"
           ){
@@ -17578,12 +18029,25 @@ async function loadMasterGrid(){
             cachedMasterGrid =
 
               await idbKeyval.get(
+=======
+            window.idbKeyval &&
+            typeof window.idbKeyval.get ===
+              "function"
+          ){
+
+            cachedMasterGrid =
+              await window.idbKeyval.get(
+>>>>>>> 012a8cb (Add IDB)
                 "master_grid_cache_v1"
               );
 
           }
 
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 012a8cb (Add IDB)
         catch(cacheErr){
 
           console.warn(
@@ -17591,16 +18055,26 @@ async function loadMasterGrid(){
             cacheErr
           );
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 012a8cb (Add IDB)
           cachedMasterGrid =
             null;
 
         }
 
 
+<<<<<<< HEAD
         // ======================================================
         // 🔍 VALIDATE IDB CACHE
         // ======================================================
+=======
+        // ==========================================================
+        // 🔍 STEP 3
+        // VALIDATE IDB CACHE
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         const cacheIsValid =
 
@@ -17618,23 +18092,52 @@ async function loadMasterGrid(){
           ).length > 0;
 
 
+<<<<<<< HEAD
         // ======================================================
         // ⚡ STEP 3B
         // INDEXEDDB CACHE HIT
         // ======================================================
+=======
+        // ==========================================================
+        // ⚡ STEP 4
+        // IDB CACHE HIT
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         if(
           cacheIsValid
         ){
 
+<<<<<<< HEAD
+=======
+          const cachedCount =
+            Object.keys(
+              cachedMasterGrid
+            ).length;
+
+
+          console.log(
+            "⚡ MASTER GRID IDB CACHE HIT:",
+            cachedCount
+          );
+
+
+          // =====================================
+          // APPLY CACHE TO MEMORY
+          // =====================================
+
+>>>>>>> 012a8cb (Add IDB)
           window.masterGrid =
             cachedMasterGrid;
 
 
+<<<<<<< HEAD
           window.__ANALYTICS_READY__ =
             true;
 
 
+=======
+>>>>>>> 012a8cb (Add IDB)
           window.__MASTER_GRID_FROM_IDB__ =
             true;
 
@@ -17643,6 +18146,7 @@ async function loadMasterGrid(){
             "IDB";
 
 
+<<<<<<< HEAD
           // ====================================================
           // READ CACHE TIMESTAMP
           // ====================================================
@@ -17658,12 +18162,44 @@ async function loadMasterGrid(){
           }
           catch(timestampErr){
 
+=======
+          // =====================================
+          // READ CACHE TIMESTAMP
+          // =====================================
+
+          try{
+
+            if(
+              window.idbKeyval &&
+              typeof window.idbKeyval.get ===
+                "function"
+            ){
+
+              window.__MASTER_GRID_CACHE_TIME__ =
+
+                await window.idbKeyval.get(
+                  "master_grid_cache_timestamp_v1"
+                );
+
+            }
+
+          }
+
+          catch(timestampErr){
+
+            console.warn(
+              "⚠ MASTER GRID CACHE TIMESTAMP READ FAILED:",
+              timestampErr
+            );
+
+>>>>>>> 012a8cb (Add IDB)
             window.__MASTER_GRID_CACHE_TIME__ =
               null;
 
           }
 
 
+<<<<<<< HEAD
           console.log(
             "⚡ MASTER GRID IDB HIT:",
             Object.keys(
@@ -17691,15 +18227,54 @@ async function loadMasterGrid(){
           );
 
 
+=======
+          // =====================================
+          // ANALYTICS READY
+          // =====================================
+
+          window.__ANALYTICS_READY__ =
+            true;
+
+
+          console.log(
+            "✅ MASTER GRID LOADED FROM IDB:",
+            cachedCount
+          );
+
+
+          console.log(
+            "📦 MASTER GRID SOURCE:",
+            window.__MASTER_GRID_SOURCE__
+          );
+
+
+          // =====================================
+          // IMPORTANT
+          //
+          // DO NOT WAIT FOR FIRESTORE HERE.
+          //
+          // Cached grid is immediately usable.
+          // Firestore verification can happen
+          // separately in the background.
+          // =====================================
+
+>>>>>>> 012a8cb (Add IDB)
           return window.masterGrid;
 
         }
 
 
+<<<<<<< HEAD
         // ======================================================
         // 🌐 STEP 4
         // IDB MISS → FIRST LOAD FROM FIRESTORE
         // ======================================================
+=======
+        // ==========================================================
+        // 🌐 STEP 5
+        // IDB MISS → FIRST LOAD FROM FIRESTORE
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         window.__MASTER_GRID_FROM_IDB__ =
           false;
@@ -17714,9 +18289,16 @@ async function loadMasterGrid(){
         );
 
 
+<<<<<<< HEAD
         // ======================================================
         // FIREBASE READY CHECK
         // ======================================================
+=======
+        // ==========================================================
+        // 🔥 STEP 6
+        // FIREBASE READY CHECK
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         if(
           !window.fb
@@ -17788,9 +18370,16 @@ async function loadMasterGrid(){
         );
 
 
+<<<<<<< HEAD
         // ======================================================
         // 🔥 FIRESTORE LOAD
         // ======================================================
+=======
+        // ==========================================================
+        // 🔥 STEP 7
+        // FIRESTORE MASTER GRID LOAD
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         console.time(
           "MASTER_GRID_FIRESTORE"
@@ -17815,19 +18404,33 @@ async function loadMasterGrid(){
         );
 
 
+<<<<<<< HEAD
         // ======================================================
         // BUILD MASTER GRID
         // ======================================================
+=======
+        // ==========================================================
+        // 🧱 STEP 8
+        // BUILD MASTER GRID
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         const freshMasterGrid =
           {};
 
 
         snap.forEach(
+<<<<<<< HEAD
           function(doc){
 
             const data =
               doc.data() ||
+=======
+          function(docSnap){
+
+            const data =
+              docSnap.data() ||
+>>>>>>> 012a8cb (Add IDB)
               {};
 
 
@@ -17846,9 +18449,16 @@ async function loadMasterGrid(){
         );
 
 
+<<<<<<< HEAD
         // ======================================================
         // VALID GRID COUNT
         // ======================================================
+=======
+        // ==========================================================
+        // 🔢 STEP 9
+        // VALID GRID COUNT
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         const gridCount =
 
@@ -17868,9 +18478,16 @@ async function loadMasterGrid(){
         );
 
 
+<<<<<<< HEAD
         // ======================================================
         // ⛔ FIRESTORE RETURNED NO VALID GRID
         // ======================================================
+=======
+        // ==========================================================
+        // ⛔ STEP 10
+        // FIRESTORE RETURNED NO VALID GRID
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         if(
           gridCount === 0
@@ -17883,9 +18500,16 @@ async function loadMasterGrid(){
         }
 
 
+<<<<<<< HEAD
         // ======================================================
         // APPLY TO MEMORY
         // ======================================================
+=======
+        // ==========================================================
+        // 🧠 STEP 11
+        // APPLY FIRESTORE DATA TO MEMORY
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         window.masterGrid =
           freshMasterGrid;
@@ -17903,18 +18527,34 @@ async function loadMasterGrid(){
           "FIRESTORE";
 
 
+<<<<<<< HEAD
         // ======================================================
         // 💾 SAVE COMPLETE MASTER GRID TO IDB
         // ======================================================
+=======
+        // ==========================================================
+        // 💾 STEP 12
+        // SAVE COMPLETE GRID TO IDB
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         try{
 
           if(
+<<<<<<< HEAD
             typeof idbKeyval !==
               "undefined"
           ){
 
             await idbKeyval.set(
+=======
+            window.idbKeyval &&
+            typeof window.idbKeyval.set ===
+              "function"
+          ){
+
+            await window.idbKeyval.set(
+>>>>>>> 012a8cb (Add IDB)
 
               "master_grid_cache_v1",
 
@@ -17923,7 +18563,11 @@ async function loadMasterGrid(){
             );
 
 
+<<<<<<< HEAD
             await idbKeyval.set(
+=======
+            await window.idbKeyval.set(
+>>>>>>> 012a8cb (Add IDB)
 
               "master_grid_cache_timestamp_v1",
 
@@ -17942,6 +18586,10 @@ async function loadMasterGrid(){
             );
 
           }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 012a8cb (Add IDB)
           else{
 
             console.warn(
@@ -17951,6 +18599,10 @@ async function loadMasterGrid(){
           }
 
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 012a8cb (Add IDB)
         catch(idbSaveErr){
 
           console.warn(
@@ -17958,30 +18610,53 @@ async function loadMasterGrid(){
             idbSaveErr
           );
 
+<<<<<<< HEAD
           // ----------------------------------------------------
+=======
+          // --------------------------------------------------
+>>>>>>> 012a8cb (Add IDB)
           // IMPORTANT
           //
           // IDB failure must NOT break the application.
           //
+<<<<<<< HEAD
           // window.masterGrid already contains the complete
           // Firestore dataset in memory.
           // ----------------------------------------------------
+=======
+          // Firestore data is already safely available
+          // in window.masterGrid.
+          // --------------------------------------------------
+>>>>>>> 012a8cb (Add IDB)
 
         }
 
 
+<<<<<<< HEAD
         // ======================================================
         // RETURN MASTER GRID
         // ======================================================
+=======
+        // ==========================================================
+        // ✅ STEP 13
+        // RETURN MASTER GRID
+        // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
         return window.masterGrid;
 
       }
 
 
+<<<<<<< HEAD
       // ========================================================
       // ❌ LOAD ERROR
       // ========================================================
+=======
+      // ==========================================================
+      // ❌ LOAD ERROR
+      // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
       catch(err){
 
@@ -18004,9 +18679,15 @@ async function loadMasterGrid(){
       }
 
 
+<<<<<<< HEAD
       // ========================================================
       // 🧹 ALWAYS CLEAN SINGLE-LOAD PROMISE
       // ========================================================
+=======
+      // ==========================================================
+      // 🧹 ALWAYS CLEAN SINGLE-LOAD PROMISE
+      // ==========================================================
+>>>>>>> 012a8cb (Add IDB)
 
       finally{
 
@@ -18014,6 +18695,16 @@ async function loadMasterGrid(){
           "LOAD_MASTER_GRID"
         );
 
+<<<<<<< HEAD
+=======
+
+        // IMPORTANT:
+        //
+        // Clear only the promise.
+        //
+        // window.masterGrid remains intact.
+        //
+>>>>>>> 012a8cb (Add IDB)
 
         window.__MASTER_GRID_PROMISE__ =
           null;
@@ -18023,9 +18714,15 @@ async function loadMasterGrid(){
     })();
 
 
+<<<<<<< HEAD
   // ============================================================
   // RETURN SAME MASTER GRID PROMISE
   // ============================================================
+=======
+  // =====================================
+  // RETURN SAME LOAD PROMISE
+  // =====================================
+>>>>>>> 012a8cb (Add IDB)
 
   return await
     window.__MASTER_GRID_PROMISE__;
@@ -41420,6 +42117,141 @@ window.getGridId = function(lat, lon){
     console.error("❌ Grid save failed:", e);
   }
 }
+<<<<<<< HEAD
+=======
+
+/* ============================================================
+   💾 GRID → INDEXED DB
+============================================================ */
+
+async function loadGridFromIDB(){
+
+  try{
+
+    const cached =
+      await GGCache.get(
+        "grid"
+      );
+
+    if(
+      !cached ||
+      !cached.grid ||
+      !cached.meta
+    ){
+
+      console.log(
+        "ℹ️ No IDB grid cache"
+      );
+
+      return false;
+
+    }
+
+
+    window.gridIndex =
+      cached.grid;
+
+    window.gridMeta =
+      cached.meta;
+
+
+    if(
+      cached.cellToGridId
+    ){
+
+      window.cellToGridId =
+        cached.cellToGridId;
+
+    }
+
+
+    console.log(
+      "⚡ GRID RESTORED FROM IDB:",
+      Object.keys(
+        window.gridIndex
+      ).length
+    );
+
+
+    window.__gridLoadedFromCache =
+      true;
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ IDB grid restore failed:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* ============================================================
+   💾 SAVE GRID TO INDEXED DB
+============================================================ */
+
+async function saveGridToIDB(){
+
+  try{
+
+    if(
+      !window.gridIndex ||
+      !window.gridMeta
+    ){
+
+      return false;
+
+    }
+
+
+    await GGCache.set(
+      "grid",
+      {
+
+        grid:
+          window.gridIndex,
+
+        meta:
+          window.gridMeta,
+
+        cellToGridId:
+          window.cellToGridId ||
+          null
+
+      }
+    );
+
+
+    console.log(
+      "💾 GRID SAVED TO IDB"
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ IDB grid save failed:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+function loadGridFromCache(){
+>>>>>>> 012a8cb (Add IDB)
 
    
     // ===============================
