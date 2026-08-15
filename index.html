@@ -69494,26 +69494,96 @@ async function flushAnalyticsBuffer(){
           // already resolved by the live patrol pipeline.
           // ====================================================
 
-          await updateMonthlyAnalyticsRebuild(
+          // ====================================================
+// 🔥 AUTHORITATIVE MONTHLY ANALYTICS WRITE
+// ====================================================
+//
+// IMPORTANT:
+//
+// Capture the returned transaction result.
+//
+// updateMonthlyAnalyticsRebuild() returns:
+//   success
+//   newlyAddedCells
+//   newlyAddedVisits
+//   isFirstVisitThisMonth
+//   totalCoveredCount
+//   nextVisitCount
+//   distanceMeters
+//
+// We use the genuine deltas to append to the
+// existing Monthly Status cache.
+//
+// NO full recalculation here.
+// ====================================================
 
-            gridId,
+const transactionResult =
+  await updateMonthlyAnalyticsRebuild(
 
-            coords.length > 0
-              ? [
-                  coords
-                ]
-              : [],
+    gridId,
 
-            monthKey,
+    coords.length > 0
+      ? [
+          coords
+        ]
+      : [],
 
-            authoritativeCells,
+    monthKey,
 
-            visitSessions
+    authoritativeCells,
 
-          );
+    visitSessions
+
+  );
 
 
-          successfulGridFlushes++;
+// ====================================================
+// ⚡ APPEND MONTHLY STATUS CACHE
+// ====================================================
+//
+// IMPORTANT:
+//
+// Do NOT calculate the monthly summary again.
+//
+// incrementMonthlyStatusCache()
+// updates:
+//
+//   RAM
+//   IndexedDB
+//   Monthly Status Card
+//
+// using only the genuine transaction deltas.
+//
+// ====================================================
+
+try{
+
+  await incrementMonthlyStatusCache(
+
+    monthKey,
+
+    gridId,
+
+    transactionResult
+
+  );
+
+}
+catch(monthlyCacheErr){
+
+  console.warn(
+    "⚠ Monthly cache append failed:",
+    monthlyCacheErr
+  );
+
+}
+
+
+// ====================================================
+// SUCCESSFUL GRID FLUSH
+// ====================================================
+
+successfulGridFlushes++;
 
           analyticsChanged = true;
 
