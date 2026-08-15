@@ -16425,10 +16425,10 @@ function resolveAnalyticsCell(cellId){
 // FINAL ENTERPRISE VERSION
 // FIRESTORE SAFE
 // ======================================
-async function preloadAllCompartments() {
+async function preloadAllCompartments(){
 
   console.trace(
-    "PRELOAD_COMPARTMENT_ CALLED"
+    "PRELOAD_COMPARTMENT_CALLED"
   );
 
 
@@ -16480,16 +16480,14 @@ async function preloadAllCompartments() {
 
 
   window.__COMPARTMENTS_PROMISE__ =
-    (async () => {
-
+    (async()=>{
 
       console.time(
         "PRELOAD_COMPARTMENTS"
       );
 
 
-      try {
-
+      try{
 
         console.log(
           "📦 PRELOADING ALL COMPARTMENTS"
@@ -16517,11 +16515,12 @@ async function preloadAllCompartments() {
 
           if(
             typeof idbKeyval !==
-              "undefined"
+            "undefined" &&
+            typeof idbKeyval.get ===
+            "function"
           ){
 
             cachedCompartments =
-
               await idbKeyval.get(
                 "all_compartments_cache_v1"
               );
@@ -16570,7 +16569,6 @@ async function preloadAllCompartments() {
         ){
 
           window.allCompartmentFeatures =
-
             cachedCompartments.features;
 
 
@@ -16617,10 +16615,9 @@ async function preloadAllCompartments() {
           // ====================================================
 
           setTimeout(
-            () => {
-
+            ()=>{
+              
               rebuildSpatialIndex()
-
                 .catch(
                   console.error
                 );
@@ -16653,7 +16650,7 @@ async function preloadAllCompartments() {
 
 
             setTimeout(
-              async () => {
+              async()=>{
 
                 try{
 
@@ -16665,20 +16662,52 @@ async function preloadAllCompartments() {
                   );
 
 
+                  // ==================================================
+                  // BUILD CELL → GRID LOOKUP
+                  // ==================================================
+
                   await buildCellToGridLookup();
 
 
-                  window.__ANALYTICS_READY__ =
-                    true;
+                  // ==================================================
+                  // 🔒 ANALYTICS READY ONLY WHEN LOOKUP EXISTS
+                  // ==================================================
+
+                  if(
+
+                    window.cellToGridId &&
+
+                    Object.keys(
+                      window.cellToGridId
+                    ).length > 0
+
+                  ){
+
+                    window.__ANALYTICS_READY__ =
+                      true;
+
+
+                    console.log(
+                      "✅ ANALYTICS READY"
+                    );
+
+                  }
+
+                  else{
+
+                    window.__ANALYTICS_READY__ =
+                      false;
+
+
+                    console.warn(
+                      "⚠ ANALYTICS WAITING — CELL → GRID LOOKUP NOT READY"
+                    );
+
+                  }
 
 
                   console.log(
-                    "✅ ANALYTICS READY"
-                  );
-
-
-                  console.log(
-                    "✅ CELL → GRID LOOKUP READY",
+                    "✅ CELL → GRID LOOKUP READY:",
                     Object.keys(
                       window.cellToGridId ||
                       {}
@@ -16693,6 +16722,9 @@ async function preloadAllCompartments() {
                     "❌ Grid preload failed",
                     err
                   );
+
+                  window.__ANALYTICS_READY__ =
+                    false;
 
                 }
 
@@ -16709,12 +16741,17 @@ async function preloadAllCompartments() {
 
           }
 
-          else {
+          else{
 
             console.log(
               "⏭ GRID already available"
             );
 
+
+            // ==================================================
+            // GRID ALREADY EXISTS
+            // VERIFY LOOKUP BEFORE ANALYTICS READY
+            // ==================================================
 
             if(
 
@@ -16738,6 +16775,18 @@ async function preloadAllCompartments() {
 
               console.log(
                 "✅ ANALYTICS READY"
+              );
+
+            }
+
+            else{
+
+              window.__ANALYTICS_READY__ =
+                false;
+
+
+              console.warn(
+                "⚠ ANALYTICS WAITING — GRID OR CELL LOOKUP NOT READY"
               );
 
             }
@@ -16781,7 +16830,7 @@ async function preloadAllCompartments() {
           []
         )
         .forEach(
-          f => {
+          f=>{
 
             try{
 
@@ -16864,10 +16913,10 @@ async function preloadAllCompartments() {
               ...beatMap.values()
             ]
             .map(
-              async ({
+              async({
                 divisionFolder,
                 beat
-              }) => {
+              })=>{
 
                 try{
 
@@ -16931,7 +16980,7 @@ async function preloadAllCompartments() {
                   // ============================================
 
                   data.features.forEach(
-                    f => {
+                    f=>{
 
                       if(
                         !f.properties
@@ -17027,7 +17076,10 @@ async function preloadAllCompartments() {
 
             if(
               typeof idbKeyval !==
-                "undefined"
+              "undefined" &&
+
+              typeof idbKeyval.set ===
+              "function"
             ){
 
               await idbKeyval.set(
@@ -17134,7 +17186,7 @@ async function preloadAllCompartments() {
         // ======================================================
 
         setTimeout(
-          () => {
+          ()=>{
 
             rebuildSpatialIndex()
 
@@ -17172,7 +17224,7 @@ async function preloadAllCompartments() {
 
 
           setTimeout(
-            async () => {
+            async()=>{
 
               try{
 
@@ -17184,16 +17236,49 @@ async function preloadAllCompartments() {
                 );
 
 
+                // ==================================================
+                // BUILD CELL → GRID LOOKUP
+                // ==================================================
+
                 await buildCellToGridLookup();
 
 
-                window.__ANALYTICS_READY__ =
-                  true;
+                // ==================================================
+                // 🔒 ANALYTICS READY ONLY AFTER
+                // CELL → GRID LOOKUP IS ACTUALLY READY
+                // ==================================================
+
+                if(
+
+                  window.cellToGridId &&
+
+                  Object.keys(
+                    window.cellToGridId
+                  ).length > 0
+
+                ){
+
+                  window.__ANALYTICS_READY__ =
+                    true;
 
 
-                console.log(
-                  "✅ ANALYTICS READY"
-                );
+                  console.log(
+                    "✅ ANALYTICS READY"
+                  );
+
+                }
+
+                else{
+
+                  window.__ANALYTICS_READY__ =
+                    false;
+
+
+                  console.warn(
+                    "⚠ ANALYTICS WAITING — CELL → GRID LOOKUP NOT READY"
+                  );
+
+                }
 
 
                 console.log(
@@ -17213,6 +17298,10 @@ async function preloadAllCompartments() {
                   err
                 );
 
+
+                window.__ANALYTICS_READY__ =
+                  false;
+
               }
 
               finally{
@@ -17228,12 +17317,16 @@ async function preloadAllCompartments() {
 
         }
 
-        else {
+        else{
 
           console.log(
             "⏭ GRID already available"
           );
 
+
+          // ==================================================
+          // VERIFY BOTH GRID + LOOKUP
+          // ==================================================
 
           if(
 
@@ -17257,6 +17350,18 @@ async function preloadAllCompartments() {
 
             console.log(
               "✅ ANALYTICS READY"
+            );
+
+          }
+
+          else{
+
+            window.__ANALYTICS_READY__ =
+              false;
+
+
+            console.warn(
+              "⚠ ANALYTICS WAITING — GRID OR CELL LOOKUP NOT READY"
             );
 
           }
@@ -17303,8 +17408,7 @@ async function preloadAllCompartments() {
     window.__COMPARTMENTS_PROMISE__
   );
 
-}
-async function buildAndStoreMasterGrid() {
+}async function buildAndStoreMasterGrid() {
   console.group(
     "🔲 BUILDING MASTER GRID"
   );
@@ -63213,18 +63317,6 @@ async function saveCellToGridLookupToIDB(
   }
 
 }
-    // ============================================================
-// 🧩 BUILD CELL → GRID LOOKUP
-//
-// SOURCE PRIORITY:
-//
-// 1. MEMORY
-// 2. INDEXEDDB
-// 3. FIRESTORE
-//
-// This prevents Firestore reads on normal startup.
-// ============================================================
-
 async function buildCellToGridLookup(){
 
   console.time(
@@ -63252,7 +63344,6 @@ async function buildCellToGridLookup(){
       ).length
     );
 
-
     window.__CELL_TO_GRID_SOURCE__ =
       "MEMORY";
 
@@ -63265,7 +63356,6 @@ async function buildCellToGridLookup(){
     console.timeEnd(
       "BUILD_CELL_TO_GRID_LOOKUP"
     );
-
 
     return window.cellToGridId;
   }
@@ -63284,30 +63374,18 @@ async function buildCellToGridLookup(){
       "⏳ Waiting for existing CELL → GRID lookup..."
     );
 
-
     return await
       window.__CELL_TO_GRID_PROMISE__;
   }
 
-// ====================================================
-// ⏳ WAIT FOR GREENGUARD IDB READY
-// ====================================================
 
-if(
-  window.__GG_IDB_READY__ !== true &&
-  window.__GG_IDB_READY_PROMISE__
-){
-
-  console.log(
-    "⏳ Waiting for GreenGuard IndexedDB..."
-  );
-
-  await
-    window.__GG_IDB_READY_PROMISE__;
-
-}  // ==========================================================
+  // ==========================================================
   // 🚀 STEP 3
-  // SINGLE LOAD PIPELINE
+  // CREATE SINGLE PROMISE IMMEDIATELY
+  //
+  // IMPORTANT:
+  // Promise is created BEFORE waiting for IDB.
+  // This prevents startup races.
   // ==========================================================
 
   window.__CELL_TO_GRID_PROMISE__ =
@@ -63321,6 +63399,36 @@ if(
 
 
         // ====================================================
+        // ⏳ WAIT FOR GREENGUARD IDB READY
+        // ====================================================
+
+        try{
+
+          if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+          ){
+
+            console.log(
+              "⏳ Waiting for GreenGuard IndexedDB..."
+            );
+
+            await
+              window.__GG_IDB_READY_PROMISE__;
+          }
+
+        }
+        catch(idbReadyErr){
+
+          console.warn(
+            "⚠ IDB readiness wait failed:",
+            idbReadyErr
+          );
+
+        }
+
+
+        // ====================================================
         // ⚡ STEP 3A
         // TRY INDEXEDDB FIRST
         // ====================================================
@@ -63331,8 +63439,16 @@ if(
 
         try{
 
-          cachedLookup =
-            await getCellToGridLookupFromIDB();
+          if(
+            typeof getCellToGridLookupFromIDB ===
+              "function"
+          ){
+
+            cachedLookup =
+              await
+                getCellToGridLookupFromIDB();
+
+          }
 
         }
         catch(cacheErr){
@@ -63353,6 +63469,7 @@ if(
 
         if(
           cachedLookup &&
+          typeof cachedLookup === "object" &&
           Object.keys(
             cachedLookup
           ).length > 0
@@ -63372,16 +63489,26 @@ if(
 
           try{
 
-            window.__CELL_TO_GRID_CACHE_TIME__ =
-              await idbKeyval.get(
-                "cell_to_grid_lookup_timestamp_v1"
-              );
+            if(
+              typeof idbKeyval !==
+                "undefined" &&
+              typeof idbKeyval.get ===
+                "function"
+            ){
+
+              window.__CELL_TO_GRID_CACHE_TIME__ =
+                await idbKeyval.get(
+                  "cell_to_grid_lookup_timestamp_v1"
+                );
+
+            }
 
           }
           catch(e){
 
             window.__CELL_TO_GRID_CACHE_TIME__ =
               null;
+
           }
 
 
@@ -63425,7 +63552,7 @@ if(
 
         if(
           typeof window.fb.getDocs !==
-          "function"
+            "function"
         ){
 
           throw new Error(
@@ -63436,7 +63563,7 @@ if(
 
         if(
           typeof window.fb.collection !==
-          "function"
+            "function"
         ){
 
           throw new Error(
@@ -63460,96 +63587,181 @@ if(
           );
 
 
+        const gridDocs =
+          gridSnap?.docs ||
+          [];
+
+
         console.log(
           "🌐 GRID MASTER DOCUMENTS:",
-          gridSnap?.size || 0
+          gridDocs.length
         );
 
+
+        if(
+          !gridDocs.length
+        ){
+
+          window.cellToGridId =
+            {};
+
+          window.__CELL_TO_GRID_SOURCE__ =
+            "EMPTY";
+
+          window.__CELL_TO_GRID_FROM_IDB__ =
+            false;
+
+          console.timeEnd(
+            "BUILD_CELL_TO_GRID_LOOKUP"
+          );
+
+          return window.cellToGridId;
+        }
+
+
+        // ====================================================
+        // 🔥 BUILD LOOKUP
+        //
+        // IMPORTANT:
+        //
+        // OLD:
+        //   await grid 1
+        //   await grid 2
+        //   await grid 3
+        //   ...
+        //
+        // NEW:
+        //   Process grids in small parallel batches.
+        //
+        // This removes the 4–5 minute mobile bottleneck
+        // without creating hundreds of simultaneous requests.
+        // ====================================================
 
         const lookup =
           {};
 
 
-        // ====================================================
-        // 🔥 LOAD CELLS FOR EACH GRID
-        // ====================================================
+        const BATCH_SIZE =
+          20;
+
 
         for(
-          const gridDoc
-          of (
-            gridSnap?.docs ||
-            []
-          )
+          let start = 0;
+          start < gridDocs.length;
+          start += BATCH_SIZE
         ){
 
-          const gridId =
-            gridDoc.id;
-
-
-          if(
-            !gridId
-          ){
-
-            continue;
-          }
-
-
-          const shardSnap =
-            await window.fb.getDocs(
-
-              window.fb.collection(
-                window.db,
-                "grid_master",
-                gridId,
-                "cells"
-              )
-
+          const batch =
+            gridDocs.slice(
+              start,
+              start + BATCH_SIZE
             );
 
 
-          (
-            shardSnap?.docs ||
-            []
-          )
-          .forEach(
-            shard => {
-
-              const cells =
-                shard.data()?.cells ||
-                [];
-
-
-              if(
-                !Array.isArray(
-                  cells
-                )
-              ){
-
-                return;
-              }
+          console.log(
+            "🧩 CELL → GRID BATCH:",
+            Math.floor(
+              start / BATCH_SIZE
+            ) + 1,
+            "/",
+            Math.ceil(
+              gridDocs.length /
+              BATCH_SIZE
+            )
+          );
 
 
-              cells.forEach(
-                cellId => {
+          await Promise.all(
+
+            batch.map(
+              async gridDoc => {
+
+                try{
+
+                  const gridId =
+                    gridDoc.id;
+
 
                   if(
-                    cellId !== null &&
-                    cellId !== undefined
+                    !gridId
                   ){
 
-                    lookup[
-                      String(
-                        cellId
-                      )
-                    ] =
-                      gridId;
-
+                    return;
                   }
 
-                }
-              );
 
-            }
+                  const shardSnap =
+                    await window.fb.getDocs(
+
+                      window.fb.collection(
+                        window.db,
+                        "grid_master",
+                        gridId,
+                        "cells"
+                      )
+
+                    );
+
+
+                  (
+                    shardSnap?.docs ||
+                    []
+                  )
+                  .forEach(
+                    shard => {
+
+                      const cells =
+                        shard.data()?.cells ||
+                        [];
+
+
+                      if(
+                        !Array.isArray(
+                          cells
+                        )
+                      ){
+
+                        return;
+                      }
+
+
+                      cells.forEach(
+                        cellId => {
+
+                          if(
+                            cellId !== null &&
+                            cellId !== undefined
+                          ){
+
+                            lookup[
+                              String(
+                                cellId
+                              )
+                            ] =
+                              gridId;
+
+                          }
+
+                        }
+                      );
+
+                    }
+                  );
+
+                }
+                catch(gridErr){
+
+                  console.warn(
+                    "⚠ CELL → GRID GRID READ FAILED:",
+                    gridDoc?.id,
+                    gridErr
+                  );
+
+                }
+
+              }
+            )
+
           );
 
         }
@@ -63569,8 +63781,8 @@ if(
           !lookupCount
         ){
 
-          console.warn(
-            "⚠ CELL → GRID LOOKUP EMPTY"
+          console.error(
+            "❌ CELL → GRID LOOKUP EMPTY AFTER FIRESTORE"
           );
 
 
@@ -63596,7 +63808,7 @@ if(
 
 
         // ====================================================
-        // 💾 SAVE TO IDB
+        // 💾 SAVE TO MEMORY
         // ====================================================
 
         window.cellToGridId =
@@ -63615,9 +63827,33 @@ if(
           Date.now();
 
 
-        await saveCellToGridLookupToIDB(
-          lookup
-        );
+        // ====================================================
+        // 💾 SAVE TO IDB
+        // ====================================================
+
+        try{
+
+          if(
+            typeof saveCellToGridLookupToIDB ===
+              "function"
+          ){
+
+            await
+              saveCellToGridLookupToIDB(
+                lookup
+              );
+
+          }
+
+        }
+        catch(idbSaveErr){
+
+          console.warn(
+            "⚠ CELL → GRID IDB SAVE FAILED:",
+            idbSaveErr
+          );
+
+        }
 
 
         console.log(
@@ -63638,8 +63874,8 @@ if(
 
         return window.cellToGridId;
 
-      }
 
+      }
       catch(err){
 
         console.error(
@@ -63648,13 +63884,9 @@ if(
         );
 
 
-        // ====================================================
-        // IMPORTANT:
-        // DO NOT CREATE FAKE LOOKUP
-        // ====================================================
-
         window.cellToGridId =
-          window.cellToGridId || {};
+          window.cellToGridId ||
+          {};
 
 
         window.__CELL_TO_GRID_SOURCE__ =
@@ -63694,8 +63926,7 @@ if(
 
   }
 
-}
-  async function loadAllStaffProfiles(){
+}  async function loadAllStaffProfiles(){
 
   console.trace(
     "LOAD_ALL_STAFF_PROFILES"
