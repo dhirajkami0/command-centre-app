@@ -61621,64 +61621,629 @@ function cleanTrackPoints(track){
 
   return clean;
 }
-async function buildCellToGridLookup(){
 
-  console.log(
-    "🧩 BUILD CELL LOOKUP"
-  );
+    // ============================================================
+// 🧩 CELL → GRID LOOKUP : INDEXEDDB CACHE HELPERS
+// ============================================================
 
-  window.cellToGridId = {};
+async function getCellToGridLookupFromIDB(){
 
-  const gridSnap =
-    await window.fb.getDocs(
-      window.fb.collection(
-        window.db,
-        "grid_master"
-      )
-    );
+  try{
 
-  for(
-    const gridDoc
-    of gridSnap.docs
-  ){
+    if(
+      typeof idbKeyval === "undefined"
+    ){
 
-    const gridId =
-      gridDoc.id;
-
-    const shardSnap =
-      await window.fb.getDocs(
-
-        window.fb.collection(
-          window.db,
-          "grid_master",
-          gridId,
-          "cells"
-        )
+      console.warn(
+        "⚠ idbKeyval unavailable"
       );
 
-    shardSnap.forEach(shard => {
+      return null;
+    }
 
-      const cells =
-        shard.data()?.cells || [];
 
-      cells.forEach(cellId => {
+    const cached =
+      await idbKeyval.get(
+        "cell_to_grid_lookup_cache_v1"
+      );
 
-        window.cellToGridId[
-          cellId
-        ] = gridId;
 
-      });
+    if(
+      !cached ||
+      typeof cached !== "object" ||
+      Array.isArray(cached)
+    ){
 
-    });
+      return null;
+    }
+
+
+    const keys =
+      Object.keys(cached);
+
+
+    if(
+      !keys.length
+    ){
+
+      return null;
+    }
+
+
+    console.log(
+      "⚡ CELL → GRID LOOKUP LOADED FROM IDB:",
+      keys.length
+    );
+
+
+    return cached;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ CELL → GRID IDB READ FAILED:",
+      err
+    );
+
+    return null;
+  }
+
+}
+
+
+// ============================================================
+// 💾 SAVE CELL → GRID LOOKUP TO INDEXEDDB
+// ============================================================
+
+async function saveCellToGridLookupToIDB(
+  lookup
+){
+
+  try{
+
+    if(
+      typeof idbKeyval === "undefined"
+    ){
+
+      console.warn(
+        "⚠ idbKeyval unavailable → lookup not cached"
+      );
+
+      return false;
+    }
+
+
+    if(
+      !lookup ||
+      typeof lookup !== "object" ||
+      Array.isArray(lookup)
+    ){
+
+      console.warn(
+        "⚠ Invalid cell → grid lookup"
+      );
+
+      return false;
+    }
+
+
+    const count =
+      Object.keys(
+        lookup
+      ).length;
+
+
+    if(
+      !count
+    ){
+
+      console.warn(
+        "⚠ Empty cell → grid lookup not cached"
+      );
+
+      return false;
+    }
+
+
+    await idbKeyval.set(
+      "cell_to_grid_lookup_cache_v1",
+      lookup
+    );
+
+
+    await idbKeyval.set(
+      "cell_to_grid_lookup_timestamp_v1",
+      Date.now()
+    );
+
+
+    console.log(
+      "💾 CELL → GRID LOOKUP SAVED TO IDB:",
+      count
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ CELL → GRID IDB SAVE FAILED:",
+      err
+    );
+
+    return false;
+  }
+
+}
+    // ============================================================
+// 🧩 BUILD CELL → GRID LOOKUP
+//
+// SOURCE PRIORITY:
+//
+// 1. MEMORY
+// 2. INDEXEDDB
+// 3. FIRESTORE
+//
+// This prevents Firestore reads on normal startup.
+// ============================================================
+
+async function buildCellToGridLookup(){
+
+  console.time(
+    "BUILD_CELL_TO_GRID_LOOKUP"
+  );
+
+
+  // ==========================================================
+  // 🔒 STEP 1
+  // ALREADY AVAILABLE IN MEMORY
+  // ==========================================================
+
+  if(
+    window.cellToGridId &&
+    typeof window.cellToGridId === "object" &&
+    Object.keys(
+      window.cellToGridId
+    ).length > 0
+  ){
+
+    console.log(
+      "⏭ CELL → GRID LOOKUP ALREADY IN MEMORY:",
+      Object.keys(
+        window.cellToGridId
+      ).length
+    );
+
+
+    window.__CELL_TO_GRID_SOURCE__ =
+      "MEMORY";
+
+    window.__CELL_TO_GRID_FROM_IDB__ =
+      false;
+
+    window.__CELL_TO_GRID_CACHE_TIME__ =
+      null;
+
+    console.timeEnd(
+      "BUILD_CELL_TO_GRID_LOOKUP"
+    );
+
+
+    return window.cellToGridId;
+  }
+
+
+  // ==========================================================
+  // 🔒 STEP 2
+  // PREVENT DUPLICATE BUILDS
+  // ==========================================================
+
+  if(
+    window.__CELL_TO_GRID_PROMISE__
+  ){
+
+    console.log(
+      "⏳ Waiting for existing CELL → GRID lookup..."
+    );
+
+
+    return await
+      window.__CELL_TO_GRID_PROMISE__;
+  }
+
+
+  // ==========================================================
+  // 🚀 STEP 3
+  // SINGLE LOAD PIPELINE
+  // ==========================================================
+
+  window.__CELL_TO_GRID_PROMISE__ =
+    (async()=>{
+
+      try{
+
+        console.log(
+          "🧩 BUILD CELL → GRID LOOKUP"
+        );
+
+
+        // ====================================================
+        // ⚡ STEP 3A
+        // TRY INDEXEDDB FIRST
+        // ====================================================
+
+        let cachedLookup =
+          null;
+
+
+        try{
+
+          cachedLookup =
+            await getCellToGridLookupFromIDB();
+
+        }
+        catch(cacheErr){
+
+          console.warn(
+            "⚠ CELL → GRID IDB READ ERROR:",
+            cacheErr
+          );
+
+          cachedLookup =
+            null;
+        }
+
+
+        // ====================================================
+        // ⚡ IDB CACHE FOUND
+        // ====================================================
+
+        if(
+          cachedLookup &&
+          Object.keys(
+            cachedLookup
+          ).length > 0
+        ){
+
+          window.cellToGridId =
+            cachedLookup;
+
+
+          window.__CELL_TO_GRID_SOURCE__ =
+            "IDB";
+
+
+          window.__CELL_TO_GRID_FROM_IDB__ =
+            true;
+
+
+          try{
+
+            window.__CELL_TO_GRID_CACHE_TIME__ =
+              await idbKeyval.get(
+                "cell_to_grid_lookup_timestamp_v1"
+              );
+
+          }
+          catch(e){
+
+            window.__CELL_TO_GRID_CACHE_TIME__ =
+              null;
+          }
+
+
+          console.log(
+            "⚡ CELL → GRID LOOKUP READY FROM IDB:",
+            Object.keys(
+              window.cellToGridId
+            ).length
+          );
+
+
+          console.timeEnd(
+            "BUILD_CELL_TO_GRID_LOOKUP"
+          );
+
+
+          return window.cellToGridId;
+        }
+
+
+        // ====================================================
+        // 🌐 STEP 3B
+        // IDB MISS → FIRESTORE
+        // ====================================================
+
+        console.log(
+          "🌐 CELL → GRID IDB MISS → FIRESTORE"
+        );
+
+
+        if(
+          !window.fb ||
+          !window.db
+        ){
+
+          throw new Error(
+            "Firestore unavailable"
+          );
+        }
+
+
+        if(
+          typeof window.fb.getDocs !==
+          "function"
+        ){
+
+          throw new Error(
+            "window.fb.getDocs unavailable"
+          );
+        }
+
+
+        if(
+          typeof window.fb.collection !==
+          "function"
+        ){
+
+          throw new Error(
+            "window.fb.collection unavailable"
+          );
+        }
+
+
+        // ====================================================
+        // 🔥 LOAD GRID MASTER DOCUMENTS
+        // ====================================================
+
+        const gridSnap =
+          await window.fb.getDocs(
+
+            window.fb.collection(
+              window.db,
+              "grid_master"
+            )
+
+          );
+
+
+        console.log(
+          "🌐 GRID MASTER DOCUMENTS:",
+          gridSnap?.size || 0
+        );
+
+
+        const lookup =
+          {};
+
+
+        // ====================================================
+        // 🔥 LOAD CELLS FOR EACH GRID
+        // ====================================================
+
+        for(
+          const gridDoc
+          of (
+            gridSnap?.docs ||
+            []
+          )
+        ){
+
+          const gridId =
+            gridDoc.id;
+
+
+          if(
+            !gridId
+          ){
+
+            continue;
+          }
+
+
+          const shardSnap =
+            await window.fb.getDocs(
+
+              window.fb.collection(
+                window.db,
+                "grid_master",
+                gridId,
+                "cells"
+              )
+
+            );
+
+
+          (
+            shardSnap?.docs ||
+            []
+          )
+          .forEach(
+            shard => {
+
+              const cells =
+                shard.data()?.cells ||
+                [];
+
+
+              if(
+                !Array.isArray(
+                  cells
+                )
+              ){
+
+                return;
+              }
+
+
+              cells.forEach(
+                cellId => {
+
+                  if(
+                    cellId !== null &&
+                    cellId !== undefined
+                  ){
+
+                    lookup[
+                      String(
+                        cellId
+                      )
+                    ] =
+                      gridId;
+
+                  }
+
+                }
+              );
+
+            }
+          );
+
+        }
+
+
+        // ====================================================
+        // 🔴 FIRESTORE RETURNED NOTHING
+        // ====================================================
+
+        const lookupCount =
+          Object.keys(
+            lookup
+          ).length;
+
+
+        if(
+          !lookupCount
+        ){
+
+          console.warn(
+            "⚠ CELL → GRID LOOKUP EMPTY"
+          );
+
+
+          window.cellToGridId =
+            {};
+
+
+          window.__CELL_TO_GRID_SOURCE__ =
+            "EMPTY";
+
+
+          window.__CELL_TO_GRID_FROM_IDB__ =
+            false;
+
+
+          console.timeEnd(
+            "BUILD_CELL_TO_GRID_LOOKUP"
+          );
+
+
+          return window.cellToGridId;
+        }
+
+
+        // ====================================================
+        // 💾 SAVE TO IDB
+        // ====================================================
+
+        window.cellToGridId =
+          lookup;
+
+
+        window.__CELL_TO_GRID_SOURCE__ =
+          "FIRESTORE";
+
+
+        window.__CELL_TO_GRID_FROM_IDB__ =
+          false;
+
+
+        window.__CELL_TO_GRID_CACHE_TIME__ =
+          Date.now();
+
+
+        await saveCellToGridLookupToIDB(
+          lookup
+        );
+
+
+        console.log(
+          "🌐 CELL → GRID LOOKUP BUILT FROM FIRESTORE:",
+          lookupCount
+        );
+
+
+        console.log(
+          "💾 CELL → GRID LOOKUP CACHED FOR FUTURE STARTUPS"
+        );
+
+
+        console.timeEnd(
+          "BUILD_CELL_TO_GRID_LOOKUP"
+        );
+
+
+        return window.cellToGridId;
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ CELL → GRID LOOKUP FAILED:",
+          err
+        );
+
+
+        // ====================================================
+        // IMPORTANT:
+        // DO NOT CREATE FAKE LOOKUP
+        // ====================================================
+
+        window.cellToGridId =
+          window.cellToGridId || {};
+
+
+        window.__CELL_TO_GRID_SOURCE__ =
+          "ERROR";
+
+
+        window.__CELL_TO_GRID_FROM_IDB__ =
+          false;
+
+
+        console.timeEnd(
+          "BUILD_CELL_TO_GRID_LOOKUP"
+        );
+
+
+        return window.cellToGridId;
+
+      }
+
+    })();
+
+
+  // ==========================================================
+  // RETURN SAME PROMISE
+  // ==========================================================
+
+  try{
+
+    return await
+      window.__CELL_TO_GRID_PROMISE__;
+
+  }
+  finally{
+
+    window.__CELL_TO_GRID_PROMISE__ =
+      null;
 
   }
 
-  console.log(
-    "✅ CELL LOOKUP READY",
-    Object.keys(
-      window.cellToGridId
-    ).length
-  );
 }
   async function loadAllStaffProfiles(){
 
