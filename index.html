@@ -11518,25 +11518,7 @@ window.addEventListener("load", function () {
   if (versionEl) versionEl.innerText = APP_VERSION;
 
 
-  // ======================================================
-  // 🔥 SPLASH SCREEN
-  // ======================================================
-  const splash = document.getElementById("splash-screen");
-
-  if (splash) {
-    setTimeout(() => {
-      splash.style.opacity = "0";
-
-      setTimeout(() => {
-        splash.remove();
-        if (window.map) {
-          window.map.invalidateSize();
-        }
-      }, 800);
-
-  }, 600);
-  }
-
+  
 
 // ======================================================
 // 🔥 SERVICE WORKER REGISTER
