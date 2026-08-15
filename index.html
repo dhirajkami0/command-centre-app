@@ -67255,28 +67255,24 @@ if(ageMs > 60000){
 
   liveSpeed = 0;
 }
-
 // ============================================================
 // 🛰️ LIVE STAFF MARKER STATE
 // ------------------------------------------------------------
 // ONLY FRONTEND VISUAL STATE
 //
-// 🟢 LIVE    <= 5 minutes  → existing radar ON
-// 🟡 STALE   > 5 < 30 min  → radar OFF, yellow/faded
-// 🔴 OFFLINE >= 30 minutes → radar OFF, red/strongly faded
+// 🟢 LIVE     0–30 minutes     → existing radar ON
+// 🟡 STALE    >30 min–3 hours  → radar OFF, yellow/faded
+// 🔴 OFFLINE  >3 hours         → radar OFF, red/strongly faded
 //
 // IMPORTANT:
 // This does NOT stop GPS.
 // This does NOT change dutyActive.
 // This does NOT modify Firestore.
-// ============================================================
-
 const LIVE_MARKER_MAX_AGE =
-    5 * 60 * 1000;
-
-const OFFLINE_MARKER_MAX_AGE =
     30 * 60 * 1000;
 
+const OFFLINE_MARKER_MAX_AGE =
+    3 * 60 * 60 * 1000;
 
 let markerState =
     "LIVE";
@@ -67298,7 +67294,6 @@ else if(
         "STALE";
 
 }
-
 
 // ============================================================
 // 🎨 MARKER VISUAL SETTINGS
