@@ -27609,9 +27609,10 @@ async function updateMonthlyStatusCard(){
        transaction changes it.
        ========================================================= */
 
-    if(
-      summary
-    ){
+if(
+  summary &&
+  Number(summary.totalCells || 0) > 0
+){
 
       /* =======================================================
          IMMEDIATE CARD PAINT
