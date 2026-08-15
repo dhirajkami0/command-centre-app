@@ -30297,113 +30297,72 @@ function zoomToLiveStaff(
   }
 
 }
-function startMonthlyStatusCardRefresh() {
+// ============================================================
+// 📊 MONTHLY STATUS CARD TOGGLE
+// ============================================================
 
-  if (window.monthlyStatusRefreshTimer) {
+function toggleMonthlyStatusCard(){
 
-    clearInterval(
-      window.monthlyStatusRefreshTimer
-    );
-
-  }
-
-  window.monthlyStatusRefreshTimer =
-
-    setInterval(
-      async () => {
-
-        try {
-
-          await updateMonthlyStatusCard();
-
-        }
-
-        catch(err){
-
-          console.error(
-            "❌ Monthly Status Refresh",
-            err
-          );
-
-        }
-
-      },
-      10000
-    );
-
-  console.log(
-    "📊 Monthly Status Card Refresh Started"
-  );
-
-}
-
-    function stopMonthlyStatusCardRefresh() {
-
-  if (
-    window.monthlyStatusRefreshTimer
-  ) {
-
-    clearInterval(
-      window.monthlyStatusRefreshTimer
-    );
-
-    window.monthlyStatusRefreshTimer =
-      null;
-
-  }
-
-}
-    
-    function toggleMonthlyStatusCard() {
-
-  try {
+  try{
 
     const card =
       document.getElementById(
         "monthlyStatusCard"
       );
 
+
     const body =
       document.getElementById(
         "monthlyStatusBody"
       );
+
 
     const icon =
       document.getElementById(
         "monthlyStatusIcon"
       );
 
-    if (
+
+    if(
       !card ||
       !body ||
       !icon
-    ) {
+    ){
+
       return;
+
     }
+
 
     card.classList.toggle(
       "collapsed"
     );
+
 
     const collapsed =
       card.classList.contains(
         "collapsed"
       );
 
-    if (collapsed) {
+
+    if(
+      collapsed
+    ){
 
       body.style.display =
         "none";
+
 
       icon.className =
         "fa-solid fa-chevron-up";
 
     }
 
-    else {
+    else{
 
       body.style.display =
         "block";
+
 
       icon.className =
         "fa-solid fa-chevron-down";
@@ -30412,54 +30371,133 @@ function startMonthlyStatusCardRefresh() {
 
   }
 
-  catch(err) {
+  catch(err){
 
     console.error(
       "toggleMonthlyStatusCard",
       err
     );
+
   }
+
 }
-    
-    /* 🔥 INIT BUTTON AFTER MAP READY */
-setTimeout(async () => {
 
 
-  addMonthlyStatusCard();
+// ============================================================
+// 🔥 INIT MONTHLY STATUS CARD AFTER MAP READY
+// ============================================================
+//
+// IMPORTANT:
+//
+// This is the ONLY startup controller.
+//
+// Flow:
+//
+//     CREATE CARD
+//          ↓
+//     INITIAL UPDATE
+//          ↓
+//     WAIT FOR MASTER GRID
+//          ↓
+//     ONE GRID-READY UPDATE
+//          ↓
+//     START ONE 10-SECOND TIMER
+//
+// IMPORTANT:
+//
+// updateMonthlyStatusCard() itself is NOT changed.
+//
+// No second timer is created here.
+// No overlapping monthly-status requests are allowed.
+// ============================================================
 
-  // =====================================
-  // 🚀 SHOW MONTHLY STATUS IMMEDIATELY
-  // =====================================
+setTimeout(
 
-  try {
+  async function(){
 
-    updateMonthlyStatusCard()
-      .catch(err =>
+    // ==========================================================
+    // CREATE CARD
+    // ==========================================================
+
+    try{
+
+      addMonthlyStatusCard();
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ Monthly Status Card Creation",
+        err
+      );
+
+      return;
+
+    }
+
+
+    // ==========================================================
+    // INITIAL MONTHLY STATUS UPDATE
+    // ==========================================================
+    //
+    // IMPORTANT:
+    //
+    // We WAIT for this call to finish.
+    //
+    // Therefore the grid-ready refresh below can NEVER overlap
+    // with this initial update.
+    // ==========================================================
+
+    if(
+      !window.__MONTHLY_STATUS_RUNNING__
+    ){
+
+      window.__MONTHLY_STATUS_RUNNING__ =
+        true;
+
+
+      try{
+
+        await updateMonthlyStatusCard();
+
+      }
+
+      catch(err){
+
         console.error(
           "❌ Initial Monthly Status",
           err
-        )
-      );
+        );
 
-  }
+      }
 
-  catch(err){
+      finally{
 
-    console.error(
-      "❌ Initial Monthly Status",
-      err
-    );
+        window.__MONTHLY_STATUS_RUNNING__ =
+          false;
 
-  }
+      }
 
-  // =====================================
-  // ⏳ WAIT FOR GRID IN BACKGROUND
-  // =====================================
+    }
 
-  (async()=>{
+
+    // ==========================================================
+    // WAIT FOR MASTER GRID
+    // ==========================================================
+    //
+    // This is ONLY a readiness check.
+    //
+    // It does NOT repeatedly call updateMonthlyStatusCard().
+    // ==========================================================
 
     const waitStart =
       performance.now();
+
+
+    let gridReady =
+      false;
+
 
     while(
 
@@ -30481,22 +30519,27 @@ setTimeout(async () => {
         "⏳ Waiting for master grid..."
       );
 
+
       await new Promise(
-        resolve =>
+
+        function(resolve){
+
           setTimeout(
             resolve,
             500
-          )
+          );
+
+        }
+
       );
+
 
       if(
 
         performance.now()
         -
         waitStart
-
         >
-
         30000
 
       ){
@@ -30505,72 +30548,235 @@ setTimeout(async () => {
           "⚠ Master grid wait timeout"
         );
 
-        return;
+        break;
 
       }
 
     }
 
-    console.log(
-      "✅ Master Grid Ready:",
+
+    // ==========================================================
+    // CHECK MASTER GRID
+    // ==========================================================
+
+    if(
+
+      window.masterGrid
+
+      &&
+
       Object.keys(
-        window.masterGrid || {}
-      ).length
-    );
+        window.masterGrid
+      ).length > 0
 
-    console.log(
-      "✅ Cell Lookup Ready:",
-      Object.keys(
-        window.cellToGridId || {}
-      ).length
-    );
+    ){
 
-    console.log(
-      "✅ Compartments Ready:",
-      window.allCompartmentFeatures
-        ?.length || 0
-    );
-
-    // =================================
-    // REFRESH ONCE AFTER GRID READY
-    // =================================
-
-    try{
-
-      await updateMonthlyStatusCard();
+      gridReady =
+        true;
 
     }
 
-    catch(err){
 
-      console.error(
-        "❌ Grid Ready Refresh",
-        err
+    // ==========================================================
+    // MASTER GRID READY
+    // ==========================================================
+
+    if(
+      gridReady
+    ){
+
+      console.log(
+        "✅ Master Grid Ready:",
+        Object.keys(
+          window.masterGrid
+        ).length
+      );
+
+
+      console.log(
+        "✅ Master Grid Source:",
+        window.__MASTER_GRID_SOURCE__
+      );
+
+
+      console.log(
+        "✅ Master Grid From IDB:",
+        window.__MASTER_GRID_FROM_IDB__
+      );
+
+
+      console.log(
+        "✅ Cell Lookup Ready:",
+        Object.keys(
+          window.cellToGridId || {}
+        ).length
+      );
+
+
+      console.log(
+        "✅ Compartments Ready:",
+        window.allCompartmentFeatures
+          ?.length || 0
+      );
+
+
+      // ========================================================
+      // ONE GRID-READY REFRESH
+      // ========================================================
+      //
+      // IMPORTANT:
+      //
+      // Initial update has already finished above.
+      //
+      // Therefore this call cannot overlap with it.
+      // ========================================================
+
+      if(
+        !window.__MONTHLY_STATUS_RUNNING__
+      ){
+
+        window.__MONTHLY_STATUS_RUNNING__ =
+          true;
+
+
+        try{
+
+          await updateMonthlyStatusCard();
+
+        }
+
+        catch(err){
+
+          console.error(
+            "❌ Grid Ready Monthly Status",
+            err
+          );
+
+        }
+
+        finally{
+
+          window.__MONTHLY_STATUS_RUNNING__ =
+            false;
+
+        }
+
+      }
+
+    }
+
+    else{
+
+      console.warn(
+        "⚠ Monthly Status continuing without ready master grid"
       );
 
     }
 
-  })();
 
-  // =====================================
-  // AUTO REFRESH
-  // =====================================
+    // ==========================================================
+    // START SINGLE 10-SECOND REFRESH CONTROLLER
+    // ==========================================================
+    //
+    // IMPORTANT:
+    //
+    // startMonthlyStatusCardRefresh() is called ONLY HERE.
+    //
+    // This means the timer cannot start while either startup
+    // update is still running.
+    // ==========================================================
+
+    startMonthlyStatusCardRefresh();
+
+
+    console.log(
+      "📊 Monthly Status Auto Refresh Started"
+    );
+
+  },
+
+  1000
+
+);
+
+
+// ============================================================
+// 📊 MONTHLY STATUS CARD REFRESH CONTROLLER
+// ============================================================
+//
+// ONLY ONE TIMER EXISTS.
+//
+// The timer is stored in:
+//
+//     window.monthlyStatusRefreshTimer
+//
+// Every execution checks:
+//
+//     window.__MONTHLY_STATUS_RUNNING__
+//
+// Therefore a 10-second timer tick can NEVER start a second
+// monthly-status calculation while the previous one is running.
+// ============================================================
+
+function startMonthlyStatusCardRefresh(){
+
+  // ==========================================================
+  // STOP EXISTING TIMER FIRST
+  // ==========================================================
 
   if(
-    window.monthlyStatusTimer
+    window.monthlyStatusRefreshTimer
   ){
 
     clearInterval(
-      window.monthlyStatusTimer
+      window.monthlyStatusRefreshTimer
     );
+
+
+    window.monthlyStatusRefreshTimer =
+      null;
 
   }
 
-  window.monthlyStatusTimer =
+
+  // ==========================================================
+  // START SINGLE TIMER
+  // ==========================================================
+
+  window.monthlyStatusRefreshTimer =
 
     setInterval(
 
-      async()=>{
+      async function(){
+
+        // ====================================================
+        // PREVENT OVERLAPPING EXECUTION
+        // ====================================================
+
+        if(
+          window.__MONTHLY_STATUS_RUNNING__
+        ){
+
+          console.log(
+            "⏸ Monthly Status update already running"
+          );
+
+          return;
+
+        }
+
+
+        // ====================================================
+        // LOCK
+        // ====================================================
+
+        window.__MONTHLY_STATUS_RUNNING__ =
+          true;
+
+
+        // ====================================================
+        // UPDATE
+        // ====================================================
 
         try{
 
@@ -30587,18 +30793,73 @@ setTimeout(async () => {
 
         }
 
+        finally{
+
+          // ================================================
+          // ALWAYS RELEASE LOCK
+          // ================================================
+
+          window.__MONTHLY_STATUS_RUNNING__ =
+            false;
+
+        }
+
       },
 
       10000
 
     );
 
+
   console.log(
-    "📊 Monthly Status Auto Refresh Started"
+    "📊 Monthly Status Card Refresh Controller Started"
   );
 
-},1000);
-    /* ============================================================
+}
+
+
+// ============================================================
+// 🛑 STOP MONTHLY STATUS CARD REFRESH
+// ============================================================
+
+function stopMonthlyStatusCardRefresh(){
+
+  // ==========================================================
+  // CLEAR TIMER
+  // ==========================================================
+
+  if(
+    window.monthlyStatusRefreshTimer
+  ){
+
+    clearInterval(
+      window.monthlyStatusRefreshTimer
+    );
+
+  }
+
+
+  // ==========================================================
+  // RESET TIMER REFERENCE
+  // ==========================================================
+
+  window.monthlyStatusRefreshTimer =
+    null;
+
+
+  // ==========================================================
+  // RESET RUNNING LOCK
+  // ==========================================================
+
+  window.__MONTHLY_STATUS_RUNNING__ =
+    false;
+
+
+  console.log(
+    "⏹ Monthly Status Card Refresh Stopped"
+  );
+
+}    /* ============================================================
        📍 LOCATION
     ============================================================ */// 📍 Layer for location
 var myLocationLayer = L.layerGroup().addTo(map);
