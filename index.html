@@ -187,16 +187,72 @@
 
 <script src="./js/irregularity/irregularityUI.js"></script>
   
-  <!-- ========================================= -->
-<!-- 🔥 FIXED IDB-KEYVAL -->
-<!-- ========================================= -->
+<!-- ============================================================
+     🔥 GREENGUARD IDB INITIALIZATION
+     ------------------------------------------------------------
+     IMPORTANT:
+     Create a global readiness Promise immediately.
+     Other startup functions can safely wait for it.
+     ============================================================ -->
+
+<script>
+
+  window.__GG_IDB_READY__ = false;
+
+  window.__GG_IDB_READY_PROMISE__ =
+    new Promise(
+      function(resolve){
+
+        window.__GG_IDB_READY_RESOLVE__ =
+          resolve;
+
+      }
+    );
+
+</script>
+
+
 <script type="module">
 
   import * as idbKeyval from
-
     "https://cdn.jsdelivr.net/npm/idb-keyval@6/+esm";
 
-  window.idbKeyval = idbKeyval;
+
+  // ==========================================
+  // 🔥 EXPOSE IDB
+  // ==========================================
+
+  window.idbKeyval =
+    idbKeyval;
+
+
+  // ==========================================
+  // ✅ MARK IDB READY
+  // ==========================================
+
+  window.__GG_IDB_READY__ =
+    true;
+
+
+  // ==========================================
+  // 🔓 RELEASE WAITING STARTUP FUNCTIONS
+  // ==========================================
+
+  if(
+    typeof window.__GG_IDB_READY_RESOLVE__ ===
+    "function"
+  ){
+
+    window.__GG_IDB_READY_RESOLVE__(
+      idbKeyval
+    );
+
+  }
+
+
+  console.log(
+    "💾 GreenGuard IndexedDB READY"
+  );
 
 </script>
 
