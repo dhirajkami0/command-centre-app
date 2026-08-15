@@ -26792,6 +26792,445 @@ function getLiveStaffCountForCurrentPolygon(){
   );
 
 }
+    // ============================================================
+// 💾 MONTHLY STATUS — INDEXEDDB CACHE
+// ------------------------------------------------------------
+// Persistent cache for Monthly Status Card.
+//
+// RAM cache:
+//   window.monthlyStatusCache
+//
+// Persistent cache:
+//   IndexedDB / idbKeyval
+//
+// IMPORTANT:
+// - This stores the already-calculated summary.
+// - It does NOT store/replace Firestore analytics.
+// - Firestore remains authoritative.
+// ============================================================
+
+async function getMonthlyStatusFromIDB(
+  cacheKey
+){
+  try{
+
+    if(
+      typeof idbKeyval === "undefined"
+    ){
+      return null;
+    }
+
+    const cached =
+      await idbKeyval.get(
+        `monthly_status_${cacheKey}`
+      );
+
+    if(
+      !cached ||
+      typeof cached !== "object"
+    ){
+      return null;
+    }
+
+    return cached;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Status IDB read failed",
+      err
+    );
+
+    return null;
+  }
+}
+
+
+async function saveMonthlyStatusToIDB(
+  cacheKey,
+  summary
+){
+  try{
+
+    if(
+      typeof idbKeyval === "undefined"
+    ){
+      return false;
+    }
+
+    if(
+      !summary ||
+      typeof summary !== "object"
+    ){
+      return false;
+    }
+
+    await idbKeyval.set(
+      `monthly_status_${cacheKey}`,
+      summary
+    );
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Status IDB write failed",
+      err
+    );
+
+    return false;
+  }
+}
+
+
+// ============================================================
+// 🔥 INCREMENT MONTHLY STATUS CACHE
+// ------------------------------------------------------------
+// Called AFTER a successful analytics transaction.
+//
+// IMPORTANT:
+// We use:
+//   newlyAddedCells
+//   newlyAddedVisits
+//   isFirstVisitThisMonth
+//
+// We do NOT add totalCoveredCount or nextVisitCount directly,
+// because those are already cumulative values.
+// ============================================================
+
+async function incrementMonthlyStatusCache(
+  monthKey,
+  gridId,
+  transactionResult
+){
+  try{
+
+    if(
+      !monthKey ||
+      !gridId ||
+      !transactionResult
+    ){
+      return;
+    }
+
+
+    // ========================================================
+    // CURRENT GIS CONTEXT
+    // ========================================================
+
+    const level =
+      String(
+        window.activePopupContext?.level ||
+        "btr"
+      )
+      .toLowerCase();
+
+
+    const filterValue =
+      level === "compartment"
+      ? window.gisFilter?.compartment
+
+      : level === "beat"
+      ? window.gisFilter?.beat
+
+      : level === "range"
+      ? window.gisFilter?.range
+
+      : level === "division"
+      ? window.gisFilter?.division
+
+      : "";
+
+
+    // ========================================================
+    // CURRENT CONTEXT CACHE KEY
+    // ========================================================
+
+    const cacheKey =
+      `${monthKey}_${level}_${
+        filterValue || "all"
+      }`;
+
+
+    // ========================================================
+    // DOES THIS GRID BELONG TO CURRENT CONTEXT?
+    // ========================================================
+
+    let gridIds = [];
+
+    try{
+
+      const resolved =
+        getAnalyticsGridIds(
+          level,
+          filterValue
+        );
+
+
+      if(
+        Array.isArray(
+          resolved
+        )
+      ){
+        gridIds =
+          resolved.filter(
+            Boolean
+          );
+      }
+
+      else if(
+        resolved instanceof Set
+      ){
+        gridIds =
+          [...resolved].filter(
+            Boolean
+          );
+      }
+
+    }
+    catch(err){
+
+      console.warn(
+        "⚠ Monthly cache grid resolution failed",
+        err
+      );
+
+      return;
+    }
+
+
+    if(
+      !gridIds.includes(
+        gridId
+      )
+    ){
+      return;
+    }
+
+
+    // ========================================================
+    // LOAD CURRENT PERSISTED CACHE
+    // ========================================================
+
+    let cacheEntry =
+      await getMonthlyStatusFromIDB(
+        cacheKey
+      );
+
+
+    // ========================================================
+    // FALL BACK TO RAM CACHE
+    // ========================================================
+
+    if(
+      !cacheEntry &&
+      window.monthlyStatusCache?.[
+        cacheKey
+      ]
+    ){
+
+      cacheEntry =
+        {
+          ...window.monthlyStatusCache[
+            cacheKey
+          ]
+        };
+    }
+
+
+    // ========================================================
+    // NO CACHE EXISTS
+    //
+    // Do NOT create a fake partial summary.
+    //
+    // updateMonthlyStatusCard() will perform the
+    // one-time authoritative bootstrap.
+    // ========================================================
+
+    if(
+      !cacheEntry
+    ){
+      return;
+    }
+
+
+    // ========================================================
+    // SAFE NUMERIC VALUES
+    // ========================================================
+
+    const newlyAddedCells =
+      Math.max(
+        0,
+        Number(
+          transactionResult
+            ?.newlyAddedCells || 0
+        )
+      );
+
+
+    const newlyAddedVisits =
+      Math.max(
+        0,
+        Number(
+          transactionResult
+            ?.newlyAddedVisits || 0
+        )
+      );
+
+
+    const firstVisit =
+      transactionResult
+        ?.isFirstVisitThisMonth === true;
+
+
+    // ========================================================
+    // INCREMENT ONLY THE DELTAS
+    // ========================================================
+
+    cacheEntry.totalCovered =
+      Math.max(
+        0,
+        Number(
+          cacheEntry.totalCovered || 0
+        )
+      )
+      +
+      newlyAddedCells;
+
+
+    cacheEntry.visitCount =
+      Math.max(
+        0,
+        Number(
+          cacheEntry.visitCount || 0
+        )
+      )
+      +
+      newlyAddedVisits;
+
+
+    if(
+      firstVisit
+    ){
+
+      cacheEntry.visitedCompartments =
+        Math.max(
+          0,
+          Number(
+            cacheEntry.visitedCompartments || 0
+          )
+        )
+        +
+        1;
+    }
+
+
+    // ========================================================
+    // COVERAGE %
+    // ========================================================
+
+    cacheEntry.coveragePercent =
+      Number(
+        cacheEntry.totalCells || 0
+      ) > 0
+
+      ? (
+          Number(
+            cacheEntry.totalCovered || 0
+          )
+          /
+          Number(
+            cacheEntry.totalCells || 0
+          )
+        )
+        * 100
+
+      : 0;
+
+
+    // ========================================================
+    // UPDATE TIME
+    // ========================================================
+
+    cacheEntry.loadedAt =
+      Date.now();
+
+    cacheEntry.latestUpdatedAt =
+      Date.now();
+
+    cacheEntry.monthKey =
+      monthKey;
+
+    cacheEntry.level =
+      level;
+
+    cacheEntry.filterValue =
+      filterValue || "";
+
+
+    // ========================================================
+    // WRITE RAM CACHE
+    // ========================================================
+
+    window.monthlyStatusCache ??=
+      {};
+
+
+    window.monthlyStatusCache[
+      cacheKey
+    ] =
+      cacheEntry;
+
+
+    // ========================================================
+    // WRITE INDEXEDDB
+    // ========================================================
+
+    await saveMonthlyStatusToIDB(
+      cacheKey,
+      cacheEntry
+    );
+
+
+    // ========================================================
+    // IMMEDIATE PAINT
+    // ========================================================
+
+    renderMonthlyStatusCard(
+      cacheEntry,
+      level
+    );
+
+
+    console.log(
+      "⚡ Monthly Status Incrementally Updated",
+      {
+        cacheKey,
+        gridId,
+        newlyAddedCells,
+        newlyAddedVisits,
+        firstVisit,
+        totalCovered:
+          cacheEntry.totalCovered,
+        visitCount:
+          cacheEntry.visitCount,
+        visitedCompartments:
+          cacheEntry.visitedCompartments
+      }
+    );
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ incrementMonthlyStatusCache failed",
+      err
+    );
+  }
+}
 async function updateMonthlyStatusCard(){
 
   try{
@@ -40445,72 +40884,7 @@ window.getGridId = function(lat, lon){
     console.error("❌ Grid save failed:", e);
   }
 }
-function loadGridFromCache(){
 
-  const CACHE_KEY = "grid_cache_v1";
-  const TARGET_GRID_SIZE = 0.00045;
-
-  try {
-
-    const raw = localStorage.getItem(CACHE_KEY);
-    if(!raw){
-      console.log("ℹ️ No grid cache found");
-      return false;
-    }
-
-    const parsed = JSON.parse(raw);
-
-    // ===============================
-    // 🔥 BASIC VALIDATION
-    // ===============================
-    if(!parsed?.grid || !parsed?.meta){
-      console.warn("⚠ Invalid cache structure");
-      return false;
-    }
-
-    // ===============================
-    // 🔥 SIZE CHECK (CRITICAL)
-    // ===============================
-    if(parsed.meta.size !== TARGET_GRID_SIZE){
-      console.warn("⚠ Grid size mismatch → ignoring cache");
-      return false;
-    }
-
-    const keys = Object.keys(parsed.grid);
-
-    // ===============================
-    // 🔥 SANITY CHECK
-    // ===============================
-    if(!keys.length || keys.length < 100){
-      console.warn("⚠ Cache too small / invalid");
-      return false;
-    }
-
-    // ===============================
-    // 🔥 SAMPLE CELL VALIDATION
-    // ===============================
-    const sample = parsed.grid[keys[0]];
-
-    if(!sample || !sample.geo || !sample.geo.geometry){
-      console.warn("⚠ Corrupted grid data");
-      return false;
-    }
-
-    // ===============================
-    // 🔥 APPLY CACHE
-    // ===============================
-    window.gridIndex = parsed.grid;
-    window.gridMeta = parsed.meta;
-
-    console.log("⚡ Grid loaded from cache:", keys.length);
-
-    return true;
-
-  } catch(e){
-    console.warn("⚠ Failed to load grid cache");
-    return false;
-  }
-}   
    
     // ===============================
     // 🔥 APPLY CACHE
