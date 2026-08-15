@@ -17890,16 +17890,13 @@ async function loadMasterGrid(){
   );
 
 
-<<<<<<< HEAD
   // ============================================================
   // ⚡ STEP 1
   // ALREADY LOADED IN MEMORY
   // ============================================================
-=======
   // =====================================
   // ✅ ALREADY LOADED IN MEMORY
   // =====================================
->>>>>>> 012a8cb (Add IDB)
 
   if(
     window.masterGrid &&
@@ -17933,16 +17930,13 @@ async function loadMasterGrid(){
   }
 
 
-<<<<<<< HEAD
   // ============================================================
   // ⏳ STEP 2
   // LOAD ALREADY IN PROGRESS
   // ============================================================
-=======
   // =====================================
   // ⏳ LOAD ALREADY IN PROGRESS
   // =====================================
->>>>>>> 012a8cb (Add IDB)
 
   if(
     window.__MASTER_GRID_PROMISE__
@@ -17959,16 +17953,13 @@ async function loadMasterGrid(){
   }
 
 
-<<<<<<< HEAD
   // ============================================================
   // 🚀 STEP 3
   // START SINGLE MASTER GRID LOAD
   // ============================================================
-=======
   // =====================================
   // 🚀 START SINGLE MASTER GRID LOAD
   // =====================================
->>>>>>> 012a8cb (Add IDB)
 
   window.__MASTER_GRID_PROMISE__ =
 
@@ -17981,13 +17972,11 @@ async function loadMasterGrid(){
 
       try{
 
-<<<<<<< HEAD
 
         // ======================================================
         // ⚡ STEP 3A
         // TRY INDEXEDDB FIRST
         // ======================================================
-=======
         // ==========================================================
         // ⚡ STEP 1
         // WAIT FOR IDB INITIALIZATION
@@ -18012,7 +18001,6 @@ async function loadMasterGrid(){
         // ⚡ STEP 2
         // TRY INDEXEDDB CACHE FIRST
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         let cachedMasterGrid =
           null;
@@ -18021,7 +18009,6 @@ async function loadMasterGrid(){
         try{
 
           if(
-<<<<<<< HEAD
             typeof idbKeyval !==
               "undefined"
           ){
@@ -18029,7 +18016,6 @@ async function loadMasterGrid(){
             cachedMasterGrid =
 
               await idbKeyval.get(
-=======
             window.idbKeyval &&
             typeof window.idbKeyval.get ===
               "function"
@@ -18037,17 +18023,13 @@ async function loadMasterGrid(){
 
             cachedMasterGrid =
               await window.idbKeyval.get(
->>>>>>> 012a8cb (Add IDB)
                 "master_grid_cache_v1"
               );
 
           }
 
         }
-<<<<<<< HEAD
-=======
 
->>>>>>> 012a8cb (Add IDB)
         catch(cacheErr){
 
           console.warn(
@@ -18055,26 +18037,20 @@ async function loadMasterGrid(){
             cacheErr
           );
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 012a8cb (Add IDB)
           cachedMasterGrid =
             null;
 
         }
 
 
-<<<<<<< HEAD
         // ======================================================
         // 🔍 VALIDATE IDB CACHE
         // ======================================================
-=======
         // ==========================================================
         // 🔍 STEP 3
         // VALIDATE IDB CACHE
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         const cacheIsValid =
 
@@ -18092,24 +18068,19 @@ async function loadMasterGrid(){
           ).length > 0;
 
 
-<<<<<<< HEAD
         // ======================================================
         // ⚡ STEP 3B
         // INDEXEDDB CACHE HIT
         // ======================================================
-=======
         // ==========================================================
         // ⚡ STEP 4
         // IDB CACHE HIT
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         if(
           cacheIsValid
         ){
 
-<<<<<<< HEAD
-=======
           const cachedCount =
             Object.keys(
               cachedMasterGrid
@@ -18126,18 +18097,14 @@ async function loadMasterGrid(){
           // APPLY CACHE TO MEMORY
           // =====================================
 
->>>>>>> 012a8cb (Add IDB)
           window.masterGrid =
             cachedMasterGrid;
 
 
-<<<<<<< HEAD
           window.__ANALYTICS_READY__ =
             true;
 
 
-=======
->>>>>>> 012a8cb (Add IDB)
           window.__MASTER_GRID_FROM_IDB__ =
             true;
 
@@ -18146,7 +18113,6 @@ async function loadMasterGrid(){
             "IDB";
 
 
-<<<<<<< HEAD
           // ====================================================
           // READ CACHE TIMESTAMP
           // ====================================================
@@ -18162,7 +18128,6 @@ async function loadMasterGrid(){
           }
           catch(timestampErr){
 
-=======
           // =====================================
           // READ CACHE TIMESTAMP
           // =====================================
@@ -18192,14 +18157,12 @@ async function loadMasterGrid(){
               timestampErr
             );
 
->>>>>>> 012a8cb (Add IDB)
             window.__MASTER_GRID_CACHE_TIME__ =
               null;
 
           }
 
 
-<<<<<<< HEAD
           console.log(
             "⚡ MASTER GRID IDB HIT:",
             Object.keys(
@@ -18227,7 +18190,6 @@ async function loadMasterGrid(){
           );
 
 
-=======
           // =====================================
           // ANALYTICS READY
           // =====================================
@@ -18258,23 +18220,19 @@ async function loadMasterGrid(){
           // separately in the background.
           // =====================================
 
->>>>>>> 012a8cb (Add IDB)
           return window.masterGrid;
 
         }
 
 
-<<<<<<< HEAD
         // ======================================================
         // 🌐 STEP 4
         // IDB MISS → FIRST LOAD FROM FIRESTORE
         // ======================================================
-=======
         // ==========================================================
         // 🌐 STEP 5
         // IDB MISS → FIRST LOAD FROM FIRESTORE
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         window.__MASTER_GRID_FROM_IDB__ =
           false;
@@ -18289,16 +18247,13 @@ async function loadMasterGrid(){
         );
 
 
-<<<<<<< HEAD
         // ======================================================
         // FIREBASE READY CHECK
         // ======================================================
-=======
         // ==========================================================
         // 🔥 STEP 6
         // FIREBASE READY CHECK
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         if(
           !window.fb
@@ -18370,16 +18325,13 @@ async function loadMasterGrid(){
         );
 
 
-<<<<<<< HEAD
         // ======================================================
         // 🔥 FIRESTORE LOAD
         // ======================================================
-=======
         // ==========================================================
         // 🔥 STEP 7
         // FIRESTORE MASTER GRID LOAD
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         console.time(
           "MASTER_GRID_FIRESTORE"
@@ -18404,33 +18356,27 @@ async function loadMasterGrid(){
         );
 
 
-<<<<<<< HEAD
         // ======================================================
         // BUILD MASTER GRID
         // ======================================================
-=======
         // ==========================================================
         // 🧱 STEP 8
         // BUILD MASTER GRID
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         const freshMasterGrid =
           {};
 
 
         snap.forEach(
-<<<<<<< HEAD
           function(doc){
 
             const data =
               doc.data() ||
-=======
           function(docSnap){
 
             const data =
               docSnap.data() ||
->>>>>>> 012a8cb (Add IDB)
               {};
 
 
@@ -18449,16 +18395,13 @@ async function loadMasterGrid(){
         );
 
 
-<<<<<<< HEAD
         // ======================================================
         // VALID GRID COUNT
         // ======================================================
-=======
         // ==========================================================
         // 🔢 STEP 9
         // VALID GRID COUNT
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         const gridCount =
 
@@ -18478,16 +18421,13 @@ async function loadMasterGrid(){
         );
 
 
-<<<<<<< HEAD
         // ======================================================
         // ⛔ FIRESTORE RETURNED NO VALID GRID
         // ======================================================
-=======
         // ==========================================================
         // ⛔ STEP 10
         // FIRESTORE RETURNED NO VALID GRID
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         if(
           gridCount === 0
@@ -18500,16 +18440,13 @@ async function loadMasterGrid(){
         }
 
 
-<<<<<<< HEAD
         // ======================================================
         // APPLY TO MEMORY
         // ======================================================
-=======
         // ==========================================================
         // 🧠 STEP 11
         // APPLY FIRESTORE DATA TO MEMORY
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         window.masterGrid =
           freshMasterGrid;
@@ -18527,34 +18464,28 @@ async function loadMasterGrid(){
           "FIRESTORE";
 
 
-<<<<<<< HEAD
         // ======================================================
         // 💾 SAVE COMPLETE MASTER GRID TO IDB
         // ======================================================
-=======
         // ==========================================================
         // 💾 STEP 12
         // SAVE COMPLETE GRID TO IDB
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         try{
 
           if(
-<<<<<<< HEAD
             typeof idbKeyval !==
               "undefined"
           ){
 
             await idbKeyval.set(
-=======
             window.idbKeyval &&
             typeof window.idbKeyval.set ===
               "function"
           ){
 
             await window.idbKeyval.set(
->>>>>>> 012a8cb (Add IDB)
 
               "master_grid_cache_v1",
 
@@ -18563,11 +18494,8 @@ async function loadMasterGrid(){
             );
 
 
-<<<<<<< HEAD
             await idbKeyval.set(
-=======
             await window.idbKeyval.set(
->>>>>>> 012a8cb (Add IDB)
 
               "master_grid_cache_timestamp_v1",
 
@@ -18586,10 +18514,7 @@ async function loadMasterGrid(){
             );
 
           }
-<<<<<<< HEAD
-=======
 
->>>>>>> 012a8cb (Add IDB)
           else{
 
             console.warn(
@@ -18599,10 +18524,7 @@ async function loadMasterGrid(){
           }
 
         }
-<<<<<<< HEAD
-=======
 
->>>>>>> 012a8cb (Add IDB)
         catch(idbSaveErr){
 
           console.warn(
@@ -18610,53 +18532,41 @@ async function loadMasterGrid(){
             idbSaveErr
           );
 
-<<<<<<< HEAD
           // ----------------------------------------------------
-=======
           // --------------------------------------------------
->>>>>>> 012a8cb (Add IDB)
           // IMPORTANT
           //
           // IDB failure must NOT break the application.
           //
-<<<<<<< HEAD
           // window.masterGrid already contains the complete
           // Firestore dataset in memory.
           // ----------------------------------------------------
-=======
           // Firestore data is already safely available
           // in window.masterGrid.
           // --------------------------------------------------
->>>>>>> 012a8cb (Add IDB)
 
         }
 
 
-<<<<<<< HEAD
         // ======================================================
         // RETURN MASTER GRID
         // ======================================================
-=======
         // ==========================================================
         // ✅ STEP 13
         // RETURN MASTER GRID
         // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
         return window.masterGrid;
 
       }
 
 
-<<<<<<< HEAD
       // ========================================================
       // ❌ LOAD ERROR
       // ========================================================
-=======
       // ==========================================================
       // ❌ LOAD ERROR
       // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
       catch(err){
 
@@ -18679,15 +18589,12 @@ async function loadMasterGrid(){
       }
 
 
-<<<<<<< HEAD
       // ========================================================
       // 🧹 ALWAYS CLEAN SINGLE-LOAD PROMISE
       // ========================================================
-=======
       // ==========================================================
       // 🧹 ALWAYS CLEAN SINGLE-LOAD PROMISE
       // ==========================================================
->>>>>>> 012a8cb (Add IDB)
 
       finally{
 
@@ -18695,8 +18602,6 @@ async function loadMasterGrid(){
           "LOAD_MASTER_GRID"
         );
 
-<<<<<<< HEAD
-=======
 
         // IMPORTANT:
         //
@@ -18704,7 +18609,6 @@ async function loadMasterGrid(){
         //
         // window.masterGrid remains intact.
         //
->>>>>>> 012a8cb (Add IDB)
 
         window.__MASTER_GRID_PROMISE__ =
           null;
@@ -18714,15 +18618,12 @@ async function loadMasterGrid(){
     })();
 
 
-<<<<<<< HEAD
   // ============================================================
   // RETURN SAME MASTER GRID PROMISE
   // ============================================================
-=======
   // =====================================
   // RETURN SAME LOAD PROMISE
   // =====================================
->>>>>>> 012a8cb (Add IDB)
 
   return await
     window.__MASTER_GRID_PROMISE__;
@@ -42117,8 +42018,6 @@ window.getGridId = function(lat, lon){
     console.error("❌ Grid save failed:", e);
   }
 }
-<<<<<<< HEAD
-=======
 
 /* ============================================================
    💾 GRID → INDEXED DB
@@ -42251,7 +42150,6 @@ async function saveGridToIDB(){
 
 }
 function loadGridFromCache(){
->>>>>>> 012a8cb (Add IDB)
 
    
     // ===============================
