@@ -1,12 +1,21 @@
 /* =========================================
 🔥 GREENGUARD SERVICE WORKER
+FAST STARTUP + OFFLINE FIRST
 USER-CONTROLLED UPDATE
 ========================================= */
 
 
-const CACHE_NAME =
-    "greenguard-v36";
+/* ============================================================
+   CACHE VERSION
+============================================================ */
 
+const CACHE_NAME =
+    "greenguard-v37";
+
+
+/* ============================================================
+   APP SHELL
+============================================================ */
 
 const APP_SHELL = [
 
@@ -45,24 +54,89 @@ const APP_SHELL = [
 ];
 
 
-// =========================================
-// 📥 INSTALL
-// =========================================
-//
-// IMPORTANT:
-//
-// DO NOT call self.skipWaiting() here.
-//
-// The new worker must WAIT until the user
-// presses the Update button.
-// =========================================
+/* ============================================================
+   STATIC FILE DETECTION
+============================================================ */
+
+function isStaticRequest(
+    request
+){
+
+    const url =
+        new URL(
+            request.url
+        );
+
+
+    /* --------------------------------------------------------
+       ONLY SAME-ORIGIN
+       -------------------------------------------------------- */
+
+    if(
+        url.origin !==
+        self.location.origin
+    ){
+
+        return false;
+
+    }
+
+
+    /* --------------------------------------------------------
+       STATIC EXTENSIONS
+       -------------------------------------------------------- */
+
+    const pathname =
+        url.pathname
+            .toLowerCase();
+
+
+    return (
+
+        pathname.endsWith(".js") ||
+
+        pathname.endsWith(".css") ||
+
+        pathname.endsWith(".json") ||
+
+        pathname.endsWith(".geojson") ||
+
+        pathname.endsWith(".kml") ||
+
+        pathname.endsWith(".png") ||
+
+        pathname.endsWith(".jpg") ||
+
+        pathname.endsWith(".jpeg") ||
+
+        pathname.endsWith(".webp") ||
+
+        pathname.endsWith(".svg") ||
+
+        pathname.endsWith(".ico") ||
+
+        pathname.endsWith(".woff") ||
+
+        pathname.endsWith(".woff2") ||
+
+        pathname.endsWith(".ttf")
+
+    );
+
+}
+
+
+/* ============================================================
+   INSTALL
+============================================================ */
 
 self.addEventListener(
     "install",
     function(event){
 
         console.log(
-            "📦 GreenGuard SW Installing..."
+            "📦 GreenGuard SW Installing:",
+            CACHE_NAME
         );
 
 
@@ -76,7 +150,7 @@ self.addEventListener(
                 function(cache){
 
                     console.log(
-                        "📦 Caching App Shell"
+                        "📦 Caching GreenGuard App Shell"
                     );
 
 
@@ -87,22 +161,63 @@ self.addEventListener(
                 }
             )
 
+            .then(
+                function(){
+
+                    console.log(
+                        "✅ GreenGuard App Shell Cached"
+                    );
+
+                }
+            )
+
+            .catch(
+                function(error){
+
+                    console.error(
+                        "❌ App Shell Cache Failed:",
+                        error
+                    );
+
+
+                    /*
+                     * IMPORTANT:
+                     *
+                     * Do not silently swallow this.
+                     * Installation may still complete,
+                     * but the error remains visible.
+                     */
+
+                }
+            )
+
         );
+
+
+        /*
+         * IMPORTANT
+         *
+         * DO NOT call skipWaiting() here.
+         *
+         * The user-controlled Update button
+         * decides when the new worker activates.
+         */
 
     }
 );
 
 
-// =========================================
-// 🚀 ACTIVATE
-// =========================================
+/* ============================================================
+   ACTIVATE
+============================================================ */
 
 self.addEventListener(
     "activate",
     function(event){
 
         console.log(
-            "🚀 GreenGuard SW Activated"
+            "🚀 GreenGuard SW Activated:",
+            CACHE_NAME
         );
 
 
@@ -118,7 +233,12 @@ self.addEventListener(
                             keys.map(
                                 function(key){
 
-                                    if (
+                                    /*
+                                     * Keep only GreenGuard
+                                     * current cache.
+                                     */
+
+                                    if(
                                         key !==
                                         CACHE_NAME
                                     ){
@@ -135,6 +255,9 @@ self.addEventListener(
 
                                     }
 
+
+                                    return null;
+
                                 }
                             )
 
@@ -143,17 +266,24 @@ self.addEventListener(
                     }
                 )
 
+                .then(
+                    function(){
+
+                        console.log(
+                            "✅ GreenGuard Cache Cleanup Complete"
+                        );
+
+                    }
+                )
+
         );
 
 
-        // ==================================================
-        // IMPORTANT
-        // ==================================================
-        //
-        // Once the user has explicitly activated the new
-        // Service Worker, it may claim the clients.
-        //
-        // ==================================================
+        /*
+         * Once the user has explicitly activated
+         * this Service Worker, allow it to control
+         * the current page.
+         */
 
         self.clients.claim();
 
@@ -161,19 +291,15 @@ self.addEventListener(
 );
 
 
-// =========================================
-// 🔄 USER-CONTROLLED SKIP WAITING
-// =========================================
-//
-// ONLY the webpage Update button sends this message.
-//
-// =========================================
+/* ============================================================
+   USER-CONTROLLED UPDATE
+============================================================ */
 
 self.addEventListener(
     "message",
     function(event){
 
-        if (
+        if(
             event.data &&
             event.data.action ===
             "skipWaiting"
@@ -192,9 +318,9 @@ self.addEventListener(
 );
 
 
-// =========================================
-// 🌐 FETCH
-// =========================================
+/* ============================================================
+   FETCH
+============================================================ */
 
 self.addEventListener(
     "fetch",
@@ -204,26 +330,11 @@ self.addEventListener(
             event.request;
 
 
-        // =====================================
-        // ❌ SKIP GOOGLE APPS SCRIPT
-        // =====================================
+        /* ====================================================
+           ONLY GET
+        ==================================================== */
 
-        if (
-            req.url.includes(
-                "script.google.com"
-            )
-        ){
-
-            return;
-
-        }
-
-
-        // =====================================
-        // ❌ ONLY GET
-        // =====================================
-
-        if (
+        if(
             req.method !==
             "GET"
         ){
@@ -233,81 +344,141 @@ self.addEventListener(
         }
 
 
-        // =====================================
-        // 📄 HTML NAVIGATION
-        // =====================================
-        //
-        // Network first.
-        //
-        // This means manual reload gets the latest
-        // available HTML when online.
-        //
-        // =====================================
+        const url =
+            new URL(
+                req.url
+            );
 
-        if (
+
+        /* ====================================================
+           🚫 NEVER INTERCEPT CROSS-ORIGIN REQUESTS
+           
+           This is extremely important for:
+           
+           Firebase
+           Firestore
+           Google APIs
+           Apps Script
+           External map tiles
+           External services
+        ==================================================== */
+
+        if(
+            url.origin !==
+            self.location.origin
+        ){
+
+            return;
+
+        }
+
+
+        /* ====================================================
+           🚫 GOOGLE APPS SCRIPT
+           
+           Extra protection.
+        ==================================================== */
+
+        if(
+            url.hostname.includes(
+                "script.google.com"
+            )
+        ){
+
+            return;
+
+        }
+
+
+        /* ====================================================
+           📄 HTML NAVIGATION
+           
+           CACHE FIRST
+           
+           The cached application opens immediately.
+           
+           We intentionally DO NOT wait for network here.
+        ==================================================== */
+
+        if(
             req.mode ===
             "navigate"
         ){
 
             event.respondWith(
 
-                fetch(req)
+                caches.match(
+                    "./index.html"
+                )
 
-                    .then(
-                        function(response){
+                .then(
+                    function(cachedResponse){
+
+                        if(
+                            cachedResponse
+                        ){
 
                             console.log(
-                                "🌐 Fresh HTML:",
-                                req.url
+                                "⚡ Instant HTML from cache"
                             );
 
 
-                            if (
-                                response &&
-                                response.status ===
-                                200
-                            ){
+                            return cachedResponse;
 
-                                const clone =
-                                    response.clone();
+                        }
 
 
-                                caches.open(
-                                    CACHE_NAME
-                                )
-                                .then(
-                                    function(cache){
+                        /*
+                         * First-ever installation or
+                         * cache unavailable.
+                         */
 
-                                        cache.put(
-                                            "./index.html",
-                                            clone
-                                        );
+                        console.log(
+                            "🌐 No cached HTML → network"
+                        );
 
-                                    }
-                                );
+
+                        return fetch(
+                            req
+                        );
+
+                    }
+                )
+
+                .catch(
+                    function(){
+
+                        console.warn(
+                            "⚠ HTML cache/network unavailable"
+                        );
+
+
+                        return new Response(
+
+                            "<!doctype html>" +
+                            "<html>" +
+                            "<body>" +
+                            "<h3>GreenGuard</h3>" +
+                            "<p>Waiting for network...</p>" +
+                            "</body>" +
+                            "</html>",
+
+                            {
+
+                                status:
+                                    503,
+
+                                headers:{
+                                    "Content-Type":
+                                        "text/html; charset=utf-8"
+                                }
 
                             }
 
+                        );
 
-                            return response;
-
-                        }
-                    )
-
-                    .catch(
-                        function(){
-
-                            console.log(
-                                "📦 Offline HTML cache used"
-                            );
-
-
-                            return caches.match(
-                                "./index.html"
-                            );
-
-                        }
-                    )
+                    }
+                )
 
             );
 
@@ -317,54 +488,90 @@ self.addEventListener(
         }
 
 
-        // =====================================
-        // 📦 STATIC FILES
-        // =====================================
-        //
-        // Network first.
-        //
-        // If network succeeds, cache the latest
-        // resource.
-        //
-        // If network fails, use cache.
-        //
-        // =====================================
+        /* ====================================================
+           📦 STATIC SAME-ORIGIN FILES
+           
+           CACHE FIRST
+           
+           This is the major mobile-startup improvement.
+        ==================================================== */
 
-        event.respondWith(
+        if(
+            isStaticRequest(
+                req
+            )
+        ){
 
-            fetch(req)
+            event.respondWith(
+
+                caches.match(
+                    req
+                )
 
                 .then(
-                    function(response){
+                    function(cachedResponse){
 
-                        if (
-                            response &&
-                            response.status ===
-                            200
+                        if(
+                            cachedResponse
                         ){
 
-                            const clone =
-                                response.clone();
-
-
-                            caches.open(
-                                CACHE_NAME
-                            )
-                            .then(
-                                function(cache){
-
-                                    cache.put(
-                                        req,
-                                        clone
-                                    );
-
-                                }
-                            );
+                            return cachedResponse;
 
                         }
 
 
-                        return response;
+                        /*
+                         * Not cached yet.
+                         * Fetch once and cache it.
+                         */
+
+                        return fetch(
+                            req
+                        )
+
+                        .then(
+                            function(response){
+
+                                if(
+                                    response &&
+                                    response.ok
+                                ){
+
+                                    const clone =
+                                        response.clone();
+
+
+                                    caches.open(
+                                        CACHE_NAME
+                                    )
+                                    .then(
+                                        function(cache){
+
+                                            cache.put(
+                                                req,
+                                                clone
+                                            );
+
+                                        }
+                                    )
+                                    .catch(
+                                        function(error){
+
+                                            console.warn(
+                                                "⚠ Static cache write failed:",
+                                                error
+                                            );
+
+                                        }
+                                    );
+
+                                }
+
+
+                                return response;
+
+                            }
+                        );
 
                     }
                 )
@@ -372,8 +579,8 @@ self.addEventListener(
                 .catch(
                     function(){
 
-                        console.log(
-                            "📦 Cache fallback:",
+                        console.warn(
+                            "📦 Static cache unavailable:",
                             req.url
                         );
 
@@ -384,6 +591,38 @@ self.addEventListener(
 
                     }
                 )
+
+            );
+
+
+            return;
+
+        }
+
+
+        /* ====================================================
+           🌐 OTHER SAME-ORIGIN GET REQUESTS
+           
+           NETWORK FIRST
+           
+           These are not treated as static application files.
+        ==================================================== */
+
+        event.respondWith(
+
+            fetch(
+                req
+            )
+
+            .catch(
+                function(){
+
+                    return caches.match(
+                        req
+                    );
+
+                }
+            )
 
         );
 
