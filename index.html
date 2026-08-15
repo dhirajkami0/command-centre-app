@@ -31253,10 +31253,17 @@ async function loadRangeKML(){
     "LOAD_RANGE_KML_TOTAL"
   );
 
+
   try {
+
+
+    // ==========================================================
+    // 👤 PROFILE
+    // ==========================================================
 
     const profile =
       window.userProfile || {};
+
 
     const role =
       String(
@@ -31265,23 +31272,30 @@ async function loadRangeKML(){
       .trim()
       .toUpperCase();
 
+
     const division =
       normalizeDivision(
         profile.division || ""
       );
+
 
     const range =
       String(
         profile.range || ""
       ).trim();
 
+
     let url = "";
 
 
-    // ==================================================
+    // ==========================================================
     // 👑 ADMIN
-    // ONLY BTR_W + BTR_E
-    // ==================================================
+    //
+    // ADMIN USES:
+    // BTR_W + BTR_E
+    //
+    // These are static GIS datasets.
+    // ==========================================================
 
     if(
       role === "ADMIN"
@@ -31299,18 +31313,17 @@ async function loadRangeKML(){
 
       };
 
-      // ADMIN DOES NOT LOAD GLOBAL master.geojson
-      // ADMIN LOADS ONLY BTR_W + BTR_E BELOW
 
       url = "";
 
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 🟣 DFO / ADFO
-    // HIS DIVISION
-    // ==================================================
+    //
+    // EXISTING LOGIC PRESERVED
+    // ==========================================================
 
     else if(
 
@@ -31334,6 +31347,7 @@ async function loadRangeKML(){
 
       };
 
+
       url =
 
         `./geojson/${
@@ -31343,10 +31357,11 @@ async function loadRangeKML(){
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 👮 STAFF / TEAM LEADER
-    // HIS RANGE
-    // ==================================================
+    //
+    // EXISTING LOGIC PRESERVED
+    // ==========================================================
 
     else {
 
@@ -31362,6 +31377,7 @@ async function loadRangeKML(){
 
       };
 
+
       url =
 
         `./geojson/${
@@ -31373,9 +31389,9 @@ async function loadRangeKML(){
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 📥 GIS LOAD
-    // ==================================================
+    // ==========================================================
 
     console.log(
       "📥 GIS ROLE:",
@@ -31383,10 +31399,19 @@ async function loadRangeKML(){
     );
 
 
-    // ==================================================
+    // ==========================================================
     // 👑 ADMIN
-    // LOAD BTR_W + BTR_E ONLY
-    // ==================================================
+    //
+    // STATIC CACHE:
+    //
+    // MEMORY
+    //    ↓
+    // INDEXEDDB
+    //    ↓
+    // NETWORK
+    //
+    // Only ADMIN GIS is changed in this step.
+    // ==========================================================
 
     if(
       role === "ADMIN"
@@ -31396,112 +31421,378 @@ async function loadRangeKML(){
         "👑 ADMIN GIS LOAD:"
       );
 
-      console.log(
-        "📥 BTR_W:",
-        "./geojson/BTR_W/master.geojson"
-      );
 
-      console.log(
-        "📥 BTR_E:",
-        "./geojson/BTR_E/master.geojson"
-      );
+      // ========================================================
+      // ⚡ STEP 1
+      // MEMORY CACHE
+      // ========================================================
 
+      const memoryGISReady =
 
-      const [
+        Array.isArray(
+          window.allGISFeatures
+        ) &&
 
-        btrWRes,
-
-        btrERes
-
-      ] = await Promise.all([
-
-        fetch(
-          "./geojson/BTR_W/master.geojson"
-        ),
-
-        fetch(
-          "./geojson/BTR_E/master.geojson"
-        )
-
-      ]);
+        window.allGISFeatures.length > 0;
 
 
       if(
-        !btrWRes.ok
+        memoryGISReady
       ){
 
-        throw new Error(
-          "❌ BTR_W GIS fetch failed: " +
-          btrWRes.status
+        window.__ADMIN_GIS_SOURCE__ =
+          "MEMORY";
+
+
+        window.__ADMIN_GIS_FROM_IDB__ =
+          false;
+
+
+        console.log(
+          "⚡ ADMIN GIS MEMORY HIT:",
+          window.allGISFeatures.length
         );
 
       }
 
 
-      if(
-        !btrERes.ok
-      ){
+      // ========================================================
+      // ⚡ STEP 2
+      // INDEXEDDB CACHE
+      // ========================================================
 
-        throw new Error(
-          "❌ BTR_E GIS fetch failed: " +
-          btrERes.status
-        );
+      else {
+
+        let cachedAdminGIS =
+          null;
+
+
+        try{
+
+          if(
+            typeof idbKeyval !==
+              "undefined"
+          ){
+
+            cachedAdminGIS =
+
+              await idbKeyval.get(
+                "admin_gis_cache_v1"
+              );
+
+          }
+
+        }
+        catch(idbError){
+
+          console.warn(
+            "⚠ ADMIN GIS IDB READ FAILED:",
+            idbError
+          );
+
+
+          cachedAdminGIS =
+            null;
+
+        }
+
+
+        // ======================================================
+        // VALIDATE CACHE
+        // ======================================================
+
+        const adminGISCacheValid =
+
+          cachedAdminGIS &&
+
+          typeof cachedAdminGIS ===
+            "object" &&
+
+          Array.isArray(
+            cachedAdminGIS.features
+          ) &&
+
+          cachedAdminGIS.features.length > 0;
+
+
+        // ======================================================
+        // ⚡ IDB HIT
+        // ======================================================
+
+        if(
+          adminGISCacheValid
+        ){
+
+          window.allGISFeatures =
+
+            cachedAdminGIS.features;
+
+
+          window.__ADMIN_GIS_SOURCE__ =
+            "IDB";
+
+
+          window.__ADMIN_GIS_FROM_IDB__ =
+            true;
+
+
+          try{
+
+            window.__ADMIN_GIS_CACHE_TIME__ =
+
+              await idbKeyval.get(
+                "admin_gis_cache_timestamp_v1"
+              );
+
+          }
+          catch(e){
+
+            window.__ADMIN_GIS_CACHE_TIME__ =
+              null;
+
+          }
+
+
+          console.log(
+            "⚡ ADMIN GIS IDB HIT:",
+            window.allGISFeatures.length
+          );
+
+        }
+
+
+        // ======================================================
+        // 🌐 IDB MISS
+        // ======================================================
+
+        else {
+
+          console.log(
+            "🌐 ADMIN GIS IDB MISS → NETWORK"
+          );
+
+
+          console.log(
+            "📥 BTR_W:",
+            "./geojson/BTR_W/master.geojson"
+          );
+
+
+          console.log(
+            "📥 BTR_E:",
+            "./geojson/BTR_E/master.geojson"
+          );
+
+
+          // ====================================================
+          // FETCH BOTH DIVISIONS
+          // ====================================================
+
+          const [
+
+            btrWRes,
+
+            btrERes
+
+          ] = await Promise.all([
+
+            fetch(
+              "./geojson/BTR_W/master.geojson"
+            ),
+
+            fetch(
+              "./geojson/BTR_E/master.geojson"
+            )
+
+          ]);
+
+
+          // ====================================================
+          // RESPONSE VALIDATION
+          // ====================================================
+
+          if(
+            !btrWRes.ok
+          ){
+
+            throw new Error(
+              "❌ BTR_W GIS fetch failed: " +
+              btrWRes.status
+            );
+
+          }
+
+
+          if(
+            !btrERes.ok
+          ){
+
+            throw new Error(
+              "❌ BTR_E GIS fetch failed: " +
+              btrERes.status
+            );
+
+          }
+
+
+          // ====================================================
+          // PARSE BOTH
+          // ====================================================
+
+          const [
+
+            btrWData,
+
+            btrEData
+
+          ] = await Promise.all([
+
+            btrWRes.json(),
+
+            btrERes.json()
+
+          ]);
+
+
+          // ====================================================
+          // MERGE BTR_W + BTR_E
+          // ====================================================
+
+          window.allGISFeatures = [
+
+            ...(btrWData.features || []),
+
+            ...(btrEData.features || [])
+
+          ];
+
+
+          console.log(
+            "📊 BTR_W FEATURES:",
+            (btrWData.features || []).length
+          );
+
+
+          console.log(
+            "📊 BTR_E FEATURES:",
+            (btrEData.features || []).length
+          );
+
+
+          console.log(
+            "📊 ADMIN TOTAL FEATURES:",
+            window.allGISFeatures.length
+          );
+
+
+          // ====================================================
+          // VALIDATE RESULT
+          // ====================================================
+
+          if(
+            window.allGISFeatures.length === 0
+          ){
+
+            throw new Error(
+              "❌ ADMIN GIS returned zero features"
+            );
+
+          }
+
+
+          // ====================================================
+          // 💾 SAVE ADMIN GIS TO IDB
+          // ====================================================
+
+          try{
+
+            if(
+              typeof idbKeyval !==
+                "undefined"
+            ){
+
+              await idbKeyval.set(
+
+                "admin_gis_cache_v1",
+
+                {
+
+                  features:
+                    window.allGISFeatures,
+
+                  divisions:[
+
+                    "BTR_W",
+
+                    "BTR_E"
+
+                  ]
+
+                }
+
+              );
+
+
+              await idbKeyval.set(
+
+                "admin_gis_cache_timestamp_v1",
+
+                Date.now()
+
+              );
+
+
+              console.log(
+                "💾 ADMIN GIS SAVED TO IDB:",
+                window.allGISFeatures.length
+              );
+
+            }
+            else{
+
+              console.warn(
+                "⚠ idbKeyval unavailable → ADMIN GIS NOT CACHED"
+              );
+
+            }
+
+          }
+          catch(idbSaveError){
+
+            console.warn(
+              "⚠ ADMIN GIS IDB SAVE FAILED:",
+              idbSaveError
+            );
+
+            // --------------------------------------------------
+            // IMPORTANT:
+            //
+            // GIS is already loaded in memory.
+            // Cache failure must NOT break the application.
+            // --------------------------------------------------
+
+          }
+
+
+          window.__ADMIN_GIS_SOURCE__ =
+            "NETWORK";
+
+
+          window.__ADMIN_GIS_FROM_IDB__ =
+            false;
+
+        }
 
       }
-
-
-      const [
-
-        btrWData,
-
-        btrEData
-
-      ] = await Promise.all([
-
-        btrWRes.json(),
-
-        btrERes.json()
-
-      ]);
-
-
-      // ==============================================
-      // MERGE BTR_W + BTR_E
-      // ==============================================
-
-      window.allGISFeatures = [
-
-        ...(btrWData.features || []),
-
-        ...(btrEData.features || [])
-
-      ];
-
-
-      console.log(
-        "📊 BTR_W FEATURES:",
-        (btrWData.features || []).length
-      );
-
-
-      console.log(
-        "📊 BTR_E FEATURES:",
-        (btrEData.features || []).length
-      );
-
-
-      console.log(
-        "📊 ADMIN TOTAL FEATURES:",
-        window.allGISFeatures.length
-      );
-
 
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 🟣 DFO / ADFO / STAFF / TEAM LEADER
-    // ==================================================
+    //
+    // EXISTING NETWORK LOGIC PRESERVED
+    // ==========================================================
 
     else {
 
@@ -31512,7 +31803,9 @@ async function loadRangeKML(){
 
 
       const res =
-        await fetch(url);
+        await fetch(
+          url
+        );
 
 
       if(
@@ -31542,12 +31835,22 @@ async function loadRangeKML(){
         window.allGISFeatures.length
       );
 
+
+      window.__ADMIN_GIS_SOURCE__ =
+        null;
+
+
+      window.__ADMIN_GIS_FROM_IDB__ =
+        false;
+
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 🎨 RENDER GIS
-    // ==================================================
+    //
+    // EXISTING FLOW PRESERVED
+    // ==========================================================
 
     console.time(
       "INITIAL_GIS_RENDER"
@@ -31555,6 +31858,7 @@ async function loadRangeKML(){
 
 
     renderFilteredGIS();
+
 
     centerMap();
 
@@ -31564,35 +31868,42 @@ async function loadRangeKML(){
     );
 
 
-    // ====================================
+    // ==========================================================
     // 🔥 BACKGROUND COMPARTMENT PRELOAD
-    // ====================================
+    //
+    // EXISTING FLOW PRESERVED
+    // ==========================================================
 
     preloadAllCompartments()
 
-      .then(()=>{
+      .then(
+        ()=>{
 
-        console.log(
-          "✅ BACKGROUND COMPARTMENTS READY:",
-          window.allCompartmentFeatures?.length
-        );
+          console.log(
+            "✅ BACKGROUND COMPARTMENTS READY:",
+            window.allCompartmentFeatures?.length
+          );
 
-      })
+        }
+      )
 
-      .catch(err=>{
+      .catch(
+        err=>{
 
-        console.error(
-          "❌ BACKGROUND PRELOAD FAILED",
-          err
-        );
+          console.error(
+            "❌ BACKGROUND PRELOAD FAILED",
+            err
+          );
 
-      });
+        }
+      );
 
 
-    // ==================================================
+    // ==========================================================
     // 👮 STAFF / TEAM LEADER
-    // LOAD COMPARTMENTS FOR RANGE
-    // ==================================================
+    //
+    // EXISTING FLOW PRESERVED
+    // ==========================================================
 
     if(
 
@@ -31606,30 +31917,26 @@ async function loadRangeKML(){
 
       await loadCompartmentsForRange();
 
+
       renderFilteredCompartments();
 
     }
 
 
-    // ==================================================
+    // ==========================================================
     // 🔘 BUTTONS
-    // ==================================================
+    // ==========================================================
 
 
-    // ==========================================
+    // ==========================================================
     // 👑 ADMIN
-    // ==========================================
+    // ==========================================================
 
     if(
 
       role === "ADMIN"
 
     ){
-
-      // ======================================
-      // 👁 DIVISION BUTTONS
-      // BTR_W + BTR_E ONLY
-      // ======================================
 
       document.getElementById(
         "divisionButtons"
@@ -31640,29 +31947,17 @@ async function loadRangeKML(){
       await populateDivisionButtons();
 
 
-      // ======================================
-      // ❌ RANGE HIDDEN
-      // ======================================
-
       document.getElementById(
         "rangeButtons"
       ).style.display =
         "none";
 
 
-      // ======================================
-      // ❌ BEAT HIDDEN
-      // ======================================
-
       document.getElementById(
         "beatButtons"
       ).style.display =
         "none";
 
-
-      // ======================================
-      // ❌ COMPARTMENT HIDDEN
-      // ======================================
 
       document.getElementById(
         "compartmentButtons"
@@ -31672,9 +31967,9 @@ async function loadRangeKML(){
     }
 
 
-    // ==========================================
+    // ==========================================================
     // 🟣 DFO / ADFO
-    // ==========================================
+    // ==========================================================
 
     else if(
 
@@ -31686,10 +31981,6 @@ async function loadRangeKML(){
 
     ){
 
-      // ======================================
-      // 👁 DIVISION BUTTON
-      // ======================================
-
       document.getElementById(
         "divisionButtons"
       ).style.display =
@@ -31698,10 +31989,6 @@ async function loadRangeKML(){
 
       await populateDivisionButtons();
 
-
-      // ======================================
-      // 👁 RANGE BUTTONS
-      // ======================================
 
       document.getElementById(
         "rangeButtons"
@@ -31712,19 +31999,11 @@ async function loadRangeKML(){
       await populateRangeButtons();
 
 
-      // ======================================
-      // ❌ BEAT HIDDEN
-      // ======================================
-
       document.getElementById(
         "beatButtons"
       ).style.display =
         "none";
 
-
-      // ======================================
-      // ❌ COMPARTMENT HIDDEN
-      // ======================================
 
       document.getElementById(
         "compartmentButtons"
@@ -31734,9 +32013,9 @@ async function loadRangeKML(){
     }
 
 
-    // ==========================================
+    // ==========================================================
     // 👮 STAFF / TEAM LEADER
-    // ==========================================
+    // ==========================================================
 
     else if(
 
@@ -31748,19 +32027,11 @@ async function loadRangeKML(){
 
     ){
 
-      // ======================================
-      // ❌ DIVISION HIDDEN
-      // ======================================
-
       document.getElementById(
         "divisionButtons"
       ).style.display =
         "none";
 
-
-      // ======================================
-      // 👁 RANGE BUTTON
-      // ======================================
 
       document.getElementById(
         "rangeButtons"
@@ -31768,19 +32039,11 @@ async function loadRangeKML(){
         "flex";
 
 
-      // ======================================
-      // 👁 BEAT BUTTONS
-      // ======================================
-
       document.getElementById(
         "beatButtons"
       ).style.display =
         "flex";
 
-
-      // ======================================
-      // ❌ COMPARTMENT HIDDEN INITIALLY
-      // ======================================
 
       document.getElementById(
         "compartmentButtons"
@@ -31788,25 +32051,17 @@ async function loadRangeKML(){
         "none";
 
 
-      // ======================================
-      // 🔘 RANGE BUTTONS
-      // ======================================
-
       await populateRangeButtons();
 
-
-      // ======================================
-      // 🔘 BEAT BUTTONS
-      // ======================================
 
       await populateBeatButtons();
 
     }
 
 
-    // ==================================================
+    // ==========================================================
     // ✅ GIS READY
-    // ==================================================
+    // ==========================================================
 
     console.log(
       "✅ GIS READY"
@@ -31815,11 +32070,25 @@ async function loadRangeKML(){
 
   }
 
+
+  // ==========================================================
+  // ❌ ERROR
+  // ==========================================================
+
   catch(e){
 
     console.error(
       "❌ loadRangeKML Error:",
       e
+    );
+
+  }
+
+
+  finally{
+
+    console.timeEnd(
+      "LOAD_RANGE_KML_TOTAL"
     );
 
   }
