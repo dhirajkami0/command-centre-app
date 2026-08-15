@@ -17571,13 +17571,14 @@ async function loadMasterGrid(){
         try{
 
           if(
-            typeof idbKeyval !==
-              "undefined"
+            typeof window.idbKeyval !==
+              "undefined" &&
+            typeof window.idbKeyval.get ===
+              "function"
           ){
 
             cachedMasterGrid =
-
-              await idbKeyval.get(
+              await window.idbKeyval.get(
                 "master_grid_cache_v1"
               );
 
@@ -17649,11 +17650,27 @@ async function loadMasterGrid(){
 
           try{
 
-            window.__MASTER_GRID_CACHE_TIME__ =
+            if(
+              typeof window.idbKeyval !==
+                "undefined" &&
+              typeof window.idbKeyval.get ===
+                "function"
+            ){
 
-              await idbKeyval.get(
-                "master_grid_cache_timestamp_v1"
-              );
+              window.__MASTER_GRID_CACHE_TIME__ =
+
+                await window.idbKeyval.get(
+                  "master_grid_cache_timestamp_v1"
+                );
+
+            }
+
+            else{
+
+              window.__MASTER_GRID_CACHE_TIME__ =
+                null;
+
+            }
 
           }
           catch(timestampErr){
@@ -17673,17 +17690,14 @@ async function loadMasterGrid(){
 
 
           // ====================================================
-          // 🚀 IMPORTANT
+          // IMPORTANT
           //
-          // STATIC DATA:
+          // IDB CACHE IS AUTHORITATIVE FOR STARTUP.
           //
           // DO NOT DOWNLOAD grid_master AGAIN HERE.
           //
-          // The cached master grid is authoritative for
-          // normal application startup.
-          //
-          // Firestore update can be handled separately
-          // later through the explicit refresh function.
+          // Firestore verification/update is handled
+          // separately by the background refresh function.
           // ====================================================
 
           console.timeEnd(
@@ -17910,25 +17924,21 @@ async function loadMasterGrid(){
         try{
 
           if(
-            typeof idbKeyval !==
-              "undefined"
+            typeof window.idbKeyval !==
+              "undefined" &&
+            typeof window.idbKeyval.set ===
+              "function"
           ){
 
-            await idbKeyval.set(
-
+            await window.idbKeyval.set(
               "master_grid_cache_v1",
-
               window.masterGrid
-
             );
 
 
-            await idbKeyval.set(
-
+            await window.idbKeyval.set(
               "master_grid_cache_timestamp_v1",
-
               Date.now()
-
             );
 
 
@@ -17942,6 +17952,7 @@ async function loadMasterGrid(){
             );
 
           }
+
           else{
 
             console.warn(
@@ -17957,6 +17968,7 @@ async function loadMasterGrid(){
             "⚠ MASTER GRID IDB SAVE FAILED:",
             idbSaveErr
           );
+
 
           // ----------------------------------------------------
           // IMPORTANT
@@ -18031,8 +18043,6 @@ async function loadMasterGrid(){
     window.__MASTER_GRID_PROMISE__;
 
 }
-
-
 // ============================================================
 // 🌐 FIRESTORE MASTER GRID FETCH
 // ============================================================
