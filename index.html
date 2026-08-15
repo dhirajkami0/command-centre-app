@@ -69768,44 +69768,9 @@ successfulGridFlushes++;
     }
 
 
-    // ==========================================================
-    // INVALIDATE MONTHLY CARD CACHE
-    // ==========================================================
-
-    window.monthlyStatusCache = {};
-
-
-    // ==========================================================
-    // REFRESH MONTHLY STATUS CARD
-    //
-    // This is UI only.
-    // Failure here must NEVER restore already-written analytics.
-    // ==========================================================
-
-    try {
-
-      if(
-        typeof updateMonthlyStatusCard
-        === "function"
-      ){
-
-        await updateMonthlyStatusCard();
-
-
-        console.log(
-          "📊 Monthly Status Updated"
-        );
-      }
-
-    }
-
-    catch(cardErr){
-
-      console.error(
-        "❌ Monthly Status Refresh Failed",
-        cardErr
-      );
-    }
+console.log(
+  "⚡ Monthly Status cache preserved after analytics flush"
+);
 
 
     // ==========================================================
