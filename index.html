@@ -28035,7 +28035,8 @@ async function updateMonthlyStatusCard(){
 
 if(
   summary &&
-  Number(summary.totalCells || 0) > 0
+  Number(summary.totalCells || 0) > 0 &&
+  summary.analyticsComplete === true
 ){
 
       /* =======================================================
@@ -28633,20 +28634,22 @@ if(
 
     const cacheEntry = {
 
-      ...freshSummary,
+  ...freshSummary,
 
-      loadedAt:
-        Date.now(),
+  analyticsComplete:
+    true,
 
-      monthKey,
+  loadedAt:
+    Date.now(),
 
-      level,
+  monthKey,
 
-      filterValue:
-        filterValue || ""
+  level,
 
-    };
+  filterValue:
+    filterValue || ""
 
+};
 
     /* =========================================================
        SAVE TO RAM FIRST
