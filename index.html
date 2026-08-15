@@ -11522,22 +11522,211 @@ window.addEventListener("load", function () {
   // ======================================================
   // 🔥 SPLASH SCREEN
   // ======================================================
-  const splash = document.getElementById("splash-screen");
+const splash =
+  document.getElementById(
+    "splash-screen"
+  );
 
-  if (splash) {
-    setTimeout(() => {
-      splash.style.opacity = "0";
+const splashImage =
+  document.querySelector(
+    "#splash-screen img"
+  );
 
-      setTimeout(() => {
-        splash.remove();
-        if (window.map) {
-          window.map.invalidateSize();
-        }
-      }, 800);
+let splashReleased =
+  false;
 
-  }, 600);
+
+// ======================================================
+// 🔓 RELEASE SPLASH
+// ======================================================
+
+function releaseSplash(
+  reason
+){
+
+  if(
+    splashReleased
+  ){
+
+    return;
+
   }
 
+  splashReleased =
+    true;
+
+
+  console.log(
+    "🚀 Splash released:",
+    reason
+  );
+
+
+  if(
+    !splash
+  ){
+
+    return;
+
+  }
+
+
+  splash.style.transition =
+    "opacity 0.25s ease";
+
+
+  splash.style.opacity =
+    "0";
+
+
+  splash.style.pointerEvents =
+    "none";
+
+
+  setTimeout(
+
+    function(){
+
+      try{
+
+        splash.remove();
+
+      }
+
+      catch(e){}
+
+
+      try{
+
+        if(
+          window.map &&
+          typeof
+          window.map.invalidateSize ===
+          "function"
+        ){
+
+          window.map.invalidateSize();
+
+        }
+
+      }
+
+      catch(e){}
+
+    },
+
+    250
+
+  );
+
+}
+
+
+// ======================================================
+// ⚡ IMAGE ALREADY CACHED
+// ======================================================
+
+if(
+  splashImage &&
+  splashImage.complete
+){
+
+  requestAnimationFrame(
+
+    function(){
+
+      releaseSplash(
+        "IMAGE_ALREADY_CACHED"
+      );
+
+    }
+
+  );
+
+}
+
+
+// ======================================================
+// 🖼 IMAGE LOAD
+// ======================================================
+
+else if(
+  splashImage
+){
+
+  splashImage.addEventListener(
+
+    "load",
+
+    function(){
+
+      releaseSplash(
+        "IMAGE_LOADED"
+      );
+
+    },
+
+    {
+      once:true
+    }
+
+  );
+
+
+  // ====================================================
+  // ❌ IMAGE ERROR
+  // ====================================================
+
+  splashImage.addEventListener(
+
+    "error",
+
+    function(){
+
+      console.warn(
+        "⚠ Splash image failed — releasing application"
+      );
+
+      releaseSplash(
+        "IMAGE_ERROR"
+      );
+
+    },
+
+    {
+      once:true
+    }
+
+  );
+
+}
+
+
+// ======================================================
+// 🛡 ABSOLUTE SAFETY RELEASE
+// ======================================================
+//
+// Even if the image request hangs,
+// the application MUST become visible.
+//
+// Maximum splash blocking time:
+// approximately 1.2 seconds.
+//
+// ======================================================
+
+setTimeout(
+
+  function(){
+
+    releaseSplash(
+      "SAFETY_TIMEOUT"
+    );
+
+  },
+
+  1200
+
+);
 
 // ======================================================
 // 🔥 SERVICE WORKER REGISTER
