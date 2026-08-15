@@ -6364,21 +6364,22 @@ width:56px;
 ">
 
   <!-- Splash Image -->
-<img
-  src="./icons/splash.webp"
-  alt="BTRGuard Splash"
-  loading="eager"
-  fetchpriority="high"
-  decoding="async"
-  width="100%"
-  height="100%"
-  style="
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-  "
->  <!-- Loading Text -->
+  <img
+    src="./icons/splash.webp"
+    alt="BTRGuard Splash"
+    loading="eager"
+    decoding="async"
+    width="100%"
+    height="100%"
+    style="
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    "
+  />
+
+  <!-- Loading Text -->
   <div style="
     position:absolute;
     bottom:30px;
@@ -11518,7 +11519,25 @@ window.addEventListener("load", function () {
   if (versionEl) versionEl.innerText = APP_VERSION;
 
 
-  
+  // ======================================================
+  // 🔥 SPLASH SCREEN
+  // ======================================================
+  const splash = document.getElementById("splash-screen");
+
+  if (splash) {
+    setTimeout(() => {
+      splash.style.opacity = "0";
+
+      setTimeout(() => {
+        splash.remove();
+        if (window.map) {
+          window.map.invalidateSize();
+        }
+      }, 800);
+
+  }, 600);
+  }
+
 
 // ======================================================
 // 🔥 SERVICE WORKER REGISTER
@@ -63112,89 +63131,32 @@ if(
         );
 
 
-// ====================================================
-// ⚡ STEP 3A
-// WAIT FOR IDB → THEN TRY INDEXEDDB FIRST
-// ====================================================
-//
-// IMPORTANT:
-// Cell → Grid lookup is static startup data.
-// IDB must be ready before attempting the cache read.
-//
-// ====================================================
+        // ====================================================
+        // ⚡ STEP 3A
+        // TRY INDEXEDDB FIRST
+        // ====================================================
 
-let cachedLookup =
-  null;
+        let cachedLookup =
+          null;
 
 
-// ====================================================
-// ⏳ WAIT FOR GREENGUARD IDB INITIALIZATION
-// ====================================================
+        try{
 
-try{
+          cachedLookup =
+            await getCellToGridLookupFromIDB();
 
-  if(
-    window.__GG_IDB_READY__ !==
-    true
-  ){
+        }
+        catch(cacheErr){
 
-    if(
-      window.__GG_IDB_READY_PROMISE__
-    ){
+          console.warn(
+            "⚠ CELL → GRID IDB READ ERROR:",
+            cacheErr
+          );
 
-      console.log(
-        "⏳ Waiting for GreenGuard IndexedDB → Cell/Grid..."
-      );
+          cachedLookup =
+            null;
+        }
 
-      await
-        window.__GG_IDB_READY_PROMISE__;
-
-    }
-
-  }
-
-}
-catch(idbReadyErr){
-
-  console.warn(
-    "⚠ Cell → Grid IDB readiness wait failed:",
-    idbReadyErr
-  );
-
-}
-
-
-// ====================================================
-// 💾 TRY CELL → GRID IDB CACHE
-// ====================================================
-
-try{
-
-  if(
-    typeof window.idbKeyval !==
-      "undefined" &&
-
-    typeof window.idbKeyval.get ===
-      "function"
-  ){
-
-    cachedLookup =
-      await getCellToGridLookupFromIDB();
-
-  }
-
-}
-catch(cacheErr){
-
-  console.warn(
-    "⚠ CELL → GRID IDB READ ERROR:",
-    cacheErr
-  );
-
-  cachedLookup =
-    null;
-
-}
 
         // ====================================================
         // ⚡ IDB CACHE FOUND
