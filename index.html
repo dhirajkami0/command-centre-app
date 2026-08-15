@@ -16181,155 +16181,883 @@ function resolveAnalyticsCell(cellId){
 // FIRESTORE SAFE
 // ======================================
 async function preloadAllCompartments() {
-  console.trace("PRELOAD_COMPARTMENT_ CALLED");
 
-  // =====================================
+  console.trace(
+    "PRELOAD_COMPARTMENT_ CALLED"
+  );
+
+
+  // ==========================================================
   // ✅ ALREADY READY
-  // =====================================
-  if (window.__COMPARTMENTS_READY__) {
-    console.log("⏭ Compartments already loaded");
+  // ==========================================================
+
+  if(
+    window.__COMPARTMENTS_READY__
+  ){
+
+    console.log(
+      "⏭ Compartments already loaded"
+    );
+
     return;
+
   }
 
-  // =====================================
+
+  // ==========================================================
   // ⏳ LOAD IN PROGRESS
-  // RETURN SAME PROMISE
-  // =====================================
-  if (window.__COMPARTMENTS_LOADING__) {
-    console.log("⏳ Compartments loading...");
-    return window.__COMPARTMENTS_PROMISE__;
+  //
+  // IMPORTANT:
+  // Multiple callers receive the SAME Promise.
+  // ==========================================================
+
+  if(
+    window.__COMPARTMENTS_LOADING__
+  ){
+
+    console.log(
+      "⏳ Compartments loading..."
+    );
+
+    return (
+      window.__COMPARTMENTS_PROMISE__
+    );
+
   }
 
-  // =====================================
+
+  // ==========================================================
   // 🚀 START NEW LOAD
-  // =====================================
-  window.__COMPARTMENTS_LOADING__ = true;
+  // ==========================================================
 
-  window.__COMPARTMENTS_PROMISE__ = (async () => {
-    console.time("PRELOAD_COMPARTMENTS");
+  window.__COMPARTMENTS_LOADING__ =
+    true;
 
-    try {
-      console.log("📦 PRELOADING ALL COMPARTMENTS");
-      window.allCompartmentFeatures = [];
 
-      // =====================================
-      // UNIQUE BEAT + DIVISION PAIRS
-      // =====================================
-      const beatMap = new Map();
+  window.__COMPARTMENTS_PROMISE__ =
+    (async () => {
 
-      (window.allGISFeatures || []).forEach(f => {
-        try {
-          const props = f.properties || {};
 
-          const beat = String(props.Beat || props.beat || "").trim();
-          if (!beat) {
-            return;
-          }
-
-          const divisionFolder = normalizeDivision(props.Division || props.division || "");
-          if (!divisionFolder) {
-            return;
-          }
-
-          const key = `${divisionFolder}|${beat}`;
-          beatMap.set(key, {
-            divisionFolder,
-            beat
-          });
-        } catch (e) {}
-      });
-
-      console.log("📦 UNIQUE BEATS:", beatMap.size);
-
-      // =====================================
-      // LOAD EVERY BEAT FILE
-      // =====================================
-      const results = await Promise.all(
-        [...beatMap.values()].map(async ({
-          divisionFolder,
-          beat
-        }) => {
-          try {
-            const url = `./geojson/compartments/${divisionFolder}/${encodeURIComponent(beat)}.geojson`;
-            const res = await fetch(url);
-            if (!res.ok) {
-              console.warn("⚠ Missing:", url);
-              return [];
-            }
-            const data = await res.json();
-            return data.features || [];
-          } catch (e) {
-            console.warn(
-              "⚠ Failed to load:",
-              divisionFolder,
-              beat,
-              e
-            );
-            return [];
-          }
-        })
+      console.time(
+        "PRELOAD_COMPARTMENTS"
       );
 
-      window.allCompartmentFeatures = results.flat();
 
-      console.log(
-        "📦 Loaded Compartments:",
-        window.allCompartmentFeatures.length
-      );
+      try {
 
-      console.table(
-        [...beatMap.values()]
-      );
 
-      console.timeEnd("PRELOAD_COMPARTMENTS");
-      console.log("✅ PRELOAD COMPLETE:", window.allCompartmentFeatures.length);
+        console.log(
+          "📦 PRELOADING ALL COMPARTMENTS"
+        );
 
-      window.__COMPARTMENTS_READY__ = true;
 
-      // background tasks
-      setTimeout(() => {
-        rebuildSpatialIndex().catch(console.error);
-      }, 0);
+        // ======================================================
+        // RESET MEMORY
+        // ======================================================
 
-      // 🔥 BACKGROUND ONLY GRID LOADING
-      if (!window.masterGridLoading && (!window.masterGrid || Object.keys(window.masterGrid).length === 0)) {
-        window.masterGridLoading = true;
+        window.allCompartmentFeatures =
+          [];
 
-        setTimeout(async () => {
-          try {
-            await loadMasterGrid();
-            console.log("✅ MASTER GRID LOADED");
-            await buildCellToGridLookup();
-            window.__ANALYTICS_READY__ = true;
-            console.log("✅ ANALYTICS READY");
-            console.log("✅ CELL → GRID LOOKUP READY", Object.keys(window.cellToGridId || {}).length);
-          } catch (err) {
-            console.error("❌ Grid preload failed", err);
-          } finally {
-            window.masterGridLoading = false;
+
+        // ======================================================
+        // ⚡ STEP 1
+        // TRY INDEXEDDB CACHE FIRST
+        // ======================================================
+
+        let cachedCompartments =
+          null;
+
+
+        try{
+
+          if(
+            typeof idbKeyval !==
+              "undefined"
+          ){
+
+            cachedCompartments =
+
+              await idbKeyval.get(
+                "all_compartments_cache_v1"
+              );
+
           }
-        }, 0);
-      } else {
-        console.log("⏭ GRID already available");
-        if (
-          window.masterGrid &&
-          Object.keys(window.masterGrid).length > 0 &&
-          window.cellToGridId &&
-          Object.keys(window.cellToGridId).length > 0
-        ) {
-          window.__ANALYTICS_READY__ = true;
-          console.log("✅ ANALYTICS READY");
+
         }
-      }
-    } catch (err) {
-      console.error("❌ preloadAllCompartments", err);
-    } finally {
-      window.__COMPARTMENTS_LOADING__ = false;
-      console.log("✅ PRELOAD FINISHED");
-    }
-  })();
+        catch(idbReadError){
 
-  return window.__COMPARTMENTS_PROMISE__;
+          console.warn(
+            "⚠ COMPARTMENTS IDB READ FAILED:",
+            idbReadError
+          );
+
+
+          cachedCompartments =
+            null;
+
+        }
+
+
+        // ======================================================
+        // VALIDATE IDB CACHE
+        // ======================================================
+
+        const validCachedCompartments =
+
+          cachedCompartments &&
+
+          typeof cachedCompartments ===
+            "object" &&
+
+          Array.isArray(
+            cachedCompartments.features
+          ) &&
+
+          cachedCompartments.features.length > 0;
+
+
+        // ======================================================
+        // ⚡ IDB HIT
+        // ======================================================
+
+        if(
+          validCachedCompartments
+        ){
+
+          window.allCompartmentFeatures =
+
+            cachedCompartments.features;
+
+
+          window.__COMPARTMENTS_SOURCE__ =
+            "IDB";
+
+
+          window.__COMPARTMENTS_FROM_IDB__ =
+            true;
+
+
+          window.__COMPARTMENTS_CACHE_TIME__ =
+            cachedCompartments.timestamp ||
+            null;
+
+
+          console.log(
+            "⚡ COMPARTMENTS IDB HIT:",
+            window.allCompartmentFeatures.length
+          );
+
+
+          // ====================================================
+          // EXISTING POST-LOAD PROCESSING
+          // ====================================================
+
+          console.timeEnd(
+            "PRELOAD_COMPARTMENTS"
+          );
+
+
+          console.log(
+            "✅ PRELOAD COMPLETE FROM IDB:",
+            window.allCompartmentFeatures.length
+          );
+
+
+          window.__COMPARTMENTS_READY__ =
+            true;
+
+
+          // ====================================================
+          // BACKGROUND SPATIAL INDEX
+          // ====================================================
+
+          setTimeout(
+            () => {
+
+              rebuildSpatialIndex()
+
+                .catch(
+                  console.error
+                );
+
+            },
+            0
+          );
+
+
+          // ====================================================
+          // BACKGROUND MASTER GRID
+          // ====================================================
+
+          if(
+
+            !window.masterGridLoading &&
+
+            (
+              !window.masterGrid ||
+
+              Object.keys(
+                window.masterGrid
+              ).length === 0
+            )
+
+          ){
+
+            window.masterGridLoading =
+              true;
+
+
+            setTimeout(
+              async () => {
+
+                try{
+
+                  await loadMasterGrid();
+
+
+                  console.log(
+                    "✅ MASTER GRID LOADED"
+                  );
+
+
+                  await buildCellToGridLookup();
+
+
+                  window.__ANALYTICS_READY__ =
+                    true;
+
+
+                  console.log(
+                    "✅ ANALYTICS READY"
+                  );
+
+
+                  console.log(
+                    "✅ CELL → GRID LOOKUP READY",
+                    Object.keys(
+                      window.cellToGridId ||
+                      {}
+                    ).length
+                  );
+
+                }
+
+                catch(err){
+
+                  console.error(
+                    "❌ Grid preload failed",
+                    err
+                  );
+
+                }
+
+                finally{
+
+                  window.masterGridLoading =
+                    false;
+
+                }
+
+              },
+              0
+            );
+
+          }
+
+          else {
+
+            console.log(
+              "⏭ GRID already available"
+            );
+
+
+            if(
+
+              window.masterGrid &&
+
+              Object.keys(
+                window.masterGrid
+              ).length > 0 &&
+
+              window.cellToGridId &&
+
+              Object.keys(
+                window.cellToGridId
+              ).length > 0
+
+            ){
+
+              window.__ANALYTICS_READY__ =
+                true;
+
+
+              console.log(
+                "✅ ANALYTICS READY"
+              );
+
+            }
+
+          }
+
+
+          // ====================================================
+          // IMPORTANT
+          //
+          // RETURN HERE.
+          //
+          // Do NOT download the 48 beat files again.
+          // ====================================================
+
+          return;
+
+        }
+
+
+        // ======================================================
+        // 🌐 STEP 2
+        // IDB MISS → BUILD FROM NETWORK
+        // ======================================================
+
+        console.log(
+          "🌐 COMPARTMENTS IDB MISS → NETWORK"
+        );
+
+
+        // ======================================================
+        // UNIQUE BEAT + DIVISION PAIRS
+        // ======================================================
+
+        const beatMap =
+          new Map();
+
+
+        (
+          window.allGISFeatures ||
+          []
+        )
+        .forEach(
+          f => {
+
+            try{
+
+              const props =
+                f.properties ||
+                {};
+
+
+              const beat =
+                String(
+                  props.Beat ||
+                  props.beat ||
+                  ""
+                ).trim();
+
+
+              if(
+                !beat
+              ){
+
+                return;
+
+              }
+
+
+              const divisionFolder =
+
+                normalizeDivision(
+
+                  props.Division ||
+                  props.division ||
+                  ""
+
+                );
+
+
+              if(
+                !divisionFolder
+              ){
+
+                return;
+
+              }
+
+
+              const key =
+                `${divisionFolder}|${beat}`;
+
+
+              beatMap.set(
+                key,
+                {
+                  divisionFolder,
+                  beat
+                }
+              );
+
+            }
+            catch(e){}
+
+          }
+        );
+
+
+        console.log(
+          "📦 UNIQUE BEATS:",
+          beatMap.size
+        );
+
+
+        // ======================================================
+        // LOAD EVERY BEAT FILE
+        // ======================================================
+
+        const results =
+
+          await Promise.all(
+
+            [
+              ...beatMap.values()
+            ]
+            .map(
+              async ({
+                divisionFolder,
+                beat
+              }) => {
+
+                try{
+
+                  const url =
+
+                    `./geojson/compartments/${
+                      divisionFolder
+                    }/${
+                      encodeURIComponent(
+                        beat
+                      )
+                    }.geojson`;
+
+
+                  const res =
+                    await fetch(
+                      url
+                    );
+
+
+                  if(
+                    !res.ok
+                  ){
+
+                    console.warn(
+                      "⚠ Missing:",
+                      url
+                    );
+
+
+                    return [];
+
+                  }
+
+
+                  const data =
+                    await res.json();
+
+
+                  if(
+                    !data ||
+
+                    !Array.isArray(
+                      data.features
+                    )
+                  ){
+
+                    console.warn(
+                      "⚠ Invalid compartment data:",
+                      url
+                    );
+
+
+                    return [];
+
+                  }
+
+
+                  // ============================================
+                  // ENSURE BEAT PROPERTY
+                  // ============================================
+
+                  data.features.forEach(
+                    f => {
+
+                      if(
+                        !f.properties
+                      ){
+
+                        f.properties =
+                          {};
+
+                      }
+
+
+                      if(
+                        !f.properties.beat
+                      ){
+
+                        f.properties.beat =
+                          beat;
+
+                      }
+
+                    }
+                  );
+
+
+                  return data.features;
+
+                }
+                catch(e){
+
+                  console.warn(
+                    "⚠ Failed to load:",
+                    divisionFolder,
+                    beat,
+                    e
+                  );
+
+
+                  return [];
+
+                }
+
+              }
+            )
+
+          );
+
+
+        // ======================================================
+        // MERGE ALL FEATURES
+        // ======================================================
+
+        window.allCompartmentFeatures =
+          results.flat();
+
+
+        console.log(
+          "📦 Loaded Compartments:",
+          window.allCompartmentFeatures.length
+        );
+
+
+        console.table(
+          [
+            ...beatMap.values()
+          ]
+        );
+
+
+        // ======================================================
+        // ❌ VALIDATE NETWORK RESULT
+        // ======================================================
+
+        if(
+          window.allCompartmentFeatures.length === 0
+        ){
+
+          console.warn(
+            "⚠ No compartments loaded — IDB cache NOT created"
+          );
+
+        }
+
+
+        // ======================================================
+        // 💾 SAVE TO INDEXEDDB
+        // ======================================================
+
+        if(
+          window.allCompartmentFeatures.length > 0
+        ){
+
+          try{
+
+            if(
+              typeof idbKeyval !==
+                "undefined"
+            ){
+
+              await idbKeyval.set(
+
+                "all_compartments_cache_v1",
+
+                {
+
+                  version:
+                    1,
+
+                  timestamp:
+                    Date.now(),
+
+                  featureCount:
+                    window.allCompartmentFeatures.length,
+
+                  beatCount:
+                    beatMap.size,
+
+                  features:
+                    window.allCompartmentFeatures
+
+                }
+
+              );
+
+
+              console.log(
+                "💾 COMPARTMENTS SAVED TO IDB:",
+                window.allCompartmentFeatures.length
+              );
+
+            }
+            else{
+
+              console.warn(
+                "⚠ idbKeyval unavailable → compartments not cached"
+              );
+
+            }
+
+          }
+          catch(idbSaveError){
+
+            console.warn(
+              "⚠ COMPARTMENTS IDB SAVE FAILED:",
+              idbSaveError
+            );
+
+            // --------------------------------------------------
+            // IMPORTANT:
+            //
+            // Cache failure does NOT break the application.
+            // Network-loaded compartments remain in memory.
+            // --------------------------------------------------
+
+          }
+
+        }
+
+
+        // ======================================================
+        // CACHE SOURCE FLAGS
+        // ======================================================
+
+        window.__COMPARTMENTS_SOURCE__ =
+          "NETWORK";
+
+
+        window.__COMPARTMENTS_FROM_IDB__ =
+          false;
+
+
+        window.__COMPARTMENTS_CACHE_TIME__ =
+          Date.now();
+
+
+        // ======================================================
+        // ⏱ LOAD COMPLETE
+        // ======================================================
+
+        console.timeEnd(
+          "PRELOAD_COMPARTMENTS"
+        );
+
+
+        console.log(
+          "✅ PRELOAD COMPLETE:",
+          window.allCompartmentFeatures.length
+        );
+
+
+        // ======================================================
+        // MARK READY
+        // ======================================================
+
+        window.__COMPARTMENTS_READY__ =
+          true;
+
+
+        // ======================================================
+        // 🔥 BACKGROUND SPATIAL INDEX
+        // ======================================================
+
+        setTimeout(
+          () => {
+
+            rebuildSpatialIndex()
+
+              .catch(
+                console.error
+              );
+
+          },
+          0
+        );
+
+
+        // ======================================================
+        // 🔥 BACKGROUND MASTER GRID LOADING
+        //
+        // EXISTING LOGIC PRESERVED
+        // ======================================================
+
+        if(
+
+          !window.masterGridLoading &&
+
+          (
+            !window.masterGrid ||
+
+            Object.keys(
+              window.masterGrid
+            ).length === 0
+          )
+
+        ){
+
+          window.masterGridLoading =
+            true;
+
+
+          setTimeout(
+            async () => {
+
+              try{
+
+                await loadMasterGrid();
+
+
+                console.log(
+                  "✅ MASTER GRID LOADED"
+                );
+
+
+                await buildCellToGridLookup();
+
+
+                window.__ANALYTICS_READY__ =
+                  true;
+
+
+                console.log(
+                  "✅ ANALYTICS READY"
+                );
+
+
+                console.log(
+                  "✅ CELL → GRID LOOKUP READY",
+                  Object.keys(
+                    window.cellToGridId ||
+                    {}
+                  ).length
+                );
+
+              }
+
+              catch(err){
+
+                console.error(
+                  "❌ Grid preload failed",
+                  err
+                );
+
+              }
+
+              finally{
+
+                window.masterGridLoading =
+                  false;
+
+              }
+
+            },
+            0
+          );
+
+        }
+
+        else {
+
+          console.log(
+            "⏭ GRID already available"
+          );
+
+
+          if(
+
+            window.masterGrid &&
+
+            Object.keys(
+              window.masterGrid
+            ).length > 0 &&
+
+            window.cellToGridId &&
+
+            Object.keys(
+              window.cellToGridId
+            ).length > 0
+
+          ){
+
+            window.__ANALYTICS_READY__ =
+              true;
+
+
+            console.log(
+              "✅ ANALYTICS READY"
+            );
+
+          }
+
+        }
+
+      }
+
+
+      // ========================================================
+      // ❌ MAIN ERROR
+      // ========================================================
+
+      catch(err){
+
+        console.error(
+          "❌ preloadAllCompartments",
+          err
+        );
+
+      }
+
+
+      // ========================================================
+      // 🔓 ALWAYS RELEASE LOAD LOCK
+      // ========================================================
+
+      finally{
+
+        window.__COMPARTMENTS_LOADING__ =
+          false;
+
+
+        console.log(
+          "✅ PRELOAD FINISHED"
+        );
+
+      }
+
+    })();
+
+
+  return (
+    window.__COMPARTMENTS_PROMISE__
+  );
+
 }
 async function buildAndStoreMasterGrid() {
   console.group(
