@@ -21577,129 +21577,157 @@ GG.Offence.UI =
        This reproduces the manual working sequence.
     ======================================================== */
 
-    function autoInitialize() {
+function autoInitialize() {
+
+    /* ====================================================
+       AUTH-FIRST STARTUP
+       ----------------------------------------------------
+       Do NOT start Offence UI before the authenticated
+       user profile has been loaded.
+    ==================================================== */
+
+    if (
+        UIController
+            .initialized ===
+        true
+    ) {
+
+        return;
+
+    }
 
 
-        /* ====================================================
-           PREVENT DUPLICATE INITIALIZATION
-        ==================================================== */
+    /* ====================================================
+       CHECK AUTHENTICATED PROFILE
+    ==================================================== */
+
+    const offenceUserRole =
+        String(
+            window.userProfile?.role ||
+            window.currentRole ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT create a retry timer here.
+     *
+     * The old code repeatedly called UIController.init()
+     * every 1 second when userProfile was unavailable.
+     *
+     * Login/bootstrap will initialize the Offence UI after
+     * the authenticated profile is available.
+     */
+
+    if (
+        !offenceUserRole
+    ) {
+
+        console.log(
+            "⏸ Offence UI deferred — authenticated profile not ready"
+        );
+
+        return;
+
+    }
+
+
+    /* ====================================================
+       INITIALIZE OFFENCE UI
+    ==================================================== */
+
+    try {
+
+        const result =
+            UIController
+                .init();
+
+
+        /* =================================================
+           SUPPORT ASYNC INIT
+        ================================================= */
 
         if (
-            UIController
-                .initialized ===
-                true
+            result &&
+            typeof
+            result.then ===
+            "function"
         ) {
+
+            result
+
+                .then(
+
+                    function () {
+
+                        console.log(
+
+                            "🚨 OffenceUIController Ready",
+
+                            UIController
+                                .getStats()
+
+                        );
+
+                    }
+
+                )
+
+                .catch(
+
+                    function (
+                        error
+                    ) {
+
+                        console.error(
+
+                            "❌ OffenceUIController initialization failed:",
+
+                            error
+
+                        );
+
+                    }
+
+                );
 
 
             return;
 
-
         }
 
 
+        console.log(
 
-        try {
+            "🚨 OffenceUIController Ready",
 
+            UIController
+                .getStats()
 
-            const result =
-                UIController
-                    .init();
-
-
-
-            /* =================================================
-               SUPPORT ASYNC INIT IF IMPLEMENTATION CHANGES
-            ================================================= */
-
-            if (
-                result &&
-                typeof
-                result.then ===
-                "function"
-            ) {
-
-
-                result
-
-                    .then(
-
-                        function () {
-
-
-                            console.log(
-
-                                "🚨 OffenceUIController Ready",
-
-                                UIController
-                                    .getStats()
-
-                            );
-
-
-                        }
-
-                    )
-
-                    .catch(
-
-                        function (
-                            error
-                        ) {
-
-
-                            console.error(
-
-                                "❌ OffenceUIController initialization failed:",
-
-                                error
-
-                            );
-
-
-                        }
-
-                    );
-
-
-                return;
-
-
-            }
-
-
-
-            console.log(
-
-                "🚨 OffenceUIController Ready",
-
-                UIController
-                    .getStats()
-
-            );
-
-
-        }
-
-
-        catch (
-            error
-        ) {
-
-
-            console.error(
-
-                "❌ OffenceUIController initialization failed:",
-
-                error
-
-            );
-
-
-        }
+        );
 
 
     }
 
+    catch (
+        error
+    ) {
+
+        console.error(
+
+            "❌ OffenceUIController initialization failed:",
+
+            error
+
+        );
+
+    }
+
+}
 
 
     /* ========================================================
