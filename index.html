@@ -62188,104 +62188,847 @@ async function buildCellToGridLookup(){
 
   }
 
-}  async function loadAllStaffProfiles(){
+} 
 
-  console.trace(
-    "LOAD_ALL_STAFF_PROFILES"
+// ============================================================
+// ⚡ DUTY CACHE — STAFF + COMPARTMENTS
+// ============================================================
+//
+// PURPOSE:
+//   Start Duty must NEVER wait for Firebase when cached data
+//   already exists.
+//
+// STORAGE:
+//   IndexedDB = persistent cache
+//   RAM        = runtime source
+//   Firestore  = authoritative background refresh / fallback
+//
+// IMPORTANT:
+//   Existing callers continue using:
+//      window.allStaffProfiles
+//      window.allCompartmentFeatures
+//
+// ============================================================
+
+window.__DUTY_CACHE_READY__ =
+  window.__DUTY_CACHE_READY__ || false;
+
+window.__DUTY_CACHE_PROMISE__ =
+  window.__DUTY_CACHE_PROMISE__ || null;
+
+
+// ============================================================
+// ⚡ BUILD STAFF RUNTIME INDEX
+// ============================================================
+
+function buildDutyStaffIndexes(){
+
+  const list =
+    Array.isArray(window.allStaffProfiles)
+      ? window.allStaffProfiles
+      : [];
+
+  window.dutyStaffByName =
+    new Map();
+
+  window.dutyStaffByDivision =
+    new Map();
+
+  window.dutyStaffByRange =
+    new Map();
+
+  window.dutyStaffByBeat =
+    new Map();
+
+
+  for(const staff of list){
+
+    if(!staff) continue;
+
+
+    const name =
+      String(
+        staff.name || ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    if(name){
+      window.dutyStaffByName.set(
+        name,
+        staff
+      );
+    }
+
+
+    const division =
+      String(
+        staff.division || ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const range =
+      String(
+        staff.range || ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const beat =
+      String(
+        staff.beat || ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    if(division){
+
+      if(
+        !window.dutyStaffByDivision.has(
+          division
+        )
+      ){
+
+        window.dutyStaffByDivision.set(
+          division,
+          []
+        );
+
+      }
+
+      window.dutyStaffByDivision
+        .get(division)
+        .push(staff);
+    }
+
+
+    if(range){
+
+      if(
+        !window.dutyStaffByRange.has(
+          range
+        )
+      ){
+
+        window.dutyStaffByRange.set(
+          range,
+          []
+        );
+
+      }
+
+      window.dutyStaffByRange
+        .get(range)
+        .push(staff);
+    }
+
+
+    if(beat){
+
+      if(
+        !window.dutyStaffByBeat.has(
+          beat
+        )
+      ){
+
+        window.dutyStaffByBeat.set(
+          beat,
+          []
+        );
+
+      }
+
+      window.dutyStaffByBeat
+        .get(beat)
+        .push(staff);
+    }
+
+  }
+
+
+  console.log(
+    "⚡ DUTY STAFF INDEX READY:",
+    {
+      staff:
+        list.length,
+
+      names:
+        window.dutyStaffByName.size,
+
+      divisions:
+        window.dutyStaffByDivision.size,
+
+      ranges:
+        window.dutyStaffByRange.size,
+
+      beats:
+        window.dutyStaffByBeat.size
+    }
   );
+
+}
+
+
+// ============================================================
+// ⚡ LOAD STAFF FROM IDB
+// ============================================================
+
+async function loadStaffProfilesFromIDB(){
 
   try{
 
-    // =====================================
-    // 🔥 WAIT FOR FIREBASE
-    // =====================================
-
-    await waitForFirebaseReady();
-
     if(
-
-      !window.fb ||
-
-      !window.db ||
-
-      !window.fb.getDocs
-
+      !window.idbKeyval ||
+      typeof window.idbKeyval.get !==
+        "function"
     ){
 
-      console.error(
-        "❌ Firebase not ready"
+      console.warn(
+        "⚠ Staff IDB unavailable"
+      );
+
+      return false;
+    }
+
+
+    const cached =
+      await window.idbKeyval.get(
+        "staff_profiles_cache_v1"
+      );
+
+
+    if(
+      !cached ||
+      !Array.isArray(
+        cached.data
+      ) ||
+      cached.data.length === 0
+    ){
+
+      console.log(
+        "ℹ️ NO STAFF PROFILE CACHE"
+      );
+
+      return false;
+    }
+
+
+    window.allStaffProfiles =
+      cached.data;
+
+
+    window.__STAFF_PROFILES_SOURCE__ =
+      "IDB";
+
+
+    window.__STAFF_PROFILES_FROM_IDB__ =
+      true;
+
+
+    window.__STAFF_PROFILES_CACHE_TIME__ =
+      cached.timestamp ||
+      null;
+
+
+    buildDutyStaffIndexes();
+
+
+    console.log(
+      "⚡ STAFF PROFILES IDB HIT:",
+      window.allStaffProfiles.length
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ STAFF IDB READ FAILED:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// 💾 SAVE STAFF TO IDB
+// ============================================================
+
+async function saveStaffProfilesToIDB(
+  staffList
+){
+
+  try{
+
+    if(
+      !window.idbKeyval ||
+      typeof window.idbKeyval.set !==
+        "function"
+    ){
+
+      console.warn(
+        "⚠ Staff IDB unavailable for save"
       );
 
       return;
     }
 
-    console.time(
-      "LOAD_STAFF_PROFILES"
+
+    await window.idbKeyval.set(
+      "staff_profiles_cache_v1",
+      {
+        version: 1,
+
+        timestamp:
+          Date.now(),
+
+        data:
+          Array.isArray(
+            staffList
+          )
+            ? staffList
+            : []
+      }
     );
+
 
     console.log(
-      "📦 Loading staff_profiles..."
+      "💾 STAFF PROFILES CACHED:",
+      staffList?.length || 0
     );
 
-    const snap =
+  }
+  catch(err){
 
-      await window.fb.getDocs(
-
-        window.fb.collection(
-
-          window.db,
-
-          "staff_profiles"
-
-        )
-
-      );
-
-    window.allStaffProfiles =
-
-      snap.docs.map(doc => {
-
-        const d =
-          doc.data() || {};
-
-        return {
-
-          name:
-            d.name || "",
-
-          role:
-            d.role || "",
-
-          division:
-            d.division || "",
-
-          range:
-            d.range || "",
-
-          beat:
-            d.beat || ""
-
-        };
-
-      });
-
-    console.log(
-      "✅ Staff Profiles:",
-      window.allStaffProfiles.length
-    );
-
-    console.timeEnd(
-      "LOAD_STAFF_PROFILES"
+    console.warn(
+      "⚠ STAFF IDB SAVE FAILED:",
+      err
     );
 
   }
 
+}
+
+
+// ============================================================
+// 🔥 FIRESTORE STAFF REFRESH
+// ============================================================
+
+async function refreshStaffProfilesFromFirestore(){
+
+  try{
+
+    await waitForFirebaseReady();
+
+
+    if(
+      !window.fb ||
+      !window.db ||
+      !window.fb.getDocs
+    ){
+
+      console.warn(
+        "⚠ Firebase unavailable for staff refresh"
+      );
+
+      return false;
+    }
+
+
+    console.time(
+      "REFRESH_STAFF_PROFILES"
+    );
+
+
+    console.log(
+      "🌐 REFRESHING STAFF PROFILES FROM FIRESTORE..."
+    );
+
+
+    const snap =
+      await window.fb.getDocs(
+        window.fb.collection(
+          window.db,
+          "staff_profiles"
+        )
+      );
+
+
+    const freshProfiles =
+      snap.docs.map(
+        doc => {
+
+          const d =
+            doc.data() || {};
+
+
+          return {
+
+            name:
+              d.name || "",
+
+            role:
+              d.role || "",
+
+            division:
+              d.division || "",
+
+            range:
+              d.range || "",
+
+            beat:
+              d.beat || ""
+
+          };
+
+        }
+      );
+
+
+    window.allStaffProfiles =
+      freshProfiles;
+
+
+    window.__STAFF_PROFILES_SOURCE__ =
+      "FIRESTORE";
+
+
+    window.__STAFF_PROFILES_FROM_IDB__ =
+      false;
+
+
+    window.__STAFF_PROFILES_CACHE_TIME__ =
+      Date.now();
+
+
+    buildDutyStaffIndexes();
+
+
+    await saveStaffProfilesToIDB(
+      freshProfiles
+    );
+
+
+    console.log(
+      "✅ STAFF PROFILES FRESH:",
+      freshProfiles.length
+    );
+
+
+    console.timeEnd(
+      "REFRESH_STAFF_PROFILES"
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.error(
+      "❌ STAFF FIRESTORE REFRESH FAILED:",
+      err
+    );
+
+
+    console.timeEnd(
+      "REFRESH_STAFF_PROFILES"
+    );
+
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// ⚡ CACHE-FIRST STAFF LOADER
+// ============================================================
+//
+// Behavior:
+//
+// CACHE EXISTS:
+//   → immediately use cache
+//   → Firestore refresh runs in background
+//
+// CACHE MISSING:
+//   → Firestore becomes fallback
+//
+// ============================================================
+
+async function prepareDutyStaffCache(){
+
+  if(
+    window.__DUTY_STAFF_CACHE_PROMISE__
+  ){
+
+    return
+      window.__DUTY_STAFF_CACHE_PROMISE__;
+
+  }
+
+
+  window.__DUTY_STAFF_CACHE_PROMISE__ =
+    (async()=>{
+
+      const cacheHit =
+        await loadStaffProfilesFromIDB();
+
+
+      if(cacheHit){
+
+        console.log(
+          "⚡ DUTY STAFF READY FROM IDB"
+        );
+
+
+        // ==================================================
+        // BACKGROUND FRESHNESS
+        // ==================================================
+
+        setTimeout(
+          ()=>{
+            refreshStaffProfilesFromFirestore()
+              .catch(
+                console.error
+              );
+          },
+          0
+        );
+
+
+        return true;
+      }
+
+
+      // ====================================================
+      // NO CACHE → FIRESTORE FALLBACK
+      // ====================================================
+
+      console.log(
+        "🌐 NO STAFF CACHE → FIRESTORE FALLBACK"
+      );
+
+
+      return
+        await
+          refreshStaffProfilesFromFirestore();
+
+    })();
+
+
+  try{
+
+    return await
+      window.__DUTY_STAFF_CACHE_PROMISE__;
+
+  }
+  finally{
+
+    window.__DUTY_STAFF_CACHE_PROMISE__ =
+      null;
+
+  }
+
+}
+
+
+// ============================================================
+// ⚡ LOAD COMPARTMENTS DIRECTLY FROM IDB
+// ============================================================
+//
+// IMPORTANT:
+// Do NOT call preloadAllCompartments() here.
+//
+// preloadAllCompartments() also starts spatial/grid work.
+// Start Duty needs only the cached geometry.
+//
+// ============================================================
+
+async function loadDutyCompartmentsFromIDB(){
+
+  try{
+
+    if(
+      !window.idbKeyval ||
+      typeof window.idbKeyval.get !==
+        "function"
+    ){
+
+      console.warn(
+        "⚠ Compartment IDB unavailable"
+      );
+
+      return false;
+    }
+
+
+    const cached =
+      await window.idbKeyval.get(
+        "all_compartments_cache_v1"
+      );
+
+
+    if(
+      !cached ||
+      !Array.isArray(
+        cached.features
+      ) ||
+      cached.features.length === 0
+    ){
+
+      console.log(
+        "ℹ️ NO COMPARTMENT DUTY CACHE"
+      );
+
+      return false;
+    }
+
+
+    window.allCompartmentFeatures =
+      cached.features;
+
+
+    window.__COMPARTMENTS_SOURCE__ =
+      "IDB";
+
+
+    window.__COMPARTMENTS_FROM_IDB__ =
+      true;
+
+
+    window.__COMPARTMENTS_CACHE_TIME__ =
+      cached.timestamp ||
+      null;
+
+
+    console.log(
+      "⚡ DUTY COMPARTMENTS IDB HIT:",
+      window.allCompartmentFeatures.length
+    );
+
+
+    return true;
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ DUTY COMPARTMENT IDB READ FAILED:",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// ⚡ PREPARE DUTY CACHE
+// ============================================================
+
+async function prepareDutyCaches(){
+
+  if(
+    window.__DUTY_CACHE_PROMISE__
+  ){
+
+    return
+      window.__DUTY_CACHE_PROMISE__;
+
+  }
+
+
+  window.__DUTY_CACHE_PROMISE__ =
+    (async()=>{
+
+      console.time(
+        "PREPARE_DUTY_CACHES"
+      );
+
+
+      // ======================================================
+      // STAFF + COMPARTMENTS IN PARALLEL
+      // ======================================================
+
+      const [
+        staffReady,
+        compartmentsReady
+      ] =
+        await Promise.all([
+
+          prepareDutyStaffCache(),
+
+          loadDutyCompartmentsFromIDB()
+
+        ]);
+
+
+      window.__DUTY_CACHE_READY__ =
+        staffReady ||
+        compartmentsReady;
+
+
+      console.log(
+        "⚡ DUTY CACHE READY:",
+        {
+          staff:
+            window.allStaffProfiles?.length ||
+            0,
+
+          compartments:
+            window.allCompartmentFeatures?.length ||
+            0,
+
+          staffReady,
+
+          compartmentsReady
+        }
+      );
+
+
+      console.timeEnd(
+        "PREPARE_DUTY_CACHES"
+      );
+
+
+      return {
+        staffReady,
+        compartmentsReady
+      };
+
+    })();
+
+
+  try{
+
+    return await
+      window.__DUTY_CACHE_PROMISE__;
+
+  }
+  finally{
+
+    window.__DUTY_CACHE_PROMISE__ =
+      null;
+
+  }
+
+}
+
+
+ // ============================================================
+// 🔥 LOAD ALL STAFF PROFILES
+// ============================================================
+//
+// IMPORTANT:
+//
+// Existing callers are preserved.
+//
+// New behavior:
+//
+// 1. IDB cache first
+// 2. If cache exists → return immediately
+// 3. Firestore refresh runs in background
+// 4. If cache missing → Firestore fallback
+//
+// ============================================================
+
+async function loadAllStaffProfiles(){
+
+  console.trace(
+    "LOAD_ALL_STAFF_PROFILES"
+  );
+
+
+  try{
+
+    // ========================================================
+    // ⚡ CACHE FIRST
+    // ========================================================
+
+    const cacheHit =
+      await loadStaffProfilesFromIDB();
+
+
+    if(cacheHit){
+
+      console.log(
+        "⚡ loadAllStaffProfiles → IDB CACHE"
+      );
+
+
+      // ======================================================
+      // 🌐 FRESH FIRESTORE REFRESH
+      // ======================================================
+      //
+      // DO NOT await.
+      //
+      // Existing UI continues immediately.
+      //
+      // ======================================================
+
+      setTimeout(
+        ()=>{
+          refreshStaffProfilesFromFirestore()
+            .catch(
+              err =>
+                console.warn(
+                  "⚠ Background staff refresh failed:",
+                  err
+                )
+            );
+        },
+        0
+      );
+
+
+      return window.allStaffProfiles;
+
+    }
+
+
+    // ========================================================
+    // 🌐 NO CACHE → FIRESTORE FALLBACK
+    // ========================================================
+
+    console.log(
+      "🌐 STAFF CACHE MISS → FIRESTORE"
+    );
+
+
+    await
+      refreshStaffProfilesFromFirestore();
+
+
+    return window.allStaffProfiles;
+
+  }
   catch(err){
 
     console.error(
       "❌ loadAllStaffProfiles",
       err
     );
+
+
+    return
+      window.allStaffProfiles ||
+      [];
 
   }
 
@@ -95117,343 +95860,360 @@ document
     console.groupEnd();
 
 }
-    /* ============================================================
+/* ============================================================
 🚨 DUTY SYSTEM
 ============================================================ */
-let dutyComptMap = {}
+
+let dutyComptMap = {};
+
+
+/* ============================================================
+⚡ OPEN DUTY FORM — CACHE FIRST / NON-BLOCKING UI
+============================================================ */
 
 function openDutyForm(){
-console.time(
-  "OPEN_DUTY_FORM_TOTAL"
-);
-  console.group("🚀 openDutyForm START");
-  console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-  // =====================================================
+  console.time(
+    "OPEN_DUTY_FORM_TOTAL"
+  );
+
+  console.group(
+    "🚀 openDutyForm START"
+  );
+
+  console.log(
+    "⏱ Time:",
+    new Date().toLocaleTimeString()
+  );
+
+
+  // ==========================================================
   // 🔥 RESET FALSE START STATE
-  // =====================================================
+  // ==========================================================
+
   window.__dutyUpdating = false;
 
   startDutySubmitting = false;
 
-  const modal = document.getElementById("duty-modal");
 
-  if (!modal) {
-    console.error("❌ duty-modal NOT FOUND");
+  // ==========================================================
+  // 🔥 GET MODAL
+  // ==========================================================
+
+  const modal =
+    document.getElementById(
+      "duty-modal"
+    );
+
+
+  if(!modal){
+
+    console.error(
+      "❌ duty-modal NOT FOUND"
+    );
+
     console.groupEnd();
+
     return;
   }
 
-  modal.style.display = "block";
-  modal.style.visibility = "visible";
-  modal.style.opacity = "1";
 
-  console.log("✅ Modal forced visible");
+  // ==========================================================
+  // ⚡ SHOW MODAL IMMEDIATELY
+  // ==========================================================
+  //
+  // IMPORTANT:
+  // Nothing is awaited before this.
+  //
+  // ==========================================================
 
-  /* 🧹 RESET FORM */
-  const form = document.getElementById("duty-form");
-  if (form) form.reset();
+  modal.style.display =
+    "block";
 
-  const staffBox = document.getElementById("staffOptions");
-  const comptBox = document.getElementById("comptOptions");
+  modal.style.visibility =
+    "visible";
 
-  if (staffBox) staffBox.innerHTML = "";
-  if (comptBox) comptBox.innerHTML = "";
+  modal.style.opacity =
+    "1";
 
-  console.log("🧹 Dynamic lists cleared");
 
-  /* 🔥 RESET FIELDS */
-  ["d-id","d-date","d-leader"].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.value = "";
+  console.log(
+    "✅ Modal forced visible"
+  );
+
+
+  // ==========================================================
+  // 🧹 RESET FORM
+  // ==========================================================
+
+  const form =
+    document.getElementById(
+      "duty-form"
+    );
+
+  if(form){
+
+    form.reset();
+
+  }
+
+
+  const staffBox =
+    document.getElementById(
+      "staffOptions"
+    );
+
+  const comptBox =
+    document.getElementById(
+      "comptOptions"
+    );
+
+
+  if(staffBox){
+
+    staffBox.innerHTML =
+      "";
+
+  }
+
+
+  if(comptBox){
+
+    comptBox.innerHTML =
+      "";
+
+  }
+
+
+  console.log(
+    "🧹 Dynamic lists cleared"
+  );
+
+
+  // ==========================================================
+  // 🔥 RESET FIELDS
+  // ==========================================================
+
+  [
+    "d-id",
+    "d-date",
+    "d-leader"
+  ].forEach(id => {
+
+    const el =
+      document.getElementById(
+        id
+      );
+
+    if(el){
+
+      el.value =
+        "";
+
+    }
+
   });
 
-  const beatSel = document.getElementById("d-beat");
-  if (beatSel) beatSel.selectedIndex = 0;
 
-  const dirSel = document.getElementById("d-dir");
-  if (dirSel) dirSel.selectedIndex = 0;
+  // ==========================================================
+  // 🔥 GET SELECTORS
+  // ==========================================================
 
-  // =====================================================
-  // 🔥 RESET DUTY TYPE
-  // =====================================================
+  const beatSel =
+    document.getElementById(
+      "d-beat"
+    );
+
+  const dirSel =
+    document.getElementById(
+      "d-dir"
+    );
+
   const typeSel =
-    document.getElementById("d-type");
+    document.getElementById(
+      "d-type"
+    );
+
+
+  // ==========================================================
+  // 🔥 RESET BEAT
+  // ==========================================================
+
+  if(beatSel){
+
+    beatSel.innerHTML =
+      "";
+
+    beatSel.selectedIndex =
+      0;
+
+  }
+
+
+  // ==========================================================
+  // 🔥 RESET DIVISION
+  // ==========================================================
+
+  if(dirSel){
+
+    dirSel.selectedIndex =
+      0;
+
+  }
+
+
+  // ==========================================================
+  // 🔥 RESET DUTY TYPE
+  // ==========================================================
 
   if(typeSel){
-    typeSel.selectedIndex = 0;
+
+    typeSel.selectedIndex =
+      0;
+
   }
+
+
+  // ==========================================================
+  // 🔥 RESET COMPARTMENT MAP
+  // ==========================================================
 
   dutyComptMap = {};
 
-  if (staffBox) staffBox.style.display = "none";
-  if (comptBox) comptBox.style.display = "none";
 
-  setTimeout(()=>{
-    if (staffBox) staffBox.style.display = "block";
-    if (comptBox) comptBox.style.display = "block";
-  }, 50);
+  // ==========================================================
+  // 🔥 SHOW LIST CONTAINERS
+  // ==========================================================
 
-  /* HIDE OBS */
-  const obsBox = document.getElementById("obs-container");
-  if (obsBox) obsBox.style.display = "none";
+  if(staffBox){
 
-  /* ================= PROFILE SAFE LOAD ================= */
-  let profile = window.userProfile;
+    staffBox.style.display =
+      "block";
 
-  if (!profile) {
-    alert("❌ User not loaded");
+  }
+
+
+  if(comptBox){
+
+    comptBox.style.display =
+      "block";
+
+  }
+
+
+  // ==========================================================
+  // HIDE OBSERVATIONS
+  // ==========================================================
+
+  const obsBox =
+    document.getElementById(
+      "obs-container"
+    );
+
+  if(obsBox){
+
+    obsBox.style.display =
+      "none";
+
+  }
+
+
+  // ==========================================================
+  // 👤 PROFILE SAFE LOAD
+  // ==========================================================
+
+  let profile =
+    window.userProfile;
+
+
+  if(!profile){
+
+    alert(
+      "❌ User not loaded"
+    );
+
     console.groupEnd();
+
     return;
   }
 
+
+  // ==========================================================
   // 🔥 FORCE SAFE NAME STRUCTURE
-  if (!profile.rawName) {
-    console.warn("⚠ rawName missing → recovering from name");
-    profile.rawName = profile.name || "";
+  // ==========================================================
+
+  if(!profile.rawName){
+
+    console.warn(
+      "⚠ rawName missing → recovering from name"
+    );
+
+    profile.rawName =
+      profile.name || "";
+
   }
 
-  if (!profile.cleanName) {
-    console.warn("⚠ cleanName missing → generating");
-    profile.cleanName = cleanName(profile.rawName);
+
+  if(!profile.cleanName){
+
+    console.warn(
+      "⚠ cleanName missing → generating"
+    );
+
+    profile.cleanName =
+      cleanName(
+        profile.rawName
+      );
+
   }
 
-  if (!profile.rawName || profile.rawName.trim() === "") {
-    alert("❌ User name missing");
+
+  if(
+    !profile.rawName ||
+    profile.rawName.trim() === ""
+  ){
+
+    alert(
+      "❌ User name missing"
+    );
+
     console.groupEnd();
+
     return;
   }
 
-  console.log("🧠 PROFILE:", profile);
-
-  const setVal = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.value = val;
-  };
-
-
-
-// =====================================================
-// 🔥 DYNAMIC BEAT LOADING
-// =====================================================
-
-beatSel.innerHTML = "";
-
-const role =
-  String(
-    profile.role || ""
-  )
-  .trim()
-  .toUpperCase();
-
-const allProfiles =
-  Array.isArray(
-    window.allStaffProfiles
-  )
-    ? window.allStaffProfiles
-    : [];
-
-let beats = [];
-
-// =====================================================
-// 👑 ADMIN
-// =====================================================
-
-if(role === "ADMIN"){
-
-  beats = [
-
-    ...new Set(
-
-      allProfiles.map(p =>
-
-        String(
-          p.beat || ""
-        ).trim()
-
-      )
-
-    )
-
-  ]
-  .filter(Boolean)
-  .sort();
-
-  beatSel.disabled = false;
-
-}
-
-// =====================================================
-// 🟣 DFO / ADFO
-// =====================================================
-
-else if(
-
-  role.includes("DFO")
-
-  ||
-
-  role.includes("ADFO")
-
-){
-
-  const userDivision =
-    normalizeDivision(
-      profile.division || ""
-    );
-
-  beats = [
-
-    ...new Set(
-
-      allProfiles
-
-      .filter(p =>
-
-        normalizeDivision(
-          p.division || ""
-        )
-
-        ===
-
-        userDivision
-
-      )
-
-      .map(p =>
-
-        String(
-          p.beat || ""
-        ).trim()
-
-      )
-
-    )
-
-  ]
-  .filter(Boolean)
-  .sort();
-
-  beatSel.disabled = false;
-
-}
-
-// =====================================================
-// 👮 STAFF / TEAM LEADER
-// =====================================================
-
-else{
-
-  beats = [
-
-    String(
-      profile.beat || ""
-    ).trim()
-
-  ]
-  .filter(Boolean);
-
-  beatSel.disabled = true;
-
-}
-
-// =====================================================
-// 🔥 RENDER OPTIONS
-// =====================================================
-
-beats.forEach(beat => {
-
-  const option =
-    document.createElement(
-      "option"
-    );
-
-  option.value =
-    beat;
-
-  option.textContent =
-    beat;
-
-  beatSel.appendChild(
-    option
-  );
-
-});
-
-// =====================================================
-// 🔥 DEFAULT SELECTION
-// =====================================================
-
-if(role === "ADMIN"){
-
-  beatSel.selectedIndex = 0;
-
-}
-
-else if(
-
-  role.includes("DFO")
-
-  ||
-
-  role.includes("ADFO")
-
-){
-
-  beatSel.selectedIndex = 0;
-
-}
-
-else{
-
-  beatSel.value =
-    String(
-      profile.beat || ""
-    ).trim();
-
-}
-
-  /* ================= LEADER LOCK ================= */
-  const leaderInput = document.getElementById("d-leader");
-
-  if (leaderInput) {
-
-    const displayName =
-      profile.rawName.trim();
-
-    leaderInput.value =
-      displayName;
-
-    leaderInput.readOnly = true;
-
-    leaderInput.dataset.lockedUser =
-      displayName;
-
-    console.log(
-      "👤 Leader set:",
-      displayName
-    );
-  }
-
-  /* ================= EVENTS ================= */
-  beatSel.onchange = () => {
-
-    updateDutyStaff("BEAT_CHANGE");
-
-    updateDutyCompt("BEAT_CHANGE");
-  };
-
-/* ================= POST INIT ================= */
-(async()=>{
-
-  console.time(
-    "DUTY_FORM_RENDER"
-  );
 
   console.log(
-    "🚀 POST INIT START",
-    performance.now()
+    "🧠 PROFILE:",
+    profile
   );
+
+
+  // ==========================================================
+  // 🔧 SAFE VALUE SETTER
+  // ==========================================================
+
+  const setVal =
+    (id, val) => {
+
+      const el =
+        document.getElementById(
+          id
+        );
+
+      if(el){
+
+        el.value =
+          val;
+
+      }
+
+    };
+
+
+  // ==========================================================
+  // 🔥 INITIAL FORM VALUES
+  // ==========================================================
 
   setVal(
     "d-id",
@@ -95465,206 +96225,788 @@ else{
     new Date().toLocaleString()
   );
 
-  console.log(
-    "📦 Staff Profiles:",
-    window.allStaffProfiles?.length || 0
-  );
 
-  console.log(
-    "📦 Compartments:",
-    window.allCompartmentFeatures?.length || 0
-  );
+  // ==========================================================
+  // 👤 LEADER LOCK
+  // ==========================================================
 
-  // =====================================
-  // 🔥 ENSURE COMPARTMENTS ARE LOADED
-  // =====================================
-// =====================================
-// ⏳ WAIT FOR EXISTING LOAD
-// =====================================
+  const leaderInput =
+    document.getElementById(
+      "d-leader"
+    );
 
-if(
-  window.__COMPARTMENTS_LOADING__
-){
 
-  console.warn(
-    "⏳ Waiting for compartment preload..."
-  );
+  if(leaderInput){
 
-  try{
+    const displayName =
+      String(
+        profile.rawName || ""
+      ).trim();
 
-    await window.__COMPARTMENTS_PROMISE__;
+
+    leaderInput.value =
+      displayName;
+
+
+    leaderInput.readOnly =
+      true;
+
+
+    leaderInput.dataset.lockedUser =
+      displayName;
+
+
+    console.log(
+      "👤 Leader set:",
+      displayName
+    );
 
   }
 
+
+  // ==========================================================
+  // 🔥 ROLE
+  // ==========================================================
+
+  const role =
+    String(
+      profile.role || ""
+    )
+    .trim()
+    .toUpperCase();
+
+
+  // ==========================================================
+  // ⚡ BEAT RENDER FUNCTION
+  // ==========================================================
+  //
+  // Kept inside openDutyForm so the existing role logic is
+  // preserved exactly.
+  //
+  // ==========================================================
+
+  const renderDutyBeats =
+    () => {
+
+      if(!beatSel){
+
+        console.warn(
+          "⚠ d-beat element missing"
+        );
+
+        return;
+
+      }
+
+
+      // ======================================================
+      // CLEAR
+      // ======================================================
+
+      beatSel.innerHTML =
+        "";
+
+
+      // ======================================================
+      // CURRENT RAM STAFF
+      // ======================================================
+
+      const allProfiles =
+        Array.isArray(
+          window.allStaffProfiles
+        )
+          ? window.allStaffProfiles
+          : [];
+
+
+      let beats =
+        [];
+
+
+      // ======================================================
+      // 👑 ADMIN
+      // ======================================================
+
+      if(role === "ADMIN"){
+
+        beats = [
+
+          ...new Set(
+
+            allProfiles.map(
+              p =>
+                String(
+                  p?.beat || ""
+                ).trim()
+            )
+
+          )
+
+        ]
+        .filter(Boolean)
+        .sort();
+
+
+        beatSel.disabled =
+          false;
+
+      }
+
+
+      // ======================================================
+      // 🟣 DFO / ADFO
+      // ======================================================
+
+      else if(
+        role.includes("DFO") ||
+        role.includes("ADFO")
+      ){
+
+        const userDivision =
+          normalizeDivision(
+            profile.division || ""
+          );
+
+
+        beats = [
+
+          ...new Set(
+
+            allProfiles
+
+              .filter(
+                p =>
+                  normalizeDivision(
+                    p?.division || ""
+                  )
+                  ===
+                  userDivision
+              )
+
+              .map(
+                p =>
+                  String(
+                    p?.beat || ""
+                  ).trim()
+              )
+
+          )
+
+        ]
+        .filter(Boolean)
+        .sort();
+
+
+        beatSel.disabled =
+          false;
+
+      }
+
+
+      // ======================================================
+      // 👮 STAFF / TEAM LEADER
+      // ======================================================
+
+      else{
+
+        beats = [
+
+          String(
+            profile.beat || ""
+          ).trim()
+
+        ]
+        .filter(Boolean);
+
+
+        beatSel.disabled =
+          true;
+
+      }
+
+
+      // ======================================================
+      // 🔥 RENDER OPTIONS
+      // ======================================================
+
+      beats.forEach(
+        beat => {
+
+          const option =
+            document.createElement(
+              "option"
+            );
+
+
+          option.value =
+            beat;
+
+
+          option.textContent =
+            beat;
+
+
+          beatSel.appendChild(
+            option
+          );
+
+        }
+      );
+
+
+      // ======================================================
+      // 🔥 DEFAULT SELECTION
+      // ======================================================
+
+      if(role === "ADMIN"){
+
+        if(beats.length){
+
+          beatSel.selectedIndex =
+            0;
+
+        }
+
+      }
+
+
+      else if(
+        role.includes("DFO") ||
+        role.includes("ADFO")
+      ){
+
+        if(beats.length){
+
+          beatSel.selectedIndex =
+            0;
+
+        }
+
+      }
+
+
+      else{
+
+        beatSel.value =
+          String(
+            profile.beat || ""
+          ).trim();
+
+      }
+
+
+      console.log(
+        "🌿 DUTY BEATS RENDERED:",
+        beats.length
+      );
+
+    };
+
+
+  // ==========================================================
+  // ⚡ RENDER CURRENT RAM DATA IMMEDIATELY
+  // ==========================================================
+  //
+  // If background startup has already populated RAM,
+  // the list appears NOW.
+  //
+  // ==========================================================
+
+  renderDutyBeats();
+
+
+  // ==========================================================
+  // ================= EVENTS ================================
+  // ==========================================================
+
+  if(beatSel){
+
+    beatSel.onchange =
+      () => {
+
+        updateDutyStaff(
+          "BEAT_CHANGE"
+        );
+
+        updateDutyCompt(
+          "BEAT_CHANGE"
+        );
+
+      };
+
+  }
+
+
+  // ==========================================================
+  // 🔥 INITIAL LIST RENDER FROM CURRENT RAM
+  // ==========================================================
+  //
+  // Do not wait for IDB / Firestore.
+  //
+  // ==========================================================
+
+  console.time(
+    "INITIAL_DUTY_LIST_RENDER"
+  );
+
+
+  try{
+
+    updateDutyStaff(
+      "INITIAL_RAM"
+    );
+
+  }
   catch(err){
 
     console.error(
-      "❌ Existing preload failed",
+      "❌ Initial updateDutyStaff failed:",
       err
     );
 
   }
 
-}
-
-// =====================================
-// 📦 LOAD IF STILL EMPTY
-// =====================================
-
-if(
-
-  !Array.isArray(
-    window.allCompartmentFeatures
-  )
-
-  ||
-
-  window.allCompartmentFeatures.length === 0
-
-){
-
-  console.time(
-    "preloadAllCompartments"
-  );
-
-  console.warn(
-    "📦 Duty Form → Loading compartments..."
-  );
 
   try{
 
-    await preloadAllCompartments();
+    updateDutyCompt(
+      "INITIAL_RAM"
+    );
 
   }
-
   catch(err){
 
     console.error(
-      "❌ preloadAllCompartments failed",
+      "❌ Initial updateDutyCompt failed:",
       err
     );
 
   }
 
-  console.timeEnd(
-    "preloadAllCompartments"
-  );
-
-}
-
-console.log(
-  "📦 Compartments Ready:",
-  window.allCompartmentFeatures?.length || 0
-);
-  // =====================================
-  // 🔥 STAFF RENDER TIMER
-  // =====================================
-
-  console.time(
-    "updateDutyStaff"
-  );
-
-  updateDutyStaff(
-    "FROM_OPEN_DUTY"
-  );
 
   console.timeEnd(
-    "updateDutyStaff"
+    "INITIAL_DUTY_LIST_RENDER"
   );
 
-  // =====================================
-  // 🔥 COMPARTMENT RENDER TIMER
-  // =====================================
 
-  console.time(
-    "updateDutyCompt"
-  );
+  // ==========================================================
+  // ⚡ ASYNC CACHE / FALLBACK LOAD
+  // ==========================================================
+  //
+  // IMPORTANT:
+  //
+  // The modal is already visible.
+  //
+  // This async block does NOT block the opening of the modal.
+  //
+  // ==========================================================
 
-  updateDutyCompt(
-    "FROM_OPEN_DUTY"
-  );
+  (async()=>{
 
-  console.timeEnd(
-    "updateDutyCompt"
-  );
+    console.time(
+      "DUTY_FORM_RENDER"
+    );
 
-  console.timeEnd(
-    "DUTY_FORM_RENDER"
-  );
-console.timeEnd(
-  "OPEN_DUTY_FORM_TOTAL"
-);
-})();
-  /* ================= BUTTON FIX ================= */
+
+    console.log(
+      "🚀 DUTY DATA LOAD START",
+      performance.now()
+    );
+
+
+    try{
+
+      // ======================================================
+      // ⚡ STAFF
+      // ======================================================
+      //
+      // If your new cache-first loader exists, use it.
+      //
+      // Otherwise use the existing loader.
+      //
+      // ======================================================
+
+      let staffPromise;
+
+
+      if(
+        typeof prepareDutyStaffCache ===
+        "function"
+      ){
+
+        staffPromise =
+          prepareDutyStaffCache();
+
+      }
+
+      else if(
+        typeof prepareDutyCaches ===
+        "function"
+      ){
+
+        staffPromise =
+          prepareDutyCaches();
+
+      }
+
+      else if(
+        typeof loadAllStaffProfiles ===
+        "function"
+      ){
+
+        staffPromise =
+          loadAllStaffProfiles();
+
+      }
+
+      else{
+
+        staffPromise =
+          Promise.resolve(
+            false
+          );
+
+      }
+
+
+      // ======================================================
+      // ⚡ COMPARTMENTS
+      // ======================================================
+      //
+      // IMPORTANT:
+      //
+      // Existing preloadAllCompartments() already checks:
+      //
+      // all_compartments_cache_v1
+      //
+      // before Firestore.
+      //
+      // We START it but do not block modal opening.
+      //
+      // ======================================================
+
+      let compartmentPromise;
+
+
+      if(
+        Array.isArray(
+          window.allCompartmentFeatures
+        )
+        &&
+        window.allCompartmentFeatures.length > 0
+      ){
+
+        console.log(
+          "⚡ COMPARTMENTS ALREADY IN RAM:",
+          window.allCompartmentFeatures.length
+        );
+
+
+        compartmentPromise =
+          Promise.resolve(
+            true
+          );
+
+      }
+
+
+      else if(
+        typeof preloadAllCompartments ===
+        "function"
+      ){
+
+        console.log(
+          "⚡ STARTING COMPARTMENT CACHE/FALLBACK"
+        );
+
+
+        compartmentPromise =
+          preloadAllCompartments();
+
+      }
+
+      else{
+
+        console.warn(
+          "⚠ preloadAllCompartments unavailable"
+        );
+
+
+        compartmentPromise =
+          Promise.resolve(
+            false
+          );
+
+      }
+
+
+      // ======================================================
+      // ⚡ STAFF + COMPARTMENT LOAD IN PARALLEL
+      // ======================================================
+
+      const results =
+        await Promise.allSettled(
+          [
+            staffPromise,
+            compartmentPromise
+          ]
+        );
+
+
+      console.log(
+        "⚡ DUTY DATA LOAD COMPLETE:",
+        results
+      );
+
+
+      // ======================================================
+      // 🔥 STAFF COUNT
+      // ======================================================
+
+      console.log(
+        "📦 Staff Profiles:",
+        window.allStaffProfiles?.length ||
+        0
+      );
+
+
+      // ======================================================
+      // 🔥 COMPARTMENT COUNT
+      // ======================================================
+
+      console.log(
+        "📦 Compartments:",
+        window.allCompartmentFeatures?.length ||
+        0
+      );
+
+
+      // ======================================================
+      // ⚡ REBUILD BEATS AFTER CACHE ARRIVES
+      // ======================================================
+      //
+      // Necessary for ADMIN / DFO / ADFO when the initial
+      // RAM list was empty but IDB later supplied staff.
+      //
+      // ======================================================
+
+      renderDutyBeats();
+
+
+      // ======================================================
+      // 🔥 RENDER STAFF AFTER CACHE/FALLBACK
+      // ======================================================
+
+      console.time(
+        "updateDutyStaff"
+      );
+
+
+      try{
+
+        updateDutyStaff(
+          "CACHE_READY"
+        );
+
+      }
+      catch(err){
+
+        console.error(
+          "❌ updateDutyStaff CACHE_READY failed:",
+          err
+        );
+
+      }
+
+
+      console.timeEnd(
+        "updateDutyStaff"
+      );
+
+
+      // ======================================================
+      // 🔥 RENDER COMPARTMENTS AFTER CACHE/FALLBACK
+      // ======================================================
+
+      console.time(
+        "updateDutyCompt"
+      );
+
+
+      try{
+
+        updateDutyCompt(
+          "CACHE_READY"
+        );
+
+      }
+      catch(err){
+
+        console.error(
+          "❌ updateDutyCompt CACHE_READY failed:",
+          err
+        );
+
+      }
+
+
+      console.timeEnd(
+        "updateDutyCompt"
+      );
+
+
+      console.log(
+        "✅ DUTY FORM DATA READY"
+      );
+
+    }
+
+    catch(err){
+
+      console.error(
+        "❌ DUTY DATA LOAD FAILED:",
+        err
+      );
+
+    }
+
+
+    finally{
+
+      console.timeEnd(
+        "DUTY_FORM_RENDER"
+      );
+
+    }
+
+  })();
+
+
+  // ==========================================================
+  // ================= BUTTON FIX =============================
+  // ==========================================================
+
   const startBtn =
     document.getElementById(
       "startDutyBtn"
     );
 
-  if (startBtn) {
 
-    // =================================================
+  if(startBtn){
+
+    // ========================================================
     // 🔥 FORCE CLEAN BUTTON STATE
-    // =================================================
-    startBtn.disabled = false;
+    // ========================================================
+
+    startBtn.disabled =
+      false;
+
 
     startBtn.innerHTML =
       "🚀 START DUTY";
 
+
+    // ========================================================
+    // 🔥 REMOVE OLD CLICK HANDLERS
+    // ========================================================
+
     const newBtn =
-      startBtn.cloneNode(true);
+      startBtn.cloneNode(
+        true
+      );
+
 
     startBtn.parentNode.replaceChild(
       newBtn,
       startBtn
     );
 
-    newBtn.onclick = function(e) {
 
-      if (!e.isTrusted){
-        return;
-      }
+    // ========================================================
+    // 🔥 SAFE USER CLICK
+    // ========================================================
 
-      e.preventDefault();
+    newBtn.onclick =
+      function(e){
 
-      e.stopPropagation();
+        if(
+          !e.isTrusted
+        ){
 
-      console.log(
-        "🔥 START DUTY CLICKED BY USER"
-      );
+          return;
 
-      // =============================================
-      // 🔥 PREVENT AUTO TRIGGER
-      // =============================================
-      if(window.__dutyUpdating === true){
+        }
 
-        console.warn(
-          "⛔ Already updating"
+
+        e.preventDefault();
+
+        e.stopPropagation();
+
+
+        console.log(
+          "🔥 START DUTY CLICKED BY USER"
         );
 
-        return;
-      }
 
-      if (typeof startDuty === "function") {
+        // ====================================================
+        // 🔥 PREVENT AUTO TRIGGER
+        // ====================================================
 
-        startDuty(e);
+        if(
+          window.__dutyUpdating ===
+          true
+        ){
 
-      } else {
+          console.warn(
+            "⛔ Already updating"
+          );
 
-        console.error(
-          "❌ startDuty function is not defined!"
-        );
-      }
-    };
+          return;
+
+        }
+
+
+        if(
+          typeof startDuty ===
+          "function"
+        ){
+
+          startDuty(
+            e
+          );
+
+        }
+
+        else{
+
+          console.error(
+            "❌ startDuty function is not defined!"
+          );
+
+        }
+
+      };
+
 
     console.log(
       "✅ startDutyBtn safely rebound"
     );
+
   }
 
-  console.groupEnd();
-}
 
+  // ==========================================================
+  // 🔥 CLOSE GROUP
+  // ==========================================================
+
+  console.groupEnd();
+
+
+  console.timeEnd(
+    "OPEN_DUTY_FORM_TOTAL"
+  );
+
+}
 /* =========================================================
    🔥 CLOSE DUTY FORM
 ========================================================= */
