@@ -27898,7 +27898,15 @@ async function updateMonthlyStatusCard(){
       return;
     }
 
+/* =========================================================
+   AUTHORITATIVE MONTHLY REFRESH START
+   ========================================================= */
 
+showMonthlyStatusLoading();
+
+console.log(
+  "🔄 MONTHLY STATUS — WAITING FOR AUTHORITATIVE SNAPSHOT"
+);
     // =========================================================
     // MONTH
     // =========================================================
@@ -28038,212 +28046,8 @@ async function updateMonthlyStatusCard(){
     }
 
 
-    // =========================================================
-    // CACHE
-    // =========================================================
 
-    const cached =
-
-      window.monthlyStatusCache[
-        cacheKey
-      ];
-
-
-    // =========================================================
-    // ⚡ IMMEDIATE CACHE PAINT
-    //
-    // Give the UI an instant result while fresh analytics are
-    // loaded in the background when necessary.
-    // =========================================================
-
-    if(
-      cached
-    ){
-
-      try{
-
-        renderMonthlyStatusCard(
-          cached,
-          level
-        );
-
-      }
-
-      catch(renderErr){
-
-        console.warn(
-          "⚠ Cached monthly status render failed",
-          renderErr
-        );
-      }
-    }
-
-
-    // =========================================================
-    // CACHE TTL
-    // =========================================================
-
-    const CACHE_TTL =
-      30000;
-
-
-    const cacheAge =
-
-      cached?.loadedAt
-
-      ? (
-          Date.now() -
-          Number(
-            cached.loadedAt
-          )
-        )
-
-      : Infinity;
-
-
-    // =========================================================
-    // ⚡ FRESH CACHE
-    //
-    // IMPORTANT:
-    //
-    // NO summary/global read anymore.
-    //
-    // The cached summary was already calculated from the
-    // compartment analytics documents.
-    // =========================================================
-
-    if(
-      cached &&
-      Number.isFinite(
-        cacheAge
-      ) &&
-      cacheAge >= 0 &&
-      cacheAge < CACHE_TTL
-    ){
-
-      console.log(
-        "⚡ Monthly Status Cache Hit",
-        {
-          cacheKey,
-          ageMs:
-            Math.round(
-              cacheAge
-            )
-        }
-      );
-
-
-      // -------------------------------------------------------
-      // TITLE
-      // -------------------------------------------------------
-
-      const titleEl =
-        document.getElementById(
-          "monthlyStatusTitle"
-        );
-
-
-      if(
-        titleEl
-      ){
-
-        titleEl.textContent =
-          getMonthlyStatusTitle();
-      }
-
-
-      // -------------------------------------------------------
-      // SESSION LABEL
-      // -------------------------------------------------------
-
-      const sessionLabelEl =
-        document.getElementById(
-          "msSessionsLabel"
-        );
-
-
-      if(
-        sessionLabelEl
-      ){
-
-        sessionLabelEl.textContent =
-
-          level === "compartment"
-
-          ? "Visits"
-
-          : "Patrol Activity";
-      }
-
-
-      // -------------------------------------------------------
-      // LIVE STAFF
-      //
-      // Do not cache this value.
-      // -------------------------------------------------------
-
-      try{
-
-        const liveStaff =
-
-          Number(
-            getLiveStaffCountForCurrentPolygon() ||
-            0
-          );
-
-
-        const liveStaffEl =
-          document.getElementById(
-            "msLiveStaff"
-          );
-
-
-        if(
-          liveStaffEl
-        ){
-
-          liveStaffEl.textContent =
-            liveStaff.toLocaleString();
-
-
-          if(
-            liveStaff === 0
-          ){
-
-            liveStaffEl.style.color =
-              "#ff5b5b";
-
-          }
-
-          else if(
-            liveStaff < 3
-          ){
-
-            liveStaffEl.style.color =
-              "#ffd54f";
-
-          }
-
-          else{
-
-            liveStaffEl.style.color =
-              "#4cff6d";
-          }
-        }
-
-      }
-
-      catch(liveErr){
-
-        console.warn(
-          "⚠ Live staff count failed",
-          liveErr
-        );
-      }
-
-
-      return;
-    }
+    
 
 
     // =========================================================
@@ -28785,8 +28589,89 @@ console.log(
       err
     );
   }
+}/* ============================================================
+   MONTHLY CARD — AUTHORITATIVE LOADING STATE
+   ============================================================ */
+
+function showMonthlyStatusLoading(){
+
+  const setText = (
+    id,
+    text
+  ) => {
+
+    document
+      .getElementById(id)
+      ?.replaceChildren(
+        document.createTextNode(text)
+      );
+
+  };
+
+
+  /*
+   * ONE visible loading indicator only.
+   *
+   * Other monthly values remain neutral.
+   * We deliberately do NOT show stale/intermediate numbers.
+   */
+
+  setText(
+    "msLiveStaff",
+    "Updating..."
+  );
+
+  setText(
+    "msTotalGrids",
+    "—"
+  );
+
+  setText(
+    "msCells",
+    "—"
+  );
+
+  setText(
+    "msArea",
+    "—"
+  );
+
+  setText(
+    "msTotalArea",
+    "—"
+  );
+
+  setText(
+    "msCompartments",
+    "—"
+  );
+
+  setText(
+    "msSessions",
+    "—"
+  );
+
+  setText(
+    "msDistance",
+    "—"
+  );
+
+  setText(
+    "msCoverage",
+    "—"
+  );
+
+  setText(
+    "msUpdatedAt",
+    "—"
+  );
+
 }
-     function renderMonthlyStatusCard(
+/* ============================================================
+   RENDER AUTHORITATIVE MONTHLY STATUS
+   ============================================================ */
+
+function renderMonthlyStatusCard(
   summary,
   level
 ){
@@ -28795,163 +28680,286 @@ console.log(
     return;
   }
 
+
+  /* ==========================================================
+     COVERED AREA
+     ========================================================== */
+
+  const totalCells =
+    Number(summary.totalCells || 0);
+
+  const totalCovered =
+    Number(summary.totalCovered || 0);
+
+  const totalArea =
+    Number(summary.areaHa || 0);
+
   const coveredAreaHa =
+    totalCells > 0
+      ? (
+          totalCovered /
+          totalCells
+        ) *
+        totalArea
+      : 0;
 
-    summary.totalCells > 0
 
-    ?
+  /* ==========================================================
+     LIVE DUTY TEAM
+     ========================================================== */
 
-    (
-      summary.totalCovered /
-      summary.totalCells
-    )
+  let liveStaffCount = 0;
 
-    *
+  try{
 
-    summary.areaHa
+    if(
+      typeof getLiveStaffCountForCurrentPolygon ===
+      "function"
+    ){
 
-    :
+      liveStaffCount =
+        Number(
+          getLiveStaffCountForCurrentPolygon()
+        ) || 0;
 
-    0;
+    }
 
-  document.getElementById(
-    "msCells"
-  )?.replaceChildren(
+  }
+  catch(err){
 
-    document.createTextNode(
+    console.warn(
+      "⚠ Live Duty Team render failed",
+      err
+    );
 
-      `${Number(
-        summary.totalCovered
-      ).toLocaleString()}
+  }
 
-      / ${Number(
-        summary.totalCells
-      ).toLocaleString()}`
 
-    )
+  /* ==========================================================
+     UPDATED AT
+     ========================================================== */
 
+  let updatedText = "--";
+
+  try{
+
+    let updatedAt =
+      summary.latestUpdatedAt ??
+      summary.updatedAt ??
+      summary.loadedAt ??
+      null;
+
+
+    if(
+      updatedAt &&
+      typeof updatedAt.toMillis ===
+      "function"
+    ){
+
+      updatedAt =
+        updatedAt.toMillis();
+
+    }
+
+    else if(
+      updatedAt &&
+      typeof updatedAt.toDate ===
+      "function"
+    ){
+
+      updatedAt =
+        updatedAt.toDate().getTime();
+
+    }
+
+    else if(
+      updatedAt instanceof Date
+    ){
+
+      updatedAt =
+        updatedAt.getTime();
+
+    }
+
+
+    const timestamp =
+      Number(updatedAt);
+
+
+    if(
+      Number.isFinite(timestamp) &&
+      timestamp > 0
+    ){
+
+      updatedText =
+        new Date(timestamp)
+          .toLocaleTimeString();
+
+    }
+
+  }
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Updated At render failed",
+      err
+    );
+
+  }
+
+
+  /* ==========================================================
+     ATOMIC CARD PAINT
+     ========================================================== */
+
+  document
+    .getElementById("msLiveStaff")
+    ?.replaceChildren(
+      document.createTextNode(
+        liveStaffCount.toLocaleString()
+      )
+    );
+
+
+  document
+    .getElementById("msCells")
+    ?.replaceChildren(
+      document.createTextNode(
+        `${totalCovered.toLocaleString()} / ${totalCells.toLocaleString()}`
+      )
+    );
+
+
+  document
+    .getElementById("msTotalGrids")
+    ?.replaceChildren(
+      document.createTextNode(
+        totalCells.toLocaleString()
+      )
+    );
+
+
+  document
+    .getElementById("msArea")
+    ?.replaceChildren(
+      document.createTextNode(
+        coveredAreaHa.toFixed(1) +
+        " ha"
+      )
+    );
+
+
+  document
+    .getElementById("msTotalArea")
+    ?.replaceChildren(
+      document.createTextNode(
+        totalArea.toFixed(1) +
+        " ha"
+      )
+    );
+
+
+  document
+    .getElementById("msCompartments")
+    ?.replaceChildren(
+      document.createTextNode(
+        `${Number(
+          summary.visitedCompartments || 0
+        ).toLocaleString()} / ${Number(
+          summary.compartments || 0
+        ).toLocaleString()}`
+      )
+    );
+
+
+  document
+    .getElementById("msSessions")
+    ?.replaceChildren(
+      document.createTextNode(
+        Number(
+          summary.visitCount || 0
+        ).toLocaleString()
+      )
+    );
+
+
+  document
+    .getElementById("msDistance")
+    ?.replaceChildren(
+      document.createTextNode(
+        (
+          Number(
+            summary.distanceMeters || 0
+          ) / 1000
+        ).toFixed(1) +
+        " km"
+      )
+    );
+
+
+  document
+    .getElementById("msCoverage")
+    ?.replaceChildren(
+      document.createTextNode(
+        Number(
+          summary.coveragePercent || 0
+        ).toFixed(1) +
+        " %"
+      )
+    );
+
+
+  document
+    .getElementById("msUpdatedAt")
+    ?.replaceChildren(
+      document.createTextNode(
+        updatedText
+      )
+    );
+
+
+  /* ==========================================================
+     TITLE
+     ========================================================== */
+
+  const titleEl =
+    document.getElementById(
+      "monthlyStatusTitle"
+    );
+
+  if(titleEl){
+
+    titleEl.textContent =
+      getMonthlyStatusTitle();
+
+  }
+
+
+  console.log(
+    "✅ MONTHLY CARD PAINTED — AUTHORITATIVE SNAPSHOT",
+    {
+      level,
+      totalCells,
+      totalCovered,
+      visitCount:
+        Number(summary.visitCount || 0),
+      visitedCompartments:
+        Number(
+          summary.visitedCompartments || 0
+        ),
+      distanceMeters:
+        Number(
+          summary.distanceMeters || 0
+        ),
+      liveStaffCount,
+      updatedAt:
+        summary.latestUpdatedAt ??
+        summary.updatedAt ??
+        null
+    }
   );
 
-  document.getElementById(
-    "msTotalGrids"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      Number(
-        summary.totalCells
-      ).toLocaleString()
-
-    )
-
-  );
-
-  document.getElementById(
-    "msCompartments"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      `${Number(
-        summary.visitedCompartments
-      ).toLocaleString()}
-
-      / ${Number(
-        summary.compartments
-      ).toLocaleString()}`
-
-    )
-
-  );
-
-  document.getElementById(
-    "msSessions"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      Number(
-        summary.visitCount
-      ).toLocaleString()
-
-    )
-
-  );
-
-  // =====================================
-  // 🔥 GLOBAL MONTHLY DISTANCE
-  // FALLBACK TO COMPARTMENT DISTANCE
-  // =====================================
-const totalDistanceMeters =
-
-Number(
-  summary.distanceMeters || 0
-);
-
-  document.getElementById(
-    "msDistance"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      (
-        totalDistanceMeters
-        / 1000
-      ).toFixed(1)
-
-      + " km"
-
-    )
-
-  );
-
-  document.getElementById(
-    "msArea"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      coveredAreaHa.toFixed(1)
-
-      + " ha"
-
-    )
-
-  );
-
-  document.getElementById(
-    "msTotalArea"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      Number(
-        summary.areaHa || 0
-      ).toFixed(1)
-
-      + " ha"
-
-    )
-
-  );
-
-  document.getElementById(
-    "msCoverage"
-  )?.replaceChildren(
-
-    document.createTextNode(
-
-      summary.coveragePercent
-        .toFixed(1)
-
-      + " %"
-
-    )
-
-  );
-
-}
-function addMonthlyStatusCard() {
+}function addMonthlyStatusCard() {
 
   // =========================================================
   // DO NOT CREATE CARD FOR VILLAGER
@@ -30587,158 +30595,29 @@ setTimeout(
 
     }
 
+// ==========================================================
+// INITIAL MONTHLY STATUS LOADING STATE
+// ==========================================================
 
+showMonthlyStatusLoading();
+
+console.log(
+  "⏳ MONTHLY STATUS: waiting for authoritative GIS / GRID"
+);// ==========================================================
 // ==========================================================
 // ⚡ INITIAL MONTHLY STATUS
-// ----------------------------------------------------------
-// FIRST: restore existing IDB/RAM cache immediately.
-// DO NOT force the expensive authoritative calculation
-// during the first paint.
+// ==========================================================
+// DO NOT RESTORE / PAINT OLD MONTHLY CACHE.
+// Card starts neutral.
+// Authoritative snapshot is painted only after
+// GIS / GRID readiness.
 // ==========================================================
 
-if(
-  !window.__MONTHLY_STATUS_RUNNING__
-){
+showMonthlyStatusLoading();
 
-  window.__MONTHLY_STATUS_RUNNING__ =
-    true;
-
-  try{
-
-    const d =
-      new Date();
-
-    const monthKey =
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth() + 1
-        ).padStart(2,"0")
-      }`;
-
-    const level =
-      String(
-        window.activePopupContext?.level ||
-        "btr"
-      ).toLowerCase();
-
-    const filterValue =
-      level === "compartment"
-        ? window.gisFilter?.compartment
-        : level === "beat"
-        ? window.gisFilter?.beat
-        : level === "range"
-        ? window.gisFilter?.range
-        : level === "division"
-        ? window.gisFilter?.division
-        : "";
-
-    const cacheKey =
-      `${monthKey}_${level}_${
-        filterValue || "all"
-      }`;
-
-    window.monthlyStatusCache ??=
-      {};
-
-    // ========================================================
-    // RAM FIRST
-    // ========================================================
-
-    let cached =
-      window.monthlyStatusCache[
-        cacheKey
-      ];
-
-    // ========================================================
-    // IDB SECOND
-    // ========================================================
-
-    if(
-      !cached
-    ){
-
-      cached =
-        await getMonthlyStatusFromIDB(
-          cacheKey
-        );
-
-      if(
-        cached
-      ){
-
-        window.monthlyStatusCache[
-          cacheKey
-        ] =
-          cached;
-
-      }
-
-    }
-
-    // ========================================================
-    // ⚡ IMMEDIATE PAINT
-    // ========================================================
-
-    if(
-      cached
-    ){
-
-      renderMonthlyStatusCard(
-        cached,
-        level
-      );
-
-      paintMonthlyStatusRuntime(
-        cached,
-        level
-      );
-
-      console.log(
-        "⚡ MONTHLY STATUS RESTORED FROM IDB/RAM",
-        {
-          cacheKey,
-          covered:
-            cached.totalCovered,
-          cells:
-            cached.totalCells,
-          area:
-            cached.areaHa,
-          compartments:
-            cached.visitedCompartments,
-          sessions:
-            cached.visitCount
-        }
-      );
-
-    }
-    else{
-
-      console.log(
-        "ℹ️ NO MONTHLY STATUS CACHE YET"
-      );
-
-    }
-
-  }
-
-  catch(err){
-
-    console.warn(
-      "⚠ Monthly Status Cache Restore Failed",
-      err
-    );
-
-  }
-
-  finally{
-
-    window.__MONTHLY_STATUS_RUNNING__ =
-      false;
-
-  }
-
-}
-
+console.log(
+  "⏳ MONTHLY STATUS: waiting for authoritative GIS / GRID"
+);
     // ==========================================================
     // WAIT FOR MASTER GRID
     // ==========================================================
