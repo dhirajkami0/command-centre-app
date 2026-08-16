@@ -27242,110 +27242,8 @@ function getLiveStaffCountForCurrentPolygon(){
    📥 LOAD MONTHLY STATUS FROM EXISTING IDB
    ========================================================= */
 
-async function getMonthlyStatusFromIDB(
-  cacheKey
-){
-
-  try{
-
-    if(
-      typeof idbKeyval === "undefined"
-    ){
-
-      console.warn(
-        "⚠ idbKeyval unavailable"
-      );
-
-      return null;
-    }
 
 
-    const cached =
-      await idbKeyval.get(
-        `monthly_status_${cacheKey}`
-      );
-
-
-    if(
-      !cached ||
-      typeof cached !== "object"
-    ){
-
-      return null;
-
-    }
-
-
-    return cached;
-
-  }
-
-  catch(err){
-
-    console.warn(
-      "⚠ Monthly Status IDB read failed",
-      err
-    );
-
-    return null;
-
-  }
-
-}
-
-
-/* =========================================================
-   💾 SAVE MONTHLY STATUS TO EXISTING IDB
-   ========================================================= */
-
-async function saveMonthlyStatusToIDB(
-  cacheKey,
-  summary
-){
-
-  try{
-
-    if(
-      typeof idbKeyval === "undefined"
-    ){
-
-      return false;
-
-    }
-
-
-    if(
-      !summary ||
-      typeof summary !== "object"
-    ){
-
-      return false;
-
-    }
-
-
-    await idbKeyval.set(
-      `monthly_status_${cacheKey}`,
-      summary
-    );
-
-
-    return true;
-
-  }
-
-  catch(err){
-
-    console.warn(
-      "⚠ Monthly Status IDB write failed",
-      err
-    );
-
-    return false;
-
-  }
-
-}
 
 
 /* =========================================================
@@ -27765,6 +27663,221 @@ async function incrementMonthlyStatusCache(
       "⚠ incrementMonthlyStatusCache failed",
       err
     );
+
+  }
+
+}
+
+/* ============================================================
+   📦 MONTHLY STATUS IDB CACHE
+   ============================================================ */
+
+const MONTHLY_STATUS_IDB_PREFIX =
+  "monthly_status_v2_";
+
+
+/* ============================================================
+   SAVE MONTHLY STATUS TO IDB
+   ============================================================ */
+
+async function saveMonthlyStatusToIDB(
+  cacheKey,
+  entry
+){
+
+  try{
+
+    if(
+      !window.idbKeyval ||
+      typeof window.idbKeyval.set !== "function"
+    ){
+
+      console.warn(
+        "⚠ Monthly Status IDB unavailable"
+      );
+
+      return false;
+    }
+
+
+    /*
+     * Store only plain serializable data.
+     *
+     * Firestore Timestamp objects are converted to
+     * milliseconds before persistence.
+     */
+
+    let latestUpdatedAt =
+      entry?.latestUpdatedAt;
+
+
+    if(
+      latestUpdatedAt &&
+      typeof latestUpdatedAt.toMillis === "function"
+    ){
+
+      latestUpdatedAt =
+        latestUpdatedAt.toMillis();
+
+    }
+
+    else if(
+      latestUpdatedAt &&
+      typeof latestUpdatedAt.toDate === "function"
+    ){
+
+      latestUpdatedAt =
+        latestUpdatedAt.toDate().getTime();
+
+    }
+
+    else if(
+      latestUpdatedAt instanceof Date
+    ){
+
+      latestUpdatedAt =
+        latestUpdatedAt.getTime();
+
+    }
+
+    else if(
+      latestUpdatedAt != null
+    ){
+
+      const parsed =
+        Number(latestUpdatedAt);
+
+      latestUpdatedAt =
+        Number.isFinite(parsed)
+          ? parsed
+          : null;
+
+    }
+
+
+    const record = {
+
+      ...entry,
+
+      latestUpdatedAt,
+
+      cacheKey,
+
+      savedAt:
+        Date.now(),
+
+      cacheVersion:
+        2
+
+    };
+
+
+    await window.idbKeyval.set(
+      MONTHLY_STATUS_IDB_PREFIX + cacheKey,
+      record
+    );
+
+
+    console.log(
+      "💾 MONTHLY STATUS SAVED TO IDB",
+      {
+        cacheKey,
+        covered:
+          record.totalCovered,
+        cells:
+          record.totalCells,
+        visits:
+          record.visitCount,
+        savedAt:
+          record.savedAt
+      }
+    );
+
+
+    return true;
+
+  }
+
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Status IDB save failed",
+      err
+    );
+
+    return false;
+
+  }
+
+}
+
+
+/* ============================================================
+   LOAD MONTHLY STATUS FROM IDB
+   ============================================================ */
+
+async function getMonthlyStatusFromIDB(
+  cacheKey
+){
+
+  try{
+
+    if(
+      !window.idbKeyval ||
+      typeof window.idbKeyval.get !== "function"
+    ){
+
+      return null;
+
+    }
+
+
+    const record =
+      await window.idbKeyval.get(
+        MONTHLY_STATUS_IDB_PREFIX + cacheKey
+      );
+
+
+    if(
+      !record ||
+      typeof record !== "object"
+    ){
+
+      return null;
+
+    }
+
+
+    /*
+     * Reject incompatible cache versions.
+     */
+
+    if(
+      record.cacheVersion !== 2
+    ){
+
+      console.log(
+        "⏭ Old monthly cache ignored",
+        cacheKey
+      );
+
+      return null;
+
+    }
+
+
+    return record;
+
+  }
+
+  catch(err){
+
+    console.warn(
+      "⚠ Monthly Status IDB read failed",
+      err
+    );
+
+    return null;
 
   }
 
@@ -28357,33 +28470,80 @@ async function updateMonthlyStatusCard(){
     });
 
 
-    // =========================================================
-    // SAVE CACHE
-    // =========================================================
+// =========================================================
+// 💾 SAVE MONTHLY STATUS
+// =========================================================
+//
+// FLOW:
+//
+// authoritative analytics
+//        ↓
+// RAM cache
+//        ↓
+// IDB cache
+//
+// IDB save is intentionally NOT awaited before painting.
+// Therefore the UI does not wait for IndexedDB.
+//
 
-    const cacheEntry = {
+const cacheEntry = {
 
-      ...summary,
+  ...summary,
 
-      loadedAt:
-        Date.now(),
+  loadedAt:
+    Date.now(),
 
-      monthKey,
+  monthKey,
 
-      level,
+  level,
 
-      filterValue:
-        filterValue || ""
+  filterValue:
+    filterValue || "",
 
-    };
+  cacheVersion:
+    2
 
-
-    window.monthlyStatusCache[
-      cacheKey
-    ] =
-      cacheEntry;
+};
 
 
+/* =========================================================
+   1. UPDATE RAM IMMEDIATELY
+   ========================================================= */
+
+window.monthlyStatusCache[
+  cacheKey
+] =
+  cacheEntry;
+
+
+/* =========================================================
+   2. PERSIST TO IDB IN BACKGROUND
+   ========================================================= */
+
+void saveMonthlyStatusToIDB(
+  cacheKey,
+  cacheEntry
+);
+
+
+/* =========================================================
+   DEBUG
+   ========================================================= */
+
+console.log(
+  "📦 MONTHLY STATUS CACHE UPDATED",
+  {
+    cacheKey,
+    covered:
+      cacheEntry.totalCovered,
+    cells:
+      cacheEntry.totalCells,
+    visits:
+      cacheEntry.visitCount,
+    areaHa:
+      cacheEntry.areaHa
+  }
+);
     // =========================================================
     // FINAL PAINT
     // =========================================================
