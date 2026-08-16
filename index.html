@@ -46258,229 +46258,243 @@ data.forEach(
       }
 
 
-      // ==================================================
-      // 📍 CURRENT ACTUAL GIS LOCATION
-      // ==================================================
+// ==================================================
+// 📍 CURRENT ACTUAL GIS LOCATION
+// ==================================================
 
-      let currentLocation =
+let currentLocation =
+{
+  type :
+    "GPS",
+
+  gps :
+    `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+
+  compartment :
+    "",
+
+  beat :
+    "",
+
+  range :
+    "",
+
+  division :
+    "",
+
+  village :
+    "",
+
+  block :
+    "",
+
+  nearestPoint :
+    "",
+
+  distanceMeters :
+    null
+};
+
+
+// ==================================================
+// 📍 RESOLVE CURRENT GPS → GIS
+// --------------------------------------------------
+// ONLY resolver used:
+//     window.resolveCurrentGIS(lat, lon)
+//
+// NO GreenGuardAI.GISEntities
+// NO resolveCurrentLocation
+// ==================================================
+
+try{
+
+  let resolved =
+    null;
+
+
+  // ==============================================
+  // PRIMARY / ONLY GIS RESOLVER
+  // ==============================================
+
+  if(
+
+    typeof window.resolveCurrentGIS ===
+    "function"
+
+  ){
+
+    resolved =
+      window.resolveCurrentGIS(
+
+        lat,
+
+        lon
+
+      );
+
+  }
+
+
+  // ==============================================
+  // APPLY GIS RESULT
+  // ==============================================
+
+  if(
+
+    resolved
+
+  ){
+
+    currentLocation =
+    {
+
+      ...currentLocation,
+
+      compartment :
+        resolved.compartment ||
+
+        "",
+
+      beat :
+        resolved.beat ||
+
+        "",
+
+      range :
+        resolved.range ||
+
+        "",
+
+      division :
+        resolved.division ||
+
+        "",
+
+      village :
+        resolved.village ||
+
+        "",
+
+      block :
+        resolved.block ||
+
+        "",
+
+      nearestPoint :
+        resolved.nearestPoint ||
+
+        "",
+
+      distanceMeters :
+        resolved.distanceMeters ??
+
+        null
+
+    };
+
+
+    // ==========================================
+    // FOREST LOCATION
+    // ==========================================
+
+    if(
+
+      currentLocation.compartment ||
+
+      currentLocation.beat ||
+
+      currentLocation.range ||
+
+      currentLocation.division
+
+    ){
+
+      currentLocation.type =
+        "FOREST";
+
+    }
+
+
+    // ==========================================
+    // VILLAGE LOCATION
+    // ==========================================
+
+    else if(
+
+      currentLocation.village
+
+    ){
+
+      currentLocation.type =
+        "VILLAGE";
+
+    }
+
+
+    // ==========================================
+    // GPS VALID BUT GIS NOT RESOLVED
+    // ==========================================
+
+    else{
+
+      currentLocation.type =
+        "UNKNOWN";
+
+    }
+
+  }
+
+
+  // ==============================================
+  // RESOLVER NOT AVAILABLE / NO RESULT
+  // ==============================================
+
+  else{
+
+    currentLocation.type =
+      "UNKNOWN";
+
+    console.warn(
+
+      "⚠ Current GIS location not resolved",
+
       {
-        type :
-          "GPS",
 
-        gps :
-          `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+        lat :
 
-        compartment :
-          "",
+          lat,
 
-        beat :
-          "",
+        lon :
 
-        range :
-          "",
-
-        division :
-          "",
-
-        village :
-          "",
-
-        block :
-          "",
-
-        nearestPoint :
-          "",
-
-        distanceMeters :
-          null
-      };
-
-
-      try{
-
-        // ==============================================
-        // PRIMARY RESOLVER
-        // ==============================================
-
-        let resolved =
-          null;
-
-
-        const gis =
-
-          window.GreenGuardAI
-            ?.GISEntities;
-
-
-        if(
-
-          gis &&
-
-          typeof gis.resolveCurrentLocation ===
-          "function"
-
-        ){
-
-          resolved =
-
-            gis.resolveCurrentLocation(
-
-              lat,
-
-              lon
-
-            );
-
-        }
-
-
-        // ==============================================
-        // FALLBACK RESOLVER
-        // ==============================================
-
-        if(
-
-          !resolved &&
-
-          typeof window.resolveCurrentGIS ===
-          "function"
-
-        ){
-
-          resolved =
-
-            window.resolveCurrentGIS(
-
-              lat,
-
-              lon
-
-            );
-
-        }
-
-
-        // ==============================================
-        // APPLY RESULT
-        // ==============================================
-
-        if(
-
-          resolved
-
-        ){
-
-          currentLocation =
-
-          {
-
-            ...currentLocation,
-
-            compartment :
-
-              resolved.compartment ||
-
-              "",
-
-            beat :
-
-              resolved.beat ||
-
-              "",
-
-            range :
-
-              resolved.range ||
-
-              "",
-
-            division :
-
-              resolved.division ||
-
-              "",
-
-            village :
-
-              resolved.village ||
-
-              "",
-
-            block :
-
-              resolved.block ||
-
-              "",
-
-            nearestPoint :
-
-              resolved.nearestPoint ||
-
-              "",
-
-            distanceMeters :
-
-              resolved.distanceMeters ??
-
-              null
-
-          };
-
-
-          // ==========================================
-          // LOCATION TYPE
-          // ==========================================
-
-          if(
-
-            currentLocation.compartment ||
-
-            currentLocation.beat ||
-
-            currentLocation.range
-
-          ){
-
-            currentLocation.type =
-
-              "FOREST";
-
-          }
-
-
-          else if(
-
-            currentLocation.village
-
-          ){
-
-            currentLocation.type =
-
-              "VILLAGE";
-
-          }
-
-        }
+          lon
 
       }
 
-      catch(err){
+    );
 
-        console.warn(
+  }
 
-          "⚠ Current GIS location resolution failed:",
+}
 
-          err
+catch(err){
 
-        );
+  currentLocation.type =
+    "UNKNOWN";
 
-      }
+  console.error(
+
+    "❌ Current GIS location resolution failed:",
+
+    err
+
+  );
+
+}
 
 
-      // ==================================================
-      // 📍 BUILD CURRENT LOCATION POPUP HTML
-      // ==================================================
-
+// ==================================================
+// 📍 BUILD CURRENT LOCATION POPUP HTML
+// ==================================================
       let currentLocationHtml =
         "";
 
@@ -65763,9 +65777,9 @@ try {
     "⚠ Time parse failed"
   );
 }
-// ==================================================
+// ============================================================
 // 📍 CURRENT ACTUAL GIS LOCATION
-// ==================================================
+// ============================================================
 
 let currentLocation =
 {
@@ -65786,96 +65800,142 @@ let currentLocation =
     distanceMeters : null
 };
 
-const gis =
-    window.GreenGuardAI
-        ?.GISEntities;
+
+// ============================================================
+// 📍 RESOLVE CURRENT GPS → GIS
+// ============================================================
 
 if(
-
-    gis &&
-
-    typeof gis.resolveCurrentLocation ===
+    typeof window.resolveCurrentGIS ===
         "function"
-
 ){
 
-   try{
+    try{
 
-    const resolved =
-        gis.resolveCurrentLocation(
-            lat,
-            lon
-        );
-
-    if(resolved){
-
-        currentLocation = {
-
-            ...currentLocation,
-
-            compartment:
-                resolved.compartment || "",
-
-            beat:
-                resolved.beat || "",
-
-            range:
-                resolved.range || "",
-
-            division:
-                resolved.division || "",
-
-            village:
-                resolved.village || "",
-
-            block:
-                resolved.block || "",
-
-            nearestPoint:
-                resolved.nearestPoint || "",
-
-            distanceMeters:
-                resolved.distanceMeters ?? null
-        };
+        const resolved =
+            window.resolveCurrentGIS(
+                lat,
+                lon
+            );
 
         if(
-            currentLocation.compartment ||
-            currentLocation.beat ||
-            currentLocation.range
+            resolved
         ){
 
-            currentLocation.type =
-                "FOREST";
+            currentLocation = {
+
+                ...currentLocation,
+
+                compartment:
+                    resolved.compartment ||
+                    "",
+
+                beat:
+                    resolved.beat ||
+                    "",
+
+                range:
+                    resolved.range ||
+                    "",
+
+                division:
+                    resolved.division ||
+                    "",
+
+                village:
+                    resolved.village ||
+                    "",
+
+                block:
+                    resolved.block ||
+                    "",
+
+                nearestPoint:
+                    resolved.nearestPoint ||
+                    "",
+
+                distanceMeters:
+                    resolved.distanceMeters ??
+                    null
+
+            };
+
+            if(
+                currentLocation.compartment ||
+                currentLocation.beat ||
+                currentLocation.range ||
+                currentLocation.division
+            ){
+
+                currentLocation.type =
+                    "FOREST";
+
+            }
+
+            else if(
+                currentLocation.village
+            ){
+
+                currentLocation.type =
+                    "VILLAGE";
+
+            }
+
+            else{
+
+                currentLocation.type =
+                    "UNKNOWN";
+
+            }
 
         }
 
-        else if(
-            currentLocation.village
-        ){
+        else{
 
             currentLocation.type =
-                "VILLAGE";
+                "UNKNOWN";
+
+            console.warn(
+                "⚠ GPS available but GIS location could not be resolved",
+                {
+                    lat,
+                    lon
+                }
+            );
 
         }
 
     }
 
-}
-catch(err){
+    catch(err){
 
-    console.warn(
-        "⚠ Current GIS location resolution failed:",
-        err
+        currentLocation.type =
+            "UNKNOWN";
+
+        console.error(
+            "❌ Current GIS resolution failed:",
+            err
+        );
+
+    }
+
+}
+
+else{
+
+    currentLocation.type =
+        "UNKNOWN";
+
+    console.error(
+        "❌ window.resolveCurrentGIS is not available"
     );
 
-}
 }
 
 
 // ==================================================
 // 📍 BUILD CURRENT LOCATION POPUP HTML
 // ==================================================
-
 let currentLocationHtml = "";
 
 
