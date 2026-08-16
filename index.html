@@ -11498,8 +11498,7 @@ console.log("🔥 VERSION", APP_VERSION);
 // ======================================================
 // 🚀 SINGLE LOAD WRAPPER (ONLY ONE - FINAL)
 // ======================================================
-window.addEventListener("load", function () {
-
+document.addEventListener("DOMContentLoaded", function () {
   // 🔥 MASTER LOCK
   if (window.__LOAD_EXECUTED__) {
     console.warn("⛔ Duplicate load blocked");
