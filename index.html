@@ -52795,11 +52795,23 @@ async function submitMoveForm(){
 // =====================================================
 // 📍 NAVIGATE TO INCIDENT
 // =====================================================
+// =====================================================
+// 📍 NAVIGATE TO INCIDENT
+// -----------------------------------------------------
+// GREEN GUARD → ANDROID → GOOGLE MAPS
+//
+// IMPORTANT:
+// Google Maps is opened OUTSIDE the GreenGuard WebView.
+// Therefore Android BACK returns directly to GreenGuard.
+// =====================================================
 function navigateHEC(lat, lon){
 
     lat = Number(lat);
     lon = Number(lon);
 
+    // =================================================
+    // 📍 GPS VALIDATION
+    // =================================================
     if(
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
@@ -52808,19 +52820,71 @@ function navigateHEC(lat, lon){
         return;
     }
 
-    // Google Maps turn-by-turn navigation
+    if(
+        lat < -90 ||
+        lat > 90 ||
+        lon < -180 ||
+        lon > 180
+    ){
+        alert("Invalid incident coordinates.");
+        return;
+    }
+
+    // =================================================
+    // 🤖 ANDROID APP
+    // =================================================
+    if(
+        window.Android &&
+        typeof window.Android.openExternalNavigation ===
+            "function"
+    ){
+
+        console.log(
+            "🧭 Opening external Google Maps navigation:",
+            lat,
+            lon
+        );
+
+        try{
+
+            window.Android.openExternalNavigation(
+                String(lat),
+                String(lon)
+            );
+
+            return;
+
+        }catch(error){
+
+            console.error(
+                "❌ Android navigation failed:",
+                error
+            );
+
+        }
+    }
+
+    // =================================================
+    // 🌐 BROWSER / NON-ANDROID FALLBACK
+    // =================================================
     const url =
-        `https://www.google.com/maps/dir/?api=1` +
-        `&destination=${lat},${lon}` +
-        `&travelmode=driving`;
+        "https://www.google.com/maps/dir/?api=1" +
+        "&destination=" +
+        encodeURIComponent(
+            `${lat},${lon}`
+        ) +
+        "&travelmode=driving";
+
+    console.log(
+        "🌐 Browser navigation fallback:",
+        url
+    );
 
     window.open(
         url,
         "_blank"
     );
-
-}
-    // =====================================================
+}    // =====================================================
 // ☎ CALL REPORTER
 // =====================================================
 window.callHECReporter=function(mobile){
