@@ -66376,38 +66376,68 @@ const popup = `
     </b>
 
 </div>
-<div style="
-      margin-bottom:3px;
-      font-weight:600;
-      color:#1b5e20;
-    ">
-      🛰 Live GPS Active
-    </div>
+<div style=" 
+      margin-bottom:3px; 
+      font-weight:600; 
+      color:#1b5e20; 
+    "> 
+      🛰 Live GPS Active 
+    </div> 
+ 
+    <div style=" 
+      margin-bottom:3px; 
+    "> 
+      🟢 Duty Started: 
+      <b>${dutyStarted}</b> 
+    </div> 
+ 
+    <div style=" 
+      margin-bottom:3px; 
+    "> 
+      ⏳ Duty Duration: 
+      <b>${dutyDuration}</b> 
+    </div> 
+ 
+    <div> 
+      ⏱ Last GPS Update: 
+      <b>${liveTime}</b> 
+    </div> 
+ 
+  </div>
 
-    <div style="
-      margin-bottom:3px;
-    ">
-      🟢 Duty Started:
-      <b>${dutyStarted}</b>
-    </div>
 
-    <div style="
-      margin-bottom:3px;
-    ">
-      ⏳ Duty Duration:
-      <b>${dutyDuration}</b>
-    </div>
+  <!-- ===================================== -->
+  <!-- 🧭 NAVIGATE -->
+  <!-- ===================================== -->
 
-    <div>
-      ⏱ Last GPS Update:
-      <b>${liveTime}</b>
-    </div>
+  <div
+    style="
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr;
+    "
+  >
+
+    <button
+      onclick="navigateHEC('${lat}','${lon}')"
+      style="
+        padding:11px;
+        background:#1565c0;
+        color:white;
+        border:none;
+        border-radius:8px;
+        font-weight:bold;
+        cursor:pointer;
+        width:100%;
+      "
+    >
+      🧭 NAVIGATE
+    </button>
 
   </div>
 
+
 </div>`;
-
-
 // ============================================================
 // 📍 PATROL POINT COUNT
 // ------------------------------------------------------------
