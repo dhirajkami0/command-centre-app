@@ -96993,858 +96993,566 @@ console.log(
     console.log("📤 PAYLOAD:", payload);
 
     // ============================================================
-// 🔴 STEP 1 — FAST END-DUTY COMMIT
-// ------------------------------------------------------------
-// THIS MUST FINISH BEFORE ANY HISTORY / KML / ANALYTICS WORK.
-// Once this succeeds, Firestore MUST say dutyActive:false.
-// ============================================================
+    // 🔥 BACKEND SAVE
+    // ============================================================
+    Promise.allSettled([
+      callBackend("markDutyOutWithObs", payload),
 
-console.log("🔴 STEP 1 - FAST DUTY END COMMIT START");
+      window.fb.setDoc(
+        window.fb.doc(window.db, "live_staff", profile.cleanName),
+        {
+          dutyActive: false,
+          status: "ENDED",
+          sessionId: "",
+          updatedAt: window.fb.serverTimestamp(),
+          lastDutyEnd: new Date().toISOString(),
+          range: window.fb.deleteField(),
+          division: window.fb.deleteField(),
+          lat: window.fb.deleteField(),
+          lon: window.fb.deleteField(),
+          speed: window.fb.deleteField(),
+          heading: window.fb.deleteField(),
+          turnRate: window.fb.deleteField(),
+          accuracy: window.fb.deleteField(),
+          location: window.fb.deleteField(),
+          timestamp: window.fb.deleteField(),
+          time: window.fb.deleteField(),
+          lastSeen: window.fb.deleteField()
+        },
+        { merge: true }
+      ),
+ 
+      (async () => {
+        try {
+          if (!sessionId) {
+            console.warn("⚠ No sessionId available");
+            return;
+          }
+// ======================================
+// 🔥 BUILD FINAL HISTORY ONCE
+// ======================================
 
-try {
+const pointsSnap =
+  await window.fb.getDocs(
 
-  // ----------------------------------------------------------
-  // 🔒 HARD SESSION END LOCK
-  // ----------------------------------------------------------
-  window.isDutyActive = false;
+    window.fb.query(
 
-  window.endedDutySessionId = sessionId || "";
+      window.fb.collection(
+        window.db,
+        "patrol_tracks",
+        sessionId,
+        "points"
+      ),
 
-  if (sessionId) {
-    localStorage.setItem(
-      "endedDutySessionId",
-      String(sessionId)
-    );
-  }
+      window.fb.orderBy(
+        "time"
+      )
 
-  // ----------------------------------------------------------
-  // 🔴 FIRESTORE LIVE STAFF = FALSE
-  // ----------------------------------------------------------
-  await window.fb.setDoc(
-    window.fb.doc(
-      window.db,
-      "live_staff",
-      profile.cleanName
-    ),
-    {
-      dutyActive: false,
-      status: "ENDED",
+    )
 
-      // IMPORTANT:
-      // Do NOT leave the old session ID here.
-      sessionId: "",
+  );
 
-      updatedAt:
-        window.fb.serverTimestamp(),
+const fullTrack = [];
 
-      lastDutyEnd:
-        new Date().toISOString(),
+pointsSnap.forEach(doc => {
 
-      range:
-        window.fb.deleteField(),
+  const p = doc.data();
 
-      division:
-        window.fb.deleteField(),
+  if(
+
+    Number.isFinite(
+      Number(p?.lat)
+    )
+
+    &&
+
+    Number.isFinite(
+      Number(p?.lon)
+    )
+
+  ){
+
+    fullTrack.push({
 
       lat:
-        window.fb.deleteField(),
+        Number(p.lat),
 
-      lon:
-        window.fb.deleteField(),
+      lng:
+        Number(p.lon),
 
-      speed:
-        window.fb.deleteField(),
+     time:
+  typeof p.time === "number"
+    ? p.time
+    : new Date(p.time).getTime()
+    });
 
-      heading:
-        window.fb.deleteField(),
+  }
 
-      turnRate:
-        window.fb.deleteField(),
-
-      accuracy:
-        window.fb.deleteField(),
-
-      location:
-        window.fb.deleteField(),
-
-      timestamp:
-        window.fb.deleteField(),
-
-      time:
-        window.fb.deleteField(),
-
-      lastSeen:
-        window.fb.deleteField()
-    },
-    {
-      merge: true
-    }
-  );
-
-  console.log(
-    "✅ STEP 1 - FIRESTORE DUTY FALSE CONFIRMED",
-    {
-      staff: profile.cleanName,
-      sessionId: sessionId,
-      dutyActive: false
-    }
-  );
-
-} catch (fastEndErr) {
-
-  console.error(
-    "❌ FAST END-DUTY COMMIT FAILED",
-    fastEndErr
-  );
-
-  // ----------------------------------------------------------
-  // IMPORTANT:
-  // DO NOT START HISTORY/KML/REPORT IF THE PRIMARY END
-  // COMMIT FAILED.
-  // ----------------------------------------------------------
-
-  window.isDutyActive = true;
-
-  alert(
-    "❌ Duty could not be ended.\n\n" +
-    "Firestore end-duty confirmation failed.\n" +
-    "Please try again."
-  );
-
-  // Unlock button because the actual end did NOT succeed.
-  try {
-    const retryBtn =
-      document.getElementById("confirmEndDutyBtn") ||
-      document
-        .querySelector("#confirmEndDutyToastBtn")
-        ?.parentElement
-        ?.parentElement
-        ?.parentElement
-        ?.querySelector("button:last-child");
-
-    if (retryBtn) {
-      retryBtn.innerHTML =
-        "✅ SUBMIT & END DUTY";
-
-      retryBtn.disabled = false;
-    }
-  } catch (e) {}
-
-  console.groupEnd();
-  return;
-}
+});
 
 console.log(
-  "🟢 DUTY IS NOW DEFINITIVELY ENDED",
+  "📍 FINAL TRACK",
+  fullTrack.length
+);
+
+if(
+  fullTrack.length < 2
+){
+
+  throw new Error(
+    `Insufficient track points: ${fullTrack.length}`
+  );
+
+}
+
+console.table({
+
+  sessionId,
+
+  fullTrackPoints:
+    fullTrack.length
+
+});
+
+// ======================================
+// 🔥 TELEPORT FILTER
+// ======================================
+
+const cleanTrack = [];
+
+for(
+  let i = 0;
+  i < fullTrack.length;
+  i++
+){
+
+  const curr =
+    fullTrack[i];
+
+  // ==========================
+  // FIRST POINT
+  // ==========================
+  if(i === 0){
+
+    cleanTrack.push(curr);
+
+    continue;
+  }
+
+  const prev =
+    fullTrack[i - 1];
+
+  const dist =
+
+    map.distance(
+
+      [prev.lat, prev.lng],
+
+      [curr.lat, curr.lng]
+
+    );
+
+  const timeDiffSec =
+
+    Math.max(
+
+      1,
+
+      (
+        curr.time -
+        prev.time
+      ) / 1000
+
+    );
+
+  const speedKmh =
+
+    (dist / timeDiffSec)
+    * 3.6;
+
+  const isTeleport =
+
+    dist > 300
+
+    ||
+
+    speedKmh > 120
+
+    ||
+
+    !isFinite(dist)
+
+    ||
+
+    !isFinite(speedKmh);
+
+  if(isTeleport){
+
+    console.warn(
+
+      "🚫 HISTORY TELEPORT REMOVED",
+
+      {
+
+        distance:
+          Math.round(dist),
+
+        speed:
+          Math.round(speedKmh),
+
+        from:
+          [prev.lat, prev.lng],
+
+        to:
+          [curr.lat, curr.lng]
+
+      }
+
+    );
+
+    continue;
+  }
+
+  cleanTrack.push(curr);
+
+}
+
+console.table({
+
+  originalPoints:
+    fullTrack.length,
+
+  cleanedPoints:
+    cleanTrack.length,
+
+  removed:
+    fullTrack.length -
+    cleanTrack.length
+
+});
+
+// ======================================
+// 🔥 USE CLEAN TRACK
+// ======================================
+
+console.log(
+  "STEP A - processHistoryTrack START"
+);
+
+await processHistoryTrack(
+  cleanTrack,
   sessionId
 );
 
+console.log(
+  "STEP A - processHistoryTrack DONE"
+);
+// ======================================
+// FINAL ANALYTICS FLUSH
+// ======================================
 
-// ============================================================
-// 🔥 STEP 2 — BACKGROUND FINALIZATION
-// ------------------------------------------------------------
-// EVERYTHING BELOW IS NON-CRITICAL.
-// It MUST NOT delay dutyActive:false.
-// It MUST NOT be allowed to reactivate duty.
-// ============================================================
+try {
 
-void (async () => {
+console.log(
+  "STEP B - flushAnalyticsBuffer START"
+);
+console.log("========== BEFORE FINAL FLUSH ==========");
 
-  try {
+console.log(
+  "analyticsBuffer",
+  window.analyticsBuffer
+);
 
-    // ========================================================
-    // BACKEND DUTY-OUT
-    // ========================================================
+console.log(
+  "analyticsBuffer keys",
+  Object.keys(window.analyticsBuffer || {})
+);
 
-    try {
+Object.entries(window.analyticsBuffer || {}).forEach(
+([gridId,data])=>{
 
-      await callBackend(
-        "markDutyOutWithObs",
-        payload
-      );
+  console.table({
 
-      console.log(
-        "✅ BACKEND DUTY OUT COMPLETE"
-      );
+    gridId,
 
-    } catch (backendErr) {
+    points:
+      data.localCoordsArray?.[0]?.length,
 
-      console.error(
-        "❌ Backend duty-out failed",
-        backendErr
-      );
+    cells:
+      data.touchedCells?.size
 
-    }
+  });
 
+});
+await flushAnalyticsBuffer();
 
-    // ========================================================
-    // NO SESSION = NOTHING ELSE TO FINALIZE
-    // ========================================================
+console.log(
+  "STEP B - flushAnalyticsBuffer DONE"
+);
 
-    if (!sessionId) {
+  console.log(
+    "✅ FINAL ANALYTICS FLUSH COMPLETE"
+  );
 
-      console.warn(
-        "⚠ No sessionId available for background finalization"
-      );
+} catch (err) {
 
-      return;
-    }
+  console.error(
+    "❌ FINAL ANALYTICS FLUSH FAILED",
+    err
+  );
 
+}
 
-    // ========================================================
-    // BUILD FINAL HISTORY ONCE
-    // ========================================================
+// ======================================
+// USE REAL TRACK FROM patrol_tracks
+// ======================================
 
-    const pointsSnap =
-      await window.fb.getDocs(
+const points =
 
-        window.fb.query(
+  cleanTrack.map(p => ({
 
-          window.fb.collection(
-            window.db,
-            "patrol_tracks",
-            sessionId,
-            "points"
-          ),
+    lat:
+      Number(p.lat),
 
-          window.fb.orderBy(
-            "time"
-          )
-
-        )
-
-      );
-
-
-    const fullTrack = [];
-
-
-    pointsSnap.forEach(doc => {
-
-      const p = doc.data();
-
-      if (
-
-        Number.isFinite(
-          Number(p?.lat)
-        )
-
-        &&
-
-        Number.isFinite(
-          Number(p?.lon)
-        )
-
-      ) {
-
-        fullTrack.push({
-
-          lat:
-            Number(p.lat),
-
-          lng:
-            Number(p.lon),
-
-          time:
-            typeof p.time === "number"
-              ? p.time
-              : new Date(p.time).getTime()
-
-        });
-
-      }
-
-    });
-
-
-    console.log(
-      "📍 FINAL TRACK",
-      fullTrack.length
-    );
-
-
-    if (
-      fullTrack.length < 2
-    ) {
-
-      throw new Error(
-        `Insufficient track points: ${fullTrack.length}`
-      );
-
-    }
-
-
-    console.table({
-
-      sessionId,
-
-      fullTrackPoints:
-        fullTrack.length
-
-    });
-
-
-    // ========================================================
-    // TELEPORT FILTER
-    // ========================================================
-
-    const cleanTrack = [];
-
-
-    for (
-      let i = 0;
-      i < fullTrack.length;
-      i++
-    ) {
-
-      const curr =
-        fullTrack[i];
-
-
-      // FIRST POINT
-      if (i === 0) {
-
-        cleanTrack.push(curr);
-
-        continue;
-      }
-
-
-      const prev =
-        fullTrack[i - 1];
-
-
-      const dist =
-
-        map.distance(
-
-          [prev.lat, prev.lng],
-
-          [curr.lat, curr.lng]
-
-        );
-
-
-      const timeDiffSec =
-
-        Math.max(
-
-          1,
-
-          (
-            curr.time -
-            prev.time
-          ) / 1000
-
-        );
-
-
-      const speedKmh =
-
-        (dist / timeDiffSec)
-        * 3.6;
-
-
-      const isTeleport =
-
-        dist > 300
-
-        ||
-
-        speedKmh > 120
-
-        ||
-
-        !isFinite(dist)
-
-        ||
-
-        !isFinite(speedKmh);
-
-
-      if (isTeleport) {
-
-        console.warn(
-
-          "🚫 HISTORY TELEPORT REMOVED",
-
-          {
-
-            distance:
-              Math.round(dist),
-
-            speed:
-              Math.round(speedKmh),
-
-            from:
-              [prev.lat, prev.lng],
-
-            to:
-              [curr.lat, curr.lng]
-
-          }
-
-        );
-
-        continue;
-      }
-
-
-      cleanTrack.push(curr);
-
-    }
-
-
-    console.table({
-
-      originalPoints:
-        fullTrack.length,
-
-      cleanedPoints:
-        cleanTrack.length,
-
-      removed:
-        fullTrack.length -
-        cleanTrack.length
-
-    });
-
-
-    // ========================================================
-    // STEP A — HISTORY
-    // ========================================================
-
-    console.log(
-      "STEP A - processHistoryTrack START"
-    );
-
-
-    await processHistoryTrack(
-      cleanTrack,
-      sessionId
-    );
-
-
-    console.log(
-      "STEP A - processHistoryTrack DONE"
-    );
-
-
-    // ========================================================
-    // STEP B — FINAL ANALYTICS FLUSH
-    // ========================================================
-
-    try {
-
-      console.log(
-        "STEP B - flushAnalyticsBuffer START"
-      );
-
-      console.log(
-        "========== BEFORE FINAL FLUSH =========="
-      );
-
-      console.log(
-        "analyticsBuffer",
-        window.analyticsBuffer
-      );
-
-      console.log(
-        "analyticsBuffer keys",
-        Object.keys(
-          window.analyticsBuffer || {}
-        )
-      );
-
-
-      Object.entries(
-        window.analyticsBuffer || {}
-      ).forEach(
-        ([gridId, data]) => {
-
-          console.table({
-
-            gridId,
-
-            points:
-              data.localCoordsArray?.[0]?.length,
-
-            cells:
-              data.touchedCells?.size
-
-          });
-
-        }
-      );
-
-
-      await flushAnalyticsBuffer();
-
-
-      console.log(
-        "STEP B - flushAnalyticsBuffer DONE"
-      );
-
-      console.log(
-        "✅ FINAL ANALYTICS FLUSH COMPLETE"
-      );
-
-    } catch (err) {
-
-      console.error(
-        "❌ FINAL ANALYTICS FLUSH FAILED",
-        err
-      );
-
-    }
-
-
-    // ========================================================
-    // USE REAL TRACK
-    // ========================================================
-
-    const points =
-
-      cleanTrack.map(
-        p => ({
-
-          lat:
-            Number(p.lat),
-
-          lng:
-            Number(
-              p.lng ?? p.lon
-            )
-
-        })
-      );
-
-
-    const endedAt =
-      Date.now();
-
-
-    console.table({
-
-      sessionId,
-
-      patrolTrackPoints:
-        points.length
-
-    });
-
-
-    // ========================================================
-    // KML GENERATION
-    // ========================================================
-
-    showToast(
-      "🗺️ Generating patrol KML..."
-    );
-
-
-    console.log(
-      "STEP C - uploadPatrolKML START"
-    );
-
-
-    const kmlUrl =
-      await uploadPatrolKML(
-        sessionId,
-        points
-      );
-
-
-    console.log(
-      "STEP C RESULT",
-      kmlUrl
-    );
-
-
-    if (!kmlUrl) {
-
-      console.error(
-        "KML RETURNED NULL"
-      );
-
-    }
-
-
-    console.log(
-      "STEP C - uploadPatrolKML DONE",
-      kmlUrl
-    );
-
-
-    window.lastDutyKmlUrl =
-      kmlUrl || "";
-
-
-    // ========================================================
-    // UPDATE HISTORY
-    // ========================================================
-
-    await window.fb.updateDoc(
-
-      window.fb.doc(
-        window.db,
-        "history",
-        sessionId
-      ),
-
-      {
-
-        pointCount:
-          points.length,
-
-        kmlUrl:
-          kmlUrl || "",
-
-        endedAt
-
-      }
-
-    );
-
-
-    console.table({
-
-      sessionId,
-
-      pointCount:
-        points.length,
-
-      kmlGenerated:
-        !!kmlUrl
-
-    });
-
-
-    // ========================================================
-    // BUILD REPORT
-    // ========================================================
-
-    let reportData = null;
-
-
-    try {
-
-      console.log(
-        "STEP D - REPORT START"
-      );
-
-
-      reportData =
-        await buildDutyPerformanceReport({
-
-          sessionId,
-
-          dutyType,
-
-          leader:
-            profile.cleanName,
-
-          trackPoints:
-            points,
-
-          kmlUrl:
-            kmlUrl || ""
-
-        });
-
-
-      reportData.kmlUrl =
-        kmlUrl || "";
-
-
-      reportData.rawName =
-        profile.name || "";
-
-
-      reportData.cleanName =
-        profile.cleanName || "";
-
-
-      reportData.phone =
-        profile.phone || "";
-
-
-      reportData.division =
-        profile.division || "";
-
-
-      reportData.range =
-        profile.range || "";
-
-
-      reportData.beat =
-        profile.beat || "";
-
-
-      window.currentDutyReport =
-        reportData;
-
-
-      showDutyPerformanceReport(
-        reportData
-      );
-
-
-      console.log(
-        "STEP D - REPORT SHOWN"
-      );
-
-    } catch (reportErr) {
-
-      console.error(
-        "❌ Performance report failed",
-        reportErr
-      );
-
-    }
-
-
-    // ========================================================
-    // TELEGRAM
-    // ========================================================
-
-    if (reportData) {
-
-      sendDutyReportToAppsScript(
-        reportData
+    lng:
+      Number(
+        p.lng ?? p.lon
       )
-      .catch(err => {
 
-        console.error(
-          "❌ Telegram send failed",
-          err
-        );
+  }));
 
-      });
+const endedAt =
+  Date.now();
 
-    }
+console.table({
 
+  sessionId,
 
-    // ========================================================
-    // PATROL TRACK STATUS
-    // ========================================================
+  patrolTrackPoints:
+    points.length
 
-    await window.fb.updateDoc(
+});
+// ======================================
+// KML GENERATION
+// ======================================
 
-      window.fb.doc(
-        window.db,
-        "patrol_tracks",
-        sessionId
-      ),
+showToast(
+  "🗺️ Generating patrol KML..."
+);
 
-      {
+console.log(
+  "STEP C - uploadPatrolKML START"
+);
 
-        dutyActive:
-          false,
+const kmlUrl =
+  await uploadPatrolKML(
+    sessionId,
+    points
+  );
+console.log(
+  "STEP C RESULT",
+  kmlUrl
+);
 
-        status:
-          "ENDED",
+if(!kmlUrl){
 
-        endedAt,
+  console.error(
+    "KML RETURNED NULL"
+  );
 
-        updatedAt:
-          endedAt
+}
+console.log(
+  "STEP C - uploadPatrolKML DONE",
+  kmlUrl
+);
 
-      }
+window.lastDutyKmlUrl =
+  kmlUrl || "";
 
-    );
+// ======================================
+// UPDATE HISTORY
+// ======================================
 
+await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "history",
+    sessionId
+  ),
+  {
+    pointCount:
+      points.length,
 
-    // ========================================================
-    // CLEAN LOCAL RUNTIME STATE
-    // ========================================================
+    kmlUrl:
+      kmlUrl || "",
 
-    window.realtimePerformanceData = {
-      trackPoints: []
-    };
+    endedAt
+  }
+);
 
+console.table({
 
-    if (window.sessionTrackCache) {
+  sessionId,
 
-      delete window.sessionTrackCache[
-        sessionId
-      ];
+  pointCount:
+    points.length,
 
-    }
+  kmlGenerated:
+    !!kmlUrl
 
+});
+// ======================================
+// BUILD REPORT
+// ======================================
 
-    window.historyFlushInProgress =
-      false;
+let reportData = null;
 
+try {
+console.log(
+  "STEP D - REPORT START"
+);
+  reportData =
+    await buildDutyPerformanceReport({
 
-    window.lastTrackPoint =
-      null;
+      sessionId,
 
+      dutyType,
 
-    try {
+      leader:
+        profile.cleanName,
 
-      finalizeSessionLifecycle();
+      trackPoints:
+        points,
 
-    } catch (lifecycleErr) {
+      kmlUrl:
+        kmlUrl || ""
 
-      console.error(
-        "❌ finalizeSessionLifecycle failed",
-        lifecycleErr
-      );
+    });
 
-    }
+  reportData.kmlUrl =
+    kmlUrl || "";
 
+  reportData.rawName =
+    profile.name || "";
 
-    // ========================================================
-    // RESET SESSION ANALYTICS
-    // ========================================================
+  reportData.cleanName =
+    profile.cleanName || "";
 
-    window.sessionVisitedGrids =
-      new Set();
+  reportData.phone =
+    profile.phone || "";
 
+  reportData.division =
+    profile.division || "";
 
-    window.newMonthlyCellIds =
-      new Set();
+  reportData.range =
+    profile.range || "";
 
+  reportData.beat =
+    profile.beat || "";
 
-    window.newMonthlyCompartmentIds =
-      new Set();
+  window.currentDutyReport =
+    reportData;
 
+  showDutyPerformanceReport(
+    reportData
+  );
+console.log(
+  "STEP D - REPORT SHOWN"
+);
+} catch (reportErr) {
 
-    window.newMonthlyGridsCaptured =
-      0;
+  console.error(
+    "❌ Performance report failed",
+    reportErr
+  );
 
+}
 
-    console.log(
-      "✅ End duty background finalization complete",
-      {
-        sessionId
-      }
-    );
+// ======================================
+// TELEGRAM
+// ======================================
 
+if (reportData) {
 
-    showToast(
-      "✅ Duty Ended Successfully"
-    );
-
-
-  } catch (err) {
+  sendDutyReportToAppsScript(
+    reportData
+  )
+  .catch(err => {
 
     console.error(
-      "❌ Background End Duty finalization failed",
+      "❌ Telegram send failed",
       err
     );
 
-    // IMPORTANT:
-    // DO NOT set dutyActive=true here.
-    // Duty has ALREADY ended successfully.
-    showToast(
-      "✅ Duty ended. Final report processing continues."
-    );
+  });
 
+}
+
+// ======================================
+// UPDATE PATROL TRACK STATUS
+// ======================================
+
+await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "patrol_tracks",
+    sessionId
+  ),
+  {
+    dutyActive: false,
+
+    status: "ENDED",
+
+    endedAt,
+
+    updatedAt:
+      endedAt
   }
+);
 
-})();
+window.realtimePerformanceData = {
+  trackPoints: []
+};
+        } catch (err) {
+          console.error("❌ History write failed", err);
+        }
+      })()
+    ])
+    .then(results => {
+      if(window.sessionTrackCache){
+        delete window.sessionTrackCache[sessionId];
+      }
+      
+      window.historyFlushInProgress = false;
+
+      window.realtimePerformanceData = {
+        trackPoints: []
+      };
+
+      window.lastTrackPoint = null;
+
+      finalizeSessionLifecycle();
+// ======================================
+// RESET SESSION ANALYTICS
+// AFTER REPORT IS BUILT
+// ======================================
+
+window.sessionVisitedGrids =
+  new Set();
+
+window.newMonthlyCellIds =
+  new Set();
+
+window.newMonthlyCompartmentIds =
+  new Set();
+
+window.newMonthlyGridsCaptured =
+  0;      console.log("✅ End duty background sync complete", results);
+    })
+    .catch(err => {
+      console.error("❌ End duty background sync failed", err);
+    });
+
     setTimeout(() => {
       showToast("✅ Duty Ended Successfully");
     }, 1000);
@@ -97861,6 +97569,7 @@ void (async () => {
     console.groupEnd();
   }
 }
+
     function getPerformanceGrade(
   score,
   durationHours,
