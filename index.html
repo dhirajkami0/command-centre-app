@@ -12094,19 +12094,12 @@ window.__APP_STARTED__ = true;
 
 
 // ================= STATUS =================
-if (!navigator.onLine) {
+updateNetworkStatus(
+  "connecting"
+);
 
-  updateNetworkStatus(
-    "offline"
-  );
-
-} else {
-
-  updateNetworkStatus(
-    "connecting"
-  );
-}
-
+window.__networkVerified = false;
+window.__networkCheckRunning = false;
 
 // ================= UI INIT =================
 try {
@@ -77593,80 +77586,278 @@ const MIN_STAFF_VISIBLE_TIME = 5000;    // 5 sec
 window.isPopupInteracting = false;
 window.lastInteractionTime = 0;
 
+/* =========================
+   🔄 MASTER REFRESH ENGINE
+   ========================= */
+
 function refreshAll() {
-  const statusEl = document.getElementById('last-update');
 
-  /* 🔥 IMMEDIATE OFFLINE CHECK */
+  const statusEl =
+    document.getElementById("last-update");
+
+
+  // ============================================================
+  // 🔒 REFRESH LOCK
+  // ------------------------------------------------------------
+  // Prevent multiple FORCE REFRESH clicks from starting
+  // overlapping refresh operations.
+  // ============================================================
+
+  if (window.__refreshRunning === true) {
+
+    console.log(
+      "⏳ Refresh already running"
+    );
+
+    return;
+  }
+
+  window.__refreshRunning = true;
+
+
+  // ============================================================
+  // 🌐 NETWORK CHECK
+  // ------------------------------------------------------------
+  // navigator.onLine is used only to decide whether a refresh
+  // should be attempted.
+  //
+  // IMPORTANT:
+  // Do NOT call updateNetworkStatus("offline") because an
+  // individual backend/data request fails.
+  // ============================================================
+
   if (!navigator.onLine) {
-    console.warn("📡 Refresh blocked: Device is Offline");
+
+    console.warn(
+      "📡 Refresh blocked: Device is Offline"
+    );
+
     if (statusEl) {
-      statusEl.innerHTML = "🔴 OFFLINE - CHECK INTERNET";
-      statusEl.style.color = "#ff4444";
+
+      statusEl.innerHTML =
+        "🔴 OFFLINE - CHECK INTERNET";
+
+      statusEl.style.color =
+        "#ff4444";
     }
-    return; // Exit function immediately
+
+    window.__refreshRunning =
+      false;
+
+    return;
   }
 
-  // If online, proceed with syncing UI
+
+  // ============================================================
+  // 🔄 REFRESHING
+  // ============================================================
+
   if (statusEl) {
-    statusEl.innerHTML = "🔄 Syncing Command Centre...";
-    statusEl.style.color = "#ffaa00"; // Yellow for syncing
+
+    statusEl.innerHTML =
+      "🔄 Syncing Command Centre...";
+
+    statusEl.style.color =
+      "#ffaa00";
   }
 
-  const now = Date.now();
 
-  /* 🔥 KEEP EXISTING SAFE LOADS */
-  loadIncidents();
-  loadPredictions();
-
-  /* 🔥 STAFF (SIMPLIFIED — DIRECT LOAD) */
-  loadStaff();
+  const now =
+    Date.now();
 
 
-  /* 🔥 WEATHER (UNCHANGED) */
-  setTimeout(loadWeatherFull, 500);
+  // ============================================================
+  // 👥 STAFF
+  // ------------------------------------------------------------
+  // Direct staff refresh.
+  // ============================================================
 
-  /* 🔥 SIGHTINGS (KEEP AS-IS) */
-  if (now - window.lastSightingsLoad > MIN_SIGHTING_VISIBLE_TIME) {
-    setTimeout(() => {
-      if (window.isPopupInteracting || (Date.now() - window.lastInteractionTime < 5000)) {
-        console.log("⏸ Sightings skipped (user interacting)");
-        return;
-      }
+  try {
 
-      if (map && map._popup && map._popup.isOpen()) {
-        console.log("⏸ Sightings skipped (popup open)");
-        return;
-      }
+    loadStaff();
 
-      loadSightings();
-      window.lastSightingsLoad = Date.now();
-    }, 4000);
-  } else {
-    console.log("⏸ Sightings held (5 sec rule)");
+  } catch (error) {
+
+    console.error(
+      "❌ loadStaff failed:",
+      error
+    );
   }
 
-  /* 🔥 VILLAGES (UNCHANGED) */
+
+  // ============================================================
+  // 🌦 WEATHER
+  // ------------------------------------------------------------
+  // Keep existing delayed weather load.
+  // ============================================================
+
   setTimeout(() => {
-    loadVillages();
+
+    try {
+
+      loadWeatherFull();
+
+    } catch (error) {
+
+      console.error(
+        "❌ loadWeatherFull failed:",
+        error
+      );
+    }
+
+  }, 500);
+
+
+  // ============================================================
+  // 🐘 WILDLIFE SIGHTINGS
+  // ------------------------------------------------------------
+  // Keep existing 5-second protection and popup protection.
+  // ============================================================
+
+  if (
+    now -
+    window.lastSightingsLoad
+    >
+    MIN_SIGHTING_VISIBLE_TIME
+  ) {
+
+    setTimeout(() => {
+
+      // --------------------------------------------------------
+      // USER INTERACTION PROTECTION
+      // --------------------------------------------------------
+
+      if (
+        window.isPopupInteracting ||
+        (
+          Date.now() -
+          window.lastInteractionTime
+          <
+          5000
+        )
+      ) {
+
+        console.log(
+          "⏸ Sightings skipped (user interacting)"
+        );
+
+        return;
+      }
+
+
+      // --------------------------------------------------------
+      // OPEN POPUP PROTECTION
+      // --------------------------------------------------------
+
+      if (
+        map &&
+        map._popup &&
+        map._popup.isOpen()
+      ) {
+
+        console.log(
+          "⏸ Sightings skipped (popup open)"
+        );
+
+        return;
+      }
+
+
+      // --------------------------------------------------------
+      // LOAD SIGHTINGS
+      // --------------------------------------------------------
+
+      try {
+
+        loadSightings();
+
+        window.lastSightingsLoad =
+          Date.now();
+
+      } catch (error) {
+
+        console.error(
+          "❌ loadSightings failed:",
+          error
+        );
+      }
+
+    }, 4000);
+
+  } else {
+
+    console.log(
+      "⏸ Sightings held (5 sec rule)"
+    );
+  }
+
+
+  // ============================================================
+  // 🏘 VILLAGES
+  // ------------------------------------------------------------
+  // Keep existing delayed village load.
+  // ============================================================
+
+  setTimeout(() => {
+
+    try {
+
+      loadVillages();
+
+    } catch (error) {
+
+      console.error(
+        "❌ loadVillages failed:",
+        error
+      );
+    }
+
   }, 3000);
 
-  /* 🔥 TRACKING (GITHUB SAFE) */
-  callBackend("fetchTraccar")
-    .then(() => console.log("✅ Traccar updated"))
-    .catch(err => {
-        console.error(err);
-        // If the backend call fails due to network, show offline
-        updateNetworkStatus("offline");
-    });
 
-  /* 🔥 STATUS (UNCHANGED) */
-  setTimeout(function () {
+  // ============================================================
+  // 🌐 NETWORK STATUS
+  // ------------------------------------------------------------
+  // IMPORTANT:
+  // This is STATUS ONLY.
+  //
+  // Do NOT use a failed individual data request to declare
+  // the whole application offline.
+  //
+  // Give WebView time to settle after refresh.
+  // ============================================================
+
+  setTimeout(() => {
+
     if (navigator.onLine) {
-      updateNetworkStatus("online");
+
+      updateNetworkStatus(
+        "online"
+      );
+
     } else {
-      updateNetworkStatus("offline");
+
+      updateNetworkStatus(
+        "offline"
+      );
     }
-  }, 1000);
+
+  }, 1500);
+
+
+  // ============================================================
+  // 🔓 RELEASE REFRESH LOCK
+  // ------------------------------------------------------------
+  // The refresh engine only starts the individual loaders;
+  // those loaders manage their own asynchronous operations.
+  // ============================================================
+
+  setTimeout(() => {
+
+    window.__refreshRunning =
+      false;
+
+  }, 2000);
 }  /* ============================================================
        🚀 BLOCK 11 → APP INIT (FINAL — SINGLE ENTRY POINT)
     ============================================================ */
@@ -95093,7 +95284,619 @@ document
 
 let dutyComptMap = {};
 
+// ============================================================
+// 📍 DUTY START GPS CACHE
+// ------------------------------------------------------------
+// GPS is acquired before Start Duty is pressed.
+//
+// RULE:
+// • GPS age <= 30 sec → use immediately
+// • GPS age > 30 sec → acquire fresh GPS
+// • Maximum fresh search = 10 sec
+// • NEVER use 0,0
+// ============================================================
 
+const DUTY_GPS_MAX_AGE_MS = 30000;
+const DUTY_GPS_SEARCH_MS = 10000;
+
+window.dutyGpsSearchRunning = false;
+window.dutyGpsWatchId = null;
+window.dutyGpsSearchTimer = null;
+
+// ============================================================
+// 📍 ACQUIRE FRESH DUTY GPS
+// ------------------------------------------------------------
+// Maximum search time = 10 seconds.
+// Multiple valid readings are collected.
+// Lowest accuracy value = BEST GPS.
+// ============================================================
+
+function acquireFreshDutyGps(){
+
+    // --------------------------------------------------------
+    // PREVENT DUPLICATE SEARCH
+    // --------------------------------------------------------
+
+    if(
+        window.dutyGpsSearchRunning === true
+    ){
+
+        console.warn(
+            "⏸ DUTY GPS SEARCH ALREADY RUNNING"
+        );
+
+        return Promise.resolve(
+            null
+        );
+    }
+
+    if(
+        !navigator.geolocation
+    ){
+
+        console.error(
+            "❌ Geolocation unavailable"
+        );
+
+        return Promise.resolve(
+            null
+        );
+    }
+
+    window.dutyGpsSearchRunning =
+        true;
+
+    console.log(
+        "📡 DUTY GPS — FRESH SEARCH STARTED"
+    );
+
+    return new Promise(
+        (resolve) => {
+
+            const samples = [];
+
+            let finished =
+                false;
+
+            const finish = (
+                best
+            ) => {
+
+                if(
+                    finished
+                ){
+                    return;
+                }
+
+                finished =
+                    true;
+
+                // ------------------------------------------------
+                // STOP WATCH
+                // ------------------------------------------------
+
+                if(
+                    window.dutyGpsWatchId !== null
+                ){
+
+                    try{
+
+                        navigator.geolocation
+                            .clearWatch(
+                                window.dutyGpsWatchId
+                            );
+
+                    }catch(e){
+
+                        console.warn(
+                            "⚠ GPS watcher cleanup failed",
+                            e
+                        );
+                    }
+
+                    window.dutyGpsWatchId =
+                        null;
+                }
+
+                if(
+                    window.dutyGpsSearchTimer !== null
+                ){
+
+                    clearTimeout(
+                        window.dutyGpsSearchTimer
+                    );
+
+                    window.dutyGpsSearchTimer =
+                        null;
+                }
+
+                window.dutyGpsSearchRunning =
+                    false;
+
+                // ------------------------------------------------
+                // NO VALID GPS
+                // ------------------------------------------------
+
+                if(
+                    !best
+                ){
+
+                    console.error(
+                        "❌ DUTY GPS — NO VALID FIX"
+                    );
+
+                    resolve(
+                        null
+                    );
+
+                    return;
+                }
+
+                // ------------------------------------------------
+                // SAVE CENTRAL GPS CACHE
+                // ------------------------------------------------
+
+                const finalLat =
+                    Number(
+                        best.lat
+                    );
+
+                const finalLon =
+                    Number(
+                        best.lon
+                    );
+
+                const finalAccuracy =
+                    Number(
+                        best.accuracy
+                    );
+
+                const finalTimestamp =
+                    Number(
+                        best.timestamp ||
+                        Date.now()
+                    );
+
+                window.latestGps = {
+
+                    lat:
+                        finalLat,
+
+                    lng:
+                        finalLon,
+
+                    accuracy:
+                        finalAccuracy,
+
+                    speed:
+                        Number.isFinite(
+                            Number(
+                                best.speed
+                            )
+                        )
+                            ? Number(
+                                best.speed
+                            )
+                            : null,
+
+                    heading:
+                        Number.isFinite(
+                            Number(
+                                best.heading
+                            )
+                        )
+                            ? Number(
+                                best.heading
+                            )
+                            : null,
+
+                    timestamp:
+                        finalTimestamp
+                };
+
+                console.log(
+                    "🏆 DUTY GPS — BEST FIX SAVED",
+                    {
+                        lat:
+                            finalLat,
+
+                        lon:
+                            finalLon,
+
+                        accuracy:
+                            finalAccuracy,
+
+                        timestamp:
+                            finalTimestamp
+                    }
+                );
+
+                resolve(
+                    window.latestGps
+                );
+            };
+
+
+            // ====================================================
+            // START GPS WATCH
+            // ====================================================
+
+            window.dutyGpsWatchId =
+                navigator.geolocation.watchPosition(
+
+                    (position) => {
+
+                        const lat =
+                            Number(
+                                position?.coords?.latitude
+                            );
+
+                        const lon =
+                            Number(
+                                position?.coords?.longitude
+                            );
+
+                        const accuracy =
+                            Number(
+                                position?.coords?.accuracy
+                            );
+
+                        if(
+                            !Number.isFinite(lat) ||
+                            !Number.isFinite(lon) ||
+                            !Number.isFinite(accuracy) ||
+                            lat === 0 ||
+                            lon === 0 ||
+                            accuracy <= 0
+                        ){
+
+                            console.warn(
+                                "⚠ Ignoring invalid DUTY GPS",
+                                {
+                                    lat,
+                                    lon,
+                                    accuracy
+                                }
+                            );
+
+                            return;
+                        }
+
+                        samples.push({
+
+                            lat,
+
+                            lon,
+
+                            accuracy,
+
+                            speed:
+                                position?.coords?.speed,
+
+                            heading:
+                                position?.coords?.heading,
+
+                            timestamp:
+                                position?.timestamp ||
+                                Date.now()
+                        });
+
+                        // -----------------------------------------
+                        // KEEP BEST ACCURACY
+                        // -----------------------------------------
+
+                        samples.sort(
+                            (a,b) =>
+                                a.accuracy -
+                                b.accuracy
+                        );
+
+                        console.log(
+                            "📍 DUTY GPS SAMPLE",
+                            {
+                                count:
+                                    samples.length,
+
+                                lat,
+
+                                lon,
+
+                                accuracy
+                            }
+                        );
+
+                    },
+
+                    (error) => {
+
+                        console.warn(
+                            "⚠ DUTY GPS ERROR:",
+                            error?.message ||
+                            error
+                        );
+
+                    },
+
+                    {
+
+                        enableHighAccuracy:
+                            true,
+
+                        timeout:
+                            10000,
+
+                        maximumAge:
+                            0
+                    }
+                );
+
+
+            // ====================================================
+            // HARD 10 SECOND LIMIT
+            // ====================================================
+
+            window.dutyGpsSearchTimer =
+                setTimeout(
+
+                    () => {
+
+                        console.log(
+                            "⏱ DUTY GPS 10 SECOND WINDOW FINISHED"
+                        );
+
+                        if(
+                            samples.length === 0
+                        ){
+
+                            finish(
+                                null
+                            );
+
+                            return;
+                        }
+
+                        samples.sort(
+                            (a,b) =>
+                                a.accuracy -
+                                b.accuracy
+                        );
+
+                        finish(
+                            samples[0]
+                        );
+
+                    },
+
+                    DUTY_GPS_SEARCH_MS
+                );
+        }
+    );
+}
+// ============================================================
+// 📍 GET DUTY START GPS
+// ------------------------------------------------------------
+// <= 30 seconds old → use cached GPS
+// > 30 seconds old → fresh GPS search
+// ============================================================
+
+async function getDutyStartGps(){
+
+    const cached =
+        window.latestGps;
+
+    const lat =
+        Number(
+            cached?.lat
+        );
+
+    const lon =
+        Number(
+            cached?.lng ??
+            cached?.lon
+        );
+
+    const accuracy =
+        Number(
+            cached?.accuracy
+        );
+
+    const timestamp =
+        Number(
+            cached?.timestamp
+        );
+
+    const age =
+        Number.isFinite(timestamp)
+            ? Date.now() - timestamp
+            : Infinity;
+
+    // ========================================================
+    // 🟢 FRESH CACHE — USE IMMEDIATELY
+    // ========================================================
+
+    if(
+        Number.isFinite(lat) &&
+        Number.isFinite(lon) &&
+        lat !== 0 &&
+        lon !== 0 &&
+        Number.isFinite(accuracy) &&
+        accuracy > 0 &&
+        Number.isFinite(timestamp) &&
+        age >= 0 &&
+        age <= DUTY_GPS_MAX_AGE_MS
+    ){
+
+        console.log(
+            "✅ DUTY GPS CACHE VALID",
+            {
+                ageMs:
+                    age,
+
+                ageSec:
+                    Math.round(
+                        age / 1000
+                    ),
+
+                lat,
+
+                lon,
+
+                accuracy
+            }
+        );
+
+        return {
+
+            lat,
+
+            lon,
+
+            accuracy,
+
+            timestamp
+        };
+    }
+
+    // ========================================================
+    // 🟡 CACHE MISSING / STALE
+    // ========================================================
+
+    console.log(
+        "🔄 DUTY GPS CACHE STALE — FRESH SEARCH REQUIRED",
+        {
+            ageMs:
+                age,
+
+            ageSec:
+                Number.isFinite(age)
+                    ? Math.round(
+                        age / 1000
+                    )
+                    : "unknown"
+        }
+    );
+
+    const fresh =
+        await acquireFreshDutyGps();
+
+    if(
+        !fresh
+    ){
+
+        return null;
+    }
+
+    const freshLat =
+        Number(
+            fresh.lat
+        );
+
+    const freshLon =
+        Number(
+            fresh.lng ??
+            fresh.lon
+        );
+
+    const freshAccuracy =
+        Number(
+            fresh.accuracy
+        );
+
+    const freshTimestamp =
+        Number(
+            fresh.timestamp ||
+            Date.now()
+        );
+
+    if(
+        !Number.isFinite(freshLat) ||
+        !Number.isFinite(freshLon) ||
+        freshLat === 0 ||
+        freshLon === 0 ||
+        !Number.isFinite(freshAccuracy) ||
+        freshAccuracy <= 0
+    ){
+
+        console.error(
+            "❌ FRESH DUTY GPS INVALID",
+            fresh
+        );
+
+        return null;
+    }
+
+    return {
+
+        lat:
+            freshLat,
+
+        lon:
+            freshLon,
+
+        accuracy:
+            freshAccuracy,
+
+        timestamp:
+            freshTimestamp
+    };
+}
+// ============================================================
+// 🚀 APP LOAD — PRE-ACQUIRE DUTY GPS
+// ------------------------------------------------------------
+// Runs once after the page is ready.
+// Maximum search = 10 seconds.
+// Does NOT start duty.
+// Does NOT write Firestore.
+// ============================================================
+
+function preloadDutyStartGps(){
+
+    console.log(
+        "🚀 APP LOAD → DUTY GPS PRE-ACQUISITION"
+    );
+
+    acquireFreshDutyGps()
+        .then(
+            (gps) => {
+
+                if(
+                    gps
+                ){
+
+                    console.log(
+                        "✅ APP LOAD DUTY GPS READY",
+                        gps
+                    );
+
+                }else{
+
+                    console.warn(
+                        "⚠ APP LOAD DUTY GPS NOT AVAILABLE"
+                    );
+                }
+
+            }
+        )
+        .catch(
+            (error) => {
+
+                console.error(
+                    "❌ APP LOAD DUTY GPS FAILED",
+                    error
+                );
+
+            }
+        );
+}
+
+// ============================================================
+// 🚀 START DUTY GPS PRELOAD AFTER APP SCRIPT IS READY
+// ============================================================
+
+setTimeout(
+    preloadDutyStartGps,
+    1000
+);
 /* ============================================================
 ⚡ OPEN DUTY FORM — CACHE FIRST / NON-BLOCKING UI
 ============================================================ */
@@ -105918,12 +106721,6 @@ async function startDuty(event) {
     const staffString = staffArray.join(", ");
     const comptString = comptArray.join(", ");
 
-    // 🔒 VALIDATION
-    if (staffArray.length === 0) {
-      alert("❌ Select at least one staff");
-      console.groupEnd();
-      return;
-    }
 
     if (comptArray.length === 0) {
       alert("❌ Select at least one compartment");
@@ -106078,10 +106875,6 @@ localStorage.setItem(
   sessionId
 );
 
-localStorage.setItem(
-  "dutyActive",
-  "true"
-);
 
     // =====================================================
 // 🔥 SAVE SESSION RUNTIME
@@ -106135,11 +106928,6 @@ window.sessionTrackCache[
   sessionId
 ] = [];
    
-// =====================================================
-// 🔥 DUTY ACTIVE
-// =====================================================
-window.isDutyActive =
-  true;
 
 console.log(
   "🟢 SESSION STARTED:",
@@ -106152,214 +106940,117 @@ console.log(
         cleanLeader
       );
 
-    // =====================================================
-    // 🔥 LIVE STAFF UPDATE
-    // =====================================================
-    // =====================================================
-// 🔥 GET REAL GPS FIRST
+
 // =====================================================
+// 📍 DUTY START GPS
+// -----------------------------------------------------
+// <= 30 sec old → USE CACHED GPS
+// > 30 sec old  → FRESH SEARCH
+// Fresh search  → MAXIMUM 10 sec
+// 0,0           → NEVER ACCEPTED
 // =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// GET 2-3 GPS READINGS
-// PICK BEST ACCURACY
-// =====================================================
-// =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// =====================================================// =====================================================
-// 🔥 STABILIZED GPS ACQUISITION
-// =====================================================
-const gpsPosition =
 
-  await new Promise((resolve)=>{
+const dutyGps =
+    await getDutyStartGps();
 
-    try {
+if(
+    !dutyGps ||
+    !Number.isFinite(
+        Number(dutyGps.lat)
+    ) ||
+    !Number.isFinite(
+        Number(dutyGps.lon)
+    ) ||
+    Number(dutyGps.lat) === 0 ||
+    Number(dutyGps.lon) === 0
+){
 
-      const samples = [];
-
-      let resolved = false;
-
-      const startedAt = Date.now();
-
-      const watchId =
-
-        navigator.geolocation.watchPosition(
-
-          (pos)=>{
-
-            try {
-
-              const accuracy =
-
-                Number(
-                  pos.coords.accuracy || 999
-                );
-
-              const lat =
-                Number(
-                  pos.coords.latitude
-                );
-
-              const lon =
-                Number(
-                  pos.coords.longitude
-                );
-
-              if(
-
-                isNaN(lat) ||
-                isNaN(lon) ||
-                lat === 0 ||
-                lon === 0
-
-              ){
-                return;
-              }
-
-              samples.push({
-
-                lat,
-                lon,
-                accuracy
-              });
-
-              console.log(
-
-                `📡 GPS SAMPLE ${
-                  samples.length
-                } → ${
-                  accuracy.toFixed(1)
-                }m`
-              );
-
-              // ===========================================
-              // 🔥 WAIT 3 SEC
-              // ===========================================
-              if(
-               Date.now() - startedAt >= 6000
-              ){
-
-                if(resolved){
-                  return;
-                }
-
-                resolved = true;
-
-                navigator.geolocation
-                  .clearWatch(watchId);
-
-                // =========================================
-                // 🔥 PICK BEST GPS
-                // =========================================
-                samples.sort(
-
-                  (a,b)=>
-
-                    a.accuracy -
-                    b.accuracy
-                );
-
-                resolve(
-                  samples[0] || null
-                );
-              }
-
-            } catch(e){
-
-              console.warn(
-                "⚠ GPS SAMPLE ERROR:",
-                e
-              );
-            }
-          },
-
-          ()=>{
-
-            if(resolved){
-              return;
-            }
-
-            resolved = true;
-
-            navigator.geolocation
-              .clearWatch(watchId);
-
-            resolve(null);
-          },
-
-          {
-            enableHighAccuracy:true,
-            timeout:8000,
-            maximumAge:0
-          }
-        );
-// =====================================================
-// 🔥 HARD FALLBACK
-// NEVER FREEZE UI
-// =====================================================
-setTimeout(()=>{
-
-  if(resolved){
-    return;
-  }
-
-  resolved = true;
-
-  navigator.geolocation
-    .clearWatch(watchId);
-
-  console.warn(
-    "⚠ GPS TIMEOUT FALLBACK"
-  );
-
-  // ===============================================
-  // 🔥 PICK BEST AVAILABLE
-  // ===============================================
-  if(samples.length > 0){
-
-    samples.sort(
-
-      (a,b)=>
-
-        a.accuracy -
-        b.accuracy
+    console.error(
+        "❌ START DUTY BLOCKED — VALID GPS REQUIRED",
+        dutyGps
     );
 
-    resolve(samples[0]);
+    // -----------------------------------------------
+    // RELEASE START-DUTY LOCK
+    // -----------------------------------------------
+
+    window.startDutyInProgress =
+        false;
+
+    window.__dutyUpdating =
+        false;
+
+    window.isDutyActive =
+        false;
+
+    startDutySubmitting =
+        false;
+
+    startBtn.disabled =
+        false;
+
+    startBtn.innerHTML =
+        originalText;
+
+    updateDutyButton();
+
+    alert(
+        "❌ Cannot Start Duty.\n\n" +
+        "Valid GPS location is required.\n\n" +
+        "Please wait for GPS to become available " +
+        "and try again."
+    );
 
     return;
-  }
+}
 
-  // ===============================================
-  // 🔥 NO GPS
-  // ===============================================
-  resolve(null);
-
-}, 5000);
-    } catch(e){
-
-      console.error(
-        "❌ GPS ACQUIRE FAILED:",
-        e
-      );
-
-      resolve(null);
-    }
-  });
 
 // =====================================================
-// 🔥 BEST GPS FOUND
+// 🎯 VALID START GPS
 // =====================================================
+
 const startLat =
-
-  gpsPosition?.lat || 0;
+    Number(
+        dutyGps.lat
+    );
 
 const startLon =
-
-  gpsPosition?.lon || 0;
+    Number(
+        dutyGps.lon
+    );
 
 const startAccuracy =
+    Number(
+        dutyGps.accuracy
+    );
 
-  gpsPosition?.accuracy || 999;
+console.log(
+    "🎯 START DUTY GPS ACCEPTED",
+    {
+        lat:
+            startLat,
+
+        lon:
+            startLon,
+
+        accuracy:
+            startAccuracy,
+
+        timestamp:
+            dutyGps.timestamp,
+
+        ageSec:
+            Math.round(
+                (
+                    Date.now() -
+                    Number(
+                        dutyGps.timestamp
+                    )
+                ) / 1000
+            )
+    }
+);
+
 
 console.log(
   `🎯 START GPS: ${startAccuracy.toFixed(1)}m`
@@ -106581,6 +107272,44 @@ await setDoc(
 
   { merge:true }
 );
+
+// =====================================================
+// 🔥 DUTY START CONFIRMED
+// -----------------------------------------------------
+// Both Firestore records have succeeded:
+//
+// 1. live_staff
+// 2. patrol_tracks
+//
+// Only NOW is duty considered ACTIVE.
+// =====================================================
+
+localStorage.setItem(
+    "dutyActive",
+    "true"
+);
+
+window.isDutyActive =
+    true;
+
+window.__dutyUpdating =
+    false;
+
+console.log(
+    "🟢 DUTY ACTIVE CONFIRMED",
+    {
+        sessionId:
+            sessionId,
+
+        lat:
+            startLat,
+
+        lon:
+            startLon
+    }
+);
+
+updateDutyButton();
 console.log(
   "🔥 FIRESTORE DUTY STARTED:",
   cleanLeader,
