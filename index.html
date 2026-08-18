@@ -52794,15 +52794,12 @@ async function submitMoveForm(){
 }
 // =====================================================
 // 📍 NAVIGATE TO INCIDENT
-// =====================================================
-// =====================================================
-// 📍 NAVIGATE TO INCIDENT
 // -----------------------------------------------------
-// GREEN GUARD → ANDROID → GOOGLE MAPS
+// GREEN GUARD → ANDROID → NATIVE GOOGLE MAPS
 //
 // IMPORTANT:
 // Google Maps is opened OUTSIDE the GreenGuard WebView.
-// Therefore Android BACK returns directly to GreenGuard.
+// Android handles the external Maps Activity.
 // =====================================================
 function navigateHEC(lat, lon){
 
@@ -52831,7 +52828,7 @@ function navigateHEC(lat, lon){
     }
 
     // =================================================
-    // 🤖 ANDROID APP
+    // 🤖 ANDROID — NATIVE GOOGLE MAPS
     // =================================================
     if(
         window.Android &&
@@ -52840,7 +52837,7 @@ function navigateHEC(lat, lon){
     ){
 
         console.log(
-            "🧭 Opening external Google Maps navigation:",
+            "🧭 Opening native Google Maps navigation:",
             lat,
             lon
         );
@@ -52852,6 +52849,8 @@ function navigateHEC(lat, lon){
                 String(lon)
             );
 
+            // IMPORTANT:
+            // Never continue to browser fallback on Android.
             return;
 
         }catch(error){
@@ -52861,30 +52860,32 @@ function navigateHEC(lat, lon){
                 error
             );
 
+            alert(
+                "Unable to open Google Maps."
+            );
+
+            return;
         }
     }
 
     // =================================================
-    // 🌐 BROWSER / NON-ANDROID FALLBACK
+    // ❌ ANDROID BRIDGE NOT AVAILABLE
+    // -------------------------------------------------
+    // Do NOT open Google Maps Web here.
+    // This prevents the WebView/browser Maps history
+    // problem from returning.
     // =================================================
-    const url =
-        "https://www.google.com/maps/dir/?api=1" +
-        "&destination=" +
-        encodeURIComponent(
-            `${lat},${lon}`
-        ) +
-        "&travelmode=driving";
 
-    console.log(
-        "🌐 Browser navigation fallback:",
-        url
+    console.error(
+        "❌ Android navigation bridge unavailable."
     );
 
-    window.open(
-        url,
-        "_blank"
+    alert(
+        "Google Maps navigation is unavailable in this app."
     );
-}    // =====================================================
+
+    return;
+}   // =====================================================
 // ☎ CALL REPORTER
 // =====================================================
 window.callHECReporter=function(mobile){
