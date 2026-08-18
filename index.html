@@ -8415,14 +8415,14 @@ function waitForAndroidBridge(timeout = 8000){
 
       const ready =
         window.Android &&
-        typeof Android.saveUserProfile === "function";
+        typeof window.Android.updateDutyState === "function";
 
       if(ready){
 
         clearInterval(timer);
 
         console.log(
-          "✅ Android bridge READY"
+          "✅ Android bridge READY — updateDutyState available"
         );
 
         resolve(true);
@@ -8434,8 +8434,20 @@ function waitForAndroidBridge(timeout = 8000){
 
         clearInterval(timer);
 
-        console.warn(
-          "❌ Android bridge timeout"
+        console.error(
+          "❌ Android bridge timeout — updateDutyState unavailable"
+        );
+
+        console.error(
+          "Android object:",
+          window.Android
+        );
+
+        console.error(
+          "updateDutyState type:",
+          window.Android
+            ? typeof window.Android.updateDutyState
+            : "Android missing"
         );
 
         resolve(false);
@@ -8443,8 +8455,7 @@ function waitForAndroidBridge(timeout = 8000){
 
     }, 300);
   });
-}
-// ============================================================
+}// ============================================================
 // 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
 // ============================================================
 // ============================================================
