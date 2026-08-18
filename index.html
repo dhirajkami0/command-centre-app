@@ -8415,14 +8415,14 @@ function waitForAndroidBridge(timeout = 8000){
 
       const ready =
         window.Android &&
-        typeof window.Android.updateDutyState === "function";
+        typeof Android.saveUserProfile === "function";
 
       if(ready){
 
         clearInterval(timer);
 
         console.log(
-          "✅ Android bridge READY — updateDutyState available"
+          "✅ Android bridge READY"
         );
 
         resolve(true);
@@ -8434,20 +8434,8 @@ function waitForAndroidBridge(timeout = 8000){
 
         clearInterval(timer);
 
-        console.error(
-          "❌ Android bridge timeout — updateDutyState unavailable"
-        );
-
-        console.error(
-          "Android object:",
-          window.Android
-        );
-
-        console.error(
-          "updateDutyState type:",
-          window.Android
-            ? typeof window.Android.updateDutyState
-            : "Android missing"
+        console.warn(
+          "❌ Android bridge timeout"
         );
 
         resolve(false);
@@ -8455,7 +8443,8 @@ function waitForAndroidBridge(timeout = 8000){
 
     }, 300);
   });
-}// ============================================================
+}
+// ============================================================
 // 🔥 LOAD PROFILE (FIXED SAFE LOGIN TRIGGER)
 // ============================================================
 // ============================================================
@@ -13449,129 +13438,359 @@ else{
 
 
 // ======================================================
-// 🔄 ACTIVATE → RELOAD
+// 🔄 ANDROID DUTY STATE SYNC
+// ------------------------------------------------------
+// NORMAL START:
+//   startDuty()
+//      ↓
+//   notifyAndroidDuty(true, SAME sessionId)
+//      ↓
+//   Android.updateDutyState(true, sessionId)
+//      ↓
+//   GpsService
+//
+// RECOVERY / RELOAD:
+//   notifyAndroidDuty(true)
+//      ↓
+//   localStorage.sessionId
+//
+// IMPORTANT:
+//   providedSessionId ALWAYS has priority.
+//   Existing recovery calls remain compatible.
 // ======================================================
-    async function notifyAndroidDuty(active){
 
-  try{
+async function notifyAndroidDuty(
+    active,
+    providedSessionId = ""
+) {
+
+  try {
 
     console.log(
       `📱 notifyAndroidDuty(${active})`
     );
 
     // ============================================================
-    // 🔥 WAIT FOR BRIDGE
+    // 🔥 WAIT FOR ANDROID BRIDGE
     // ============================================================
+
     const bridgeReady =
       await waitForAndroidBridge();
 
-    if(
+    if (
       !bridgeReady ||
       !window.Android
-    ){
+    ) {
 
-      console.warn(
+      console.error(
         "❌ Android bridge missing"
       );
 
-      return;
+      return false;
     }
 
+    console.log(
+      "✅ Android bridge available"
+    );
+
+
     // ============================================================
-    // 🔥 GET SESSION ID
+    // 🔥 SESSION ID
+    // ------------------------------------------------------------
+    // Priority:
+    //
+    // 1. providedSessionId
+    // 2. localStorage.sessionId
+    // 3. fallback generation ONLY for active duty
+    //
+    // This guarantees that normal START DUTY sends the
+    // EXACT SAME sessionId created by startDuty().
     // ============================================================
+
     let sessionId =
-      localStorage.getItem(
-        "sessionId"
-      ) || "";
+      String(
+        providedSessionId ||
+        localStorage.getItem(
+          "sessionId"
+        ) ||
+        ""
+      ).trim();
 
-// ============================================================
-// 🔒 DUTY START REQUIRES A REAL SESSION ID
-// ============================================================
 
-if(
-  active &&
-  !sessionId
-){
+    // ============================================================
+    // 🔒 ACTIVE DUTY MUST HAVE A REAL SESSION
+    // ============================================================
 
-  console.error(
-    "❌ DUTY START BLOCKED: SESSION ID MISSING"
-  );
+    if (
+      active &&
+      !sessionId
+    ) {
 
-  alert(
-    "Unable to start duty: session ID is missing."
-  );
+      const cleanLeader =
+        cleanName(
+          window.userProfile?.rawName ||
+          window.userProfile?.name ||
+          "UNKNOWN"
+        );
 
-  return;
-}
+      sessionId =
+        `${cleanLeader}_${Date.now()}`;
+
+      localStorage.setItem(
+        "sessionId",
+        sessionId
+      );
+
+      window.currentSessionId =
+        sessionId;
+
+      console.warn(
+        "⚠️ NO SESSION PROVIDED — FALLBACK SESSION GENERATED:",
+        sessionId
+      );
+
+    }
+
+
+    // ============================================================
+    // 🔥 KEEP RUNTIME SESSION ALIGNED
+    // ============================================================
+
+    if (sessionId) {
+
+      window.currentSessionId =
+        sessionId;
+
+      localStorage.setItem(
+        "sessionId",
+        sessionId
+      );
+
+    }
+
+
     console.log(
       "🟢 SESSION TO APK:",
       sessionId
     );
 
+
     // ============================================================
-    // 🔥 FORCE PROFILE SYNC FIRST
+    // 🔒 FINAL SAFETY CHECK
     // ============================================================
-    if(
-      window.userProfile &&
-      Android.saveUserProfile
-    ){
 
-      console.log(
-        "🚀 Syncing profile before duty..."
+    if (
+      active &&
+      !sessionId
+    ) {
+
+      console.error(
+        "❌ ANDROID DUTY START BLOCKED — SESSION ID MISSING"
       );
 
-      Android.saveUserProfile(
-        JSON.stringify(
-          window.userProfile
-        )
-      );
-
-      console.log(
-        "✅ PROFILE SENT TO APK"
-      );
+      return false;
     }
 
+
     // ============================================================
-    // 🔥 SEND PHONE
+    // 🚀 PROFILE SYNC
+    // ------------------------------------------------------------
+    // IMPORTANT:
+    // Failure here must NOT prevent duty state from reaching
+    // Android.
     // ============================================================
-    if(
+
+    if (
+      window.userProfile &&
+      typeof window.Android.saveUserProfile ===
+        "function"
+    ) {
+
+      try {
+
+        console.log(
+          "🚀 Syncing profile before duty..."
+        );
+
+        window.Android.saveUserProfile(
+          JSON.stringify(
+            window.userProfile
+          )
+        );
+
+        console.log(
+          "✅ PROFILE SENT TO APK"
+        );
+
+      } catch (
+        profileError
+      ) {
+
+        console.error(
+          "❌ PROFILE SEND FAILED:",
+          profileError
+        );
+
+      }
+
+    } else {
+
+      console.warn(
+        "⚠️ Android.saveUserProfile unavailable"
+      );
+
+    }
+
+
+    // ============================================================
+    // 📱 PHONE SYNC
+    // ------------------------------------------------------------
+    // IMPORTANT:
+    // Failure here must NOT prevent duty state from reaching
+    // Android.
+    // ============================================================
+
+    if (
       window.userProfile &&
       window.userProfile.phone &&
-      Android.savePhone
-    ){
+      typeof window.Android.savePhone ===
+        "function"
+    ) {
 
-      Android.savePhone(
-        window.userProfile.phone
+      try {
+
+        console.log(
+          "📱 Sending phone to APK..."
+        );
+
+        window.Android.savePhone(
+          String(
+            window.userProfile.phone
+          )
+        );
+
+        console.log(
+          "✅ PHONE SENT TO APK"
+        );
+
+      } catch (
+        phoneError
+      ) {
+
+        console.error(
+          "❌ PHONE SEND FAILED:",
+          phoneError
+        );
+
+      }
+
+    } else {
+
+      console.warn(
+        "⚠️ Android.savePhone unavailable"
       );
 
-      console.log(
-        "📱 PHONE SENT TO APK"
-      );
     }
 
-    // ============================================================
-    // 🔥 SEND DUTY + SESSION
-    // ============================================================
-    if(Android.updateDutyState){
 
-      Android.updateDutyState(
-        !!active,
-        sessionId
+    // ============================================================
+    // 🔥 DUTY + SESSION → ANDROID
+    // ------------------------------------------------------------
+    // THIS IS THE CRITICAL CALL.
+    //
+    // Normal Start Duty:
+    //
+    // notifyAndroidDuty(
+    //     true,
+    //     sessionId
+    // )
+    //
+    // Android receives EXACTLY the same session.
+    // ============================================================
+
+    if (
+      typeof window.Android.updateDutyState ===
+        "function"
+    ) {
+
+      try {
+
+        console.log(
+          "📤 SENDING DUTY STATE TO APK",
+          {
+            active:
+              !!active,
+
+            sessionId:
+              sessionId
+          }
+        );
+
+
+        window.Android.updateDutyState(
+          !!active,
+          sessionId
+        );
+
+
+        console.log(
+          `✅ Android.updateDutyState(${!!active}, ${sessionId}) SENT`
+        );
+
+
+        // ========================================================
+        // 🔥 SUCCESS
+        // ========================================================
+
+        console.log(
+          "🟢 ANDROID DUTY STATE SYNC COMPLETE",
+          {
+            active:
+              !!active,
+
+            sessionId:
+              sessionId
+          }
+        );
+
+
+        return true;
+
+
+      } catch (
+        dutyError
+      ) {
+
+        console.error(
+          "❌ Android.updateDutyState FAILED:",
+          dutyError
+        );
+
+        return false;
+      }
+
+    } else {
+
+      console.error(
+        "❌ Android.updateDutyState unavailable"
       );
 
-      console.log(
-        `✅ Android.updateDutyState(${active}, ${sessionId}) sent`
-      );
+      return false;
     }
 
-  }catch(e){
+
+  } catch (
+    e
+  ) {
 
     console.error(
-      "❌ notifyAndroidDuty failed",
+      "❌ notifyAndroidDuty FAILED:",
       e
     );
+
+    return false;
   }
+
 }
 /* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
@@ -97733,7 +97952,7 @@ async function loadSessionPoints(
               line-height:1.5;
               margin-bottom:22px;
             ">
-              End the current duty session and save the patrol track.
+              Submit patrol report and end current duty session.
             </div>
             <div style="
               display:flex;
@@ -97852,8 +98071,6 @@ console.log(
     // 📋 CAPTURE DUTY TYPE BEFORE FORM CLOSES
     // ============================================================
     const dutyType = document.getElementById("d-type")?.value || "Patrolling";
-window.endedDutyType =
-  dutyType;
 
     // ============================================================
     // ⚡ IMMEDIATE UI TRANSITION
@@ -97876,73 +98093,7 @@ window.endedDutyType =
     } catch (e) {}
 
     showToast("⚡ Ending Duty...");
-// ============================================================
-// 🔒 REGISTER SESSION BEFORE ANDROID STOP
-// ------------------------------------------------------------
-// IMPORTANT:
-// This MUST happen before Android.updateDutyState(false)
-// so a very fast SyncWorker cannot complete before the
-// WebView is ready to receive the callback.
-// ============================================================
 
-window.__waitingForSessionSync =
-  endedSessionId;
-
-console.log(
-  "🔒 Waiting for Android GPS sync:",
-  endedSessionId
-);
-// ============================================================
-// 📱 ANDROID — STOP GPS IMMEDIATELY
-// ------------------------------------------------------------
-// IMPORTANT:
-//
-// Do NOT wait for Firestore.
-// Do NOT wait for Room sync.
-// Do NOT wait for KML.
-// Do NOT wait for history.
-//
-// Android receives the exact ended session ID and stops GPS.
-// ============================================================
-
-try {
-
-  if (
-    window.Android &&
-    typeof window.Android.updateDutyState ===
-      "function"
-  ) {
-
-    console.log(
-      "🛑 ANDROID → DUTY OFF:",
-      endedSessionId
-    );
-
-    window.Android.updateDutyState(
-      false,
-      endedSessionId
-    );
-
-    console.log(
-      "✅ ANDROID GPS STOP SIGNAL SENT"
-    );
-
-  } else {
-
-    console.warn(
-      "⚠ Android bridge unavailable during End Duty"
-    );
-
-  }
-
-} catch (androidError) {
-
-  console.error(
-    "❌ ANDROID GPS STOP FAILED:",
-    androidError
-  );
-
-}
     // ============================================================
     // 🔥 OBS
     // ============================================================
@@ -97959,186 +98110,550 @@ try {
 
     console.log("📤 PAYLOAD:", payload);
 
-// ============================================================
-// 🔥 IMMEDIATE END-DUTY FIRESTORE CLEANUP
-// ------------------------------------------------------------
-// These writes are independent of GPS/KML finalization.
-//
-// 1. Backend Duty Out
-// 2. live_staff → dutyActive:false
-//
-// Android GPS has ALREADY been told to stop above.
-//
-// KML/history/patrol_tracks finalization happens later,
-// after Android confirms that all Room GPS points are synced.
-// ============================================================
+    // ============================================================
+    // 🔥 BACKEND SAVE
+    // ============================================================
+    Promise.allSettled([
+      callBackend("markDutyOutWithObs", payload),
 
-Promise.allSettled([
+      window.fb.setDoc(
+        window.fb.doc(window.db, "live_staff", profile.cleanName),
+        {
+          dutyActive: false,
+          status: "ENDED",
+          sessionId: "",
+          updatedAt: window.fb.serverTimestamp(),
+          lastDutyEnd: new Date().toISOString(),
+          range: window.fb.deleteField(),
+          division: window.fb.deleteField(),
+          lat: window.fb.deleteField(),
+          lon: window.fb.deleteField(),
+          speed: window.fb.deleteField(),
+          heading: window.fb.deleteField(),
+          turnRate: window.fb.deleteField(),
+          accuracy: window.fb.deleteField(),
+          location: window.fb.deleteField(),
+          timestamp: window.fb.deleteField(),
+          time: window.fb.deleteField(),
+          lastSeen: window.fb.deleteField()
+        },
+        { merge: true }
+      ),
+ 
+      (async () => {
+        try {
+          if (!sessionId) {
+            console.warn("⚠ No sessionId available");
+            return;
+          }
+// ======================================
+// 🔥 BUILD FINAL HISTORY ONCE
+// ======================================
 
-  // ==========================================================
-  // 🔥 BACKEND DUTY OUT
-  // ==========================================================
+const pointsSnap =
+  await window.fb.getDocs(
 
-  callBackend(
-    "markDutyOutWithObs",
-    payload
-  ),
+    window.fb.query(
 
+      window.fb.collection(
+        window.db,
+        "patrol_tracks",
+        sessionId,
+        "points"
+      ),
 
-  // ==========================================================
-  // 🔥 END LIVE STAFF IMMEDIATELY
-  // ==========================================================
+      window.fb.orderBy(
+        "time"
+      )
 
-  window.fb.setDoc(
+    )
 
-    window.fb.doc(
-      window.db,
-      "live_staff",
-      profile.cleanName
-    ),
+  );
 
-    {
+const fullTrack = [];
 
-      dutyActive:
-        false,
+pointsSnap.forEach(doc => {
 
-      status:
-        "ENDED",
+  const p = doc.data();
 
-      sessionId:
-        "",
+  if(
 
-      updatedAt:
-        window.fb.serverTimestamp(),
+    Number.isFinite(
+      Number(p?.lat)
+    )
 
-      lastDutyEnd:
-        new Date().toISOString(),
+    &&
 
-      range:
-        window.fb.deleteField(),
+    Number.isFinite(
+      Number(p?.lon)
+    )
 
-      division:
-        window.fb.deleteField(),
+  ){
+
+    fullTrack.push({
 
       lat:
-        window.fb.deleteField(),
+        Number(p.lat),
 
-      lon:
-        window.fb.deleteField(),
+      lng:
+        Number(p.lon),
 
-      speed:
-        window.fb.deleteField(),
-
-      heading:
-        window.fb.deleteField(),
-
-      turnRate:
-        window.fb.deleteField(),
-
-      accuracy:
-        window.fb.deleteField(),
-
-      location:
-        window.fb.deleteField(),
-
-      timestamp:
-        window.fb.deleteField(),
-
-      time:
-        window.fb.deleteField(),
-
-      lastSeen:
-        window.fb.deleteField()
-
-    },
-
-    {
-      merge:
-        true
-    }
-
-  )
-
-])
-
-.then(
-  results => {
-
-    console.log(
-      "✅ Immediate End Duty Firestore operations complete",
-      results
-    );
+     time:
+  typeof p.time === "number"
+    ? p.time
+    : new Date(p.time).getTime()
+    });
 
   }
 
-)
+});
 
-.catch(
-  err => {
-
-    console.error(
-      "❌ Immediate End Duty Firestore operations failed",
-      err
-    );
-
-  }
+console.log(
+  "📍 FINAL TRACK",
+  fullTrack.length
 );
 
+if(
+  fullTrack.length < 2
+){
 
-// ============================================================
-// 📦 REGISTER SESSION FOR ANDROID SYNC COMPLETION
-// ------------------------------------------------------------
-// DO NOT READ patrol_tracks here.
-//
-// Android Room may still contain unsynced points.
-//
-// Android SyncWorker will later call:
-//
-// window.onSessionGpsSyncComplete(sessionId)
-//
-// ONLY THEN:
-//
-// Room → Firestore confirmed
-//        ↓
-// KML
-//        ↓
-// History
-//        ↓
-// patrol_tracks → ENDED
-//        ↓
-// Telegram
-// ============================================================
-
-
-
-// ============================================================
-// 🔥 IMMEDIATE SESSION UI CLEANUP
-// ============================================================
-
-if (
-  window.sessionTrackCache
-) {
-
-  delete window.sessionTrackCache[
-    sessionId
-  ];
+  throw new Error(
+    `Insufficient track points: ${fullTrack.length}`
+  );
 
 }
 
-window.historyFlushInProgress =
-  false;
+console.table({
+
+  sessionId,
+
+  fullTrackPoints:
+    fullTrack.length
+
+});
+
+// ======================================
+// 🔥 TELEPORT FILTER
+// ======================================
+
+const cleanTrack = [];
+
+for(
+  let i = 0;
+  i < fullTrack.length;
+  i++
+){
+
+  const curr =
+    fullTrack[i];
+
+  // ==========================
+  // FIRST POINT
+  // ==========================
+  if(i === 0){
+
+    cleanTrack.push(curr);
+
+    continue;
+  }
+
+  const prev =
+    fullTrack[i - 1];
+
+  const dist =
+
+    map.distance(
+
+      [prev.lat, prev.lng],
+
+      [curr.lat, curr.lng]
+
+    );
+
+  const timeDiffSec =
+
+    Math.max(
+
+      1,
+
+      (
+        curr.time -
+        prev.time
+      ) / 1000
+
+    );
+
+  const speedKmh =
+
+    (dist / timeDiffSec)
+    * 3.6;
+
+  const isTeleport =
+
+    dist > 300
+
+    ||
+
+    speedKmh > 120
+
+    ||
+
+    !isFinite(dist)
+
+    ||
+
+    !isFinite(speedKmh);
+
+  if(isTeleport){
+
+    console.warn(
+
+      "🚫 HISTORY TELEPORT REMOVED",
+
+      {
+
+        distance:
+          Math.round(dist),
+
+        speed:
+          Math.round(speedKmh),
+
+        from:
+          [prev.lat, prev.lng],
+
+        to:
+          [curr.lat, curr.lng]
+
+      }
+
+    );
+
+    continue;
+  }
+
+  cleanTrack.push(curr);
+
+}
+
+console.table({
+
+  originalPoints:
+    fullTrack.length,
+
+  cleanedPoints:
+    cleanTrack.length,
+
+  removed:
+    fullTrack.length -
+    cleanTrack.length
+
+});
+
+// ======================================
+// 🔥 USE CLEAN TRACK
+// ======================================
+
+console.log(
+  "STEP A - processHistoryTrack START"
+);
+
+await processHistoryTrack(
+  cleanTrack,
+  sessionId
+);
+
+console.log(
+  "STEP A - processHistoryTrack DONE"
+);
+// ======================================
+// FINAL ANALYTICS FLUSH
+// ======================================
+
+try {
+
+console.log(
+  "STEP B - flushAnalyticsBuffer START"
+);
+console.log("========== BEFORE FINAL FLUSH ==========");
+
+console.log(
+  "analyticsBuffer",
+  window.analyticsBuffer
+);
+
+console.log(
+  "analyticsBuffer keys",
+  Object.keys(window.analyticsBuffer || {})
+);
+
+Object.entries(window.analyticsBuffer || {}).forEach(
+([gridId,data])=>{
+
+  console.table({
+
+    gridId,
+
+    points:
+      data.localCoordsArray?.[0]?.length,
+
+    cells:
+      data.touchedCells?.size
+
+  });
+
+});
+await flushAnalyticsBuffer();
+
+console.log(
+  "STEP B - flushAnalyticsBuffer DONE"
+);
+
+  console.log(
+    "✅ FINAL ANALYTICS FLUSH COMPLETE"
+  );
+
+} catch (err) {
+
+  console.error(
+    "❌ FINAL ANALYTICS FLUSH FAILED",
+    err
+  );
+
+}
+
+// ======================================
+// USE REAL TRACK FROM patrol_tracks
+// ======================================
+
+const points =
+
+  cleanTrack.map(p => ({
+
+    lat:
+      Number(p.lat),
+
+    lng:
+      Number(
+        p.lng ?? p.lon
+      )
+
+  }));
+
+const endedAt =
+  Date.now();
+
+console.table({
+
+  sessionId,
+
+  patrolTrackPoints:
+    points.length
+
+});
+// ======================================
+// KML GENERATION
+// ======================================
+
+showToast(
+  "🗺️ Generating patrol KML..."
+);
+
+console.log(
+  "STEP C - uploadPatrolKML START"
+);
+
+const kmlUrl =
+  await uploadPatrolKML(
+    sessionId,
+    points
+  );
+console.log(
+  "STEP C RESULT",
+  kmlUrl
+);
+
+if(!kmlUrl){
+
+  console.error(
+    "KML RETURNED NULL"
+  );
+
+}
+console.log(
+  "STEP C - uploadPatrolKML DONE",
+  kmlUrl
+);
+
+window.lastDutyKmlUrl =
+  kmlUrl || "";
+
+// ======================================
+// UPDATE HISTORY
+// ======================================
+
+await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "history",
+    sessionId
+  ),
+  {
+    pointCount:
+      points.length,
+
+    kmlUrl:
+      kmlUrl || "",
+
+    endedAt
+  }
+);
+
+console.table({
+
+  sessionId,
+
+  pointCount:
+    points.length,
+
+  kmlGenerated:
+    !!kmlUrl
+
+});
+// ======================================
+// BUILD REPORT
+// ======================================
+
+let reportData = null;
+
+try {
+console.log(
+  "STEP D - REPORT START"
+);
+  reportData =
+    await buildDutyPerformanceReport({
+
+      sessionId,
+
+      dutyType,
+
+      leader:
+        profile.cleanName,
+
+      trackPoints:
+        points,
+
+      kmlUrl:
+        kmlUrl || ""
+
+    });
+
+  reportData.kmlUrl =
+    kmlUrl || "";
+
+  reportData.rawName =
+    profile.name || "";
+
+  reportData.cleanName =
+    profile.cleanName || "";
+
+  reportData.phone =
+    profile.phone || "";
+
+  reportData.division =
+    profile.division || "";
+
+  reportData.range =
+    profile.range || "";
+
+  reportData.beat =
+    profile.beat || "";
+
+  window.currentDutyReport =
+    reportData;
+
+  showDutyPerformanceReport(
+    reportData
+  );
+console.log(
+  "STEP D - REPORT SHOWN"
+);
+} catch (reportErr) {
+
+  console.error(
+    "❌ Performance report failed",
+    reportErr
+  );
+
+}
+
+// ======================================
+// TELEGRAM
+// ======================================
+
+if (reportData) {
+
+  sendDutyReportToAppsScript(
+    reportData
+  )
+  .catch(err => {
+
+    console.error(
+      "❌ Telegram send failed",
+      err
+    );
+
+  });
+
+}
+
+// ======================================
+// UPDATE PATROL TRACK STATUS
+// ======================================
+
+await window.fb.updateDoc(
+  window.fb.doc(
+    window.db,
+    "patrol_tracks",
+    sessionId
+  ),
+  {
+    dutyActive: false,
+
+    status: "ENDED",
+
+    endedAt,
+
+    updatedAt:
+      endedAt
+  }
+);
 
 window.realtimePerformanceData = {
   trackPoints: []
 };
+        } catch (err) {
+          console.error("❌ History write failed", err);
+        }
+      })()
+    ])
+    .then(results => {
+      if(window.sessionTrackCache){
+        delete window.sessionTrackCache[sessionId];
+      }
+      
+      window.historyFlushInProgress = false;
 
-window.lastTrackPoint =
-  null;
+      window.realtimePerformanceData = {
+        trackPoints: []
+      };
 
+      window.lastTrackPoint = null;
 
-// ============================================================
-// 🔥 RESET SESSION ANALYTICS
-// ============================================================
+      finalizeSessionLifecycle();
+// ======================================
+// RESET SESSION ANALYTICS
+// AFTER REPORT IS BUILT
+// ======================================
 
 window.sessionVisitedGrids =
   new Set();
@@ -98150,39 +98665,13 @@ window.newMonthlyCompartmentIds =
   new Set();
 
 window.newMonthlyGridsCaptured =
-  0;
+  0;      console.log("✅ End duty background sync complete", results);
+    })
+    .catch(err => {
+      console.error("❌ End duty background sync failed", err);
+    });
 
-
-// ============================================================
-// 🔥 SESSION LIFECYCLE
-// ============================================================
-
-try {
-
-  finalizeSessionLifecycle();
-
-} catch (e) {
-
-  console.warn(
-    "⚠ finalizeSessionLifecycle failed:",
-    e
-  );
-
-}
-
-
-// ============================================================
-// ℹ️ IMPORTANT
-// ------------------------------------------------------------
-// DO NOT generate KML here.
-// DO NOT read patrol_tracks here.
-// DO NOT send Telegram here.
-//
-// Those happen ONLY after:
-//
-// Android → onSessionGpsSyncComplete(sessionId)
-// ============================================================  
-  setTimeout(() => {
+    setTimeout(() => {
       showToast("✅ Duty Ended Successfully");
     }, 1000);
 
@@ -98198,717 +98687,7 @@ try {
     console.groupEnd();
   }
 }
-// ============================================================
-// 🗺️ FINALIZE SESSION AFTER ALL ROOM POINTS ARE SYNCED
-// ------------------------------------------------------------
-// This function contains the existing:
-//
-// ✅ patrol_tracks read
-// ✅ teleport filtering
-// ✅ processHistoryTrack
-// ✅ analytics flush
-// ✅ KML generation
-// ✅ history update
-// ✅ patrol_tracks END status
-// ✅ Telegram
-//
-// ❌ NO performance report
-// ============================================================
 
-async function finalizeSessionAfterGpsSync(
-  sessionId
-) {
-
-  try {
-
-    console.log(
-      "✅ ALL GPS POINTS SYNCED:",
-      sessionId
-    );
-
-
-    // ==========================================================
-    // 🔥 READ COMPLETE FIRESTORE TRACK
-    // ==========================================================
-
-    const pointsSnap =
-      await window.fb.getDocs(
-
-        window.fb.query(
-
-          window.fb.collection(
-            window.db,
-            "patrol_tracks",
-            sessionId,
-            "points"
-          ),
-
-          window.fb.orderBy(
-            "time"
-          )
-
-        )
-
-      );
-
-
-    // ==========================================================
-    // 🔥 BUILD FINAL TRACK
-    // ==========================================================
-
-    const fullTrack = [];
-
-
-    pointsSnap.forEach(
-      doc => {
-
-        const p =
-          doc.data();
-
-
-        if (
-
-          Number.isFinite(
-            Number(p?.lat)
-          )
-
-          &&
-
-          Number.isFinite(
-            Number(p?.lon)
-          )
-
-        ) {
-
-          fullTrack.push({
-
-            lat:
-              Number(p.lat),
-
-            lng:
-              Number(p.lon),
-
-            time:
-
-              typeof p.time ===
-              "number"
-
-                ? p.time
-
-                : new Date(
-                    p.time
-                  ).getTime()
-
-          });
-
-        }
-
-      }
-    );
-
-
-    console.log(
-      "📍 FINAL TRACK:",
-      fullTrack.length
-    );
-
-
-    // ==========================================================
-    // 🔥 SAME EXISTING MINIMUM CHECK
-    // ==========================================================
-
-// ==========================================================
-// 🔥 TRACK POINT AVAILABILITY
-// ----------------------------------------------------------
-// Do NOT abort session finalization because there are fewer
-// than 2 points.
-//
-// The session must still be closed:
-//   • patrol_tracks → ENDED
-//   • Telegram can still be sent
-//   • cleanup still happens
-//
-// KML/history processing will use whatever valid points exist.
-// ==========================================================
-
-if (fullTrack.length === 0) {
-
-  console.warn(
-    "⚠ No valid synced GPS points for session:",
-    sessionId
-  );
-
-} else if (fullTrack.length === 1) {
-
-  console.warn(
-    "⚠ Only 1 valid synced GPS point for session:",
-    sessionId
-  );
-
-} else {
-
-  console.log(
-    "✅ Valid synced GPS points:",
-    fullTrack.length
-  );
-
-}
-
-    // ==========================================================
-    // 🔥 SAME TELEPORT FILTER
-    // ==========================================================
-
-    const cleanTrack = [];
-
-
-    for (
-      let i = 0;
-      i < fullTrack.length;
-      i++
-    ) {
-
-      const curr =
-        fullTrack[i];
-
-
-      if (
-        i === 0
-      ) {
-
-        cleanTrack.push(
-          curr
-        );
-
-        continue;
-
-      }
-
-
-      const prev =
-        fullTrack[i - 1];
-
-
-      const dist =
-        map.distance(
-
-          [
-            prev.lat,
-            prev.lng
-          ],
-
-          [
-            curr.lat,
-            curr.lng
-          ]
-
-        );
-
-
-      const timeDiffSec =
-        Math.max(
-
-          1,
-
-          (
-            curr.time -
-            prev.time
-          ) / 1000
-
-        );
-
-
-      const speedKmh =
-        (
-          dist /
-          timeDiffSec
-        ) * 3.6;
-
-
-      const isTeleport =
-
-        dist > 300
-
-        ||
-
-        speedKmh > 120
-
-        ||
-
-        !isFinite(dist)
-
-        ||
-
-        !isFinite(speedKmh);
-
-
-      if (
-        isTeleport
-      ) {
-
-        console.warn(
-          "🚫 HISTORY TELEPORT REMOVED",
-          {
-
-            distance:
-              Math.round(
-                dist
-              ),
-
-            speed:
-              Math.round(
-                speedKmh
-              ),
-
-            from:
-              [
-                prev.lat,
-                prev.lng
-              ],
-
-            to:
-              [
-                curr.lat,
-                curr.lng
-              ]
-
-          }
-        );
-
-
-        continue;
-
-      }
-
-
-      cleanTrack.push(
-        curr
-      );
-
-    }
-
-
-    console.table({
-
-      originalPoints:
-        fullTrack.length,
-
-      cleanedPoints:
-        cleanTrack.length,
-
-      removed:
-        fullTrack.length -
-        cleanTrack.length
-
-    });
-
-
-    // ==========================================================
-    // 🔥 EXISTING HISTORY PROCESSING
-    // ==========================================================
-
-    await processHistoryTrack(
-      cleanTrack,
-      sessionId
-    );
-
-
-    // ==========================================================
-    // 🔥 EXISTING ANALYTICS FLUSH
-    // ==========================================================
-
-    try {
-
-      await flushAnalyticsBuffer();
-
-    } catch (err) {
-
-      console.error(
-        "❌ FINAL ANALYTICS FLUSH FAILED",
-        err
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔥 REAL TRACK → KML POINTS
-    // ==========================================================
-
-    const points =
-      cleanTrack.map(
-        p => ({
-
-          lat:
-            Number(
-              p.lat
-            ),
-
-          lng:
-            Number(
-              p.lng ??
-              p.lon
-            )
-
-        })
-      );
-
-
-    const endedAt =
-      Date.now();
-
-
-    // ==========================================================
-    // 🗺️ EXISTING KML
-    // ==========================================================
-
-    showToast(
-      "🗺️ Generating patrol KML..."
-    );
-
-
-    console.log(
-      "STEP C - uploadPatrolKML START"
-    );
-
-
-    const kmlUrl =
-      await uploadPatrolKML(
-        sessionId,
-        points
-      );
-
-
-    console.log(
-      "STEP C - uploadPatrolKML DONE:",
-      kmlUrl
-    );
-
-
-    window.lastDutyKmlUrl =
-      kmlUrl || "";
-
-
-    // ==========================================================
-    // 🔥 EXISTING HISTORY UPDATE
-    // ==========================================================
-
-    await window.fb.updateDoc(
-
-      window.fb.doc(
-        window.db,
-        "history",
-        sessionId
-      ),
-
-      {
-
-        pointCount:
-          points.length,
-
-        kmlUrl:
-          kmlUrl || "",
-
-        endedAt
-
-      }
-
-    );
-
-
-    // ==========================================================
-    // 🔥 PATROL TRACK STATUS
-    // ==========================================================
-
-    await window.fb.updateDoc(
-
-      window.fb.doc(
-        window.db,
-        "patrol_tracks",
-        sessionId
-      ),
-
-      {
-
-        dutyActive:
-          false,
-
-        status:
-          "ENDED",
-
-        endedAt,
-
-        updatedAt:
-          endedAt
-
-      }
-
-    );
-
-
-    // ==========================================================
-    // 📲 TELEGRAM — KEEP
-    // ----------------------------------------------------------
-    // NO PERFORMANCE REPORT.
-    //
-    // We still send Telegram using the existing Apps Script
-    // function.
-    // ==========================================================
-
-    const telegramPayload = {
-
-      sessionId:
-
-        sessionId,
-
-      dutyType:
-
-        window.endedDutyType ||
-        "Patrolling",
-
-      leader:
-
-        window.userProfile?.cleanName ||
-        "",
-
-      rawName:
-
-        window.userProfile?.name ||
-        "",
-
-      cleanName:
-
-        window.userProfile?.cleanName ||
-        "",
-
-      phone:
-
-        window.userProfile?.phone ||
-        "",
-
-      division:
-
-        window.userProfile?.division ||
-        "",
-
-      range:
-
-        window.userProfile?.range ||
-        "",
-
-      beat:
-
-        window.userProfile?.beat ||
-        "",
-
-      trackPoints:
-
-        points,
-
-      pointCount:
-
-        points.length,
-
-      kmlUrl:
-
-        kmlUrl || "",
-
-      endedAt:
-
-        endedAt
-
-    };
-
-
-    try {
-
-      await sendDutyReportToAppsScript(
-        telegramPayload
-      );
-
-
-      console.log(
-        "✅ Telegram Apps Script send complete"
-      );
-
-    } catch (telegramError) {
-
-      console.error(
-        "❌ Telegram send failed",
-        telegramError
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🧹 EXISTING SESSION CLEANUP
-    // ==========================================================
-
-    if (
-      window.sessionTrackCache
-    ) {
-
-      delete window
-        .sessionTrackCache[
-          sessionId
-        ];
-
-    }
-
-
-    window.historyFlushInProgress =
-      false;
-
-
-    window.realtimePerformanceData = {
-
-      trackPoints: []
-
-    };
-
-
-    window.lastTrackPoint =
-      null;
-
-
-    // ==========================================================
-    // 🔥 EXISTING SESSION LIFECYCLE
-    // ==========================================================
-
-    try {
-
-      finalizeSessionLifecycle();
-
-    } catch (err) {
-
-      console.warn(
-        "⚠ finalizeSessionLifecycle failed:",
-        err
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔥 RESET SESSION ANALYTICS
-    // ==========================================================
-
-    window.sessionVisitedGrids =
-      new Set();
-
-    window.newMonthlyCellIds =
-      new Set();
-
-    window.newMonthlyCompartmentIds =
-      new Set();
-
-    window.newMonthlyGridsCaptured =
-      0;
-
-
-    window.__waitingForSessionSync =
-      "";
-
-
-    showToast(
-      kmlUrl
-        ? "✅ Patrol KML saved"
-        : "⚠ Duty ended; KML unavailable"
-    );
-
-
-    console.log(
-      "✅ SESSION FINALIZATION COMPLETE:",
-      sessionId
-    );
-
-
-  } catch (err) {
-
-    console.error(
-      "❌ FINAL SESSION/KML PROCESS FAILED:",
-      err
-    );
-
-  }
-
-}
-
-// ============================================================
-// 📱 ANDROID → WEBVIEW
-// ------------------------------------------------------------
-// Android calls this ONLY when SyncWorker confirms:
-//
-//     ZERO UNSYNCED ROOM POINTS
-//
-// for this exact session.
-// ============================================================
-
-window.onSessionGpsSyncComplete =
-  async function(sessionId) {
-
-    try {
-
-      const cleanSessionId =
-        String(
-          sessionId || ""
-        ).trim();
-
-
-      if (!cleanSessionId) {
-
-        console.warn(
-          "⚠ Sync completion has no sessionId"
-        );
-
-        return;
-
-      }
-
-
-      const waitingSession =
-        String(
-          window.__waitingForSessionSync ||
-          ""
-        ).trim();
-
-
-      if (
-        waitingSession !==
-        cleanSessionId
-      ) {
-
-        console.warn(
-          "⚠ Ignoring sync completion for wrong session:",
-          cleanSessionId
-        );
-
-        return;
-
-      }
-
-
-      console.log(
-        "✅ ANDROID CONFIRMED ALL POINTS SYNCED:",
-        cleanSessionId
-      );
-
-
-      await finalizeSessionAfterGpsSync(
-        cleanSessionId
-      );
-
-
-    } catch (err) {
-
-      console.error(
-        "❌ onSessionGpsSyncComplete failed:",
-        err
-      );
-
-    }
-
-  };
     function getPerformanceGrade(
   score,
   durationHours,
@@ -107315,76 +107094,7 @@ localStorage.setItem(
   "sessionId",
   sessionId
 );
-// =====================================================
-// 🚀 START NATIVE GPS IMMEDIATELY
-// =====================================================
-// IMPORTANT:
-// This happens directly inside the real user Start Duty flow.
-// Do NOT wait for GPS search or Firestore writes.
-// =====================================================
 
-try {
-
-  console.log(
-    "🚀 START DUTY → REQUESTING APK GPS IMMEDIATELY"
-  );
-
-  if (
-    typeof notifyAndroidDuty ===
-    "function"
-  ) {
-
-    await notifyAndroidDuty(
-      true,
-      sessionId
-    );
-
-    console.log(
-      "✅ START DUTY → APK GPS REQUEST SENT",
-      sessionId
-    );
-
-  } else {
-
-    console.error(
-      "❌ notifyAndroidDuty function missing"
-    );
-
-  }
-
-} catch (e) {
-
-  console.error(
-    "❌ IMMEDIATE APK GPS START FAILED",
-    e
-  );
-
-  // IMPORTANT:
-  // Native GPS did not start successfully.
-  // Do not silently continue as if everything is healthy.
-
-  window.startDutyInProgress =
-    false;
-
-  window.__dutyUpdating =
-    false;
-
-  startDutySubmitting =
-    false;
-
-  startBtn.disabled =
-    false;
-
-  startBtn.innerHTML =
-    originalText;
-
-  alert(
-    "❌ GPS service could not be started.\n\n" +
-    "Duty has not been started."
-  );
-
-  return;
-}
 
     // =====================================================
 // 🔥 SAVE SESSION RUNTIME
@@ -107825,6 +107535,62 @@ console.log(
   cleanLeader,
   sessionId
 );
+
+// =====================================================
+// 📱 START ANDROID GPS — SAME SESSION
+// -----------------------------------------------------
+// Firestore duty is already confirmed.
+// Now hand the EXACT SAME sessionId to Android.
+// Android GPS failure must NOT undo the Firestore duty.
+// =====================================================
+
+try {
+
+    if (
+        typeof notifyAndroidDuty === "function"
+    ) {
+
+        console.log(
+            "📱 STARTING ANDROID GPS",
+            {
+                sessionId:
+                    sessionId
+            }
+        );
+
+        await notifyAndroidDuty(
+            true,
+            sessionId
+        );
+
+        console.log(
+            "✅ ANDROID GPS START REQUEST SENT",
+            sessionId
+        );
+
+    } else {
+
+        console.warn(
+            "⚠ notifyAndroidDuty() not available"
+        );
+
+    }
+
+} catch (androidErr) {
+
+    // =================================================
+    // IMPORTANT:
+    // DO NOT CANCEL DUTY
+    // Firestore duty is already valid.
+    // Android can recover through existing mechanisms.
+    // =================================================
+
+    console.error(
+        "❌ ANDROID GPS START FAILED:",
+        androidErr
+    );
+
+}
 // =====================================================
 // 🔥 START REALTIME ANALYTICS
 // =====================================================
