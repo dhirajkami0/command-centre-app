@@ -107315,7 +107315,76 @@ localStorage.setItem(
   "sessionId",
   sessionId
 );
+// =====================================================
+// 🚀 START NATIVE GPS IMMEDIATELY
+// =====================================================
+// IMPORTANT:
+// This happens directly inside the real user Start Duty flow.
+// Do NOT wait for GPS search or Firestore writes.
+// =====================================================
 
+try {
+
+  console.log(
+    "🚀 START DUTY → REQUESTING APK GPS IMMEDIATELY"
+  );
+
+  if (
+    typeof notifyAndroidDuty ===
+    "function"
+  ) {
+
+    await notifyAndroidDuty(
+      true,
+      sessionId
+    );
+
+    console.log(
+      "✅ START DUTY → APK GPS REQUEST SENT",
+      sessionId
+    );
+
+  } else {
+
+    console.error(
+      "❌ notifyAndroidDuty function missing"
+    );
+
+  }
+
+} catch (e) {
+
+  console.error(
+    "❌ IMMEDIATE APK GPS START FAILED",
+    e
+  );
+
+  // IMPORTANT:
+  // Native GPS did not start successfully.
+  // Do not silently continue as if everything is healthy.
+
+  window.startDutyInProgress =
+    false;
+
+  window.__dutyUpdating =
+    false;
+
+  startDutySubmitting =
+    false;
+
+  startBtn.disabled =
+    false;
+
+  startBtn.innerHTML =
+    originalText;
+
+  alert(
+    "❌ GPS service could not be started.\n\n" +
+    "Duty has not been started."
+  );
+
+  return;
+}
 
     // =====================================================
 // 🔥 SAVE SESSION RUNTIME
