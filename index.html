@@ -97866,7 +97866,266 @@ async function loadSessionPoints(
 
   }
 
-}async function submitEndDuty(event) {
+}
+
+// ============================================================
+// 🗺️ PATROL KML READY
+// ============================================================
+
+function showPatrolKMLReady(kmlUrl) {
+
+  const url =
+    String(
+      kmlUrl || ""
+    ).trim();
+
+  if(!url){
+
+    showToast(
+      "⚠️ Patrol KML is not available."
+    );
+
+    return;
+  }
+
+  const old =
+    document.getElementById(
+      "patrolKMLReadyPopup"
+    );
+
+  if(old){
+    old.remove();
+  }
+
+  const overlay =
+    document.createElement("div");
+
+  overlay.id =
+    "patrolKMLReadyPopup";
+
+  overlay.innerHTML = `
+
+    <div style="
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      z-index:999999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    ">
+
+      <div style="
+        width:min(92vw,360px);
+        background:#fff;
+        border-radius:18px;
+        padding:22px;
+        box-shadow:0 10px 35px rgba(0,0,0,.25);
+        text-align:center;
+      ">
+
+        <div style="
+          font-size:46px;
+          margin-bottom:10px;
+        ">
+          🗺️
+        </div>
+
+        <div style="
+          font-size:20px;
+          font-weight:700;
+          margin-bottom:8px;
+          color:#111827;
+        ">
+          Patrol KML Ready
+        </div>
+
+        <div style="
+          font-size:14px;
+          color:#4b5563;
+          margin-bottom:20px;
+        ">
+          Your patrol track KML has been generated successfully.
+        </div>
+
+        <div style="
+          display:flex;
+          gap:10px;
+        ">
+
+          <button
+            id="downloadPatrolKMLBtn"
+            style="
+              flex:1;
+              border:none;
+              border-radius:12px;
+              padding:12px;
+              font-weight:700;
+              background:#166534;
+              color:white;
+            "
+          >
+            ⬇ Download
+          </button>
+
+          <button
+            id="sharePatrolKMLBtn"
+            style="
+              flex:1;
+              border:none;
+              border-radius:12px;
+              padding:12px;
+              font-weight:700;
+              background:#2563eb;
+              color:white;
+            "
+          >
+            📤 Share
+          </button>
+
+        </div>
+
+        <button
+          id="closePatrolKMLReadyBtn"
+          style="
+            width:100%;
+            margin-top:10px;
+            border:none;
+            border-radius:12px;
+            padding:10px;
+            font-weight:600;
+            background:#e5e7eb;
+          "
+        >
+          Close
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(
+    overlay
+  );
+
+  // ==========================================================
+  // DOWNLOAD
+  // ==========================================================
+
+  document
+    .getElementById(
+      "downloadPatrolKMLBtn"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        const a =
+          document.createElement("a");
+
+        a.href =
+          url;
+
+        a.target =
+          "_blank";
+
+        a.rel =
+          "noopener";
+
+        a.download =
+          `Patrol_${Date.now()}.kml`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+      }
+    );
+
+  // ==========================================================
+  // SHARE
+  // ==========================================================
+
+  document
+    .getElementById(
+      "sharePatrolKMLBtn"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        try {
+
+          const shareText =
+`📍 Patrol Track KML
+
+${url}`;
+
+          if(
+            navigator.share
+          ){
+
+            await navigator.share({
+
+              title:
+                "Patrol Track KML",
+
+              text:
+                shareText,
+
+              url:
+                url
+
+            });
+
+            return;
+          }
+
+          window.open(
+            url,
+            "_blank"
+          );
+
+        }
+        catch(err){
+
+          console.error(
+            "❌ KML share failed",
+            err
+          );
+
+        }
+
+      }
+    );
+
+  // ==========================================================
+  // CLOSE
+  // ==========================================================
+
+  document
+    .getElementById(
+      "closePatrolKMLReadyBtn"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        overlay.remove();
+
+      }
+    );
+
+}
+
+window.showPatrolKMLReady =
+  showPatrolKMLReady;
+
+async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
 
   try {
@@ -98020,7 +98279,24 @@ async function loadSessionPoints(
     // 🔥 SESSION ID
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
+// ============================================================
+// 🕐 CAPTURE DUTY START TIME
+// ------------------------------------------------------------
+// IMPORTANT:
+// Use the actual duty-start timestamp saved by Start Duty.
+// Do NOT use the first GPS point as duty start.
+// ============================================================
 
+const dutyStartedAt =
+  window.dutyStartedAt ||
+  localStorage.getItem("dutyStartedAt") ||
+  localStorage.getItem("dutyStartTime") ||
+  "";
+
+console.log(
+  "🕐 DUTY START:",
+  dutyStartedAt
+);
   // ============================================================
 // 🔒 END-DUTY SESSION LOCK
 // ------------------------------------------------------------
@@ -98435,10 +98711,99 @@ const points =
       )
 
   }));
+// ============================================================
+// 📏 FINAL PATROL DISTANCE
+// ------------------------------------------------------------
+// Calculate only from the final clean patrol track.
+// This is the distance used by Telegram.
+// ============================================================
 
+let distanceMeters = 0;
+
+for (
+  let i = 1;
+  i < cleanTrack.length;
+  i++
+) {
+
+  const prev =
+    cleanTrack[i - 1];
+
+  const curr =
+    cleanTrack[i];
+
+  const segmentDistance =
+    map.distance(
+      [prev.lat, prev.lng],
+      [curr.lat, curr.lng]
+    );
+
+  if (
+    Number.isFinite(segmentDistance) &&
+    segmentDistance >= 0
+  ) {
+
+    distanceMeters +=
+      segmentDistance;
+
+  }
+}
+
+const distanceKm =
+  distanceMeters / 1000;
+
+console.log(
+  "📏 FINAL PATROL DISTANCE:",
+  distanceKm.toFixed(2),
+  "km"
+);
 const endedAt =
   Date.now();
+console.log(
+  "🕐 DUTY ENDED:",
+  new Date(endedAt).toISOString()
+);
+// ============================================================
+// ⏱ DUTY DURATION
+// ============================================================
 
+let durationText = "-";
+
+const startMs =
+  new Date(
+    dutyStartedAt
+  ).getTime();
+
+if (
+  Number.isFinite(startMs) &&
+  startMs > 0 &&
+  endedAt >= startMs
+) {
+
+  const durationMinutes =
+    Math.floor(
+      (endedAt - startMs) /
+      60000
+    );
+
+  const hours =
+    Math.floor(
+      durationMinutes / 60
+    );
+
+  const minutes =
+    durationMinutes % 60;
+
+  durationText =
+    hours > 0
+      ? `${hours} hr ${minutes} min`
+      : `${minutes} min`;
+}
+
+console.log(
+  "⏱ DUTY DURATION:",
+  durationText
+);
 console.table({
 
   sessionId,
@@ -98516,93 +98881,85 @@ console.table({
     !!kmlUrl
 
 });
-// ======================================
-// BUILD REPORT
-// ======================================
 
-let reportData = null;
 
-try {
+// ============================================================
+// 📤 TELEGRAM — FINAL DUTY END SUMMARY
+// ============================================================
+// NO PERFORMANCE REPORT.
+// Sends only the completed duty summary.
+// ============================================================
+
+const dutyEndTelegramData = {
+
+  name:
+    profile.name ||
+    profile.cleanName ||
+    "",
+
+  cleanName:
+    profile.cleanName ||
+    "",
+
+  phone:
+    profile.phone ||
+    "",
+
+  dutyType:
+    dutyType ||
+    "Patrolling",
+
+  sessionId:
+    sessionId,
+
+  dutyStartedAt:
+    dutyStartedAt || "",
+
+  endedAt:
+    endedAt,
+
+  durationText:
+    durationText,
+
+  pointCount:
+    points.length,
+
+  distanceKm:
+    Number(
+      distanceKm.toFixed(2)
+    ),
+
+  kmlReady:
+    !!kmlUrl,
+
+  kmlUrl:
+    kmlUrl || ""
+
+};
+
 console.log(
-  "STEP D - REPORT START"
+  "📤 FINAL DUTY TELEGRAM:",
+  dutyEndTelegramData
 );
-  reportData =
-    await buildDutyPerformanceReport({
 
-      sessionId,
+// ============================================================
+// IMPORTANT:
+// Reuse the EXISTING Telegram/Apps Script transport.
+// The receiver must format this payload as the new
+// DUTY ENDED message.
+// ============================================================
 
-      dutyType,
-
-      leader:
-        profile.cleanName,
-
-      trackPoints:
-        points,
-
-      kmlUrl:
-        kmlUrl || ""
-
-    });
-
-  reportData.kmlUrl =
-    kmlUrl || "";
-
-  reportData.rawName =
-    profile.name || "";
-
-  reportData.cleanName =
-    profile.cleanName || "";
-
-  reportData.phone =
-    profile.phone || "";
-
-  reportData.division =
-    profile.division || "";
-
-  reportData.range =
-    profile.range || "";
-
-  reportData.beat =
-    profile.beat || "";
-
-  window.currentDutyReport =
-    reportData;
-
-  showDutyPerformanceReport(
-    reportData
-  );
-console.log(
-  "STEP D - REPORT SHOWN"
-);
-} catch (reportErr) {
+sendDutyReportToAppsScript(
+  dutyEndTelegramData
+)
+.catch(err => {
 
   console.error(
-    "❌ Performance report failed",
-    reportErr
+    "❌ Duty End Telegram failed",
+    err
   );
 
-}
-
-// ======================================
-// TELEGRAM
-// ======================================
-
-if (reportData) {
-
-  sendDutyReportToAppsScript(
-    reportData
-  )
-  .catch(err => {
-
-    console.error(
-      "❌ Telegram send failed",
-      err
-    );
-
-  });
-
-}
-
+});
 // ======================================
 // UPDATE PATROL TRACK STATUS
 // ======================================
@@ -98633,44 +98990,98 @@ window.realtimePerformanceData = {
         }
       })()
     ])
-    .then(results => {
-      if(window.sessionTrackCache){
-        delete window.sessionTrackCache[sessionId];
-      }
-      
-      window.historyFlushInProgress = false;
+.then(results => {
 
-      window.realtimePerformanceData = {
-        trackPoints: []
-      };
+  // ==========================================================
+  // 🧹 SESSION CACHE CLEANUP
+  // ==========================================================
 
-      window.lastTrackPoint = null;
+  if(
+    window.sessionTrackCache
+  ){
 
-      finalizeSessionLifecycle();
-// ======================================
-// RESET SESSION ANALYTICS
-// AFTER REPORT IS BUILT
-// ======================================
+    delete window.sessionTrackCache[
+      sessionId
+    ];
 
-window.sessionVisitedGrids =
-  new Set();
+  }
 
-window.newMonthlyCellIds =
-  new Set();
+  // ==========================================================
+  // 🔥 HISTORY FLUSH COMPLETE
+  // ==========================================================
 
-window.newMonthlyCompartmentIds =
-  new Set();
+  window.historyFlushInProgress =
+    false;
 
-window.newMonthlyGridsCaptured =
-  0;      console.log("✅ End duty background sync complete", results);
-    })
-    .catch(err => {
+  // ==========================================================
+  // 🧹 REALTIME PERFORMANCE RESET
+  // ==========================================================
+
+  window.realtimePerformanceData = {
+    trackPoints: []
+  };
+
+  window.lastTrackPoint =
+    null;
+
+  // ==========================================================
+  // 🔥 FINALIZE SESSION
+  // ==========================================================
+
+  finalizeSessionLifecycle();
+
+  // ==========================================================
+  // 🔄 RESET SESSION ANALYTICS
+  // ==========================================================
+
+  window.sessionVisitedGrids =
+    new Set();
+
+  window.newMonthlyCellIds =
+    new Set();
+
+  window.newMonthlyCompartmentIds =
+    new Set();
+
+  window.newMonthlyGridsCaptured =
+    0;
+
+  // ==========================================================
+  // 🗺️ ONLY USER-FACING RESULT
+  // ==========================================================
+
+  const finalKmlUrl =
+    String(
+      window.lastDutyKmlUrl || ""
+    ).trim();
+
+  if(
+    finalKmlUrl &&
+    typeof showPatrolKMLReady ===
+      "function"
+  ){
+
+    showPatrolKMLReady(
+      finalKmlUrl
+    );
+
+  }
+  else {
+
+    showToast(
+      "⚠️ Duty ended. Patrol KML was not generated."
+    );
+
+  }
+
+  console.log(
+    "✅ End duty background sync complete",
+    results
+  );
+
+})    .catch(err => {
       console.error("❌ End duty background sync failed", err);
     });
-
-    setTimeout(() => {
-      showToast("✅ Duty Ended Successfully");
-    }, 1000);
 
   } catch (err) {
     console.error("❌ Error:", err);
