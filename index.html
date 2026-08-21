@@ -63516,166 +63516,525 @@ window.staffUnsubscribe = onSnapshot(
 
         try {
 
+snapshot.forEach(docSnap => {
+
+    const s =
+        docSnap.data();
+
+    if(!s){
+        return;
+    }
+
+
+    // ==================================================
+    // 👤 CANONICAL STAFF NAME
+    // ==================================================
+
+    const cleanStaffName =
+        cleanName(
+            s.cleanName ||
+            s.name ||
+            docSnap.id ||
+            ""
+        );
+
+    if(!cleanStaffName){
+        return;
+    }
+
+
+    // ==================================================
+    // 🔎 EXISTING MARKER
+    // --------------------------------------------------
+    // FAST PASS ONLY updates already-created markers.
+    // Marker creation remains in the heavy flow.
+    // ==================================================
+
+    const marker =
+        window.staffMarkers?.[
+            cleanStaffName
+        ];
+
+    if(!marker){
+        return;
+    }
+
+
+    // ==================================================
+    // 📍 LIVE GPS FROM live_staff
+    // ==================================================
+
+    const lat =
+        Number(
+            s.lat
+        );
+
+    const lon =
+        Number(
+            s.lon
+        );
+
+
+    if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon) ||
+        lat === 0 ||
+        lon === 0
+    ){
+        return;
+    }
+
+
+    // ==================================================
+    // 📍 MOVE MARKER IMMEDIATELY
+    // ==================================================
+
+    marker.setLatLng([
+        lat,
+        lon
+    ]);
+
+
+    // ==================================================
+    // 🔥 ONLY OPEN POPUP NEEDS DOM UPDATE
+    // ==================================================
+
+    if(
+        !marker.isPopupOpen()
+    ){
+        return;
+    }
+
+
+    const popupElement =
+        marker
+            .getPopup()
+            ?.getElement();
+
+
+    if(!popupElement){
+        return;
+    }
+
+
+    // ==================================================
+    // 🔑 POPUP KEY
+    // ==================================================
+
+    const popupKey =
+        encodeURIComponent(
+            cleanStaffName
+        );
+
+
+    // ==================================================
+    // 🛰 GPS
+    // --------------------------------------------------
+    // DIRECTLY FROM live_staff.lat / lon
+    // ==================================================
+
+    const gpsElement =
+        popupElement.querySelector(
+            "#staffGps_" +
+            popupKey
+        );
+
+
+    if(gpsElement){
+
+        gpsElement.textContent =
+            lat.toFixed(6) +
+            ", " +
+            lon.toFixed(6);
+
+    }
+
+
+    // ==================================================
+    // 📊 SPEED
+    // --------------------------------------------------
+    // DIRECTLY FROM live_staff.speed
+    // ==================================================
+
+    const speedElement =
+        popupElement.querySelector(
+            "#staffSpeed_" +
+            popupKey
+        );
+
+
+    if(speedElement){
+
+        let speed =
+            Number(
+                s.speed || 0
+            );
+
+
+        if(
+            !Number.isFinite(speed) ||
+            speed < 0
+        ){
+
+            speed = 0;
+
+        }
+
+
+        speedElement.textContent =
+            speed < 1
+                ? "Stationary"
+                : speed.toFixed(1) +
+                  " km/h";
+
+    }
+
+
+    // ==================================================
+    // 📏 DISTANCE TRAVELLED
+    // --------------------------------------------------
+    // DIRECTLY FROM live_staff
+    // ==================================================
+
+    const distanceElement =
+        popupElement.querySelector(
+            "#staffDistance_" +
+            popupKey
+        );
+
+
+    if(distanceElement){
+
+        const distanceKm =
+            Number(
+                s.distanceCoveredKm ??
+                (
+                    Number(
+                        s.distanceCoveredMeters
+                    ) || 0
+                ) / 1000
+            );
+
+
+        distanceElement.textContent =
+            (
+                Number.isFinite(
+                    distanceKm
+                )
+                    ? distanceKm
+                    : 0
+            ).toFixed(2) +
+            " km";
+
+    }
+
+
+    // ==================================================
+    // 📍 PATROL POINTS
+    // --------------------------------------------------
+    // DIRECTLY FROM live_staff
+    // ==================================================
+
+    const pointsElement =
+        popupElement.querySelector(
+            "#staffPatrolPoints_" +
+            popupKey
+        );
+
+
+    if(pointsElement){
+
+        const pointCount =
+            Number(
+                s.patrolPointCount || 0
+            );
+
+
+        pointsElement.textContent =
+            (
+                Number.isFinite(
+                    pointCount
+                )
+                    ? pointCount
+                    : 0
+            ).toLocaleString();
+
+    }
+
+
+    // ==================================================
+    // ⏱ UPDATED AT
+    // --------------------------------------------------
+    // DIRECTLY FROM live_staff.updatedAt
+    // ==================================================
+
+    const updatedAtElement =
+        popupElement.querySelector(
+            "#staffUpdatedAt_" +
+            popupKey
+        );
+
+
+    if(updatedAtElement){
+
+        let updatedText =
+            "Unknown";
+
+
+        try{
+
+            if(
+                s.updatedAt
+            ){
+
+                updatedText =
+                    new Date(
+                        Number(
+                            s.updatedAt
+                        )
+                    )
+                    .toLocaleString();
+
+            }
+
+            else if(
+                s.time
+            ){
+
+                updatedText =
+                    new Date(
+                        Number(
+                            s.time
+                        )
+                    )
+                    .toLocaleString();
+
+            }
+
+            else if(
+                s.lastSeen
+            ){
+
+                updatedText =
+                    new Date(
+                        Number(
+                            s.lastSeen
+                        )
+                    )
+                    .toLocaleString();
+
+            }
+
+        }catch(error){
+
+            console.warn(
+                "⚠ live_staff updatedAt parse failed:",
+                cleanStaffName,
+                error
+            );
+
+        }
+
+
+        updatedAtElement.textContent =
+            updatedText;
+
+    }
+
+
+// ==================================================
+// 📍 CURRENT LOCATION
+// --------------------------------------------------
+// LIVE GPS FROM live_staff
+//        ↓
+// resolveCurrentGIS(lat, lon)
+//        ↓
+// #staffCurrentLocation_
+// ==================================================
+
+if(
+    typeof window.resolveCurrentGIS ===
+    "function"
+){
+
+    try{
+
+        const resolved =
+            window.resolveCurrentGIS(
+                lat,
+                lon
+            );
+
+
+        // ==================================================
+        // 📍 CURRENT LOCATION CONTAINER
+        // ==================================================
+
+        const currentLocationElement =
+            popupElement.querySelector(
+                "#staffCurrentLocation_" +
+                popupKey
+            );
+
+
+        if(
+            currentLocationElement
+        ){
+
+            let resolvedHtml = "";
+
+
             // ==================================================
-            // ⚡ FAST LIVE TELEMETRY PASS
-            // --------------------------------------------------
-            // Update already-existing markers/popups FIRST.
-            // Do NOT wait for patrol-track / analytics work.
+            // 🌲 FOREST
             // ==================================================
 
-            snapshot.forEach(docSnap => {
+            if(
+                resolved &&
+                (
+                    resolved.compartment ||
+                    resolved.beat ||
+                    resolved.range ||
+                    resolved.division
+                )
+            ){
 
-                const s = docSnap.data();
+                resolvedHtml = `
 
-                if(!s) return;
+                    <div>
+                        🌲 Compartment:
+                        <b>
+                            ${
+                                resolved.compartment ||
+                                "N/A"
+                            }
+                        </b>
+                    </div>
 
-                const cleanStaffName =
-                    cleanName(
-                        s.cleanName ||
-                        s.name ||
-                        docSnap.id ||
-                        ""
-                    );
+                    <div>
+                        🧭 Beat:
+                        <b>
+                            ${
+                                resolved.beat ||
+                                "N/A"
+                            }
+                        </b>
+                    </div>
 
-                if(!cleanStaffName) return;
+                    <div>
+                        🏢 Range:
+                        <b>
+                            ${
+                                resolved.range ||
+                                "N/A"
+                            }
+                        </b>
+                    </div>
 
-                const marker =
-                    window.staffMarkers?.[
-                        cleanStaffName
-                    ];
+                `;
 
-                if(!marker) return;
+            }
 
-                // ==============================================
-                // 📍 FAST MARKER POSITION
-                // ==============================================
 
-                const lat =
-                    Number(s.lat);
+            // ==================================================
+            // 🏡 VILLAGE
+            // ==================================================
 
-                const lon =
-                    Number(s.lon);
+            else if(
+                resolved &&
+                resolved.village
+            ){
 
-                if(
-                    !Number.isFinite(lat) ||
-                    !Number.isFinite(lon) ||
-                    lat === 0 ||
-                    lon === 0
-                ){
-                    return;
-                }
+                resolvedHtml = `
 
-                marker.setLatLng([
-                    lat,
-                    lon
-                ]);
+                    <div>
+                        🏡 Village:
+                        <b>
+                            ${
+                                resolved.village
+                            }
+                        </b>
+                    </div>
 
-                // ==============================================
-                // ⚡ FAST OPEN POPUP TELEMETRY
-                // ==============================================
-
-                if(
-                    !marker.isPopupOpen()
-                ){
-                    return;
-                }
-
-                const popupElement =
-                    marker
-                        .getPopup()
-                        ?.getElement();
-
-                if(!popupElement){
-                    return;
-                }
-
-                // ==============================================
-                // 📊 SPEED
-                // ==============================================
-
-                const speedElement =
-                    popupElement.querySelector(
-                        "#staffSpeed_" +
-                        CSS.escape(cleanStaffName)
-                    );
-
-                if(speedElement){
-
-                    let speed =
-                        Number(s.speed || 0);
-
-                    if(
-                        !Number.isFinite(speed) ||
-                        speed < 0
-                    ){
-                        speed = 0;
+                    ${
+                        resolved.block
+                        ? `
+                            <div>
+                                🗺 Block:
+                                <b>
+                                    ${resolved.block}
+                                </b>
+                            </div>
+                        `
+                        : ""
                     }
 
-                    speedElement.textContent =
-                        speed < 1
-                            ? "Stationary"
-                            : speed.toFixed(1) +
-                              " km/h";
-                }
+                    ${
+                        resolved.nearestPoint
+                        ? `
+                            <div>
+                                📌 Near:
+                                <b>
+                                    ${resolved.nearestPoint}
+                                </b>
 
-                // ==============================================
-                // 📏 DISTANCE
-                // ==============================================
+                                ${
+                                    resolved.distanceMeters != null
+                                    ? `
+                                        (${resolved.distanceMeters} m)
+                                    `
+                                    : ""
+                                }
 
-                const distanceElement =
-                    popupElement.querySelector(
-                        "#staffDistance_" +
-                        CSS.escape(cleanStaffName)
-                    );
+                            </div>
+                        `
+                        : ""
+                    }
 
-                if(distanceElement){
+                `;
 
-                    const distanceKm =
-                        Number(
-                            s.distanceCoveredKm ??
-                            (
-                                Number(
-                                    s.distanceCoveredMeters
-                                ) || 0
-                            ) / 1000
-                        );
+            }
 
-                    distanceElement.textContent =
-                        (
-                            Number.isFinite(distanceKm)
-                                ? distanceKm
-                                : 0
-                        ).toFixed(2) +
-                        " km";
-                }
 
-                // ==============================================
-                // 📍 PATROL POINTS
-                // ==============================================
+            // ==================================================
+            // 📌 UNKNOWN / OUTSIDE MAPPED AREA
+            // ==================================================
 
-                const pointsElement =
-                    popupElement.querySelector(
-                        "#staffPatrolPoints_" +
-                        CSS.escape(cleanStaffName)
-                    );
+            else{
 
-                if(pointsElement){
+                resolvedHtml = `
 
-                    const pointCount =
-                        Number(
-                            s.patrolPointCount || 0
-                        );
+                    <div>
+                        📌 GIS:
+                        <b>
+                            Outside mapped forest/village boundary
+                        </b>
+                    </div>
 
-                    pointsElement.textContent =
-                        (
-                            Number.isFinite(pointCount)
-                                ? pointCount
-                                : 0
-                        ).toLocaleString();
-                }
+                `;
 
-            });
+            }
 
+
+            // ==================================================
+            // 🔥 UPDATE ONLY CURRENT LOCATION SECTION
+            // ==================================================
+
+            currentLocationElement.innerHTML =
+                resolvedHtml;
+
+        }
+
+    }catch(error){
+
+        console.warn(
+            "⚠ LIVE CURRENT GIS update failed:",
+            cleanStaffName,
+            error
+        );
+
+    }
+
+}
             // ==================================================
             // EXISTING HEAVY PROCESSING CONTINUES
             // ==================================================
@@ -64702,17 +65061,6 @@ delete window.trackPointCount[
 delete window.trackDistanceMap[
   s.cleanName
 ];
-// ==============================================
-// 🔥 CLEAR OLD SESSION CACHE
-// ==============================================
-
-delete window.trackPointCount[
-    s.cleanName
-];
-
-delete window.trackDistanceMap[
-    s.cleanName
-];
 
 if(
     window.trackDistanceSessionMap
@@ -64730,12 +65078,6 @@ window.activeSessionMap[
     s.cleanName
 ] = currentSessionId;
 // ==============================================
-// 🔥 SAVE ACTIVE SESSION
-// ==============================================
-window.activeSessionMap[
-  s.cleanName
-] = currentSessionId;
-    // ==============================================
 // 🔥 SESSION TRACK CACHE
 // ==============================================
 window.sessionTrackCache ??= {};
@@ -66182,41 +66524,87 @@ console.log(
     }
 );
 // ==============================================
-// 🔥 FIX LAST UPDATE TIME
-// ==============================================// ==============================================
-// 🔥 LAST GPS TIME
+// 🔥 LAST GPS / UPDATED TIME
 // ==============================================
+
 let liveTime = "Unknown";
 
 try {
 
   // ==================================================
-  // 🔥 GPS TIME
+  // 🔥 PRIMARY SOURCE
+  // live_staff.updatedAt
   // ==================================================
-  if(s.time){
+
+  if(
+    s.updatedAt
+  ){
 
     liveTime =
-      new Date(s.time)
-        .toLocaleString();
+      new Date(
+        Number(
+          s.updatedAt
+        )
+      ).toLocaleString();
+
   }
 
   // ==================================================
   // 🔥 FALLBACK
   // ==================================================
-  else if(s.lastSeen){
+
+  else if(
+    s.time
+  ){
 
     liveTime =
       new Date(
-        Number(s.lastSeen)
+        Number(
+          s.time
+        )
       ).toLocaleString();
+
+  }
+
+  // ==================================================
+  // 🔥 FINAL FALLBACK
+  // ==================================================
+
+  else if(
+    s.lastSeen
+  ){
+
+    liveTime =
+      new Date(
+        Number(
+          s.lastSeen
+        )
+      ).toLocaleString();
+
   }
 
 } catch(e){
 
   console.warn(
-    "⚠ Time parse failed"
+    "⚠ live_staff updatedAt parse failed:",
+    s.cleanName,
+    e
   );
+
 }
+            // ==================================================
+// 🔑 CANONICAL STAFF KEY
+// Used by distance cache + popup
+// ==================================================
+
+const staffDistanceKey =
+    cleanName(
+        s.cleanName ||
+        s.name ||
+        ""
+    );
+
+
 // ============================================================
 // 📍 CURRENT ACTUAL GIS LOCATION
 // ============================================================
@@ -66392,29 +66780,31 @@ if(
 
     <div>
       🌲 Compartment:
-      <b>
+      <b id="staffCompartment_${encodeURIComponent(staffDistanceKey)}">
         ${currentLocation.compartment || "N/A"}
       </b>
     </div>
 
     <div>
       🧭 Beat:
-      <b>
+      <b id="staffBeat_${encodeURIComponent(staffDistanceKey)}">
         ${currentLocation.beat || "N/A"}
       </b>
     </div>
 
     <div>
       🏢 Range:
-      <b>
+      <b id="staffRange_${encodeURIComponent(staffDistanceKey)}">
         ${currentLocation.range || "N/A"}
       </b>
     </div>
 
   `;
-
 }
 
+// --------------------------------------------------
+// VILLAGE LOCATION
+// --------------------------------------------------
 
 // --------------------------------------------------
 // VILLAGE LOCATION
@@ -66429,7 +66819,7 @@ else if(
 
     <div>
       🏡 Village:
-      <b>
+      <b id="staffVillage_${encodeURIComponent(staffDistanceKey)}">
         ${currentLocation.village || "N/A"}
       </b>
     </div>
@@ -66439,7 +66829,9 @@ else if(
       ? `
         <div>
           🗺 Block:
-          <b>${currentLocation.block}</b>
+          <b id="staffBlock_${encodeURIComponent(staffDistanceKey)}">
+            ${currentLocation.block}
+          </b>
         </div>
       `
       : ""
@@ -66450,21 +66842,27 @@ else if(
       ? `
         <div>
           📌 Near:
-          <b>${currentLocation.nearestPoint}</b>
+          <b id="staffNearestPoint_${encodeURIComponent(staffDistanceKey)}">
+            ${currentLocation.nearestPoint}
+          </b>
+
           ${
             currentLocation.distanceMeters != null
-            ? ` (${currentLocation.distanceMeters} m)`
+            ? `
+              <span id="staffNearestDistance_${encodeURIComponent(staffDistanceKey)}">
+                (${currentLocation.distanceMeters} m)
+              </span>
+            `
             : ""
           }
+
         </div>
       `
       : ""
     }
 
   `;
-
 }
-
 
 // --------------------------------------------------
 // GPS ONLY / OUTSIDE KNOWN POLYGONS
@@ -66482,18 +66880,6 @@ else {
   `;
 
 }
-            // ==================================================
-// 🔑 CANONICAL STAFF KEY
-// Used by distance cache + popup
-// ==================================================
-
-const staffDistanceKey =
-    cleanName(
-        s.cleanName ||
-        s.name ||
-        ""
-    );
-
 // ============================================================
 // 📡 FIRESTORE PATROL SESSION
 // ============================================================
@@ -66699,19 +67085,22 @@ const popup = `
       📍 Current Location
     </div>
 
+    <div
+    id="staffCurrentLocation_${encodeURIComponent(staffDistanceKey)}"
+>
     ${currentLocationHtml}
+</div>
 
-    <div style="
-      margin-top:3px;
-      color:#555;
-      font-size:10px;
-    ">
-      🛰 GPS:
-      <b>
-        ${lat.toFixed(6)},
-        ${lon.toFixed(6)}
-      </b>
-    </div>
+<div style="
+    margin-top:3px;
+    color:#555;
+    font-size:10px;
+">
+    🛰 GPS:
+    <b id="staffGps_${encodeURIComponent(staffDistanceKey)}">
+        ${lat.toFixed(6)}, ${lon.toFixed(6)}
+    </b>
+</div>
 
   </div>
   <!-- ===================================== -->
@@ -66896,16 +67285,14 @@ const popup = `
   <!-- LAST GPS -->
   <!-- ================================ -->
 
-  <div>
+<div>
+  ⏱ Last GPS Update:
 
-    ⏱ Last GPS Update:
+  <b id="staffUpdatedAt_${encodeURIComponent(staffDistanceKey)}">
+    ${liveTime}
+  </b>
 
-    <b>
-      ${liveTime}
-    </b>
-
-  </div>
-
+</div>
 </div>
 
   <!-- ===================================== -->
@@ -67038,135 +67425,6 @@ if(
     popup;
 
 
-  // ==============================================
-  // 🔥 OPEN POPUP
-  // ==============================================
-  //
-  // Do NOT rebuild the whole popup.
-  // Update telemetry fields directly.
-  //
-  // This keeps the popup stable while
-  // Firestore is continuously refreshing.
-  //
-
-  if(
-    popupIsOpen
-  ){
-
-    const popupElement =
-      marker
-        .getPopup()
-        ?.getElement();
-
-
-    if(
-      popupElement
-    ){
-
-      // ==========================================
-      // SPEED
-      // ==========================================
-
-      const speedElement =
-        popupElement.querySelector(
-          "#staffSpeed_" +
-          CSS.escape(
-            staffDistanceKey
-          )
-        );
-
-
-      if(
-        speedElement
-      ){
-
-        speedElement.textContent =
-          liveSpeed < 1
-            ? "Stationary"
-            : liveSpeed.toFixed(1) +
-              " km/h";
-
-      }
-
-
-      // ==========================================
-      // DISTANCE
-      // ==========================================
-
-      const distanceElement =
-        popupElement.querySelector(
-          "#staffDistance_" +
-          CSS.escape(
-            staffDistanceKey
-          )
-        );
-
-
-      if(
-        distanceElement
-      ){
-
-        const distanceKm =
-          Number(
-            s.distanceCoveredKm ??
-            (
-              Number(
-                s.distanceCoveredMeters
-              ) || 0
-            ) / 1000
-          );
-
-
-        distanceElement.textContent =
-          (
-            Number.isFinite(
-              distanceKm
-            )
-              ? distanceKm
-              : 0
-          ).toFixed(2) +
-          " km";
-
-      }
-
-
-      // ==========================================
-      // PATROL POINT COUNT
-      // ==========================================
-
-      const pointsElement =
-        popupElement.querySelector(
-          "#staffPatrolPoints_" +
-          CSS.escape(
-            staffDistanceKey
-          )
-        );
-
-
-      if(
-        pointsElement
-      ){
-
-        const pointCount =
-          Number(
-            s.patrolPointCount || 0
-          );
-
-
-        pointsElement.textContent =
-          (
-            Number.isFinite(
-              pointCount
-            )
-              ? pointCount
-              : 0
-          ).toLocaleString();
-
-      }
-
-    }
-
-  }
 
 }
 // ============================================================
