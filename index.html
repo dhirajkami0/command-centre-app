@@ -66588,98 +66588,160 @@ const popup = `
   </div>
 
   <!-- ===================================== -->
-  <!-- 🔥 LIVE STATS -->
-  <!-- ===================================== -->
-  <div style="
+<!-- 🔥 LIVE STATS -->
+<!-- ===================================== -->
+
+<div
+  style="
     background:#ffffff;
-
     border:1px solid #eeeeee;
-
     border-radius:7px;
-
     padding:6px;
-
     font-size:11px;
-
     line-height:1.7;
-
     color:#111;
+  "
+>
+
+  <!-- ================================ -->
+  <!-- SPEED -->
+  <!-- ================================ -->
+
+  <div style="
+    margin-bottom:3px;
   ">
 
-<div style="
-  margin-bottom:3px;
-">
-  📊 Speed:
-  <b>
-    ${
-      liveSpeed < 1
-        ? "Stationary"
-        : `${liveSpeed.toFixed(1)} km/h`
-    }
-  </b>
-</div>
+    📊 Speed:
 
-<div style="
-    margin-bottom:3px;
-">
-    📏 Distance Travelled:
-
-    <b id="staffDistance_${encodeURIComponent(staffDistanceKey)}">
-        ${
-            Number(
-                window.trackDistanceMap?.[
-                    staffDistanceKey
-                ] || 0
-            ).toFixed(2)
-        } km
-    </b>
-</div>
-
-<div style="
-    margin-bottom:3px;
-">
-    📍 Patrol Points:
-
-    <b id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}">
-        ${
-          Number(
-            window.staffPatrolPointCounts?.[
-              staffDistanceKey
-            ] || 0
-          ).toLocaleString()
-        }
+    <b
+      id="staffSpeed_${encodeURIComponent(staffDistanceKey)}"
+    >
+      ${
+        liveSpeed < 1
+          ? "Stationary"
+          : `${liveSpeed.toFixed(1)} km/h`
+      }
     </b>
 
-</div>
-<div style=" 
-      margin-bottom:3px; 
-      font-weight:600; 
-      color:#1b5e20; 
-    "> 
-      🛰 Live GPS Active 
-    </div> 
- 
-    <div style=" 
-      margin-bottom:3px; 
-    "> 
-      🟢 Duty Started: 
-      <b>${dutyStarted}</b> 
-    </div> 
- 
-    <div style=" 
-      margin-bottom:3px; 
-    "> 
-      ⏳ Duty Duration: 
-      <b>${dutyDuration}</b> 
-    </div> 
- 
-    <div> 
-      ⏱ Last GPS Update: 
-      <b>${liveTime}</b> 
-    </div> 
- 
   </div>
 
+
+  <!-- ================================ -->
+  <!-- DISTANCE -->
+  <!-- ================================ -->
+
+  <div style="
+    margin-bottom:3px;
+  ">
+
+    📏 Distance Travelled:
+
+    <b
+      id="staffDistance_${encodeURIComponent(staffDistanceKey)}"
+    >
+      ${
+        Number(
+          s.distanceCoveredKm ??
+          (
+            Number(
+              s.distanceCoveredMeters
+            ) || 0
+          ) / 1000
+        )
+        .toFixed(2)
+      } km
+    </b>
+
+  </div>
+
+
+  <!-- ================================ -->
+  <!-- PATROL POINTS -->
+  <!-- ================================ -->
+
+  <div style="
+    margin-bottom:3px;
+  ">
+
+    📍 Patrol Points:
+
+    <b
+      id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}"
+    >
+      ${
+        Number(
+          s.patrolPointCount || 0
+        ).toLocaleString()
+      }
+    </b>
+
+  </div>
+
+
+  <!-- ================================ -->
+  <!-- GPS STATUS -->
+  <!-- ================================ -->
+
+  <div
+    style="
+      margin-bottom:3px;
+      font-weight:600;
+      color:#1b5e20;
+    "
+  >
+    🛰 Live GPS Active
+  </div>
+
+
+  <!-- ================================ -->
+  <!-- DUTY STARTED -->
+  <!-- ================================ -->
+
+  <div style="
+    margin-bottom:3px;
+  ">
+
+    🟢 Duty Started:
+
+    <b>
+      ${dutyStarted}
+    </b>
+
+  </div>
+
+
+  <!-- ================================ -->
+  <!-- DUTY DURATION -->
+  <!-- ================================ -->
+
+  <div style="
+    margin-bottom:3px;
+  ">
+
+    ⏳ Duty Duration:
+
+    <b>
+      ${dutyDuration}
+    </b>
+
+  </div>
+
+
+  <!-- ================================ -->
+  <!-- LAST GPS -->
+  <!-- ================================ -->
+
+  <div>
+
+    ⏱ Last GPS Update:
+
+    <b>
+      ${liveTime}
+    </b>
+
+  </div>
+
+</div>
 
   <!-- ===================================== -->
   <!-- 🧭 NAVIGATE -->
@@ -66713,217 +66775,6 @@ const popup = `
 
 
 </div>`;
-// ============================================================
-// 📍 PATROL POINT COUNT
-// ------------------------------------------------------------
-// Reads the ACTUAL Firestore points subcollection.
-//
-// patrol_tracks/{sessionId}/points
-//
-// This does NOT depend on the parent pointCount field.
-// It also does NOT depend on loadSessionPoints().
-// ============================================================
-
-(async function(){
-
-  try{
-
-    // ==========================================================
-    // FIND POPUP POINT COUNT ELEMENT
-    // ----------------------------------------------------------
-    // Popup may not yet be open/rendered.
-    // Therefore we do NOT immediately depend on DOM here.
-    // ==========================================================
-
-    const pointElementId =
-      "staffPatrolPoints_" +
-      encodeURIComponent(
-        staffDistanceKey
-      );
-
-
-    // ==========================================================
-    // NO SESSION
-    // ==========================================================
-
-    if(!patrolSessionId){
-
-      console.log(
-        "ℹ️ No patrol session for:",
-        staffDistanceKey
-      );
-
-      return;
-
-    }
-
-
-    // ==========================================================
-    // READ ACTUAL FIRESTORE POINTS
-    // ==========================================================
-
-    const pointsRef =
-      window.fb.collection(
-        window.db,
-        "patrol_tracks",
-        patrolSessionId,
-        "points"
-      );
-
-
-    const pointsSnap =
-      await window.fb.getDocs(
-        pointsRef
-      );
-
-
-    const actualPointCount =
-      pointsSnap.size;
-
-
-    console.log(
-      "📍 ACTUAL FIRESTORE PATROL POINTS:",
-      {
-        staff:
-          staffDistanceKey,
-
-        sessionId:
-          patrolSessionId,
-
-        points:
-          actualPointCount
-      }
-    );
-
-
-    // ==========================================================
-    // UPDATE POPUP DOM
-    // ----------------------------------------------------------
-    // The popup may already be open.
-    // If it is not open, the value will be updated the next
-    // time the popup is opened through the popup HTML below.
-    // ==========================================================
-
-    const pointsElement =
-      document.getElementById(
-        pointElementId
-      );
-
-
-    if(pointsElement){
-
-      pointsElement.textContent =
-        actualPointCount.toLocaleString();
-
-    }
-
-
-    // ==========================================================
-    // STORE LATEST COUNT FOR THIS STAFF
-    // ----------------------------------------------------------
-    // This allows the popup to display the already-known count
-    // when it is opened later.
-    // ==========================================================
-
-    if(!window.staffPatrolPointCounts){
-
-      window.staffPatrolPointCounts =
-        {};
-
-    }
-
-
-    window.staffPatrolPointCounts[
-      staffDistanceKey
-    ] =
-      actualPointCount;
-
-
-    // ==========================================================
-    // UPDATE OPEN POPUP CONTENT
-    // ----------------------------------------------------------
-    // Rebuild the popup only when necessary.
-    // Existing popup structure remains unchanged.
-    // ==========================================================
-
-    const marker =
-      window.staffMarkers?.[
-        s.cleanName
-      ];
-
-
-    if(
-      marker &&
-      marker.isPopupOpen &&
-      typeof marker.getPopup ===
-        "function"
-    ){
-
-      const currentPopup =
-        marker.getPopup();
-
-
-      if(currentPopup){
-
-        const popupElement =
-          currentPopup.getElement();
-
-
-        const popupPointsElement =
-          popupElement?.querySelector(
-            "#" +
-            CSS.escape(
-              pointElementId
-            )
-          );
-
-
-        if(popupPointsElement){
-
-          popupPointsElement.textContent =
-            actualPointCount.toLocaleString();
-
-        }
-
-      }
-
-    }
-
-
-  }
-  catch(err){
-
-    console.warn(
-      "⚠️ Patrol point count lookup failed:",
-      staffDistanceKey,
-      patrolSessionId,
-      err
-    );
-
-
-    // ==========================================================
-    // DO NOT BREAK STAFF MARKER
-    // ==========================================================
-
-    const pointsElement =
-      document.getElementById(
-        "staffPatrolPoints_" +
-        encodeURIComponent(
-          staffDistanceKey
-        )
-      );
-
-
-    if(pointsElement){
-
-      pointsElement.textContent =
-        "Unavailable";
-
-    }
-
-  }
-
-})();
 // ==============================================
 // 🔥 MARKER CREATE/UPDATE
 // ==============================================
@@ -66958,25 +66809,201 @@ if(
 
 } else {
 
-  window.staffMarkers[
-    s.cleanName
-  ]
+  const marker =
+    window.staffMarkers[
+      s.cleanName
+    ];
 
-  .setLatLng(
+
+  // ==============================================
+  // 📍 UPDATE POSITION
+  // ==============================================
+
+  marker.setLatLng(
     [lat, lon]
-  )
-
-  // 🔥 IMPORTANT:
-  // Update the existing marker icon
-  // whenever markerState changes.
-  .setIcon(
-    icon
-  )
-
-  .setPopupContent(
-    popup
   );
 
+
+  // ==============================================
+  // 🎨 UPDATE ICON
+  // ==============================================
+
+  marker.setIcon(
+    icon
+  );
+
+
+  // ==============================================
+  // 🔥 POPUP UPDATE
+  // ==============================================
+
+  const popupIsOpen =
+    marker.isPopupOpen();
+
+
+  const popupChanged =
+    marker._ggStaffPopupHtml !==
+    popup;
+
+
+  // ==============================================
+  // CLOSED POPUP
+  // ==============================================
+  //
+  // Safe to replace entire HTML.
+  //
+
+  if(
+    !popupIsOpen &&
+    popupChanged
+  ){
+
+    marker.setPopupContent(
+      popup
+    );
+
+  }
+
+
+  // ==============================================
+  // REMEMBER LATEST POPUP HTML
+  // ==============================================
+
+  marker._ggStaffPopupHtml =
+    popup;
+
+
+  // ==============================================
+  // 🔥 OPEN POPUP
+  // ==============================================
+  //
+  // Do NOT rebuild the whole popup.
+  // Update telemetry fields directly.
+  //
+  // This keeps the popup stable while
+  // Firestore is continuously refreshing.
+  //
+
+  if(
+    popupIsOpen
+  ){
+
+    const popupElement =
+      marker
+        .getPopup()
+        ?.getElement();
+
+
+    if(
+      popupElement
+    ){
+
+      // ==========================================
+      // SPEED
+      // ==========================================
+
+      const speedElement =
+        popupElement.querySelector(
+          "#staffSpeed_" +
+          CSS.escape(
+            staffDistanceKey
+          )
+        );
+
+
+      if(
+        speedElement
+      ){
+
+        speedElement.textContent =
+          liveSpeed < 1
+            ? "Stationary"
+            : liveSpeed.toFixed(1) +
+              " km/h";
+
+      }
+
+
+      // ==========================================
+      // DISTANCE
+      // ==========================================
+
+      const distanceElement =
+        popupElement.querySelector(
+          "#staffDistance_" +
+          CSS.escape(
+            staffDistanceKey
+          )
+        );
+
+
+      if(
+        distanceElement
+      ){
+
+        const distanceKm =
+          Number(
+            s.distanceCoveredKm ??
+            (
+              Number(
+                s.distanceCoveredMeters
+              ) || 0
+            ) / 1000
+          );
+
+
+        distanceElement.textContent =
+          (
+            Number.isFinite(
+              distanceKm
+            )
+              ? distanceKm
+              : 0
+          ).toFixed(2) +
+          " km";
+
+      }
+
+
+      // ==========================================
+      // PATROL POINT COUNT
+      // ==========================================
+
+      const pointsElement =
+        popupElement.querySelector(
+          "#staffPatrolPoints_" +
+          CSS.escape(
+            staffDistanceKey
+          )
+        );
+
+
+      if(
+        pointsElement
+      ){
+
+        const pointCount =
+          Number(
+            s.patrolPointCount || 0
+          );
+
+
+        pointsElement.textContent =
+          (
+            Number.isFinite(
+              pointCount
+            )
+              ? pointCount
+              : 0
+          ).toLocaleString();
+
+      }
+
+    }
+
+  }
+
+}
 }// ============================================================
 // 🖱 STAFF MARKER → INDIVIDUAL TRACK CONTROL
 // ------------------------------------------------------------
