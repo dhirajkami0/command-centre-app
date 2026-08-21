@@ -63510,15 +63510,180 @@ console.log(
 // ==========================================
 window.staffUnsubscribe = onSnapshot(
 
-  liveRef,
+    liveRef,
 
-  async(snapshot)=>{     try {
+    async(snapshot)=>{
 
-        let activeUsers =
-          new Set();
+        try {
 
-        let staff = [];     
-    let analyticsStaff = [];
+            // ==================================================
+            // ⚡ FAST LIVE TELEMETRY PASS
+            // --------------------------------------------------
+            // Update already-existing markers/popups FIRST.
+            // Do NOT wait for patrol-track / analytics work.
+            // ==================================================
+
+            snapshot.forEach(docSnap => {
+
+                const s = docSnap.data();
+
+                if(!s) return;
+
+                const cleanStaffName =
+                    cleanName(
+                        s.cleanName ||
+                        s.name ||
+                        docSnap.id ||
+                        ""
+                    );
+
+                if(!cleanStaffName) return;
+
+                const marker =
+                    window.staffMarkers?.[
+                        cleanStaffName
+                    ];
+
+                if(!marker) return;
+
+                // ==============================================
+                // 📍 FAST MARKER POSITION
+                // ==============================================
+
+                const lat =
+                    Number(s.lat);
+
+                const lon =
+                    Number(s.lon);
+
+                if(
+                    !Number.isFinite(lat) ||
+                    !Number.isFinite(lon) ||
+                    lat === 0 ||
+                    lon === 0
+                ){
+                    return;
+                }
+
+                marker.setLatLng([
+                    lat,
+                    lon
+                ]);
+
+                // ==============================================
+                // ⚡ FAST OPEN POPUP TELEMETRY
+                // ==============================================
+
+                if(
+                    !marker.isPopupOpen()
+                ){
+                    return;
+                }
+
+                const popupElement =
+                    marker
+                        .getPopup()
+                        ?.getElement();
+
+                if(!popupElement){
+                    return;
+                }
+
+                // ==============================================
+                // 📊 SPEED
+                // ==============================================
+
+                const speedElement =
+                    popupElement.querySelector(
+                        "#staffSpeed_" +
+                        CSS.escape(cleanStaffName)
+                    );
+
+                if(speedElement){
+
+                    let speed =
+                        Number(s.speed || 0);
+
+                    if(
+                        !Number.isFinite(speed) ||
+                        speed < 0
+                    ){
+                        speed = 0;
+                    }
+
+                    speedElement.textContent =
+                        speed < 1
+                            ? "Stationary"
+                            : speed.toFixed(1) +
+                              " km/h";
+                }
+
+                // ==============================================
+                // 📏 DISTANCE
+                // ==============================================
+
+                const distanceElement =
+                    popupElement.querySelector(
+                        "#staffDistance_" +
+                        CSS.escape(cleanStaffName)
+                    );
+
+                if(distanceElement){
+
+                    const distanceKm =
+                        Number(
+                            s.distanceCoveredKm ??
+                            (
+                                Number(
+                                    s.distanceCoveredMeters
+                                ) || 0
+                            ) / 1000
+                        );
+
+                    distanceElement.textContent =
+                        (
+                            Number.isFinite(distanceKm)
+                                ? distanceKm
+                                : 0
+                        ).toFixed(2) +
+                        " km";
+                }
+
+                // ==============================================
+                // 📍 PATROL POINTS
+                // ==============================================
+
+                const pointsElement =
+                    popupElement.querySelector(
+                        "#staffPatrolPoints_" +
+                        CSS.escape(cleanStaffName)
+                    );
+
+                if(pointsElement){
+
+                    const pointCount =
+                        Number(
+                            s.patrolPointCount || 0
+                        );
+
+                    pointsElement.textContent =
+                        (
+                            Number.isFinite(pointCount)
+                                ? pointCount
+                                : 0
+                        ).toLocaleString();
+                }
+
+            });
+
+            // ==================================================
+            // EXISTING HEAVY PROCESSING CONTINUES
+            // ==================================================
+
+            let activeUsers =
+                new Set();
+
+            let staff = [];    let analyticsStaff = [];
     window.analyticsStaff = analyticsStaff;   // temporary debug
     // ==================================================
         // 🔥 LIVE STAFF
