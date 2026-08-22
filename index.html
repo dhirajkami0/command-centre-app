@@ -29520,39 +29520,37 @@ async function showMonthlyLiveStaff(){
           ${currentLocationHtml}
 
 
-          <!-- ====================================== -->
-          <!-- 🟢 DUTY STARTED -->
-          <!-- ====================================== -->
+// ================================================
+// 🟢 DUTY STARTED
+// ================================================
 
-          <div
-            style="
-              color:#7CFF9B;
-              font-weight:600;
-            "
-          >
-            🟢 Duty Started:
-            <b>
-              ${dutyStarted}
-            </b>
-          </div>
+<div style="
+  margin-bottom:3px;
+">
 
+  🟢 Duty Started:
 
-          <!-- ====================================== -->
-          <!-- ⏳ DUTY DURATION -->
-          <!-- ====================================== -->
+  <b id="staffDutyStarted_${encodeURIComponent(staffDistanceKey)}">
+    ${dutyStarted}
+  </b>
 
-          <div
-            style="
-              color:#FFD166;
-              font-weight:600;
-            "
-          >
-            ⏳ Duty Duration:
-            <b>
-              ${dutyDuration}
-            </b>
-          </div>
+</div>
 
+// ================================================
+// ⏳ DUTY DURATION
+// ================================================
+
+<div style="
+  margin-bottom:3px;
+">
+
+  ⏳ Duty Duration:
+
+  <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">
+    ${dutyDuration}
+  </b>
+
+</div>
 
           <!-- ====================================== -->
           <!-- 📌 GPS -->
@@ -63841,6 +63839,154 @@ snapshot.forEach(docSnap => {
 
     }
 
+// ==================================================
+// 🟢 DUTY STARTED
+// --------------------------------------------------
+// SOURCE: live_staff.sessionId
+// sessionId format:
+// DHIRAJ KAMI_1787368959229
+// ==================================================
+
+const dutyStartedElement =
+    popupElement.querySelector(
+        "#staffDutyStarted_" +
+        popupKey
+    );
+
+if(dutyStartedElement){
+
+    let dutyStartedText =
+        "Unknown";
+
+    try{
+
+        const sessionId =
+            String(
+                s.sessionId || ""
+            ).trim();
+
+        const startMs =
+            Number(
+                sessionId
+                    .split("_")
+                    .pop()
+            );
+
+        if(
+            Number.isFinite(startMs) &&
+            startMs > 0
+        ){
+
+            dutyStartedText =
+                new Date(
+                    startMs
+                ).toLocaleString();
+
+        }
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ live_staff duty start parse failed:",
+            cleanStaffName,
+            error
+        );
+
+    }
+
+    dutyStartedElement.textContent =
+        dutyStartedText;
+
+}
+
+
+// ==================================================
+// ⏳ DUTY DURATION
+// --------------------------------------------------
+// SOURCE OF DUTY START: live_staff.sessionId
+// REFRESHED BY THE SAME live_staff LISTENER
+// ==================================================
+
+const dutyDurationElement =
+    popupElement.querySelector(
+        "#staffDutyDuration_" +
+        popupKey
+    );
+
+if(dutyDurationElement){
+
+    let durationText =
+        "Unknown";
+
+    try{
+
+        const sessionId =
+            String(
+                s.sessionId || ""
+            ).trim();
+
+        const startMs =
+            Number(
+                sessionId
+                    .split("_")
+                    .pop()
+            );
+
+        if(
+            Number.isFinite(startMs) &&
+            startMs > 0
+        ){
+
+            const diffMs =
+                Math.max(
+                    0,
+                    Date.now() - startMs
+                );
+
+            const totalMin =
+                Math.floor(
+                    diffMs / 60000
+                );
+
+            const hrs =
+                Math.floor(
+                    totalMin / 60
+                );
+
+            const mins =
+                totalMin % 60;
+
+            if(hrs > 0){
+
+                durationText =
+                    `${hrs} hr ${mins} min`;
+
+            }
+            else{
+
+                durationText =
+                    `${mins} min`;
+
+            }
+
+        }
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ live_staff duty duration failed:",
+            cleanStaffName,
+            error
+        );
+
+    }
+
+    dutyDurationElement.textContent =
+        durationText;
+
+}
 
 // ==================================================
 // 📍 CURRENT LOCATION
