@@ -27586,35 +27586,7 @@ async function updateMonthlyStatusCard(){
       ];
 
 
-    // =========================================================
-    // ⚡ IMMEDIATE CACHE PAINT
-    //
-    // Give the UI an instant result while fresh analytics are
-    // loaded in the background when necessary.
-    // =========================================================
-
-    if(
-      cached
-    ){
-
-      try{
-
-        renderMonthlyStatusCard(
-          cached,
-          level
-        );
-
-      }
-
-      catch(renderErr){
-
-        console.warn(
-          "⚠ Cached monthly status render failed",
-          renderErr
-        );
-      }
-    }
-
+    
 
     // =========================================================
     // CACHE TTL
@@ -27639,6 +27611,126 @@ async function updateMonthlyStatusCard(){
 
 
     // =========================================================
+    // 🛡️ VALIDATE MONTHLY CACHE
+    //
+    // Cache is usable only when the complete monthly
+    // analytics structure exists.
+    //
+    // ZERO values are allowed.
+    // We are checking field validity, NOT whether
+    // the values are greater than zero.
+    // =========================================================
+
+    const monthlyCacheValid =
+
+      !!cached &&
+
+      typeof cached ===
+        "object" &&
+
+      Number.isFinite(
+        Number(
+          cached.totalCells
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.totalCovered
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.visitedCompartments
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.compartments
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.visitCount
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.distanceMeters
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.areaHa
+        )
+      ) &&
+
+      Number.isFinite(
+        Number(
+          cached.coveragePercent
+        )
+      ) &&
+
+      (
+        Number.isFinite(
+          Number(
+            cached.latestUpdatedAt
+          )
+        )
+        ||
+        (
+          cached.latestUpdatedAt &&
+          typeof cached.latestUpdatedAt.toDate ===
+            "function"
+        )
+      );
+
+
+    console.log(
+      "🛡️ Monthly cache validation:",
+      {
+        cacheKey,
+        monthlyCacheValid,
+        cached
+      }
+    );
+
+// =========================================================
+// ⚡ IMMEDIATE CACHE PAINT
+//
+// Only paint cache when the cache structure is valid.
+// =========================================================
+
+if(
+  cached &&
+  monthlyCacheValid
+){
+
+  try{
+
+    renderMonthlyStatusCard(
+      cached,
+      level
+    );
+
+  }
+
+  catch(renderErr){
+
+    console.warn(
+      "⚠ Cached monthly status render failed",
+      renderErr
+    );
+
+  }
+
+}
+    // =========================================================
     // ⚡ FRESH CACHE
     //
     // IMPORTANT:
@@ -27650,7 +27742,7 @@ async function updateMonthlyStatusCard(){
     // =========================================================
 
     if(
-      cached &&
+      monthlyCacheValid &&
       Number.isFinite(
         cacheAge
       ) &&
