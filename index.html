@@ -27421,6 +27421,26 @@ function getLiveStaffCountForCurrentPolygon(){
 }
 async function updateMonthlyStatusCard(){
 
+
+// ============================================================
+// 🔒 MONTHLY STATUS EXECUTION LOCK
+// Prevent overlapping analytics builds on mobile/slow network.
+// ============================================================
+
+if(
+  window.__monthlyStatusUpdating
+){
+
+  console.log(
+    "⏸ Monthly Status update already running"
+  );
+
+  return;
+
+}
+
+window.__monthlyStatusUpdating = true;
+
   try{
 
     // =========================================================
@@ -28362,11 +28382,19 @@ if(
 
   catch(err){
 
-    console.error(
-      "❌ Monthly Status",
-      err
-    );
-  }
+  console.error(
+    "❌ Monthly Status",
+    err
+  );
+
+}
+
+finally{
+
+  window.__monthlyStatusUpdating = false;
+
+}
+
 }
     function renderMonthlyStatusCard(
   summary,
