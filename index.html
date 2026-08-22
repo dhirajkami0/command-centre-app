@@ -63752,10 +63752,10 @@ snapshot.forEach(docSnap => {
     // ==================================================
 
     const gpsElement =
-        popupElement.querySelector(
-            "#staffGps_" +
-            popupKey
-        );
+    document.getElementById(
+        "staffGps_" +
+        popupKey
+    );
 
 
     if(gpsElement){
@@ -63775,11 +63775,10 @@ snapshot.forEach(docSnap => {
     // ==================================================
 
     const speedElement =
-        popupElement.querySelector(
-            "#staffSpeed_" +
-            popupKey
-        );
-
+    document.getElementById(
+        "staffSpeed_" +
+        popupKey
+    );
 
     if(speedElement){
 
@@ -63814,12 +63813,11 @@ snapshot.forEach(docSnap => {
     // DIRECTLY FROM live_staff
     // ==================================================
 
-    const distanceElement =
-        popupElement.querySelector(
-            "#staffDistance_" +
-            popupKey
-        );
-
+const distanceElement =
+    document.getElementById(
+        "staffDistance_" +
+        popupKey
+    );
 
     if(distanceElement){
 
@@ -63853,13 +63851,11 @@ snapshot.forEach(docSnap => {
     // DIRECTLY FROM live_staff
     // ==================================================
 
-    const pointsElement =
-        popupElement.querySelector(
-            "#staffPatrolPoints_" +
-            popupKey
-        );
-
-
+const pointsElement =
+    document.getElementById(
+        "staffPatrolPoints_" +
+        popupKey
+    );
     if(pointsElement){
 
         const pointCount =
@@ -63887,11 +63883,10 @@ snapshot.forEach(docSnap => {
     // ==================================================
 
     const updatedAtElement =
-        popupElement.querySelector(
-            "#staffUpdatedAt_" +
-            popupKey
-        );
-
+    document.getElementById(
+        "staffUpdatedAt_" +
+        popupKey
+    );
 
     if(updatedAtElement){
 
@@ -63968,11 +63963,10 @@ snapshot.forEach(docSnap => {
 // ==================================================
 
 const dutyStartedElement =
-    popupElement.querySelector(
-        "#staffDutyStarted_" +
+    document.getElementById(
+        "staffDutyStarted_" +
         popupKey
     );
-
 if(dutyStartedElement){
 
     let dutyStartedText =
@@ -64029,11 +64023,10 @@ if(dutyStartedElement){
 // ==================================================
 
 const dutyDurationElement =
-    popupElement.querySelector(
-        "#staffDutyDuration_" +
+    document.getElementById(
+        "staffDutyDuration_" +
         popupKey
     );
-
 if(dutyDurationElement){
 
     let durationText =
