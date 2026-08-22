@@ -65165,83 +65165,7 @@ pointSnap.forEach(doc=>{
   });
 });
 
-// ======================================
-// 🔥 SORT
-// ======================================
-// ======================================
-// 🔥 SESSION DISTANCE
-// ======================================
-// ==================================================
-// 📏 CANONICAL CURRENT-USER SESSION DISTANCE
-// --------------------------------------------------
-// SAME engine used by loadIndividualStaffTrack().
-// RAW Firestore points only.
-// ==================================================
 
-window.trackDistanceMap ??=
-    Object.create(null);
-
-window.trackDistanceSessionMap ??=
-    Object.create(null);
-
-const distanceKey =
-    cleanName(
-        s.cleanName ||
-        s.name ||
-        ""
-    );
-
-const distanceKm =
-    window.calculatePatrolDistanceKm(
-        points
-    );
-
-window.trackDistanceMap[
-    distanceKey
-] =
-    Number.isFinite(distanceKm)
-        ? distanceKm
-        : 0;
-
-window.trackDistanceSessionMap[
-    distanceKey
-] =
-    currentSessionId;
-
-
-// ==================================================
-// 📏 UPDATE OPEN POPUP
-// ==================================================
-
-try {
-
-    const distanceElement =
-        document.getElementById(
-            "staffDistance_" +
-            encodeURIComponent(
-                distanceKey
-            )
-        );
-
-    if(distanceElement){
-
-        distanceElement.textContent =
-            window.trackDistanceMap[
-                distanceKey
-            ].toFixed(2) +
-            " km";
-    }
-
-}
-catch(err){
-
-    console.warn(
-        "⚠ Current-user distance popup update failed:",
-        distanceKey,
-        err
-    );
-}
-            
     // ======================================
 // 🔥 CONTINUOUS SINGLE POLYLINE SYSTEM
 // ======================================
@@ -97843,6 +97767,7 @@ async function loadSessionPoints(
       );
 
       return [];
+
     }
 
 
@@ -97864,107 +97789,137 @@ async function loadSessionPoints(
         window.fb.orderBy(
           "time"
         )
+
       );
 
 
     const snap =
 
-      await window.fb.getDocs(q);
+      await window.fb.getDocs(
+        q
+      );
 
 
     const points = [];
 
 
-    snap.forEach(doc => {
+    // ============================================================
+    // 📍 BUILD ORIGINAL PATROL POINT ARRAY
+    // ============================================================
 
-      const p =
-        doc.data();
+    snap.forEach(
+      docSnap => {
 
-
-      // ----------------------------------------------------------
-      // VALID GPS
-      // ----------------------------------------------------------
-
-      const lat =
-        Number(p?.lat);
-
-      const lon =
-        Number(p?.lon);
+        const p =
+          docSnap.data();
 
 
-      if(
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lon)
-      ){
+        // --------------------------------------------------------
+        // VALID GPS
+        // --------------------------------------------------------
 
-        return;
-      }
-
-
-      // ----------------------------------------------------------
-      // KEEP THE ORIGINAL GPS INFORMATION
-      // ----------------------------------------------------------
-      // IMPORTANT:
-      // Do NOT throw away accuracy / speed / breakTrack.
-      // calculatePatrolDistanceKm() uses these fields.
-      // ----------------------------------------------------------
-
-      points.push({
-
-        id:
-          p?.id ??
-          doc.id,
-
-        lat:
-          lat,
-
-        lng:
-          lon,
-
-        lon:
-          lon,
-
-        ts:
+        const lat =
           Number(
+            p?.lat
+          );
+
+
+        const lon =
+          Number(
+            p?.lon
+          );
+
+
+        if(
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lon)
+        ){
+
+          return;
+
+        }
+
+
+        // --------------------------------------------------------
+        // KEEP ORIGINAL GPS INFORMATION
+        // --------------------------------------------------------
+        //
+        // IMPORTANT:
+        // We keep accuracy / speed / heading / breakTrack
+        // because the existing patrol-track rendering and
+        // historical processing may use them.
+        //
+        // We are NOT using these fields to recalculate
+        // live distance.
+        // --------------------------------------------------------
+
+        points.push({
+
+          id:
+            p?.id ??
+            docSnap.id,
+
+
+          lat:
+            lat,
+
+
+          lng:
+            lon,
+
+
+          lon:
+            lon,
+
+
+          ts:
+            Number(
+              p?.time ??
+              p?.timestamp ??
+              0
+            ),
+
+
+          time:
             p?.time ??
             p?.timestamp ??
-            0
-          ),
+            0,
 
-        time:
-          p?.time ??
-          p?.timestamp ??
-          0,
 
-        timestamp:
-          p?.timestamp ??
-          p?.time ??
-          0,
+          timestamp:
+            p?.timestamp ??
+            p?.time ??
+            0,
 
-        accuracy:
-          Number(
-            p?.accuracy
-          ),
 
-        speed:
-          Number(
-            p?.speed
-          ),
+          accuracy:
+            Number(
+              p?.accuracy
+            ),
 
-        heading:
-          Number(
-            p?.heading
-          ),
 
-        breakTrack:
-          p?.breakTrack === true ||
-          p?.breakTrack === "true" ||
-          p?.breakTrack === 1 ||
-          p?.breakTrack === "1"
+          speed:
+            Number(
+              p?.speed
+            ),
 
-      });
 
-    });
+          heading:
+            Number(
+              p?.heading
+            ),
+
+
+          breakTrack:
+            p?.breakTrack === true ||
+            p?.breakTrack === "true" ||
+            p?.breakTrack === 1 ||
+            p?.breakTrack === "1"
+
+        });
+
+      }
+    );
 
 
     console.log(
@@ -97975,15 +97930,41 @@ async function loadSessionPoints(
 
 
     // ============================================================
-    // 🔧 REPAIR PARENT PATROL SESSION SUMMARY
+    // 🔧 PATROL SESSION SUMMARY
+    // ============================================================
+    //
+    // IMPORTANT ARCHITECTURE:
+    //
+    // Android is the authority for:
+    //
+    //   distance
+    //   speed
+    //   patrolPointCount
+    //
+    // Therefore this frontend function MUST NOT:
+    //
+    //   ❌ calculatePatrolDistanceKm(points)
+    //   ❌ calculate live distance
+    //   ❌ overwrite distanceKm
+    //
+    // This function only maintains:
+    //
+    //   ✅ pointCount
+    //   ✅ simplifiedTrack
+    //
+    // The live popup gets distance/speed/points from
+    // live_staff through its realtime listener.
     // ============================================================
 
-    if(points.length > 0){
+
+    if(
+      points.length > 0
+    ){
 
       try{
 
         // --------------------------------------------------------
-        // 📊 ACTUAL POINT COUNT
+        // 📊 ACTUAL STORED PATROL POINT COUNT
         // --------------------------------------------------------
 
         const actualPointCount =
@@ -97991,42 +97972,12 @@ async function loadSessionPoints(
 
 
         // --------------------------------------------------------
-        // 📏 CALCULATE REAL PATROL DISTANCE
-        // --------------------------------------------------------
-        // Reuse the existing canonical distance engine.
-        // --------------------------------------------------------
-
-        let calculatedDistanceKm = 0;
-
-
-        if(
-          typeof window.calculatePatrolDistanceKm ===
-          "function"
-        ){
-
-          calculatedDistanceKm =
-            Number(
-              window.calculatePatrolDistanceKm(
-                points
-              )
-            ) || 0;
-
-        }
-        else{
-
-          console.warn(
-            "⚠ calculatePatrolDistanceKm unavailable"
-          );
-
-        }
-
-
-        // --------------------------------------------------------
         // 🧹 BUILD SIMPLIFIED TRACK
         // --------------------------------------------------------
-        // Reuse existing track cleaner when available.
-        // This prevents putting thousands of raw GPS points
-        // unnecessarily into the parent document.
+        //
+        // This is for map/history rendering only.
+        //
+        // It is NOT a distance calculation.
         // --------------------------------------------------------
 
         let simplifiedTrack = [];
@@ -98044,6 +97995,7 @@ async function loadSessionPoints(
                 points
               ) || [];
 
+
           }
           catch(cleanErr){
 
@@ -98060,7 +98012,7 @@ async function loadSessionPoints(
 
 
         // --------------------------------------------------------
-        // 📄 READ CURRENT PARENT SESSION
+        // 📄 READ CURRENT PARENT PATROL SESSION
         // --------------------------------------------------------
 
         const parentRef =
@@ -98086,19 +98038,23 @@ async function loadSessionPoints(
             : {};
 
 
+        // --------------------------------------------------------
+        // EXISTING POINT COUNT
+        // --------------------------------------------------------
+
         const existingPointCount =
+
           Number(
             parentData?.pointCount || 0
           );
 
 
-        const existingDistanceKm =
-          Number(
-            parentData?.distanceKm || 0
-          );
-
+        // --------------------------------------------------------
+        // EXISTING SIMPLIFIED TRACK LENGTH
+        // --------------------------------------------------------
 
         const existingTrackLength =
+
           Array.isArray(
             parentData?.simplifiedTrack
           )
@@ -98106,54 +98062,43 @@ async function loadSessionPoints(
             : 0;
 
 
-        // --------------------------------------------------------
-        // 🔎 ONLY REPAIR WHEN NECESSARY
-        // --------------------------------------------------------
-        // This avoids writing the parent document every time
-        // the frontend loads the same session.
-        // --------------------------------------------------------
+        // ========================================================
+        // 🔧 DETERMINE WHETHER SUMMARY NEEDS REPAIR
+        // ========================================================
+        //
+        // ONLY:
+        //
+        //   pointCount
+        //   simplifiedTrack
+        //
+        // NO DISTANCE.
+        // ========================================================
 
         const countNeedsRepair =
+
           existingPointCount !==
           actualPointCount;
 
 
-        const distanceNeedsRepair =
-          Math.abs(
-            existingDistanceKm -
-            calculatedDistanceKm
-          ) > 0.001;
-
-
         const trackNeedsRepair =
+
           simplifiedTrack.length > 0 &&
           existingTrackLength === 0;
 
 
+        // ========================================================
+        // 🔧 REPAIR ONLY IF NECESSARY
+        // ========================================================
+
         if(
           countNeedsRepair ||
-          distanceNeedsRepair ||
           trackNeedsRepair
         ){
 
           const repairData = {
 
-            // ----------------------------------------------------
-            // ACTUAL NUMBER OF VALID FIRESTORE GPS POINTS
-            // ----------------------------------------------------
-
             pointCount:
-              actualPointCount,
-
-
-            // ----------------------------------------------------
-            // ACTUAL CALCULATED PATROL DISTANCE
-            // ----------------------------------------------------
-
-            distanceKm:
-              Number(
-                calculatedDistanceKm.toFixed(3)
-              )
+              actualPointCount
 
           };
 
@@ -98187,19 +98132,12 @@ async function loadSessionPoints(
               newPointCount:
                 actualPointCount,
 
-              oldDistanceKm:
-                existingDistanceKm,
-
-              newDistanceKm:
-                Number(
-                  calculatedDistanceKm.toFixed(3)
-                ),
-
               oldTrackLength:
                 existingTrackLength,
 
               newTrackLength:
                 simplifiedTrack.length
+
             }
           );
 
@@ -98207,9 +98145,12 @@ async function loadSessionPoints(
           // ------------------------------------------------------
           // 🔥 MERGE ONLY SUMMARY FIELDS
           // ------------------------------------------------------
+          //
           // IMPORTANT:
+          //
           // We DO NOT overwrite:
           //
+          // distanceKm
           // cleanName
           // name
           // rawName
@@ -98224,7 +98165,7 @@ async function loadSessionPoints(
           // status
           // etc.
           //
-          // Existing patrol session data remains untouched.
+          // Android/live-session values remain untouched.
           // ------------------------------------------------------
 
           await window.fb.setDoc(
@@ -98248,6 +98189,12 @@ async function loadSessionPoints(
           );
 
         }
+
+
+        // ========================================================
+        // ✅ NOTHING TO REPAIR
+        // ========================================================
+
         else{
 
           console.log(
@@ -98259,13 +98206,9 @@ async function loadSessionPoints(
               pointCount:
                 actualPointCount,
 
-              distanceKm:
-                Number(
-                  calculatedDistanceKm.toFixed(3)
-                ),
-
               simplifiedTrack:
                 simplifiedTrack.length
+
             }
           );
 
@@ -98288,6 +98231,12 @@ async function loadSessionPoints(
       }
 
     }
+
+
+    // ============================================================
+    // ℹ NO VALID GPS POINTS
+    // ============================================================
+
     else{
 
       console.log(
@@ -98301,13 +98250,15 @@ async function loadSessionPoints(
     // ============================================================
     // ✅ RETURN ORIGINAL POINT ARRAY
     // ============================================================
-    // Existing map/track flow continues exactly as before.
+    //
+    // Existing map / track / polyline flow continues.
+    //
     // ============================================================
 
     return points;
 
-  }
 
+  }
   catch(err){
 
     console.error(
@@ -98320,7 +98271,6 @@ async function loadSessionPoints(
   }
 
 }
-
 // ============================================================
 // 🗺️ PATROL KML READY
 // ============================================================
