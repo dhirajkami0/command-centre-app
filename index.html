@@ -10593,6 +10593,35 @@ setTimeout(() => {
         console.log(
           "✅ Sightings loaded"
         );
+
+
+if(
+
+  typeof startSightingsRealtime ===
+    "function"
+
+){
+
+  console.log(
+    "🐘 Starting elephant sightings realtime..."
+  );
+
+  await startSightingsRealtime();
+
+  console.log(
+    "✅ Elephant sightings realtime active"
+  );
+
+}
+
+else{
+
+  console.warn(
+    "⚠ startSightingsRealtime() unavailable"
+  );
+
+}
+
 // ==============================================
 // 🐅 LOAD WILDLIFE SIGHTINGS
 // ==============================================
@@ -27613,7 +27642,7 @@ window.__monthlyStatusUpdating = true;
     // =========================================================
 
     const CACHE_TTL =
-      30000;
+      300000;
 
 
     const cacheAge =
@@ -30348,7 +30377,7 @@ setTimeout(async () => {
 
       },
 
-      10000
+      60000
 
     );
 
@@ -45172,10 +45201,145 @@ if(
 
 }
 
+// ============================================================
+// 🐘 SIGHTINGS REALTIME STATE
+// ------------------------------------------------------------
+// One Firestore listener only.
+// Initial snapshot builds the existing UI.
+// Later snapshots process only changed documents.
+// ============================================================
+
+window.sightingsUnsubscribe ??= null;
+
+window.sightingsRealtimeActive ??= false;
+
+window.sightingsCache ??=
+  Object.create(null);
+
+// ============================================================
+// 🐘 SIGHTINGS REALTIME CACHE HELPERS
+// ------------------------------------------------------------
+// One cache entry per Firestore document.
+//
+// Initial snapshot:
+//     all documents → cache
+//
+// Later snapshot:
+//     only changed documents → cache update
+//
+// This cache is NOT the rendering authority.
+// Existing sightingMarkers remain the UI authority.
+// ============================================================
+
+window.getSightingCacheKey =
+function(docSnap){
+
+    if(!docSnap){
+        return "";
+    }
+
+    const d =
+        docSnap.data?.() || {};
+
+    return String(
+        d.sighting_id ||
+        d.id ||
+        docSnap.id ||
+        ""
+    ).trim();
+};
+
+
+// ============================================================
+// 🧹 REMOVE ONE SIGHTING MARKER
+// ------------------------------------------------------------
+// Used by:
+//     removed
+//     RESOLVED
+//     expired
+// ============================================================
+
+window.removeSightingMarker =
+function(key){
+
+    key =
+        String(
+            key || ""
+        ).trim();
+
+    if(!key){
+        return;
+    }
+
+    try{
+
+        if(
+            window.activeSightingPopupKey ===
+            key
+        ){
+
+            window.activeSightingPopupKey =
+                null;
+
+            window.activeSightingPopupMarker =
+                null;
+        }
+
+        const marker =
+            window.sightingMarkers?.[
+                key
+            ];
+
+        if(marker){
+
+            try{
+
+                elephantLayer.removeLayer(
+                    marker
+                );
+
+            }
+            catch(err){
+
+                console.warn(
+                    "⚠ Sighting marker remove failed:",
+                    key,
+                    err
+                );
+
+            }
+
+        }
+
+        if(
+            window.sightingMarkers
+        ){
+
+            delete window.sightingMarkers[
+                key
+            ];
+
+        }
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ removeSightingMarker failed:",
+            key,
+            err
+        );
+
+    }
+
+};
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
-async function loadSightings(){
+async function loadSightings(
+  realtimeData = null
+){
+
 // =====================================================
 // INIT
 // =====================================================
@@ -45330,51 +45494,88 @@ const expiredSet =
 // FIRESTORE MODULES
 // =====================================================
 
-const {
+// =====================================================
+// 🔥 FIRESTORE INPUT
+// -----------------------------------------------------
+// NORMAL CALL:
+//     loadSightings()
+//     → full collection read
+//
+// REALTIME CALL:
+//     loadSightings(changedData)
+//     → process changed documents only
+// =====================================================
 
+const {
   collection,
   getDocs
-
 } = window.fb;
-
 
 const db =
   window.db;
 
+let data = [];
+
 
 // =====================================================
-// READ FIRESTORE
+// ⚡ REALTIME DATA SUPPLIED
 // =====================================================
 
-console.log(
-  "🔥 Loading elephant_sightings from Firestore..."
-);
+if(
+  Array.isArray(realtimeData)
+){
+
+    data =
+        realtimeData;
+
+    console.log(
+      "⚡ Sightings realtime update:",
+      data.length,
+      "document(s)"
+    );
+
+}
 
 
-const snapshot =
-  await getDocs(
+// =====================================================
+// 📥 INITIAL / MANUAL FULL READ
+// -----------------------------------------------------
+// Existing callers remain fully compatible.
+// =====================================================
 
-    collection(
-      db,
-      "elephant_sightings"
-    )
+else{
 
-  );
+    console.log(
+      "🔥 Loading elephant_sightings from Firestore..."
+    );
 
+    const snapshot =
+      await getDocs(
+        collection(
+          db,
+          "elephant_sightings"
+        )
+      );
 
-const data =
-  [];
-
-
-snapshot.forEach(
+    snapshot.forEach(
   function(docSnap){
 
     const d =
       docSnap.data() ||
       {};
 
+    // =====================================================
+    // 🗂 INITIAL FULL-READ CACHE
+    // -----------------------------------------------------
+    // Keep the complete Firestore snapshot in the same
+    // cache used by the realtime listener.
+    //
+    // IMPORTANT:
+    // This does NOT change the rendering flow.
+    // loadSightings() will still process "data" below.
+    // =====================================================
 
-    data.push({
+    const normalized = {
 
       ...d,
 
@@ -45382,17 +45583,55 @@ snapshot.forEach(
         d.firestore_id ||
         docSnap.id
 
-    });
+    };
+
+
+    // =====================================================
+    // 🔑 SAME CANONICAL KEY USED BY REALTIME
+    // =====================================================
+
+    const cacheKey =
+      String(
+        normalized.sighting_id ||
+        normalized.id ||
+        normalized.firestore_id ||
+        docSnap.id ||
+        ""
+      ).trim();
+
+
+    // =====================================================
+    // 💾 STORE INITIAL DOCUMENT IN REALTIME CACHE
+    // =====================================================
+
+    if(
+      cacheKey
+    ){
+
+      window.sightingsCache[
+        cacheKey
+      ] =
+        normalized;
+
+    }
+
+
+    // =====================================================
+    // EXISTING LOAD / RENDER PIPELINE
+    // =====================================================
+
+    data.push(
+      normalized
+    );
 
   }
 );
+    console.log(
+      "🐘 Firestore sightings loaded:",
+      data.length
+    );
 
-
-console.log(
-  "🐘 Firestore sightings loaded:",
-  data.length
-);
-
+}
 
 // =====================================================
 // CURRENT TIME
@@ -47702,104 +47941,131 @@ marker.on(
 // =====================================================
 // REMOVE STALE MARKERS
 //
-// Marker exists locally but Firestore record no longer
-// exists / is no longer active.
+// IMPORTANT:
+//
+// FULL READ:
+//     loadSightings()
+//     → data = complete collection
+//     → stale-marker purge is SAFE
+//
+// REALTIME:
+//     loadSightings(changedData)
+//     → data = ONLY changed documents
+//     → DO NOT run global marker purge
+//
+// Realtime REMOVED documents are already handled by
+// startSightingsRealtime().
+// RESOLVED / expired documents are already handled
+// during individual sighting processing.
 // =====================================================
 
-const validKeys =
-  new Set(
+if(
+  !Array.isArray(realtimeData)
+){
 
-    data
-      .filter(
-        function(e){
-
-          const status =
-            String(
-              e.status ||
-              "ACTIVE"
-            )
-            .trim()
-            .toUpperCase();
-
-
-          return (
-            status !==
-            "RESOLVED"
-          );
-
-        }
-      )
-      .map(
-        function(e){
-
-          return String(
-
-            e.sighting_id ||
-            e.id ||
-            e.firestore_id ||
-            ""
-
-          ).trim();
-
-        }
-      )
-      .filter(Boolean)
-
+  console.log(
+    "🧹 Full-read marker cleanup active"
   );
 
 
-Object.keys(
-  window.sightingMarkers
-)
-.forEach(
-  function(key){
+  const validKeys =
+    new Set(
 
-    if(
-      !validKeys.has(key)
-    ){
+      data
+        .filter(
+          function(e){
 
-      try{
+            const status =
+              String(
+                e.status ||
+                "ACTIVE"
+              )
+              .trim()
+              .toUpperCase();
 
-        if(
-          window.activeSightingPopupKey ===
-          key
-        ){
 
-          window.activeSightingPopupKey =
-            null;
+            return (
+              status !==
+              "RESOLVED"
+            );
 
-          window.activeSightingPopupMarker =
-            null;
+          }
+        )
+        .map(
+          function(e){
+
+            return String(
+              e.sighting_id ||
+              e.id ||
+              e.firestore_id ||
+              ""
+            ).trim();
+
+          }
+        )
+        .filter(Boolean)
+
+    );
+
+
+  Object.keys(
+    window.sightingMarkers
+  )
+  .forEach(
+    function(key){
+
+      if(
+        !validKeys.has(key)
+      ){
+
+        try{
+
+          if(
+            window.activeSightingPopupKey ===
+            key
+          ){
+
+            window.activeSightingPopupKey =
+              null;
+
+            window.activeSightingPopupMarker =
+              null;
+
+          }
+
+
+          elephantLayer.removeLayer(
+            window.sightingMarkers[key]
+          );
+
+        }
+        catch(err){
+
+          console.warn(
+            "Marker cleanup failed:",
+            key,
+            err
+          );
 
         }
 
 
-        elephantLayer.removeLayer(
-          window.sightingMarkers[key]
-        );
+        delete window
+          .sightingMarkers[key];
 
       }
-
-      catch(err){
-
-        console.warn(
-          "Marker cleanup failed:",
-          key,
-          err
-        );
-
-      }
-
-
-      delete window
-        .sightingMarkers[key];
 
     }
+  );
 
-  }
-);
+}
+else{
 
+  console.log(
+    "⚡ Realtime delta — global marker cleanup SKIPPED"
+  );
 
+}
 // =====================================================
 // COMPLETE
 // =====================================================
@@ -47825,6 +48091,390 @@ console.error(
 return [];
 }
 }
+
+// ============================================================
+// 🐘 START ELEPHANT SIGHTINGS REALTIME LISTENER
+// ------------------------------------------------------------
+// ONE LISTENER ONLY.
+//
+// INITIAL SNAPSHOT:
+//     all existing documents
+//
+// LATER SNAPSHOTS:
+//     only added / modified / removed documents
+//
+// Existing loadSightings() remains the renderer/processor.
+// ============================================================
+
+async function startSightingsRealtime(){
+
+    try{
+
+        // ====================================================
+        // 🛑 FIREBASE READY CHECK
+        // ====================================================
+
+        if(
+            !window.fb ||
+            typeof window.fb.onSnapshot !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Sightings realtime unavailable: onSnapshot missing"
+            );
+
+            return false;
+
+        }
+
+
+        // ====================================================
+        // 🔒 PREVENT DUPLICATE LISTENER
+        // ====================================================
+
+        if(
+            window.sightingsRealtimeActive === true &&
+            typeof window.sightingsUnsubscribe ===
+                "function"
+        ){
+
+            console.log(
+                "⏭ Sightings realtime already active"
+            );
+
+            return true;
+
+        }
+
+
+        // ====================================================
+        // 🧹 CLEAN OLD LISTENER
+        // ====================================================
+
+        if(
+            typeof window.sightingsUnsubscribe ===
+                "function"
+        ){
+
+            try{
+
+                window.sightingsUnsubscribe();
+
+            }
+            catch(err){
+
+                console.warn(
+                    "⚠ Old sightings listener cleanup failed:",
+                    err
+                );
+
+            }
+
+        }
+
+
+        window.sightingsUnsubscribe =
+            null;
+
+        window.sightingsRealtimeActive =
+            false;
+
+
+        // ====================================================
+        // 🔥 FIRESTORE COLLECTION
+        // ====================================================
+
+        const sightingsRef =
+            window.fb.collection(
+                window.db,
+                "elephant_sightings"
+            );
+
+
+        console.log(
+            "🐘 Starting Elephant Sightings realtime..."
+        );
+
+
+        // ====================================================
+        // 🔥 ONE FIRESTORE LISTENER
+        // ====================================================
+
+        window.sightingsUnsubscribe =
+            window.fb.onSnapshot(
+                sightingsRef,
+
+                async function(snapshot){
+
+                    try{
+
+                        // =================================================
+                        // 📦 CHANGED DOCUMENTS ONLY
+                        // =================================================
+
+                        const changedData =
+                            [];
+
+
+                        // =================================================
+                        // 🔄 PROCESS FIRESTORE CHANGES
+                        // =================================================
+
+                        for(
+                            const change of
+                            snapshot.docChanges()
+                        ){
+
+                            const docSnap =
+                                change.doc;
+
+
+                            const key =
+                                window.getSightingCacheKey(
+                                    docSnap
+                                );
+
+
+                            if(
+                                !key
+                            ){
+
+                                console.warn(
+                                    "⚠ Realtime sighting without ID skipped"
+                                );
+
+                                continue;
+
+                            }
+
+
+                            // =============================================
+                            // 🗑 REMOVED
+                            // =============================================
+
+                            if(
+                                change.type ===
+                                "removed"
+                            ){
+
+                                delete
+                                    window.sightingsCache[
+                                        key
+                                    ];
+
+
+                                window.removeSightingMarker(
+                                    key
+                                );
+
+
+                                console.log(
+                                    "🗑 Sighting removed:",
+                                    key
+                                );
+
+
+                                continue;
+
+                            }
+
+
+                            // =============================================
+                            // ➕ ADDED / ✏ MODIFIED
+                            // =============================================
+
+                            const d =
+                                docSnap.data() ||
+                                {};
+
+
+                            const normalized =
+                            {
+
+                                ...d,
+
+                                firestore_id:
+                                    d.firestore_id ||
+                                    docSnap.id
+
+                            };
+
+
+                            window.sightingsCache[
+                                key
+                            ] =
+                                normalized;
+
+
+                            changedData.push(
+                                normalized
+                            );
+
+
+                        }
+
+
+                        // =================================================
+                        // ⚡ PROCESS ONLY CHANGED DOCUMENTS
+                        // =================================================
+
+                        if(
+                            changedData.length > 0
+                        ){
+
+                            await loadSightings(
+                                changedData
+                            );
+
+                        }
+
+
+                        // =================================================
+                        // STATE
+                        // =================================================
+
+                        window.sightingsRealtimeActive =
+                            true;
+
+
+                        console.log(
+                            "🐘 Sightings realtime update complete:",
+                            {
+                                changes:
+                                    snapshot.docChanges().length,
+
+                                processed:
+                                    changedData.length,
+
+                                removed:
+                                    snapshot
+                                        .docChanges()
+                                        .filter(
+                                            c =>
+                                                c.type ===
+                                                "removed"
+                                        )
+                                        .length
+                            }
+                        );
+
+                    }
+                    catch(err){
+
+                        console.error(
+                            "❌ Sightings realtime processing failed:",
+                            err
+                        );
+
+                    }
+
+                },
+
+                function(error){
+
+                    console.error(
+                        "❌ Elephant sightings realtime listener error:",
+                        error
+                    );
+
+                    window.sightingsRealtimeActive =
+                        false;
+
+                }
+
+            );
+
+
+        // ====================================================
+        // STATE
+        // ====================================================
+
+        window.sightingsRealtimeActive =
+            true;
+
+
+        console.log(
+            "✅ Elephant Sightings realtime listener started"
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ startSightingsRealtime failed:",
+            err
+        );
+
+        window.sightingsRealtimeActive =
+            false;
+
+        return false;
+
+    }
+
+}
+// ============================================================
+// 🐘 LOCAL SIGHTING AGE / EXPIRY REFRESH
+// ------------------------------------------------------------
+// IMPORTANT:
+//
+// This does NOT read Firestore.
+//
+// It only reprocesses locally cached sightings so that:
+//
+//     2 hr → 3 hr
+//     6 hr → 7 hr
+//     24 hr → expired
+//
+// continues to update even when Firestore itself is unchanged.
+// ============================================================
+
+window.sightingsExpiryTimer =
+  setInterval(
+    async function(){
+
+      try{
+
+        const cachedSightings =
+          Object.values(
+            window.sightingsCache ||
+            {}
+          );
+
+        if(
+          cachedSightings.length === 0
+        ){
+
+          return;
+
+        }
+
+        await loadSightings(
+          cachedSightings
+        );
+
+        console.log(
+          "⏱ Local sighting age refresh:",
+          cachedSightings.length
+        );
+
+      }
+      catch(err){
+
+        console.error(
+          "❌ Local sighting expiry refresh failed:",
+          err
+        );
+
+      }
+
+    },
+    60000
+  );
 function getWildlifeIcon(animal){
 
     animal =
@@ -53055,32 +53705,21 @@ async function submitMoveForm(){
 
 
   // =====================================================
-  // REFRESH FROM FIRESTORE
-  //
-  // Your new loadSightings() now reads Firestore.
-  // One refresh is sufficient.
-  // =====================================================
+// 🔥 REALTIME WILL DELIVER THE FIRESTORE CHANGE
+// -----------------------------------------------------
+// Firestore has already been updated.
+// onSnapshot() will receive the MODIFIED document.
+//
+// Do NOT perform another full collection read.
+// =====================================================
 
-  setTimeout(
-    function(){
-
-      console.log(
-        "🔄 Refreshing sightings from Firestore..."
-      );
-
-
-      if(
-        typeof loadSightings ===
-        "function"
-      ){
-
-        loadSightings();
-
-      }
-
-    },
-    500
+if(
+  window.sightingsRealtimeActive === true
+){
+  console.log(
+    "⚡ Sighting status updated — realtime listener will refresh UI"
   );
+}
 
 
   // =====================================================
@@ -79900,88 +80539,44 @@ if (
   }, 500);
 
 
-  // ============================================================
-  // 🐘 WILDLIFE SIGHTINGS
-  // ------------------------------------------------------------
-  // Keep existing 5-second protection and popup protection.
-  // ============================================================
+// ============================================================
+// 🐘 ELEPHANT SIGHTINGS
+// ------------------------------------------------------------
+// FIRESTORE REALTIME IS AUTHORITATIVE.
+//
+// Do NOT perform a periodic full Firestore read here.
+//
+// Initial load:
+//     Firebase-ready startup → loadSightings()
+//
+// Realtime:
+//     startSightingsRealtime() → onSnapshot()
+//
+// Age / expiry:
+//     sightingsExpiryTimer → LOCAL CACHE ONLY
+//
+// refreshAll() must NOT create another elephant Firestore read.
+// ============================================================
 
-  if (
-    now -
-    window.lastSightingsLoad
-    >
-    MIN_SIGHTING_VISIBLE_TIME
-  ) {
-
-    setTimeout(() => {
-
-      // --------------------------------------------------------
-      // USER INTERACTION PROTECTION
-      // --------------------------------------------------------
-
-      if (
-        window.isPopupInteracting ||
-        (
-          Date.now() -
-          window.lastInteractionTime
-          <
-          5000
-        )
-      ) {
-
-        console.log(
-          "⏸ Sightings skipped (user interacting)"
-        );
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // OPEN POPUP PROTECTION
-      // --------------------------------------------------------
-
-      if (
-        map &&
-        map._popup &&
-        map._popup.isOpen()
-      ) {
-
-        console.log(
-          "⏸ Sightings skipped (popup open)"
-        );
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // LOAD SIGHTINGS
-      // --------------------------------------------------------
-
-      try {
-
-        loadSightings();
-
-        window.lastSightingsLoad =
-          Date.now();
-
-      } catch (error) {
-
-        console.error(
-          "❌ loadSightings failed:",
-          error
-        );
-      }
-
-    }, 4000);
-
-  } else {
-
+if(
+  window.sightingsRealtimeActive === true
+){
     console.log(
-      "⏸ Sightings held (5 sec rule)"
+        "⏸ Elephant sightings realtime active — no Firestore refresh"
     );
-  }
+}
+else if(
+  typeof loadSightings === "function"
+){
+    console.log(
+        "⚠ Elephant sightings realtime not active — fallback load"
+    );
+
+    loadSightings();
+
+    window.lastSightingsLoad =
+        Date.now();
+}
 
 
   // ============================================================
@@ -82257,22 +82852,30 @@ function toggleWeatherDrawer() {
    🔄 BLOCK 12 → AUTO REFRESH SYSTEM (FINAL OPTIMIZED)
 ============================================================ */
 
-    /* ============================================================
-       ⚡ FAST LOOP → REAL-TIME (STAFF + ELEPHANTS)
-    ============================================================ */
-   setInterval(function () {
+/* ============================================================
+   ⚡ FAST LOOP → REAL-TIME STAFF ONLY
+   ------------------------------------------------------------
+   IMPORTANT:
+   live_staff already has the single global Firestore listener.
+   DO NOT repeatedly read elephant_sightings here.
+============================================================ */
 
-      try {
-       loadStaff();
+setInterval(function () {
 
-       
+  try {
 
-        loadSightings();
-      } catch (err) {
-        console.error("❌ Fast loop error:", err);
-      }
+    loadStaff();
 
-    }, 8000); // 🔥 8 sec (GOOD BALANCE)
+  } catch (err) {
+
+    console.error(
+      "❌ Fast staff loop error:",
+      err
+    );
+
+  }
+
+}, 8000);
 
 
     /* ============================================================
@@ -99297,10 +99900,17 @@ function closeDutyForm() {
               payload: payload
             })
               .then(function () {
-                alert("✅ Sighting Submitted");
-                closeSightingForm();
-                loadSightings();
-              })
+  alert("✅ Sighting Submitted");
+  closeSightingForm();
+
+  if(
+    window.sightingsRealtimeActive === true
+  ){
+    console.log(
+      "⚡ New sighting saved — realtime listener will update marker"
+    );
+  }
+})
               .catch(function (err) {
                 alert("❌ Error: " + (err.message || err));
               });
