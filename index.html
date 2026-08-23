@@ -12199,8 +12199,58 @@ if (
         applyRoleControl?.();
 
 
-        // ==========================================
-        // 🤖 GREENGUARD AI — ADMIN ACCESS
+// ==========================================================
+// 🚨 OFFENCE INTELLIGENCE UI — STARTUP INITIALIZATION
+//
+// IMPORTANT:
+// window.userProfile is already available here.
+//
+// Therefore OffenceUIController can safely perform
+// its ADMIN authorization check and create the button.
+//
+// Manual:
+//     GG.Offence.UIController.init()
+//
+// is now automatically performed during app load.
+// ==========================================================
+
+try {
+
+    if (
+        window.GG &&
+        window.GG.Offence &&
+        window.GG.Offence.UIController &&
+        typeof window.GG.Offence.UIController.init === "function"
+    ) {
+
+        console.log(
+            "🚨 OFFENCE UI → AUTO INIT"
+        );
+
+        window.GG.Offence.UIController.init();
+
+    }
+    else {
+
+        console.warn(
+            "⚠️ OFFENCE UI CONTROLLER NOT READY"
+        );
+
+    }
+
+}
+catch (err) {
+
+    console.error(
+        "❌ OFFENCE UI AUTO INIT FAILED:",
+        err
+    );
+
+}
+
+
+// ==========================================
+// 🤖 GREENGUARD AI — ADMIN ACCESS
         //
         // Profile is NOW available.
         // This must run AFTER window.userProfile
