@@ -50493,21 +50493,47 @@ console.log(
         // FETCH WILDLIFE
         // =====================================================
 
-        const snapshot =
+// =====================================================
+// 🕒 WILDLIFE — LAST 24 HOURS ONLY
+// =====================================================
 
-            await getDocs(
+const wildlifeCutoff =
+    new Date(
+        Date.now() -
+        (24 * 60 * 60 * 1000)
+    );
 
-                collection(
+// =====================================================
+// 🔎 FIRESTORE QUERY
+// -----------------------------------------------------
+// Read only Wildlife sightings whose actual
+// sighting_datetime is within the last 24 hours.
+//
+// Historical documents remain safely in Firestore.
+// They are simply not downloaded into the frontend.
+// =====================================================
 
-                    db,
+const wildlifeQuery =
+    window.fb.query(
+        collection(
+            db,
+            "wildlife_sightings"
+        ),
+        window.fb.where(
+            "sighting_datetime",
+            ">=",
+            wildlifeCutoff
+        )
+    );
 
-                    "wildlife_sightings"
+// =====================================================
+// 📥 FIRESTORE READ — RECENT DOCUMENTS ONLY
+// =====================================================
 
-                )
-
-            );
-
-
+const snapshot =
+    await getDocs(
+        wildlifeQuery
+    );
         const wildlife =
 
             [];
