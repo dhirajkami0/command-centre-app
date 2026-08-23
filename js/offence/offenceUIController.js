@@ -4002,9 +4002,22 @@ function () {
 }
 
 
-
 /* ============================================================
    VERY SMALL MOBILE
+   ------------------------------------------------------------
+   OFFENCE BUTTON POSITION FIX
+
+   PURPOSE:
+   Keep OFFENCE clearly ABOVE the Monthly Status /
+   Analytics card on small mobile screens.
+
+   IMPORTANT:
+   The previous 125px / 110px position placed the
+   OFFENCE button too low and caused it to overlap
+   the Monthly Status card.
+
+   DO NOT change the JavaScript.
+   Position is controlled entirely by CSS.
 ============================================================ */
 
 @media (
@@ -4012,6 +4025,10 @@ function () {
     420px
 ) {
 
+
+    /* ========================================================
+       OFFENCE ANALYSIS PANEL
+       ======================================================== */
 
     #${UIController.CONFIG.PANEL_ID} {
 
@@ -4039,6 +4056,10 @@ function () {
     }
 
 
+    /* ========================================================
+       OFFENCE PANEL BODY
+       ======================================================== */
+
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-body {
 
@@ -4051,6 +4072,10 @@ function () {
     }
 
 
+    /* ========================================================
+       OFFENCE PANEL HEADER
+       ======================================================== */
+
     #${UIController.CONFIG.PANEL_ID}
     .gg-offence-panel-header {
 
@@ -4060,7 +4085,19 @@ function () {
     }
 
 
+    /* ========================================================
+       OFFENCE BUTTON — SMALL MOBILE
+       --------------------------------------------------------
+       THIS IS THE IMPORTANT FIX.
+
+       Keep the button high enough so it remains
+       ABOVE the Monthly Status / Analytics card.
+    ======================================================== */
+
     #${UIController.CONFIG.BUTTON_ID} {
+
+        position:
+            fixed;
 
         top:
             auto;
@@ -4070,10 +4107,10 @@ function () {
 
         bottom:
             max(
-                125px,
+                330px,
                 calc(
                     env(safe-area-inset-bottom) +
-                    110px
+                    310px
                 )
             );
 
@@ -4082,6 +4119,9 @@ function () {
 
         min-width:
             96px;
+
+        max-width:
+            calc(100vw - 16px);
 
         height:
             40px;
@@ -4095,11 +4135,13 @@ function () {
         font-size:
             11px;
 
+        z-index:
+            ${zIndex};
+
     }
 
 
 }
-
 
 
 /* ============================================================
