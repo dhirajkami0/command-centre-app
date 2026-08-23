@@ -63617,45 +63617,224 @@ if(window.staffListenerActive === true){
   return;
 }
 
+// ==========================================================
+// ⚡ LIVE STAFF HEAVY-PROCESSING FILTER
+//
+// GPS-only changes do NOT need the heavy staff rebuild.
+//
+// Heavy processing IS required when:
+//   • dutyActive changes
+//   • sessionId changes
+//   • visibility fields change
+//   • staff identity fields change
+//
+// This keeps the existing heavy logic intact.
+// It simply prevents it from running for ordinary
+// 5-second GPS updates.
+// ==========================================================
+
+const isLiveStaffHeavyChange =
+    function(
+        previous,
+        current
+    ){
+
+        // -----------------------------------------------
+        // FIRST LOAD / NO PREVIOUS STATE
+        // -----------------------------------------------
+        if(!previous){
+            return true;
+        }
+
+        // -----------------------------------------------
+        // FIELDS THAT CAN CHANGE THE HEAVY FLOW
+        // -----------------------------------------------
+        const structuralFields = [
+
+            "dutyActive",
+            "sessionId",
+
+            "cleanName",
+            "name",
+            "role",
+            "team",
+
+            "division",
+            "range",
+            "beat",
+            "compartment",
+
+            "dutyType",
+            "status",
+            "type"
+
+        ];
+
+        // -----------------------------------------------
+        // IF ANY STRUCTURAL FIELD CHANGED
+        // → HEAVY PROCESSING REQUIRED
+        // -----------------------------------------------
+        for(
+            const field
+            of structuralFields
+        ){
+
+            if(
+                String(
+                    previous[field] ?? ""
+                ) !==
+                String(
+                    current[field] ?? ""
+                )
+            ){
+
+                return true;
+
+            }
+
+        }
+
+        // -----------------------------------------------
+        // GPS / LIVE METRICS ONLY
+        // → NO HEAVY PROCESSING
+        // -----------------------------------------------
+        return false;
+
+    };
 window.staffListenerActive = true;
 
 console.log(
   "🔥 Creating SINGLE live_staff listener"
 );
+// ==========================================================
+// ⚡ PREVIOUS LIVE STAFF STATE
+// ----------------------------------------------------------
+// Used only to decide whether a modified document needs
+// the existing heavy processing.
+// ==========================================================
 
+window.liveStaffPreviousState ??=
+    Object.create(null);
 // ==========================================
 // 🔥 CREATE REALTIME LISTENER
 // ==========================================
 window.staffUnsubscribe = onSnapshot(
-
     liveRef,
-
     async(snapshot)=>{
-
         try {
 
-snapshot.forEach(docSnap => {
+            // ==================================================
+            // ⚡ ONLY PROCESS DOCUMENTS THAT ACTUALLY CHANGED
+            // --------------------------------------------------
+            // IMPORTANT:
+            // Do NOT use snapshot.forEach().
+            //
+            // snapshot.forEach()
+            //     = processes ALL live_staff documents
+            //
+            // snapshot.docChanges()
+            //     = processes only added / modified / removed
+            //       documents from this Firestore event.
+            // ==================================================
+            snapshot.docChanges().forEach(change => {
 
-    const s =
-        docSnap.data();
+                // ==================================================
+                // 📄 CHANGED FIRESTORE DOCUMENT
+                // ==================================================
+                const docSnap =
+                    change.doc;
 
-    if(!s){
-        return;
-    }
+                // ==================================================
+                // 🔎 CHANGE TYPE
+                // --------------------------------------------------
+                // added
+                // modified
+                // removed
+                // ==================================================
+                const changeType =
+                    change.type;
 
+                 console.log(
+    "⚡ LIVE STAFF CHANGE:",
+    changeType,
+    docSnap.id
+);
+                // ==================================================
+                // 📦 DOCUMENT DATA
+                // ==================================================
+                const s =
+                    docSnap.data();
 
-    // ==================================================
-    // 👤 CANONICAL STAFF NAME
-    // ==================================================
+                // ==================================================
+                // ❌ REMOVED DOCUMENT
+                // --------------------------------------------------
+                // We will handle removal separately.
+                // Do NOT call docSnap.data() logic for a deleted
+                // staff record.
+                // ==================================================
+                if(
+                    changeType === "removed"
+                ){
 
-    const cleanStaffName =
-        cleanName(
-            s.cleanName ||
-            s.name ||
-            docSnap.id ||
-            ""
-        );
+                    const removedName =
+                        cleanName(
+                            docSnap.id ||
+                            ""
+                        );
 
+                    if(
+                        removedName
+                    ){
+
+                        // ------------------------------------------
+                        // REMOVE MARKER IF IT EXISTS
+                        // ------------------------------------------
+                        const removedMarker =
+                            window.staffMarkers?.[
+                                removedName
+                            ];
+
+                        if(
+                            removedMarker
+                        ){
+
+                            try{
+
+                                staffLayer.removeLayer(
+                                    removedMarker
+                                );
+
+                            }
+                            catch(e){}
+
+                            delete window.staffMarkers[
+                                removedName
+                            ];
+
+                        }
+
+                    }
+
+                    return;
+                }
+
+                // ==================================================
+                // ❌ INVALID DOCUMENT
+                // ==================================================
+                if(!s){
+                    return;
+                }
+
+                // ==================================================
+                // 👤 CANONICAL STAFF NAME
+                // ==================================================
+                const cleanStaffName =
+                    cleanName(
+                        s.cleanName ||
+                        s.name ||
+                        docSnap.id ||
+                        ""
+                    );
     if(!cleanStaffName){
         return;
     }
@@ -64299,15 +64478,41 @@ const currentLocationElement =
             // EXISTING HEAVY PROCESSING CONTINUES
             // ==================================================
 
-            let activeUsers =
-                new Set();
+let activeUsers =
+    new Set();
 
-            let staff = [];    let analyticsStaff = [];
+let staff = [];
+let analyticsStaff = [];
+
+let heavyWorkRan =
+    false;
     window.analyticsStaff = analyticsStaff;   // temporary debug
+
+// ==================================================
+// 🔐 PERSISTENT TRACK AUTHORIZATION CACHE
+// --------------------------------------------------
+// IMPORTANT:
+//
+// This cache MUST NOT be rebuilt from staff[]
+// on every live_staff snapshot.
+//
+// GPS-only snapshots intentionally skip heavy
+// processing, so staff[] may be empty.
+//
+// The authorization cache therefore persists
+// across GPS-only Firestore updates.
+//
+// It is modified only when staff visibility,
+// duty state, GPS validity, or session state
+// actually requires a change.
+// ==================================================
+
+window.visibleStaffCache ??=
+    Object.create(null);
     // ==================================================
         // 🔥 LIVE STAFF
         // ==================================================
-        snapshot.forEach(docSnap=>{
+snapshot.forEach(docSnap=>{
 
   try {
 
@@ -64315,6 +64520,481 @@ const currentLocationElement =
       docSnap.data();
 
     if(!s) return;
+
+    // ==================================================
+    // ⚡ HEAVY-PROCESSING GATE
+    // --------------------------------------------------
+    // GPS-only modifications do NOT enter the existing
+    // heavy processing below.
+    // ==================================================
+
+    const staffKey =
+      cleanName(
+        s.cleanName ||
+        s.name ||
+        docSnap.id ||
+        ""
+      );
+
+    if(!staffKey){
+        return;
+    }
+
+    const previous =
+      window.liveStaffPreviousState[
+        staffKey
+      ];
+
+    const heavyChange =
+      isLiveStaffHeavyChange(
+        previous,
+        s
+      );
+
+// ==================================================
+// 🔥 ANALYTICS OLD SESSION CLEANUP
+// --------------------------------------------------
+// If this staff member moved to a NEW session,
+// stop the OLD analytics listener and remove all
+// OLD session analytics state.
+// ==================================================
+
+const previousSessionId =
+    String(
+        previous?.sessionId || ""
+    ).trim();
+
+const newSessionId =
+    String(
+        s.sessionId || ""
+    ).trim();
+
+if(
+    previousSessionId &&
+    newSessionId &&
+    previousSessionId !== newSessionId
+){
+
+    // ==============================================
+    // 🔥 STOP OLD ANALYTICS FIRESTORE LISTENER
+    // ==============================================
+
+    if(
+        window.analyticsTrackListeners?.[
+            previousSessionId
+        ]
+    ){
+
+        try{
+
+            window.analyticsTrackListeners[
+                previousSessionId
+            ]();
+
+        }
+        catch(e){}
+
+        delete window.analyticsTrackListeners[
+            previousSessionId
+        ];
+
+    }
+
+    // ==============================================
+    // 🔥 REMOVE OLD ANALYTICS POINT CACHE
+    // ==============================================
+
+    delete window.analyticsPointCache[
+        previousSessionId
+    ];
+
+    // ==============================================
+    // 🔥 REMOVE OLD LAST POINT
+    // ==============================================
+
+    delete window.analyticsLastPoint[
+        previousSessionId
+    ];
+
+    // ==============================================
+    // 🔥 REMOVE OLD SESSION COUNTER
+    // ==============================================
+
+    delete window.analyticsPointCount[
+        previousSessionId
+    ];
+
+}
+    // ==================================================
+    // 💾 SAVE CURRENT STATE
+    // --------------------------------------------------
+    // Do this BEFORE deciding whether to skip.
+    // ==================================================
+
+    window.liveStaffPreviousState[
+      staffKey
+    ] = {
+        dutyActive:
+            s.dutyActive,
+
+        sessionId:
+            s.sessionId,
+
+        cleanName:
+            s.cleanName,
+
+        name:
+            s.name,
+
+        role:
+            s.role,
+
+        team:
+            s.team,
+
+        division:
+            s.division,
+
+        range:
+            s.range,
+
+        beat:
+            s.beat,
+
+        compartment:
+            s.compartment,
+
+        dutyType:
+            s.dutyType,
+
+        status:
+            s.status,
+
+        type:
+            s.type
+    };
+
+// ==================================================
+// ⚡ GPS-ONLY MODIFICATION
+// --------------------------------------------------
+// The FAST PASS has already moved the marker and
+// updated the open popup.
+//
+// IMPORTANT:
+// GPS-only updates MUST still participate in
+// lightweight live-state bookkeeping.
+//
+// They must NOT enter the heavy processing.
+// ==================================================
+
+if(
+    !heavyChange
+){
+
+    // ==================================================
+    // 🟢 KEEP DUTY-ACTIVE STAFF IN ACTIVE USER SET
+    // --------------------------------------------------
+    // Dead-user cleanup runs AFTER the heavy loop.
+    //
+    // Therefore a GPS-only update must still tell
+    // cleanup that this staff member is alive.
+    // ==================================================
+
+    if(
+        s.dutyActive === true
+    ){
+
+        activeUsers.add(
+            staffKey
+        );
+
+    }
+
+
+    // ==================================================
+    // 🟢 KEEP LIVE STAFF CACHE FRESH
+    // --------------------------------------------------
+    // Do NOT delete the previous GPS just because this
+    // particular update has incomplete GPS fields.
+    //
+    // This preserves the last known location while
+    // duty remains active.
+    // ==================================================
+
+    window.liveStaffCache ??=
+        Object.create(null);
+
+    const previousLive =
+        window.liveStaffCache[
+            staffKey
+        ] || {};
+
+
+    // ==================================================
+    // 📍 SAFE GPS VALUES
+    // ==================================================
+
+    const gpsLat =
+        Number(
+            s.lat
+        );
+
+    const gpsLon =
+        Number(
+            s.lon
+        );
+
+
+    const hasValidGps =
+        Number.isFinite(gpsLat) &&
+        Number.isFinite(gpsLon) &&
+        gpsLat !== 0 &&
+        gpsLon !== 0;
+
+
+    // ==================================================
+    // 💾 UPDATE LIGHTWEIGHT LIVE CACHE
+    // --------------------------------------------------
+    // Valid GPS:
+    //     use newest GPS.
+    //
+    // Invalid/missing GPS:
+    //     preserve previous known GPS.
+    // ==================================================
+
+    window.liveStaffCache[
+        staffKey
+    ] = {
+
+        ...previousLive,
+
+        cleanName:
+            s.cleanName ||
+            previousLive.cleanName ||
+            staffKey,
+
+        name:
+            s.name ||
+            previousLive.name ||
+            staffKey,
+
+        division:
+            String(
+                s.division ??
+                previousLive.division ??
+                ""
+            ).trim(),
+
+        range:
+            String(
+                s.range ??
+                previousLive.range ??
+                ""
+            ).trim(),
+
+        beat:
+            String(
+                s.beat ??
+                previousLive.beat ??
+                ""
+            ).trim(),
+
+        compartment:
+            String(
+                s.compartment ??
+                previousLive.compartment ??
+                ""
+            ).trim(),
+
+        lat:
+            hasValidGps
+                ? gpsLat
+                : Number(
+                    previousLive.lat || 0
+                ),
+
+        lng:
+            hasValidGps
+                ? gpsLon
+                : Number(
+                    previousLive.lng || 0
+                ),
+
+        dutyActive:
+            s.dutyActive === true,
+
+        sessionId:
+            String(
+                s.sessionId ??
+                previousLive.sessionId ??
+                ""
+            ).trim(),
+
+        lastSeen:
+            Number(
+                s.lastSeen ??
+                previousLive.lastSeen ??
+                0
+            ),
+
+        speed:
+            Number(
+                s.speed ??
+                previousLive.speed ??
+                0
+            ),
+
+        heading:
+            Number(
+                s.heading ??
+                previousLive.heading ??
+                0
+            ),
+
+        accuracy:
+            Number(
+                s.accuracy ??
+                previousLive.accuracy ??
+                0
+            ),
+
+        updatedAt:
+            Number(
+                s.updatedAt ??
+                previousLive.updatedAt ??
+                0
+            ),
+
+        dutyType:
+            String(
+                s.dutyType ??
+                previousLive.dutyType ??
+                ""
+            ),
+
+        team:
+            String(
+                s.team ??
+                previousLive.team ??
+                ""
+            )
+
+    };
+
+// ==================================================
+// 🔐 KEEP TRACK AUTHORIZATION ALIVE
+// --------------------------------------------------
+// GPS-only updates must NOT rebuild visibility.
+//
+// The staff member already passed the heavy
+// visibility calculation previously.
+//
+// Therefore preserve the existing authorization
+// record and only refresh its live GPS fields.
+//
+// IMPORTANT:
+// DO NOT create authorization here.
+// DO NOT change visibility here.
+// Only preserve/update an already-authorized user.
+// ==================================================
+
+if(
+    window.visibleStaffCache?.[
+        staffKey
+    ]
+){
+
+    const previousVisibleStaff =
+        window.visibleStaffCache[
+            staffKey
+        ];
+
+    window.visibleStaffCache[
+        staffKey
+    ] = {
+
+        ...previousVisibleStaff,
+
+        lat:
+            hasValidGps
+                ? gpsLat
+                : Number(
+                    previousVisibleStaff.lat || 0
+                ),
+
+        lng:
+            hasValidGps
+                ? gpsLon
+                : Number(
+                    previousVisibleStaff.lng || 0
+                ),
+
+        speed:
+            Number(
+                s.speed ??
+                previousVisibleStaff.speed ??
+                0
+            ),
+
+        heading:
+            Number(
+                s.heading ??
+                previousVisibleStaff.heading ??
+                0
+            ),
+
+        accuracy:
+            Number(
+                s.accuracy ??
+                previousVisibleStaff.accuracy ??
+                0
+            ),
+
+        lastSeen:
+            Number(
+                s.lastSeen ??
+                previousVisibleStaff.lastSeen ??
+                0
+            ),
+
+        updatedAt:
+            Number(
+                s.updatedAt ??
+                previousVisibleStaff.updatedAt ??
+                0
+            ),
+
+        sessionId:
+            String(
+                s.sessionId ??
+                previousVisibleStaff.sessionId ??
+                ""
+            ).trim(),
+
+        dutyActive:
+            s.dutyActive === true
+
+    };
+
+}
+    // ==================================================
+    // 🧠 IMPORTANT
+    // --------------------------------------------------
+    // DO NOT execute visibility / marker creation /
+    // track listener / analytics listener logic here.
+    //
+    // The session and structural state did not change.
+    // ==================================================
+
+    return;
+
+}
+// ==================================================
+// 🔥 HEAVY PROCESSING CONFIRMED
+// ==================================================
+
+heavyWorkRan = true;
+
 // ==============================================
 // 🔥 STAFF VISIBILITY
 // + GLOBAL EMERGENCY TARGET VISIBILITY
@@ -64710,6 +65390,21 @@ if(
     !staffVisible
 ){
 
+    // ==================================================
+    // 🔐 REMOVE TRACK AUTHORIZATION
+    // --------------------------------------------------
+    // Staff is no longer visible under the current
+    // viewer's role / division / range rules.
+    //
+    // This is essential because visibleStaffCache
+    // is now persistent across GPS-only snapshots.
+    // ==================================================
+
+    delete window.visibleStaffCache[
+        staffKey
+    ];
+
+
     if(
         window.STAFF_VISIBILITY_DEBUG ===
         true
@@ -64718,7 +65413,6 @@ if(
         console.log(
             "🔒 STAFF HIDDEN",
             {
-
                 viewer:
                     viewerName,
 
@@ -64763,12 +65457,9 @@ if(
 
     }
 
-
     return;
 
 }
-
-
 // ==============================================
 // 👁 TARGET ALLOWED
 // ==============================================
@@ -64830,121 +65521,266 @@ if(
 // ==============================================
 // 🔴 DUTY OFF CLEANUP
 // ==============================================
-if(s.dutyActive !== true){
-  window.liveStaffCache ??= Object.create(null);
+if(
+  s.dutyActive !== true
+){
 
-window.activeSessionMap ??= Object.create(null);
+  // ==============================================
+  // 🔧 INITIALIZE CLEANUP CACHES
+  // ==============================================
 
-window.trackPointCount ??= Object.create(null);
+  window.liveStaffCache ??=
+    Object.create(null);
 
-window.analyticsPointCount ??= Object.create(null);
+  window.activeSessionMap ??=
+    Object.create(null);
 
-window.analyticsLastPoint ??= Object.create(null);
+  window.trackPointCount ??=
+    Object.create(null);
 
-window.analyticsTrackListeners ??= Object.create(null);
+  window.analyticsPointCount ??=
+    Object.create(null);
 
-window.trackDistanceMap ??= Object.create(null);
+  window.analyticsLastPoint ??=
+    Object.create(null);
 
-window.trackDistanceSessionMap ??= Object.create(null);
+  window.analyticsPointCache ??=
+    Object.create(null);
 
-window.staffMarkers ??= Object.create(null);
+  window.analyticsTrackListeners ??=
+    Object.create(null);
 
-window.staffTracks ??= Object.create(null);
+  window.trackDistanceMap ??=
+    Object.create(null);
 
-window.staffDecorators ??= Object.create(null);
+  window.trackDistanceSessionMap ??=
+    Object.create(null);
 
-window.trackListeners ??= Object.create(null);
+  window.staffMarkers ??=
+    Object.create(null);
+
+  window.staffTracks ??=
+    Object.create(null);
+
+  window.staffDecorators ??=
+    Object.create(null);
+
+  window.trackListeners ??=
+    Object.create(null);
+
+
+  // ==============================================
+  // 🔥 REMOVE LIVE STAFF CACHE
+  // ==============================================
 
   delete window.liveStaffCache[
     s.cleanName
   ];
 
+// ==============================================
+// 🔐 REMOVE TRACK AUTHORIZATION CACHE
+// ==============================================
+// Duty is OFF.
+// This staff member must no longer be eligible
+// for lazy/bulk track loading.
+
+delete window.visibleStaffCache[
+    s.cleanName
+];
+  // ==============================================
+  // 🔥 REMOVE ACTIVE SESSION
+  // ==============================================
+
   delete window.activeSessionMap[
     s.cleanName
   ];
 
+
+  // ==============================================
+  // 🔥 REMOVE VISUAL TRACK COUNT
+  // ==============================================
+
   delete window.trackPointCount[
     s.cleanName
   ];
-const currentSessionId =
-String(
-    s.sessionId || ""
-).trim();
 
-delete window.analyticsPointCount[
+
+  // ==============================================
+  // 🔥 GET CURRENT SESSION ID
+  // ==============================================
+
+  const currentSessionId =
+    String(
+      s.sessionId || ""
+    ).trim();
+
+
+  // ==============================================
+  // 🔥 REMOVE ANALYTICS COUNTER
+  // ==============================================
+
+  if(
     currentSessionId
-];
+  ){
 
-delete window.analyticsLastPoint[
-    currentSessionId
-];
-
-if(
-window.analyticsTrackListeners[
-    currentSessionId
-]){
-
-    try{
-
-        window.analyticsTrackListeners[
-            currentSessionId
-        ]();
-
-    }catch(e){}
-
-    delete window.analyticsTrackListeners[
-        currentSessionId
+    delete window.analyticsPointCount[
+      currentSessionId
     ];
 
-}
+
+    // ==========================================
+    // 🔥 CLEAR ANALYTICS POINT CACHE
+    // ------------------------------------------
+    // IMPORTANT:
+    // analyticsPointCache belongs to the session.
+    // Once duty is OFF, the session is finished.
+    // ==========================================
+
+    delete window.analyticsPointCache[
+      currentSessionId
+    ];
+
+
+    // ==========================================
+    // 🔥 CLEAR ANALYTICS LAST POINT
+    // ==========================================
+
+    delete window.analyticsLastPoint[
+      currentSessionId
+    ];
+
+
+    // ==========================================
+    // 🔥 STOP ANALYTICS FIRESTORE LISTENER
+    // ==========================================
+
+    if(
+      window.analyticsTrackListeners[
+        currentSessionId
+      ]
+    ){
+
+      try{
+
+        window.analyticsTrackListeners[
+          currentSessionId
+        ]();
+
+      }catch(e){}
+
+      delete window.analyticsTrackListeners[
+        currentSessionId
+      ];
+
+    }
+
+  }
+
+
+  // ==============================================
+  // 🔥 REMOVE DISTANCE STATE
+  // ==============================================
+
   delete window.trackDistanceMap[
     s.cleanName
   ];
-if(
+
+
+  if(
     window.trackDistanceSessionMap
-){
+  ){
+
     delete window.trackDistanceSessionMap[
-        s.cleanName
+      s.cleanName
     ];
-}
-  if(window.staffMarkers[s.cleanName]){
+
+  }
+
+
+  // ==============================================
+  // 🔥 REMOVE STAFF MARKER
+  // ==============================================
+
+  if(
+    window.staffMarkers[
+      s.cleanName
+    ]
+  ){
 
     try{
+
       staffLayer.removeLayer(
-        window.staffMarkers[s.cleanName]
+        window.staffMarkers[
+          s.cleanName
+        ]
       );
+
     }catch(e){}
 
     delete window.staffMarkers[
       s.cleanName
     ];
+
   }
 
-  if(window.staffTracks[s.cleanName]){
+
+  // ==============================================
+  // 🔥 REMOVE STAFF TRACK
+  // ==============================================
+
+  if(
+    window.staffTracks[
+      s.cleanName
+    ]
+  ){
 
     try{
+
       staffLayer.removeLayer(
-        window.staffTracks[s.cleanName]
+        window.staffTracks[
+          s.cleanName
+        ]
       );
+
     }catch(e){}
 
     delete window.staffTracks[
       s.cleanName
     ];
+
   }
 
-  if(window.staffDecorators[s.cleanName]){
+
+  // ==============================================
+  // 🔥 REMOVE STAFF DECORATOR
+  // ==============================================
+
+  if(
+    window.staffDecorators[
+      s.cleanName
+    ]
+  ){
 
     try{
+
       staffLayer.removeLayer(
-        window.staffDecorators[s.cleanName]
+        window.staffDecorators[
+          s.cleanName
+        ]
       );
+
     }catch(e){}
 
     delete window.staffDecorators[
       s.cleanName
     ];
+
   }
+
+
+  // ==============================================
+  // 🔥 STOP VISUAL TRACK LISTENER
+  // ==============================================
 
   if(
     window.trackListeners[
@@ -64963,16 +65799,23 @@ if(
     delete window.trackListeners[
       s.cleanName
     ];
+
   }
+
+
+  // ==============================================
+  // 🧹 CLEANUP COMPLETE
+  // ==============================================
 
   console.log(
     "🧹 Duty OFF cleanup:",
-    s.cleanName
+    s.cleanName,
+    currentSessionId
   );
+
 
   return;
 }
-
 // ==============================================
 // 🔥 NORMALIZE STAFF
 // ==============================================
@@ -65020,7 +65863,9 @@ if(
   delete window.liveStaffCache[
     s.cleanName
   ];
-
+delete window.visibleStaffCache[
+    s.cleanName
+];
   console.log(
     "🚫 NO LIVE GPS:",
     s.cleanName
@@ -65112,6 +65957,46 @@ window.liveStaffCache[
       s.team || ""
     )
 };
+// ==================================================
+// 🔐 TRACK AUTHORIZATION CACHE
+// --------------------------------------------------
+// Heavy path has now confirmed:
+//
+// 1. visibility allowed
+// 2. duty is active
+// 3. GPS is valid
+//
+// Therefore this staff member is authorized for
+// lazy / bulk track rendering.
+//
+// GPS-only updates will preserve this entry.
+// ==================================================
+
+window.visibleStaffCache[
+    s.cleanName
+] = {
+
+    ...s,
+
+    cleanName:
+        s.cleanName,
+
+    lat:
+        Number(s.lat),
+
+    lng:
+        Number(s.lon),
+
+    dutyActive:
+        s.dutyActive === true,
+
+    sessionId:
+        String(
+            s.sessionId || ""
+        ).trim()
+
+};
+
     /*=========================================================
   PATROL TRACK CACHE
 =========================================================*/
@@ -65171,33 +66056,32 @@ staff.push(s);
 // NO additional dutyActive check is required later.
 // ==================================================
 
+// ==================================================
+// 🔐 TRACK AUTHORIZATION CACHE
+// --------------------------------------------------
+// IMPORTANT:
+//
+// DO NOT rebuild visibleStaffCache from staff[].
+//
+// GPS-only snapshots intentionally leave staff[]
+// empty because the heavy processing is skipped.
+//
+// The cache is therefore maintained incrementally:
+//
+// HEAVY PATH:
+//     visible  → add/update
+//     hidden   → delete
+//     duty off → delete
+//     invalid GPS → delete
+//
+// GPS PATH:
+//     preserve existing authorization
+//     refresh live GPS fields only
+// ==================================================
+
 window.visibleStaffCache ??=
     Object.create(null);
 
-
-// Rebuild authorization cache from this snapshot
-window.visibleStaffCache =
-    Object.create(null);
-
-
-for(
-    const visibleStaff of staff
-){
-
-    if(
-        !visibleStaff ||
-        !visibleStaff.cleanName
-    ){
-        continue;
-    }
-
-
-    window.visibleStaffCache[
-        visibleStaff.cleanName
-    ] =
-        visibleStaff;
-
-}
         // ==================================================
 // 🔥 LIVE SESSION STREAM
 // ==================================================
@@ -65321,7 +66205,28 @@ delete window.trackPointCount[
 delete window.trackDistanceMap[
   s.cleanName
 ];
+// ==============================================
+// 🔥 CLEAR OLD PATROL POINT CACHE
+// ==============================================
 
+window.sessionPointCache ??=
+    Object.create(null);
+
+delete window.sessionPointCache[
+    currentSessionId
+];
+
+
+// ==============================================
+// 🔥 CLEAR LAST PATROL POINT
+// ==============================================
+
+window.lastPatrolPoint ??=
+    Object.create(null);
+
+delete window.lastPatrolPoint[
+    currentSessionId
+];
 if(
     window.trackDistanceSessionMap
 ){
@@ -65346,6 +66251,25 @@ window.sessionTrackCache[
   currentSessionId
 ] ??= [];
 
+// ==============================================
+// 🔥 PATROL POINT CACHE
+// --------------------------------------------------
+// Keeps patrol points locally by Firestore document ID.
+//
+// Initial snapshot:
+//   all existing points are loaded once.
+//
+// Later snapshots:
+//   only changed documents are processed.
+// ==============================================
+
+window.sessionPointCache ??=
+    Object.create(null);
+
+window.sessionPointCache[
+    currentSessionId
+] ??=
+    Object.create(null);
     // ==============================================
     // 🔥 POINTS COLLECTION
     // ==============================================
@@ -65383,393 +66307,555 @@ const pointsRef =
           try {
 
            // ======================================
-// 🔥 SORTED POINTS
-// ======================================
-const points = [];
-
-pointSnap.forEach(doc=>{
-
-  const p =
-    doc.data();
-
-  if(!p) return;
-
-  const lat =
-    Number(p.lat);
-
-  const lon =
-    Number(p.lon);
-
-  if(
-    isNaN(lat) ||
-    isNaN(lon)
-  ){
-    return;
-  }
-
-  points.push({
-
-    lat,
-    lon,
-
-    time:
-      Number(
-        p.time || 0
-      ),
-
-    breakTrack:
-      p.breakTrack === true
-  });
-});
-
-
-    // ======================================
-// 🔥 CONTINUOUS SINGLE POLYLINE SYSTEM
+// 🔥 INCREMENTAL PATROL POINT STREAM
+// --------------------------------------------------
+// DO NOT rebuild the entire point array.
+//
+// Initial Firestore snapshot:
+//   docChanges() contains all existing points
+//   → cache them once.
+//
+// Later Firestore snapshots:
+//   docChanges() contains only new/changed/removed
+//   documents.
+//
+// Therefore normal GPS updates process only the
+// newly arrived patrol point.
 // ======================================
 
-// ======================================
-// 🔥 CREATE POLYLINE FIRST TIME
-// ======================================
-if(
+window.sessionPointCache ??=
+    Object.create(null);
 
-  !window.staffTracks[
-    s.cleanName
-  ]
+window.sessionPointCache[
+    currentSessionId
+] ??=
+    Object.create(null);
 
-){
+const pointCache =
+    window.sessionPointCache[
+        currentSessionId
+    ];
 
-  const color =
-
-    getUserColor(
-      s.cleanName
-    );
-
-  // ====================================
-  // 🔥 CREATE EMPTY POLYLINE
-  // ====================================
-  const polyline =
-
-    L.polyline(
-
-      [],
-
-      {
-        color,
-        weight:2.5,
-        opacity:0.80,
-        smoothFactor:0,
-        lineCap:"round",
-        lineJoin:"round"
-      }
-
-    )
-
-    .addTo(staffLayer);
-
-  // ====================================
-  // 🔥 SAVE POLYLINE
-  // ====================================
-  window.staffTracks[
-    s.cleanName
-  ] = polyline;
-
-  // ====================================
-  // 🔥 RESET COUNT
-  // ====================================
-  window.trackPointCount[
-    s.cleanName
-  ] = 0;
-}
+const newPoints = [];
 
 // ======================================
-// 🔥 GET OLD COUNT
+// 🔥 PROCESS ONLY FIRESTORE CHANGES
 // ======================================
-const oldCount =
-Number(
-window.trackPointCount[
-    s.cleanName
-] || 0
+
+pointSnap.docChanges().forEach(
+    change => {
+
+        const pointId =
+            change.doc.id;
+
+        // ==================================
+        // ❌ REMOVED POINT
+        // ==================================
+
+        if(
+            change.type === "removed"
+        ){
+
+            delete pointCache[
+                pointId
+            ];
+
+            return;
+        }
+
+        // ==================================
+        // 📦 POINT DATA
+        // ==================================
+
+        const p =
+            change.doc.data();
+
+        if(!p){
+            return;
+        }
+
+        // ==================================
+        // 📍 GPS
+        // ==================================
+
+        const lat =
+            Number(p.lat);
+
+        const lon =
+            Number(p.lon);
+
+        if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon)
+        ){
+            return;
+        }
+
+        // ==================================
+        // 💾 STORE / UPDATE LOCAL POINT
+        // ==================================
+
+        const cachedPoint = {
+
+            id:
+                pointId,
+
+            lat:
+                lat,
+
+            lon:
+                lon,
+
+            time:
+                Number(
+                    p.time ??
+                    p.timestamp ??
+                    0
+                ),
+
+            breakTrack:
+                p.breakTrack === true
+        };
+
+        pointCache[
+            pointId
+        ] = cachedPoint;
+
+        // ==================================
+        // 🔥 ONLY ADDED POINTS → VISUAL BATCH
+        // ==================================
+
+        if(
+            change.type === "added"
+        ){
+
+            newPoints.push(
+                cachedPoint
+            );
+
+        }
+
+    }
 );
 
-// ======================================
-// 🔥 NO NEW POINTS
-// ======================================
+
+// ==================================================
+// 🔥 SORT ONLY THE NEW BATCH
+// --------------------------------------------------
+// NOT the complete patrol session.
+// ==================================================
+
+newPoints.sort(
+    (a, b) =>
+        Number(a.time || 0) -
+        Number(b.time || 0)
+);
+
+
+// ==================================================
+// 🔥 NOTHING NEW
+// ==================================================
+
 if(
-  points.length <= oldCount
+    newPoints.length === 0
 ){
-  return;
+    return;
 }
 
-// ======================================
-// 🔥 GET ONLY NEW POINTS
-// ======================================
-// ======================================
-// 🔥 GET ONLY NEW POINTS
-// ======================================
-// ======================================
-// 🔥 GET ONLY NEW POINTS
-// ======================================
-const newPoints =
-  points.slice(oldCount);
 
-// ======================================
-// 🔥 ANALYTICS COUNTER
-// ======================================
+// ==================================================
+// 🔥 CONTINUOUS SINGLE POLYLINE SYSTEM
+// ==================================================
 
-// ======================================
+
+// ==================================================
+// 🔥 CREATE POLYLINE FIRST TIME
+// ==================================================
+
+if(
+    !window.staffTracks[
+        s.cleanName
+    ]
+){
+
+    const color =
+        getUserColor(
+            s.cleanName
+        );
+
+
+    // ============================================
+    // 🔥 CREATE EMPTY POLYLINE
+    // ============================================
+
+    const polyline =
+        L.polyline(
+            [],
+            {
+                color,
+                weight:2.5,
+                opacity:0.80,
+                smoothFactor:0,
+                lineCap:"round",
+                lineJoin:"round"
+            }
+        )
+        .addTo(staffLayer);
+
+
+    // ============================================
+    // 🔥 SAVE POLYLINE
+    // ============================================
+
+    window.staffTracks[
+        s.cleanName
+    ] =
+        polyline;
+
+}
+
+
+// ==================================================
 // 🔥 GET POLYLINE
-// ======================================
+// ==================================================
+
 const polyline =
+    window.staffTracks[
+        s.cleanName
+    ];
 
-  window.staffTracks[
-    s.cleanName
-  ];
 
-// ======================================
-// 🔥 APPEND NEW GPS POINTS
-// ======================================
-// ======================================
+// ==================================================
+// 🔥 SAFETY CHECK
+// ==================================================
+
+if(
+    !polyline
+){
+    return;
+}
+
+
+// ==================================================
 // 🔥 LIGHT FRONTEND VISUAL CLEANUP
-// APK ALREADY FILTERS GPS
-// ======================================
+// --------------------------------------------------
+// APK ALREADY FILTERS GPS.
+// Only the NEW GPS points are cleaned.
+// ==================================================
+
 const cleanedPoints =
+    cleanTrackPoints(
 
-  cleanTrackPoints(
+        newPoints.map(
+            p => [
+                p.lat,
+                p.lon
+            ]
+        )
 
-    newPoints.map(p=>[
-      p.lat,
-      p.lon
-    ])
+    );
 
-  );
-// ======================================
+
+// ==================================================
 // 🔥 APPEND CLEANED POINTS
-// ======================================
-cleanedPoints.forEach(p=>{
+// ==================================================
 
-  if(
-    !Array.isArray(p)
-  ){
-    return;
-  }
+cleanedPoints.forEach(
+    p => {
 
-  if(
-    isNaN(p[0]) ||
-    isNaN(p[1])
-  ){
-    return;
-  }
+        if(
+            !Array.isArray(p)
+        ){
+            return;
+        }
 
-  polyline.addLatLng([
-    p[0],
-    p[1]
-  ]);
 
-});
+        if(
+            !Number.isFinite(p[0]) ||
+            !Number.isFinite(p[1])
+        ){
+            return;
+        }
+
+
+        polyline.addLatLng([
+            p[0],
+            p[1]
+        ]);
+
+    }
+);
+
 
 // ==================================================
-// 🔥 GRID DETECTION FROM CLEANED POLYLINE
+// 🔥 GRID DETECTION FROM NEW POINTS ONLY
+// --------------------------------------------------
+// IMPORTANT:
+//
+// DO NOT scan the entire patrol session.
+//
+// We process only:
+//
+//   previous known point
+//          ↓
+//   new GPS point
+//
+// This keeps grid detection O(new points)
+// instead of O(total session points).
 // ==================================================
-// ==================================================
-// 🔥 VALID MOVEMENT TRACK
-// PREVENT TELEPORT GRID POLLUTION
-// ==================================================
+
 const validTrack = [];
 
+
 // ==================================================
-// 🔥 BUILD SAFE TRACK
+// 🔥 LAST KNOWN TRACK POINT
 // ==================================================
+
+window.lastPatrolPoint ??=
+    Object.create(null);
+
+let previousPoint =
+    window.lastPatrolPoint[
+        currentSessionId
+    ];
+
+
+// ==================================================
+// 🔥 PROCESS ONLY NEW POINTS
+// ==================================================
+
 for(
-
-  let i = 0;
-
-  i < points.length;
-
-  i++
-
+    const curr
+    of newPoints
 ){
 
-  const curr = points[i];
-
-  // ================================================
-  // 🔥 FIRST POINT
-  // ================================================
-  if(i === 0){
-
-    validTrack.push([
-
-      curr.lat,
-
-      curr.lon
-    ]);
-
-    continue;
-  }
-
-  // ================================================
-  // 🔥 PREVIOUS POINT
-  // ================================================
-  const prev =
-    points[i - 1];
-
-  // ================================================
-  // 🔥 INVALID GPS
-  // ================================================
-  if(
-
-    !prev ||
-
-    !curr ||
-
-    isNaN(prev.lat) ||
-
-    isNaN(prev.lon) ||
-
-    isNaN(curr.lat) ||
-
-    isNaN(curr.lon)
-
-  ){
-    continue;
-  }
-
-  // ================================================
-  // 🔥 DISTANCE METERS
-  // ================================================
-  const dist =
-
-    map.distance(
-
-      [prev.lat, prev.lon],
-
-      [curr.lat, curr.lon]
-    );
-
-  // ================================================
-  // 🔥 TIME DIFF
-  // ================================================
-  let timeDiffSec = 1;
-
-  try {
-
-    const prevTime =
-
-      Number(
-        prev.time ||
-        prev.timestamp ||
-        0
-      );
-
-    const currTime =
-
-      Number(
-        curr.time ||
-        curr.timestamp ||
-        0
-      );
-
-    if(
-
-      prevTime > 0 &&
-
-      currTime > prevTime
-
-    ){
-
-      timeDiffSec =
-
-        Math.max(
-
-          1,
-
-          (
-            currTime - prevTime
-          ) / 1000
-        );
+    if(!curr){
+        continue;
     }
 
-  } catch(e){}
 
-  // ================================================
-  // 🔥 SPEED KM/H
-  // ================================================
-  const speedKmh =
+    // ==============================================
+    // 🔥 FIRST EVER POINT
+    // ==============================================
 
-    (dist / timeDiffSec)
-    * 3.6;
+    if(!previousPoint){
 
-  // ================================================
-  // 🔥 TELEPORT DETECTION
-  // ================================================
-  const invalidMovement =
+        validTrack.push([
+            curr.lat,
+            curr.lon
+        ]);
 
-    // 🔥 HUGE JUMP
-    dist > 500 ||
+        previousPoint =
+            curr;
 
-    // 🔥 IMPOSSIBLE SPEED
-    speedKmh > 120 ||
+        continue;
+    }
 
-    // 🔥 BAD VALUES
-    !isFinite(dist) ||
 
-    !isFinite(speedKmh);
+    // ==============================================
+    // 🔥 INVALID GPS
+    // ==============================================
 
-  // ================================================
-  // 🔥 INVALID SEGMENT
-  // ================================================
-  if(invalidMovement){
+    if(
+        !Number.isFinite(
+            previousPoint.lat
+        ) ||
+        !Number.isFinite(
+            previousPoint.lon
+        ) ||
+        !Number.isFinite(
+            curr.lat
+        ) ||
+        !Number.isFinite(
+            curr.lon
+        )
+    ){
 
-    console.warn(
+        previousPoint =
+            curr;
 
-      "⚠ TELEPORT BLOCKED",
+        continue;
+    }
 
-      {
 
-        distance:
-          Math.round(dist),
+    // ==============================================
+    // 🔥 DISTANCE METERS
+    // ==============================================
 
-        speed:
-          Math.round(speedKmh),
+    const dist =
+        map.distance(
+            [
+                previousPoint.lat,
+                previousPoint.lon
+            ],
+            [
+                curr.lat,
+                curr.lon
+            ]
+        );
 
-        from:
-          [prev.lat, prev.lon],
 
-        to:
-          [curr.lat, curr.lon]
-      }
-    );
+    // ==============================================
+    // 🔥 TIME DIFFERENCE
+    // ==============================================
 
-    // ============================================
-    // 🔥 OPTIONAL VISUAL ONLY
-    // ============================================
-    try {
+    let timeDiffSec =
+        1;
 
-      drawReconnectLine?.(
+    try{
 
-        prev,
+        const prevTime =
+            Number(
+                previousPoint.time ||
+                previousPoint.timestamp ||
+                0
+            );
 
-        curr
-      );
+        const currTime =
+            Number(
+                curr.time ||
+                curr.timestamp ||
+                0
+            );
 
-    } catch(e){}
+        if(
+            prevTime > 0 &&
+            currTime > prevTime
+        ){
 
-    // ============================================
-    // ❌ DO NOT ADD TO GRID TRACK
-    // ============================================
-    continue;
-  }
+            timeDiffSec =
+                Math.max(
+                    1,
+                    (
+                        currTime -
+                        prevTime
+                    ) / 1000
+                );
 
-  // ================================================
-// ✅ VALID MOVEMENT
-// ================================================
-validTrack.push([
+        }
 
-  curr.lat,
+    }catch(e){}
 
-  curr.lon
-]);
+
+    // ==============================================
+    // 🔥 SPEED KM/H
+    // ==============================================
+
+    const speedKmh =
+        (
+            dist /
+            timeDiffSec
+        ) * 3.6;
+
+
+    // ==============================================
+    // 🔥 TELEPORT DETECTION
+    // ==============================================
+
+    const invalidMovement =
+
+        dist > 500 ||
+
+        speedKmh > 120 ||
+
+        !Number.isFinite(
+            dist
+        ) ||
+
+        !Number.isFinite(
+            speedKmh
+        );
+
+
+    // ==============================================
+    // 🔥 INVALID SEGMENT
+    // ==============================================
+
+    if(
+        invalidMovement
+    ){
+
+        console.warn(
+            "⚠ TELEPORT BLOCKED",
+            {
+                distance:
+                    Math.round(
+                        dist
+                    ),
+
+                speed:
+                    Math.round(
+                        speedKmh
+                    ),
+
+                from:
+                    [
+                        previousPoint.lat,
+                        previousPoint.lon
+                    ],
+
+                to:
+                    [
+                        curr.lat,
+                        curr.lon
+                    ]
+            }
+        );
+
+
+        // ============================================
+        // 🔥 OPTIONAL VISUAL ONLY
+        // ============================================
+
+        try{
+
+            drawReconnectLine?.(
+                previousPoint,
+                curr
+            );
+
+        }catch(e){}
+
+
+        // ============================================
+        // ❌ DO NOT ADD TO GRID TRACK
+        // ============================================
+
+        previousPoint =
+            curr;
+
+        continue;
+    }
+
+
+    // ==============================================
+    // ✅ VALID MOVEMENT
+    // ==============================================
+
+    validTrack.push([
+        curr.lat,
+        curr.lon
+    ]);
+
+
+    // ==============================================
+    // 🔥 ADVANCE LAST KNOWN POINT
+    // ==============================================
+
+    previousPoint =
+        curr;
+
 }
 
+
+// ==================================================
+// 🔥 SAVE LAST PATROL POINT
+// ==================================================
+
+window.lastPatrolPoint[
+    currentSessionId
+] =
+    previousPoint;
 // ======================================
 // 🔥 MONTHLY DISTANCE BUFFER
 // ======================================
@@ -65809,8 +66895,10 @@ if(
 // 🔥 SAVE POINT COUNT
 // ======================================
 window.trackPointCount[
-  s.cleanName
-] = points.length;
+    s.cleanName
+] = Object.keys(
+    pointCache
+).length;
 
 } catch(e){
 
@@ -65839,20 +66927,40 @@ window.trackListeners[
   );
 }
 }
-    // ==============================================
+// ==================================================
 // 🔥 ANALYTICS FOR ALL ACTIVE SESSIONS
-// ==============================================
+// ==================================================
+
+window.analyticsTrackListeners ??=
+    Object.create(null);
+
+window.analyticsPointCache ??=
+    Object.create(null);
+
+window.analyticsPointCount ??=
+    Object.create(null);
+window.analyticsLastPoint ??=
+    Object.create(null);
 
 for(const s of analyticsStaff){
 
     try{
 
-        const currentSessionId =
-            String(s.sessionId || "").trim();
+       const currentSessionId =
+    String(s.sessionId || "").trim();
 
-        if(!currentSessionId){
-            continue;
-        }
+if(!currentSessionId){
+    continue;
+}
+
+// ==================================================
+// 🔥 ANALYTICS COUNTER FOR THIS SESSION
+// ==================================================
+
+window.analyticsPointCount[
+    currentSessionId
+] ??=
+    0;
 
         // already listening
 if(
@@ -65881,205 +66989,406 @@ if(
                 orderBy("time")
             );
 
-        const unsubscribe =
-            onSnapshot(
-                pointsRef,
-                (pointSnap)=>{
+// ==================================================
+// 🔥 ANALYTICS INCREMENTAL POINT CACHE
+// --------------------------------------------------
+// NEVER rebuild the complete Firestore session.
+//
+// INITIAL SNAPSHOT:
+//   docChanges() contains all existing points
+//   → cache them once
+//
+// LATER SNAPSHOTS:
+//   docChanges() contains only changed documents
+//   → process only newly-added points
+//
+// IMPORTANT:
+//   The Firestore listener wrapper surrounds
+//   ALL pointSnap processing.
+// ==================================================
 
-                    try{
+window.analyticsTrackListeners ??=
+    Object.create(null);
 
-                        const points=[];
+window.analyticsPointCache ??=
+    Object.create(null);
 
-                        pointSnap.forEach(doc=>{
+window.analyticsPointCache[
+    currentSessionId
+] ??=
+    Object.create(null);
 
-                            const p=doc.data();
+window.analyticsLastPoint ??=
+    Object.create(null);
 
-                            if(!p)return;
-
-                            const lat=Number(p.lat);
-                            const lon=Number(p.lon);
-
-                            if(
-                                isNaN(lat)||
-                                isNaN(lon)
-                            ){
-                                return;
-                            }
-
-                            points.push({
-
-                                lat,
-                                lon,
-
-time: Number(
-    p.time ??
-    p.timestamp ??
-    0
-)
-
-                            });
-
-                        });
-points.sort((a, b) => a.time - b.time);
-                        const oldCount = Number(
-    window.analyticsPointCount[
+const analyticsCache =
+    window.analyticsPointCache[
         currentSessionId
-    ] || 0
-);
+    ];
+
+
+// ==================================================
+// 🔥 LIVE ANALYTICS POINT STREAM
+// ==================================================
+
+const unsubscribe =
+    onSnapshot(
+
+        pointsRef,
+
+        (pointSnap)=>{
+
+            try{
+
+                // ==========================================
+                // 🔥 NEW ANALYTICS POINTS
+                // ==========================================
+
+                const newPoints = [];
+
+
+                // ==========================================
+                // 🔥 PROCESS ONLY FIRESTORE CHANGES
+                // ==========================================
+
+                pointSnap.docChanges().forEach(
+                    change => {
+
+                        const pointId =
+                            change.doc.id;
+
+
+                        // ==========================================
+                        // ❌ REMOVED POINT
+                        // ==========================================
 
                         if(
-                            points.length<=oldCount
+                            change.type === "removed"
                         ){
+
+                            delete analyticsCache[
+                                pointId
+                            ];
+
                             return;
                         }
 
-                        const newPoints=
-                            points.slice(oldCount);
-window.analyticsPointCounter ??= 0;
 
-window.analyticsLastPoint ??=
-Object.create(null);
+                        // ==========================================
+                        // 📦 POINT DATA
+                        // ==========================================
 
-let previousPoint =
-window.analyticsLastPoint[
-    currentSessionId
-];
-                      
-                      for(const currentPoint of newPoints){
+                        const p =
+                            change.doc.data();
 
-    if(!previousPoint){
-
-window.analyticsLastPoint[
-    currentSessionId
-] = currentPoint;
-
-previousPoint = currentPoint;
-
-continue;
-    }
-
-const result =
-    getTouchedCells([
-        [
-            [
-                previousPoint.lat,
-                previousPoint.lon
-            ],
-            [
-                currentPoint.lat,
-                currentPoint.lon
-            ]
-        ]
-    ]);
-
-const touchedCells =
-
-    Array.from(
-
-        result?.touchedCells || []
-
-    );
-
-    for(const rawCellId of touchedCells){
-
-        const resolved =
-            resolveAnalyticsCell(
-                rawCellId
-            );
-
-        if(!resolved){
-            continue;
-        }
-
-collectAnalyticsHit(
-
-    resolved.gridId,
-
-    resolved.cellId,
-
-    currentPoint.lat,
-
-    currentPoint.lon,
-
-    [
-        [
-            [
-                previousPoint.lat,
-                previousPoint.lon
-            ],
-            [
-                currentPoint.lat,
-                currentPoint.lon
-            ]
-        ]
-    ],
-
-    s.cleanName,
-
-    currentSessionId
-
-);
+                        if(!p){
+                            return;
+                        }
 
 
-    }
-window.analyticsPointCounter +=
-    touchedCells.length;
-previousPoint = currentPoint;
+                        // ==========================================
+                        // 📍 GPS
+                        // ==========================================
 
-window.analyticsLastPoint[
-    currentSessionId
-] = currentPoint;
+                        const lat =
+                            Number(p.lat);
 
-}
-
-window.analyticsPointCount[
-    currentSessionId
-] =
-points.length;
+                        const lon =
+                            Number(p.lon);
 
 
-if(
-    window.analyticsPointCounter >= 5 &&
-    Object.keys(
-        window.analyticsBuffer || {}
-    ).length
-){
+                        if(
+                            !Number.isFinite(lat) ||
+                            !Number.isFinite(lon)
+                        ){
 
-                            console.log(
-                                "📤 AUTO FLUSH",
-                                window.analyticsPointCounter
+                            return;
+                        }
+
+
+                        // ==========================================
+                        // 🕒 GPS TIME
+                        // ==========================================
+
+                        const time =
+                            Number(
+                                p.time ??
+                                p.timestamp ??
+                                0
                             );
 
-                            window.analyticsPointCounter=0;
 
-                            flushAnalyticsBuffer()
-                            .catch(console.error);
+                        // ==========================================
+                        // 💾 NORMALIZED ANALYTICS POINT
+                        // ==========================================
+
+                        const point = {
+
+                            id:
+                                pointId,
+
+                            lat:
+                                lat,
+
+                            lon:
+                                lon,
+
+                            time:
+                                time
+                        };
+
+
+                        // ==========================================
+                        // 💾 SAVE / UPDATE LOCAL CACHE
+                        // ==========================================
+
+                        analyticsCache[
+                            pointId
+                        ] =
+                            point;
+
+
+                        // ==========================================
+                        // 🔥 ONLY ADDED DOCUMENTS
+                        // → ANALYTICS PIPELINE
+                        // ==========================================
+
+                        if(
+                            change.type === "added"
+                        ){
+
+                            newPoints.push(
+                                point
+                            );
 
                         }
 
                     }
-                    catch(e){
+                );
 
-                        console.error(
-                            "Analytics listener error",
+
+                // ==================================================
+                // 🔥 SORT ONLY NEW BATCH
+                // --------------------------------------------------
+                // NEVER sort the complete session.
+                // ==================================================
+
+                newPoints.sort(
+                    (a,b) =>
+                        Number(a.time || 0) -
+                        Number(b.time || 0)
+                );
+
+
+                // ==================================================
+                // 🔥 NOTHING NEW
+                // ==================================================
+
+                if(
+                    newPoints.length === 0
+                ){
+
+                    return;
+                }
+
+
+                // ==================================================
+                // 🔥 LAST KNOWN ANALYTICS POINT
+                // ==================================================
+
+                let previousPoint =
+                    window.analyticsLastPoint[
+                        currentSessionId
+                    ];
+
+
+                // ==================================================
+                // 🔥 PROCESS ONLY NEW POINTS
+                // ==================================================
+
+                for(
+                    const currentPoint
+                    of newPoints
+                ){
+
+                    if(!currentPoint){
+                        continue;
+                    }
+
+
+                    // ==========================================
+                    // 🔥 FIRST EVER POINT
+                    // ==========================================
+
+                    if(!previousPoint){
+
+                        previousPoint =
+                            currentPoint;
+
+                        window.analyticsLastPoint[
+                            currentSessionId
+                        ] =
+                            currentPoint;
+
+                        continue;
+                    }
+
+
+                    // ==========================================
+                    // 🔥 GET TOUCHED GRID CELLS
+                    // ==========================================
+
+                    const result =
+                        getTouchedCells([
+                            [
+                                [
+                                    previousPoint.lat,
+                                    previousPoint.lon
+                                ],
+                                [
+                                    currentPoint.lat,
+                                    currentPoint.lon
+                                ]
+                            ]
+                        ]);
+
+
+                    const touchedCells =
+                        Array.from(
+                            result?.touchedCells || []
+                        );
+
+
+                    // ==========================================
+                    // 🔥 COLLECT ANALYTICS HITS
+                    // ==========================================
+
+                    for(
+                        const rawCellId
+                        of touchedCells
+                    ){
+
+                        const resolved =
+                            resolveAnalyticsCell(
+                                rawCellId
+                            );
+
+
+                        if(!resolved){
+                            continue;
+                        }
+
+
+                        collectAnalyticsHit(
+
+                            resolved.gridId,
+
+                            resolved.cellId,
+
+                            currentPoint.lat,
+
+                            currentPoint.lon,
+
+                            [
+                                [
+                                    [
+                                        previousPoint.lat,
+                                        previousPoint.lon
+                                    ],
+                                    [
+                                        currentPoint.lat,
+                                        currentPoint.lon
+                                    ]
+                                ]
+                            ],
+
                             s.cleanName,
-                            e
+
+                            currentSessionId
+
                         );
 
                     }
 
-                }
-            );
 
-        window.analyticsTrackListeners[
+                    window.analyticsPointCount[
     currentSessionId
-]=unsubscribe;
+] +=
+    touchedCells.length;
+
+
+                    previousPoint =
+                        currentPoint;
+
+
+                    window.analyticsLastPoint[
+                        currentSessionId
+                    ] =
+                        currentPoint;
+
+                }
+
+
+                // ==================================================
+                // 🔥 AUTO FLUSH
+                // ==================================================
+
+                if(
+    window.analyticsPointCount[
+        currentSessionId
+    ] >= 5 &&
+
+    Object.keys(
+        window.analyticsBuffer || {}
+    ).length
+){
+                   console.log(
+    "📤 AUTO FLUSH",
+    window.analyticsPointCount[
+        currentSessionId
+    ]
+);
+
+window.analyticsPointCount[
+    currentSessionId
+] =
+    0;
+
+
+                    flushAnalyticsBuffer()
+                        .catch(console.error);
+
+                }
+
+            }
+            catch(e){
+
+                console.error(
+                    "Analytics listener error",
+                    s.cleanName,
+                    e
+                );
+
+            }
+
+        }
+
+    );
+
+
+// ==================================================
+// 🔥 SAVE ANALYTICS LISTENER
+// ==================================================
+window.analyticsTrackListeners[
+    currentSessionId
+] =
+    unsubscribe;
 
     }
     catch(e){
 
         console.warn(
-            "Analytics start failed",
+            "⚠ Analytics session listener failed:",
             s.cleanName,
             e
         );
@@ -66087,13 +67396,26 @@ if(
     }
 
 }
+
 // ==================================================
 // 🔥 GROUP OVERLAPPING USERS
+// --------------------------------------------------
+// GPS-only snapshots already updated existing markers
+// in the fast pass.
+//
+// Do NOT rebuild groups or redraw staff when there
+// was no heavy staff processing.
 // ==================================================
+
+if(
+    !heavyWorkRan
+){
+    return;
+}
+
 let groups = {};
 
 staff.forEach(s=>{
-
   const key =
     Number(s.lat).toFixed(5)
     + ","
