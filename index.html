@@ -10582,37 +10582,65 @@ setTimeout(() => {
 
       ){
 
-        console.log(
-          "🐘 Loading sightings..."
-        );
+                // ==========================================================
+        // 🐘 START ELEPHANT SIGHTINGS REALTIME
+        //
+        // IMPORTANT:
+        //
+        // Do NOT call loadSightings() here.
+        //
+        // startSightingsRealtime() attaches ONE Firestore
+        // onSnapshot listener.
+        //
+        // Its INITIAL snapshot supplies all existing documents.
+        // Later snapshots supply only changed documents.
+        //
+        // This removes the duplicate initial getDocs() read.
+        // ==========================================================
+
+        if(
+
+          typeof startSightingsRealtime ===
+            "function"
+
+        ){
+
+          console.log(
+            "🐘 Starting elephant sightings realtime..."
+          );
 
 
-        await loadSightings();
+          const realtimeStarted =
+            await startSightingsRealtime();
 
 
-        console.log(
-          "✅ Sightings loaded"
-        );
+          if(
+            realtimeStarted === true
+          ){
 
+            console.log(
+              "✅ Elephant sightings realtime active"
+            );
 
-if(
+          }
 
-  typeof startSightingsRealtime ===
-    "function"
+          else{
 
-){
+            console.warn(
+              "⚠ Elephant sightings realtime failed"
+            );
 
-  console.log(
-    "🐘 Starting elephant sightings realtime..."
-  );
+          }
 
-  await startSightingsRealtime();
+        }
 
-  console.log(
-    "✅ Elephant sightings realtime active"
-  );
+        else{
 
-}
+          console.warn(
+            "⚠ startSightingsRealtime() unavailable"
+          );
+
+        }
 
 else{
 
