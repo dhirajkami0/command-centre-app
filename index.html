@@ -79839,25 +79839,44 @@ function refreshAll() {
     Date.now();
 
 
-  // ============================================================
-  // 👥 STAFF
-  // ------------------------------------------------------------
-  // Direct staff refresh.
-  // ============================================================
+// ============================================================
+// 👥 STAFF
+// ------------------------------------------------------------
+// 🔥 STAFF IS REALTIME.
+//
+// loadStaff() creates the ONE authoritative
+// live_staff onSnapshot listener.
+//
+// Do NOT repeatedly refresh the staff collection
+// from refreshAll().
+//
+// ============================================================
 
-  try {
+if (
+    window.staffListenerActive !== true &&
+    typeof loadStaff === "function"
+) {
 
-    loadStaff();
+    try {
 
-  } catch (error) {
+        loadStaff();
 
-    console.error(
-      "❌ loadStaff failed:",
-      error
+    } catch (error) {
+
+        console.error(
+            "❌ Initial live staff listener failed:",
+            error
+        );
+
+    }
+
+} else {
+
+    console.log(
+        "⏸ Staff listener already active — no Firestore refresh"
     );
-  }
 
-
+}
   // ============================================================
   // 🌦 WEATHER
   // ------------------------------------------------------------
