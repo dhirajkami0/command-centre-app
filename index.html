@@ -50199,14 +50199,13 @@ function isMarkerVisible(
 
 }
     
-    // ============================================================
+// ============================================================
 // EXISTING WILDLIFE LOADER
 // ============================================================
 
 async function loadWildlifeSightings(
     realtimeWildlife = null
 ){
-
 
     /*
      * =========================================================
@@ -50223,488 +50222,596 @@ async function loadWildlifeSightings(
         typeof window.activeWildlifePopupId ===
         "undefined"
     ){
-
         window.activeWildlifePopupId =
             null;
-
     }
-
 
     if(
         typeof window.activeWildlifePopupMarker ===
         "undefined"
     ){
-
         window.activeWildlifePopupMarker =
             null;
-
     }
-
 
     /*
      * Remember the popup which was open BEFORE
      * this refresh started.
      */
 
-// =====================================================
-// 🐅 RESTORE POPUP STATE
-// =====================================================
-//
-// First use the live in-memory popup.
-//
-// If the page was recreated after returning from the
-// Android Downloads screen, window state is gone.
-//
-// In that case recover the popup ID from localStorage.
-//
-// =====================================================
+    // =====================================================
+    // 🐅 RESTORE POPUP STATE
+    // =====================================================
 
-const rememberedWildlifePopupId =
-    getRememberedWildlifePopup();
+    const rememberedWildlifePopupId =
+        typeof getRememberedWildlifePopup === "function"
+            ? getRememberedWildlifePopup()
+            : null;
 
-
-const openWildlifePopupId =
-    window.activeWildlifePopupId ||
-    rememberedWildlifePopupId ||
-    null;
-
+    const openWildlifePopupId =
+        window.activeWildlifePopupId ||
+        rememberedWildlifePopupId ||
+        null;
 
     try{
 
-// =====================================================
-// 🔐 WILDLIFE VISIBILITY
-// -----------------------------------------------------
-// Visibility is decided PER RECORD by:
-//     isMarkerVisible(record)
-//
-// Do NOT restrict the whole Wildlife module to ADMIN.
-//
-// ADMIN:
-//     ALL
-//
-// DFO / ADFO:
-//     SAME DIVISION
-//
-// OTHER:
-//     SELF / SAME RANGE
-//
-// SELECTED GIS:
-//     MUST MATCH ACTIVE GIS FILTER
-//
-// NO DEPREDATION / RESCUE EXCEPTION
-// =====================================================
+        // =====================================================
+        // 🔐 WILDLIFE VISIBILITY
+        // -----------------------------------------------------
+        // Visibility is decided PER RECORD by:
+        //      isMarkerVisible(record)
+        // =====================================================
 
-console.log(
-    "🔐 Wildlife visibility uses marker-level authorization"
-);
-
+        console.log(
+            "🔐 Wildlife visibility uses marker-level authorization"
+        );
 
         // =====================================================
         // INIT
         // =====================================================
 
         if(
-
             !window.wildlifeInitialized
-
         ){
-
             wildlifeLayer.clearLayers();
-
             window.wildlifeInitialized =
                 true;
-
         }
-
         else{
-
             console.log(
-
                 "⏸ Keeping existing wildlife markers"
-
             );
-
         }
 
+        // =====================================================
+        // CACHE
+        // =====================================================
 
-// =====================================================
-// CACHE
-// =====================================================
+        window.wildlifeMarkers =
+            window.wildlifeMarkers ||
+            {};
 
-window.wildlifeMarkers =
-    window.wildlifeMarkers ||
-    {};
+        window.wildlifeCache =
+            window.wildlifeCache ||
+            {};
 
-window.wildlifeCache =
-    window.wildlifeCache ||
-    {};
         // =====================================================
         // EXPIRED CACHE
         // =====================================================
 
         window.expiredWildlife =
-
             window.expiredWildlife ||
-
             JSON.parse(
-
                 localStorage.getItem(
-
                     "expiredWildlife"
-
                 ) ||
-
                 "[]"
-
             );
-
 
         // =====================================================
         // CLEAN EXPIRED CACHE
         // =====================================================
 
         const nowCleanup =
-
             Date.now();
 
-
         window.expiredWildlife =
-
             window.expiredWildlife.filter(
-
                 function(obj){
-
                     if(
-
                         typeof obj ===
-
                         "string"
-
                     ){
-
                         return false;
-
                     }
-
 
                     if(
-
                         !obj?.id ||
-
                         !obj?.ts
-
                     ){
-
                         return false;
-
                     }
-
 
                     return (
-
                         nowCleanup -
-
                         obj.ts
-
                         <
-
                         7 *
-
                         24 *
-
                         60 *
-
                         60 *
-
                         1000
-
                     );
-
                 }
-
             );
-
 
         localStorage.setItem(
-
             "expiredWildlife",
-
             JSON.stringify(
-
                 window.expiredWildlife
-
             )
-
         );
 
-
         const expiredSet =
-
             new Set(
-
                 window.expiredWildlife
-
                     .map(
-
                         obj =>
-
                             typeof obj ===
-
                             "string"
-
                             ?
-
                             obj
-
                             :
-
                             obj.id
-
                     )
-
                     .filter(Boolean)
-
             );
 
-
         // =====================================================
-        // FIRESTORE
+        // FIRESTORE / REALTIME DATA SOURCE
         // =====================================================
 
         const {
-
             collection,
-
             getDocs
-
         } = window.fb;
 
-
         const db =
-
             window.db;
 
-
-        console.log(
-
-            "🐅 Loading wildlife_sightings..."
-
-        );
-
-
         // =====================================================
-        // FETCH WILDLIFE
+        // 🐅 WILDLIFE DATA ARRAY
         // =====================================================
 
-// =====================================================
-// 🕒 WILDLIFE — LAST 24 HOURS ONLY
-// =====================================================
-
-const wildlifeCutoff =
-    new Date(
-        Date.now() -
-        (24 * 60 * 60 * 1000)
-    );
-
-// =====================================================
-// 🔎 FIRESTORE QUERY
-// -----------------------------------------------------
-// Read only Wildlife sightings whose actual
-// sighting_datetime is within the last 24 hours.
-//
-// Historical documents remain safely in Firestore.
-// They are simply not downloaded into the frontend.
-// =====================================================
-
-const wildlifeQuery =
-    window.fb.query(
-        collection(
-            db,
-            "wildlife_sightings"
-        ),
-        window.fb.where(
-            "sighting_datetime",
-            ">=",
-            wildlifeCutoff
-        )
-    );
-
-// =====================================================
-// 📥 FIRESTORE READ — RECENT DOCUMENTS ONLY
-// =====================================================
-
-const snapshot =
-    await getDocs(
-        wildlifeQuery
-    );
         const wildlife =
-
             [];
 
-
-snapshot.forEach(
-    doc => {
-
-        const data =
-            doc.data() ||
-            {};
-
-        data.firestore_id =
-            data.firestore_id ||
-            doc.id;
-
         // =====================================================
-        // 💾 WILDLIFE CACHE
-        // -----------------------------------------------------
-        // Initial/full 24-hour Firestore read populates cache.
-        // Historical Wildlife documents are NOT downloaded.
+        // 🔥 INITIAL / FULL 24-HOUR READ
         // =====================================================
 
-        window.wildlifeCache[
-            data.firestore_id
-        ] =
-            {
-                ...data
-            };
-                // ============================================
-                // SKIP INVALID
-                // ============================================
+        if(
+            !Array.isArray(
+                realtimeWildlife
+            )
+        ){
+            console.log(
+                "🐅 Loading wildlife_sightings — LAST 24 HOURS"
+            );
 
-                if(
-
-                    data.active === false ||
-
-                    data.marker_visible === false ||
-
-                    expiredSet.has(
-
-                        data.firestore_id
-
-                    )
-
-                ){
-
-                    return;
-
-                }
-
-
-                if(
-
-                    !Number.isFinite(
-
-                        Number(data.lat)
-
-                    ) ||
-
-                    !Number.isFinite(
-
-                        Number(data.lon)
-
-                    )
-
-                ){
-
-                    return;
-
-                }
-
-
-                wildlife.push(
-
-                    data
-
+            const wildlifeCutoff =
+                new Date(
+                    Date.now() -
+                    (24 * 60 * 60 * 1000)
                 );
 
+            // =================================================
+            // 🔎 FIRESTORE QUERY
+            // =================================================
+
+            const wildlifeQuery =
+                window.fb.query(
+                    collection(
+                        db,
+                        "wildlife_sightings"
+                    ),
+                    window.fb.where(
+                        "sighting_datetime",
+                        ">=",
+                        wildlifeCutoff
+                    )
+                );
+
+            // =================================================
+            // 📥 ONE INITIAL READ
+            // =================================================
+
+            const snapshot =
+                await getDocs(
+                    wildlifeQuery
+                );
+
+            // =================================================
+            // NORMALIZE INITIAL DATA
+            // =================================================
+
+            snapshot.forEach(
+                doc => {
+                    const data =
+                        doc.data() ||
+                        {};
+
+                    data.firestore_id =
+                        data.firestore_id ||
+                        doc.id;
+
+                    window.wildlifeCache[
+                        data.firestore_id
+                    ] =
+                    {
+                        ...data
+                    };
+
+                    if(
+                        data.active === false ||
+                        data.marker_visible === false ||
+                        expiredSet.has(
+                            data.firestore_id
+                        )
+                    ){
+                        return;
+                    }
+
+                    if(
+                        !Number.isFinite(
+                            Number(data.lat)
+                        ) ||
+                        !Number.isFinite(
+                            Number(data.lon)
+                        )
+                    ){
+                        return;
+                    }
+
+                    wildlife.push(
+                        data
+                    );
+                }
+            );
+
+        }
+
+        // =====================================================
+        // ⚡ REALTIME DELTA
+        // =====================================================
+
+        else{
+
+            for(
+                const data
+                of realtimeWildlife
+            ){
+                if(
+                    !data
+                ){
+                    continue;
+                }
+
+                const normalized =
+                    {
+                        ...data
+                    };
+
+                if(
+                    !normalized.firestore_id
+                ){
+                    continue;
+                }
+
+                // =================================================
+                // 🕒 REALTIME 24-HOUR ELIGIBILITY
+                // =================================================
+
+                const realtimeCutoffMs =
+                    Date.now() -
+                    (
+                        24 *
+                        60 *
+                        60 *
+                        1000
+                    );
+
+                const realtimeTimestamp =
+                    normalized.sighting_datetime;
+
+                let realtimeSightingMs =
+                    null;
+
+                if(
+                    realtimeTimestamp &&
+                    typeof realtimeTimestamp.toDate ===
+                    "function"
+                ){
+                    realtimeSightingMs =
+                        realtimeTimestamp
+                            .toDate()
+                            .getTime();
+                }
+                else if(
+                    realtimeTimestamp &&
+                    Number.isFinite(
+                        realtimeTimestamp.seconds
+                    )
+                ){
+                    realtimeSightingMs =
+                        realtimeTimestamp.seconds *
+                        1000;
+                }
+                else if(
+                    realtimeTimestamp instanceof Date
+                ){
+                    realtimeSightingMs =
+                        realtimeTimestamp.getTime();
+                }
+                else if(
+                    typeof realtimeTimestamp ===
+                    "string"
+                ){
+                    const parsedTimestamp =
+                        new Date(
+                            realtimeTimestamp
+                        ).getTime();
+
+                    if(
+                        Number.isFinite(
+                            parsedTimestamp
+                        )
+                    ){
+                        realtimeSightingMs =
+                            parsedTimestamp;
+                    }
+                }
+
+                // =================================================
+                // 🗑 REALTIME DOCUMENT OUTSIDE 24 HOURS
+                // =================================================
+
+                if(
+                    !Number.isFinite(
+                        realtimeSightingMs
+                    ) ||
+                    realtimeSightingMs <
+                    realtimeCutoffMs
+                ){
+                    const id =
+                        normalized.firestore_id;
+
+                    delete
+                        window.wildlifeCache[
+                            id
+                        ];
+
+                    const existingMarker =
+                        window.wildlifeMarkers?.[
+                            id
+                        ];
+
+                    if(
+                        existingMarker
+                    ){
+                        try{
+                            if(
+                                window.activeWildlifePopupId ===
+                                id
+                            ){
+                                window.activeWildlifePopupId =
+                                    null;
+
+                                window.activeWildlifePopupMarker =
+                                    null;
+                            }
+
+                            wildlifeLayer.removeLayer(
+                                existingMarker
+                            );
+                        }
+                        catch(err){
+                            console.warn(
+                                "⚠️ Wildlife realtime old-marker removal failed:",
+                                id,
+                                err
+                            );
+                        }
+
+                        delete
+                            window.wildlifeMarkers[
+                                id
+                            ];
+                    }
+
+                    console.log(
+                        "⏭ Wildlife realtime ignored — outside 24 hours:",
+                        id
+                    );
+
+                    continue;
+                }
+
+                // =================================================
+                // 💾 CACHE CURRENT 24-HOUR REALTIME DATA
+                // =================================================
+
+                window.wildlifeCache[
+                    normalized.firestore_id
+                ] =
+                {
+                    ...normalized
+                };
+
+                // =================================================
+                // 🗑 REALTIME INVALID / HIDDEN / EXPIRED
+                // =================================================
+
+                if(
+                    normalized.active === false ||
+                    normalized.marker_visible === false ||
+                    expiredSet.has(
+                        normalized.firestore_id
+                    )
+                ){
+                    const id =
+                        normalized.firestore_id;
+
+                    const existingMarker =
+                        window.wildlifeMarkers?.[
+                            id
+                        ];
+
+                    if(
+                        existingMarker
+                    ){
+                        try{
+                            if(
+                                window.activeWildlifePopupId ===
+                                id
+                            ){
+                                window.activeWildlifePopupId =
+                                    null;
+
+                                window.activeWildlifePopupMarker =
+                                    null;
+                            }
+
+                            wildlifeLayer.removeLayer(
+                                existingMarker
+                            );
+                        }
+                        catch(err){
+                            console.warn(
+                                "⚠️ Wildlife realtime marker removal failed:",
+                                id,
+                                err
+                            );
+                        }
+
+                        delete
+                            window.wildlifeMarkers[
+                                id
+                            ];
+                    }
+
+                    delete
+                        window.wildlifeCache[
+                            id
+                        ];
+
+                    console.log(
+                        "🗑 Wildlife realtime marker removed:",
+                        id
+                    );
+
+                    continue;
+                }
+
+                // =================================================
+                // LOCATION VALIDATION
+                // =================================================
+
+                if(
+                    !Number.isFinite(
+                        Number(
+                            normalized.lat
+                        )
+                    ) ||
+                    !Number.isFinite(
+                        Number(
+                            normalized.lon
+                        )
+                    )
+                ){
+                    continue;
+                }
+
+                wildlife.push(
+                    normalized
+                );
             }
-
-        );
-
+        }
 
         console.log(
-
             "🐅 Wildlife sightings loaded:",
-
             wildlife.length
-
         );
-
 
         // =====================================================
         // SORT LATEST FIRST
         // =====================================================
 
         wildlife.sort(
-
             function(
-
                 a,
-
                 b
-
             ){
-
                 const ta =
-
                     a.updated_at?.seconds ||
-
                     a.created_at?.seconds ||
-
                     0;
-
 
                 const tb =
-
                     b.updated_at?.seconds ||
-
                     b.created_at?.seconds ||
-
                     0;
 
-
                 return tb - ta;
-
             }
-
         );
-
 
         // =====================================================
         // CREATE / UPDATE MARKERS
         // =====================================================
 
         for(
-
             const sighting of wildlife
-
         ){
-
             const id =
-
                 sighting.firestore_id ||
-
                 sighting.sighting_id;
 
-if(
-    !isMarkerVisible(
-        sighting
-    )
-){
+            // =================================================
+            // 🔐 MARKER AUTHORIZATION
+            // =================================================
 
-    if(
-        window.wildlifeMarkers[id]
-    ){
+            if(
+                typeof isMarkerVisible === "function" &&
+                !isMarkerVisible(
+                    sighting
+                )
+            ){
+                if(
+                    window.wildlifeMarkers[id]
+                ){
+                    if(
+                        window.activeWildlifePopupId ===
+                        id
+                    ){
+                        window.activeWildlifePopupId =
+                            null;
 
-        wildlifeLayer.removeLayer(
-            window.wildlifeMarkers[id]
-        );
+                        window.activeWildlifePopupMarker =
+                            null;
+                    }
 
-        delete
-            window.wildlifeMarkers[id];
-    }
+                    wildlifeLayer.removeLayer(
+                        window.wildlifeMarkers[id]
+                    );
 
-    continue;
-}
+                    delete
+                        window.wildlifeMarkers[id];
+                }
+
+                continue;
+            }
+
             // =================================================
             // 24 HOUR MARKER LIFE
             // =================================================
@@ -50712,198 +50819,119 @@ if(
             const now =
                 Date.now();
 
-
             const createdTs =
-
                 sighting.updated_at?.toDate?.().getTime() ??
-
                 (
-
                     sighting.updated_at?.seconds
-
-                        ?
-
-                        sighting.updated_at.seconds * 1000
-
-                        :
-
-                        null
-
+                    ?
+                    sighting.updated_at.seconds * 1000
+                    :
+                    null
                 ) ??
-
                 sighting.created_at?.toDate?.().getTime() ??
-
                 (
-
                     sighting.created_at?.seconds
-
-                        ?
-
-                        sighting.created_at.seconds * 1000
-
-                        :
-
-                        now
-
+                    ?
+                    sighting.created_at.seconds * 1000
+                    :
+                    now
                 );
-
 
             const ageMinutes =
-
                 Math.floor(
-
                     (
-
                         now -
-
                         createdTs
-
                     ) /
-
                     60000
-
                 );
-
 
             // =================================================
             // REMOVE AFTER 24 HOURS
             // =================================================
 
             if(
-
                 ageMinutes >= 1440
-
             ){
-
                 if(
-
                     window.wildlifeMarkers[id]
-
                 ){
-
-                    /*
-                     * If this is the popup currently open,
-                     * clear popup state before removing marker.
-                     */
-
                     if(
-
                         window.activeWildlifePopupId ===
-
                         id
-
                     ){
-
                         window.activeWildlifePopupId =
                             null;
 
                         window.activeWildlifePopupMarker =
                             null;
-
                     }
 
-
                     wildlifeLayer.removeLayer(
-
                         window.wildlifeMarkers[id]
-
                     );
 
-
                     delete
-
                         window.wildlifeMarkers[id];
-
                 }
-
 
                 expiredSet.add(id);
 
-
                 if(
-
                     !window.expiredWildlife.some(
-
                         x =>
-
                             x.id === id
-
                     )
-
                 ){
-
                     window.expiredWildlife.push({
-
                         id:
                             id,
-
                         ts:
                             Date.now()
-
                     });
 
-
                     localStorage.setItem(
-
                         "expiredWildlife",
-
                         JSON.stringify(
-
                             window.expiredWildlife
-
                         )
-
                     );
-
                 }
 
-
                 continue;
-
             }
-
 
             // =================================================
             // LOCATION
             // =================================================
 
             const lat =
-
                 Number(
-
                     sighting.lat
-
                 );
-
 
             const lon =
-
                 Number(
-
                     sighting.lon
-
                 );
-
 
             // =================================================
             // ICON
             // =================================================
 
             const iconFile =
+                typeof getWildlifeIcon === "function"
+                    ? getWildlifeIcon(sighting.animal)
+                    : null;
 
-                getWildlifeIcon(
-
-                    sighting.animal
-
-                );
-
+            const emoji =
+                typeof getWildlifeEmoji === "function"
+                    ? getWildlifeEmoji(sighting.animal)
+                    : "🐾";
 
             const html =
-
                 iconFile
-
                 ?
-
                 `
                 <div
                     style="
@@ -50915,42 +50943,34 @@ if(
                         overflow:visible;
                     "
                 >
-
                     <img
                         src="${iconFile}"
                         style="
                             width:40px;
                             height:40px;
                             object-fit:contain;
-
                             filter:
                                 drop-shadow(
                                     0 0 2px
                                     rgba(255,255,255,1)
                                 )
-
                                 drop-shadow(
                                     0 0 4px
                                     rgba(255,255,255,.95)
                                 )
-
                                 drop-shadow(
                                     0 0 8px
                                     rgba(255,255,255,.75)
                                 )
-
                                 drop-shadow(
                                     0 1px 3px
                                     rgba(0,0,0,.45)
                                 );
                         "
                     >
-
                 </div>
                 `
-
                 :
-
                 `
                 <div
                     style="
@@ -50962,1808 +50982,1099 @@ if(
                         font-size:28px;
                     "
                 >
-
-                    ${getWildlifeEmoji(
-                        sighting.animal
-                    )}
-
+                    ${emoji}
                 </div>
                 `;
 
-// =====================================================
-// 🔐 WILDLIFE MARKER VISIBILITY
-// =====================================================
-
-if(
-    !isMarkerVisible(
-        sighting
-    )
-){
-
-    // -------------------------------------------------
-    // REMOVE EXISTING MARKER IF IT WAS PREVIOUSLY
-    // VISIBLE BUT IS NO LONGER AUTHORIZED
-    // -------------------------------------------------
-
-    const existingMarker =
-        window.wildlifeMarkers?.[
-            key
-        ];
-
-    if(
-        existingMarker
-    ){
-
-        try{
-
-            if(
-                window.activeWildlifePopupId ===
-                key
-            ){
-
-                window.activeWildlifePopupId =
-                    null;
-
-                window.activeWildlifePopupMarker =
-                    null;
-
-            }
-
-            wildlifeLayer.removeLayer(
-                existingMarker
-            );
-
-        }
-        catch(err){
-
-            console.warn(
-                "⚠️ Wildlife marker removal failed:",
-                key,
-                err
-            );
-
-        }
-
-        delete
-            window.wildlifeMarkers[
-                key
-            ];
-
-    }
-
-    // -------------------------------------------------
-    // DO NOT CREATE MARKER
-    // -------------------------------------------------
-
-    return;
-
-}
             // =================================================
             // EXISTING MARKER
             // =================================================
 
             let marker =
-
                 window.wildlifeMarkers[id];
-
 
             // =================================================
             // CREATE MARKER
             // =================================================
 
             if(
-
                 !marker
-
             ){
-
                 marker =
-
                     L.marker(
-
                         [
-
                             lat,
-
                             lon
-
                         ],
-
                         {
-
                             icon:
-
                                 L.divIcon({
-
                                     html:
-
                                         html,
-
                                     className:
-
                                         "",
-
                                     iconSize:
-
                                         [
-
                                             40,
-
                                             40
-
                                         ],
-
                                     iconAnchor:
-
                                         [
-
                                             20,
-
                                             20
-
                                         ]
-
                                 })
-
                         }
-
                     );
 
-
                 marker.addTo(
-
                     wildlifeLayer
-
                 );
-
 
                 marker.setZIndexOffset(
-
                     1000
-
                 );
-
 
                 requestAnimationFrame(
-
                     () => {
-
                         marker.setLatLng(
-
                             marker.getLatLng()
-
                         );
-
-
                         marker.update();
-
                     }
-
                 );
-
-
-                console.log(
-
-                    "Layer count:",
-
-                    Object.keys(
-
-                        wildlifeLayer._layers
-
-                    ).length
-
-                );
-
 
                 window.wildlifeMarkers[id] =
-
                     marker;
-
             }
-
-
             // =================================================
             // UPDATE POSITION
             // =================================================
-
             else{
-
                 marker.setLatLng(
-
                     [
-
                         lat,
-
                         lon
-
                     ]
-
                 );
-
             }
-
 
             // =================================================
             // SAVE DATA
             // =================================================
 
             marker.sighting =
-
                 sighting;
-
         }
 
-
         console.log(
-
             "🐅 Wildlife markers:",
-
             Object.keys(
-
                 window.wildlifeMarkers
-
             ).length
-
         );
-
-
-        wildlifeLayer.eachLayer(
-
-            function(m){
-
-                if(
-
-                    m.update
-
-                ){
-
-                    m.update();
-
-                }
-
-            }
-
-        );
-
 
         // =====================================================
-        // WILDLIFE POPUP
+        // UPDATE LEAFLET LAYERS
+        // =====================================================
+
+        wildlifeLayer.eachLayer(
+            function(m){
+                if(
+                    m.update
+                ){
+                    m.update();
+                }
+            }
+        );
+
+        // =====================================================
+        // 🐅 WILDLIFE POPUP
         // =====================================================
 
         for(
-
             const id in
-
             window.wildlifeMarkers
-
         ){
-
             const marker =
-
                 window.wildlifeMarkers[id];
 
-
             const s =
-
                 marker.sighting;
 
-
             if(
-
                 !s
-
             ){
-
                 continue;
-
             }
 
-
             const emoji =
+                typeof getWildlifeEmoji === "function"
+                    ? getWildlifeEmoji(s.animal)
+                    : "🐾";
 
-                getWildlifeEmoji(
+            // =================================================
+            // BUILD POPUP HTML
+            // =================================================
 
-                    s.animal
-
-                );
-
-
-// =================================================
-// BUILD POPUP HTML
-// =================================================
-//
-// WILDLIFE POPUP
-//
-// Same compact visual structure as Elephant popup.
-// Wildlife-specific fields are retained.
-//
-// Main:
-//
-// Status
-// Count
-// Sex / Age
-// Behaviour
-// Direction
-// Sighted By
-// Phone
-// Remarks
-//
-// Location:
-//
-// Division
-// Range
-// Beat
-// Compartment
-// Location
-// GPS
-//
-// Media:
-//
-// Existing buildSightingMediaPopup()
-//
-// =================================================
-
-const popup =
-
-    `
-
+            const popup =
+                `
 <div
     class="gg-wildlife-popup"
-
     style="
-        width:
-            100%;
-
-        max-width:
-            none;
-
-        max-height:
-            none;
-
-        overflow:
-            visible;
-
-        overflow-x:
-            visible;
-
-        padding-right:
-            0;
-
-        box-sizing:
-            border-box;
-
-            font-family:
-                Segoe UI,
-                Tahoma,
-                Geneva,
-                Verdana,
-                sans-serif;
-
-            font-size:
-                13px;
-
-            color:
-                #333;
-
-            line-height:
-                1.4;
-        "
-    >
-
-        <!-- ============================================= -->
-        <!-- WILDLIFE HEADER -->
-        <!-- ============================================= -->
-
-        <div
-            style="
-                background:
-                    #2e7d32;
-
-                color:
-                    #fff;
-
-                padding:
-                    10px 12px;
-
-                border-radius:
-                    6px 6px 0 0;
-
-                margin:
-                    -13px -19px 12px -19px;
-
-                font-weight:
-                    600;
-
-                font-size:
-                    14px;
-
-                display:
-                    flex;
-
-                align-items:
-                    center;
-
-                gap:
-                    8px;
-
-                position:
-                    sticky;
-
-                top:
-                    0;
-
-                z-index:
-                    20;
-            "
-        >
-
-            <span
-                style="
-                    font-size:
-                        18px;
-                "
-            >
-                ${emoji}
-            </span>
-
-
-            <span
-                style="
-                    min-width:
-                        0;
-
-                    overflow:
-                        hidden;
-
-                    text-overflow:
-                        ellipsis;
-
-                    white-space:
-                        nowrap;
-                "
-            >
-                ${String(
-                    s.animal ||
-                    "Wildlife"
-                ).toUpperCase()}
-            </span>
-
-        </div>
-
-
-        <!-- ============================================= -->
-        <!-- WILDLIFE DETAILS -->
-        <!-- ============================================= -->
-
-        <table
-            style="
-                width:
-                    100%;
-
-                border-collapse:
-                    collapse;
-
-                margin-bottom:
-                    8px;
-            "
-        >
-
-            <!-- STATUS -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-
-                        width:
-                            35%;
-                    "
-                >
-                    <b>
-                        Status
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #2e7d32;
-
-                        font-weight:
-                            600;
-                    "
-                >
-                    ${
-                        s.status ||
-                        "ACTIVE"
-                    }
-                </td>
-
-            </tr>
-<!-- TIME OF SIGHTING -->
-
-<tr
-    style="
-        border-bottom:
-            1px solid
-            #f0f0f0;
+        width:100%;
+        max-width:none;
+        max-height:none;
+        overflow:visible;
+        overflow-x:visible;
+        padding-right:0;
+        box-sizing:border-box;
+        font-family:
+            Segoe UI,
+            Tahoma,
+            Geneva,
+            Verdana,
+            sans-serif;
+        font-size:13px;
+        color:#333;
+        line-height:1.4;
     "
 >
-    <td
-        style="
-            padding:
-                5px 0;
 
-            color:
-                #666;
+    <!-- ============================================= -->
+    <!-- WILDLIFE HEADER -->
+    <!-- ============================================= -->
+
+    <div
+        style="
+            background:#2e7d32;
+            color:#fff;
+            padding:10px 12px;
+            border-radius:6px 6px 0 0;
+            margin:-13px -19px 12px -19px;
+            font-weight:600;
+            font-size:14px;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            position:sticky;
+            top:0;
+            z-index:20;
         "
     >
-        <b>
-            Time of Sighting
-        </b>
-    </td>
 
-    <td
-        style="
-            padding:
-                5px 0;
-        "
-    >
-        ${
-            s.time ||
-            s.sighting_time ||
-            s.wildlife_time ||
-            s.observation_time ||
-            "-"
-        }
-    </td>
-</tr>
-
-
-<!-- AGE OF ANIMAL -->
-
-<tr
-    style="
-        border-bottom:
-            1px solid
-            #f0f0f0;
-    "
->
-    <td
-        style="
-            padding:
-                5px 0;
-
-            color:
-                #666;
-        "
-    >
-        <b>
-            Age of Animal Sighting
-        </b>
-    </td>
-
-    <td
-        style="
-            padding:
-                5px 0;
-        "
-    >
-        ${
-            s.age ||
-            "-"
-        }
-    </td>
-</tr>
-
-            <!-- COUNT -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Count
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-                    "
-                >
-                    ${
-                        s.count ??
-                        "-"
-                    }
-                </td>
-
-            </tr>
-
-
-            <!-- SEX / AGE -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Sex / Age
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-                    "
-                >
-
-                    ${
-                        s.sex ||
-                        "-"
-                    }
-
-                    /
-
-                    ${
-                        s.age ||
-                        "-"
-                    }
-
-                </td>
-
-            </tr>
-
-
-            <!-- BEHAVIOUR -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Behaviour
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-                    "
-                >
-                    ${
-                        s.behaviour ||
-                        "-"
-                    }
-                </td>
-
-            </tr>
-
-
-            <!-- DIRECTION -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Direction
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-                    "
-                >
-                    ${
-                        s.direction ||
-                        "-"
-                    }
-                </td>
-
-            </tr>
-
-
-            <!-- SIGHTED BY -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Sighted By
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        font-weight:
-                            600;
-                    "
-                >
-
-                    ${
-                        s.sighted_by ||
-                        s.sightedBy ||
-                        s.staff ||
-                        s.leader ||
-                        "-"
-                    }
-
-                </td>
-
-            </tr>
-
-
-            <!-- PHONE -->
-
-            <tr
-                style="
-                    border-bottom:
-                        1px solid
-                        #f0f0f0;
-                "
-            >
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-                    "
-                >
-                    <b>
-                        Phone
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-                    "
-                >
-
-                    ${
-                        s.phone
-
-                        ?
-
-                        `
-                            <a
-                                href="tel:${String(
-                                    s.phone
-                                )}"
-
-                                onclick="
-                                    event.stopPropagation();
-                                "
-
-                                style="
-                                    color:
-                                        #00695c;
-
-                                    text-decoration:
-                                        none;
-
-                                    font-weight:
-                                        700;
-                                "
-                            >
-                                ${s.phone}
-                            </a>
-                        `
-
-                        :
-
-                        "-"
-                    }
-
-                </td>
-
-            </tr>
-
-
-            <!-- REMARKS -->
-
-            <tr>
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        color:
-                            #666;
-
-                        vertical-align:
-                            top;
-                    "
-                >
-                    <b>
-                        Remarks
-                    </b>
-                </td>
-
-
-                <td
-                    style="
-                        padding:
-                            5px 0;
-
-                        word-break:
-                            break-word;
-                    "
-                >
-                    ${
-                        s.remarks ||
-                        "None"
-                    }
-                </td>
-
-            </tr>
-
-        </table>
-
-
-        <!-- ============================================= -->
-        <!-- LOCATION OF SIGHTING -->
-        <!-- ============================================= -->
-
-        <div
+        <span
             style="
-                margin:
-                    0 0 8px 0;
-
-                padding:
-                    6px;
-
-                box-sizing:
-                    border-box;
-
-                background:
-                    #f7fbf7;
-
-                border:
-                    1px solid
-                    #d7e9d8;
-
-                border-radius:
-                    6px;
-
-                font-size:
-                    10px;
-
-                line-height:
-                    1.5;
+                font-size:18px;
             "
         >
+            ${emoji}
+        </span>
 
-            <div
-                style="
-                    margin:
-                        0 0 5px 0;
-
-                    color:
-                        #1b5e20;
-
-                    font-size:
-                        11px;
-
-                    font-weight:
-                        700;
-                "
-            >
-                📍 Location of Sighting
-            </div>
-
-
-            <!-- DIVISION -->
-
-            <div
-                style="
-                    margin-bottom:
-                        2px;
-                "
-            >
-                <b>
-                    Division:
-                </b>
-
-                ${
-                    s.gis_division ||
-                    s.division ||
-                    "-"
-                }
-
-            </div>
-
-
-            <!-- RANGE -->
-
-            <div
-                style="
-                    margin-bottom:
-                        2px;
-                "
-            >
-                <b>
-                    Range:
-                </b>
-
-                ${
-                    s.gis_range ||
-                    s.range ||
-                    "-"
-                }
-
-            </div>
-
-
-            <!-- BEAT -->
-
-            <div
-                style="
-                    margin-bottom:
-                        2px;
-                "
-            >
-                <b>
-                    Beat:
-                </b>
-
-                ${
-                    s.gis_beat ||
-                    s.beat ||
-                    "-"
-                }
-
-            </div>
-
-
-            <!-- COMPARTMENT -->
-
-            <div
-                style="
-                    margin-bottom:
-                        2px;
-                "
-            >
-                <b>
-                    Compartment:
-                </b>
-
-                ${
-                    s.gis_compartment ||
-                    s.compartment ||
-                    "-"
-                }
-
-            </div>
-
-
-            <!-- LOCATION -->
-
-            <div
-                style="
-                    margin-bottom:
-                        2px;
-                "
-            >
-                <b>
-                    Location:
-                </b>
-
-                ${
-                    s.resolved_location ||
-                    s.nearest_location ||
-                    s.nearest_village ||
-                    s.village ||
-                    "-"
-                }
-
-            </div>
-
-
-            <!-- GPS -->
-
-            <div
-                style="
-                    margin-top:
-                        3px;
-
-                    color:
-                        #555;
-
-                    font-size:
-                        9px;
-                "
-            >
-
-                🛰 GPS:
-
-                <b>
-
-                    ${
-                        Number.isFinite(
-                            Number(
-                                s.lat
-                            )
-                        )
-
-                        ?
-
-                        Number(
-                            s.lat
-                        ).toFixed(
-                            6
-                        )
-
-                        :
-
-                        "-"
-                    }
-
-                    ,
-
-                    ${
-                        Number.isFinite(
-                            Number(
-                                s.lon
-                            )
-                        )
-
-                        ?
-
-                        Number(
-                            s.lon
-                        ).toFixed(
-                            6
-                        )
-
-                        :
-
-                        "-"
-                    }
-
-                </b>
-
-            </div>
-
-        </div>
-
-
-        <!-- ============================================= -->
-        <!-- EXISTING MEDIA -->
-        <!-- ============================================= -->
-
-        ${buildSightingMediaPopup(
-            s,
-            id
-        )}
+        <span
+            style="
+                min-width:0;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+            "
+        >
+            ${String(
+                s.animal ||
+                "Wildlife"
+            ).toUpperCase()}
+        </span>
 
     </div>
 
+    <!-- ============================================= -->
+    <!-- WILDLIFE DETAILS -->
+    <!-- ============================================= -->
+
+    <table
+        style="
+            width:100%;
+            border-collapse:collapse;
+            margin-bottom:8px;
+        "
+    >
+
+        <!-- STATUS -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                    width:35%;
+                "
+            >
+                <b>Status</b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#2e7d32;
+                    font-weight:600;
+                "
+            >
+                ${
+                    s.status ||
+                    "ACTIVE"
+                }
+            </td>
+
+        </tr>
+
+        <!-- TIME OF SIGHTING -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Time of Sighting
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.time ||
+                    s.sighting_time ||
+                    s.wildlife_time ||
+                    s.observation_time ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- AGE OF ANIMAL -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Age of Animal Sighting
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.age ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- COUNT -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Count
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.count ??
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- SEX / AGE -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Sex / Age
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.sex ||
+                    "-"
+                }
+                /
+                ${
+                    s.age ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- BEHAVIOUR -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Behaviour
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.behaviour ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- DIRECTION -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Direction
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.direction ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- SIGHTED BY -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Sighted By
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                    font-weight:600;
+                "
+            >
+                ${
+                    s.sighted_by ||
+                    s.sightedBy ||
+                    s.staff ||
+                    s.leader ||
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- PHONE -->
+
+        <tr
+            style="
+                border-bottom:
+                    1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>
+                    Phone
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${
+                    s.phone
+                    ?
+                    `
+                    <a
+                        href="tel:${String(
+                            s.phone
+                        )}"
+                        onclick="
+                            event.stopPropagation();
+                        "
+                        style="
+                            color:#00695c;
+                            text-decoration:none;
+                            font-weight:700;
+                        "
+                    >
+                        ${s.phone}
+                    </a>
+                    `
+                    :
+                    "-"
+                }
+            </td>
+
+        </tr>
+
+        <!-- REMARKS -->
+
+        <tr>
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                    vertical-align:top;
+                "
+            >
+                <b>
+                    Remarks
+                </b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                    word-break:break-word;
+                "
+            >
+                ${
+                    s.remarks ||
+                    "None"
+                }
+            </td>
+
+        </tr>
+
+    </table>
+
+    <!-- ============================================= -->
+    <!-- LOCATION OF SIGHTING -->
+    <!-- ============================================= -->
+
+    <div
+        style="
+            margin:0 0 8px 0;
+            padding:6px;
+            box-sizing:border-box;
+            background:#f7fbf7;
+            border:1px solid #d7e9d8;
+            border-radius:6px;
+            font-size:10px;
+            line-height:1.5;
+        "
+    >
+
+        <div
+            style="
+                margin:0 0 5px 0;
+                color:#1b5e20;
+                font-size:11px;
+                font-weight:700;
+            "
+        >
+            📍 Location of Sighting
+        </div>
+
+        <!-- DIVISION -->
+
+        <div
+            style="
+                margin-bottom:2px;
+            "
+        >
+            <b>
+                Division:
+            </b>
+            ${
+                s.gis_division ||
+                s.division ||
+                "-"
+            }
+        </div>
+
+        <!-- RANGE -->
+
+        <div
+            style="
+                margin-bottom:2px;
+            "
+        >
+            <b>
+                Range:
+            </b>
+            ${
+                s.gis_range ||
+                s.range ||
+                "-"
+            }
+        </div>
+
+        <!-- BEAT -->
+
+        <div
+            style="
+                margin-bottom:2px;
+            "
+        >
+            <b>
+                Beat:
+            </b>
+            ${
+                s.gis_beat ||
+                s.beat ||
+                "-"
+            }
+        </div>
+
+        <!-- COMPARTMENT -->
+
+        <div
+            style="
+                margin-bottom:2px;
+            "
+        >
+            <b>
+                Compartment:
+            </b>
+            ${
+                s.gis_compartment ||
+                s.compartment ||
+                "-"
+            }
+        </div>
+
+        <!-- LOCATION -->
+
+        <div
+            style="
+                margin-bottom:2px;
+            "
+        >
+            <b>
+                Location:
+            </b>
+            ${
+                s.resolved_location ||
+                s.nearest_location ||
+                s.nearest_village ||
+                s.village ||
+                "-"
+            }
+        </div>
+
+        <!-- GPS -->
+
+        <div
+            style="
+                margin-top:3px;
+                color:#555;
+                font-size:9px;
+            "
+        >
+            🛰 GPS:
+            <b>
+                ${
+                    Number.isFinite(
+                        Number(s.lat)
+                    )
+                    ?
+                    Number(
+                        s.lat
+                    ).toFixed(6)
+                    :
+                    "-"
+                }
+                ,
+                ${
+                    Number.isFinite(
+                        Number(s.lon)
+                    )
+                    ?
+                    Number(
+                        s.lon
+                    ).toFixed(6)
+                    :
+                    "-"
+                }
+            </b>
+        </div>
+
+    </div>
+
+    <!-- ============================================= -->
+    <!-- EXISTING MEDIA -->
+    <!-- ============================================= -->
+
+    ${
+        typeof buildSightingMediaPopup === "function"
+            ? buildSightingMediaPopup(s, id)
+            : ""
+    }
+
+</div>
 `;
 
+            // =================================================
+            // POPUP OPTIONS
+            // =================================================
 
-
-// =================================================
-// POPUP OPTIONS
-// =================================================
-//
-// SAME COMPACT SIZE AS ELEPHANT POPUP
-// =================================================
-
-// ========================================================
-// WILDLIFE POPUP OPTIONS
-// ========================================================
-//
-// Slightly narrower popup.
-// One popup-level scrollbar only.
-// Keep the existing popup behaviour unchanged.
-// ========================================================
-
-const popupOptions = {
-
-    maxWidth:
-        280,
-
-    minWidth:
-        250,
-
-    maxHeight:
-        Math.min(
-            window.innerHeight * 0.70,
-            450
-        ),
-
-    closeOnClick:
-        false,
-
-    autoClose:
-        false,
-
-    autoPan:
-        true,
-
-    autoPanPadding:
-        [
-            15,
-            15
-        ],
-
-    keepInView:
-        true,
-
-    className:
-        "gg-wildlife-leaflet-popup"
-
-};
+            const popupOptions = {
+                maxWidth:
+                    280,
+                minWidth:
+                    250,
+                maxHeight:
+                    Math.min(
+                        window.innerHeight * 0.70,
+                        450
+                    ),
+                closeOnClick:
+                    false,
+                autoClose:
+                    false,
+                autoPan:
+                    true,
+                autoPanPadding:
+                    [
+                        15,
+                        15
+                    ],
+                keepInView:
+                    true,
+                className:
+                    "gg-wildlife-leaflet-popup"
+            };
 
             // =================================================
             // CREATE POPUP ONLY ONCE
             // =================================================
 
             if(
-
                 !marker.getPopup()
-
             ){
-
                 marker.bindPopup(
-
                     popup,
-
                     popupOptions
-
                 );
 
-
-                /*
-                 * Mark this marker so we never install
-                 * duplicate click/popup listeners during
-                 * future loadWildlifeSightings() refreshes.
-                 */
-
                 marker.__ggWildlifePopupReady =
-
                     true;
 
+                // =============================================
+                // POPUP OPEN
+                // =============================================
 
-// =============================================
-// POPUP OPEN
-// =============================================
+                marker.on(
+                    "popupopen",
+                    function(){
+                        window.activeWildlifePopupId =
+                            id;
 
-marker.on(
+                        window.activeWildlifePopupMarker =
+                            marker;
 
-    "popupopen",
+                        if(
+                            typeof rememberWildlifePopupForReturn === "function"
+                        ){
+                            rememberWildlifePopupForReturn(
+                                id
+                            );
+                        }
 
-    function(){
-
-        // =================================================
-        // REMEMBER ACTIVE WILDLIFE POPUP
-        // =================================================
-
-        window.activeWildlifePopupId =
-            id;
-
-
-        window.activeWildlifePopupMarker =
-            marker;
-
-
-        // =================================================
-        // REMEMBER POPUP FOR RETURN
-        // =================================================
-
-        rememberWildlifePopupForReturn(
-            id
-        );
-
-
-        console.log(
-            "🐅 Wildlife popup OPEN:",
-            id
-        );
-
-    }
-
-);
-
+                        console.log(
+                            "🐅 Wildlife popup OPEN:",
+                            id
+                        );
+                    }
+                );
 
                 // =============================================
                 // POPUP CLOSE
                 // =============================================
 
                 marker.on(
-
                     "popupclose",
-
                     function(){
-
                         if(
-
                             window.activeWildlifePopupId ===
-
                             id
-
                         ){
-
                             window.activeWildlifePopupId =
-
                                 null;
-
 
                             window.activeWildlifePopupMarker =
-
                                 null;
 
-                              clearRememberedWildlifePopup();
-
+                            if(
+                                typeof clearRememberedWildlifePopup === "function"
+                            ){
+                                clearRememberedWildlifePopup();
+                            }
                         }
 
-
                         console.log(
-
                             "🐅 Wildlife popup CLOSED:",
-
                             id
-
                         );
-
                     }
-
                 );
 
+                // =============================================
+                // CONTROLLED MARKER POPUP
+                // =============================================
 
-// =============================================
-// CONTROLLED WILDLIFE MARKER POPUP
-// =============================================
-//
-// Behaviour:
-//
-// FIRST CLICK
-//     ↓
-// CLOSED → OPEN
-//
-// SAME MARKER CLICKED AGAIN
-//     ↓
-// OPEN → CLOSED
-//
-// FIRESTORE REFRESH
-//     ↓
-// POPUP REMAINS OPEN
-//
-// No delayed close.
-// No setTimeout.
-// No requestAnimationFrame close.
-// No first-click race.
-// No popup blinking.
-// =============================================
+                if(
+                    typeof marker._openPopup ===
+                    "function"
+                ){
+                    marker.off(
+                        "click",
+                        marker._openPopup,
+                        marker
+                    );
+                }
 
+                marker.on(
+                    "click",
+                    function(){
+                        const popupIsOpen =
+                            marker.isPopupOpen();
 
-// =================================================
-// REMOVE LEAFLET DEFAULT POPUP CLICK HANDLER
-// =================================================
-//
-// bindPopup() installs Leaflet's internal popup
-// click handler.
-//
-// We remove that handler so only our controlled
-// click handler controls opening/closing.
-// =================================================
+                        if(
+                            popupIsOpen
+                        ){
+                            marker.closePopup();
+                            return;
+                        }
 
-if(
-    typeof marker._openPopup ===
-    "function"
-){
-
-    marker.off(
-        "click",
-        marker._openPopup,
-        marker
-    );
-
-}
-
-
-// =================================================
-// CONTROLLED MARKER CLICK
-// =================================================
-
-marker.on(
-    "click",
-    function(){
-
-        const popupIsOpen =
-            marker.isPopupOpen();
-
-
-        // =============================================
-        // SAME MARKER CLICKED AGAIN
-        // =============================================
-
-        if(
-            popupIsOpen
-        ){
-
-            marker.closePopup();
-
-            return;
-
-        }
-
-
-        // =============================================
-        // FIRST CLICK
-        // =============================================
-        //
-        // Popup is closed, therefore open it.
-        //
-        // IMPORTANT:
-        // No setTimeout().
-        // No requestAnimationFrame().
-        // =============================================
-
-        marker.openPopup();
-
-    }
-);
-
+                        marker.openPopup();
+                    }
+                );
             }
+
             // =================================================
             // EXISTING POPUP
             // =================================================
-            //
-            // IMPORTANT:
-            //
-            // DO NOT rebuild an OPEN popup during a Firestore
-            // refresh.
-            //
-            // The popup may currently contain:
-            //
-            // - scroll position
-            // - Preview buttons
-            // - media viewer interaction
-            // - touch interaction
-            // - video/audio controls
-            //
-            // Replacing popup content while the user is
-            // interacting with it can cause:
-            //
-            // - flicker
-            // - button freeze
-            // - scroll jump
-            // - popup disappearance
-            // - media interaction interruption
-            //
-            // Therefore:
-            //
-            // CLOSED popup  → update normally
-            // OPEN popup    → leave DOM untouched
-            //
-            // =================================================
 
             {
-
                 const popupIsOpen =
                     marker.isPopupOpen();
-
 
                 const popupChanged =
                     marker.__ggWildlifePopupHtml !==
                     popup;
 
-
                 // =================================================
                 // CLOSED POPUP
-                // =================================================
-                //
-                // Safe to update.
-                //
                 // =================================================
 
                 if(
                     !popupIsOpen &&
                     popupChanged
                 ){
-
                     marker.setPopupContent(
                         popup
                     );
-
                 }
-
-
-                // =================================================
-                // REMEMBER LATEST POPUP HTML
-                // =================================================
-                //
-                // This lets the next refresh know whether the
-                // generated popup actually changed.
-                //
-                // =================================================
 
                 marker.__ggWildlifePopupHtml =
                     popup;
 
-
                 // =================================================
                 // OPEN POPUP
-                // =================================================
-                //
-                // DO NOT replace its DOM.
-                //
-                // Keep the currently displayed popup exactly
-                // as the user sees it.
-                //
                 // =================================================
 
                 if(
                     popupIsOpen
                 ){
-
                     window.activeWildlifePopupId =
                         id;
 
-
                     window.activeWildlifePopupMarker =
                         marker;
-
                 }
-
             }
-
         }
-
 
         console.log(
-
             "✅ Wildlife popups ready."
-
         );
 
-
         // =====================================================
-        // REMOVE STALE MARKERS
-        // =====================================================
-
-        const liveIds =
-
-            new Set(
-
-                wildlife.map(
-
-                    s =>
-
-                        s.firestore_id ||
-
-                        s.sighting_id
-
-                )
-
-            );
-
-
-        for(
-
-            const id in
-
-            window.wildlifeMarkers
-
-        ){
-
-            if(
-
-                liveIds.has(id)
-
-            ){
-
-                continue;
-
-            }
-
-
-            const marker =
-
-                window.wildlifeMarkers[id];
-
-
-            if(
-
-                marker
-
-            ){
-
-                /*
-                 * If the stale marker was the currently
-                 * opened popup, clear the saved state.
-                 */
-
-                if(
-
-                    window.activeWildlifePopupId ===
-
-                    id
-
-                ){
-
-                    window.activeWildlifePopupId =
-
-                        null;
-
-
-                    window.activeWildlifePopupMarker =
-
-                        null;
-
-                }
-
-
-                wildlifeLayer.removeLayer(
-
-                    marker
-
-                );
-
-            }
-
-
-            delete
-
-                window.wildlifeMarkers[id];
-
-        }
-
-
-        // =====================================================
-        // RESTORE CURRENT POPUP AFTER REFRESH
-        // =====================================================
-        //
-        // Normally setPopupContent() keeps the popup open.
-        //
-        // This additional safety check handles the case where
-        // Leaflet closed it during marker/layer processing.
+        // 🧹 STALE MARKER CLEANUP
         // =====================================================
 
         if(
-
-            openWildlifePopupId
-
+            !Array.isArray(
+                realtimeWildlife
+            )
         ){
+            const validKeys =
+                new Set(
+                    wildlife.map(
+                        sighting =>
+                            sighting.firestore_id ||
+                            sighting.sighting_id
+                    )
+                );
 
-            const openMarker =
+            Object.keys(
+                window.wildlifeMarkers
+            ).forEach(
+                function(key){
+                    if(
+                        !validKeys.has(
+                            key
+                        )
+                    ){
+                        const marker =
+                            window.wildlifeMarkers[
+                                key
+                            ];
 
+                        try{
+                            if(
+                                window.activeWildlifePopupId ===
+                                key
+                            ){
+                                window.activeWildlifePopupId =
+                                    null;
+
+                                window.activeWildlifePopupMarker =
+                                    null;
+                            }
+
+                            wildlifeLayer.removeLayer(
+                                marker
+                            );
+                        }
+                        catch(err){
+                            console.warn(
+                                "⚠️ Wildlife stale marker cleanup failed:",
+                                key,
+                                err
+                            );
+                        }
+
+                        delete
+                            window.wildlifeMarkers[
+                                key
+                            ];
+                    }
+                }
+            );
+        }
+        else{
+            console.log(
+                "⏭ Realtime delta — stale-marker cleanup skipped"
+            );
+        }
+
+        // =====================================================
+        // 💾 SAVE EXPIRED WILDLIFE CACHE
+        // =====================================================
+
+        localStorage.setItem(
+            "expiredWildlife",
+            JSON.stringify(
+                window.expiredWildlife
+            )
+        );
+
+        // =====================================================
+        // 🐅 RESTORE OPEN WILDLIFE POPUP
+        // =====================================================
+
+        if(
+            openWildlifePopupId
+        ){
+            const popupMarker =
                 window.wildlifeMarkers[
                     openWildlifePopupId
                 ];
 
-
             if(
-
-                openMarker &&
-
+                popupMarker &&
                 wildlifeLayer.hasLayer(
-
-                    openMarker
-
+                    popupMarker
                 )
-
             ){
-
-                window.activeWildlifePopupId =
-
-                    openWildlifePopupId;
-
-
-                window.activeWildlifePopupMarker =
-
-                    openMarker;
-
-
-                requestAnimationFrame(
-
+                setTimeout(
                     function(){
-
-                        if(
-
-                            openMarker &&
-
-                            wildlifeLayer.hasLayer(
-
-                                openMarker
-
-                            )
-
-                        ){
-
-                            /*
-                             * Only reopen if Leaflet actually
-                             * lost the popup during refresh.
-                             */
-
+                        try{
                             if(
-
-                                !openMarker.isPopupOpen()
-
+                                !popupMarker.isPopupOpen()
                             ){
-
-                                openMarker.openPopup();
-
+                                popupMarker.openPopup();
                             }
 
+                            window.activeWildlifePopupId =
+                                openWildlifePopupId;
+
+                            window.activeWildlifePopupMarker =
+                                popupMarker;
                         }
-
-                    }
-
+                        catch(err){
+                            console.warn(
+                                "⚠️ Wildlife popup restore failed:",
+                                err
+                            );
+                        }
+                    },
+                    0
                 );
-
             }
-
             else{
-
-                /*
-                 * The previously opened marker genuinely no
-                 * longer exists / expired.
-                 */
-
                 window.activeWildlifePopupId =
-
                     null;
-
 
                 window.activeWildlifePopupMarker =
-
                     null;
-
             }
-
         }
 
-
         // =====================================================
-        // SUMMARY
+        // 🐅 FINAL WILDLIFE STATE
         // =====================================================
 
         console.log(
-
-            "🐅 Wildlife markers on map:",
-
+            "🐅 Sighting markers synchronized:",
             Object.keys(
-
                 window.wildlifeMarkers
-
             ).length
-
         );
 
-
-        // =====================================================
-        // RETURN
-        // =====================================================
+        console.log(
+            "🐅 Wildlife cache:",
+            Object.keys(
+                window.wildlifeCache
+            ).length
+        );
 
         return wildlife;
 
     }
-
-
     catch(err){
-
         console.error(
-
-            "❌ loadWildlifeSightings failed:",
-
+            "❌ Wildlife sightings load failed:",
             err
-
         );
 
-
-        /*
-         * Do NOT destroy the currently displayed popup on
-         * a refresh failure.
-         */
-
         return [];
-
     }
-
 }
     
       
@@ -60452,42 +59763,196 @@ async function startWildlifeListener(){
         // START LISTENER
         // =================================================
 
-        window.wildlifeListener =
+// =================================================
+// START WILDLIFE REALTIME LISTENER
+// =================================================
 
-            onSnapshot(
+window.wildlifeListener =
 
-                collection(
+    onSnapshot(
 
-                    window.db,
+        collection(
+            window.db,
+            "wildlife_sightings"
+        ),
 
-                    "wildlife_sightings"
+        async function(
+            snapshot
+        ){
 
-                ),
+            try{
 
-                async function(){
+                // =============================================
+                // ⚡ PROCESS CHANGED DOCUMENTS ONLY
+                // =============================================
 
-                    try{
+                for(
+                    const change of
+                    snapshot.docChanges()
+                ){
 
-                        await loadWildlifeSightings();
+                    const docSnap =
+                        change.doc;
 
-                    }
 
-                    catch(err){
+                    const data =
+                        docSnap.data() ||
+                        {};
 
-                        console.error(
 
-                            "Wildlife refresh failed",
+                    const normalized =
+                        {
+                            ...data,
 
-                            err
+                            firestore_id:
+                                data.firestore_id ||
+                                docSnap.id
+                        };
 
+
+                    const key =
+                        normalized.firestore_id;
+
+
+                    if(
+                        !key
+                    ){
+
+                        console.warn(
+                            "⚠️ Wildlife realtime document without ID skipped"
                         );
 
+                        continue;
+
                     }
+
+
+                    // =============================================
+                    // 🗑 REMOVED
+                    // =============================================
+
+                    if(
+                        change.type ===
+                        "removed"
+                    ){
+
+                        delete
+                            window.wildlifeCache[
+                                key
+                            ];
+
+
+                        const marker =
+                            window.wildlifeMarkers?.[
+                                key
+                            ];
+
+
+                        if(
+                            marker
+                        ){
+
+                            try{
+
+                                if(
+                                    window.activeWildlifePopupId ===
+                                    key
+                                ){
+
+                                    window.activeWildlifePopupId =
+                                        null;
+
+                                    window.activeWildlifePopupMarker =
+                                        null;
+
+                                }
+
+
+                                wildlifeLayer.removeLayer(
+                                    marker
+                                );
+
+                            }
+                            catch(err){
+
+                                console.warn(
+                                    "⚠️ Wildlife marker removal failed:",
+                                    key,
+                                    err
+                                );
+
+                            }
+
+
+                            delete
+                                window.wildlifeMarkers[
+                                    key
+                                ];
+
+                        }
+
+
+                        console.log(
+                            "🗑 Wildlife removed:",
+                            key
+                        );
+
+
+                        continue;
+
+                    }
+
+
+                    // =============================================
+                    // 💾 ADD / MODIFY → CACHE
+                    // =============================================
+
+                    window.wildlifeCache[
+                        key
+                    ] =
+                        {
+                            ...normalized
+                        };
+
+
+                    // =============================================
+                    // ⚡ EXISTING RENDERER
+                    // ------------------------------------------------
+                    // Pass ONLY this changed document.
+                    //
+                    // loadWildlifeSightings() now detects that
+                    // realtimeWildlife is an array and therefore
+                    // DOES NOT call getDocs().
+                    // =============================================
+
+                    await loadWildlifeSightings(
+                        [
+                            normalized
+                        ]
+                    );
+
+
+                    console.log(
+                        "⚡ Wildlife realtime:",
+                        change.type,
+                        key
+                    );
 
                 }
 
-            );
+            }
+            catch(err){
 
+                console.error(
+                    "❌ Wildlife realtime processing failed:",
+                    err
+                );
+
+            }
+
+        }
+
+    );
         console.log(
 
             "✅ Wildlife Listener Started"
