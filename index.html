@@ -50203,7 +50203,10 @@ function isMarkerVisible(
 // EXISTING WILDLIFE LOADER
 // ============================================================
 
-async function loadWildlifeSightings(){
+async function loadWildlifeSightings(
+    realtimeWildlife = null
+){
+
 
     /*
      * =========================================================
@@ -50324,17 +50327,17 @@ console.log(
         }
 
 
-        // =====================================================
-        // CACHE
-        // =====================================================
+// =====================================================
+// CACHE
+// =====================================================
 
-        window.wildlifeMarkers =
+window.wildlifeMarkers =
+    window.wildlifeMarkers ||
+    {};
 
-            window.wildlifeMarkers ||
-
-            {};
-
-
+window.wildlifeCache =
+    window.wildlifeCache ||
+    {};
         // =====================================================
         // EXPIRED CACHE
         // =====================================================
@@ -50539,24 +50542,30 @@ const snapshot =
             [];
 
 
-        snapshot.forEach(
+snapshot.forEach(
+    doc => {
 
-            doc => {
+        const data =
+            doc.data() ||
+            {};
 
-                const data =
+        data.firestore_id =
+            data.firestore_id ||
+            doc.id;
 
-                    doc.data() ||
+        // =====================================================
+        // 💾 WILDLIFE CACHE
+        // -----------------------------------------------------
+        // Initial/full 24-hour Firestore read populates cache.
+        // Historical Wildlife documents are NOT downloaded.
+        // =====================================================
 
-                    {};
-
-
-                data.firestore_id =
-
-                    data.firestore_id ||
-
-                    doc.id;
-
-
+        window.wildlifeCache[
+            data.firestore_id
+        ] =
+            {
+                ...data
+            };
                 // ============================================
                 // SKIP INVALID
                 // ============================================
