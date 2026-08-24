@@ -46379,16 +46379,12 @@ const expiredSet =
 //     → process changed documents only
 // =====================================================
 
-const {
-  collection,
-  getDocs
-} = window.fb;
-
 const db =
   window.db;
 
 let data = [];
-
+window.sightingsLoadedFromIDB =
+    false;
 
 // =====================================================
 // ⚡ REALTIME DATA SUPPLIED
@@ -46411,101 +46407,210 @@ if(
 
 
 // =====================================================
-// 📥 INITIAL / MANUAL FULL READ
+// 📥 INITIAL / MANUAL LOAD
 // -----------------------------------------------------
-// Existing callers remain fully compatible.
+//
+// NEW FLOW:
+//
+// IDB
+//   ↓
+// CACHE HIT → render immediately
+//
+// CACHE MISS
+//   ↓
+// DO NOT call getDocs()
+//   ↓
+// wait for startSightingsRealtime()
+//   ↓
+// Firestore initial snapshot
+//
+// IMPORTANT:
+// Existing realtimeData flow above remains untouched.
 // =====================================================
 
 else{
 
     console.log(
-      "🔥 Loading elephant_sightings from Firestore..."
+        "⚡ Elephant sightings → checking IDB..."
     );
 
-    const snapshot =
-      await getDocs(
-        collection(
-          db,
-          "elephant_sightings"
-        )
-      );
 
-    snapshot.forEach(
-  function(docSnap){
+    // =================================================
+    // 💾 LOAD IDB CACHE
+    // =================================================
 
-    const d =
-      docSnap.data() ||
-      {};
-
-    // =====================================================
-    // 🗂 INITIAL FULL-READ CACHE
-    // -----------------------------------------------------
-    // Keep the complete Firestore snapshot in the same
-    // cache used by the realtime listener.
-    //
-    // IMPORTANT:
-    // This does NOT change the rendering flow.
-    // loadSightings() will still process "data" below.
-    // =====================================================
-
-    const normalized = {
-
-      ...d,
-
-      firestore_id:
-        d.firestore_id ||
-        docSnap.id
-
-    };
+    let cachedSightings = [];
 
 
-    // =====================================================
-    // 🔑 SAME CANONICAL KEY USED BY REALTIME
-    // =====================================================
+    try{
 
-    const cacheKey =
-      String(
-        normalized.sighting_id ||
-        normalized.id ||
-        normalized.firestore_id ||
-        docSnap.id ||
-        ""
-      ).trim();
+        if(
+            typeof loadElephantSightingsFromIDB ===
+            "function"
+        ){
 
+            cachedSightings =
+                await loadElephantSightingsFromIDB();
 
-    // =====================================================
-    // 💾 STORE INITIAL DOCUMENT IN REALTIME CACHE
-    // =====================================================
+        }
 
-    if(
-      cacheKey
-    ){
+        else{
 
-      window.sightingsCache[
-        cacheKey
-      ] =
-        normalized;
+            console.warn(
+                "⚠ loadElephantSightingsFromIDB() unavailable"
+            );
+
+        }
+
+    }
+
+    catch(err){
+
+        console.warn(
+            "⚠ Elephant sightings IDB load failed:",
+            err
+        );
+
+        cachedSightings = [];
 
     }
 
 
-    // =====================================================
-    // EXISTING LOAD / RENDER PIPELINE
-    // =====================================================
+    // =================================================
+    // 🗂 IDB CACHE HIT
+    // =================================================
 
-    data.push(
-      normalized
-    );
+if(
 
-  }
-);
+    Array.isArray(
+        cachedSightings
+    ) &&
+
+    cachedSightings.length > 0
+
+){
+
+    window.sightingsLoadedFromIDB =
+        true;
+
     console.log(
-      "🐘 Firestore sightings loaded:",
-      data.length
+        "⚡ ELEPHANT SIGHTINGS → IDB CACHE HIT:",
+        cachedSightings.length
     );
+        // =================================================
+        // ENSURE MEMORY CACHE
+        // =================================================
+
+        window.sightingsCache =
+            window.sightingsCache ||
+            {};
+
+
+        // =================================================
+        // IDB → MEMORY → EXISTING RENDER PIPELINE
+        // =================================================
+
+        cachedSightings.forEach(
+
+            function(
+                sighting
+            ){
+
+                if(
+                    !sighting
+                ){
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // CANONICAL KEY
+                // =================================================
+
+                const cacheKey =
+                    String(
+
+                        sighting.sighting_id ||
+
+                        sighting.id ||
+
+                        sighting.firestore_id ||
+
+                        ""
+
+                    ).trim();
+
+
+                if(
+                    !cacheKey
+                ){
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // MEMORY CACHE
+                // =================================================
+
+                window.sightingsCache[
+                    cacheKey
+                ] =
+                    sighting;
+
+
+                // =================================================
+                // EXISTING RENDER PIPELINE
+                // =================================================
+
+                data.push(
+                    sighting
+                );
+
+            }
+
+        );
+
+
+        console.log(
+            "🐘 Elephant sightings loaded from IDB:",
+            data.length
+        );
+
+    }
+
+
+    // =================================================
+    // 📭 IDB CACHE MISS
+    // =================================================
+    //
+    // IMPORTANT:
+    //
+    // NO getDocs()
+    //
+    // Firestore synchronization is handled by
+    // startSightingsRealtime().
+    //
+    // Its initial snapshot will populate the cache.
+    // =================================================
+
+    else{
+
+        console.log(
+            "📭 ELEPHANT SIGHTINGS → IDB CACHE MISS"
+        );
+
+
+        console.log(
+            "☁️ Waiting for realtime Firestore synchronization..."
+        );
+
+    }
 
 }
-
 // =====================================================
 // CURRENT TIME
 // =====================================================
@@ -48833,9 +48938,9 @@ marker.on(
 // =====================================================
 
 if(
-  !Array.isArray(realtimeData)
+    !Array.isArray(realtimeData) &&
+    window.sightingsLoadedFromIDB !== true
 ){
-
   console.log(
     "🧹 Full-read marker cleanup active"
   );
@@ -49123,68 +49228,155 @@ async function startSightingsRealtime(){
 
 
                             // =============================================
-                            // 🗑 REMOVED
-                            // =============================================
+// 🗑 REMOVED
+// =============================================
 
-                            if(
-                                change.type ===
-                                "removed"
-                            ){
+if(
+    change.type ===
+    "removed"
+){
 
-                                delete
-                                    window.sightingsCache[
-                                        key
-                                    ];
+    // =================================================
+    // 💾 REMOVE FROM IDB
+    // =================================================
 
+    if(
+        typeof removeElephantSightingFromIDB ===
+            "function"
+    ){
 
-                                window.removeSightingMarker(
-                                    key
-                                );
+        try{
 
+            await removeElephantSightingFromIDB(
+                key
+            );
 
-                                console.log(
-                                    "🗑 Sighting removed:",
-                                    key
-                                );
+            console.log(
+                "🗑 Elephant sighting removed from IDB:",
+                key
+            );
 
+        }
+        catch(idbErr){
 
-                                continue;
+            console.warn(
+                "⚠ Elephant sighting IDB delete failed:",
+                key,
+                idbErr
+            );
 
-                            }
+        }
 
-
-                            // =============================================
-                            // ➕ ADDED / ✏ MODIFIED
-                            // =============================================
-
-                            const d =
-                                docSnap.data() ||
-                                {};
-
-
-                            const normalized =
-                            {
-
-                                ...d,
-
-                                firestore_id:
-                                    d.firestore_id ||
-                                    docSnap.id
-
-                            };
+    }
 
 
-                            window.sightingsCache[
-                                key
-                            ] =
-                                normalized;
+    // =================================================
+    // 🧠 REMOVE FROM MEMORY
+    // =================================================
+
+    if(
+        window.sightingsCache
+    ){
+
+        delete
+            window.sightingsCache[
+                key
+            ];
+
+    }
 
 
-                            changedData.push(
-                                normalized
-                            );
+    // =================================================
+    // 🗺 REMOVE MARKER
+    // =================================================
+
+    window.removeSightingMarker(
+        key
+    );
 
 
+    console.log(
+        "🗑 Sighting removed:",
+        key
+    );
+
+
+    continue;
+}
+
+// =============================================
+// ➕ ADDED / ✏ MODIFIED
+// =============================================
+
+const d =
+    docSnap.data() ||
+    {};
+
+const normalized =
+{
+    ...d,
+
+    firestore_id:
+        d.firestore_id ||
+        docSnap.id
+};
+
+
+// =================================================
+// 💾 IDB → AUTHORITATIVE LOCAL CACHE WRITE
+// =================================================
+
+if(
+    typeof upsertElephantSightingToIDB ===
+        "function"
+){
+
+    try{
+
+        await upsertElephantSightingToIDB(
+            normalized
+        );
+
+        console.log(
+            "💾 Elephant sighting synced to IDB:",
+            key
+        );
+
+    }
+    catch(idbErr){
+
+        console.warn(
+            "⚠ Elephant sighting IDB upsert failed:",
+            key,
+            idbErr
+        );
+
+    }
+
+}
+
+
+// =================================================
+// 🧠 MEMORY CACHE
+// =================================================
+
+window.sightingsCache =
+    window.sightingsCache ||
+    {};
+
+window.sightingsCache[
+    key
+] =
+    normalized;
+
+
+// =================================================
+// ⚡ REALTIME RENDER DELTA
+// =================================================
+
+changedData.push(
+    normalized
+);
                         }
 
 
