@@ -44285,8 +44285,868 @@ async function removeIrregularityFromIDB(
 
 }
 
+// ============================================================
+// 🚨 HEC — INDEXEDDB CACHE
+// ============================================================
+//
+// DESIGN:
+//
+// IDB FIRST
+//     ↓
+// LAST 24 HOURS ONLY
+//     ↓
+// Firestore 24h listener
+//     ↓
+// realtime ADD / MODIFY / REMOVE
+//
+// IMPORTANT:
+// HEC cache is role/user scoped.
+// ADMIN and VILLAGER must never share
+// the same operational cache.
+// ============================================================
+
 
 // ============================================================
+// 🔐 HEC IDB CACHE VERSION
+// ============================================================
+
+window.GG_HEC_IDB_CACHE_VERSION =
+    1;
+
+
+// ============================================================
+// 🔐 HEC CACHE KEY
+// ------------------------------------------------------------
+// ADMIN:
+//     role-scoped
+//
+// VILLAGER:
+//     role + user-scoped
+//
+// This prevents one user's HEC cache from
+// being displayed to another user.
+// ============================================================
+
+function getHECIDBCacheKey(){
+
+    const role =
+
+        String(
+
+            window.userProfile?.role ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase();
+
+
+    const userId =
+
+        String(
+
+            window.userProfile?.uid ||
+
+            window.userProfile?.userId ||
+
+            window.userProfile?.email ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toLowerCase();
+
+
+    return (
+
+        "gg_hec_incidents_" +
+
+        "v" +
+
+        window.GG_HEC_IDB_CACHE_VERSION +
+
+        "_" +
+
+        role +
+
+        "_" +
+
+        (
+
+            role === "VILLAGER"
+
+                ? (
+                    userId ||
+                    "anonymous"
+                )
+
+                : "admin"
+
+        )
+
+    );
+
+}
+
+
+// ============================================================
+// 🕒 HEC CREATED DATE
+// ------------------------------------------------------------
+// HEC operational age is based on createdAt.
+// Firestore normally returns a Timestamp,
+// but string/Date values are also handled safely.
+// ============================================================
+
+function getHECIncidentCreatedTime(
+    incident
+){
+
+    if(
+        !incident
+    ){
+
+        return null;
+
+    }
+
+
+    const value =
+
+        incident.createdAt ||
+
+        incident.created_at ||
+
+        null;
+
+
+    if(
+        !value
+    ){
+
+        return null;
+
+    }
+
+
+    try{
+
+        if(
+            typeof value.toDate ===
+            "function"
+        ){
+
+            const ms =
+                value
+                    .toDate()
+                    .getTime();
+
+
+            return Number.isFinite(ms)
+                ? ms
+                : null;
+
+        }
+
+
+        if(
+            value instanceof Date
+        ){
+
+            const ms =
+                value.getTime();
+
+
+            return Number.isFinite(ms)
+                ? ms
+                : null;
+
+        }
+
+
+        if(
+            typeof value ===
+            "number"
+        ){
+
+            return Number.isFinite(value)
+                ? value
+                : null;
+
+        }
+
+
+        const parsed =
+            new Date(
+                value
+            )
+            .getTime();
+
+
+        return Number.isFinite(parsed)
+            ? parsed
+            : null;
+
+    }
+    catch(err){
+
+        return null;
+
+    }
+
+}
+
+
+// ============================================================
+// 🕒 HEC 24-HOUR ELIGIBILITY
+// ============================================================
+
+function isHECIncidentWithinLast24Hours(
+    incident
+){
+
+    const createdMs =
+
+        getHECIncidentCreatedTime(
+            incident
+        );
+
+
+    if(
+        !Number.isFinite(
+            createdMs
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    return (
+
+        createdMs >=
+
+        (
+            Date.now() -
+            (
+                24 *
+                60 *
+                60 *
+                1000
+            )
+        )
+
+    );
+
+}
+
+
+// ============================================================
+// 🚨 HEC RESOLVED CHECK
+// ============================================================
+
+function isHECIncidentResolved(
+    incident
+){
+
+    return (
+
+        String(
+
+            incident?.status ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase()
+
+        ===
+
+        "RESOLVED"
+
+    );
+
+}
+
+
+// ============================================================
+// 🚨 HEC CACHE ELIGIBILITY
+// ------------------------------------------------------------
+// Only operational, non-resolved, last-24-hour
+// records are retained.
+// ============================================================
+
+function isHECIncidentCacheEligible(
+    incident
+){
+
+    if(
+        !incident
+    ){
+
+        return false;
+
+    }
+
+
+    if(
+        isHECIncidentResolved(
+            incident
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    return (
+
+        isHECIncidentWithinLast24Hours(
+            incident
+        )
+
+    );
+
+}
+
+
+// ============================================================
+// 💾 SAVE COMPLETE HEC CACHE
+// ============================================================
+
+async function saveHECIncidentsToIDB(
+    data
+){
+
+    try{
+
+        if(
+
+            !window.idbKeyval ||
+
+            typeof window.idbKeyval.set !==
+            "function"
+
+        ){
+
+            console.warn(
+                "⚠ HEC IDB unavailable"
+            );
+
+            return false;
+
+        }
+
+
+        const validData =
+
+            (
+
+                Array.isArray(data)
+
+                    ? data
+
+                    : []
+
+            )
+
+            .filter(
+                isHECIncidentCacheEligible
+            );
+
+
+        await window.idbKeyval.set(
+
+            getHECIDBCacheKey(),
+
+            validData
+
+        );
+
+
+        await window.idbKeyval.set(
+
+            getHECIDBCacheKey() +
+            "_META",
+
+            {
+
+                savedAt:
+                    Date.now(),
+
+                count:
+                    validData.length,
+
+                version:
+                    window.GG_HEC_IDB_CACHE_VERSION
+
+            }
+
+        );
+
+
+        console.log(
+
+            "💾 HEC SAVED TO IDB:",
+
+            validData.length
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ HEC IDB SAVE FAILED:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// ⚡ LOAD HEC CACHE
+// ============================================================
+
+async function loadHECIncidentsFromIDB(){
+
+    try{
+
+        if(
+
+            !window.idbKeyval ||
+
+            typeof window.idbKeyval.get !==
+            "function"
+
+        ){
+
+            console.warn(
+                "⚠ HEC IDB unavailable"
+            );
+
+            return [];
+
+        }
+
+
+        // ----------------------------------------------------
+        // WAIT FOR IDB INITIALIZATION
+        // ----------------------------------------------------
+
+        if(
+
+            window.__GG_IDB_READY__ !==
+            true &&
+
+            window.__GG_IDB_READY_PROMISE__
+
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        const cached =
+
+            await window.idbKeyval.get(
+
+                getHECIDBCacheKey()
+
+            );
+
+
+        if(
+
+            !Array.isArray(cached) ||
+
+            cached.length === 0
+
+        ){
+
+            console.log(
+
+                "📭 HEC IDB CACHE MISS"
+
+            );
+
+            return [];
+
+        }
+
+
+        // ----------------------------------------------------
+        // REMOVE OLD / RESOLVED DOCUMENTS
+        // ----------------------------------------------------
+
+        const fresh =
+
+            cached.filter(
+                isHECIncidentCacheEligible
+            );
+
+
+        console.log(
+
+            "⚡ HEC IDB:",
+
+            {
+
+                cached:
+                    cached.length,
+
+                fresh:
+                    fresh.length
+
+            }
+
+        );
+
+
+        // ----------------------------------------------------
+        // CLEAN OLD DOCUMENTS FROM CACHE
+        // ----------------------------------------------------
+
+        if(
+
+            fresh.length !==
+            cached.length
+
+        ){
+
+            await saveHECIncidentsToIDB(
+                fresh
+            );
+
+        }
+
+
+        return fresh;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ HEC IDB READ FAILED:",
+
+            err
+
+        );
+
+        return [];
+
+    }
+
+}
+
+
+// ============================================================
+// 🔄 UPSERT ONE HEC INCIDENT
+// ============================================================
+
+async function upsertHECIncidentToIDB(
+    incident
+){
+
+    try{
+
+        if(
+            !incident
+        ){
+
+            return;
+
+        }
+
+
+        const key =
+
+            String(
+
+                incident.firestore_id ||
+
+                incident.incidentId ||
+
+                ""
+
+            )
+
+            .trim();
+
+
+        if(
+            !key
+        ){
+
+            return;
+
+        }
+
+
+        const cached =
+
+            await window.idbKeyval.get(
+
+                getHECIDBCacheKey()
+
+            );
+
+
+        const list =
+
+            Array.isArray(cached)
+
+                ? cached
+
+                : [];
+
+
+        const index =
+
+            list.findIndex(
+                function(item){
+
+                    return (
+
+                        String(
+
+                            item.firestore_id ||
+
+                            item.incidentId ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        ===
+
+                        key
+
+                    );
+
+                }
+            );
+
+
+        // ----------------------------------------------------
+        // RESOLVED / OUTSIDE 24H
+        // ----------------------------------------------------
+
+        if(
+
+            !isHECIncidentCacheEligible(
+                incident
+            )
+
+        ){
+
+            if(
+                index >= 0
+            ){
+
+                list.splice(
+                    index,
+                    1
+                );
+
+            }
+
+
+            await saveHECIncidentsToIDB(
+                list
+            );
+
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // UPSERT
+        // ----------------------------------------------------
+
+        if(
+            index >= 0
+        ){
+
+            list[index] =
+                incident;
+
+        }
+        else{
+
+            list.push(
+                incident
+            );
+
+        }
+
+
+        await saveHECIncidentsToIDB(
+            list
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ HEC IDB UPSERT FAILED:",
+
+            err
+
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 🗑 REMOVE ONE HEC INCIDENT
+// ============================================================
+
+async function removeHECIncidentFromIDB(
+    key
+){
+
+    try{
+
+        if(
+
+            !window.idbKeyval ||
+
+            typeof window.idbKeyval.get !==
+            "function"
+
+        ){
+
+            return;
+
+        }
+
+
+        const cached =
+
+            await window.idbKeyval.get(
+
+                getHECIDBCacheKey()
+
+            );
+
+
+        if(
+            !Array.isArray(cached)
+        ){
+
+            return;
+
+        }
+
+
+        const target =
+
+            String(
+                key ||
+                ""
+            )
+
+            .trim();
+
+
+        if(
+            !target
+        ){
+
+            return;
+
+        }
+
+
+        const filtered =
+
+            cached.filter(
+                function(item){
+
+                    return (
+
+                        String(
+
+                            item.firestore_id ||
+
+                            item.incidentId ||
+
+                            ""
+
+                        )
+
+                        .trim()
+
+                        !==
+
+                        target
+
+                    );
+
+                }
+            );
+
+
+        await saveHECIncidentsToIDB(
+            filtered
+        );
+
+
+        console.log(
+
+            "🗑 HEC REMOVED FROM IDB:",
+
+            target
+
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ HEC IDB REMOVE FAILED:",
+
+            err
+
+        );
+
+    }
+
+}// ============================================================
 // 💾 UPSERT ONE IRREGULARITY INTO IDB
 // ============================================================
 
