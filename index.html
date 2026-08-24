@@ -67534,17 +67534,66 @@ function loadStaff(){
     return;
   }
 
-  const {
+// ======================================================
+// 🔥 LOAD STAFF — LAST 24 HOURS ONLY
+// ------------------------------------------------------
+// Firestore itself filters the operational live_staff
+// source.
+//
+// Older than 24 hours:
+//     NOT QUERIED
+//
+// Last 24 hours:
+//     QUERIED
+//
+// Existing listener / docChanges() architecture remains
+// completely unchanged.
+// ======================================================
+
+const {
     collection,
-    onSnapshot
-  } = window.fb;
+    onSnapshot,
+    query,
+    where
+} = window.fb;
 
- const liveRef =
-  collection(
-    window.db,
-    "live_staff"
-  );
 
+// ======================================================
+// ⏱ 24-HOUR STAFF WINDOW
+// ======================================================
+
+const cutoffTime =
+    new Date(
+        Date.now() -
+        (24 * 60 * 60 * 1000)
+    ).toISOString();
+
+
+// ======================================================
+// 🔥 LIVE STAFF QUERY
+// ======================================================
+
+const liveRef =
+    query(
+        collection(
+            window.db,
+            "live_staff"
+        ),
+
+        where(
+            "time",
+            ">=",
+            cutoffTime
+        )
+    );
+
+console.log(
+    "🕒 LIVE STAFF QUERY WINDOW:",
+    {
+        cutoffTime,
+        hours: 24
+    }
+);
 // ==========================================
 // 🔥 PREVENT DUPLICATE LISTENERS
 // ==========================================
