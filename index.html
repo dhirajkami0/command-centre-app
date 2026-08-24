@@ -53205,12 +53205,564 @@ async function loadWildlifeSightings(
                     ? getWildlifeEmoji(s.animal)
                     : "🐾";
 
-            // =================================================
-            // BUILD POPUP HTML
-            // =================================================
+// =================================================
+// 🐅 BUILD POPUP HTML — FINAL SIGHTING POPUP
+// =================================================
 
-            const popup =
-                `
+/* =================================================
+   🔒 SAFE TEXT
+   Prevent popup HTML from breaking because of
+   unexpected Firestore values.
+================================================= */
+
+function popupSafe(value, fallback = "-") {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+        return fallback;
+    }
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =================================================
+   🆔 SIGHTING ID
+================================================= */
+
+const sightingId =
+    popupSafe(
+        s?.sighting_id ||
+        s?.sightingId ||
+        s?.id ||
+        id
+    );
+
+
+/* =================================================
+   📅 FIRESTORE DATE → MILLISECONDS
+================================================= */
+
+function getSightingDateMs(value) {
+
+    if (!value) {
+        return null;
+    }
+
+    // Firestore Timestamp
+    if (
+        value &&
+        typeof value.toDate === "function"
+    ) {
+
+        const date =
+            value.toDate();
+
+        const ms =
+            date.getTime();
+
+        return Number.isFinite(ms)
+            ? ms
+            : null;
+    }
+
+
+    // Firestore timestamp object
+    if (
+        value &&
+        Number.isFinite(
+            Number(value.seconds)
+        )
+    ) {
+
+        const ms =
+            Number(value.seconds) * 1000;
+
+        return Number.isFinite(ms)
+            ? ms
+            : null;
+    }
+
+
+    // JavaScript Date
+    if (
+        value instanceof Date
+    ) {
+
+        const ms =
+            value.getTime();
+
+        return Number.isFinite(ms)
+            ? ms
+            : null;
+    }
+
+
+    // String / number
+    if (
+        typeof value === "string" ||
+        typeof value === "number"
+    ) {
+
+        const parsed =
+            new Date(value).getTime();
+
+        return Number.isFinite(parsed)
+            ? parsed
+            : null;
+    }
+
+
+    return null;
+}
+
+
+/* =================================================
+   📅 SIGHTING DATETIME
+   AUTHORITATIVE FIELD:
+   sighting_datetime
+================================================= */
+
+const sightingDateMs =
+    getSightingDateMs(
+        s?.sighting_datetime
+    );
+
+
+/* =================================================
+   📅 FORMAT DATETIME
+================================================= */
+
+function formatSightingDateTime(ms) {
+
+    if (
+        !Number.isFinite(ms)
+    ) {
+        return "-";
+    }
+
+    const d =
+        new Date(ms);
+
+    const day =
+        d.getDate();
+
+    const month =
+        d.getMonth() + 1;
+
+    const year =
+        d.getFullYear();
+
+    let hours =
+        d.getHours();
+
+    const minutes =
+        String(
+            d.getMinutes()
+        ).padStart(
+            2,
+            "0"
+        );
+
+    const seconds =
+        String(
+            d.getSeconds()
+        ).padStart(
+            2,
+            "0"
+        );
+
+    const ampm =
+        hours >= 12
+            ? "pm"
+            : "am";
+
+    hours =
+        hours % 12 || 12;
+
+    return (
+        `${day}/${month}/${year}, ` +
+        `${hours}:${minutes}:${seconds} ${ampm}`
+    );
+}
+
+
+const sightingDateTime =
+    formatSightingDateTime(
+        sightingDateMs
+    );
+
+
+/* =================================================
+   ⏱ AGE OF SIGHTING
+================================================= */
+
+function formatSightingAge(ms) {
+
+    if (
+        !Number.isFinite(ms)
+    ) {
+        return "-";
+    }
+
+    const ageMs =
+        Math.max(
+            0,
+            Date.now() - ms
+        );
+
+    const totalMinutes =
+        Math.floor(
+            ageMs / 60000
+        );
+
+    const days =
+        Math.floor(
+            totalMinutes / 1440
+        );
+
+    const hours =
+        Math.floor(
+            (totalMinutes % 1440) / 60
+        );
+
+    const minutes =
+        totalMinutes % 60;
+
+
+    if (days > 0) {
+
+        return (
+            `${days} day${days !== 1 ? "s" : ""} ` +
+            `${hours} hr ${minutes} min`
+        );
+
+    }
+
+
+    if (hours > 0) {
+
+        return (
+            `${hours} hr ${minutes} min`
+        );
+
+    }
+
+
+    return `${minutes} min`;
+}
+
+
+const sightingAge =
+    formatSightingAge(
+        sightingDateMs
+    );
+
+
+/* =================================================
+   🐅 BASIC WILDLIFE DATA
+
+   AUTHORITATIVE FIRESTORE FIELDS
+================================================= */
+
+const sightingCount =
+    popupSafe(
+        s?.count
+    );
+
+const sightingSex =
+    popupSafe(
+        s?.sex
+    );
+
+const sightingAgeValue =
+    popupSafe(
+        s?.age
+    );
+
+const behaviour =
+    popupSafe(
+        s?.behaviour
+    );
+
+const direction =
+    popupSafe(
+        s?.direction
+    );
+
+
+/* =================================================
+   👤 SIGHTED BY
+
+   AUTHORITATIVE FIELD:
+   leader
+================================================= */
+
+const sightedBy =
+    popupSafe(
+        s?.leader
+    );
+
+
+/* =================================================
+   📞 PHONE
+
+   AUTHORITATIVE FIELD:
+   phone
+================================================= */
+
+const phone =
+    s?.phone !== null &&
+    s?.phone !== undefined &&
+    String(s.phone).trim() !== ""
+        ? String(s.phone).trim()
+        : "";
+
+
+/* =================================================
+   ⚠️ OPTIONAL LOCATION RISK
+
+   DO NOT INVENT DATA.
+
+   Only show if Firestore actually contains
+   a usable value.
+================================================= */
+
+const locationRisk =
+    s?.location_risk ??
+    s?.locationRisk ??
+    s?.risk_level ??
+    s?.risk ??
+    null;
+
+
+/* =================================================
+   ⚠️ OPTIONAL CONFLICT HISTORY
+
+   DO NOT confuse this with:
+   conflict: true/false
+
+   conflict_history must actually exist.
+================================================= */
+
+const conflictHistory =
+    s?.conflict_history ??
+    s?.conflictHistory ??
+    s?.conflict_count ??
+    s?.conflictCount ??
+    null;
+
+
+/* =================================================
+   ⚠️ RISK HTML
+
+   Entire row hidden when information does not exist.
+================================================= */
+
+const hasLocationRisk =
+    locationRisk !== null &&
+    locationRisk !== undefined &&
+    String(locationRisk).trim() !== "";
+
+
+const hasConflictHistory =
+    conflictHistory !== null &&
+    conflictHistory !== undefined &&
+    String(conflictHistory).trim() !== "";
+
+
+const riskHtml =
+    (
+        hasLocationRisk ||
+        hasConflictHistory
+    )
+        ?
+        `
+        <div
+            style="
+                margin-bottom:6px;
+                font-weight:600;
+            "
+        >
+
+            ⚠️ Location Risk:
+
+            ${
+                hasLocationRisk
+                    ? `
+                        <span>
+                            ${popupSafe(locationRisk)}
+                        </span>
+                      `
+                    : ""
+            }
+
+            ${
+                hasConflictHistory
+                    ? `
+                        <span
+                            style="
+                                font-weight:400;
+                            "
+                        >
+                            ${
+                                hasLocationRisk
+                                    ? " • "
+                                    : ""
+                            }
+                            Conflict history:
+                            ${popupSafe(conflictHistory)}
+                        </span>
+                      `
+                    : ""
+            }
+
+        </div>
+        `
+        :
+        "";
+
+
+/* =================================================
+   📍 GIS LOCATION
+
+   AUTHORITATIVE FIRESTORE FIELDS
+================================================= */
+
+const compartment =
+    popupSafe(
+        s?.gis_compartment
+    );
+
+const beat =
+    popupSafe(
+        s?.gis_beat
+    );
+
+const range =
+    popupSafe(
+        s?.gis_range
+    );
+
+
+/* =================================================
+   🛰 GPS
+
+   AUTHORITATIVE FIRESTORE FIELDS:
+   lat
+   lon
+================================================= */
+
+const gpsLat =
+    Number(
+        s?.lat
+    );
+
+const gpsLon =
+    Number(
+        s?.lon
+    );
+
+
+const validGPS =
+    Number.isFinite(gpsLat) &&
+    Number.isFinite(gpsLon);
+
+
+const gpsText =
+    validGPS
+        ?
+        `${gpsLat.toFixed(6)}, ${gpsLon.toFixed(6)}`
+        :
+        "-";
+
+
+/* =================================================
+   🧭 NAVIGATION
+
+   Google Maps navigation only when GPS is valid.
+================================================= */
+
+const navigateButton =
+    validGPS
+        ?
+        `
+        <a
+            href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(gpsLat + "," + gpsLon)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            onclick="event.stopPropagation();"
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                gap:6px;
+                margin-top:8px;
+                padding:7px 10px;
+                background:#2e7d32;
+                color:#fff;
+                border-radius:5px;
+                text-decoration:none;
+                font-size:11px;
+                font-weight:700;
+                box-sizing:border-box;
+            "
+        >
+            🧭 Navigate to Sighting
+        </a>
+        `
+        :
+        "";
+
+
+/* =================================================
+   📞 PHONE HTML
+================================================= */
+
+const phoneHtml =
+    phone
+        ?
+        `
+        <div
+            style="
+                margin-bottom:9px;
+            "
+        >
+
+            📞
+
+            <a
+                href="tel:${encodeURIComponent(phone)}"
+                onclick="event.stopPropagation();"
+                style="
+                    color:#00695c;
+                    text-decoration:none;
+                    font-weight:700;
+                "
+            >
+                ${popupSafe(phone)}
+            </a>
+
+        </div>
+        `
+        :
+        "";
+
+
+/* =================================================
+   🐅 FINAL POPUP
+================================================= */
+
+const popup =
+`
 <div
     class="gg-wildlife-popup"
     style="
@@ -53218,7 +53770,6 @@ async function loadWildlifeSightings(
         max-width:none;
         max-height:none;
         overflow:visible;
-        overflow-x:visible;
         padding-right:0;
         box-sizing:border-box;
         font-family:
@@ -53233,55 +53784,33 @@ async function loadWildlifeSightings(
     "
 >
 
-    <!-- ============================================= -->
-    <!-- WILDLIFE HEADER -->
-    <!-- ============================================= -->
+
+    <!-- ========================================= -->
+    <!-- 🆔 SIGHTING ID -->
+    <!-- ========================================= -->
 
     <div
         style="
-            background:#2e7d32;
-            color:#fff;
-            padding:10px 12px;
-            border-radius:6px 6px 0 0;
-            margin:-13px -19px 12px -19px;
-            font-weight:600;
-            font-size:14px;
-            display:flex;
-            align-items:center;
-            gap:8px;
-            position:sticky;
-            top:0;
-            z-index:20;
+            margin-bottom:9px;
+            font-size:12px;
+            font-weight:700;
+            color:#333;
+            word-break:break-word;
         "
     >
 
-        <span
-            style="
-                font-size:18px;
-            "
-        >
-            ${emoji}
-        </span>
+        🆔 Sighting ID:
 
-        <span
-            style="
-                min-width:0;
-                overflow:hidden;
-                text-overflow:ellipsis;
-                white-space:nowrap;
-            "
-        >
-            ${String(
-                s.animal ||
-                "Wildlife"
-            ).toUpperCase()}
+        <span>
+            ${sightingId}
         </span>
 
     </div>
 
-    <!-- ============================================= -->
-    <!-- WILDLIFE DETAILS -->
-    <!-- ============================================= -->
+
+    <!-- ========================================= -->
+    <!-- 🐅 BASIC DETAILS -->
+    <!-- ========================================= -->
 
     <table
         style="
@@ -53291,115 +53820,12 @@ async function loadWildlifeSightings(
         "
     >
 
-        <!-- STATUS -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                    width:35%;
-                "
-            >
-                <b>Status</b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#2e7d32;
-                    font-weight:600;
-                "
-            >
-                ${
-                    s.status ||
-                    "ACTIVE"
-                }
-            </td>
-
-        </tr>
-
-        <!-- TIME OF SIGHTING -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Time of Sighting
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.time ||
-                    s.sighting_time ||
-                    s.wildlife_time ||
-                    s.observation_time ||
-                    "-"
-                }
-            </td>
-
-        </tr>
-
-        <!-- AGE OF ANIMAL -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Age of Animal Sighting
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.age ||
-                    "-"
-                }
-            </td>
-
-        </tr>
 
         <!-- COUNT -->
 
         <tr
             style="
-                border-bottom:
-                    1px solid #f0f0f0;
+                border-bottom:1px solid #f0f0f0;
             "
         >
 
@@ -53407,148 +53833,10 @@ async function loadWildlifeSightings(
                 style="
                     padding:5px 0;
                     color:#666;
+                    width:38%;
                 "
             >
-                <b>
-                    Count
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.count ??
-                    "-"
-                }
-            </td>
-
-        </tr>
-
-        <!-- SEX / AGE -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Sex / Age
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.sex ||
-                    "-"
-                }
-                /
-                ${
-                    s.age ||
-                    "-"
-                }
-            </td>
-
-        </tr>
-
-        <!-- BEHAVIOUR -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Behaviour
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.behaviour ||
-                    "-"
-                }
-            </td>
-
-        </tr>
-
-        <!-- DIRECTION -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Direction
-                </b>
-            </td>
-
-            <td
-                style="
-                    padding:5px 0;
-                "
-            >
-                ${
-                    s.direction ||
-                    "-"
-                }
-            </td>
-
-        </tr>
-
-        <!-- SIGHTED BY -->
-
-        <tr
-            style="
-                border-bottom:
-                    1px solid #f0f0f0;
-            "
-        >
-
-            <td
-                style="
-                    padding:5px 0;
-                    color:#666;
-                "
-            >
-                <b>
-                    Sighted By
-                </b>
+                <b>Count</b>
             </td>
 
             <td
@@ -53557,23 +53845,17 @@ async function loadWildlifeSightings(
                     font-weight:600;
                 "
             >
-                ${
-                    s.sighted_by ||
-                    s.sightedBy ||
-                    s.staff ||
-                    s.leader ||
-                    "-"
-                }
+                ${sightingCount}
             </td>
 
         </tr>
 
-        <!-- PHONE -->
+
+        <!-- SEX / AGE -->
 
         <tr
             style="
-                border-bottom:
-                    1px solid #f0f0f0;
+                border-bottom:1px solid #f0f0f0;
             "
         >
 
@@ -53583,9 +53865,7 @@ async function loadWildlifeSightings(
                     color:#666;
                 "
             >
-                <b>
-                    Phone
-                </b>
+                <b>Sex / Age</b>
             </td>
 
             <td
@@ -53593,34 +53873,43 @@ async function loadWildlifeSightings(
                     padding:5px 0;
                 "
             >
-                ${
-                    s.phone
-                    ?
-                    `
-                    <a
-                        href="tel:${String(
-                            s.phone
-                        )}"
-                        onclick="
-                            event.stopPropagation();
-                        "
-                        style="
-                            color:#00695c;
-                            text-decoration:none;
-                            font-weight:700;
-                        "
-                    >
-                        ${s.phone}
-                    </a>
-                    `
-                    :
-                    "-"
-                }
+                ${sightingSex}
+                /
+                ${sightingAgeValue}
             </td>
 
         </tr>
 
-        <!-- REMARKS -->
+
+        <!-- BEHAVIOUR -->
+
+        <tr
+            style="
+                border-bottom:1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>Behaviour</b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                "
+            >
+                ${behaviour}
+            </td>
+
+        </tr>
+
+
+        <!-- DIRECTION -->
 
         <tr>
 
@@ -53628,50 +53917,144 @@ async function loadWildlifeSightings(
                 style="
                     padding:5px 0;
                     color:#666;
-                    vertical-align:top;
                 "
             >
-                <b>
-                    Remarks
-                </b>
+                <b>Direction</b>
             </td>
 
             <td
                 style="
                     padding:5px 0;
-                    word-break:break-word;
                 "
             >
-                ${
-                    s.remarks ||
-                    "None"
-                }
+                ${direction}
             </td>
 
         </tr>
 
     </table>
 
-    <!-- ============================================= -->
-    <!-- LOCATION OF SIGHTING -->
-    <!-- ============================================= -->
+
+    <!-- ========================================= -->
+    <!-- 📅 TIME -->
+    <!-- ========================================= -->
+
+    <table
+        style="
+            width:100%;
+            border-collapse:collapse;
+            margin-bottom:8px;
+        "
+    >
+
+        <tr
+            style="
+                border-bottom:1px solid #f0f0f0;
+            "
+        >
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                    width:38%;
+                "
+            >
+                <b>📅 Sighting DateTime</b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                    font-weight:600;
+                "
+            >
+                ${sightingDateTime}
+            </td>
+
+        </tr>
+
+
+        <tr>
+
+            <td
+                style="
+                    padding:5px 0;
+                    color:#666;
+                "
+            >
+                <b>⏱ Age of Sighting</b>
+            </td>
+
+            <td
+                style="
+                    padding:5px 0;
+                    font-weight:600;
+                "
+            >
+                ${sightingAge}
+            </td>
+
+        </tr>
+
+    </table>
+
+
+    <!-- ========================================= -->
+    <!-- 👤 SIGHTED BY -->
+    <!-- ========================================= -->
+
+    <div
+        style="
+            margin-bottom:6px;
+        "
+    >
+
+        <b>👤 Sighted by:</b>
+
+        <span
+            style="
+                font-weight:600;
+            "
+        >
+            ${sightedBy}
+        </span>
+
+    </div>
+
+
+    <!-- ========================================= -->
+    <!-- ⚠️ OPTIONAL RISK / CONFLICT -->
+    <!-- ========================================= -->
+
+    ${riskHtml}
+
+
+    <!-- ========================================= -->
+    <!-- 📞 PHONE -->
+    <!-- ========================================= -->
+
+    ${phoneHtml}
+
+
+    <!-- ========================================= -->
+    <!-- 📍 LOCATION -->
+    <!-- ========================================= -->
 
     <div
         style="
             margin:0 0 8px 0;
-            padding:6px;
+            padding:7px;
             box-sizing:border-box;
             background:#f7fbf7;
             border:1px solid #d7e9d8;
             border-radius:6px;
-            font-size:10px;
-            line-height:1.5;
         "
     >
 
         <div
             style="
-                margin:0 0 5px 0;
+                margin-bottom:6px;
                 color:#1b5e20;
                 font-size:11px;
                 font-weight:700;
@@ -53680,145 +54063,84 @@ async function loadWildlifeSightings(
             📍 Location of Sighting
         </div>
 
-        <!-- DIVISION -->
-
-        <div
-            style="
-                margin-bottom:2px;
-            "
-        >
-            <b>
-                Division:
-            </b>
-            ${
-                s.gis_division ||
-                s.division ||
-                "-"
-            }
-        </div>
-
-        <!-- RANGE -->
-
-        <div
-            style="
-                margin-bottom:2px;
-            "
-        >
-            <b>
-                Range:
-            </b>
-            ${
-                s.gis_range ||
-                s.range ||
-                "-"
-            }
-        </div>
-
-        <!-- BEAT -->
-
-        <div
-            style="
-                margin-bottom:2px;
-            "
-        >
-            <b>
-                Beat:
-            </b>
-            ${
-                s.gis_beat ||
-                s.beat ||
-                "-"
-            }
-        </div>
 
         <!-- COMPARTMENT -->
 
         <div
             style="
-                margin-bottom:2px;
+                margin-bottom:3px;
             "
         >
-            <b>
-                Compartment:
-            </b>
-            ${
-                s.gis_compartment ||
-                s.compartment ||
-                "-"
-            }
+            <b>🌲 Compartment:</b>
+            ${compartment}
         </div>
 
-        <!-- LOCATION -->
+
+        <!-- BEAT -->
 
         <div
             style="
-                margin-bottom:2px;
+                margin-bottom:3px;
             "
         >
-            <b>
-                Location:
-            </b>
-            ${
-                s.resolved_location ||
-                s.nearest_location ||
-                s.nearest_village ||
-                s.village ||
-                "-"
-            }
+            <b>🧭 Beat:</b>
+            ${beat}
         </div>
+
+
+        <!-- RANGE -->
+
+        <div
+            style="
+                margin-bottom:3px;
+            "
+        >
+            <b>🏢 Range:</b>
+            ${range}
+        </div>
+
 
         <!-- GPS -->
 
         <div
             style="
-                margin-top:3px;
+                margin-top:5px;
                 color:#555;
-                font-size:9px;
             "
         >
+
             🛰 GPS:
+
             <b>
-                ${
-                    Number.isFinite(
-                        Number(s.lat)
-                    )
-                    ?
-                    Number(
-                        s.lat
-                    ).toFixed(6)
-                    :
-                    "-"
-                }
-                ,
-                ${
-                    Number.isFinite(
-                        Number(s.lon)
-                    )
-                    ?
-                    Number(
-                        s.lon
-                    ).toFixed(6)
-                    :
-                    "-"
-                }
+                ${gpsText}
             </b>
+
         </div>
+
+
+        <!-- NAVIGATE -->
+
+        ${navigateButton}
 
     </div>
 
-    <!-- ============================================= -->
+
+    <!-- ========================================= -->
     <!-- EXISTING MEDIA -->
-    <!-- ============================================= -->
+    <!-- ========================================= -->
 
     ${
         typeof buildSightingMediaPopup === "function"
-            ? buildSightingMediaPopup(s, id)
+            ? buildSightingMediaPopup(
+                s,
+                id
+            )
             : ""
     }
 
+
 </div>
 `;
-
             // =================================================
             // POPUP OPTIONS
             // =================================================
