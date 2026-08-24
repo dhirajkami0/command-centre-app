@@ -82554,8 +82554,25 @@ async function findProfileWithRetry(
 // ============================================================
 // 🔐 GET PROFILE
 // PHONE-ONLY AUTHENTICATION
-// Firestore → staff_profiles → ACTIVE PROFILE
+//
+// PROFILE SOURCES:
+//
+// 1. staff_profiles
+// 2. villager_profiles
+//
+// STAFF:
+//     staff_profiles → ACTIVE PROFILE
+//
+// VILLAGER:
+//     villager_profiles → ACTIVE PROFILE
+//
+// IMPORTANT:
+//     findProfileWithRetry() remains unchanged.
+//     safeBackend() remains unchanged.
+//     Login flow remains unchanged.
+//
 // ============================================================
+
 async function handleGetProfile(params){
 
   try{
@@ -82568,7 +82585,10 @@ async function handleGetProfile(params){
       String(
         params?.phone || ""
       )
-      .replace(/\D/g, "")
+      .replace(
+        /\D/g,
+        ""
+      )
       .trim();
 
 
@@ -82581,19 +82601,34 @@ async function handleGetProfile(params){
     ){
 
       return {
-        status:"error",
-        code:"INVALID_PHONE",
-        error:"INVALID_PHONE"
+
+        status:
+          "error",
+
+        code:
+          "INVALID_PHONE",
+
+        error:
+          "INVALID_PHONE"
+
       };
 
     }
 
 
     // ==========================================================
-    // 🔎 FIRESTORE PROFILE LOOKUP
+    // ==========================================================
+    // 1️⃣ STAFF PROFILE LOOKUP
+    // ==========================================================
     // ==========================================================
 
-    const result =
+    console.log(
+      "🔎 GET_PROFILE → STAFF LOOKUP:",
+      phone
+    );
+
+
+    const staffResult =
       await findProfileWithRetry(
         "staff_profiles",
         phone
@@ -82603,16 +82638,19 @@ async function handleGetProfile(params){
     // ==========================================================
     // 📴 NETWORK / FIRESTORE FAILURE
     //
-    // null is deliberately preserved.
-    // It does NOT mean unauthorized.
+    // IMPORTANT:
+    //
+    // null means Firestore/network unavailable.
+    //
+    // NEVER convert null into PROFILE_NOT_FOUND.
     // ==========================================================
 
     if(
-      result === null
+      staffResult === null
     ){
 
       console.warn(
-        "📴 GET_PROFILE → Firestore/network unavailable"
+        "📴 GET_PROFILE → staff_profiles unavailable"
       );
 
       return null;
@@ -82621,43 +82659,173 @@ async function handleGetProfile(params){
 
 
     // ==========================================================
-    // ⛔ EXPLICIT AUTHORIZATION RESPONSE
+    // 👤 STAFF PROFILE FOUND
+    //
+    // If staff profile exists and is ACTIVE,
+    // preserve existing staff authentication exactly.
     // ==========================================================
 
     if(
-      result &&
-      result.status === "error"
+      staffResult &&
+      staffResult.status === "ok"
     ){
 
-      return result;
+      console.log(
+        "✅ GET_PROFILE → STAFF PROFILE FOUND:",
+        staffResult.phone ||
+        phone
+      );
+
+      return staffResult;
 
     }
 
 
     // ==========================================================
-    // ✅ ACTIVE PROFILE
+    // ⛔ STAFF PROFILE FOUND BUT ACCESS BLOCKED
+    //
+    // IMPORTANT:
+    //
+    // Do NOT fall through to villager_profiles if a staff
+    // profile actually exists but is inactive/blocked.
+    //
+    // This preserves existing staff authorization behavior.
     // ==========================================================
 
     if(
-      result &&
-      result.status === "ok"
+      staffResult &&
+      staffResult.status === "error" &&
+      staffResult.code !==
+        "PROFILE_NOT_FOUND"
     ){
 
-      return result;
+      console.warn(
+        "⛔ GET_PROFILE → STAFF ACCESS RESPONSE:",
+        staffResult
+      );
+
+      return staffResult;
 
     }
 
 
     // ==========================================================
-    // ⚠ UNKNOWN RESPONSE
+    // ==========================================================
+    // 2️⃣ VILLAGER PROFILE LOOKUP
+    // ==========================================================
+    //
+    // Only reached when:
+    //
+    // staff_profiles
+    //       ↓
+    // PROFILE_NOT_FOUND
+    //
+    // Therefore existing staff login behavior is preserved.
+    //
+    // ==========================================================
+
+    console.log(
+      "🔎 GET_PROFILE → VILLAGER LOOKUP:",
+      phone
+    );
+
+
+    const villagerResult =
+      await findProfileWithRetry(
+        "villager_profiles",
+        phone
+      );
+
+
+    // ==========================================================
+    // 📴 VILLAGER FIRESTORE / NETWORK FAILURE
+    // ==========================================================
+
+    if(
+      villagerResult === null
+    ){
+
+      console.warn(
+        "📴 GET_PROFILE → villager_profiles unavailable"
+      );
+
+      return null;
+
+    }
+
+
+    // ==========================================================
+    // 🟢 VILLAGER PROFILE FOUND
+    // ==========================================================
+
+    if(
+      villagerResult &&
+      villagerResult.status === "ok"
+    ){
+
+      console.log(
+        "✅ GET_PROFILE → VILLAGER PROFILE FOUND:",
+        villagerResult.phone ||
+        phone
+      );
+
+      return villagerResult;
+
+    }
+
+
+    // ==========================================================
+    // ⛔ VILLAGER PROFILE FOUND BUT ACCESS BLOCKED
+    // ==========================================================
+
+    if(
+      villagerResult &&
+      villagerResult.status === "error" &&
+      villagerResult.code !==
+        "PROFILE_NOT_FOUND"
+    ){
+
+      console.warn(
+        "⛔ GET_PROFILE → VILLAGER ACCESS RESPONSE:",
+        villagerResult
+      );
+
+      return villagerResult;
+
+    }
+
+
+    // ==========================================================
+    // ❌ NOT FOUND IN EITHER PROFILE SOURCE
+    //
+    // STAFF:
+    //     NOT FOUND
+    //
+    // VILLAGER:
+    //     NOT FOUND
+    //
+    // Therefore this is a genuine authorization/profile
+    // absence response.
     // ==========================================================
 
     console.warn(
-      "⚠ Unexpected GET_PROFILE result:",
-      result
+      "⛔ GET_PROFILE → PHONE NOT FOUND IN STAFF OR VILLAGER PROFILES:",
+      phone
     );
 
-    return result;
+
+    return {
+
+      status:
+        "error",
+
+      code:
+        "PROFILE_NOT_FOUND",
+
+      error:
+        "PROFILE_NOT_FOUND"
+
+    };
 
   }
 
@@ -82677,8 +82845,6 @@ async function handleGetProfile(params){
   }
 
 }
-
-
 
 // ============================================================
 // 🔐 GREENGUARD LOCAL-FIRST AUTH CACHE
