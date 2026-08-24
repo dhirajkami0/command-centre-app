@@ -49197,26 +49197,38 @@ return [];
 }
 
 // ============================================================
-// 🐘 START ELEPHANT SIGHTINGS REALTIME LISTENER
+// 🐘 ELEPHANT SIGHTINGS REALTIME
 // ------------------------------------------------------------
-// ONE LISTENER ONLY.
+// ARCHITECTURE:
 //
-// INITIAL SNAPSHOT:
-//     all existing documents
+// Firestore
+//     ↓
+// ONE onSnapshot listener
+//     ↓
+// docChanges()
+//     ↓
+// collect changes
+//     ↓
+// ONE IDB batch synchronization
+//     ↓
+// memory cache
+//     ↓
+// loadSightings(changedData)
+//     ↓
+// marker/UI update
 //
-// LATER SNAPSHOTS:
-//     only added / modified / removed documents
+// NO per-document Firestore reads.
+// NO per-document IDB writes.
 //
-// Existing loadSightings() remains the renderer/processor.
 // ============================================================
 
 async function startSightingsRealtime(){
 
     try{
 
-        // ====================================================
+        // ========================================================
         // 🛑 FIREBASE READY CHECK
-        // ====================================================
+        // ========================================================
 
         if(
             !window.fb ||
@@ -49225,7 +49237,9 @@ async function startSightingsRealtime(){
         ){
 
             console.warn(
+
                 "⚠ Sightings realtime unavailable: onSnapshot missing"
+
             );
 
             return false;
@@ -49233,18 +49247,23 @@ async function startSightingsRealtime(){
         }
 
 
-        // ====================================================
+        // ========================================================
         // 🔒 PREVENT DUPLICATE LISTENER
-        // ====================================================
+        // ========================================================
 
         if(
+
             window.sightingsRealtimeActive === true &&
+
             typeof window.sightingsUnsubscribe ===
                 "function"
+
         ){
 
             console.log(
+
                 "⏭ Sightings realtime already active"
+
             );
 
             return true;
@@ -49252,13 +49271,15 @@ async function startSightingsRealtime(){
         }
 
 
-        // ====================================================
+        // ========================================================
         // 🧹 CLEAN OLD LISTENER
-        // ====================================================
+        // ========================================================
 
         if(
+
             typeof window.sightingsUnsubscribe ===
                 "function"
+
         ){
 
             try{
@@ -49269,8 +49290,11 @@ async function startSightingsRealtime(){
             catch(err){
 
                 console.warn(
+
                     "⚠ Old sightings listener cleanup failed:",
+
                     err
+
                 );
 
             }
@@ -49285,58 +49309,84 @@ async function startSightingsRealtime(){
             false;
 
 
-        // ====================================================
+        // ========================================================
         // 🔥 FIRESTORE COLLECTION
-        // ====================================================
+        // ========================================================
 
         const sightingsRef =
+
             window.fb.collection(
+
                 window.db,
+
                 "elephant_sightings"
+
             );
 
 
         console.log(
+
             "🐘 Starting Elephant Sightings realtime..."
+
         );
 
 
-        // ====================================================
+        // ========================================================
         // 🔥 ONE FIRESTORE LISTENER
-        // ====================================================
+        // ========================================================
 
         window.sightingsUnsubscribe =
+
             window.fb.onSnapshot(
+
                 sightingsRef,
+
 
                 async function(snapshot){
 
                     try{
 
                         // =================================================
-                        // 📦 CHANGED DOCUMENTS ONLY
+                        // 📦 CHANGE COLLECTIONS
                         // =================================================
+
+                        const idbChanges =
+                            [];
 
                         const changedData =
                             [];
 
+                        const removedKeys =
+                            [];
+
 
                         // =================================================
-                        // 🔄 PROCESS FIRESTORE CHANGES
+                        // 🔄 PROCESS FIRESTORE DELTA
                         // =================================================
+
+                        const changes =
+                            snapshot.docChanges();
+
 
                         for(
                             const change of
-                            snapshot.docChanges()
+                            changes
                         ){
 
                             const docSnap =
                                 change.doc;
 
 
+                            // =================================================
+                            // 🔑 CANONICAL SIGHTING KEY
+                            // =================================================
+
                             const key =
+
                                 window.getSightingCacheKey(
+
                                     docSnap
+
                                 );
 
 
@@ -49345,7 +49395,9 @@ async function startSightingsRealtime(){
                             ){
 
                                 console.warn(
+
                                     "⚠ Realtime sighting without ID skipped"
+
                                 );
 
                                 continue;
@@ -49353,169 +49405,205 @@ async function startSightingsRealtime(){
                             }
 
 
-                            // =============================================
-// 🗑 REMOVED
-// =============================================
+                            // =================================================
+                            // 🗑 REMOVED
+                            // =================================================
 
-if(
-    change.type ===
-    "removed"
-){
+                            if(
 
-    // =================================================
-    // 💾 REMOVE FROM IDB
-    // =================================================
+                                change.type ===
+                                "removed"
 
-    if(
-        typeof removeElephantSightingFromIDB ===
-            "function"
-    ){
+                            ){
 
-        try{
+                                // ---------------------------------------------
+                                // IDB BATCH DELTA
+                                // ---------------------------------------------
 
-            await removeElephantSightingFromIDB(
-                key
-            );
+                                idbChanges.push(
 
-            console.log(
-                "🗑 Elephant sighting removed from IDB:",
-                key
-            );
+                                    {
 
-        }
-        catch(idbErr){
+                                        type:
+                                            "removed",
 
-            console.warn(
-                "⚠ Elephant sighting IDB delete failed:",
-                key,
-                idbErr
-            );
+                                        key:
+                                            String(key),
 
-        }
+                                        sighting:
+                                            null
 
-    }
+                                    }
+
+                                );
 
 
-    // =================================================
-    // 🧠 REMOVE FROM MEMORY
-    // =================================================
+                                // ---------------------------------------------
+                                // MEMORY REMOVE
+                                // ---------------------------------------------
 
-    if(
-        window.sightingsCache
-    ){
+                                if(
+                                    window.sightingsCache
+                                ){
 
-        delete
-            window.sightingsCache[
-                key
-            ];
+                                    delete
+                                        window.sightingsCache[
+                                            key
+                                        ];
 
-    }
-
-
-    // =================================================
-    // 🗺 REMOVE MARKER
-    // =================================================
-
-    window.removeSightingMarker(
-        key
-    );
+                                }
 
 
-    console.log(
-        "🗑 Sighting removed:",
-        key
-    );
+                                // ---------------------------------------------
+                                // MARKER REMOVE
+                                // ---------------------------------------------
+
+                                if(
+                                    typeof
+                                    window.removeSightingMarker ===
+                                    "function"
+                                ){
+
+                                    window.removeSightingMarker(
+
+                                        key
+
+                                    );
+
+                                }
 
 
-    continue;
-}
-
-// =============================================
-// ➕ ADDED / ✏ MODIFIED
-// =============================================
-
-const d =
-    docSnap.data() ||
-    {};
-
-const normalized =
-{
-    ...d,
-
-    firestore_id:
-        d.firestore_id ||
-        docSnap.id
-};
+                                removedKeys.push(
+                                    key
+                                );
 
 
-// =================================================
-// 💾 IDB → AUTHORITATIVE LOCAL CACHE WRITE
-// =================================================
+                                continue;
 
-if(
-    typeof upsertElephantSightingToIDB ===
-        "function"
-){
-
-    try{
-
-        await upsertElephantSightingToIDB(
-            normalized
-        );
-
-        console.log(
-            "💾 Elephant sighting synced to IDB:",
-            key
-        );
-
-    }
-    catch(idbErr){
-
-        console.warn(
-            "⚠ Elephant sighting IDB upsert failed:",
-            key,
-            idbErr
-        );
-
-    }
-
-}
+                            }
 
 
-// =================================================
-// 🧠 MEMORY CACHE
-// =================================================
+                            // =================================================
+                            // ➕ / ✏ ADDED / MODIFIED
+                            // =================================================
 
-window.sightingsCache =
-    window.sightingsCache ||
-    {};
+                            const d =
 
-window.sightingsCache[
-    key
-] =
-    normalized;
+                                docSnap.data() ||
+                                {};
 
 
-// =================================================
-// ⚡ REALTIME RENDER DELTA
-// =================================================
+                            const normalized =
 
-changedData.push(
-    normalized
-);
+                            {
+
+                                ...d,
+
+                                firestore_id:
+
+                                    d.firestore_id ||
+                                    docSnap.id
+
+                            };
+
+
+                            // =================================================
+                            // 🧠 MEMORY CACHE
+                            // =================================================
+
+                            window.sightingsCache =
+
+                                window.sightingsCache ||
+                                {};
+
+
+                            window.sightingsCache[
+                                key
+                            ] =
+                                normalized;
+
+
+                            // =================================================
+                            // 💾 PREPARE IDB BATCH DELTA
+                            // =================================================
+
+                            idbChanges.push(
+
+                                {
+
+                                    type:
+                                        change.type,
+
+                                    key:
+                                        String(key),
+
+                                    sighting:
+                                        normalized
+
+                                }
+
+                            );
+
+
+                            // =================================================
+                            // ⚡ REALTIME RENDER DELTA
+                            // =================================================
+
+                            changedData.push(
+
+                                normalized
+
+                            );
+
                         }
 
 
                         // =================================================
-                        // ⚡ PROCESS ONLY CHANGED DOCUMENTS
+                        // 💾 ONE IDB SYNCHRONIZATION
+                        // =================================================
+                        //
+                        // IMPORTANT:
+                        //
+                        // Even if snapshot contains 447 changes,
+                        // this performs:
+                        //
+                        //     ONE IDB GET
+                        //     ONE IDB SET
+                        //
+                        // instead of 447 GET/SET cycles.
+                        //
                         // =================================================
 
                         if(
+
+                            idbChanges.length > 0
+
+                        ){
+
+                            await
+                                syncElephantSightingsToIDBBatch(
+
+                                    idbChanges
+
+                                );
+
+                        }
+
+
+                        // =================================================
+                        // ⚡ PROCESS ONLY CHANGED MARKERS
+                        // =================================================
+
+                        if(
+
                             changedData.length > 0
+
                         ){
 
                             await loadSightings(
+
                                 changedData
+
                             );
 
                         }
@@ -49529,45 +49617,58 @@ changedData.push(
                             true;
 
 
+                        // =================================================
+                        // 📊 REALTIME RESULT
+                        // =================================================
+
                         console.log(
+
                             "🐘 Sightings realtime update complete:",
+
                             {
+
                                 changes:
-                                    snapshot.docChanges().length,
+                                    changes.length,
 
                                 processed:
                                     changedData.length,
 
                                 removed:
-                                    snapshot
-                                        .docChanges()
-                                        .filter(
-                                            c =>
-                                                c.type ===
-                                                "removed"
-                                        )
-                                        .length
+                                    removedKeys.length,
+
+                                idbBatch:
+                                    idbChanges.length
+
                             }
+
                         );
 
                     }
                     catch(err){
 
                         console.error(
+
                             "❌ Sightings realtime processing failed:",
+
                             err
+
                         );
 
                     }
 
                 },
 
+
                 function(error){
 
                     console.error(
+
                         "❌ Elephant sightings realtime listener error:",
+
                         error
+
                     );
+
 
                     window.sightingsRealtimeActive =
                         false;
@@ -49577,16 +49678,18 @@ changedData.push(
             );
 
 
-        // ====================================================
+        // ========================================================
         // STATE
-        // ====================================================
+        // ========================================================
 
         window.sightingsRealtimeActive =
             true;
 
 
         console.log(
+
             "✅ Elephant Sightings realtime listener started"
+
         );
 
 
@@ -49596,12 +49699,17 @@ changedData.push(
     catch(err){
 
         console.error(
+
             "❌ startSightingsRealtime failed:",
+
             err
+
         );
+
 
         window.sightingsRealtimeActive =
             false;
+
 
         return false;
 
