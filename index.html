@@ -45583,6 +45583,629 @@ function(key){
     }
 
 };
+
+// ============================================================
+// 🐘 ELEPHANT SIGHTINGS — IDB CACHE ENGINE
+// ============================================================
+//
+// PURPOSE:
+//
+// Firestore
+//     ↓
+// 24-hour operational data
+//     ↓
+// IndexedDB
+//     ↓
+// sightingsCache
+//     ↓
+// existing marker renderer
+//
+// REALTIME:
+//
+// Firestore onSnapshot
+//     ↓
+// delta
+//     ↓
+// IDB upsert/remove
+//     ↓
+// sightingsCache
+//     ↓
+// existing marker renderer
+//
+// IMPORTANT:
+//
+// This module does NOT render anything.
+// It does NOT replace the existing marker engine.
+// It only provides persistent cache storage.
+// ============================================================
+
+
+const GG_SIGHTINGS_IDB_KEY =
+    "gg_elephant_sightings_v1";
+
+const GG_SIGHTINGS_IDB_META_KEY =
+    "gg_elephant_sightings_meta_v1";
+
+
+// ============================================================
+// 🕒 24-HOUR ELIGIBILITY
+// ============================================================
+
+function isElephantSightingWithinLast24Hours(
+    sighting
+){
+
+    try{
+
+        if(
+            !sighting
+        ){
+
+            return false;
+
+        }
+
+
+        let timestamp =
+            sighting.sighting_datetime ||
+            sighting.createdAt ||
+            sighting.timestamp ||
+            sighting.date ||
+            null;
+
+
+        // ----------------------------------------------------
+        // FIREBASE TIMESTAMP
+        // ----------------------------------------------------
+
+        if(
+            timestamp &&
+            typeof timestamp.toDate ===
+                "function"
+        ){
+
+            timestamp =
+                timestamp.toDate();
+
+        }
+
+
+        // ----------------------------------------------------
+        // DATE
+        // ----------------------------------------------------
+
+        const time =
+            timestamp instanceof Date
+                ? timestamp.getTime()
+                : new Date(
+                    timestamp
+                ).getTime();
+
+
+        if(
+            !Number.isFinite(
+                time
+            )
+        ){
+
+            return false;
+
+        }
+
+
+        return (
+            Date.now() - time
+        ) <=
+        (
+            24 *
+            60 *
+            60 *
+            1000
+        );
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Elephant sighting age check failed:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// 🔑 CANONICAL SIGHTING KEY
+// ============================================================
+
+function getElephantSightingIDBKey(
+    sighting
+){
+
+    if(
+        !sighting
+    ){
+
+        return "";
+
+    }
+
+
+    return String(
+
+        sighting.sighting_id ||
+
+        sighting.id ||
+
+        sighting.firestore_id ||
+
+        ""
+
+    )
+    .trim();
+
+}
+
+
+// ============================================================
+// 💾 SAVE ENTIRE 24-HOUR CACHE
+// ============================================================
+
+async function saveElephantSightingsToIDB(
+    data
+){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.set !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Elephant sightings IDB unavailable"
+            );
+
+            return false;
+
+        }
+
+
+        const validData =
+            (
+                Array.isArray(data)
+                    ? data
+                    : []
+            )
+            .filter(
+                isElephantSightingWithinLast24Hours
+            );
+
+
+        await window.idbKeyval.set(
+
+            GG_SIGHTINGS_IDB_KEY,
+
+            validData
+
+        );
+
+
+        await window.idbKeyval.set(
+
+            GG_SIGHTINGS_IDB_META_KEY,
+
+            {
+
+                version:
+                    1,
+
+                savedAt:
+                    Date.now(),
+
+                count:
+                    validData.length
+
+            }
+
+        );
+
+
+        console.log(
+
+            "💾 ELEPHANT SIGHTINGS SAVED TO IDB:",
+
+            validData.length
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Elephant sightings IDB save failed:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// 📖 LOAD 24-HOUR CACHE
+// ============================================================
+
+async function loadElephantSightingsFromIDB(){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Elephant sightings IDB unavailable"
+            );
+
+            return [];
+
+        }
+
+
+        // ----------------------------------------------------
+        // WAIT FOR GLOBAL IDB INITIALIZATION
+        // ----------------------------------------------------
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_SIGHTINGS_IDB_KEY
+
+            );
+
+
+        if(
+            !Array.isArray(
+                cached
+            ) ||
+            cached.length === 0
+        ){
+
+            console.log(
+                "📭 ELEPHANT SIGHTINGS IDB CACHE MISS"
+            );
+
+            return [];
+
+        }
+
+
+        const fresh =
+            cached.filter(
+                isElephantSightingWithinLast24Hours
+            );
+
+
+        console.log(
+
+            "⚡ ELEPHANT SIGHTINGS IDB:",
+
+            {
+
+                cached:
+                    cached.length,
+
+                fresh:
+                    fresh.length
+
+            }
+
+        );
+
+
+        // ----------------------------------------------------
+        // REMOVE EXPIRED RECORDS
+        // ----------------------------------------------------
+
+        if(
+            fresh.length !==
+            cached.length
+        ){
+
+            await saveElephantSightingsToIDB(
+                fresh
+            );
+
+        }
+
+
+        return fresh;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Elephant sightings IDB read failed:",
+
+            err
+
+        );
+
+        return [];
+
+    }
+
+}
+
+
+// ============================================================
+// 🔄 UPSERT ONE SIGHTING
+// ============================================================
+
+async function upsertElephantSightingToIDB(
+    sighting
+){
+
+    try{
+
+        const key =
+            getElephantSightingIDBKey(
+                sighting
+            );
+
+
+        if(
+            !key
+        ){
+
+            return false;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_SIGHTINGS_IDB_KEY
+
+            );
+
+
+        const list =
+            Array.isArray(
+                cached
+            )
+                ? cached
+                : [];
+
+
+        const index =
+            list.findIndex(
+                function(item){
+
+                    return (
+                        getElephantSightingIDBKey(
+                            item
+                        ) ===
+                        key
+                    );
+
+                }
+            );
+
+
+        // ----------------------------------------------------
+        // OUTSIDE 24-HOUR WINDOW
+        // ----------------------------------------------------
+
+        if(
+            !isElephantSightingWithinLast24Hours(
+                sighting
+            )
+        ){
+
+            if(
+                index >= 0
+            ){
+
+                list.splice(
+                    index,
+                    1
+                );
+
+            }
+
+
+            await saveElephantSightingsToIDB(
+                list
+            );
+
+            return true;
+
+        }
+
+
+        // ----------------------------------------------------
+        // UPDATE
+        // ----------------------------------------------------
+
+        if(
+            index >= 0
+        ){
+
+            list[index] =
+                sighting;
+
+        }
+
+        // ----------------------------------------------------
+        // ADD
+        // ----------------------------------------------------
+
+        else{
+
+            list.push(
+                sighting
+            );
+
+        }
+
+
+        await saveElephantSightingsToIDB(
+            list
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Elephant sighting IDB upsert failed:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// 🗑 REMOVE ONE SIGHTING
+// ============================================================
+
+async function removeElephantSightingFromIDB(
+    key
+){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !==
+                "function"
+        ){
+
+            return false;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_SIGHTINGS_IDB_KEY
+
+            );
+
+
+        if(
+            !Array.isArray(
+                cached
+            )
+        ){
+
+            return false;
+
+        }
+
+
+        const target =
+            String(
+                key || ""
+            ).trim();
+
+
+        if(
+            !target
+        ){
+
+            return false;
+
+        }
+
+
+        const filtered =
+            cached.filter(
+                function(item){
+
+                    return (
+                        getElephantSightingIDBKey(
+                            item
+                        ) !==
+                        target
+                    );
+
+                }
+            );
+
+
+        await saveElephantSightingsToIDB(
+            filtered
+        );
+
+
+        console.log(
+
+            "🗑 ELEPHANT SIGHTING REMOVED FROM IDB:",
+
+            target
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Elephant sighting IDB remove failed:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
     /* ============================================================
        🐘 BLOCK 7 → ELEPHANT SYSTEM (FINAL)
     ============================================================ */
