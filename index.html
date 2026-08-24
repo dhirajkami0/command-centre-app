@@ -29641,6 +29641,29 @@ async function showMonthlyLiveStaff(){
       // ==================================================
       // 👤 STAFF CARD
       // ==================================================
+// ==================================================
+// 🔑 STABLE STAFF CARD KEY
+// --------------------------------------------------
+// Used only for the DOM IDs of Duty Started /
+// Duty Duration fields.
+//
+// Must be unique per live-duty staff/session.
+// ==================================================
+
+const staffDistanceKey =
+    String(
+        staff.sessionId ||
+        staff.uid ||
+        staff.userId ||
+        staff.name ||
+        staff.cleanName ||
+        "staff"
+    )
+    .trim()
+    .replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_"
+    );
 
       html += `
 
