@@ -45778,95 +45778,6 @@ function getElephantSightingIDBKey(
 // 💾 SAVE ENTIRE 24-HOUR CACHE
 // ============================================================
 
-async function saveElephantSightingsToIDB(
-    data
-){
-
-    try{
-
-        if(
-            !window.idbKeyval ||
-            typeof window.idbKeyval.set !==
-                "function"
-        ){
-
-            console.warn(
-                "⚠ Elephant sightings IDB unavailable"
-            );
-
-            return false;
-
-        }
-
-
-        const validData =
-            (
-                Array.isArray(data)
-                    ? data
-                    : []
-            )
-            .filter(
-                isElephantSightingWithinLast24Hours
-            );
-
-
-        await window.idbKeyval.set(
-
-            GG_SIGHTINGS_IDB_KEY,
-
-            validData
-
-        );
-
-
-        await window.idbKeyval.set(
-
-            GG_SIGHTINGS_IDB_META_KEY,
-
-            {
-
-                version:
-                    1,
-
-                savedAt:
-                    Date.now(),
-
-                count:
-                    validData.length
-
-            }
-
-        );
-
-
-        console.log(
-
-            "💾 ELEPHANT SIGHTINGS SAVED TO IDB:",
-
-            validData.length
-
-        );
-
-
-        return true;
-
-    }
-    catch(err){
-
-        console.warn(
-
-            "⚠ Elephant sightings IDB save failed:",
-
-            err
-
-        );
-
-        return false;
-
-    }
-
-}
-
 
 // ============================================================
 // 📖 LOAD 24-HOUR CACHE
@@ -45990,7 +45901,27 @@ async function loadElephantSightingsFromIDB(){
 
 
 // ============================================================
-// 🔄 UPSERT ONE SIGHTING
+// 🐘 UPSERT ELEPHANT SIGHTING → IDB
+// ------------------------------------------------------------
+// PURPOSE:
+//
+// Maintains the 24-hour operational Elephant Sightings cache.
+//
+// IMPORTANT:
+//
+// Firestore remains authoritative.
+//
+// IDB contains ONLY sightings within the operational
+// 24-hour window.
+//
+// This function:
+//     1. Reads current IDB cache
+//     2. Finds the sighting by canonical key
+//     3. Removes expired sightings
+//     4. Updates existing sightings
+//     5. Adds new sightings
+//     6. Saves the already-prepared list
+//
 // ============================================================
 
 async function upsertElephantSightingToIDB(
@@ -45998,6 +45929,10 @@ async function upsertElephantSightingToIDB(
 ){
 
     try{
+
+        // ========================================================
+        // 🔑 CANONICAL KEY
+        // ========================================================
 
         const key =
             getElephantSightingIDBKey(
@@ -46009,10 +45944,18 @@ async function upsertElephantSightingToIDB(
             !key
         ){
 
+            console.warn(
+                "⚠ Elephant sighting without valid ID"
+            );
+
             return false;
 
         }
 
+
+        // ========================================================
+        // 💾 READ CURRENT IDB CACHE
+        // ========================================================
 
         const cached =
             await window.idbKeyval.get(
@@ -46030,30 +45973,40 @@ async function upsertElephantSightingToIDB(
                 : [];
 
 
+        // ========================================================
+        // 🔎 FIND EXISTING RECORD
+        // ========================================================
+
         const index =
             list.findIndex(
                 function(item){
 
                     return (
+
                         getElephantSightingIDBKey(
                             item
                         ) ===
                         key
+
                     );
 
                 }
             );
 
 
-        // ----------------------------------------------------
-        // OUTSIDE 24-HOUR WINDOW
-        // ----------------------------------------------------
+        // ========================================================
+        // ⏱ 24-HOUR OPERATIONAL CACHE CHECK
+        // ========================================================
 
         if(
             !isElephantSightingWithinLast24Hours(
                 sighting
             )
         ){
+
+            // ----------------------------------------------------
+            // REMOVE EXISTING EXPIRED RECORD
+            // ----------------------------------------------------
 
             if(
                 index >= 0
@@ -46066,19 +46019,29 @@ async function upsertElephantSightingToIDB(
 
             }
 
+            // ----------------------------------------------------
+            // SAVE CLEANED CACHE
+            // ----------------------------------------------------
 
             await saveElephantSightingsToIDB(
                 list
             );
+
+
+            console.log(
+                "⏱ Elephant sighting outside 24h cache:",
+                key
+            );
+
 
             return true;
 
         }
 
 
-        // ----------------------------------------------------
-        // UPDATE
-        // ----------------------------------------------------
+        // ========================================================
+        // ✏ UPDATE EXISTING
+        // ========================================================
 
         if(
             index >= 0
@@ -46089,9 +46052,10 @@ async function upsertElephantSightingToIDB(
 
         }
 
-        // ----------------------------------------------------
-        // ADD
-        // ----------------------------------------------------
+
+        // ========================================================
+        // ➕ ADD NEW
+        // ========================================================
 
         else{
 
@@ -46102,8 +46066,18 @@ async function upsertElephantSightingToIDB(
         }
 
 
+        // ========================================================
+        // 💾 SAVE PREPARED CACHE
+        // ========================================================
+
         await saveElephantSightingsToIDB(
             list
+        );
+
+
+        console.log(
+            "💾 Elephant sighting synced to IDB:",
+            key
         );
 
 
@@ -46127,6 +46101,135 @@ async function upsertElephantSightingToIDB(
 }
 
 
+
+// ============================================================
+// 🐘 SAVE ELEPHANT SIGHTINGS → IDB
+// ------------------------------------------------------------
+// PURPOSE:
+//
+// Writes the already-prepared 24-hour operational cache.
+//
+// IMPORTANT:
+//
+// DO NOT apply the 24-hour filter here.
+//
+// Eligibility is decided by:
+//     upsertElephantSightingToIDB()
+//
+// and by:
+//     loadElephantSightingsFromIDB()
+//
+// Keeping this function as a pure SAVE operation avoids
+// repeatedly scanning the entire cache on every realtime
+// update.
+//
+// ============================================================
+
+async function saveElephantSightingsToIDB(
+    data
+){
+
+    try{
+
+        // ========================================================
+        // 💾 IDB AVAILABILITY
+        // ========================================================
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.set !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Elephant sightings IDB unavailable"
+            );
+
+            return false;
+
+        }
+
+
+        // ========================================================
+        // 🧹 NORMALIZE INPUT
+        // ========================================================
+
+        const validData =
+            Array.isArray(
+                data
+            )
+                ? data
+                : [];
+
+
+        // ========================================================
+        // 💾 SAVE CACHE
+        // ========================================================
+
+        await window.idbKeyval.set(
+
+            GG_SIGHTINGS_IDB_KEY,
+
+            validData
+
+        );
+
+
+        // ========================================================
+        // 💾 SAVE CACHE METADATA
+        // ========================================================
+
+        await window.idbKeyval.set(
+
+            GG_SIGHTINGS_IDB_META_KEY,
+
+            {
+
+                version:
+                    1,
+
+                savedAt:
+                    Date.now(),
+
+                count:
+                    validData.length
+
+            }
+
+        );
+
+
+        // ========================================================
+        // ✅ SUCCESS
+        // ========================================================
+
+        console.log(
+
+            "💾 ELEPHANT SIGHTINGS SAVED TO IDB:",
+
+            validData.length
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Elephant sightings IDB save failed:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
 // ============================================================
 // 🗑 REMOVE ONE SIGHTING
 // ============================================================
