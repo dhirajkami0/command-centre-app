@@ -61620,6 +61620,10 @@ if(
 // 🚨 NEW HEC ALERT
 // =====================================================
 
+// =====================================================
+// 🚨 NEW HEC ALERT
+// =====================================================
+
 async function showNewHECAlert(
 
     incident
@@ -61652,6 +61656,7 @@ async function showNewHECAlert(
 
     }
 
+
     console.log(
 
         "🚨 NEW HELP",
@@ -61659,6 +61664,7 @@ async function showNewHECAlert(
         incident
 
     );
+
 
     // =====================================
     // ANDROID VIBRATE
@@ -61670,7 +61676,8 @@ async function showNewHECAlert(
 
             window.Android &&
 
-            typeof Android.vibrate === "function"
+            typeof Android.vibrate ===
+                "function"
 
         ){
 
@@ -61695,6 +61702,7 @@ async function showNewHECAlert(
         );
 
     }
+
 
     // =====================================
     // BROWSER VIBRATE
@@ -61742,6 +61750,7 @@ async function showNewHECAlert(
 
     }
 
+
     // =====================================
     // PLAY ALARM
     // =====================================
@@ -61756,23 +61765,27 @@ async function showNewHECAlert(
 
             );
 
-        audio.volume = 1;
+
+        audio.volume =
+
+            1;
+
 
         await audio.play()
 
-        .catch(
+            .catch(
 
-            err =>
+                err =>
 
-                console.warn(
+                    console.warn(
 
-                    "Alarm Failed",
+                        "Alarm Failed",
 
-                    err
+                        err
 
-                )
+                    )
 
-        );
+            );
 
     }
 
@@ -61788,39 +61801,45 @@ async function showNewHECAlert(
 
     }
 
-    // =====================================
-// HEC MARKERS ALREADY SYNCHRONIZED
-// =====================================
-//
-// IMPORTANT:
-//
-// The realtime listener has already performed:
-//
-// Firestore
-//      ↓
-// IDB upsert
-//      ↓
-// memory cache
-//      ↓
-// marker update
-//      ↓
-// popup refresh
-//
-// Therefore DO NOT call loadHECIncidents()
-// again here.
-//
-// This prevents:
-// - redundant IDB reads
-// - redundant marker rendering
-// - unnecessary popup work
-// - duplicate synchronization
-// =====================================
 
-console.log(
-    "✅ HEC alert shown — markers already synchronized"
-);
-}
     // =====================================================
+    // HEC MARKERS ALREADY SYNCHRONIZED
+    // =====================================================
+    //
+    // IMPORTANT:
+    //
+    // startHECListener() has already performed:
+    //
+    // Firestore
+    //      ↓
+    // docChanges()
+    //      ↓
+    // IDB synchronization
+    //      ↓
+    // memory/cache synchronization
+    //      ↓
+    // marker update
+    //      ↓
+    // popup refresh
+    //
+    // Therefore DO NOT reload HEC data here.
+    //
+    // This prevents:
+    //
+    // - redundant IDB reads
+    // - redundant marker rendering
+    // - unnecessary popup work
+    // - duplicate synchronization
+    //
+    // =====================================================
+
+    console.log(
+
+        "✅ HEC alert shown — markers already synchronized"
+
+    );
+
+}    // =====================================================
 // REMOVE HEC MARKER
 // =====================================================
 
