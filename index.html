@@ -44555,23 +44555,23 @@ function isHECIncidentResolved(
     incident
 ){
 
-    return (
+    const status =
 
         String(
-
             incident?.status ||
-
             ""
-
         )
-
         .trim()
+        .toUpperCase();
 
-        .toUpperCase()
 
-        ===
+    return (
 
-        "RESOLVED"
+        status === "RESOLVED"
+
+        ||
+
+        status === "CLOSED"
 
     );
 
@@ -53607,7 +53607,37 @@ alert(
 // =====================================================
 
 // =====================================================
-// LOAD HEC INCIDENTS
+// 🚨 LOAD HEC INCIDENTS
+// =====================================================
+//
+// FINAL DESIGN:
+//
+// IDB FIRST
+//     ↓
+// LAST 24 HOURS ONLY
+//     ↓
+// IMMEDIATE MAP RENDER
+//     ↓
+// startHECListener()
+//     ↓
+// 24-HOUR FIRESTORE REALTIME SYNC
+//
+// IMPORTANT:
+//
+// ❌ NO getDocs()
+// ❌ NO historical full-collection read
+//
+// Existing:
+// - ADMIN / VILLAGER authorization
+// - Villager own-incident restriction
+// - Marker colours
+// - Marker styling
+// - Popup
+// - GPS display
+// - Team status
+// - Existing marker update logic
+//
+// are preserved.
 // =====================================================
 
 async function loadHECIncidents(){
@@ -53632,6 +53662,7 @@ async function loadHECIncidents(){
 
             .toUpperCase();
 
+
         // =====================================================
         // ONLY ADMIN & VILLAGER
         // =====================================================
@@ -53648,21 +53679,37 @@ async function loadHECIncidents(){
 
         }
 
+
         // =====================================================
         // INIT
         // =====================================================
 
         window.hecMarkers =
+
             window.hecMarkers || {};
 
-        window.hecLayer =
-            window.hecLayer || L.layerGroup().addTo(window.map);
-      // =====================================================
-// INCIDENT CACHE
-// =====================================================
 
-window.hecIncidentCache =
-    window.hecIncidentCache || {};
+        window.hecLayer =
+
+            window.hecLayer ||
+
+            L.layerGroup().addTo(
+                window.map
+            );
+
+
+        // =====================================================
+        // INCIDENT CACHE
+        // =====================================================
+
+        window.hecIncidentCache =
+
+            window.hecIncidentCache || {};
+
+
+        // =====================================================
+        // FIRST INITIALIZATION
+        // =====================================================
 
         if(
 
@@ -53670,83 +53717,15 @@ window.hecIncidentCache =
 
         ){
 
-            window.hecInitialized = true;
+            window.hecInitialized =
+
+                true;
+
 
             window.hecLayer.clearLayers();
 
         }
 
-        // =====================================================
-        // FIRESTORE
-        // =====================================================
-
-        const {
-
-            getFirestore,
-            collection,
-            getDocs
-
-        }
-
-        = await import(
-
-            "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-
-        );
-
-        const db =
-
-            getFirestore();
-
-        console.log(
-
-            "🚨 Loading HEC Incidents..."
-
-        );
-
-        const snapshot =
-
-            await getDocs(
-
-                collection(
-
-                    db,
-
-                    "hec_incidents"
-
-                )
-
-            );
-
-        const incidents = [];
-
-        snapshot.forEach(
-
-            docSnap=>{
-
-                incidents.push({
-
-                    firestore_id :
-
-                        docSnap.id,
-
-                    ...docSnap.data()
-
-                });
-
-            }
-
-        );
-
-        console.log(
-
-            "🚨 Loaded",
-
-            incidents.length,
-
-            "Incidents"
-
-        );
 
         // =====================================================
         // CURRENT USER
@@ -53760,221 +53739,353 @@ window.hecIncidentCache =
 
             "";
 
+
+        // =====================================================
+        // STEP 1
+        // INDEXEDDB FIRST
+        // =====================================================
+        //
+        // NO FIRESTORE getDocs() HERE.
+        //
+        // The HEC IDB helper already:
+        //
+        // - waits for IDB initialization
+        // - enforces the 24-hour window
+        // - removes RESOLVED incidents
+        // - cleans stale cache records
+        //
+        // =====================================================
+
+        const cachedIncidents =
+
+            await loadHECIncidentsFromIDB();
+
+
+        console.log(
+
+            "🚨 HEC → IDB LOAD:",
+
+            cachedIncidents.length
+
+        );
+
+
+        // =====================================================
+        // STEP 2
+        // RENDER IDB CACHE
+        // =====================================================
+        //
+        // IMPORTANT:
+        //
+        // The existing renderer below is preserved.
+        //
+        // We simply feed it the cached operational
+        // incidents instead of downloading the entire
+        // Firestore collection.
+        //
+        // =====================================================
+
+        const incidents =
+
+            Array.isArray(
+                cachedIncidents
+            )
+
+                ? cachedIncidents
+
+                : [];
+
+
+        console.log(
+
+            "⚡ HEC → RENDERING IDB INCIDENTS:",
+
+            incidents.length
+
+        );
+
+
         // =====================================================
         // LOOP
         // =====================================================
 
-        for (const e of incidents) {
+        for(
+            const e of incidents
+        ){
 
-    try{
-// =====================================================
-// CACHE INCIDENT
-// =====================================================
+            try{
 
-window.hecIncidentCache[
+                // =================================================
+                // 🕒 FINAL 24-HOUR SAFETY FILTER
+                // =================================================
+                //
+                // IDB already performs this check.
+                //
+                // Keep this second check here as a defensive
+                // renderer boundary so an accidentally stale
+                // object can never reach the map.
+                //
+                // =================================================
 
-    e.firestore_id ||
+                if(
 
-    e.incidentId
+                    !isHECIncidentWithinLast24Hours(
+                        e
+                    )
 
-] = e;
-                    // ============================================
-                    // LOCATION
-                    // ============================================
+                ){
 
-                    const lat = Number(
+                    continue;
 
-                        e.incidentLocation?.lat ??
+                }
 
-                        e.location?.lat
+
+                // =================================================
+                // CACHE INCIDENT
+                // =================================================
+
+                const cacheKey =
+
+                    e.firestore_id ||
+
+                    e.incidentId;
+
+
+                if(
+                    cacheKey
+                ){
+
+                    window.hecIncidentCache[
+                        cacheKey
+                    ] = e;
+
+                }
+
+
+                // ============================================
+                // LOCATION
+                // ============================================
+
+                const lat = Number(
+
+                    e.incidentLocation?.lat ??
+
+                    e.location?.lat
+
+                );
+
+
+                const lon = Number(
+
+                    e.incidentLocation?.lon ??
+
+                    e.location?.lon
+
+                );
+
+
+                if(
+
+                    !Number.isFinite(lat) ||
+
+                    !Number.isFinite(lon)
+
+                ){
+
+                    continue;
+
+                }
+
+
+                // ============================================
+                // IDS
+                // ============================================
+
+                const key =
+
+                    String(
+
+                        e.firestore_id ||
+
+                        e.incidentId
 
                     );
 
-                    const lon = Number(
 
-                        e.incidentLocation?.lon ??
+                if(
+                    !key
+                ){
 
-                        e.location?.lon
+                    continue;
+
+                }
+
+
+                // ============================================
+                // STATUS
+                // ============================================
+
+                const status =
+
+                    String(
+
+                        e.status ||
+
+                        "WAITING"
+
+                    )
+
+                    .trim()
+
+                    .toUpperCase();
+
+
+                // ============================================
+                // USER FLAGS
+                // ============================================
+
+                const isAdmin =
+
+                    role === "ADMIN";
+
+
+                const isVillager =
+
+                    role === "VILLAGER";
+
+
+                const isReporter =
+
+                    currentUserId &&
+
+                    currentUserId ===
+
+                    e.reporterUserId;
+
+
+                // ============================================
+                // VILLAGER CAN SEE ONLY
+                // OWN INCIDENT
+                // ============================================
+
+                if(
+
+                    isVillager &&
+
+                    !isReporter
+
+                ){
+
+                    continue;
+
+                }
+
+
+                // ============================================
+                // REMOVE RESOLVED
+                // ============================================
+
+                if(
+
+                    status ===
+
+                    "RESOLVED"
+
+                ){
+
+                    removeHECMarker(
+
+                        key
 
                     );
 
-                    if(
+                    continue;
 
-                        !Number.isFinite(lat) ||
+                }
 
-                        !Number.isFinite(lon)
 
-                    ){
+                // ============================================
+                // MARKER COLOUR
+                // ============================================
 
-                        return;
+                let colour =
+                    "#d32f2f";
 
-                    }
 
-                    // ============================================
-                    // IDS
-                    // ============================================
+                let pulseClass =
+                    "riskPulseRed";
 
-                    const key =
 
-                        String(
+                switch(status){
 
-                            e.firestore_id ||
+                    case "WAITING":
 
-                            e.incidentId
+                        colour =
+                            "#d32f2f";
 
-                        );
+                        pulseClass =
+                            "riskPulseRed";
 
-                    // ============================================
-                    // STATUS
-                    // ============================================
+                        break;
 
-                    const status =
 
-                        String(
+                    case "ACCEPTED":
 
-                            e.status ||
+                        colour =
+                            "#fb8c00";
 
-                            "WAITING"
+                        pulseClass =
+                            "riskPulseOrange";
 
-                        )
+                        break;
 
-                        .trim()
 
-                        .toUpperCase();
+                    case "ARRIVED":
 
-                    // ============================================
-                    // USER FLAGS
-                    // ============================================
+                        colour =
+                            "#1976d2";
 
-                    const isAdmin =
+                        pulseClass =
+                            "riskPulseBlue";
 
-                        role === "ADMIN";
+                        break;
 
-                    const isVillager =
 
-                        role === "VILLAGER";
+                    case "AWAITING_CONFIRMATION":
 
-                    const isReporter =
+                        colour =
+                            "#8e24aa";
 
-                        currentUserId &&
+                        pulseClass =
+                            "riskPulsePurple";
 
-                        currentUserId ===
+                        break;
 
-                        e.reporterUserId;
 
-                    // ============================================
-                    // VILLAGER CAN SEE ONLY
-                    // OWN INCIDENT
-                    // ============================================
+                    case "REOPENED":
 
-                    if(
+                        colour =
+                            "#e53935";
 
-                        isVillager &&
+                        pulseClass =
+                            "riskPulseRed";
 
-                        !isReporter
+                        break;
 
-                    ){
+                }
 
-                        return;
 
-                    }
+                // ============================================
+                // ICON
+                // ============================================
 
-                    // ============================================
-                    // REMOVE RESOLVED
-                    // ============================================
+                const icon =
 
-                    if(
+                    L.divIcon({
 
-                        status ===
+                        className : "",
 
-                        "RESOLVED"
-
-                    ){
-
-                        removeHECMarker(
-
-                            key
-
-                        );
-
-                        return;
-
-                    }
-                    // ============================================
-                    // MARKER COLOUR
-                    // ============================================
-
-                    let colour =
-                        "#d32f2f";
-
-                    let pulseClass =
-                        "riskPulseRed";
-
-                    switch(status){
-
-                        case "WAITING":
-
-                            colour =
-                                "#d32f2f";
-
-                            pulseClass =
-                                "riskPulseRed";
-
-                            break;
-
-                        case "ACCEPTED":
-
-                            colour =
-                                "#fb8c00";
-
-                            pulseClass =
-                                "riskPulseOrange";
-
-                            break;
-
-                        case "ARRIVED":
-
-                            colour =
-                                "#1976d2";
-
-                            pulseClass =
-                                "riskPulseBlue";
-
-                            break;
-
-                        case "AWAITING_CONFIRMATION":
-
-                            colour =
-                                "#8e24aa";
-
-                            pulseClass =
-                                "riskPulsePurple";
-
-                            break;
-
-                        case "REOPENED":
-
-                            colour =
-                                "#e53935";
-
-                            pulseClass =
-                                "riskPulseRed";
-
-                            break;
-
-                    }
-
-                    // ============================================
-                    // ICON
-                    // ============================================
-
-                    const icon =
-
-                        L.divIcon({
-
-                            className : "",
-
-                            html : `
+                        html : `
 
 <div class="markerWrap">
 
@@ -54013,438 +54124,528 @@ text-shadow:0 0 4px rgba(0,0,0,.5);
 
 `,
 
-                            iconSize : [
+                        iconSize : [
 
-                                30,
+                            30,
 
-                                30
+                            30
 
-                            ],
+                        ],
 
-                            iconAnchor : [
+                        iconAnchor : [
 
-                                15,
+                            15,
 
-                                15
+                            15
 
-                            ]
+                        ]
 
-                        });
+                    });
 
-                    // ============================================
-                    // REPORT TIME
-                    // ============================================
 
-                    let reportTime =
-                        Date.now();
+                // ============================================
+                // REPORT TIME
+                // ============================================
 
-                    const ts =
+                let reportTime =
+                    Date.now();
 
-                        e.createdAt ||
 
-                        e.created_at ||
+                const ts =
 
-                        null;
+                    e.createdAt ||
 
-                    if(
+                    e.created_at ||
 
-                        ts &&
+                    null;
 
-                        typeof ts.toDate ===
-                        "function"
 
-                    ){
+                if(
 
-                        reportTime =
-                            ts.toDate().getTime();
+                    ts &&
 
-                    }
+                    typeof ts.toDate ===
+                    "function"
 
-                    else if(
+                ){
 
-                        ts?.seconds
+                    reportTime =
 
-                    ){
+                        ts
+                            .toDate()
+                            .getTime();
 
-                        reportTime =
-                            ts.seconds * 1000;
+                }
 
-                    }
+                else if(
 
-                    else if(
+                    ts?.seconds
 
-                        typeof ts ===
-                        "number"
+                ){
 
-                    ){
+                    reportTime =
 
-                        reportTime =
-                            ts;
+                        ts.seconds *
+                        1000;
 
-                    }
+                }
 
-                    else if(
+                else if(
 
-                        typeof ts ===
-                        "string"
+                    typeof ts ===
+                    "number"
 
-                    ){
+                ){
 
-                        const d =
-                            new Date(ts);
+                    reportTime =
+                        ts;
 
-                        if(
+                }
 
-                            !isNaN(d)
+                else if(
 
-                        ){
+                    typeof ts ===
+                    "string"
 
-                            reportTime =
-                                d.getTime();
+                ){
 
-                        }
-
-                    }
-
-                    // ============================================
-                    // AGE
-                    // ============================================
-
-                    const ageMinutes =
-
-                        Math.floor(
-
-                            (
-
-                                Date.now()
-
-                                -
-
-                                reportTime
-
-                            )
-
-                            /60000
-
-                        );
-
-                    let reportAge = "";
-
-                    if(
-
-                        ageMinutes < 60
-
-                    ){
-
-                        reportAge =
-
-                            ageMinutes +
-
-                            " min";
-
-                    }
-
-                    else if(
-
-                        ageMinutes < 1440
-
-                    ){
-
-                        reportAge =
-
-                            Math.floor(
-
-                                ageMinutes/60
-
-                            )
-
-                            +
-
-                            " hr "
-
-                            +
-
-                            (
-
-                                ageMinutes %
-
-                                60
-
-                            )
-
-                            +
-
-                            " min";
-
-                    }
-
-                    else{
-
-                        reportAge =
-
-                            Math.floor(
-
-                                ageMinutes/
-
-                                1440
-
-                            )
-
-                            +
-
-                            " day";
-
-                    }
-
-                    const reportDate =
+                    const d =
 
                         new Date(
+                            ts
+                        );
+
+
+                    if(
+
+                        !isNaN(d)
+
+                    ){
+
+                        reportTime =
+
+                            d.getTime();
+
+                    }
+
+                }
+
+
+                // ============================================
+                // AGE
+                // ============================================
+
+                const ageMinutes =
+
+                    Math.floor(
+
+                        (
+
+                            Date.now()
+
+                            -
 
                             reportTime
 
                         )
 
-                        .toLocaleString(
+                        /
 
-                            "en-IN"
+                        60000
 
-                        );
+                    );
 
-                    // ============================================
-                    // GPS
-                    // ============================================
 
-                    const gpsText =
+                let reportAge = "";
 
-                        lat.toFixed(6)
+
+                if(
+
+                    ageMinutes < 60
+
+                ){
+
+                    reportAge =
+
+                        ageMinutes +
+
+                        " min";
+
+                }
+
+                else if(
+
+                    ageMinutes < 1440
+
+                ){
+
+                    reportAge =
+
+                        Math.floor(
+
+                            ageMinutes /
+                            60
+
+                        )
 
                         +
 
-                        ", "
+                        " hr "
 
                         +
 
-                        lon.toFixed(6);
+                        (
 
-// ============================================
-// LIVE TEAM STATUS
-// ============================================
-const team =
-    await getLiveHECTeamStatus(
-        e
-    );
+                            ageMinutes %
+                            60
 
-      
-    
-                                      // ============================================
-                    // POPUP
-                    // ============================================
+                        )
 
-                    const popup =
+                        +
 
-                        buildHECPopup(
+                        " min";
 
-                            e,
+                }
 
-                            {
+                else{
 
-                                status,
+                    reportAge =
 
-                                key,
+                        Math.floor(
+
+                            ageMinutes /
+                            1440
+
+                        )
+
+                        +
+
+                        " day";
+
+                }
+
+
+                const reportDate =
+
+                    new Date(
+
+                        reportTime
+
+                    )
+
+                    .toLocaleString(
+
+                        "en-IN"
+
+                    );
+
+
+                // ============================================
+                // GPS
+                // ============================================
+
+                const gpsText =
+
+                    lat.toFixed(6)
+
+                    +
+
+                    ", "
+
+                    +
+
+                    lon.toFixed(6);
+
+
+                // ============================================
+                // LIVE TEAM STATUS
+                // ============================================
+
+                const team =
+
+                    await getLiveHECTeamStatus(
+
+                        e
+
+                    );
+
+
+                // ============================================
+                // POPUP
+                // ============================================
+
+                const popup =
+
+                    buildHECPopup(
+
+                        e,
+
+                        {
+
+                            status,
+
+                            key,
+
+                            lat,
+
+                            lon,
+
+                            gpsText,
+
+                            reportDate,
+
+                            reportAge,
+
+                            isReporter,
+
+                            isVillager,
+
+                            isAdmin,
+
+                            team
+
+                        }
+
+                    );
+
+
+                // ============================================
+                // EXISTING MARKER
+                // ============================================
+
+                let marker =
+
+                    window.hecMarkers[
+                        key
+                    ];
+
+
+                // ============================================
+                // CREATE
+                // ============================================
+
+                if(
+
+                    !marker
+
+                ){
+
+                    marker =
+
+                        L.marker(
+
+                            [
 
                                 lat,
 
-                                lon,
+                                lon
 
-                                gpsText,
+                            ],
 
-                                reportDate,
+                            {
 
-                                reportAge,
+                                icon
 
-                                isReporter,
-
-                                isVillager,
-
-                                isAdmin,
-                              team
-                              
                             }
 
                         );
 
-                    // ============================================
-                    // EXISTING MARKER
-                    // ============================================
 
-                    let marker =
+                    marker.addTo(
 
-                        window.hecMarkers[key];
+                        window.hecLayer
 
-// ============================================
-// CREATE
-// ============================================
+                    );
 
-if(
 
-    !marker
+                    marker.bindPopup(
 
-){
+                        L.popup({
 
-    marker =
+                            className :
 
-        L.marker(
+                                "hec-popup",
 
-            [
+                            maxWidth :
 
-                lat,
+                                360,
 
-                lon
+                            autoClose :
 
-            ],
+                                false,
 
-            {
+                            closeOnClick :
 
-                icon
+                                false
 
-            }
+                        })
 
-        );
+                    );
 
-    marker.addTo(
 
-        window.hecLayer
+                    marker.on(
 
-    );
+                        "click",
 
-    marker.bindPopup(
+                        function(){
 
-        L.popup({
+                            this.openPopup();
 
-            className :
-
-                "hec-popup",
-
-            maxWidth :
-
-                360,
-
-            autoClose :
-
-                false,
-
-            closeOnClick :
-
-                false
-
-        })
-
-    );
-
-    marker.on(
-
-        "click",
-
-        function(){
-
-            this.openPopup();
-
-        }
-
-    );
-
-}
-
-// ============================================
-// UPDATE EXISTING
-// ============================================
-
-else{
-
-    marker.setLatLng(
-
-        [
-
-            lat,
-
-            lon
-
-        ]
-
-    );
-
-    marker.setIcon(
-
-        icon
-
-    );
-
-}
-
-// ============================================
-// ALWAYS KEEP LATEST INCIDENT
-// ============================================
-
-marker.incident = e;
-marker.team = team;
-// ============================================
-// UPDATE POPUP
-// ============================================
-
-if(
-
-    marker.getPopup()
-
-){
-
-    marker
-
-        .getPopup()
-
-        .setContent(
-
-            popup
-
-        );
-
-}
-
-else{
-
-    marker.bindPopup(
-
-        popup
-
-    );
-
-}
-
-// ============================================
-// SAVE
-// ============================================
-
-window.hecMarkers[key] =
-
-    marker;
-                }
-
-                catch(err){
-
-                    console.error(
-
-                        "HEC Marker Error",
-
-                        err
+                        }
 
                     );
 
                 }
 
+
+                // ============================================
+                // UPDATE EXISTING
+                // ============================================
+
+                else{
+
+                    marker.setLatLng(
+
+                        [
+
+                            lat,
+
+                            lon
+
+                        ]
+
+                    );
+
+
+                    marker.setIcon(
+
+                        icon
+
+                    );
+
+                }
+
+
+                // ============================================
+                // ALWAYS KEEP LATEST INCIDENT
+                // ============================================
+
+                marker.incident =
+                    e;
+
+
+                marker.team =
+                    team;
+
+
+                // ============================================
+                // UPDATE POPUP
+                // ============================================
+
+                if(
+
+                    marker.getPopup()
+
+                ){
+
+                    marker
+
+                        .getPopup()
+
+                        .setContent(
+
+                            popup
+
+                        );
+
+                }
+
+                else{
+
+                    marker.bindPopup(
+
+                        popup
+
+                    );
+
+                }
+
+
+                // ============================================
+                // SAVE
+                // ============================================
+
+                window.hecMarkers[
+                    key
+                ] =
+
+                    marker;
+
             }
+
+            catch(err){
+
+                console.error(
+
+                    "HEC Marker Error",
+
+                    err
+
+                );
+
+            }
+
+        }
+
+
+        // =====================================================
+        // STEP 3
+        // REALTIME FIRESTORE
+        // =====================================================
+        //
+        // IMPORTANT:
+        //
+        // The listener is now the Firestore synchronization
+        // path.
+        //
+        // It will perform the 24-hour Firestore query and
+        // process realtime changes.
+        //
+        // We deliberately do NOT call getDocs() here.
+        //
+        // =====================================================
+
+        if(
+
+            typeof startHECListener ===
+            "function"
+
+        ){
+
+            await startHECListener();
+
+        }
+        else{
+
+            console.warn(
+
+                "⚠ startHECListener() unavailable"
+
+            );
+
+        }
+
 
         console.log(
 
-            "✅ HEC markers:",
+            "✅ HEC LOAD COMPLETE — IDB FIRST"
+
+        );
+
+
+        console.log(
+
+            "🚨 HEC markers:",
 
             Object.keys(
 
@@ -54453,6 +54654,9 @@ window.hecMarkers[key] =
             ).length
 
         );
+
+
+        return incidents;
 
     }
 
@@ -54466,9 +54670,13 @@ window.hecMarkers[key] =
 
         );
 
+
+        return [];
+
     }
 
 }
+
 // =====================================================
 // HEC POPUP ROUTER
 // =====================================================
@@ -60367,11 +60575,69 @@ window.wildlifeListener =
 // =====================================================
 // 🚨 HEC REALTIME LISTENER
 // =====================================================
+//
+// FINAL HEC DESIGN:
+//
+// IDB
+//   ↓
+// loadHECIncidents()
+//   ↓
+// THIS LISTENER
+//   ↓
+// createdAt >= LAST 24 HOURS
+//   ↓
+// INITIAL MATCHING SNAPSHOT
+//   ↓
+// REALTIME DELTAS
+//
+// ADD / MODIFY
+//      ↓
+// IDB UPSERT
+//      ↓
+// EXISTING HEC MARKER RENDERER
+//
+// RESOLVED
+//      ↓
+// IDB REMOVE
+//      ↓
+// EXISTING HEC MARKER REMOVE
+//
+// DELETED
+//      ↓
+// IDB REMOVE
+//      ↓
+// EXISTING HEC MARKER REMOVE
+//
+// IMPORTANT:
+//
+// ❌ NO getDocs()
+// ❌ NO full collection listener
+// ❌ NO historical HEC download
+//
+// Existing:
+// - ADMIN / VILLAGER authorization
+// - HEC marker renderer
+// - popup renderer
+// - popup refresh
+// - alert system
+//
+// are preserved.
+// =====================================================
 
-window.hecListener = null;
+
+window.hecListener =
+
+    window.hecListener || null;
+
 
 window.hecAlertCache =
+
     window.hecAlertCache || {};
+
+
+// =====================================================
+// 🚨 START HEC LISTENER
+// =====================================================
 
 async function startHECListener(){
 
@@ -60395,6 +60661,7 @@ async function startHECListener(){
 
             .toUpperCase();
 
+
         // =====================================================
         // ADMIN + VILLAGER ONLY
         // =====================================================
@@ -60410,6 +60677,7 @@ async function startHECListener(){
             return;
 
         }
+
 
         // =====================================================
         // ALREADY RUNNING
@@ -60431,19 +60699,250 @@ async function startHECListener(){
 
         }
 
+
+        // =====================================================
+        // CURRENT USER
+        // =====================================================
+
+        const currentUserId =
+
+            String(
+
+                window.userProfile?.uid ||
+
+                window.userProfile?.userId ||
+
+                ""
+
+            )
+
+            .trim();
+
+
+        // =====================================================
+        // 24-HOUR CUTOFF
+        // =====================================================
+
+        const cutoff =
+
+            new Date(
+
+                Date.now() -
+
+                (
+
+                    24 *
+
+                    60 *
+
+                    60 *
+
+                    1000
+
+                )
+
+            );
+
+
         console.log(
 
-            "🚨 Starting HEC Listener..."
+            "🚨 Starting HEC 24-hour Listener..."
 
         );
+
+
+        console.log(
+
+            "🕒 HEC cutoff:",
+
+            cutoff.toISOString()
+
+        );
+
+
+        // =====================================================
+        // FIRESTORE API
+        // =====================================================
 
         const {
 
             collection,
 
+            query,
+
+            where,
+
             onSnapshot
 
         } = window.fb;
+
+
+        // =====================================================
+        // VALIDATE FIRESTORE API
+        // =====================================================
+
+        if(
+
+            typeof collection !==
+            "function" ||
+
+            typeof query !==
+            "function" ||
+
+            typeof where !==
+            "function" ||
+
+            typeof onSnapshot !==
+            "function"
+
+        ){
+
+            console.error(
+
+                "❌ HEC Firestore listener API unavailable"
+
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // HEC COLLECTION
+        // =====================================================
+
+        const hecCollection =
+
+            collection(
+
+                window.db,
+
+                "hec_incidents"
+
+            );
+
+
+        // =====================================================
+        // 24-HOUR QUERY
+        // =====================================================
+        //
+        // ADMIN:
+        //
+        // createdAt >= cutoff
+        //
+        //
+        // VILLAGER:
+        //
+        // createdAt >= cutoff
+        // +
+        // reporterUserId == current user
+        //
+        // This preserves the existing villager
+        // authorization boundary at Firestore level.
+        // =====================================================
+
+        let hecQuery;
+
+
+        if(
+
+            role === "VILLAGER"
+
+        ){
+
+            if(
+                !currentUserId
+            ){
+
+                console.warn(
+
+                    "⚠️ HEC VILLAGER listener skipped — user ID unavailable"
+
+                );
+
+                return;
+
+            }
+
+
+            hecQuery =
+
+                query(
+
+                    hecCollection,
+
+                    where(
+
+                        "createdAt",
+
+                        ">=",
+
+                        cutoff
+
+                    ),
+
+                    where(
+
+                        "reporterUserId",
+
+                        "==",
+
+                        currentUserId
+
+                    )
+
+                );
+
+        }
+
+        else{
+
+            hecQuery =
+
+                query(
+
+                    hecCollection,
+
+                    where(
+
+                        "createdAt",
+
+                        ">=",
+
+                        cutoff
+
+                    )
+
+                );
+
+        }
+
+
+        // =====================================================
+        // INITIAL SNAPSHOT FLAG
+        // =====================================================
+        //
+        // The first snapshot contains the current 24-hour
+        // matching documents as "added".
+        //
+        // Those are NOT new incidents.
+        //
+        // Therefore:
+        //
+        // INITIAL SNAPSHOT
+        //      ↓
+        // sync only
+        //
+        // FUTURE added
+        //      ↓
+        // new alert allowed
+        //
+        // This prevents an alert storm when the listener starts.
+        // =====================================================
+
+        let initialSnapshot = true;
+
 
         // =====================================================
         // START LISTENER
@@ -60453,227 +60952,647 @@ async function startHECListener(){
 
             onSnapshot(
 
-                collection(
-
-                    window.db,
-
-                    "hec_incidents"
-
-                ),
+                hecQuery,
 
                 async function(snapshot){
 
-                    for(
+                    try{
 
-                        const change of
+                        console.log(
 
-                        snapshot.docChanges()
+                            "🚨 HEC snapshot:",
 
-                    ){
+                            {
 
-                        const incident = {
+                                documents:
+                                    snapshot.size,
 
-                            firestore_id :
+                                changes:
+                                    snapshot.docChanges().length,
 
-                                change.doc.id,
+                                initial:
+                                    initialSnapshot
 
-                            ...change.doc.data()
-
-                        };
-
-                        const key =
-
-                            String(
-
-                                incident.firestore_id ||
-
-                                incident.incidentId
-
-                            );
-
-                        // =================================================
-                        // DOCUMENT REMOVED
-                        // =================================================
-
-                        if(
-
-                            change.type ===
-
-                            "removed"
-
-                        ){
-
-                            removeHECMarker(
-
-                                key
-
-                            );
-
-                            continue;
-
-                        }
-
-                        // =================================================
-                        // RESOLVED
-                        // =================================================
-
-                        if(
-
-                            String(
-
-                                incident.status ||
-
-                                ""
-
-                            )
-
-                            .toUpperCase()
-
-                            ===
-
-                            "RESOLVED"
-
-                        ){
-
-                            removeHECMarker(
-
-                                key
-
-                            );
-
-                            continue;
-
-                        }
-
-                        // =================================================
-                        // ADD / UPDATE MARKER
-                        // =================================================
-
-                        addOrUpdateHECMarker(
-
-                            incident
+                            }
 
                         );
 
+
                         // =================================================
-                        // REFRESH OPEN POPUP
+                        // PROCESS CHANGES
+                        // =================================================
+
+                        for(
+
+                            const change of
+
+                            snapshot.docChanges()
+
+                        ){
+
+                            try{
+
+                                const incident = {
+
+                                    firestore_id :
+
+                                        change.doc.id,
+
+                                    ...change.doc.data()
+
+                                };
+
+
+                                const key =
+
+                                    String(
+
+                                        incident.firestore_id ||
+
+                                        incident.incidentId ||
+
+                                        ""
+
+                                    )
+
+                                    .trim();
+
+
+                                if(
+                                    !key
+                                ){
+
+                                    console.warn(
+
+                                        "⚠️ HEC document without ID skipped"
+
+                                    );
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // DOCUMENT REMOVED
+                                // =============================================
+                                //
+                                // Firestore hard delete.
+                                //
+                                // Remove from:
+                                //
+                                // - IDB
+                                // - marker
+                                // - in-memory cache
+                                //
+                                // =============================================
+
+                                if(
+
+                                    change.type ===
+
+                                    "removed"
+
+                                ){
+
+                                    await removeHECIncidentFromIDB(
+
+                                        key
+
+                                    );
+
+
+                                    delete
+
+                                        window.hecIncidentCache[
+
+                                            key
+
+                                        ];
+
+
+                                    removeHECMarker(
+
+                                        key
+
+                                    );
+
+
+                                    console.log(
+
+                                        "🗑️ HEC removed:",
+
+                                        key
+
+                                    );
+
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // 24-HOUR DEFENSIVE FILTER
+                                // =============================================
+                                //
+                                // Firestore query already restricts createdAt.
+                                //
+                                // This second check protects the application
+                                // if a malformed timestamp somehow reaches
+                                // the listener.
+                                //
+                                // =============================================
+
+                                if(
+
+                                    !isHECIncidentWithinLast24Hours(
+
+                                        incident
+
+                                    )
+
+                                ){
+
+                                    await removeHECIncidentFromIDB(
+
+                                        key
+
+                                    );
+
+
+                                    delete
+
+                                        window.hecIncidentCache[
+
+                                            key
+
+                                        ];
+
+
+                                    removeHECMarker(
+
+                                        key
+
+                                    );
+
+
+                                    console.log(
+
+                                        "🧹 HEC outside 24h removed:",
+
+                                        key
+
+                                    );
+
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // RESOLVED
+                                // =============================================
+if(
+
+    (
+        String(
+
+            incident.status ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase()
+
+    ) === "RESOLVED"
+
+    ||
+
+    (
+        String(
+
+            incident.status ||
+
+            ""
+
+        )
+
+        .trim()
+
+        .toUpperCase()
+
+    ) === "CLOSED"
+
+){
+
+                                    await removeHECIncidentFromIDB(
+
+                                        key
+
+                                    );
+
+
+                                    delete
+
+                                        window.hecIncidentCache[
+
+                                            key
+
+                                        ];
+
+
+                                    removeHECMarker(
+
+                                        key
+
+                                    );
+
+
+                                    console.log(
+
+                                        "✅ HEC resolved — removed:",
+
+                                        key
+
+                                    );
+
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // IDB UPSERT
+                                // =============================================
+
+                                await upsertHECIncidentToIDB(
+
+                                    incident
+
+                                );
+
+
+                                // =============================================
+                                // MEMORY CACHE
+                                // =============================================
+
+                                window.hecIncidentCache[
+
+                                    key
+
+                                ] =
+
+                                    incident;
+
+
+                                // =============================================
+                                // ADD / UPDATE MARKER
+                                // =============================================
+                                //
+                                // EXISTING renderer preserved.
+                                //
+                                // No marker construction is duplicated here.
+                                //
+                                // =============================================
+
+                                if(
+
+                                    typeof addOrUpdateHECMarker ===
+
+                                    "function"
+
+                                ){
+
+                                    addOrUpdateHECMarker(
+
+                                        incident
+
+                                    );
+
+                                }
+
+                                else{
+
+                                    console.warn(
+
+                                        "⚠️ addOrUpdateHECMarker() unavailable"
+
+                                    );
+
+                                }
+
+
+                                // =============================================
+                                // REFRESH OPEN POPUP
+                                // =============================================
+
+                                if(
+
+                                    typeof refreshOpenHECPopup ===
+
+                                    "function"
+
+                                ){
+
+                                    refreshOpenHECPopup(
+
+                                        incident
+
+                                    );
+
+                                }
+
+
+                                // =============================================
+                                // ALERT ONLY FOR REALTIME NEW INCIDENT
+                                // =============================================
+                                //
+                                // Initial snapshot documents are existing
+                                // operational incidents, NOT new alerts.
+                                //
+                                // Therefore alert only when:
+                                //
+                                // change.type === "added"
+                                // AND
+                                // initialSnapshot === false
+                                //
+                                // =============================================
+
+                                if(
+
+                                    initialSnapshot
+
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                if(
+
+                                    change.type !==
+
+                                    "added"
+
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // ALERT DUPLICATE PROTECTION
+                                // =============================================
+
+                                if(
+
+                                    window.hecAlertCache[
+
+                                        key
+
+                                    ]
+
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // ALERT ONLY HELP
+                                // =============================================
+
+                                if(
+
+                                    String(
+
+                                        incident.type ||
+
+                                        ""
+
+                                    )
+
+                                    .trim()
+
+                                    .toUpperCase()
+
+                                    !==
+
+                                    "HELP"
+
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // ALERT ONLY WAITING
+                                // =============================================
+
+                                if(
+
+                                    String(
+
+                                        incident.status ||
+
+                                        ""
+
+                                    )
+
+                                    .trim()
+
+                                    .toUpperCase()
+
+                                    !==
+
+                                    "WAITING"
+
+                                ){
+
+                                    continue;
+
+                                }
+
+
+                                // =============================================
+                                // MARK ALERT AS PROCESSED
+                                // =============================================
+
+                                window.hecAlertCache[
+
+                                    key
+
+                                ] =
+
+                                    true;
+
+
+                                // =============================================
+                                // SHOW NEW HEC ALERT
+                                // =============================================
+
+                                if(
+
+                                    typeof showNewHECAlert ===
+
+                                    "function"
+
+                                ){
+
+                                    await showNewHECAlert(
+
+                                        incident
+
+                                    );
+
+                                }
+
+
+                            }
+
+                            catch(changeError){
+
+                                console.error(
+
+                                    "❌ HEC change processing error:",
+
+                                    changeError
+
+                                );
+
+                            }
+
+                        }
+
+
+                        // =================================================
+                        // INITIAL SNAPSHOT COMPLETE
+                        // =================================================
+                        //
+                        // Only AFTER every initial document has been
+                        // synchronized do we allow future "added" events
+                        // to trigger new-incident alerts.
+                        //
                         // =================================================
 
                         if(
 
-                            typeof refreshOpenHECPopup ===
-
-                            "function"
+                            initialSnapshot
 
                         ){
 
-                            refreshOpenHECPopup(
+                            initialSnapshot =
 
-                                incident
+                                false;
+
+
+                            console.log(
+
+                                "✅ HEC initial 24-hour snapshot synchronized"
 
                             );
 
                         }
 
-                        // =================================================
-                        // ALERT ONLY FOR NEW WAITING INCIDENT
-                        // =================================================
 
-                        if(
+                        console.log(
 
-                            change.type !==
+                            "📊 HEC realtime sync complete:",
 
-                            "added"
+                            {
 
-                        ){
+                                cached:
 
-                            continue;
+                                    Object.keys(
 
-                        }
+                                        window.hecIncidentCache ||
 
-                        if(
+                                        {}
 
-                            window.hecAlertCache[key]
+                                    ).length,
 
-                        ){
+                                markers:
 
-                            continue;
+                                    Object.keys(
 
-                        }
+                                        window.hecMarkers ||
 
-                        window.hecAlertCache[key] =
+                                        {}
 
-                            true;
+                                    ).length
 
-                        if(
+                            }
 
-                            String(
-
-                                incident.type ||
-
-                                ""
-
-                            )
-
-                            .toUpperCase()
-
-                            !==
-
-                            "HELP"
-
-                        ){
-
-                            continue;
-
-                        }
-
-                        if(
-
-                            String(
-
-                                incident.status ||
-
-                                ""
-
-                            )
-
-                            .toUpperCase()
-
-                            !==
-
-                            "WAITING"
-
-                        ){
-
-                            continue;
-
-                        }
-
-                        if(
-
-                            typeof showNewHECAlert ===
-
-                            "function"
-
-                        ){
-
-                            await showNewHECAlert(
-
-                                incident
-
-                            );
-
-                        }
+                        );
 
                     }
+
+                    catch(snapshotError){
+
+                        console.error(
+
+                            "❌ HEC snapshot processing failed:",
+
+                            snapshotError
+
+                        );
+
+                    }
+
+                },
+
+                function(error){
+
+                    console.error(
+
+                        "❌ HEC Firestore listener error:",
+
+                        error
+
+                    );
+
+
+                    // -------------------------------------------------
+                    // IMPORTANT:
+                    // Do not pretend the listener is still healthy.
+                    // -------------------------------------------------
+
+                    window.hecListener =
+
+                        null;
 
                 }
 
             );
 
+
         console.log(
 
-            "✅ HEC Listener Started"
+            "✅ HEC 24-hour Listener Started"
+
+        );
+
+
+        console.log(
+
+            "📡 HEC realtime source:",
+
+            role === "VILLAGER"
+
+                ? "24h + own reporterUserId"
+
+                : "24h"
 
         );
 
@@ -60689,10 +61608,14 @@ async function startHECListener(){
 
         );
 
+
+        window.hecListener =
+
+            null;
+
     }
 
 }
-
 // =====================================================
 // 🚨 NEW HEC ALERT
 // =====================================================
@@ -60866,28 +61789,36 @@ async function showNewHECAlert(
     }
 
     // =====================================
-    // REFRESH HEC MARKERS
-    // (Popup is created by loadHECIncidents())
-    // =====================================
+// HEC MARKERS ALREADY SYNCHRONIZED
+// =====================================
+//
+// IMPORTANT:
+//
+// The realtime listener has already performed:
+//
+// Firestore
+//      ↓
+// IDB upsert
+//      ↓
+// memory cache
+//      ↓
+// marker update
+//      ↓
+// popup refresh
+//
+// Therefore DO NOT call loadHECIncidents()
+// again here.
+//
+// This prevents:
+// - redundant IDB reads
+// - redundant marker rendering
+// - unnecessary popup work
+// - duplicate synchronization
+// =====================================
 
-    try{
-
-        await loadHECIncidents();
-
-    }
-
-    catch(err){
-
-        console.error(
-
-            "HEC Refresh Failed",
-
-            err
-
-        );
-
-    }
-
+console.log(
+    "✅ HEC alert shown — markers already synchronized"
+);
 }
     // =====================================================
 // REMOVE HEC MARKER
@@ -60907,6 +61838,47 @@ async function showNewHECAlert(
 // WAITING -> ACCEPTED
 // =====================================================
 
+// =====================================================
+// 🚨 ACCEPT HEC INCIDENT
+// WAITING → ACCEPTED
+// =====================================================
+//
+// FINAL FLOW:
+//
+// USER ACCEPT
+//      ↓
+// SAVE PREVIOUS LOCAL STATE
+//      ↓
+// OPTIMISTIC MEMORY CACHE UPDATE
+//      ↓
+// IMMEDIATE MARKER UPDATE
+//      ↓
+// IDB UPDATE
+//      ↓
+// FIRESTORE AUTHORITATIVE UPDATE
+//      ↓
+// REALTIME SNAPSHOT CONFIRMATION
+//
+// IF FIRESTORE FAILS:
+//
+// FIRESTORE ERROR
+//      ↓
+// RESTORE PREVIOUS MEMORY STATE
+//      ↓
+// RESTORE MARKER
+//      ↓
+// RESTORE IDB
+//
+// IMPORTANT:
+//
+// - Firestore remains authoritative
+// - Existing marker renderer preserved
+// - Existing popup architecture preserved
+// - Existing Firestore fields preserved
+// - No duplicate listener
+// - No extra loadHECIncidents()
+// =====================================================
+
 async function acceptHECIncident(
 
     incidentId
@@ -60914,6 +61886,10 @@ async function acceptHECIncident(
 ){
 
     try{
+
+        // =====================================================
+        // FIREBASE API
+        // =====================================================
 
         const {
 
@@ -60924,9 +61900,258 @@ async function acceptHECIncident(
 
         } = window.fb;
 
+
+        // =====================================================
+        // CURRENT USER PROFILE
+        // =====================================================
+
         const profile =
 
             window.userProfile || {};
+
+
+        // =====================================================
+        // VALIDATE INCIDENT ID
+        // =====================================================
+
+        if(
+
+            !incidentId
+
+        ){
+
+            console.warn(
+
+                "⚠️ HEC accept blocked — incidentId missing"
+
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // VALIDATE FIREBASE API
+        // =====================================================
+
+        if(
+
+            typeof doc !==
+            "function" ||
+
+            typeof updateDoc !==
+            "function"
+
+        ){
+
+            console.error(
+
+                "❌ HEC accept blocked — Firestore API unavailable"
+
+            );
+
+            alert(
+
+                "Unable to accept incident."
+
+            );
+
+            return;
+
+        }
+
+
+        // =====================================================
+        // ⚡ GET CACHED INCIDENT
+        // =====================================================
+
+        const cached =
+
+            window.hecIncidentCache?.[
+
+                incidentId
+
+            ];
+
+
+        // =====================================================
+        // SAVE PREVIOUS STATE
+        // =====================================================
+        //
+        // Required for rollback if Firestore rejects
+        // the operation.
+        //
+        // =====================================================
+
+        let optimisticPreviousState =
+
+            null;
+
+
+        if(
+
+            cached
+
+        ){
+
+            optimisticPreviousState = {
+
+                status :
+
+                    cached.status,
+
+                assignedTeam :
+
+                    cached.assignedTeam,
+
+                acceptedBy :
+
+                    cached.acceptedBy,
+
+                acceptedByUserId :
+
+                    cached.acceptedByUserId,
+
+                responderPhone :
+
+                    cached.responderPhone,
+
+                responderRole :
+
+                    cached.responderRole,
+
+                acceptedTime :
+
+                    cached.acceptedTime,
+
+                updatedAt :
+
+                    cached.updatedAt
+
+            };
+
+
+            // =================================================
+            // ⚡ OPTIMISTIC MEMORY UPDATE
+            // =================================================
+
+            cached.status =
+
+                "ACCEPTED";
+
+
+            cached.assignedTeam =
+
+                profile.rawName || "";
+
+
+            cached.acceptedBy =
+
+                profile.rawName || "";
+
+
+            cached.acceptedByUserId =
+
+                profile.uid || "";
+
+
+            cached.responderPhone =
+
+                profile.phone || "";
+
+
+            cached.responderRole =
+
+                profile.role || "";
+
+
+            cached.updatedAt =
+
+                new Date();
+
+
+            // =================================================
+            // IMMEDIATE MARKER UPDATE
+            // =================================================
+
+            if(
+
+                typeof addOrUpdateHECMarker ===
+                "function"
+
+            ){
+
+                addOrUpdateHECMarker(
+
+                    cached
+
+                );
+
+            }
+
+
+            // =================================================
+            // IMMEDIATE IDB UPDATE
+            // =================================================
+
+            try{
+
+                if(
+
+                    typeof upsertHECIncidentToIDB ===
+                    "function"
+
+                ){
+
+                    await upsertHECIncidentToIDB(
+
+                        cached
+
+                    );
+
+                    console.log(
+
+                        "⚡ HEC optimistic IDB updated:",
+
+                        incidentId
+
+                    );
+
+                }
+
+            }
+
+            catch(cacheError){
+
+                console.warn(
+
+                    "⚠️ HEC optimistic IDB update failed:",
+
+                    cacheError
+
+                );
+
+            }
+
+        }
+
+        else{
+
+            console.log(
+
+                "ℹ️ HEC optimistic cache unavailable:",
+
+                incidentId
+
+            );
+
+        }
+
+
+        // =====================================================
+        // 🔥 AUTHORITATIVE FIRESTORE UPDATE
+        // =====================================================
 
         await updateDoc(
 
@@ -60942,53 +62167,61 @@ async function acceptHECIncident(
 
             {
 
-                // =====================================================
+                // =================================================
                 // INCIDENT STATUS
-                // =====================================================
+                // =================================================
 
                 status :
 
                     "ACCEPTED",
 
-                // =====================================================
-                // TEAM ASSIGNMENT (STATIC)
-                // =====================================================
+
+                // =================================================
+                // TEAM ASSIGNMENT
+                // =================================================
 
                 assignedTeam :
 
                     profile.rawName || "",
 
+
                 acceptedBy :
 
                     profile.rawName || "",
+
 
                 acceptedByUserId :
 
                     profile.uid || "",
 
+
                 responderPhone :
 
                     profile.phone || "",
+
 
                 responderRole :
 
                     profile.role || "",
 
-                // =====================================================
+
+                // =================================================
                 // ACCEPT TIME
-                // =====================================================
+                // =================================================
 
                 acceptedTime :
 
                     serverTimestamp(),
 
+
                 updatedAt :
 
                     serverTimestamp(),
 
-                // =====================================================
-                // HISTORY
-                // =====================================================
+
+                // =================================================
+                // STATUS HISTORY
+                // =================================================
 
                 statusHistory :
 
@@ -60998,21 +62231,26 @@ async function acceptHECIncident(
 
                             "ACCEPTED",
 
+
                         by :
 
                             profile.uid || "",
+
 
                         name :
 
                             profile.rawName || "",
 
+
                         phone :
 
                             profile.phone || "",
 
+
                         role :
 
                             profile.role || "",
+
 
                         time :
 
@@ -61024,6 +62262,11 @@ async function acceptHECIncident(
 
         );
 
+
+        // =====================================================
+        // ✅ FIRESTORE SUCCESS
+        // =====================================================
+
         console.log(
 
             "✅ HEC Incident Accepted:",
@@ -61032,15 +62275,21 @@ async function acceptHECIncident(
 
         );
 
+
         showToast?.(
 
             "✅ Response Accepted"
 
         );
 
+
     }
 
     catch(err){
+
+        // =====================================================
+        // 🔴 FIRESTORE FAILED
+        // =====================================================
 
         console.error(
 
@@ -61049,6 +62298,147 @@ async function acceptHECIncident(
             err
 
         );
+
+
+        // =====================================================
+        // 🔄 ROLLBACK OPTIMISTIC STATE
+        // =====================================================
+
+        if(
+
+            window.hecIncidentCache?.[
+
+                incidentId
+
+            ] &&
+
+            optimisticPreviousState
+
+        ){
+
+            const cached =
+
+                window.hecIncidentCache[
+
+                    incidentId
+
+                ];
+
+
+            // -------------------------------------------------
+            // RESTORE PREVIOUS MEMORY STATE
+            // -------------------------------------------------
+
+            cached.status =
+
+                optimisticPreviousState.status;
+
+
+            cached.assignedTeam =
+
+                optimisticPreviousState.assignedTeam;
+
+
+            cached.acceptedBy =
+
+                optimisticPreviousState.acceptedBy;
+
+
+            cached.acceptedByUserId =
+
+                optimisticPreviousState.acceptedByUserId;
+
+
+            cached.responderPhone =
+
+                optimisticPreviousState.responderPhone;
+
+
+            cached.responderRole =
+
+                optimisticPreviousState.responderRole;
+
+
+            cached.acceptedTime =
+
+                optimisticPreviousState.acceptedTime;
+
+
+            cached.updatedAt =
+
+                optimisticPreviousState.updatedAt;
+
+
+            // -------------------------------------------------
+            // RESTORE MARKER
+            // -------------------------------------------------
+
+            if(
+
+                typeof addOrUpdateHECMarker ===
+                "function"
+
+            ){
+
+                addOrUpdateHECMarker(
+
+                    cached
+
+                );
+
+            }
+
+
+            // -------------------------------------------------
+            // RESTORE IDB
+            // -------------------------------------------------
+
+            try{
+
+                if(
+
+                    typeof upsertHECIncidentToIDB ===
+                    "function"
+
+                ){
+
+                    await upsertHECIncidentToIDB(
+
+                        cached
+
+                    );
+
+                }
+
+            }
+
+            catch(rollbackError){
+
+                console.warn(
+
+                    "⚠️ HEC optimistic rollback IDB failed:",
+
+                    rollbackError
+
+                );
+
+            }
+
+
+            console.log(
+
+                "🔄 HEC optimistic update rolled back:",
+
+                incidentId
+
+            );
+
+        }
+
+
+        // =====================================================
+        // USER ERROR
+        // =====================================================
 
         alert(
 
@@ -61059,7 +62449,6 @@ async function acceptHECIncident(
     }
 
 }
-
 
 
 // ============================================================
@@ -90296,35 +91685,37 @@ catch(err){
 updatedAt :
 
     serverTimestamp(),
-            reporterType :
+// ========================================================
+// 👤 REPORTER IDENTITY
+// ========================================================
 
-                "VILLAGER",
+reporterType :
+
+    "VILLAGER",
+
+reporterUserId :
+
+    String(
+        window.userProfile?.uid ||
+        window.userProfile?.userId ||
+        ""
+    ).trim(),
 
 reporterName :
 
     window.userProfile?.rawName ||
-
     window.userProfile?.name ||
-
     "",
 
 reporterMobile :
 
     String(
-
         window.userProfile?.phone ??
-
         window.userProfile?.mobile ??
-
         window.userProfile?.mobileNo ??
-
         window.userProfile?.contact ??
-
         ""
-
-    ).trim(),
-
-            situation :
+    ).trim(),            situation :
 
                 document.getElementById(
                     "helpSituation"
