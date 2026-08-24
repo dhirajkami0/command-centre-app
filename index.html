@@ -53206,13 +53206,11 @@ async function loadWildlifeSightings(
                     : "🐾";
 
 // =================================================
-// 🐅 BUILD POPUP HTML — FINAL SIGHTING POPUP
+// 🐅 BUILD POPUP HTML — FINAL WILDLIFE SIGHTING POPUP
 // =================================================
 
 /* =================================================
    🔒 SAFE TEXT
-   Prevent popup HTML from breaking because of
-   unexpected Firestore values.
 ================================================= */
 
 function popupSafe(value, fallback = "-") {
@@ -53248,7 +53246,9 @@ const sightingId =
 
 
 /* =================================================
-   📅 FIRESTORE DATE → MILLISECONDS
+   📅 SIGHTING DATETIME
+   AUTHORITATIVE FIELD:
+   sighting_datetime
 ================================================= */
 
 function getSightingDateMs(value) {
@@ -53257,25 +53257,19 @@ function getSightingDateMs(value) {
         return null;
     }
 
-    // Firestore Timestamp
     if (
         value &&
         typeof value.toDate === "function"
     ) {
 
-        const date =
-            value.toDate();
-
         const ms =
-            date.getTime();
+            value.toDate().getTime();
 
         return Number.isFinite(ms)
             ? ms
             : null;
     }
 
-
-    // Firestore timestamp object
     if (
         value &&
         Number.isFinite(
@@ -53291,8 +53285,6 @@ function getSightingDateMs(value) {
             : null;
     }
 
-
-    // JavaScript Date
     if (
         value instanceof Date
     ) {
@@ -53305,31 +53297,22 @@ function getSightingDateMs(value) {
             : null;
     }
 
-
-    // String / number
     if (
         typeof value === "string" ||
         typeof value === "number"
     ) {
 
-        const parsed =
+        const ms =
             new Date(value).getTime();
 
-        return Number.isFinite(parsed)
-            ? parsed
+        return Number.isFinite(ms)
+            ? ms
             : null;
     }
-
 
     return null;
 }
 
-
-/* =================================================
-   📅 SIGHTING DATETIME
-   AUTHORITATIVE FIELD:
-   sighting_datetime
-================================================= */
 
 const sightingDateMs =
     getSightingDateMs(
@@ -53469,8 +53452,6 @@ const sightingAge =
 
 /* =================================================
    🐅 BASIC WILDLIFE DATA
-
-   AUTHORITATIVE FIRESTORE FIELDS
 ================================================= */
 
 const sightingCount =
@@ -53478,20 +53459,24 @@ const sightingCount =
         s?.count
     );
 
+
 const sightingSex =
     popupSafe(
         s?.sex
     );
+
 
 const sightingAgeValue =
     popupSafe(
         s?.age
     );
 
+
 const behaviour =
     popupSafe(
         s?.behaviour
     );
+
 
 const direction =
     popupSafe(
@@ -53501,22 +53486,17 @@ const direction =
 
 /* =================================================
    👤 SIGHTED BY
-
-   AUTHORITATIVE FIELD:
-   leader
 ================================================= */
 
 const sightedBy =
     popupSafe(
-        s?.leader
+        s?.leader ||
+        s?.staff
     );
 
 
 /* =================================================
    📞 PHONE
-
-   AUTHORITATIVE FIELD:
-   phone
 ================================================= */
 
 const phone =
@@ -53528,12 +53508,8 @@ const phone =
 
 
 /* =================================================
-   ⚠️ OPTIONAL LOCATION RISK
-
-   DO NOT INVENT DATA.
-
-   Only show if Firestore actually contains
-   a usable value.
+   ⚠️ LOCATION RISK
+   Keep existing wildlife fields.
 ================================================= */
 
 const locationRisk =
@@ -53545,12 +53521,7 @@ const locationRisk =
 
 
 /* =================================================
-   ⚠️ OPTIONAL CONFLICT HISTORY
-
-   DO NOT confuse this with:
-   conflict: true/false
-
-   conflict_history must actually exist.
+   ⚠️ CONFLICT HISTORY
 ================================================= */
 
 const conflictHistory =
@@ -53563,8 +53534,6 @@ const conflictHistory =
 
 /* =================================================
    ⚠️ RISK HTML
-
-   Entire row hidden when information does not exist.
 ================================================= */
 
 const hasLocationRisk =
@@ -53613,13 +53582,16 @@ const riskHtml =
                                 font-weight:400;
                             "
                         >
+
                             ${
                                 hasLocationRisk
                                     ? " • "
                                     : ""
                             }
+
                             Conflict history:
                             ${popupSafe(conflictHistory)}
+
                         </span>
                       `
                     : ""
@@ -53632,39 +53604,16 @@ const riskHtml =
 
 
 /* =================================================
-   📍 GIS LOCATION
-
-   AUTHORITATIVE FIRESTORE FIELDS
-================================================= */
-
-const compartment =
-    popupSafe(
-        s?.gis_compartment
-    );
-
-const beat =
-    popupSafe(
-        s?.gis_beat
-    );
-
-const range =
-    popupSafe(
-        s?.gis_range
-    );
-
-
-/* =================================================
    🛰 GPS
-
-   AUTHORITATIVE FIRESTORE FIELDS:
-   lat
-   lon
+   AUTHORITATIVE:
+   lat / lon
 ================================================= */
 
 const gpsLat =
     Number(
         s?.lat
     );
+
 
 const gpsLon =
     Number(
@@ -53686,79 +53635,372 @@ const gpsText =
 
 
 /* =================================================
-   🧭 NAVIGATION
+   📍 CURRENT ACTUAL GIS LOCATION
 
-   Google Maps navigation only when GPS is valid.
+   IMPORTANT:
+   SAME LOGIC AS loadSightings()
+
+   GPS
+     ↓
+   resolveCurrentGIS(lat, lon)
+     ↓
+   FOREST / VILLAGE / UNKNOWN
 ================================================= */
 
-const navigateButton =
+let currentLocation =
+{
+    type:
+        "GPS",
+
+    gps:
+        validGPS
+            ? `${gpsLat.toFixed(6)}, ${gpsLon.toFixed(6)}`
+            : "",
+
+    compartment:
+        "",
+
+    beat:
+        "",
+
+    range:
+        "",
+
+    division:
+        "",
+
+    village:
+        "",
+
+    block:
+        "",
+
+    nearestPoint:
+        "",
+
+    distanceMeters:
+        null
+};
+
+
+/* =================================================
+   📍 RESOLVE CURRENT GPS → GIS
+
+   EXACT SAME RESOLVER AS loadSightings()
+
+   ONLY:
+       window.resolveCurrentGIS(lat, lon)
+
+   NO:
+       GreenGuardAI.GISEntities
+
+   NO:
+       resolveCurrentLocation
+================================================= */
+
+if (
     validGPS
-        ?
-        `
-        <a
-            href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(gpsLat + "," + gpsLon)}"
-            target="_blank"
-            rel="noopener noreferrer"
-            onclick="event.stopPropagation();"
-            style="
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                gap:6px;
-                margin-top:8px;
-                padding:7px 10px;
-                background:#2e7d32;
-                color:#fff;
-                border-radius:5px;
-                text-decoration:none;
-                font-size:11px;
-                font-weight:700;
-                box-sizing:border-box;
-            "
-        >
-            🧭 Navigate to Sighting
-        </a>
-        `
-        :
-        "";
+) {
+
+    try {
+
+        let resolved =
+            null;
+
+
+        /* =============================================
+           PRIMARY / ONLY GIS RESOLVER
+        ============================================= */
+
+        if (
+            typeof window.resolveCurrentGIS ===
+            "function"
+        ) {
+
+            resolved =
+                window.resolveCurrentGIS(
+                    gpsLat,
+                    gpsLon
+                );
+
+        }
+
+
+        /* =============================================
+           APPLY GIS RESULT
+        ============================================= */
+
+        if (
+            resolved
+        ) {
+
+            currentLocation =
+            {
+                ...currentLocation,
+
+                compartment:
+                    resolved.compartment ||
+                    "",
+
+                beat:
+                    resolved.beat ||
+                    "",
+
+                range:
+                    resolved.range ||
+                    "",
+
+                division:
+                    resolved.division ||
+                    "",
+
+                village:
+                    resolved.village ||
+                    "",
+
+                block:
+                    resolved.block ||
+                    "",
+
+                nearestPoint:
+                    resolved.nearestPoint ||
+                    "",
+
+                distanceMeters:
+                    resolved.distanceMeters ??
+                    null
+            };
+
+
+            /* ==========================================
+               FOREST LOCATION
+            ========================================== */
+
+            if (
+                currentLocation.compartment ||
+                currentLocation.beat ||
+                currentLocation.range ||
+                currentLocation.division
+            ) {
+
+                currentLocation.type =
+                    "FOREST";
+
+            }
+
+
+            /* ==========================================
+               VILLAGE LOCATION
+            ========================================== */
+
+            else if (
+                currentLocation.village
+            ) {
+
+                currentLocation.type =
+                    "VILLAGE";
+
+            }
+
+
+            /* ==========================================
+               GPS VALID BUT GIS NOT RESOLVED
+            ========================================== */
+
+            else {
+
+                currentLocation.type =
+                    "UNKNOWN";
+
+            }
+
+        }
+
+
+        /* =============================================
+           RESOLVER NOT AVAILABLE / NO RESULT
+        ============================================= */
+
+        else {
+
+            currentLocation.type =
+                "UNKNOWN";
+
+            console.warn(
+                "⚠ Wildlife sighting GIS not resolved:",
+                {
+                    lat:
+                        gpsLat,
+
+                    lon:
+                        gpsLon
+                }
+            );
+
+        }
+
+    }
+
+    catch(err) {
+
+        currentLocation.type =
+            "UNKNOWN";
+
+        console.error(
+            "❌ Wildlife sighting GIS resolution failed:",
+            err
+        );
+
+    }
+
+}
 
 
 /* =================================================
-   📞 PHONE HTML
+   📍 BUILD CURRENT LOCATION POPUP HTML
+
+   SAME DISPLAY LOGIC AS loadSightings()
 ================================================= */
 
-const phoneHtml =
-    phone
-        ?
-        `
-        <div
-            style="
-                margin-bottom:9px;
-            "
-        >
+let currentLocationHtml =
+    "";
 
-            📞
 
-            <a
-                href="tel:${encodeURIComponent(phone)}"
-                onclick="event.stopPropagation();"
-                style="
-                    color:#00695c;
-                    text-decoration:none;
-                    font-weight:700;
-                "
-            >
-                ${popupSafe(phone)}
-            </a>
+/* --------------------------------------------------
+   FOREST LOCATION
+-------------------------------------------------- */
 
+if (
+    currentLocation.type ===
+    "FOREST"
+) {
+
+    currentLocationHtml = `
+
+        <div>
+            🌲 Compartment:
+            <b>
+                ${popupSafe(
+                    currentLocation.compartment,
+                    "N/A"
+                )}
+            </b>
         </div>
-        `
-        :
-        "";
+
+        <div>
+            🧭 Beat:
+            <b>
+                ${popupSafe(
+                    currentLocation.beat,
+                    "N/A"
+                )}
+            </b>
+        </div>
+
+        <div>
+            🏢 Range:
+            <b>
+                ${popupSafe(
+                    currentLocation.range,
+                    "N/A"
+                )}
+            </b>
+        </div>
+
+    `;
+
+}
+
+
+/* --------------------------------------------------
+   VILLAGE LOCATION
+-------------------------------------------------- */
+
+else if (
+    currentLocation.type ===
+    "VILLAGE"
+) {
+
+    currentLocationHtml = `
+
+        <div>
+            🏡 Village:
+            <b>
+                ${popupSafe(
+                    currentLocation.village,
+                    "N/A"
+                )}
+            </b>
+        </div>
+
+        ${
+            currentLocation.block
+                ? `
+                    <div>
+                        🗺 Block:
+                        <b>
+                            ${popupSafe(
+                                currentLocation.block
+                            )}
+                        </b>
+                    </div>
+                  `
+                : ""
+        }
+
+        ${
+            currentLocation.nearestPoint
+                ? `
+                    <div>
+                        📌 Near:
+                        <b>
+                            ${popupSafe(
+                                currentLocation.nearestPoint
+                            )}
+                        </b>
+
+                        ${
+                            currentLocation.distanceMeters != null
+                                ? `
+                                    (${popupSafe(
+                                        currentLocation.distanceMeters
+                                    )} m)
+                                  `
+                                : ""
+                        }
+
+                    </div>
+                  `
+                : ""
+        }
+
+    `;
+
+}
+
+
+/* --------------------------------------------------
+   GPS ONLY / OUTSIDE KNOWN POLYGONS
+-------------------------------------------------- */
+
+else {
+
+    currentLocationHtml = `
+
+        <div>
+            📌 GIS:
+            <b>
+                Outside mapped forest/village boundary
+            </b>
+        </div>
+
+    `;
+
+}
 
 
 /* =================================================
-   🐅 FINAL POPUP
+   🐅 FINAL WILDLIFE POPUP
 ================================================= */
 
 const popup =
@@ -53820,7 +54062,6 @@ const popup =
         "
     >
 
-
         <!-- COUNT -->
 
         <tr
@@ -53873,9 +54114,11 @@ const popup =
                     padding:5px 0;
                 "
             >
+
                 ${sightingSex}
                 /
                 ${sightingAgeValue}
+
             </td>
 
         </tr>
@@ -54034,11 +54277,39 @@ const popup =
     <!-- 📞 PHONE -->
     <!-- ========================================= -->
 
-    ${phoneHtml}
+    ${
+        phone
+            ?
+            `
+            <div
+                style="
+                    margin-bottom:9px;
+                "
+            >
+
+                📞
+
+                <a
+                    href="tel:${encodeURIComponent(phone)}"
+                    onclick="event.stopPropagation();"
+                    style="
+                        color:#00695c;
+                        text-decoration:none;
+                        font-weight:700;
+                    "
+                >
+                    ${popupSafe(phone)}
+                </a>
+
+            </div>
+            `
+            :
+            ""
+    }
 
 
     <!-- ========================================= -->
-    <!-- 📍 LOCATION -->
+    <!-- 📍 LOCATION OF SIGHTING -->
     <!-- ========================================= -->
 
     <div
@@ -54064,40 +54335,7 @@ const popup =
         </div>
 
 
-        <!-- COMPARTMENT -->
-
-        <div
-            style="
-                margin-bottom:3px;
-            "
-        >
-            <b>🌲 Compartment:</b>
-            ${compartment}
-        </div>
-
-
-        <!-- BEAT -->
-
-        <div
-            style="
-                margin-bottom:3px;
-            "
-        >
-            <b>🧭 Beat:</b>
-            ${beat}
-        </div>
-
-
-        <!-- RANGE -->
-
-        <div
-            style="
-                margin-bottom:3px;
-            "
-        >
-            <b>🏢 Range:</b>
-            ${range}
-        </div>
+        ${currentLocationHtml}
 
 
         <!-- GPS -->
@@ -54120,7 +54358,39 @@ const popup =
 
         <!-- NAVIGATE -->
 
-        ${navigateButton}
+        ${
+            validGPS
+                ?
+                `
+                <a
+                    href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                        gpsLat + "," + gpsLon
+                    )}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onclick="event.stopPropagation();"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        gap:6px;
+                        margin-top:8px;
+                        padding:7px 10px;
+                        background:#2e7d32;
+                        color:#fff;
+                        border-radius:5px;
+                        text-decoration:none;
+                        font-size:11px;
+                        font-weight:700;
+                        box-sizing:border-box;
+                    "
+                >
+                    🧭 Navigate to Sighting
+                </a>
+                `
+                :
+                ""
+        }
 
     </div>
 
@@ -54141,6 +54411,7 @@ const popup =
 
 </div>
 `;
+
             // =================================================
             // POPUP OPTIONS
             // =================================================
