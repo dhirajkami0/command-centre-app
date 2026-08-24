@@ -43816,1453 +43816,772 @@ function escapeAttribute(
 
 window.irregularityLayer =
     irregularityLayer;
+
+
 // ============================================================
-// EXISTING FUNCTION
+// ⚡ IRREGULARITIES — IDB + 24H OPERATIONAL CACHE
 // ============================================================
+//
+// ARCHITECTURE:
+//
+// 1. MEMORY
+// 2. INDEXEDDB
+// 3. FIRESTORE REALTIME QUERY
+//
+// Operational window:
+//     LAST 24 HOURS
+//
+// Firestore listener:
+//     Only operational-date documents
+//
+// After initial synchronization:
+//     ONLY docChanges() are processed.
+//
+// IMPORTANT:
+//     Existing marker renderer remains unchanged.
+// ============================================================
+
+const GG_IRREGULARITY_CACHE_KEY =
+    "irregularities_operational_cache_v1";
+
+const GG_IRREGULARITY_CACHE_META_KEY =
+    "irregularities_operational_cache_meta_v1";
+
+const GG_IRREGULARITY_CACHE_MAX_AGE =
+    24 * 60 * 60 * 1000;
+
+
+// ============================================================
+// 🕒 24-HOUR CUTOFF
+// ============================================================
+
+function getIrregularity24hCutoff(){
+
+    return Date.now() -
+        GG_IRREGULARITY_CACHE_MAX_AGE;
+
+}
+
+
+// ============================================================
+// 📅 DATE STRING FOR FIRESTORE QUERY
+// ============================================================
+//
+// Current Irregularity documents use:
+//     incident_date
+//     incident_time
+//
+// parseIrregularityDateTime() already exists
+// in your code.
+//
+// We therefore query from yesterday's calendar date
+// and perform the exact 24-hour filter locally.
+//
+// This avoids reading the complete historical collection.
+// ============================================================
+
+function getIrregularityFirestoreDateCutoff(){
+
+    const cutoff =
+        new Date(
+            getIrregularity24hCutoff()
+        );
+
+    const year =
+        cutoff.getFullYear();
+
+    const month =
+        String(
+            cutoff.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
+
+    const day =
+        String(
+            cutoff.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
+
+    return (
+        year +
+        "-" +
+        month +
+        "-" +
+        day
+    );
+
+}
+
+
+// ============================================================
+// 🧮 EXACT 24-HOUR ELIGIBILITY
+// ============================================================
+
+function isIrregularityWithinLast24Hours(
+    irregularity
+){
+
+    if(!irregularity){
+
+        return false;
+
+    }
+
+    const timestamp =
+        parseIrregularityDateTime(
+            irregularity
+        );
+
+    if(timestamp === null){
+
+        return false;
+
+    }
+
+    return (
+        timestamp >=
+        getIrregularity24hCutoff()
+    );
+
+}
+
+
+// ============================================================
+// 🔑 NORMALIZE ONE FIRESTORE DOCUMENT
+// ============================================================
+
+function normalizeIrregularityDocument(
+    docSnap
+){
+
+    if(!docSnap){
+
+        return null;
+
+    }
+
+    const d =
+        docSnap.data?.() ||
+        {};
+
+    return {
+
+        ...d,
+
+        firestore_id:
+            d.firestore_id ||
+            docSnap.id
+
+    };
+
+}
+
+
+// ============================================================
+// 🔑 IRREGULARITY CACHE KEY
+// ============================================================
+
+function getIrregularityKey(
+    e
+){
+
+    return String(
+
+        e?.irregularity_id ||
+        e?.id ||
+        e?.firestore_id ||
+        ""
+
+    ).trim();
+
+}
+
+
+// ============================================================
+// 💾 SAVE IRREGULARITIES TO IDB
+// ============================================================
+
+async function saveIrregularitiesToIDB(
+    data
+){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.set !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Irregularity IDB unavailable"
+            );
+
+            return false;
+
+        }
+
+
+        const validData =
+            (
+                Array.isArray(data)
+                    ? data
+                    : []
+            )
+            .filter(
+                isIrregularityWithinLast24Hours
+            );
+
+
+        await window.idbKeyval.set(
+
+            GG_IRREGULARITY_CACHE_KEY,
+
+            validData
+
+        );
+
+
+        await window.idbKeyval.set(
+
+            GG_IRREGULARITY_CACHE_META_KEY,
+
+            {
+
+                savedAt:
+                    Date.now(),
+
+                count:
+                    validData.length,
+
+                version:
+                    1
+
+            }
+
+        );
+
+
+        console.log(
+
+            "💾 IRREGULARITIES SAVED TO IDB:",
+
+            validData.length
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ IRREGULARITY IDB SAVE FAILED:",
+
+            err
+
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// 📥 LOAD IRREGULARITIES FROM IDB
+// ============================================================
+
+async function loadIrregularitiesFromIDB(){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Irregularity IDB unavailable"
+            );
+
+            return [];
+
+        }
+
+
+        // ----------------------------------------------------
+        // WAIT FOR IDB INITIALIZATION
+        // ----------------------------------------------------
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_IRREGULARITY_CACHE_KEY
+
+            );
+
+
+        if(
+            !Array.isArray(cached) ||
+            cached.length === 0
+        ){
+
+            console.log(
+                "📭 IRREGULARITIES IDB CACHE MISS"
+            );
+
+            return [];
+
+        }
+
+
+        const fresh =
+            cached.filter(
+                isIrregularityWithinLast24Hours
+            );
+
+
+        console.log(
+
+            "⚡ IRREGULARITIES IDB:",
+
+            {
+
+                cached:
+                    cached.length,
+
+                fresh:
+                    fresh.length
+
+            }
+
+        );
+
+
+        // ----------------------------------------------------
+        // CLEAN OLD DOCUMENTS FROM CACHE
+        // ----------------------------------------------------
+
+        if(
+            fresh.length !==
+            cached.length
+        ){
+
+            await saveIrregularitiesToIDB(
+                fresh
+            );
+
+        }
+
+
+        return fresh;
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ IRREGULARITY IDB READ FAILED:",
+
+            err
+
+        );
+
+        return [];
+
+    }
+
+}
+
+
+// ============================================================
+// 🧹 REMOVE ONE IRREGULARITY FROM IDB CACHE
+// ============================================================
+
+async function removeIrregularityFromIDB(
+    key
+){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !==
+                "function"
+        ){
+
+            return;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_IRREGULARITY_CACHE_KEY
+
+            );
+
+
+        if(
+            !Array.isArray(cached)
+        ){
+
+            return;
+
+        }
+
+
+        const filtered =
+            cached.filter(
+                function(e){
+
+                    return (
+                        getIrregularityKey(e) !==
+                        String(key).trim()
+                    );
+
+                }
+            );
+
+
+        await saveIrregularitiesToIDB(
+            filtered
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Irregularity IDB remove failed:",
+
+            err
+
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 💾 UPSERT ONE IRREGULARITY INTO IDB
+// ============================================================
+
+async function upsertIrregularityToIDB(
+    irregularity
+){
+
+    try{
+
+        const key =
+            getIrregularityKey(
+                irregularity
+            );
+
+
+        if(!key){
+
+            return;
+
+        }
+
+
+        const cached =
+            await window.idbKeyval.get(
+
+                GG_IRREGULARITY_CACHE_KEY
+
+            );
+
+
+        const list =
+            Array.isArray(cached)
+                ? cached
+                : [];
+
+
+        const index =
+            list.findIndex(
+                function(e){
+
+                    return (
+                        getIrregularityKey(e) ===
+                        key
+                    );
+
+                }
+            );
+
+
+        // ----------------------------------------------------
+        // DOCUMENT IS OUTSIDE 24H WINDOW
+        // ----------------------------------------------------
+
+        if(
+            !isIrregularityWithinLast24Hours(
+                irregularity
+            )
+        ){
+
+            if(index >= 0){
+
+                list.splice(
+                    index,
+                    1
+                );
+
+            }
+
+            await saveIrregularitiesToIDB(
+                list
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // UPSERT
+        // ----------------------------------------------------
+
+        if(index >= 0){
+
+            list[index] =
+                irregularity;
+
+        }
+        else{
+
+            list.push(
+                irregularity
+            );
+
+        }
+
+
+        await saveIrregularitiesToIDB(
+            list
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+
+            "⚠ Irregularity IDB upsert failed:",
+
+            err
+
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// 🔄 RENDER IDB DATA
+// ============================================================
+
+function renderIrregularitiesFromCache(
+    data
+){
+
+    if(
+        !Array.isArray(data)
+    ){
+
+        return;
+
+    }
+
+
+    console.log(
+
+        "⚡ Rendering irregularities from IDB:",
+
+        data.length
+
+    );
+
+
+    data.forEach(
+
+        function(e){
+
+            try{
+
+                renderIrregularityMarker(
+                    e
+                );
+
+            }
+            catch(err){
+
+                console.warn(
+
+                    "⚠ Cached irregularity render failed:",
+
+                    err
+
+                );
+
+            }
+
+        }
+
+    );
+
+}
+
+// ============================================================
+// ⚡ LOAD IRREGULARITIES
+//
+// NEW ARCHITECTURE:
+//
+// MEMORY
+//   ↓
+// INDEXEDDB
+//   ↓
+// FIRESTORE REALTIME QUERY
+//
+// NO FULL COLLECTION getDocs()
+// ============================================================
+
 async function loadIrregularities(){
 
     try{
 
         console.log(
-            "⚠️ Loading irregularities from Firestore..."
+            "⚡ Loading irregularities — IDB FIRST"
         );
 
 
-        /* =====================================================
-           INIT
-           ===================================================== */
+        // =====================================================
+        // INIT
+        // =====================================================
 
         window.irregularityMarkers =
             window.irregularityMarkers ||
             {};
 
-
         window.activeIrregularityPopupKey =
             window.activeIrregularityPopupKey ||
             null;
-
 
         window.activeIrregularityPopupMarker =
             window.activeIrregularityPopupMarker ||
             null;
 
 
-        const popupKeyBeforeRefresh =
-            window.activeIrregularityPopupKey;
+        // =====================================================
+        // STEP 1
+        // INDEXEDDB
+        // =====================================================
+
+        const cached =
+            await loadIrregularitiesFromIDB();
 
 
-        /* =====================================================
-           FIRESTORE
-           ===================================================== */
+        if(
+            Array.isArray(cached) &&
+            cached.length > 0
+        ){
 
-        const {
-            collection,
-            getDocs
-        } = window.fb;
+            console.log(
 
+                "⚡ IRREGULARITIES → IDB CACHE HIT:",
 
-        const db =
-            window.db;
+                cached.length
 
-
-        const snapshot =
-            await getDocs(
-                collection(
-                    db,
-                    "irregularities"
-                )
             );
 
 
-        const data =
-            [];
+            renderIrregularitiesFromCache(
+    cached
+);
 
-
-        snapshot.forEach(
-            function(docSnap){
-
-                const d =
-                    docSnap.data() ||
-                    {};
-
-
-                data.push({
-
-                    ...d,
-
-                    firestore_id:
-                        d.firestore_id ||
-                        docSnap.id
-
-                });
-
-            }
-        );
-
-
-        console.log(
-            "⚠️ Irregularities loaded:",
-            data.length
-        );
-
-
-        const now =
-            Date.now();
-
-
-        /* =====================================================
-           PROCESS EACH IRREGULARITY
-           ===================================================== */
-
-        data.forEach(
-            function(e){
-
-                try{
-
-                    /* =================================================
-                       GPS
-                       ================================================= */
-
-                    const lat =
-                        Number(
-                            e.latitude ??
-                            e.lat
-                        );
-
-
-                    const lon =
-                        Number(
-                            e.longitude ??
-                            e.lon
-                        );
-
-
-                    if(
-                        !Number.isFinite(lat) ||
-                        !Number.isFinite(lon)
-                    ){
-
-                        console.warn(
-                            "⚠ Invalid irregularity GPS:",
-                            e.irregularity_id ||
-                            e.firestore_id
-                        );
-
-                        return;
-
-                    }
-
-
-                    /* =================================================
-                       CANONICAL KEY
-                       ================================================= */
-
-                    const key =
-                        String(
-
-                            e.irregularity_id ||
-                            e.id ||
-                            e.firestore_id ||
-                            ""
-
-                        ).trim();
-
-
-                    if(
-                        !key
-                    ){
-
-                        console.warn(
-                            "⚠ Irregularity without ID skipped"
-                        );
-
-                        return;
-
-                    }
-// =====================================================
-// 🔐 IRREGULARITY MARKER VISIBILITY
-// =====================================================
-//
-// SAME RULE AS STAFF / WILDLIFE:
-//
-// ADMIN
-//     → ALL
-//
-// DFO / ADFO
-//     → SAME DIVISION
-//
-// OTHER
-//     → SELF / SAME RANGE
-//
-// SELECTED GIS
-//     → TARGET MUST MATCH ACTIVE GIS FILTER
-//
-// NO DEPREDATION / RESCUE EXCEPTION
-// =====================================================
-
-if(
-    !isMarkerVisible(
-        e
-    )
-){
-
-    // -------------------------------------------------
-    // REMOVE EXISTING MARKER IF IT WAS PREVIOUSLY
-    // VISIBLE
-    // -------------------------------------------------
-
-    const existingMarker =
-        window.irregularityMarkers?.[
-            key
-        ];
-
-    if(
-        existingMarker
-    ){
-
-        try{
-
-            if(
-                window.activeIrregularityPopupKey ===
-                key
-            ){
-
-                window.activeIrregularityPopupKey =
-                    null;
-
-                window.activeIrregularityPopupMarker =
-                    null;
-
-            }
-
-            irregularityLayer.removeLayer(
-                existingMarker
-            );
+cleanupIrregularityMarkersAgainstCache(
+    cached
+);
 
         }
-        catch(err){
+        else{
 
-            console.warn(
-                "⚠️ Irregularity marker removal failed:",
-                key,
-                err
+            console.log(
+                "📭 IRREGULARITIES → IDB CACHE EMPTY"
             );
+
 
         }
 
-        delete
-            window.irregularityMarkers[
-                key
-            ];
 
-    }
-
-    return;
-
-}
-
-                    /* =================================================
-                       STATUS
-                       ================================================= */
-
-                    const status =
-                        String(
-                            e.status ||
-                            "ACTIVE"
-                        )
-                        .trim()
-                        .toUpperCase();
-
-
-                    /*
-                     * Same philosophy as sightings:
-                     *
-                     * ACTIVE → show
-                     * CLOSED → remove
-                     */
-
-                    if(
-                        status ===
-                        "CLOSED"
-                    ){
-
-                        if(
-                            window.irregularityMarkers[key]
-                        ){
-
-                            if(
-                                window.activeIrregularityPopupKey ===
-                                key
-                            ){
-
-                                window.activeIrregularityPopupKey =
-                                    null;
-
-                                window.activeIrregularityPopupMarker =
-                                    null;
-
-                            }
-
-
-                            irregularityLayer.removeLayer(
-                                window.irregularityMarkers[key]
-                            );
-
-
-                            delete
-                                window.irregularityMarkers[key];
-
-                        }
-
-
-                        return;
-
-                    }
-
-
-                    /* =================================================
-                       CATEGORY
-                       ================================================= */
-
-                    const category =
-                        String(
-                            e.category ||
-                            ""
-                        )
-                        .trim()
-                        .toUpperCase();
-
-
-                    const meta =
-                        window.GGIrregularity
-                            ?.TYPE_META?.[category] ||
-                        {
-
-                            icon:
-                                "⚠️",
-
-                            title:
-                                e.category_label ||
-                                "Irregularity"
-
-                        };
-
-
-                    const categoryIcon =
-                        meta.icon ||
-                        "⚠️";
-
-
-                    const categoryTitle =
-                        meta.title ||
-                        e.category_label ||
-                        "Irregularity";
-
-
-                    /* =================================================
-                       INCIDENT DATETIME
-                       ================================================= */
-
-                    const incidentTs =
-                        parseIrregularityDateTime(
-                            e
-                        );
-
-
-                    const ageMinutes =
-                        incidentTs !== null
-                            ? Math.max(
-                                0,
-                                Math.floor(
-                                    (
-                                        now -
-                                        incidentTs
-                                    ) /
-                                    60000
-                                )
-                            )
-                            : null;
-
-
-                    /* =================================================
-                       AGE
-                       ================================================= */
-
-                    let ageFormatted =
-                        "Unknown";
-
-
-                    if(
-                        ageMinutes !== null
-                    ){
-
-                        const days =
-                            Math.floor(
-                                ageMinutes /
-                                1440
-                            );
-
-
-                        const hours =
-                            Math.floor(
-                                (
-                                    ageMinutes %
-                                    1440
-                                ) /
-                                60
-                            );
-
-
-                        const mins =
-                            ageMinutes %
-                            60;
-
-
-                        if(
-                            days > 0
-                        ){
-
-                            ageFormatted =
-                                days +
-                                " day " +
-                                hours +
-                                " hr " +
-                                mins +
-                                " min";
-
-                        }
-
-                        else if(
-                            hours > 0
-                        ){
-
-                            ageFormatted =
-                                hours +
-                                " hr " +
-                                mins +
-                                " min";
-
-                        }
-
-                        else{
-
-                            ageFormatted =
-                                mins +
-                                " min";
-
-                        }
-
-                    }
-
-
-                    /* =================================================
-                       REPORTER
-                       ================================================= */
-
-                    const reportedBy =
-                        String(
-                            e.reported_by ||
-                            e.sighted_by ||
-                            e.created_by ||
-                            "Unknown"
-                        ).trim();
-
-
-                    const phone =
-                        String(
-                            e.reported_by_phone ||
-                            e.phone ||
-                            ""
-                        ).trim();
-
-
-                    /* =================================================
-                       GIS
-                       ================================================= */
-
-                    const division =
-                        String(
-                            e.gis_division ||
-                            e.division ||
-                            ""
-                        ).trim();
-
-
-                    const range =
-                        String(
-                            e.gis_range ||
-                            e.range ||
-                            ""
-                        ).trim();
-
-
-                    const beat =
-                        String(
-                            e.gis_beat ||
-                            e.beat ||
-                            ""
-                        ).trim();
-
-
-                    const compartment =
-                        String(
-                            e.gis_compartment ||
-                            e.compartment ||
-                            ""
-                        ).trim();
-
-
-                    /* =================================================
-                       INCIDENT DATETIME DISPLAY
-                       ================================================= */
-
-                    const incidentDateTime =
-                        incidentTs !== null
-                            ? new Date(
-                                incidentTs
-                              ).toLocaleString(
-                                "en-IN"
-                              )
-                            : (
-                                [
-                                    e.incident_date,
-                                    e.incident_time
-                                ]
-                                .filter(Boolean)
-                                .join(" ")
-                                ||
-                                "Unknown"
-                              );
-
-
-                    /* =================================================
-                       DYNAMIC ICON
-                       ================================================= */
-
-                    const icon =
-                        L.divIcon({
-
-                            className:
-                                "",
-
-                            html:
-                                `
-                                <div
-                                    class="gg-irregularity-marker"
-                                    style="
-                                        width:32px;
-                                        height:32px;
-                                        display:flex;
-                                        align-items:center;
-                                        justify-content:center;
-                                        position:relative;
-                                        filter:
-                                            drop-shadow(
-                                                0 2px 4px
-                                                rgba(0,0,0,.45)
-                                            );
-                                    "
-                                >
-
-                                    <div
-                                        style="
-                                            width:28px;
-                                            height:28px;
-                                            border-radius:50%;
-                                            background:#ffffff;
-                                            border:2px solid #d32f2f;
-                                            display:flex;
-                                            align-items:center;
-                                            justify-content:center;
-                                            box-sizing:border-box;
-                                        "
-                                    >
-
-                                        <span
-                                            style="
-                                                font-size:18px;
-                                                line-height:1;
-                                            "
-                                        >
-                                            ${categoryIcon}
-                                        </span>
-
-                                    </div>
-
-                                </div>
-                                `,
-
-                            iconSize:
-                                [
-                                    32,
-                                    32
-                                ],
-
-                            iconAnchor:
-                                [
-                                    16,
-                                    16
-                                ]
-
-                        });
-
-
-                    /* =================================================
-                       DETAILS
-                       ================================================= */
-
-                    const details =
-                        e.details &&
-                        typeof e.details === "object"
-                            ? e.details
-                            : {};
-
-
-                    const contextHtml =
-                        buildIrregularityContextHtml(
-                            category,
-                            details
-                        );
-
-
-                    /* =================================================
-                       MEDIA
-                       ================================================= */
-
-                    const mediaHtml =
-                        buildIrregularityMediaPopup(
-                            e,
-                            key
-                        );
-
-
-                    /* =================================================
-                       POPUP
-                       ================================================= */
-
-                    const popup =
-                        `
-                        <div
-                            class="gg-irregularity-popup"
-                            style="
-                                font-family:
-                                    Segoe UI,
-                                    Tahoma,
-                                    Arial,
-                                    sans-serif;
-
-                                width:280px;
-                                max-width:280px;
-                                min-width:280px;
-
-                                max-height:360px;
-
-                                overflow-y:auto;
-                                overflow-x:hidden;
-
-                                -webkit-overflow-scrolling:touch;
-
-                                overscroll-behavior:contain;
-
-                                touch-action:pan-y;
-
-                                word-break:break-word;
-
-                                box-sizing:border-box;
-
-                                background:#ffffff;
-
-                                border-radius:12px;
-
-                                padding:10px;
-
-                                color:#111;
-
-                                border:
-                                    1px solid #e0e0e0;
-
-                                box-shadow:
-                                    0 4px 14px
-                                    rgba(0,0,0,.15);
-                            "
-                        >
-
-                            <!-- STATUS / CATEGORY -->
-
-                            <div
-                                style="
-                                    color:#d32f2f;
-                                    font-weight:700;
-                                    font-size:13px;
-                                    margin-bottom:6px;
-
-                                    display:flex;
-                                    align-items:center;
-
-                                    gap:6px;
-                                "
-                            >
-
-                                ${categoryIcon}
-
-                                ${status}
-
-                            </div>
-
-
-                            <div
-                                style="
-                                    height:1px;
-                                    background:#e0e0e0;
-                                    margin-bottom:8px;
-                                "
-                            ></div>
-
-
-                            <!-- COMMON FIELDS -->
-
-                            <div
-                                style="
-                                    font-size:11px;
-                                    line-height:1.6;
-                                    color:#111;
-                                "
-                            >
-
-                                <div
-                                    style="margin-bottom:3px;"
-                                >
-
-                                    <b>
-                                        🆔 Irregularity ID:
-                                    </b>
-
-                                    <span
-                                        style="
-                                            color:#b71c1c;
-                                            font-weight:700;
-                                        "
-                                    >
-                                        ${escapeIrregularityHtml(key)}
-                                    </span>
-
-                                </div>
-
-
-                                <div
-                                    style="margin-bottom:3px;"
-                                >
-
-                                    <b>
-                                        ⚠️ Type:
-                                    </b>
-
-                                    ${escapeIrregularityHtml(
-                                        categoryTitle
-                                    )}
-
-                                </div>
-
-
-                                <div
-                                    style="margin-bottom:3px;"
-                                >
-
-                                    <b>
-                                        📅 Incident DateTime:
-                                    </b>
-
-                                    ${escapeIrregularityHtml(
-                                        incidentDateTime
-                                    )}
-
-                                </div>
-
-
-                                <div
-                                    style="margin-bottom:3px;"
-                                >
-
-                                    <b>
-                                        ⏱ Age of Irregularity:
-                                    </b>
-
-                                    ${escapeIrregularityHtml(
-                                        ageFormatted
-                                    )}
-
-                                </div>
-
-
-                                <div
-                                    style="margin-bottom:3px;"
-                                >
-
-                                    <b>
-                                        👤 Reported by:
-                                    </b>
-
-                                    ${escapeIrregularityHtml(
-                                        reportedBy
-                                    )}
-
-                                </div>
-
-                            </div>
-
-
-                            ${
-                                phone
-                                    ? `
-                                        <div
-                                            style="
-                                                margin-top:6px;
-                                                margin-bottom:8px;
-
-                                                font-size:11px;
-                                                line-height:1.5;
-
-                                                background:#ffffff;
-
-                                                border:
-                                                    1px solid #eeeeee;
-
-                                                border-radius:6px;
-
-                                                padding:5px;
-                                            "
-                                        >
-
-                                            <div
-                                                style="
-                                                    color:#111;
-                                                    font-weight:600;
-                                                "
-                                            >
-
-                                                📞
-
-                                                <a
-                                                    href="tel:${escapeAttribute(
-                                                        phone
-                                                    )}"
-                                                    style="
-                                                        color:#00695c;
-                                                        text-decoration:none;
-                                                        font-weight:700;
-                                                    "
-                                                >
-                                                    ${escapeIrregularityHtml(
-                                                        phone
-                                                    )}
-                                                </a>
-
-                                            </div>
-
-                                        </div>
-                                    `
-                                    : ""
-                            }
-
-
-                            ${
-                                contextHtml
-                                    ? `
-                                        <div
-                                            style="
-                                                margin-top:8px;
-                                                margin-bottom:8px;
-
-                                                background:#fff8f8;
-
-                                                border:
-                                                    1px solid #f0d5d5;
-
-                                                border-radius:6px;
-
-                                                padding:6px;
-                                            "
-                                        >
-
-                                            <div
-                                                style="
-                                                    font-weight:700;
-                                                    color:#b71c1c;
-
-                                                    font-size:11px;
-
-                                                    margin-bottom:4px;
-                                                "
-                                            >
-
-                                                ⚠️
-                                                ${escapeIrregularityHtml(
-                                                    categoryTitle
-                                                )}
-                                                Details
-
-                                            </div>
-
-                                            ${contextHtml}
-
-                                        </div>
-                                    `
-                                    : ""
-                            }
-
-
-                            <!-- LOCATION -->
-
-                            <div
-                                style="
-                                    margin-bottom:8px;
-
-                                    font-size:10px;
-                                    line-height:1.5;
-
-                                    background:#f7fbf7;
-
-                                    border:
-                                        1px solid #d7e9d8;
-
-                                    border-radius:6px;
-
-                                    padding:5px;
-                                "
-                            >
-
-                                <div
-                                    style="
-                                        font-weight:700;
-
-                                        color:#1b5e20;
-
-                                        margin-bottom:3px;
-
-                                        font-size:11px;
-                                    "
-                                >
-
-                                    📍 Location of Irregularity
-
-                                </div>
-
-
-                                ${
-                                    compartment
-                                        ? `
-                                            <div>
-                                                🌲 Compartment:
-                                                <b>
-                                                    ${escapeIrregularityHtml(
-                                                        compartment
-                                                    )}
-                                                </b>
-                                            </div>
-                                        `
-                                        : ""
-                                }
-
-
-                                ${
-                                    beat
-                                        ? `
-                                            <div>
-                                                🧭 Beat:
-                                                <b>
-                                                    ${escapeIrregularityHtml(
-                                                        beat
-                                                    )}
-                                                </b>
-                                            </div>
-                                        `
-                                        : ""
-                                }
-
-
-                                ${
-                                    range
-                                        ? `
-                                            <div>
-                                                🏢 Range:
-                                                <b>
-                                                    ${escapeIrregularityHtml(
-                                                        range
-                                                    )}
-                                                </b>
-                                            </div>
-                                        `
-                                        : ""
-                                }
-
-
-                                ${
-                                    division
-                                        ? `
-                                            <div>
-                                                🏛 Division:
-                                                <b>
-                                                    ${escapeIrregularityHtml(
-                                                        division
-                                                    )}
-                                                </b>
-                                            </div>
-                                        `
-                                        : ""
-                                }
-
-
-                                <div
-                                    style="
-                                        margin-top:2px;
-
-                                        color:#555;
-
-                                        font-size:9px;
-                                    "
-                                >
-
-                                    🛰 GPS:
-
-                                    <b>
-                                        ${lat.toFixed(6)},
-                                        ${lon.toFixed(6)}
-                                    </b>
-
-                                </div>
-
-                            </div>
-
-
-                            ${mediaHtml}
-
-                        </div>
-                        `;
-
-
-                    /* =================================================
-                       CREATE / UPDATE MARKER
-                       ================================================= */
-
-                    let marker =
-                        window.irregularityMarkers[key];
-
-
-                    if(
-                        !marker
-                    ){
-
-                        marker =
-                            L.marker(
-                                [
-                                    lat,
-                                    lon
-                                ],
-                                {
-                                    icon:
-                                        icon,
-
-                                    zIndexOffset:
-                                        4500
-                                }
-                            )
-                            .addTo(
-                                irregularityLayer
-                            );
-
-
-                        window.irregularityMarkers[key] =
-                            marker;
-
-
-                        /* =================================================
-                           POPUP
-                           ================================================= */
-
-                        marker.bindPopup(
-                            popup,
-                            {
-
-                                maxWidth:
-                                    300,
-
-                                minWidth:
-                                    260,
-
-                                maxHeight:
-                                    Math.min(
-                                        window.innerHeight *
-                                        0.7,
-                                        450
-                                    ),
-
-                                closeOnClick:
-                                    false,
-
-                                autoClose:
-                                    false,
-
-                                autoPan:
-                                    true,
-
-                                autoPanPadding:
-                                    [
-                                        15,
-                                        15
-                                    ],
-
-                                keepInView:
-                                    true
-
-                            }
-                        );
-
-
-                        /* =================================================
-                           REMOVE LEAFLET DEFAULT CLICK
-                           ================================================= */
-
-                        if(
-                            typeof marker._openPopup ===
-                            "function"
-                        ){
-
-                            marker.off(
-                                "click",
-                                marker._openPopup,
-                                marker
-                            );
-
-                        }
-
-
-                        /* =================================================
-                           POPUP OPEN
-                           ================================================= */
-
-                        marker.on(
-                            "popupopen",
-                            function(){
-
-                                window.activeIrregularityPopupKey =
-                                    key;
-
-
-                                window.activeIrregularityPopupMarker =
-                                    marker;
-
-
-                                requestAnimationFrame(
-                                    function(){
-
-                                        const popupElement =
-                                            marker
-                                                .getPopup()
-                                                ?.getElement();
-
-
-                                        const content =
-                                            popupElement
-                                                ?.querySelector(
-                                                    ".leaflet-popup-content"
-                                                );
-
-
-                                        if(
-                                            content
-                                        ){
-
-                                            content.style.maxHeight =
-                                                Math.min(
-                                                    window.innerHeight *
-                                                    0.6,
-                                                    360
-                                                ) +
-                                                "px";
-
-
-                                            content.style.overflowY =
-                                                "auto";
-
-
-                                            content.style.overflowX =
-                                                "hidden";
-
-
-                                            content.style.webkitOverflowScrolling =
-                                                "touch";
-
-
-                                            content.style.overscrollBehavior =
-                                                "contain";
-
-
-                                            content.style.touchAction =
-                                                "pan-y";
-
-                                        }
-
-                                    }
-                                );
-
-                            }
-                        );
-
-
-                        /* =================================================
-                           POPUP CLOSE
-                           ================================================= */
-
-                        marker.on(
-                            "popupclose",
-                            function(){
-
-                                if(
-                                    window.activeIrregularityPopupKey ===
-                                    key
-                                ){
-
-                                    window.activeIrregularityPopupKey =
-                                        null;
-
-
-                                    window.activeIrregularityPopupMarker =
-                                        null;
-
-                                }
-
-                            }
-                        );
-
-
-                        /* =================================================
-                           CONTROLLED CLICK
-                           ================================================= */
-
-                        marker.on(
-                            "click",
-                            function(){
-
-                                const isOpen =
-                                    marker.isPopupOpen();
-
-
-                                if(
-                                    isOpen
-                                ){
-
-                                    marker.closePopup();
-
-                                    return;
-
-                                }
-
-
-                                marker.openPopup();
-
-                            }
-                        );
-
-                    }
-
-
-                    else{
-
-                        marker.setLatLng(
-                            [
-                                lat,
-                                lon
-                            ]
-                        );
-
-
-                        marker.setIcon(
-                            icon
-                        );
-
-                    }
-
-
-                    /* =================================================
-                       SAFE POPUP UPDATE
-                       ================================================= */
-
-                    const popupIsOpen =
-                        marker.isPopupOpen();
-
-
-                    const popupChanged =
-                        marker._ggIrregularityPopupHtml !==
-                        popup;
-
-
-                    if(
-                        !popupIsOpen &&
-                        popupChanged
-                    ){
-
-                        marker.setPopupContent(
-                            popup
-                        );
-
-                    }
-
-
-                    marker._ggIrregularityPopupHtml =
-                        popup;
-
-
-                    /* =================================================
-                       PRESERVE OPEN POPUP
-                       ================================================= */
-
-                    if(
-                        popupKeyBeforeRefresh ===
-                        key ||
-                        popupIsOpen
-                    ){
-
-                        window.activeIrregularityPopupKey =
-                            key;
-
-
-                        window.activeIrregularityPopupMarker =
-                            marker;
-
-                    }
-
-                }
-
-                catch(
-                    irregularityError
-                ){
-
-                    console.error(
-                        "❌ Irregularity render failed:",
-                        e,
-                        irregularityError
-                    );
-
-                }
-
-            }
-        );
-
-
-        /* =====================================================
-           REMOVE STALE MARKERS
-           ===================================================== */
-
-        const validKeys =
-            new Set(
-
-                data
-                    .filter(
-                        function(e){
-
-                            return (
-                                String(
-                                    e.status ||
-                                    "ACTIVE"
-                                )
-                                .trim()
-                                .toUpperCase()
-                                !==
-                                "CLOSED"
-                            );
-
-                        }
-                    )
-                    .map(
-                        function(e){
-
-                            return String(
-                                e.irregularity_id ||
-                                e.id ||
-                                e.firestore_id ||
-                                ""
-                            ).trim();
-
-                        }
-                    )
-                    .filter(Boolean)
-
-            );
-
-
-        Object.keys(
-            window.irregularityMarkers
-        )
-        .forEach(
-            function(key){
-
-                if(
-                    !validKeys.has(key)
-                ){
-
-                    try{
-
-                        if(
-                            window.activeIrregularityPopupKey ===
-                            key
-                        ){
-
-                            window.activeIrregularityPopupKey =
-                                null;
-
-
-                            window.activeIrregularityPopupMarker =
-                                null;
-
-                        }
-
-
-                        irregularityLayer.removeLayer(
-                            window.irregularityMarkers[key]
-                        );
-
-                    }
-                    catch(
-                        err
-                    ){
-
-                        console.warn(
-                            "Irregularity marker cleanup failed:",
-                            key,
-                            err
-                        );
-
-                    }
-
-
-                    delete
-                        window.irregularityMarkers[key];
-
-                }
-
-            }
-        );
+        // =====================================================
+        // STEP 2
+        // REALTIME FIRESTORE
+        // =====================================================
+        //
+        // IMPORTANT:
+        //
+        // DO NOT call getDocs().
+        //
+        // listenIrregularities() itself performs the
+        // initial matching query and then remains realtime.
+        //
+        // This avoids:
+        //
+        // getDocs()
+        // +
+        // onSnapshot()
+        //
+        // duplicate initial reads.
+        // =====================================================
+
+        listenIrregularities();
 
 
         console.log(
-            "✅ Irregularity markers synchronized:",
-            Object.keys(
-                window.irregularityMarkers
-            ).length
+            "✅ IRREGULARITIES LOAD COMPLETE"
         );
 
 
-        return data;
+        return cached;
+
 
     }
-
-    catch(
-        err
-    ){
+    catch(err){
 
         console.error(
+
             "❌ loadIrregularities failed:",
+
             err
+
         );
 
 
@@ -58471,13 +57790,48 @@ function listenIrregularities(){
            LISTEN
            ====================================================== */
 
-        window.irregularityListener =
-            onSnapshot(
+        // ======================================================
+// 🔎 24-HOUR OPERATIONAL QUERY
+// ======================================================
 
-                collection(
-                    db,
-                    "irregularities"
-                ),
+const cutoffDate =
+    getIrregularityFirestoreDateCutoff();
+
+
+const irregularityQuery =
+    window.fb.query(
+
+        collection(
+            db,
+            "irregularities"
+        ),
+
+        window.fb.where(
+            "incident_date",
+            ">=",
+            cutoffDate
+        )
+
+    );
+
+
+console.log(
+    "🔎 Irregularity realtime query:",
+    {
+        incident_date_gte:
+            cutoffDate
+    }
+);
+
+
+// ======================================================
+// 🔥 START QUERY LISTENER
+// ======================================================
+
+window.irregularityListener =
+    onSnapshot(
+
+        irregularityQuery,
 
                 function(snapshot){
 
@@ -58510,7 +57864,45 @@ function listenIrregularities(){
                                             d.firestore_id ||
                                             docSnap.id
                                     };
+                                              // ======================================================
+// 🕒 EXACT 24-HOUR OPERATIONAL FILTER
+// ======================================================
 
+if(
+    !isIrregularityWithinLast24Hours(
+        irregularity
+    )
+){
+
+    const oldKey =
+        getIrregularityKey(
+            irregularity
+        );
+
+
+    console.log(
+        "⏭ Irregularity outside 24h:",
+        oldKey
+    );
+
+
+    if(oldKey){
+
+        removeIrregularityMarker(
+            oldKey
+        );
+
+
+        removeIrregularityFromIDB(
+            oldKey
+        );
+
+    }
+
+
+    return;
+
+}
 
                                     /* ==================================
                                        CANONICAL KEY
@@ -58545,27 +57937,54 @@ function listenIrregularities(){
                                        REMOVED
                                        ================================== */
 
-                                    if(
-                                        change.type ===
-                                        "removed"
-                                    ){
+                                   // ==================================
+// 🗑 REMOVED
+// ==================================
 
-                                        removeIrregularityMarker(
-                                            key
-                                        );
+if(
+    change.type ===
+    "removed"
+){
 
-                                        return;
+    removeIrregularityMarker(
+        key
+    );
 
-                                    }
+
+    removeIrregularityFromIDB(
+        key
+    );
 
 
+    console.log(
+        "🗑 Irregularity removed:",
+        key
+    );
+
+
+    return;
+
+}
                                     /* ==================================
                                        ACTIVE / MODIFIED / ADDED
                                        ================================== */
 
-                                    renderIrregularityMarker(
-                                        irregularity
-                                    );
+                                  // ==================================
+// 💾 ADD / MODIFY → IDB
+// ==================================
+
+upsertIrregularityToIDB(
+    irregularity
+);
+
+
+// ==================================
+// ⚡ ADD / MODIFY → MAP
+// ==================================
+
+renderIrregularityMarker(
+    irregularity
+);
 
                                 }
 
@@ -58628,6 +58047,63 @@ function listenIrregularities(){
 
 }
 
+// ============================================================
+// 🧹 SYNCHRONIZE MARKERS AGAINST 24H CACHE
+// ============================================================
+
+function cleanupIrregularityMarkersAgainstCache(
+    data
+){
+
+    try{
+
+        const validKeys =
+            new Set(
+
+                (
+                    Array.isArray(data)
+                        ? data
+                        : []
+                )
+                .map(
+                    getIrregularityKey
+                )
+                .filter(Boolean)
+
+            );
+
+
+        Object.keys(
+            window.irregularityMarkers || {}
+        )
+        .forEach(
+            function(key){
+
+                if(
+                    !validKeys.has(key)
+                ){
+
+                    removeIrregularityMarker(
+                        key
+                    );
+
+                }
+
+            }
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Irregularity marker cache cleanup failed:",
+            err
+        );
+
+    }
+
+}
     function renderIrregularityMarker(
     e
 ){
@@ -58681,20 +58157,24 @@ if(
          * from the active operational map.
          */
 
-        if(
-            status === "RESOLVED" ||
-            status === "CLOSED"
-        ){
+if(
+    status === "RESOLVED" ||
+    status === "CLOSED"
+){
 
-            removeIrregularityMarker(
-                key
-            );
-
-            return;
-
-        }
+    removeIrregularityMarker(
+        key
+    );
 
 
+    removeIrregularityFromIDB(
+        key
+    );
+
+
+    return;
+
+}
         /* ======================================================
            GPS
            ====================================================== */
@@ -85726,32 +85206,51 @@ if (typeof map !== 'undefined') {
                     return;
                 }
 
-                // ⚠️ IRREGULARITIES
-                if (layerName === "⚠️ Irregularities") {
-                    if (!window.irregularityLayer) {
-                        console.warn("⚠ irregularityLayer unavailable");
-                        return;
-                    }
+if (layerName === "⚠️ Irregularities") {
 
-                    if (typeof loadIrregularities === "function") {
-                        console.log("⚠️ Loading irregularities...");
-                        await loadIrregularities();
-                        console.log("✅ Irregularities loaded");
-                    } else {
-                        console.warn("⚠ loadIrregularities() unavailable");
-                    }
+    if (!window.irregularityLayer) {
+        console.warn(
+            "⚠ irregularityLayer unavailable"
+        );
+        return;
+    }
 
-                    if (typeof listenIrregularities === "function") {
-                        console.log("⚠️ Starting irregularity realtime...");
-                        listenIrregularities();
-                        console.log("✅ Irregularity realtime active");
-                    } else {
-                        console.warn("⚠ listenIrregularities() unavailable");
-                    }
 
-                    console.log("⚠️ Irregularities Enabled");
-                    return;
-                }
+    if(
+        typeof loadIrregularities ===
+        "function"
+    ){
+
+        console.log(
+            "⚠️ Loading irregularities..."
+        );
+
+
+        await loadIrregularities();
+
+
+        console.log(
+            "✅ Irregularities loaded"
+        );
+
+    }
+    else{
+
+        console.warn(
+            "⚠ loadIrregularities() unavailable"
+        );
+
+    }
+
+
+    console.log(
+        "⚠️ Irregularities Enabled"
+    );
+
+
+    return;
+
+}
 
                 // 🌱 PLANTATION
                 if (layerName === "🌱 Plantation") {
