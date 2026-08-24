@@ -49256,17 +49256,54 @@ window.elephantSightingsIDBSyncPromise =
 // 🐘 BATCH SYNC FUNCTION
 // ============================================================
 
+// ============================================================
+// 🐘 ELEPHANT SIGHTINGS → IDB BATCH SYNCHRONIZER
+// ------------------------------------------------------------
+// ARCHITECTURE:
+//
+// Firestore onSnapshot
+//        ↓
+// docChanges()
+//        ↓
+// realtime queue
+//        ↓
+// ONE IDB READ
+//        ↓
+// Map merge
+//        ↓
+// 24-hour eligibility
+//        ↓
+// ONE IDB WRITE
+//        ↓
+// MEMORY CACHE ALIGNMENT
+//
+// IMPORTANT:
+//
+// ❌ NO getDocs()
+// ❌ NO Firestore read
+// ❌ NO individual IDB upsert per sighting
+// ❌ NO individual IDB delete per sighting
+//
+// This function is LOCAL synchronization only.
+// Firestore remains authoritative.
+// ============================================================
+
 async function syncElephantSightingsToIDBBatch(
-    changes = []
+    changes
 ){
 
-    // ========================================================
-    // BASIC VALIDATION
-    // ========================================================
+    // ============================================================
+    // NORMALIZE INPUT
+    // ============================================================
+
+    const incoming =
+        Array.isArray(changes)
+            ? changes
+            : [];
+
 
     if(
-        !Array.isArray(changes) ||
-        changes.length === 0
+        incoming.length === 0
     ){
 
         return true;
@@ -49274,76 +49311,184 @@ async function syncElephantSightingsToIDBBatch(
     }
 
 
-    // ========================================================
-    // QUEUE THE BATCH
-    // ========================================================
+    // ============================================================
+    // INITIALIZE QUEUE
+    // ============================================================
+
+    window.elephantSightingsIDBSyncQueue =
+        Array.isArray(
+            window.elephantSightingsIDBSyncQueue
+        )
+            ?
+            window.elephantSightingsIDBSyncQueue
+            :
+            [];
+
+
+    // ============================================================
+    // ADD CHANGES TO QUEUE
+    // ============================================================
 
     window.elephantSightingsIDBSyncQueue.push(
-        changes
+        ...incoming
     );
 
 
-    // ========================================================
-    // SERIALIZE IDB OPERATIONS
-    // --------------------------------------------------------
-    // Prevent two realtime snapshots from simultaneously
-    // reading and overwriting the same IDB array.
-    // ========================================================
+    console.log(
+        "📦 Elephant IDB batch queued:",
+        incoming.length,
+        "queue:",
+        window.elephantSightingsIDBSyncQueue.length
+    );
+
+
+    // ============================================================
+    // PREVENT PARALLEL BATCH PROCESSORS
+    // ============================================================
+
+    if(
+        window.elephantSightingsIDBSyncProcessing ===
+        true
+    ){
+
+        console.log(
+            "⏳ Elephant IDB batch already processing"
+        );
+
+        return true;
+
+    }
+
+
+    // ============================================================
+    // PROCESSING LOCK
+    // ============================================================
+
+    window.elephantSightingsIDBSyncProcessing =
+        true;
+
+
+    // ============================================================
+    // SHARED PROCESSING PROMISE
+    // ============================================================
 
     window.elephantSightingsIDBSyncPromise =
-        window.elephantSightingsIDBSyncPromise.then(
-            async function(){
+        (async function(){
+
+            try{
 
                 // ==================================================
-                // PREVENT EMPTY QUEUE WORK
+                // DRAIN QUEUE
+                // --------------------------------------------------
+                // We continue until all changes accumulated during
+                // this processing cycle have been handled.
                 // ==================================================
 
-                if(
-                    window.elephantSightingsIDBSyncProcessing
+                while(
+
+                    Array.isArray(
+                        window.elephantSightingsIDBSyncQueue
+                    )
+
+                    &&
+
+                    window.elephantSightingsIDBSyncQueue.length
+                    >
+                    0
+
                 ){
 
-                    return;
+                    // =================================================
+                    // TAKE CURRENT QUEUE
+                    // =================================================
 
-                }
-
-
-                window.elephantSightingsIDBSyncProcessing =
-                    true;
-
-
-                try{
-
-                    // ==================================================
-                    // COLLECT ALL CURRENT QUEUED CHANGES
-                    // ==================================================
-
-                    const pendingBatches =
+                    const pendingChanges =
                         window.elephantSightingsIDBSyncQueue.splice(
                             0
                         );
 
 
                     if(
-                        pendingBatches.length === 0
+                        pendingChanges.length === 0
                     ){
 
-                        return;
+                        continue;
 
                     }
 
 
-                    const pendingChanges =
+                    console.log(
+                        "🐘 Processing Elephant IDB batch:",
+                        pendingChanges.length
+                    );
+
+
+                    // =================================================
+                    // ONE IDB READ
+                    // =================================================
+                    //
+                    // IMPORTANT:
+                    //
+                    // Read the current IDB state ONCE for this batch.
+                    //
+                    // =================================================
+
+                    let cached =
                         [];
 
+                    try{
+
+                        const existing =
+                            await loadElephantSightingsFromIDB();
+
+
+                        cached =
+                            Array.isArray(
+                                existing
+                            )
+                                ?
+                                existing
+                                :
+                                [];
+
+
+                    }
+                    catch(idbReadError){
+
+                        console.warn(
+                            "⚠ Elephant IDB batch read failed:",
+                            idbReadError
+                        );
+
+                        // ---------------------------------------------
+                        // Do NOT destroy existing IDB data.
+                        // ---------------------------------------------
+
+                        continue;
+
+                    }
+
+
+                    // =================================================
+                    // BUILD MAP FROM EXISTING IDB
+                    // =================================================
+
+                    const sightingMap =
+                        new Map();
+
+
+                    // =================================================
+                    // LOAD EXISTING IDB RECORDS INTO MAP
+                    // =================================================
 
                     for(
-                        const batch
+                        const item
                         of
-                        pendingBatches
+                        cached
                     ){
 
                         if(
-                            !Array.isArray(batch)
+                            !item
                         ){
 
                             continue;
@@ -49351,132 +49496,32 @@ async function syncElephantSightingsToIDBBatch(
                         }
 
 
-                        for(
-                            const entry
-                            of
-                            batch
-                        ){
-
-                            if(
-                                entry
-                            ){
-
-                                pendingChanges.push(
-                                    entry
-                                );
-
-                            }
-
-                        }
-
-                    }
-
-
-                    if(
-                        pendingChanges.length === 0
-                    ){
-
-                        return;
-
-                    }
-
-
-                    // ==================================================
-                    // 🔑 ONE IDB READ
-                    // ==================================================
-
-                    let cached =
-                        await window.idbKeyval.get(
-
-                            GG_SIGHTINGS_IDB_KEY
-
-                        );
-
-
-                    const list =
-                        Array.isArray(cached)
-                            ? cached
-                            : [];
-
-
-                    // ==================================================
-                    // 🗺 BUILD ONE MAP
-                    // --------------------------------------------------
-                    // Existing IDB records become the base state.
-                    // ==================================================
-
-                    const sightingMap =
-                        new Map();
-
-
-                    for(
-                        const item
-                        of
-                        list
-                    ){
+                        let key =
+                            "";
 
                         try{
 
-                            const key =
-                                getElephantSightingIDBKey(
-                                    item
-                                );
-
-
-                            if(
-                                key
-                            ){
-
-                                sightingMap.set(
-                                    String(key),
-                                    item
-                                );
-
-                            }
+                            key =
+                                String(
+                                    getElephantSightingIDBKey(
+                                        item
+                                    )
+                                    ||
+                                    ""
+                                ).trim();
 
                         }
-                        catch(err){
+                        catch(keyError){
 
                             console.warn(
-                                "⚠ Invalid IDB sighting skipped:",
-                                err
+                                "⚠ Invalid existing Elephant IDB key:",
+                                keyError
                             );
+
+                            continue;
 
                         }
 
-                    }
-
-
-                    // ==================================================
-                    // APPLY ALL FIRESTORE CHANGES IN MEMORY
-                    // ==================================================
-
-                    for(
-                        const entry
-                        of
-                        pendingChanges
-                    ){
-
-                        const type =
-                            String(
-                                entry.type ||
-                                ""
-                            )
-                            .trim()
-                            .toLowerCase();
-
-
-                        const key =
-                            String(
-                                entry.key ||
-                                ""
-                            )
-                            .trim();
-
-
-                        // =================================================
-                        // INVALID ENTRY
-                        // =================================================
 
                         if(
                             !key
@@ -49487,18 +49532,63 @@ async function syncElephantSightingsToIDBBatch(
                         }
 
 
-                        // =================================================
-                        // 🗑 REMOVED
-                        // =================================================
+                        // ---------------------------------------------
+                        // Only retain records that are still inside
+                        // the 24-hour local cache window.
+                        // ---------------------------------------------
+
+                        let eligible =
+                            false;
+
+                        try{
+
+                            eligible =
+                                isElephantSightingWithinLast24Hours(
+                                    item
+                                );
+
+                        }
+                        catch(eligibilityError){
+
+                            console.warn(
+                                "⚠ Existing Elephant eligibility check failed:",
+                                key,
+                                eligibilityError
+                            );
+
+                            eligible =
+                                false;
+
+                        }
+
 
                         if(
-                            type ===
-                            "removed"
+                            eligible
                         ){
 
-                            sightingMap.delete(
-                                key
+                            sightingMap.set(
+                                key,
+                                item
                             );
+
+                        }
+
+                    }
+
+
+                    // =================================================
+                    // APPLY REALTIME CHANGES
+                    // =================================================
+
+                    for(
+                        const entry
+                        of
+                        pendingChanges
+                    ){
+
+                        if(
+                            !entry
+                        ){
 
                             continue;
 
@@ -49506,16 +49596,183 @@ async function syncElephantSightingsToIDBBatch(
 
 
                         // =================================================
-                        // ➕ ADDED / ✏ MODIFIED
+                        // NORMALIZE CHANGE
+                        // -------------------------------------------------
+                        // startSightingsRealtime() currently sends
+                        // normalized sighting objects.
+                        //
+                        // But this also safely accepts an object that
+                        // carries a realtime "type".
                         // =================================================
 
-                        const sighting =
-                            entry.sighting;
+                        let changeType =
+                            String(
+                                entry.type ||
+                                ""
+                            )
+                            .trim()
+                            .toLowerCase();
+
+
+                        // =================================================
+                        // REMOVED
+                        // =================================================
+
+                        if(
+                            changeType ===
+                            "removed"
+                        ){
+
+                            let removeKey =
+                                "";
+
+                            try{
+
+                                removeKey =
+                                    String(
+                                        getElephantSightingIDBKey(
+                                            entry
+                                        )
+                                        ||
+                                        entry.firestore_id ||
+                                        entry.sighting_id ||
+                                        entry.id ||
+                                        ""
+                                    ).trim();
+
+                            }
+                            catch(removeKeyError){
+
+                                removeKey =
+                                    String(
+                                        entry.firestore_id ||
+                                        entry.sighting_id ||
+                                        entry.id ||
+                                        ""
+                                    ).trim();
+
+                            }
+
+
+                            if(
+                                removeKey
+                            ){
+
+                                sightingMap.delete(
+                                    removeKey
+                                );
+
+                            }
+
+
+                            continue;
+
+                        }
+
+
+                        // =================================================
+                        // EXTRACT ACTUAL SIGHTING DATA
+                        // =================================================
+                        //
+                        // Supports the current normalized realtime object
+                        // and protects the batch if a wrapped object is
+                        // ever passed.
+                        // =================================================
+
+                        let sighting =
+                            entry;
 
 
                         if(
-                            !sighting
+                            entry.sighting &&
+                            typeof entry.sighting ===
+                            "object"
                         ){
+
+                            sighting =
+                                entry.sighting;
+
+                        }
+                        else if(
+                            entry.data &&
+                            typeof entry.data ===
+                            "object"
+                        ){
+
+                            sighting =
+                                entry.data;
+
+                        }
+
+
+                        if(
+                            !sighting ||
+                            typeof sighting !==
+                            "object"
+                        ){
+
+                            continue;
+
+                        }
+
+
+                        // =================================================
+                        // NORMALIZE FIRESTORE ID
+                        // =================================================
+
+                        const normalized =
+                        {
+
+                            ...sighting,
+
+                            firestore_id:
+                                sighting.firestore_id ||
+                                sighting.firestoreId ||
+                                sighting.id ||
+                                ""
+
+                        };
+
+
+                        // =================================================
+                        // GET STABLE CACHE KEY
+                        // =================================================
+
+                        let key =
+                            "";
+
+                        try{
+
+                            key =
+                                String(
+                                    getElephantSightingIDBKey(
+                                        normalized
+                                    )
+                                    ||
+                                    ""
+                                ).trim();
+
+                        }
+                        catch(keyError){
+
+                            console.warn(
+                                "⚠ Elephant realtime key generation failed:",
+                                keyError
+                            );
+
+                            continue;
+
+                        }
+
+
+                        if(
+                            !key
+                        ){
+
+                            console.warn(
+                                "⚠ Elephant realtime sighting without valid key skipped:",
+                                normalized
+                            );
 
                             continue;
 
@@ -49529,30 +49786,36 @@ async function syncElephantSightingsToIDBBatch(
                         let eligible =
                             false;
 
-
                         try{
 
                             eligible =
                                 isElephantSightingWithinLast24Hours(
-                                    sighting
+                                    normalized
                                 );
 
                         }
-                        catch(err){
+                        catch(eligibilityError){
 
                             console.warn(
-                                "⚠ Elephant sighting eligibility check failed:",
+                                "⚠ Elephant realtime eligibility failed:",
                                 key,
-                                err
+                                eligibilityError
                             );
+
+                            eligible =
+                                false;
 
                         }
 
 
                         // =================================================
-                        // OUTSIDE 24 HOURS
-                        // -------------------------------------------------
-                        // Remove stale records from local cache.
+                        // EXPIRED
+                        // =================================================
+                        //
+                        // Remove from local IDB map.
+                        //
+                        // Firestore remains untouched.
+                        //
                         // =================================================
 
                         if(
@@ -49569,59 +49832,157 @@ async function syncElephantSightingsToIDBBatch(
 
 
                         // =================================================
-                        // UPSERT IN MEMORY MAP
+                        // ADD / MODIFY
                         // =================================================
 
                         sightingMap.set(
                             key,
-                            sighting
+                            normalized
                         );
 
                     }
 
 
-                    // ==================================================
-                    // CONVERT MAP BACK TO ARRAY
-                    // ==================================================
+                    // =================================================
+                    // FINAL LOCAL ARRAY
+                    // =================================================
+                    //
+                    // THIS IS THE IMPORTANT HANDOFF.
+                    //
+                    // We explicitly create a plain array of actual
+                    // sighting records.
+                    //
+                    // No Map object is passed to the IDB saver.
+                    // No key is passed.
+                    // No realtime wrapper is passed.
+                    //
+                    // =================================================
 
-                    const finalList =
+                    const finalSightings =
                         Array.from(
                             sightingMap.values()
                         );
 
 
-                    // ==================================================
+                    // =================================================
+                    // FINAL 24-HOUR SAFETY FILTER
+                    // =================================================
+                    //
+                    // saveElephantSightingsToIDB() also filters,
+                    // but we keep this explicit here so the batch
+                    // invariant is guaranteed before the save.
+                    //
+                    // =================================================
+
+                    const eligibleSightings =
+                        finalSightings.filter(
+                            function(item){
+
+                                try{
+
+                                    return (
+                                        isElephantSightingWithinLast24Hours(
+                                            item
+                                        )
+                                    );
+
+                                }
+                                catch(err){
+
+                                    return false;
+
+                                }
+
+                            }
+                        );
+
+
+                    // =================================================
                     // ONE IDB WRITE
-                    // ==================================================
+                    // =================================================
+                    //
+                    // IMPORTANT:
+                    //
+                    // Pass the COMPLETE FINAL ARRAY.
+                    //
+                    // saveElephantSightingsToIDB()
+                    // performs the actual idbKeyval.set().
+                    //
+                    // =================================================
 
-                    await saveElephantSightingsToIDB(
-                        finalList
-                    );
+                    const saved =
+                        await saveElephantSightingsToIDB(
+                            eligibleSightings
+                        );
 
 
-                    // ==================================================
+                    if(
+                        saved !== true
+                    ){
+
+                        console.warn(
+                            "⚠ Elephant IDB batch save failed"
+                        );
+
+                        // ---------------------------------------------
+                        // Do NOT overwrite memory with a failed save.
+                        // ---------------------------------------------
+
+                        continue;
+
+                    }
+
+
+                    // =================================================
                     // UPDATE MEMORY CACHE
                     // --------------------------------------------------
-                    // Keep memory aligned with the local IDB result.
-                    // ==================================================
+                    // Keep memory aligned with the LOCAL IDB result.
+                    // =================================================
 
                     window.sightingsCache =
                         window.sightingsCache ||
                         {};
 
 
+                    // ---------------------------------------------
+                    // Clear current memory cache
+                    // ---------------------------------------------
+
+                    window.sightingsCache =
+                        {};
+
+
+                    // ---------------------------------------------
+                    // Rebuild memory from the exact array successfully
+                    // written to IDB.
+                    // ---------------------------------------------
+
                     for(
                         const entry
                         of
-                        pendingChanges
+                        eligibleSightings
                     ){
 
-                        const key =
-                            String(
-                                entry?.key ||
-                                ""
-                            )
-                            .trim();
+                        let key =
+                            "";
+
+                        try{
+
+                            key =
+                                String(
+                                    getElephantSightingIDBKey(
+                                        entry
+                                    )
+                                    ||
+                                    ""
+                                ).trim();
+
+                        }
+                        catch(err){
+
+                            continue;
+
+                        }
 
 
                         if(
@@ -49633,109 +49994,134 @@ async function syncElephantSightingsToIDBBatch(
                         }
 
 
-                        const type =
-                            String(
-                                entry?.type ||
-                                ""
-                            )
-                            .trim()
-                            .toLowerCase();
-
-
-                        // ----------------------------------------------
-                        // REMOVED
-                        // ----------------------------------------------
-
-                        if(
-                            type ===
-                            "removed"
-                        ){
-
-                            delete
-                                window.sightingsCache[
-                                    key
-                                ];
-
-                            continue;
-
-                        }
-
-
-                        const sighting =
-                            entry.sighting;
-
-
-                        if(
-                            sighting &&
-                            isElephantSightingWithinLast24Hours(
-                                sighting
-                            )
-                        ){
-
-                            window.sightingsCache[
-                                key
-                            ] =
-                                sighting;
-
-                        }
-                        else{
-
-                            delete
-                                window.sightingsCache[
-                                    key
-                                ];
-
-                        }
+                        window.sightingsCache[
+                            key
+                        ] =
+                            entry;
 
                     }
 
 
-                    // ==================================================
-                    // RESULT LOG
-                    // ==================================================
-
                     console.log(
-                        "🐘 ELEPHANT SIGHTINGS BATCH IDB SYNC:",
+                        "💾 Elephant IDB batch synchronized:",
                         {
-                            firestoreChanges:
+                            changed:
                                 pendingChanges.length,
 
-                            finalIDBRecords:
-                                finalList.length
+                            final:
+                                eligibleSightings.length,
+
+                            memory:
+                                Object.keys(
+                                    window.sightingsCache
+                                ).length,
+
+                            saved:
+                                saved === true
                         }
                     );
 
                 }
-                catch(err){
 
-                    console.error(
-                        "❌ Elephant sightings batch IDB sync failed:",
-                        err
+
+                // ==================================================
+                // COMPLETE
+                // ==================================================
+
+                return true;
+
+            }
+            catch(err){
+
+                console.error(
+                    "❌ Elephant IDB batch synchronization failed:",
+                    err
+                );
+
+                return false;
+
+            }
+            finally{
+
+                // ================================================
+                // RELEASE PROCESSING LOCK
+                // ================================================
+
+                window.elephantSightingsIDBSyncProcessing =
+                    false;
+
+                window.elephantSightingsIDBSyncPromise =
+                    null;
+
+
+                // =================================================
+                // RACE PROTECTION
+                // -------------------------------------------------
+                // If new changes arrived exactly while the processor
+                // was finishing, restart processing.
+                // =================================================
+
+                if(
+
+                    Array.isArray(
+                        window.elephantSightingsIDBSyncQueue
+                    )
+
+                    &&
+
+                    window.elephantSightingsIDBSyncQueue.length
+                    >
+                    0
+
+                ){
+
+                    console.log(
+                        "🔄 Elephant IDB batch: changes arrived during finalization"
                     );
 
-                }
-                finally{
 
-                    window.elephantSightingsIDBSyncProcessing =
-                        false;
+                    // ---------------------------------------------
+                    // Fire-and-forget continuation.
+                    // ---------------------------------------------
+
+                    Promise.resolve()
+                    .then(
+                        function(){
+
+                            return syncElephantSightingsToIDBBatch(
+                                []
+                            );
+
+                        }
+                    )
+                    .catch(
+                        function(err){
+
+                            console.error(
+                                "❌ Elephant IDB batch continuation failed:",
+                                err
+                            );
+
+                        }
+                    );
 
                 }
 
             }
-        );
+
+        })();
 
 
-    // ========================================================
-    // RETURN THE QUEUED OPERATION
-    // ========================================================
+    // ============================================================
+    // RETURN CURRENT BATCH PROMISE
+    // ============================================================
 
-    await window.elephantSightingsIDBSyncPromise;
-
-
-    return true;
+    return (
+        await
+        window.elephantSightingsIDBSyncPromise
+    );
 
 }
-
 
 // ============================================================
 // 🌍 GLOBAL EXPOSURE
