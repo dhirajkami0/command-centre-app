@@ -52290,7 +52290,100 @@ function isMarkerVisible(
     return true;
 
 }
-    
+    /* =====================================================
+   🐾 WILDLIFE EMOJI MAP
+   -----------------------------------------------------
+   DEFINE ONCE.
+   Keep OUTSIDE loadWildlifeSightings().
+===================================================== */
+
+const wildlifeEmojiMap = {
+
+    // =====================================================
+    // 🐅 BIG CATS
+    // =====================================================
+
+    "Tiger": "🐅",
+    "Leopard": "🐆",
+    "Clouded Leopard": "🐆",
+    "Fishing Cat": "🐈",
+    "Leopard Cat": "🐈",
+    "Jungle Cat": "🐈",
+
+    // =====================================================
+    // 🐂 LARGE MAMMALS
+    // =====================================================
+
+    "Gaur": "🐂",
+    "Sloth Bear": "🐻",
+    "Indian Pangolin": "🦔",
+    "Indian Hare": "🐇",
+    "Porcupine": "🦔",
+    "Indian Crested Porcupine": "🦔",
+
+    // =====================================================
+    // 🦌 DEER
+    // =====================================================
+
+    "Spotted Deer": "🦌",
+    "Chital": "🦌",
+    "Barking Deer": "🦌",
+    "Hog Deer": "🦌",
+    "Sambar": "🦌",
+
+    // =====================================================
+    // 🐒 PRIMATES
+    // =====================================================
+
+    "Rhesus Macaque": "🐒",
+
+    // =====================================================
+    // 🦊 CANIDS
+    // =====================================================
+
+    "Golden Jackal": "🦊",
+    "Bengal Fox": "🦊",
+
+    // =====================================================
+    // 🐾 CIVETS
+    // =====================================================
+
+    "Large Indian Civet": "🐾",
+    "Small Indian Civet": "🐾",
+
+    // =====================================================
+    // 🐍 REPTILES
+    // =====================================================
+
+    "Banded Krait": "🐍",
+    "Spectacled Cobra": "🐍",
+    "Monocled Cobra": "🐍",
+    "Rat Snake": "🐍",
+    "Reticulated Python": "🐍",
+    "Monitor Lizard": "🦎",
+    "Crocodile": "🐊",
+    "Gharial": "🐊",
+
+    // =====================================================
+    // 🐦 BIRDS
+    // =====================================================
+
+    "Peacock": "🦚",
+    "Great Hornbill": "🐦",
+    "Oriental Pied Hornbill": "🐦",
+    "Rufous-necked Hornbill": "🐦",
+    "Red Junglefowl": "🐓",
+    "Kalij Pheasant": "🐦",
+    "Himalayan Monal": "🐦",
+    "Crested Serpent Eagle": "🦅",
+    "Changeable Hawk Eagle": "🦅",
+    "Black Eagle": "🦅",
+    "Brown Eagle": "🦅",
+    "Indian Eagle": "🦅",
+    "Indian Eagle Owl": "🦉"
+
+};
+
 // ============================================================
 // EXISTING WILDLIFE LOADER
 // ============================================================
@@ -53997,8 +54090,29 @@ else {
     `;
 
 }
+/* =================================================
+   🐾 SELECTED WILDLIFE NAME + ICON
+================================================= */
 
+const wildlifeName =
+    popupSafe(
+        s?.animal ||
+        s?.wildlife_name ||
+        s?.wildlifeName ||
+        s?.species ||
+        s?.animal_name ||
+        s?.animalName ||
+        s?.name ||
+        "Wildlife"
+    );
 
+const wildlifeIcon =
+    wildlifeEmojiMap[
+        String(wildlifeName).trim()
+    ] || "🐾";
+
+const wildlifeHeading =
+    `${wildlifeIcon} ${wildlifeName}`;
 /* =================================================
    🐅 FINAL WILDLIFE POPUP
 ================================================= */
@@ -54026,6 +54140,24 @@ const popup =
     "
 >
 
+    <!-- ========================================= -->
+    <!-- 🐾 SELECTED WILDLIFE HEADING -->
+    <!-- ========================================= -->
+
+    <div
+        style="
+            margin-bottom:9px;
+            font-size:14px;
+            font-weight:700;
+            color:#1b5e20;
+            word-break:break-word;
+            display:flex;
+            align-items:center;
+            gap:6px;
+        "
+    >
+        ${wildlifeHeading}
+    </div>
 
     <!-- ========================================= -->
     <!-- 🆔 SIGHTING ID -->
