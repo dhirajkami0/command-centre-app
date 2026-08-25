@@ -31053,18 +31053,32 @@ setTimeout(
                 window.allCompartmentFeatures
                     ?.length || 0
             );
-
-
-            // ====================================================
-            // 🔥 START MONTHLY ANALYTICS REALTIME
+            // ============================================================
+            // 🔥 START MONTHLY ANALYTICS REALTIME SYNC
+            //
+            // Startup flow:
+            //
+            // IDB Monthly Status
+            //        ↓
+            // immediate card
+            //        ↓
+            // Master Grid Ready
+            //        ↓
+            // start realtime listener
+            //        ↓
+            // Firestore initial snapshot
+            //        ↓
+            // analyticsByGrid
+            //        ↓
+            // Monthly Status recalculation
+            //        ↓
+            // IDB + Card
             //
             // IMPORTANT:
-            // DO NOT call updateMonthlyStatusCard()
-            // here.
-            //
-            // startMonthlyAnalyticsRealtime() is now the
-            // authoritative Firestore synchronization path.
-            // ====================================================
+            // - ONE realtime listener
+            // - NO 60-second analytics polling
+            // - Retry only if startup fails
+            // ============================================================
 
             try{
 
@@ -31083,9 +31097,30 @@ setTimeout(
                     }`;
 
 
+                console.log(
+                    "🔥 Starting Monthly Analytics Realtime:",
+                    realtimeMonthKey
+                );
+
+
                 await startMonthlyAnalyticsRealtime(
                     realtimeMonthKey
                 );
+
+
+                // ========================================================
+                // VERIFY THAT LISTENER REALLY STARTED
+                // ========================================================
+
+                if(
+                    !window.monthlyAnalyticsRealtime?.started
+                ){
+
+                    throw new Error(
+                        "Monthly analytics realtime listener did not start"
+                    );
+
+                }
 
 
                 console.log(
@@ -31100,6 +31135,83 @@ setTimeout(
                 console.error(
                     "❌ Monthly Analytics Realtime Startup:",
                     err
+                );
+
+
+                // ========================================================
+                // 🔄 ONE SAFE STARTUP RETRY
+                //
+                // This handles a startup-order race where Firebase/
+                // Firestore becomes ready just after Master Grid.
+                //
+                // IMPORTANT:
+                // startMonthlyAnalyticsRealtime() already contains
+                // duplicate-listener protection.
+                // ========================================================
+
+                setTimeout(
+                    async()=>{
+
+                        try{
+
+                            const retryNow =
+                                new Date();
+
+
+                            const retryMonthKey =
+                                `${retryNow.getFullYear()}_${
+                                    String(
+                                        retryNow.getMonth() + 1
+                                    ).padStart(
+                                        2,
+                                        "0"
+                                    )
+                                }`;
+
+
+                            console.log(
+                                "🔄 Retrying Monthly Analytics Realtime:",
+                                retryMonthKey
+                            );
+
+
+                            await startMonthlyAnalyticsRealtime(
+                                retryMonthKey
+                            );
+
+
+                            if(
+                                window.monthlyAnalyticsRealtime?.started
+                            ){
+
+                                console.log(
+                                    "✅ Monthly Analytics Realtime Retry SUCCESS:",
+                                    retryMonthKey
+                                );
+
+                            }
+
+                            else{
+
+                                console.error(
+                                    "❌ Monthly Analytics Realtime Retry did not start"
+                                );
+
+                            }
+
+                        }
+
+                        catch(retryErr){
+
+                            console.error(
+                                "❌ Monthly Analytics Realtime Retry FAILED:",
+                                retryErr
+                            );
+
+                        }
+
+                    },
+                    3000
                 );
 
             }
