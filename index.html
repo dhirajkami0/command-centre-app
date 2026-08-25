@@ -67320,12 +67320,67 @@ async function saveStaffProfilesToIDB(
 // 🔥 FIRESTORE STAFF REFRESH
 // ============================================================
 
+// ============================================================
+// 🔥 FIRESTORE STAFF REFRESH
+//
+// STAFF PROFILES ARE MOSTLY STATIC.
+//
+// DESIGN:
+//
+// Existing IDB cache
+//      ↓
+// Staff UI immediately available
+//
+// Meanwhile:
+//      ↓
+// Firestore getDocs()
+//      ↓
+// Compare with current profiles
+//
+// SAME
+//      ↓
+// Do nothing
+//
+// CHANGED
+//      ↓
+// Replace memory profiles
+//      ↓
+// Rebuild indexes
+//      ↓
+// Save IDB
+//
+// IMPORTANT:
+// - NO realtime listener
+// - NO polling loop
+// - NO unnecessary IDB write
+// - NO unnecessary index rebuild
+// ============================================================
+
 async function refreshStaffProfilesFromFirestore(){
 
   try{
 
+
+    if(
+      window.__STAFF_PROFILES_REFRESHING__
+    ){
+
+      console.log(
+        "⏸ Staff profile refresh already running"
+      );
+
+      return false;
+
+    }
+
+    window.__STAFF_PROFILES_REFRESHING__ =
+      true;
     await waitForFirebaseReady();
 
+
+    // ========================================================
+    // 🔐 FIREBASE AVAILABILITY
+    // ========================================================
 
     if(
       !window.fb ||
@@ -67338,6 +67393,7 @@ async function refreshStaffProfilesFromFirestore(){
       );
 
       return false;
+
     }
 
 
@@ -67351,6 +67407,10 @@ async function refreshStaffProfilesFromFirestore(){
     );
 
 
+    // ========================================================
+    // 📖 FIRESTORE READ
+    // ========================================================
+
     const snap =
       await window.fb.getDocs(
         window.fb.collection(
@@ -67360,13 +67420,16 @@ async function refreshStaffProfilesFromFirestore(){
       );
 
 
+    // ========================================================
+    // 🧹 NORMALIZE FIRESTORE DATA
+    // ========================================================
+
     const freshProfiles =
       snap.docs.map(
         doc => {
 
           const d =
             doc.data() || {};
-
 
           return {
 
@@ -67391,6 +67454,76 @@ async function refreshStaffProfilesFromFirestore(){
       );
 
 
+    // ========================================================
+    // 🔎 COMPARE WITH CURRENT MEMORY
+    //
+    // Current memory normally came from IDB.
+    //
+    // If Firestore contains exactly the same profiles,
+    // there is NOTHING to update.
+    // ========================================================
+
+    const currentProfiles =
+      Array.isArray(
+        window.allStaffProfiles
+      )
+        ? window.allStaffProfiles
+        : [];
+
+
+    const profilesChanged =
+      JSON.stringify(
+        currentProfiles
+      ) !==
+      JSON.stringify(
+        freshProfiles
+      );
+
+
+    // ========================================================
+    // ✅ NOTHING CHANGED
+    // ========================================================
+
+    if(
+      !profilesChanged
+    ){
+
+      console.log(
+        "✅ STAFF PROFILES UNCHANGED — CACHE REMAINS VALID:",
+        freshProfiles.length
+      );
+
+
+      console.timeEnd(
+        "REFRESH_STAFF_PROFILES"
+      );
+
+
+      return false;
+
+    }
+
+
+    // ========================================================
+    // 🔥 STAFF PROFILES ACTUALLY CHANGED
+    // ========================================================
+
+    console.log(
+      "🔄 STAFF PROFILES CHANGED — UPDATING CACHE:",
+      {
+        oldCount:
+          currentProfiles.length,
+
+        newCount:
+          freshProfiles.length
+      }
+    );
+
+
+    // ========================================================
+    // 🧠 UPDATE MEMORY
+    // ========================================================
+
     window.allStaffProfiles =
       freshProfiles;
 
@@ -67407,8 +67540,16 @@ async function refreshStaffProfilesFromFirestore(){
       Date.now();
 
 
+    // ========================================================
+    // ⚡ REBUILD LOCAL STAFF INDEXES
+    // ========================================================
+
     buildDutyStaffIndexes();
 
+
+    // ========================================================
+    // 💾 PERSIST NEW VERSION TO IDB
+    // ========================================================
 
     await saveStaffProfilesToIDB(
       freshProfiles
@@ -67416,7 +67557,7 @@ async function refreshStaffProfilesFromFirestore(){
 
 
     console.log(
-      "✅ STAFF PROFILES FRESH:",
+      "✅ STAFF PROFILES UPDATED + CACHED:",
       freshProfiles.length
     );
 
@@ -67429,6 +67570,7 @@ async function refreshStaffProfilesFromFirestore(){
     return true;
 
   }
+
   catch(err){
 
     console.error(
@@ -67447,7 +67589,6 @@ async function refreshStaffProfilesFromFirestore(){
   }
 
 }
-
 
 // ============================================================
 // ⚡ CACHE-FIRST STAFF LOADER
