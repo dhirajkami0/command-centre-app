@@ -29217,6 +29217,87 @@ Number(
 
   );
 
+
+  // =====================================
+  // 🕒 UPDATED AT
+  //
+  // Use the existing authoritative
+  // latestUpdatedAt value already stored
+  // in Monthly Status cache.
+  //
+  // IMPORTANT:
+  // No additional Firestore read.
+  // =====================================
+
+  const updatedAtEl =
+    document.getElementById(
+      "msUpdatedAt"
+    );
+
+
+  if(
+    updatedAtEl
+  ){
+
+    const latestUpdatedAt =
+      Number(
+        summary.latestUpdatedAt || 0
+      );
+
+
+    if(
+      Number.isFinite(
+        latestUpdatedAt
+      ) &&
+      latestUpdatedAt > 0
+    ){
+
+      const updatedDate =
+        new Date(
+          latestUpdatedAt
+        );
+
+
+      if(
+        !Number.isNaN(
+          updatedDate.getTime()
+        )
+      ){
+
+        updatedAtEl.textContent =
+          updatedDate.toLocaleString(
+            "en-IN",
+            {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true
+            }
+          );
+
+      }
+
+      else{
+
+        updatedAtEl.textContent =
+          "--";
+
+      }
+
+    }
+
+    else{
+
+      updatedAtEl.textContent =
+        "--";
+
+    }
+
+  }
+
 }
 function addMonthlyStatusCard() {
 
