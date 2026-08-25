@@ -27400,984 +27400,1660 @@ function getLiveStaffCountForCurrentPolygon(){
   );
 
 }
-async function updateMonthlyStatusCard(){
-
-
-// ============================================================
-// 🔒 MONTHLY STATUS EXECUTION LOCK
-// Prevent overlapping analytics builds on mobile/slow network.
-// ============================================================
-
-if(
-  window.__monthlyStatusUpdating
-){
-
-  console.log(
-    "⏸ Monthly Status update already running"
-  );
-
-  return;
-
+function getMonthlyStatusPersistentKey(cacheKey){
+    return "monthly_status_v2_" + cacheKey;
 }
 
-window.__monthlyStatusUpdating = true;
-
-  try{
-
-    // =========================================================
-    // CARD EXISTS?
-    // =========================================================
-
-    if(
-      !document.getElementById(
-        "monthlyStatusCard"
-      )
-    ){
-      return;
-    }
-
-
-    // =========================================================
-    // MONTH
-    // =========================================================
-
-    const d =
-      new Date();
-
-
-    const monthKey =
-      `${d.getFullYear()}_${
-        String(
-          d.getMonth() + 1
-        ).padStart(
-          2,
-          "0"
-        )
-      }`;
-
-
-    // =========================================================
-    // CURRENT GIS LEVEL
-    // =========================================================
-
-    const level =
-      String(
-        window.activePopupContext?.level ||
-        "btr"
-      )
-      .toLowerCase();
-
-
-    // =========================================================
-    // CURRENT FILTER
-    // =========================================================
-
-    const filterValue =
-
-      level === "compartment"
-
-      ? window.gisFilter?.compartment
-
-      : level === "beat"
-
-      ? window.gisFilter?.beat
-
-      : level === "range"
-
-      ? window.gisFilter?.range
-
-      : level === "division"
-
-      ? window.gisFilter?.division
-
-      : "";
-
-
-    // =========================================================
-    // CACHE KEY
-    //
-    // INCLUDE MONTH.
-    //
-    // This prevents stale previous-month data being reused after
-    // the calendar month changes.
-    // =========================================================
-
-    const cacheKey =
-      `${monthKey}_${level}_${
-        filterValue || "all"
-      }`;
-
-
-    // =========================================================
-    // ENSURE CACHE EXISTS
-    // =========================================================
-
-    window.monthlyStatusCache ??=
-      {};
-
-
-    // =========================================================
-    // RESOLVE COMPARTMENTS FOR CURRENT GIS CONTEXT
-    // =========================================================
-
-    let gridIds = [];
-
+async function loadMonthlyStatusFromIDB(cacheKey){
 
     try{
 
-      const resolved =
-        getAnalyticsGridIds(
-          level,
-          filterValue
-        );
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
 
+            await
+                window.__GG_IDB_READY_PROMISE__;
 
-      if(
-        Array.isArray(
-          resolved
-        )
-      ){
+        }
 
-        gridIds =
-          resolved.filter(
-            Boolean
-          );
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !== "function"
+        ){
 
-      }
+            return null;
 
-      else if(
-        resolved instanceof Set
-      ){
+        }
 
-        gridIds =
-          [...resolved]
-            .filter(
-              Boolean
+        const key =
+            getMonthlyStatusPersistentKey(
+                cacheKey
             );
 
-      }
+        const cached =
+            await window.idbKeyval.get(
+                key
+            );
 
-    }
+        if(
+            !cached ||
+            typeof cached !== "object"
+        ){
 
-    catch(gridErr){
+            return null;
 
-      console.error(
-        "❌ Analytics grid resolution failed",
-        {
-          level,
-          filterValue,
-          error:
-            gridErr
         }
-      );
 
+        return cached;
 
-      return;
     }
 
+    catch(err){
 
-    // =========================================================
-    // CACHE
-    // =========================================================
+        console.warn(
+            "⚠ Monthly Status IDB read failed:",
+            err
+        );
 
-    const cached =
+        return null;
 
-      window.monthlyStatusCache[
-        cacheKey
-      ];
-
-
-    
-
-    // =========================================================
-    // CACHE TTL
-    // =========================================================
-
-    const CACHE_TTL =
-      300000;
-
-
-    const cacheAge =
-
-      cached?.loadedAt
-
-      ? (
-          Date.now() -
-          Number(
-            cached.loadedAt
-          )
-        )
-
-      : Infinity;
-
-
-    // =========================================================
-    // 🛡️ VALIDATE MONTHLY CACHE
-    //
-    // Cache is usable only when the complete monthly
-    // analytics structure exists.
-    //
-    // ZERO values are allowed.
-    // We are checking field validity, NOT whether
-    // the values are greater than zero.
-    // =========================================================
-
-    const monthlyCacheValid =
-
-      !!cached &&
-
-      typeof cached ===
-        "object" &&
-
-      Number.isFinite(
-        Number(
-          cached.totalCells
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.totalCovered
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.visitedCompartments
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.compartments
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.visitCount
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.distanceMeters
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.areaHa
-        )
-      ) &&
-
-      Number.isFinite(
-        Number(
-          cached.coveragePercent
-        )
-      ) &&
-
-      (
-        Number.isFinite(
-          Number(
-            cached.latestUpdatedAt
-          )
-        )
-        ||
-        (
-          cached.latestUpdatedAt &&
-          typeof cached.latestUpdatedAt.toDate ===
-            "function"
-        )
-      );
-
-
-    console.log(
-      "🛡️ Monthly cache validation:",
-      {
-        cacheKey,
-        monthlyCacheValid,
-        cached
-      }
-    );
-
-// =========================================================
-// ⚡ IMMEDIATE CACHE PAINT
-//
-// Only paint cache when the cache structure is valid.
-// =========================================================
-
-if(
-  cached &&
-  monthlyCacheValid
-){
-
-  try{
-
-    renderMonthlyStatusCard(
-      cached,
-      level
-    );
-
-  }
-
-  catch(renderErr){
-
-    console.warn(
-      "⚠ Cached monthly status render failed",
-      renderErr
-    );
-
-  }
+    }
 
 }
-    // =========================================================
-    // ⚡ FRESH CACHE
-    //
-    // IMPORTANT:
-    //
-    // NO summary/global read anymore.
-    //
-    // The cached summary was already calculated from the
-    // compartment analytics documents.
-    // =========================================================
+
+
+async function saveMonthlyStatusToIDB(
+    cacheKey,
+    cacheEntry
+){
+
+    try{
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.set !== "function"
+        ){
+
+            return false;
+
+        }
+
+        const key =
+            getMonthlyStatusPersistentKey(
+                cacheKey
+            );
+
+        await window.idbKeyval.set(
+            key,
+            cacheEntry
+        );
+
+        console.log(
+            "💾 Monthly Status → IDB saved:",
+            key
+        );
+
+        return true;
+
+    }
+
+    catch(err){
+
+        console.warn(
+            "⚠ Monthly Status IDB save failed:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+
+
+function normalizeMonthlyStatusCacheEntry(
+    entry
+){
 
     if(
-      monthlyCacheValid &&
-      Number.isFinite(
-        cacheAge
-      ) &&
-      cacheAge >= 0 &&
-      cacheAge < CACHE_TTL
+        !entry ||
+        typeof entry !== "object"
     ){
 
-      console.log(
-        "⚡ Monthly Status Cache Hit",
-        {
-          cacheKey,
-          ageMs:
-            Math.round(
-              cacheAge
-            )
+        return null;
+
+    }
+
+    const numericFields = [
+        "totalCells",
+        "totalCovered",
+        "visitedCompartments",
+        "compartments",
+        "visitCount",
+        "distanceMeters",
+        "areaHa",
+        "coveragePercent",
+        "latestUpdatedAt"
+    ];
+
+    const normalized = {
+        ...entry
+    };
+
+    numericFields.forEach(
+        field => {
+
+            const n =
+                Number(
+                    normalized[field]
+                );
+
+            if(
+                Number.isFinite(n)
+            ){
+
+                normalized[field] =
+                    n;
+
+            }
+
         }
-      );
+    );
 
-
-      // -------------------------------------------------------
-      // TITLE
-      // -------------------------------------------------------
-
-      const titleEl =
-        document.getElementById(
-          "monthlyStatusTitle"
-        );
-
-
-      if(
-        titleEl
-      ){
-
-        titleEl.textContent =
-          getMonthlyStatusTitle();
-      }
-
-
-      // -------------------------------------------------------
-      // SESSION LABEL
-      // -------------------------------------------------------
-
-      const sessionLabelEl =
-        document.getElementById(
-          "msSessionsLabel"
-        );
-
-
-      if(
-        sessionLabelEl
-      ){
-
-        sessionLabelEl.textContent =
-
-          level === "compartment"
-
-          ? "Visits"
-
-          : "Patrol Activity";
-      }
-
-
-      // -------------------------------------------------------
-      // LIVE STAFF
-      //
-      // Do not cache this value.
-      // -------------------------------------------------------
-
-      try{
-
-        const liveStaff =
-
-          Number(
-            getLiveStaffCountForCurrentPolygon() ||
+    normalized.loadedAt =
+        Number(
+            normalized.loadedAt ||
             0
-          );
+        );
+
+    return normalized;
+
+}
+
+// ============================================================
+// 🔥 MONTHLY ANALYTICS REALTIME ENGINE
+// ============================================================
+
+window.monthlyAnalyticsRealtime = {
+
+    unsubscribe: null,
+
+    monthKey: null,
+
+    started: false,
+
+    analyticsByGrid: {},
+
+    initialLoaded: false
+
+};
 
 
-        const liveStaffEl =
-          document.getElementById(
-            "msLiveStaff"
-          );
+function normalizeAnalyticsDocument(
+    gridId,
+    data
+){
+
+    data =
+        data &&
+        typeof data === "object"
+            ? data
+            : {};
+
+    return {
+
+        gridId:
+
+            String(
+                gridId || ""
+            ),
+
+        distanceMeters:
+
+            Number(
+                data.distanceMeters || 0
+            ),
+
+        visitCount:
+
+            Number(
+                data.visitCount || 0
+            ),
+
+        visitedCells:
+
+            data.visitedCells &&
+            typeof data.visitedCells === "object" &&
+            !Array.isArray(
+                data.visitedCells
+            )
+                ? data.visitedCells
+                : {},
+
+        updatedAt:
+
+            data.updatedAt || 0
+
+    };
+
+}
+
+
+async function saveMonthlyAnalyticsRealtimeCache(){
+
+    try{
+
+        if(
+            !window.idbKeyval
+        ){
+
+            return;
+
+        }
+
+        await window.idbKeyval.set(
+            "monthly_analytics_docs_v1_" +
+            window.monthlyAnalyticsRealtime.monthKey,
+
+            window.monthlyAnalyticsRealtime
+                .analyticsByGrid
+        );
+
+        console.log(
+            "💾 Monthly analytics documents → IDB"
+        );
+
+    }
+
+    catch(err){
+
+        console.warn(
+            "⚠ Monthly analytics document IDB save failed:",
+            err
+        );
+
+    }
+
+}
+
+
+async function loadMonthlyAnalyticsRealtimeCache(
+    monthKey
+){
+
+    try{
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+        if(
+            !window.idbKeyval
+        ){
+
+            return null;
+
+        }
+
+        return await
+            window.idbKeyval.get(
+                "monthly_analytics_docs_v1_" +
+                monthKey
+            );
+
+    }
+
+    catch(err){
+
+        console.warn(
+            "⚠ Monthly analytics document cache load failed:",
+            err
+        );
+
+        return null;
+
+    }
+
+}
+
+async function startMonthlyAnalyticsRealtime(
+    monthKey
+){
+
+    try{
+
+        // ========================================================
+        // PREVENT DUPLICATE LISTENER
+        // ========================================================
+
+        if(
+            window.monthlyAnalyticsRealtime
+                .started &&
+            window.monthlyAnalyticsRealtime
+                .monthKey === monthKey
+        ){
+
+            console.log(
+                "⏸ Monthly analytics realtime already active"
+            );
+
+            return;
+
+        }
+
+
+        // ========================================================
+        // STOP OLD LISTENER
+        // ========================================================
+
+        if(
+            typeof window.monthlyAnalyticsRealtime
+                .unsubscribe ===
+            "function"
+        ){
+
+            try{
+
+                window.monthlyAnalyticsRealtime
+                    .unsubscribe();
+
+            }
+
+            catch(e){}
+
+        }
+
+
+        // ========================================================
+        // RESET
+        // ========================================================
+
+        window.monthlyAnalyticsRealtime = {
+
+            unsubscribe:
+                null,
+
+            monthKey,
+
+            started:
+                false,
+
+            analyticsByGrid:
+                {},
+
+            initialLoaded:
+                false
+
+        };
+
+
+        // ========================================================
+        // LOAD PERSISTENT DOCUMENT CACHE FIRST
+        // ========================================================
+
+        const cachedDocs =
+            await loadMonthlyAnalyticsRealtimeCache(
+                monthKey
+            );
 
 
         if(
-          liveStaffEl
+            cachedDocs &&
+            typeof cachedDocs === "object"
         ){
 
-          liveStaffEl.textContent =
-            liveStaff.toLocaleString();
+            window.monthlyAnalyticsRealtime
+                .analyticsByGrid =
+                cachedDocs;
 
+            console.log(
+                "💾 Monthly analytics documents restored:",
+                Object.keys(
+                    cachedDocs
+                ).length
+            );
 
-          if(
-            liveStaff === 0
-          ){
-
-            liveStaffEl.style.color =
-              "#ff5b5b";
-
-          }
-
-          else if(
-            liveStaff < 3
-          ){
-
-            liveStaffEl.style.color =
-              "#ffd54f";
-
-          }
-
-          else{
-
-            liveStaffEl.style.color =
-              "#4cff6d";
-          }
         }
 
-      }
 
-      catch(liveErr){
+        // ========================================================
+        // FIRESTORE COLLECTION
+        // ========================================================
 
-        console.warn(
-          "⚠ Live staff count failed",
-          liveErr
+        const compartmentsRef =
+            window.fb.collection(
+                window.db,
+                "analytics_rebuild",
+                monthKey,
+                "compartments"
+            );
+
+
+        // ========================================================
+        // REALTIME LISTENER
+        // ========================================================
+
+        const unsubscribe =
+            window.fb.onSnapshot(
+
+                compartmentsRef,
+
+                async snapshot => {
+
+                    try{
+
+                        const changes =
+                            snapshot.docChanges();
+
+
+                        console.log(
+                            "📡 Monthly analytics realtime:",
+                            {
+                                monthKey,
+                                changes:
+                                    changes.length,
+                                fromCache:
+                                    snapshot
+                                        ?.metadata
+                                        ?.fromCache
+                            }
+                        );
+
+
+                        // =================================================
+                        // APPLY ONLY DELTAS
+                        // =================================================
+
+                        changes.forEach(
+                            change => {
+
+                                const gridId =
+                                    change.doc.id;
+
+
+                                if(
+                                    change.type ===
+                                    "removed"
+                                ){
+
+                                    delete
+                                        window
+                                            .monthlyAnalyticsRealtime
+                                            .analyticsByGrid[
+                                                gridId
+                                            ];
+
+                                    return;
+
+                                }
+
+
+                                window
+                                    .monthlyAnalyticsRealtime
+                                    .analyticsByGrid[
+                                        gridId
+                                    ] =
+                                    normalizeAnalyticsDocument(
+                                        gridId,
+                                        change.doc.data()
+                                    );
+
+                            }
+                        );
+
+
+                        // =================================================
+                        // PERSIST UPDATED DOCUMENT CACHE
+                        // =================================================
+
+                        await
+                            saveMonthlyAnalyticsRealtimeCache();
+
+
+                        window.monthlyAnalyticsRealtime
+                            .initialLoaded =
+                                true;
+
+
+                        // =================================================
+                        // UPDATE MONTHLY STATUS
+                        // =================================================
+
+                        await
+                            updateMonthlyStatusFromRealtimeAnalytics();
+
+                    }
+
+                    catch(err){
+
+                        console.error(
+                            "❌ Monthly analytics realtime processing failed:",
+                            err
+                        );
+
+                    }
+
+                },
+
+                error => {
+
+                    console.error(
+                        "❌ Monthly analytics realtime listener failed:",
+                        error
+                    );
+
+                    window.monthlyAnalyticsRealtime
+                        .started =
+                        false;
+
+                }
+
+            );
+
+
+        window.monthlyAnalyticsRealtime
+            .unsubscribe =
+                unsubscribe;
+
+        window.monthlyAnalyticsRealtime
+            .started =
+                true;
+
+
+        console.log(
+            "✅ Monthly analytics realtime listener started:",
+            monthKey
         );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ Monthly analytics realtime startup failed:",
+            err
+        );
+
+    }
+
+}
+
+
+function calculateMonthlyStatusFromRealtimeAnalytics() {
+  const analyticsByGrid = window.monthlyAnalyticsRealtime?.analyticsByGrid || {};
+
+  // ============================================================
+  // 1. RESOLVE CURRENT GIS CONTEXT FIRST
+  // ============================================================
+  const level = String(window.activePopupContext?.level || "btr").toLowerCase();
+  const filterValue =
+    level === "compartment" ? window.gisFilter?.compartment :
+    level === "beat" ? window.gisFilter?.beat :
+    level === "range" ? window.gisFilter?.range :
+    level === "division" ? window.gisFilter?.division : "";
+
+  let requestedGridIds = [];
+
+  try {
+    const resolved = getAnalyticsGridIds(level, filterValue);
+    if (Array.isArray(resolved)) {
+      requestedGridIds = resolved.filter(Boolean);
+    } else if (resolved instanceof Set) {
+      requestedGridIds = [...resolved].filter(Boolean);
+    }
+  } catch (err) {
+    console.warn("⚠ Realtime grid resolution failed:", err);
+    requestedGridIds = Object.keys(window.masterGrid || {});
+  }
+
+  // ============================================================
+  // 2. MASTER GRID TOTALS (Across all requested compartments in boundary)
+  // ============================================================
+  let totalCells = 0;
+  let areaHa = 0;
+
+  for (const gridId of requestedGridIds) {
+    const master = window.masterGrid?.[gridId];
+    if (!master) continue;
+
+    const cells = Number(master.totalCells || 0);
+    const area = Number(master.actualAreaHa || 0);
+
+    if (Number.isFinite(cells)) totalCells += Math.max(0, cells);
+    if (Number.isFinite(area)) areaHa += Math.max(0, area);
+  }
+
+  // ============================================================
+  // 3. AGGREGATE ACTIVITY DELTAS
+  // ============================================================
+  let distanceMeters = 0;
+  let visitCount = 0;
+  let visitedCompartments = 0;
+  const uniqueVisitedCells = new Set();
+  let latestUpdatedAt = 0;
+
+  requestedGridIds.forEach(gridId => {
+    const analytics = analyticsByGrid[gridId];
+    if (!analytics) return;
+
+    visitedCompartments++;
+
+    const distance = Number(analytics.distanceMeters || 0);
+    if (Number.isFinite(distance)) distanceMeters += Math.max(0, distance);
+
+    const visits = Number(analytics.visitCount || 0);
+    if (Number.isFinite(visits)) visitCount += Math.max(0, visits);
+
+    const visitedCells = analytics.visitedCells && typeof analytics.visitedCells === "object" && !Array.isArray(analytics.visitedCells)
+      ? analytics.visitedCells
+      : {};
+
+    Object.keys(visitedCells).forEach(cellId => {
+      uniqueVisitedCells.add(`${gridId}_${cellId}`);
+    });
+
+    let updatedAtMs = 0;
+    try {
+      if (typeof analytics?.updatedAt?.toMillis === "function") {
+        updatedAtMs = analytics.updatedAt.toMillis();
+      } else if (analytics?.updatedAt?.seconds) {
+        updatedAtMs = Number(analytics.updatedAt.seconds) * 1000;
+      } else if (analytics.updatedAt) {
+        updatedAtMs = new Date(analytics.updatedAt).getTime();
       }
+    } catch (e) {
+      updatedAtMs = 0;
+    }
+
+    if (Number.isFinite(updatedAtMs)) {
+      latestUpdatedAt = Math.max(latestUpdatedAt, updatedAtMs);
+    }
+  });
+
+  const totalCovered = uniqueVisitedCells.size;
+  const coveragePercent = totalCells > 0 ? (totalCovered / totalCells) * 100 : 0;
+
+  return {
+    compartments: requestedGridIds.length,
+    visitedCompartments,
+    totalCells,
+    areaHa,
+    distanceMeters: Math.round(distanceMeters),
+    visitCount: Math.round(visitCount),
+    previouslyCovered: 0,
+    newlyCovered: totalCovered,
+    totalCovered,
+    latestUpdatedAt,
+    coveragePercent,
+    analyticsDocsFound: visitedCompartments,
+    missingAnalyticsDocs: Math.max(0, requestedGridIds.length - visitedCompartments),
+    failedAnalyticsReads: 0
+  };
+}
+async function updateMonthlyStatusFromRealtimeAnalytics(){
+
+    try{
+
+        if(
+            !window.monthlyAnalyticsRealtime
+                ?.initialLoaded
+        ){
+
+            return;
+
+        }
 
 
-      return;
+        const d =
+            new Date();
+
+
+        const monthKey =
+            `${d.getFullYear()}_${
+                String(
+                    d.getMonth() + 1
+                ).padStart(
+                    2,
+                    "0"
+                )
+            }`;
+
+
+        const level =
+            String(
+                window.activePopupContext?.level ||
+                "btr"
+            )
+            .toLowerCase();
+
+
+        const filterValue =
+            level === "compartment"
+                ? window.gisFilter?.compartment
+                : level === "beat"
+                ? window.gisFilter?.beat
+                : level === "range"
+                ? window.gisFilter?.range
+                : level === "division"
+                ? window.gisFilter?.division
+                : "";
+
+
+        const cacheKey =
+            `${monthKey}_${level}_${
+                filterValue || "all"
+            }`;
+
+
+        const summary =
+            calculateMonthlyStatusFromRealtimeAnalytics();
+
+
+        const cacheEntry = {
+
+            ...summary,
+
+            loadedAt:
+                Date.now(),
+
+            monthKey,
+
+            level,
+
+            filterValue:
+                filterValue || "",
+
+            realtime:
+                true
+
+        };
+
+
+        // ========================================================
+        // MEMORY
+        // ========================================================
+
+        window.monthlyStatusCache ??=
+            {};
+
+        window.monthlyStatusCache[
+            cacheKey
+        ] =
+            cacheEntry;
+
+
+        // ========================================================
+        // IDB
+        // ========================================================
+
+        await saveMonthlyStatusToIDB(
+            cacheKey,
+            cacheEntry
+        );
+
+
+        // ========================================================
+        // PAINT
+        // ========================================================
+
+        renderMonthlyStatusCard(
+            cacheEntry,
+            level
+        );
+
+
+        // ========================================================
+        // TITLE
+        // ========================================================
+
+        document.getElementById(
+            "monthlyStatusTitle"
+        )?.replaceChildren(
+            document.createTextNode(
+                getMonthlyStatusTitle()
+            )
+        );
+
+
+        // ========================================================
+        // SESSION LABEL
+        // ========================================================
+
+        const sessionLabelEl =
+            document.getElementById(
+                "msSessionsLabel"
+            );
+
+
+        if(
+            sessionLabelEl
+        ){
+
+            sessionLabelEl.textContent =
+                level === "compartment"
+                    ? "Visits"
+                    : "Patrol Activity";
+
+        }
+
+
+        // ========================================================
+        // LIVE STAFF
+        //
+        // Keep existing live calculation.
+        // ========================================================
+
+        try{
+
+            const liveStaff =
+                Number(
+                    getLiveStaffCountForCurrentPolygon() ||
+                    0
+                );
+
+
+            const liveStaffEl =
+                document.getElementById(
+                    "msLiveStaff"
+                );
+
+
+            if(
+                liveStaffEl
+            ){
+
+                liveStaffEl.textContent =
+                    liveStaff.toLocaleString();
+
+            }
+
+        }
+
+        catch(e){}
+
+
+        console.log(
+            "⚡ Monthly Status updated from realtime delta",
+            {
+                cacheKey,
+                changedDocs:
+                    Object.keys(
+                        window.monthlyAnalyticsRealtime
+                            .analyticsByGrid
+                    ).length,
+                covered:
+                    summary.totalCovered,
+                visits:
+                    summary.visitCount
+            }
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ Realtime Monthly Status update failed:",
+            err
+        );
+
+    }
+
+}
+async function updateMonthlyStatusCard(
+    options = {}
+){
+
+    const cacheOnly =
+        options.cacheOnly === true;
+
+
+    // ============================================================
+    // 🔒 MONTHLY STATUS EXECUTION LOCK
+    //
+    // Prevent overlapping Monthly Status processing.
+    // ============================================================
+
+    if(
+        window.__monthlyStatusUpdating
+    ){
+
+        console.log(
+            "⏸ Monthly Status update already running"
+        );
+
+        return;
+
     }
 
 
-    // =========================================================
-    // LOAD AUTHORITATIVE MONTHLY ANALYTICS
-    //
-    // THIS is now the source of truth.
-    //
-    // analytics_rebuild
-    //    / monthKey
-    //       / compartments
-    // =========================================================
+    // ============================================================
+    // CARD MUST EXIST BEFORE LOCKING
+    // ============================================================
 
-    console.time(
-      "GET_ANALYTICS_SUMMARY"
-    );
+    const monthlyStatusCard =
+        document.getElementById(
+            "monthlyStatusCard"
+        );
 
 
-    let summary;
+    if(
+        !monthlyStatusCard
+    ){
+
+        return;
+
+    }
+
+
+    window.__monthlyStatusUpdating =
+        true;
 
 
     try{
 
-      summary =
-        await getAnalyticsSummary(
-          gridIds,
-          monthKey
+
+        // =========================================================
+        // MONTH
+        // =========================================================
+
+        const d =
+            new Date();
+
+
+        const monthKey =
+            `${d.getFullYear()}_${
+                String(
+                    d.getMonth() + 1
+                ).padStart(
+                    2,
+                    "0"
+                )
+            }`;
+
+
+        // =========================================================
+        // CURRENT GIS LEVEL
+        // =========================================================
+
+        const level =
+            String(
+                window.activePopupContext?.level ||
+                "btr"
+            )
+            .toLowerCase();
+
+
+        // =========================================================
+        // CURRENT FILTER
+        // =========================================================
+
+        const filterValue =
+
+            level === "compartment"
+
+            ? window.gisFilter?.compartment
+
+            : level === "beat"
+
+            ? window.gisFilter?.beat
+
+            : level === "range"
+
+            ? window.gisFilter?.range
+
+            : level === "division"
+
+            ? window.gisFilter?.division
+
+            : "";
+
+
+        // =========================================================
+        // CACHE KEY
+        //
+        // User/context/month specific.
+        // =========================================================
+
+        const cacheKey =
+            `${monthKey}_${level}_${
+                filterValue || "all"
+            }`;
+
+
+        // =========================================================
+        // 💾 ENSURE MEMORY CACHE EXISTS
+        // =========================================================
+
+        window.monthlyStatusCache ??=
+            {};
+
+
+        // =========================================================
+        // 💾 MEMORY CACHE FIRST
+        // IDB SECOND
+        //
+        // This is what allows the previous session's card
+        // to survive app/browser/WebView restart.
+        // =========================================================
+
+        let cached =
+            window.monthlyStatusCache[
+                cacheKey
+            ];
+
+
+        if(
+            !cached
+        ){
+
+            cached =
+                await loadMonthlyStatusFromIDB(
+                    cacheKey
+                );
+
+
+            if(
+                cached
+            ){
+
+                cached =
+                    normalizeMonthlyStatusCacheEntry(
+                        cached
+                    );
+
+
+                if(
+                    cached
+                ){
+
+                    window.monthlyStatusCache[
+                        cacheKey
+                    ] =
+                        cached;
+
+
+                    console.log(
+                        "💾 Monthly Status restored from IDB:",
+                        cacheKey
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        // =========================================================
+        // 🔒 CACHE-ONLY STARTUP
+        //
+        // IDB
+        //   ↓
+        // PAINT
+        //   ↓
+        // STOP
+        //
+        // IMPORTANT:
+        // NO Master Grid
+        // NO analytics resolution
+        // NO Firestore summary read
+        // =========================================================
+
+        if(
+            cacheOnly
+        ){
+
+            if(
+                cached &&
+                typeof cached === "object"
+            ){
+
+                try{
+
+                    renderMonthlyStatusCard(
+                        cached,
+                        level
+                    );
+
+
+                    // ---------------------------------------------
+                    // TITLE
+                    // ---------------------------------------------
+
+                    const titleEl =
+                        document.getElementById(
+                            "monthlyStatusTitle"
+                        );
+
+
+                    if(
+                        titleEl
+                    ){
+
+                        titleEl.textContent =
+                            getMonthlyStatusTitle();
+
+                    }
+
+
+                    // ---------------------------------------------
+                    // SESSION LABEL
+                    // ---------------------------------------------
+
+                    const sessionLabelEl =
+                        document.getElementById(
+                            "msSessionsLabel"
+                        );
+
+
+                    if(
+                        sessionLabelEl
+                    ){
+
+                        sessionLabelEl.textContent =
+                            level === "compartment"
+                                ? "Visits"
+                                : "Patrol Activity";
+
+                    }
+
+
+                    // ---------------------------------------------
+                    // LIVE STAFF
+                    //
+                    // Do NOT persist this in Monthly Status cache.
+                    // ---------------------------------------------
+
+                    try{
+
+                        const liveStaff =
+                            Number(
+                                getLiveStaffCountForCurrentPolygon() ||
+                                0
+                            );
+
+
+                        const liveStaffEl =
+                            document.getElementById(
+                                "msLiveStaff"
+                            );
+
+
+                        if(
+                            liveStaffEl
+                        ){
+
+                            liveStaffEl.textContent =
+                                liveStaff.toLocaleString();
+
+
+                            if(
+                                liveStaff === 0
+                            ){
+
+                                liveStaffEl.style.color =
+                                    "#ff5b5b";
+
+                            }
+
+                            else if(
+                                liveStaff < 3
+                            ){
+
+                                liveStaffEl.style.color =
+                                    "#ffd54f";
+
+                            }
+
+                            else{
+
+                                liveStaffEl.style.color =
+                                    "#4cff6d";
+
+                            }
+
+                        }
+
+                    }
+
+                    catch(liveErr){
+
+                        console.warn(
+                            "⚠ Live staff count failed:",
+                            liveErr
+                        );
+
+                    }
+
+
+                    console.log(
+                        "⚡ Monthly Status painted from IDB:",
+                        cacheKey
+                    );
+
+                }
+
+                catch(renderErr){
+
+                    console.warn(
+                        "⚠ IDB Monthly Status paint failed:",
+                        renderErr
+                    );
+
+                }
+
+            }
+
+            else{
+
+                console.log(
+                    "ℹ️ No cached Monthly Status available:",
+                    cacheKey
+                );
+
+            }
+
+
+            console.log(
+                "💾 Monthly Status cache-only startup complete"
+            );
+
+
+            return;
+
+        }
+
+
+        // =========================================================
+        // ⚡ IMMEDIATE CACHE PAINT
+        //
+        // Normal calls may also display the latest cached value
+        // before realtime synchronization finishes.
+        //
+        // IMPORTANT:
+        // There is NO TTL-based return here.
+        // Realtime synchronization continues.
+        // =========================================================
+
+        if(
+            cached &&
+            typeof cached === "object"
+        ){
+
+            try{
+
+                renderMonthlyStatusCard(
+                    cached,
+                    level
+                );
+
+
+                // -------------------------------------------------
+                // TITLE
+                // -------------------------------------------------
+
+                const titleEl =
+                    document.getElementById(
+                        "monthlyStatusTitle"
+                    );
+
+
+                if(
+                    titleEl
+                ){
+
+                    titleEl.textContent =
+                        getMonthlyStatusTitle();
+
+                }
+
+
+                // -------------------------------------------------
+                // SESSION LABEL
+                // -------------------------------------------------
+
+                const sessionLabelEl =
+                    document.getElementById(
+                        "msSessionsLabel"
+                    );
+
+
+                if(
+                    sessionLabelEl
+                ){
+
+                    sessionLabelEl.textContent =
+                        level === "compartment"
+                            ? "Visits"
+                            : "Patrol Activity";
+
+                }
+
+
+                // -------------------------------------------------
+                // LIVE STAFF
+                //
+                // Runtime/live value.
+                // Never put it into monthly cache.
+                // -------------------------------------------------
+
+                try{
+
+                    const liveStaff =
+                        Number(
+                            getLiveStaffCountForCurrentPolygon() ||
+                            0
+                        );
+
+
+                    const liveStaffEl =
+                        document.getElementById(
+                            "msLiveStaff"
+                        );
+
+
+                    if(
+                        liveStaffEl
+                    ){
+
+                        liveStaffEl.textContent =
+                            liveStaff.toLocaleString();
+
+
+                        if(
+                            liveStaff === 0
+                        ){
+
+                            liveStaffEl.style.color =
+                                "#ff5b5b";
+
+                        }
+
+                        else if(
+                            liveStaff < 3
+                        ){
+
+                            liveStaffEl.style.color =
+                                "#ffd54f";
+
+                        }
+
+                        else{
+
+                            liveStaffEl.style.color =
+                                "#4cff6d";
+
+                        }
+
+                    }
+
+                }
+
+                catch(liveErr){
+
+                    console.warn(
+                        "⚠ Live staff count failed:",
+                        liveErr
+                    );
+
+                }
+
+
+                console.log(
+                    "⚡ Monthly Status cache painted:",
+                    cacheKey
+                );
+
+            }
+
+            catch(renderErr){
+
+                console.warn(
+                    "⚠ Cached Monthly Status render failed:",
+                    renderErr
+                );
+
+            }
+
+        }
+
+
+        // ============================================================
+        // 🔥 AUTHORITATIVE SOURCE
+        //
+        // IMPORTANT:
+        //
+        // DO NOT call:
+        //
+        //     getAnalyticsSummary()
+        //
+        // here.
+        //
+        // The Monthly Analytics Realtime engine is now the
+        // authoritative synchronization path.
+        //
+        // Architecture:
+        //
+        // Firestore onSnapshot
+        //        ↓
+        // analyticsByGrid
+        //        ↓
+        // calculateMonthlyStatusFromRealtimeAnalytics()
+        //        ↓
+        // IDB
+        //        ↓
+        // Monthly Status paint
+        // ============================================================
+
+
+        // ------------------------------------------------------------
+        // If realtime is already active:
+        //
+        // simply process the current in-memory analytics state.
+        // ------------------------------------------------------------
+
+        if(
+            window.monthlyAnalyticsRealtime?.started
+        ){
+
+            if(
+                window.monthlyAnalyticsRealtime?.initialLoaded
+            ){
+
+                await updateMonthlyStatusFromRealtimeAnalytics();
+
+                console.log(
+                    "🔥 Monthly Status synchronized from realtime analytics:",
+                    cacheKey
+                );
+
+            }
+
+            else{
+
+                console.log(
+                    "⏳ Monthly Analytics realtime listener active; waiting for initial snapshot"
+                );
+
+            }
+
+        }
+
+
+        // ------------------------------------------------------------
+        // If realtime has NOT started yet:
+        //
+        // Start it safely.
+        //
+        // This keeps existing callers of:
+        //
+        //     updateMonthlyStatusCard()
+        //
+        // from breaking.
+        //
+        // The listener itself performs the authoritative
+        // Firestore synchronization.
+        // ------------------------------------------------------------
+
+        else{
+
+            try{
+
+                await startMonthlyAnalyticsRealtime(
+                    monthKey
+                );
+
+
+                console.log(
+                    "🔥 Monthly Analytics Realtime started by Monthly Status:",
+                    monthKey
+                );
+
+            }
+
+            catch(realtimeErr){
+
+                console.error(
+                    "❌ Monthly Analytics Realtime start failed:",
+                    realtimeErr
+                );
+
+            }
+
+        }
+
+
+        // ============================================================
+        // LIVE STAFF
+        //
+        // Keep this live/runtime calculation.
+        // It is intentionally NOT part of the monthly analytics
+        // persistent cache.
+        // ============================================================
+
+        try{
+
+            const liveStaff =
+                Number(
+                    getLiveStaffCountForCurrentPolygon() ||
+                    0
+                );
+
+
+            const liveStaffEl =
+                document.getElementById(
+                    "msLiveStaff"
+                );
+
+
+            if(
+                liveStaffEl
+            ){
+
+                liveStaffEl.textContent =
+                    liveStaff.toLocaleString();
+
+
+                if(
+                    liveStaff === 0
+                ){
+
+                    liveStaffEl.style.color =
+                        "#ff5b5b";
+
+                }
+
+                else if(
+                    liveStaff < 3
+                ){
+
+                    liveStaffEl.style.color =
+                        "#ffd54f";
+
+                }
+
+                else{
+
+                    liveStaffEl.style.color =
+                        "#4cff6d";
+
+                }
+
+            }
+
+        }
+
+        catch(liveErr){
+
+            console.warn(
+                "⚠ Live staff count failed:",
+                liveErr
+            );
+
+        }
+
+
+        // ============================================================
+        // FINAL STATE
+        // ============================================================
+
+        console.log(
+            "📊 Monthly Status synchronization cycle complete",
+            {
+                monthKey,
+                level,
+                filter:
+                    filterValue || "ALL",
+                realtimeStarted:
+                    !!window.monthlyAnalyticsRealtime?.started,
+                realtimeInitialLoaded:
+                    !!window.monthlyAnalyticsRealtime?.initialLoaded
+            }
+        );
+
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ Monthly Status synchronization failed:",
+            err
         );
 
     }
 
     finally{
 
-      console.timeEnd(
-        "GET_ANALYTICS_SUMMARY"
-      );
-    }
-
-
-    // =========================================================
-    // VALIDATE RESULT
-    // =========================================================
-
-    if(
-      !summary ||
-      typeof summary !== "object"
-    ){
-
-      throw new Error(
-        "getAnalyticsSummary() returned invalid result"
-      );
-    }
-
-
-    // =========================================================
-    // NORMALIZE NUMERIC VALUES
-    //
-    // Prevent NaN from reaching the UI.
-    // =========================================================
-
-    summary.totalCovered =
-      Number(
-        summary.totalCovered || 0
-      );
-
-
-    summary.totalCells =
-      Number(
-        summary.totalCells || 0
-      );
-
-
-    summary.visitedCompartments =
-      Number(
-        summary.visitedCompartments || 0
-      );
-
-
-    summary.compartments =
-      Number(
-        summary.compartments || 0
-      );
-
-
-    summary.visitCount =
-      Number(
-        summary.visitCount || 0
-      );
-
-
-    summary.distanceMeters =
-      Number(
-        summary.distanceMeters || 0
-      );
-
-
-    summary.areaHa =
-      Number(
-        summary.areaHa || 0
-      );
-
-
-    summary.coveragePercent =
-      Number(
-        summary.coveragePercent || 0
-      );
-
-
-    // =========================================================
-    // SAFETY AGAINST INVALID NUMBERS
-    // =========================================================
-
-    if(
-      !Number.isFinite(
-        summary.totalCovered
-      )
-    ){
-      summary.totalCovered = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.totalCells
-      )
-    ){
-      summary.totalCells = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.visitedCompartments
-      )
-    ){
-      summary.visitedCompartments = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.compartments
-      )
-    ){
-      summary.compartments = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.visitCount
-      )
-    ){
-      summary.visitCount = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.distanceMeters
-      )
-    ){
-      summary.distanceMeters = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.areaHa
-      )
-    ){
-      summary.areaHa = 0;
-    }
-
-
-    if(
-      !Number.isFinite(
-        summary.coveragePercent
-      )
-    ){
-      summary.coveragePercent = 0;
-    }
-
-
-    // =========================================================
-    // DEBUG
-    //
-    // This replaces the old comparison against summary/global.
-    // =========================================================
-
-    console.table({
-
-      level:
-        level,
-
-      filter:
-        filterValue || "ALL",
-
-      compartmentsRequested:
-        gridIds.length,
-
-      totalCells:
-        summary.totalCells,
-
-      coveredCells:
-        summary.totalCovered,
-
-      visitedCompartments:
-        summary.visitedCompartments,
-
-      visitCount:
-        summary.visitCount,
-
-      distanceMeters:
-        Math.round(
-          summary.distanceMeters
-        ),
-
-      coveragePercent:
-        Number(
-          summary.coveragePercent
-            .toFixed(2)
-        )
-
-    });
-
-
-    // =========================================================
-    // SAVE CACHE
-    // =========================================================
-
-    const cacheEntry = {
-
-      ...summary,
-
-      loadedAt:
-        Date.now(),
-
-      monthKey,
-
-      level,
-
-      filterValue:
-        filterValue || ""
-
-    };
-
-
-    window.monthlyStatusCache[
-      cacheKey
-    ] =
-      cacheEntry;
-
-
-    // =========================================================
-    // FINAL PAINT
-    // =========================================================
-
-    renderMonthlyStatusCard(
-      cacheEntry,
-      level
-    );
-
-
-    // =========================================================
-    // TITLE
-    // =========================================================
-
-    const titleEl =
-      document.getElementById(
-        "monthlyStatusTitle"
-      );
-
-
-    if(
-      titleEl
-    ){
-
-      titleEl.textContent =
-        getMonthlyStatusTitle();
-    }
-
-
-    // =========================================================
-    // SESSION LABEL
-    // =========================================================
-
-    const sessionLabelEl =
-      document.getElementById(
-        "msSessionsLabel"
-      );
-
-
-    if(
-      sessionLabelEl
-    ){
-
-      sessionLabelEl.textContent =
-
-        level === "compartment"
-
-        ? "Visits"
-
-        : "Patrol Activity";
-    }
-
-
-    // =========================================================
-    // LIVE STAFF
-    //
-    // Live staff remains runtime/live data and is intentionally
-    // NOT derived from monthly analytics.
-    // =========================================================
-
-    try{
-
-      const liveStaff =
-
-        Number(
-          getLiveStaffCountForCurrentPolygon() ||
-          0
-        );
-
-
-      const liveStaffEl =
-        document.getElementById(
-          "msLiveStaff"
-        );
-
-
-      if(
-        liveStaffEl
-      ){
-
-        liveStaffEl.textContent =
-          liveStaff.toLocaleString();
-
-
-        if(
-          liveStaff === 0
-        ){
-
-          liveStaffEl.style.color =
-            "#ff5b5b";
-
-        }
-
-        else if(
-          liveStaff < 3
-        ){
-
-          liveStaffEl.style.color =
-            "#ffd54f";
-
-        }
-
-        else{
-
-          liveStaffEl.style.color =
-            "#4cff6d";
-        }
-      }
+        // ============================================================
+        // 🔓 ALWAYS RELEASE LOCK
+        // ============================================================
+
+        window.__monthlyStatusUpdating =
+            false;
 
     }
 
-    catch(liveErr){
-
-      console.warn(
-        "⚠ Live staff count failed",
-        liveErr
-      );
-    }
-
-
-    // =========================================================
-    // UPDATED AT
-    // =========================================================
-
-    const updatedAtEl =
-      document.getElementById(
-        "msUpdatedAt"
-      );
-
-
-    if(
-      updatedAtEl
-    ){
-
-      let latestUpdatedAt =
-        summary.latestUpdatedAt;
-
-
-      // -------------------------------------------------------
-      // Firestore Timestamp
-      // -------------------------------------------------------
-
-      if(
-        latestUpdatedAt &&
-        typeof latestUpdatedAt.toDate ===
-          "function"
-      ){
-
-        latestUpdatedAt =
-          latestUpdatedAt.toDate();
-      }
-
-
-      // -------------------------------------------------------
-      // Milliseconds / Date / parseable value
-      // -------------------------------------------------------
-
-      const updatedDate =
-
-        latestUpdatedAt
-
-        ? new Date(
-            latestUpdatedAt
-          )
-
-        : null;
-
-
-      if(
-        updatedDate &&
-        Number.isFinite(
-          updatedDate.getTime()
-        )
-      ){
-
-        updatedAtEl.textContent =
-
-          updatedDate
-            .toLocaleTimeString(
-              "en-IN",
-              {
-                hour:
-                  "2-digit",
-
-                minute:
-                  "2-digit",
-
-                second:
-                  "2-digit",
-
-                hour12:
-                  true
-              }
-            );
-
-      }
-
-      else{
-
-        updatedAtEl.textContent =
-          "--";
-      }
-    }
-
-
-    // =========================================================
-    // COMPLETE
-    // =========================================================
-
-    console.log(
-      "📊 Monthly Status Updated",
-      {
-        monthKey,
-        level,
-        filter:
-          filterValue || "ALL",
-        grids:
-          gridIds.length,
-        covered:
-          summary.totalCovered,
-        visits:
-          summary.visitCount,
-        distanceKm:
-          Number(
-            (
-              summary.distanceMeters /
-              1000
-            ).toFixed(2)
-          )
-      }
-    );
-
-  }
-
-  catch(err){
-
-  console.error(
-    "❌ Monthly Status",
-    err
-  );
-
-}
-
-finally{
-
-  window.__monthlyStatusUpdating = false;
-
-}
-
-}
-    function renderMonthlyStatusCard(
+}    function renderMonthlyStatusCard(
   summary,
   level
 ){
@@ -30060,307 +30736,298 @@ function zoomToLiveStaff(
   }
 
 }
-function startMonthlyStatusCardRefresh() {
+function startMonthlyStatusCardRefresh(){
 
-  if (window.monthlyStatusRefreshTimer) {
-
-    clearInterval(
-      window.monthlyStatusRefreshTimer
+    console.log(
+        "📊 Monthly Status realtime mode active"
     );
-
-  }
-
-  window.monthlyStatusRefreshTimer =
-
-    setInterval(
-      async () => {
-
-        try {
-
-          await updateMonthlyStatusCard();
-
-        }
-
-        catch(err){
-
-          console.error(
-            "❌ Monthly Status Refresh",
-            err
-          );
-
-        }
-
-      },
-      10000
-    );
-
-  console.log(
-    "📊 Monthly Status Card Refresh Started"
-  );
 
 }
 
-    function stopMonthlyStatusCardRefresh() {
 
-  if (
-    window.monthlyStatusRefreshTimer
-  ) {
+function stopMonthlyStatusCardRefresh(){
 
-    clearInterval(
-      window.monthlyStatusRefreshTimer
-    );
-
-    window.monthlyStatusRefreshTimer =
-      null;
-
-  }
-
-}
-    
-    function toggleMonthlyStatusCard() {
-
-  try {
-
-    const card =
-      document.getElementById(
-        "monthlyStatusCard"
-      );
-
-    const body =
-      document.getElementById(
-        "monthlyStatusBody"
-      );
-
-    const icon =
-      document.getElementById(
-        "monthlyStatusIcon"
-      );
-
-    if (
-      !card ||
-      !body ||
-      !icon
-    ) {
-      return;
-    }
-
-    card.classList.toggle(
-      "collapsed"
-    );
-
-    const collapsed =
-      card.classList.contains(
-        "collapsed"
-      );
-
-    if (collapsed) {
-
-      body.style.display =
-        "none";
-
-      icon.className =
-        "fa-solid fa-chevron-up";
-
-    }
-
-    else {
-
-      body.style.display =
-        "block";
-
-      icon.className =
-        "fa-solid fa-chevron-down";
-
-    }
-
-  }
-
-  catch(err) {
-
-    console.error(
-      "toggleMonthlyStatusCard",
-      err
-    );
-  }
-}
-    
-    /* 🔥 INIT BUTTON AFTER MAP READY */
-setTimeout(async () => {
-
-
-  addMonthlyStatusCard();
-
-  // =====================================
-  // 🚀 SHOW MONTHLY STATUS IMMEDIATELY
-  // =====================================
-
-  try {
-
-    updateMonthlyStatusCard()
-      .catch(err =>
-        console.error(
-          "❌ Initial Monthly Status",
-          err
-        )
-      );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ Initial Monthly Status",
-      err
-    );
-
-  }
-
-  // =====================================
-  // ⏳ WAIT FOR GRID IN BACKGROUND
-  // =====================================
-
-  (async()=>{
-
-    const waitStart =
-      performance.now();
-
-    while(
-
-      window.masterGridLoading
-
-      ||
-
-      !window.masterGrid
-
-      ||
-
-      Object.keys(
-        window.masterGrid
-      ).length === 0
-
+    if(
+        window.monthlyStatusRefreshTimer
     ){
 
-      console.log(
-        "⏳ Waiting for master grid..."
-      );
-
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            500
-          )
-      );
-
-      if(
-
-        performance.now()
-        -
-        waitStart
-
-        >
-
-        30000
-
-      ){
-
-        console.warn(
-          "⚠ Master grid wait timeout"
+        clearInterval(
+            window.monthlyStatusRefreshTimer
         );
 
-        return;
-
-      }
+        window.monthlyStatusRefreshTimer =
+            null;
 
     }
 
-    console.log(
-      "✅ Master Grid Ready:",
-      Object.keys(
-        window.masterGrid || {}
-      ).length
-    );
+}
 
-    console.log(
-      "✅ Cell Lookup Ready:",
-      Object.keys(
-        window.cellToGridId || {}
-      ).length
-    );
 
-    console.log(
-      "✅ Compartments Ready:",
-      window.allCompartmentFeatures
-        ?.length || 0
-    );
-
-    // =================================
-    // REFRESH ONCE AFTER GRID READY
-    // =================================
+function toggleMonthlyStatusCard(){
 
     try{
 
-      await updateMonthlyStatusCard();
+        const card =
+            document.getElementById(
+                "monthlyStatusCard"
+            );
+
+        const body =
+            document.getElementById(
+                "monthlyStatusBody"
+            );
+
+        const icon =
+            document.getElementById(
+                "monthlyStatusIcon"
+            );
+
+
+        if(
+            !card ||
+            !body ||
+            !icon
+        ){
+
+            return;
+
+        }
+
+
+        card.classList.toggle(
+            "collapsed"
+        );
+
+
+        const collapsed =
+            card.classList.contains(
+                "collapsed"
+            );
+
+
+        if(
+            collapsed
+        ){
+
+            body.style.display =
+                "none";
+
+            icon.className =
+                "fa-solid fa-chevron-up";
+
+        }
+
+        else{
+
+            body.style.display =
+                "block";
+
+            icon.className =
+                "fa-solid fa-chevron-down";
+
+        }
 
     }
 
     catch(err){
 
-      console.error(
-        "❌ Grid Ready Refresh",
-        err
-      );
+        console.error(
+            "toggleMonthlyStatusCard",
+            err
+        );
 
     }
 
-  })();
+}
 
-  // =====================================
-  // AUTO REFRESH
-  // =====================================
 
-  if(
-    window.monthlyStatusTimer
-  ){
+/* 🔥 INIT BUTTON AFTER MAP READY */
 
-    clearInterval(
-      window.monthlyStatusTimer
-    );
+setTimeout(
+    async () => {
 
-  }
+        addMonthlyStatusCard();
 
-  window.monthlyStatusTimer =
 
-    setInterval(
-
-      async()=>{
+        // ========================================================
+        // ⚡ STARTUP CACHE-ONLY PAINT
+        //
+        // IDB / memory cache
+        //        ↓
+        // immediate Monthly Status
+        //        ↓
+        // STOP
+        //
+        // NO Firestore analytics read here.
+        // ========================================================
 
         try{
 
-          await updateMonthlyStatusCard();
+            await updateMonthlyStatusCard({
+
+                cacheOnly:
+                    true
+
+            });
+
+
+            console.log(
+                "⚡ Monthly Status startup cache painted"
+            );
 
         }
 
         catch(err){
 
-          console.error(
-            "❌ Monthly Status Refresh",
-            err
-          );
+            console.error(
+                "❌ Initial Monthly Status cache paint",
+                err
+            );
 
         }
 
-      },
 
-      60000
+        // ========================================================
+        // ⏳ WAIT FOR MASTER GRID
+        //
+        // This happens in background.
+        // It does NOT block the cached card.
+        // ========================================================
 
-    );
+        (async()=>{
 
-  console.log(
-    "📊 Monthly Status Auto Refresh Started"
-  );
+            const waitStart =
+                performance.now();
 
-},1000);
+
+            while(
+
+                window.masterGridLoading
+
+                ||
+
+                !window.masterGrid
+
+                ||
+
+                Object.keys(
+                    window.masterGrid
+                ).length === 0
+
+            ){
+
+                console.log(
+                    "⏳ Waiting for master grid..."
+                );
+
+
+                await new Promise(
+                    resolve =>
+                        setTimeout(
+                            resolve,
+                            500
+                        )
+                );
+
+
+                if(
+
+                    performance.now()
+                    -
+                    waitStart
+                    >
+                    30000
+
+                ){
+
+                    console.warn(
+                        "⚠ Master grid wait timeout"
+                    );
+
+                    return;
+
+                }
+
+            }
+
+
+            console.log(
+                "✅ Master Grid Ready:",
+                Object.keys(
+                    window.masterGrid || {}
+                ).length
+            );
+
+
+            console.log(
+                "✅ Cell Lookup Ready:",
+                Object.keys(
+                    window.cellToGridId || {}
+                ).length
+            );
+
+
+            console.log(
+                "✅ Compartments Ready:",
+                window.allCompartmentFeatures
+                    ?.length || 0
+            );
+
+
+            // ====================================================
+            // 🔥 START MONTHLY ANALYTICS REALTIME
+            //
+            // IMPORTANT:
+            // DO NOT call updateMonthlyStatusCard()
+            // here.
+            //
+            // startMonthlyAnalyticsRealtime() is now the
+            // authoritative Firestore synchronization path.
+            // ====================================================
+
+            try{
+
+                const now =
+                    new Date();
+
+
+                const realtimeMonthKey =
+                    `${now.getFullYear()}_${
+                        String(
+                            now.getMonth() + 1
+                        ).padStart(
+                            2,
+                            "0"
+                        )
+                    }`;
+
+
+                await startMonthlyAnalyticsRealtime(
+                    realtimeMonthKey
+                );
+
+
+                console.log(
+                    "🔥 Monthly Analytics Realtime Sync ACTIVE:",
+                    realtimeMonthKey
+                );
+
+            }
+
+            catch(err){
+
+                console.error(
+                    "❌ Monthly Analytics Realtime Startup:",
+                    err
+                );
+
+            }
+
+        })();
+
+    },
+    0
+);
    /* ============================================================
        📍 LOCATION
     ============================================================ */// 📍 Layer for location
