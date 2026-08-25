@@ -78589,68 +78589,534 @@ async function submitSightingForm(event){
     }
 
 
-    // =====================================================
-    // GPS
-    // =====================================================
+// =====================================================
+// 📍 GPS — FRESH + BEST FIX REQUIRED FOR SUBMIT
+//
+// IMPORTANT:
+//
+// Submit must NEVER use:
+// - old window.latestGps
+// - localStorage.lastLat
+// - localStorage.lastLon
+//
+// Submit performs a fresh high-accuracy GPS scan,
+// collects fixes for 5 seconds,
+// selects the BEST accuracy fix,
+// updates window.latestGps,
+// and ONLY THEN writes the coordinates to Firestore.
+// =====================================================
 
-    let lat =
-      document.getElementById(
-        observationType === "WILDLIFE" ? "w-lat" : "f-lat"
-      )?.value || "";
+let lat = "";
+let lon = "";
 
+let bestGpsPosition = null;
+let bestGpsAccuracy = Infinity;
+let gpsWatchId = null;
 
-    let lon =
-      document.getElementById(
-        observationType === "WILDLIFE" ? "w-lon" : "f-lon"
-      )?.value || "";
-
-
-    // =====================================================
-    // PREFER APK / LIVE GPS
-    // =====================================================
-
-    try{
-
-      const gps =
-        window.latestGps;
-
-
-      if(
-        gps &&
-        gps.lat != null &&
-        gps.lng != null
-      ){
-
-        lat =
-          Number(
-            gps.lat
-          ).toFixed(5);
+console.log(
+  "📡 SUBMIT GPS: starting fresh 5-second BEST GPS scan..."
+);
 
 
-        lon =
-          Number(
-            gps.lng
-          ).toFixed(5);
+if(
+  !navigator.geolocation
+){
+
+  console.error(
+    "❌ SUBMIT GPS: navigator.geolocation unavailable"
+  );
+
+  alert(
+    "❌ Current GPS unavailable. Please enable GPS and try again."
+  );
+
+  setSubmitLoading(false);
+
+  return;
+
+}
 
 
-        console.log(
-          "📍 Using APK GPS:",
-          lat,
-          lon
+try{
+
+  // ============================================================
+  // START FRESH DEVICE GPS WATCH
+  // ============================================================
+
+  gpsWatchId =
+    navigator.geolocation.watchPosition(
+
+      function(position){
+
+        try{
+
+          const gpsLat =
+            Number(
+              position
+                ?.coords
+                ?.latitude
+            );
+
+          const gpsLon =
+            Number(
+              position
+                ?.coords
+                ?.longitude
+            );
+
+          const gpsAccuracy =
+            Number(
+              position
+                ?.coords
+                ?.accuracy
+            );
+
+          const gpsTimestamp =
+            Number(
+              position
+                ?.timestamp
+            ) || Date.now();
+
+
+          // ======================================================
+          // VALIDATE FIX
+          // ======================================================
+
+          if(
+
+            !Number.isFinite(
+              gpsLat
+            )
+
+            ||
+
+            !Number.isFinite(
+              gpsLon
+            )
+
+            ||
+
+            !Number.isFinite(
+              gpsAccuracy
+            )
+
+            ||
+
+            gpsLat === 0
+
+            ||
+
+            gpsLon === 0
+
+            ||
+
+            gpsAccuracy <= 0
+
+          ){
+
+            console.warn(
+              "⚠️ SUBMIT GPS: invalid fix ignored",
+              {
+                lat:
+                  gpsLat,
+
+                lon:
+                  gpsLon,
+
+                accuracy:
+                  gpsAccuracy
+              }
+            );
+
+            return;
+
+          }
+
+
+          // ======================================================
+          // FRESHNESS CHECK
+          //
+          // Ignore a position whose device timestamp is
+          // already too old.
+          // ======================================================
+
+          const gpsAge =
+            Date.now() -
+            gpsTimestamp;
+
+
+          if(
+            gpsAge >
+            10000
+          ){
+
+            console.warn(
+              "⚠️ SUBMIT GPS: stale fix ignored",
+              {
+                ageMs:
+                  gpsAge,
+
+                accuracy:
+                  gpsAccuracy
+              }
+            );
+
+            return;
+
+          }
+
+
+          console.log(
+            "📍 SUBMIT GPS FIX:",
+            {
+              lat:
+                gpsLat,
+
+              lon:
+                gpsLon,
+
+              accuracy:
+                gpsAccuracy + " m",
+
+              age:
+                gpsAge + " ms"
+            }
+          );
+
+
+          // ======================================================
+          // KEEP BEST ACCURACY
+          // ======================================================
+
+          if(
+            gpsAccuracy <
+            bestGpsAccuracy
+          ){
+
+            bestGpsAccuracy =
+              gpsAccuracy;
+
+            bestGpsPosition =
+              position;
+
+
+            console.log(
+              "🏆 SUBMIT GPS NEW BEST:",
+              {
+                lat:
+                  gpsLat,
+
+                lon:
+                  gpsLon,
+
+                accuracy:
+                  gpsAccuracy + " m"
+              }
+            );
+
+          }
+
+        }
+
+        catch(
+          gpsFixErr
+        ){
+
+          console.warn(
+            "⚠️ SUBMIT GPS fix processing failed:",
+            gpsFixErr
+          );
+
+        }
+
+      },
+
+      function(error){
+
+        console.warn(
+          "⚠️ SUBMIT GPS watch error:",
+          error
         );
+
+      },
+
+      {
+
+        enableHighAccuracy:
+          true,
+
+        timeout:
+          10000,
+
+        maximumAge:
+          0
 
       }
 
+    );
+
+
+  // ============================================================
+  // COLLECT GPS FOR FULL 5 SECONDS
+  // ============================================================
+
+  await new Promise(
+    resolve => {
+
+      setTimeout(
+        resolve,
+        5000
+      );
+
     }
-    catch(gpsErr){
+  );
+
+
+  // ============================================================
+  // STOP GPS WATCH
+  // ============================================================
+
+  if(
+    gpsWatchId !== null
+  ){
+
+    try{
+
+      navigator.geolocation.clearWatch(
+        gpsWatchId
+      );
+
+    }
+    catch(
+      clearErr
+    ){
 
       console.warn(
-        "⚠ APK GPS unavailable",
-        gpsErr
+        "⚠️ SUBMIT GPS clearWatch failed:",
+        clearErr
       );
 
     }
 
+    gpsWatchId =
+      null;
+
+  }
+
+
+  // ============================================================
+  // NO VALID FRESH FIX
+  // ============================================================
+
+  if(
+    !bestGpsPosition
+  ){
+
+    console.error(
+      "❌ SUBMIT GPS: no fresh valid GPS fix obtained"
+    );
+
+    alert(
+      "❌ Unable to obtain a fresh GPS position. Please wait for GPS and try again."
+    );
+
+    setSubmitLoading(false);
+
+    return;
+
+  }
+
+
+  // ============================================================
+  // EXTRACT BEST FIX
+  // ============================================================
+
+  const bestCoords =
+    bestGpsPosition.coords;
+
+  const bestLat =
+    Number(
+      bestCoords.latitude
+    );
+
+  const bestLon =
+    Number(
+      bestCoords.longitude
+    );
+
+  const bestAccuracy =
+    Number(
+      bestCoords.accuracy
+    );
+
+
+  const bestTimestamp =
+    Number(
+      bestGpsPosition.timestamp
+    ) || Date.now();
+
+
+  // ============================================================
+  // FINAL FRESHNESS CHECK
+  // ============================================================
+
+  const finalGpsAge =
+    Date.now() -
+    bestTimestamp;
+
+
+  if(
+    finalGpsAge >
+    10000
+  ){
+
+    console.error(
+      "❌ SUBMIT GPS: best fix became stale",
+      {
+        ageMs:
+          finalGpsAge
+      }
+    );
+
+    alert(
+      "❌ GPS position became stale. Please try again."
+    );
+
+    setSubmitLoading(false);
+
+    return;
+
+  }
+
+
+  // ============================================================
+  // 🔥 UPDATE CENTRAL LIVE GPS CACHE
+  //
+  // This is now the BEST + FRESH fix actually used for
+  // this sighting submission.
+  // ============================================================
+
+  window.latestGps = {
+
+    lat:
+      bestLat,
+
+    lng:
+      bestLon,
+
+    accuracy:
+      bestAccuracy,
+
+    speed:
+      bestCoords.speed ??
+      null,
+
+    heading:
+      bestCoords.heading ??
+      null,
+
+    timestamp:
+      bestTimestamp,
+
+    time:
+      Date.now(),
+
+    source:
+      "SIGHTING_SUBMIT_FRESH_BEST_GPS"
+
+  };
+
+
+  // ============================================================
+  // USE EXACT SAME FIX FOR SUBMISSION
+  // ============================================================
+
+  lat =
+    bestLat;
+
+  lon =
+    bestLon;
+
+
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "🏆 FINAL SIGHTING GPS — FRESH + BEST"
+  );
+
+  console.log(
+    {
+      lat:
+        lat,
+
+      lon:
+        lon,
+
+      accuracy:
+        bestAccuracy + " m",
+
+      age:
+        finalGpsAge + " ms",
+
+      timestamp:
+        bestTimestamp,
+
+      source:
+        "SIGHTING_SUBMIT_FRESH_BEST_GPS"
+    }
+  );
+
+  console.log(
+    "============================================================"
+  );
+
+
+}
+catch(
+  gpsErr
+){
+
+  // ============================================================
+  // ALWAYS STOP WATCH IF AN EXCEPTION OCCURS
+  // ============================================================
+
+  if(
+    gpsWatchId !== null
+  ){
+
+    try{
+
+      navigator.geolocation.clearWatch(
+        gpsWatchId
+      );
+
+    }
+    catch(
+      clearErr
+    ){}
+
+    gpsWatchId =
+      null;
+
+  }
+
+
+  console.error(
+    "❌ SUBMIT GPS FAILED:",
+    gpsErr
+  );
+
+  alert(
+    "❌ Unable to obtain current GPS. Please try again."
+  );
+
+  setSubmitLoading(false);
+
+  return;
+
+}
 
     // =====================================================
     // VALIDATE GPS
