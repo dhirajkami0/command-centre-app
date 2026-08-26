@@ -70691,1221 +70691,317 @@ if(
     ];
 
 }
-    // ==================================================
+// ==================================================
     // 💾 SAVE CURRENT STATE
     // --------------------------------------------------
-    // Do this BEFORE deciding whether to skip.
+    // Do this BEFORE deciding whether to skip or clean up.
     // ==================================================
-
-    window.liveStaffPreviousState[
-      staffKey
-    ] = {
-        dutyActive:
-            s.dutyActive,
-
-        sessionId:
-            s.sessionId,
-
-        cleanName:
-            s.cleanName,
-
-        name:
-            s.name,
-
-        role:
-            s.role,
-
-        team:
-            s.team,
-
-        division:
-            s.division,
-
-        range:
-            s.range,
-
-        beat:
-            s.beat,
-
-        compartment:
-            s.compartment,
-
-        dutyType:
-            s.dutyType,
-
-        status:
-            s.status,
-
-        type:
-            s.type
+    window.liveStaffPreviousState[staffKey] = {
+        dutyActive: s.dutyActive,
+        sessionId: s.sessionId,
+        cleanName: s.cleanName,
+        name: s.name,
+        role: s.role,
+        team: s.team,
+        division: s.division,
+        range: s.range,
+        beat: s.beat,
+        compartment: s.compartment,
+        dutyType: s.dutyType,
+        status: s.status,
+        type: s.type
     };
 
-// ==================================================
-// ⚡ GPS-ONLY MODIFICATION
-// --------------------------------------------------
-// The FAST PASS has already moved the marker and
-// updated the open popup.
-//
-// IMPORTANT:
-// GPS-only updates MUST still participate in
-// lightweight live-state bookkeeping.
-//
-// They must NOT enter the heavy processing.
-// ==================================================
-
-if(
-    !heavyChange
-){
-
     // ==================================================
-    // 🟢 KEEP DUTY-ACTIVE STAFF IN ACTIVE USER SET
+    // ⚡ GPS-ONLY MODIFICATION (FAST PASS ESCAPE)
     // --------------------------------------------------
-    // Dead-user cleanup runs AFTER the heavy loop.
+    // The FAST PASS has already moved the marker and
+    // updated the open popup.
     //
-    // Therefore a GPS-only update must still tell
-    // cleanup that this staff member is alive.
+    // IMPORTANT:
+    // GPS-only updates MUST still participate in
+    // lightweight live-state bookkeeping.
+    //
+    // They must NOT enter the heavy processing.
     // ==================================================
+    if (!heavyChange) {
 
-    if(
-        s.dutyActive === true
-    ){
+        // ==============================================
+        // 🟢 KEEP DUTY-ACTIVE STAFF IN ACTIVE USER SET
+        // ==============================================
+        if (s.dutyActive === true) {
+            activeUsers.add(staffKey);
+        }
 
-        activeUsers.add(
-            staffKey
-        );
+        // ==============================================
+        // 🟢 KEEP LIVE STAFF CACHE FRESH
+        // ==============================================
+        window.liveStaffCache ??= Object.create(null);
 
+        const previousLive = window.liveStaffCache[staffKey] || {};
+
+        const gpsLat = Number(s.lat);
+        const gpsLon = Number(s.lon);
+
+        const hasValidGps =
+            Number.isFinite(gpsLat) &&
+            Number.isFinite(gpsLon) &&
+            gpsLat !== 0 &&
+            gpsLon !== 0;
+
+        window.liveStaffCache[staffKey] = {
+            ...previousLive,
+            cleanName: s.cleanName || previousLive.cleanName || staffKey,
+            name: s.name || previousLive.name || staffKey,
+            division: String(s.division ?? previousLive.division ?? "").trim(),
+            range: String(s.range ?? previousLive.range ?? "").trim(),
+            beat: String(s.beat ?? previousLive.beat ?? "").trim(),
+            compartment: String(s.compartment ?? previousLive.compartment ?? "").trim(),
+            lat: hasValidGps ? gpsLat : Number(previousLive.lat || 0),
+            lng: hasValidGps ? gpsLon : Number(previousLive.lng || 0),
+            dutyActive: s.dutyActive === true,
+            sessionId: String(s.sessionId ?? previousLive.sessionId ?? "").trim(),
+            lastSeen: Number(s.lastSeen ?? previousLive.lastSeen ?? 0),
+            speed: Number(s.speed ?? previousLive.speed ?? 0),
+            heading: Number(s.heading ?? previousLive.heading ?? 0),
+            accuracy: Number(s.accuracy ?? previousLive.accuracy ?? 0),
+            updatedAt: Number(s.updatedAt ?? previousLive.updatedAt ?? 0),
+            dutyType: String(s.dutyType ?? previousLive.dutyType ?? ""),
+            team: String(s.team ?? previousLive.team ?? "")
+        };
+
+        // ==============================================
+        // 🔐 KEEP TRACK AUTHORIZATION ALIVE
+        // ==============================================
+        if (window.visibleStaffCache?.[staffKey]) {
+            const previousVisibleStaff = window.visibleStaffCache[staffKey];
+
+            window.visibleStaffCache[staffKey] = {
+                ...previousVisibleStaff,
+                lat: hasValidGps ? gpsLat : Number(previousVisibleStaff.lat || 0),
+                lng: hasValidGps ? gpsLon : Number(previousVisibleStaff.lng || 0),
+                speed: Number(s.speed ?? previousVisibleStaff.speed ?? 0),
+                heading: Number(s.heading ?? previousVisibleStaff.heading ?? 0),
+                accuracy: Number(s.accuracy ?? previousVisibleStaff.accuracy ?? 0),
+                lastSeen: Number(s.lastSeen ?? previousVisibleStaff.lastSeen ?? 0),
+                updatedAt: Number(s.updatedAt ?? previousVisibleStaff.updatedAt ?? 0),
+                sessionId: String(s.sessionId ?? previousVisibleStaff.sessionId ?? "").trim(),
+                dutyActive: s.dutyActive === true
+            };
+        }
+
+        return;
     }
 
+    // ==================================================
+    // 🔥 HEAVY PROCESSING CONFIRMED
+    // ==================================================
+    heavyWorkRan = true;
 
     // ==================================================
-    // 🟢 KEEP LIVE STAFF CACHE FRESH
+    // 🔴 1. AUTHORITATIVE DUTY OFF CLEANUP (PRIORITY STEP)
     // --------------------------------------------------
-    // Do NOT delete the previous GPS just because this
-    // particular update has incomplete GPS fields.
-    //
-    // This preserves the last known location while
-    // duty remains active.
+    // Placed before visibility checks so ending duty
+    // wipes all caches, listeners, and map layers even if
+    // visibility criteria are no longer satisfied.
     // ==================================================
+    if (s.dutyActive !== true) {
 
-    window.liveStaffCache ??=
-        Object.create(null);
+        window.liveStaffCache ??= Object.create(null);
+        window.visibleStaffCache ??= Object.create(null);
+        window.activeSessionMap ??= Object.create(null);
+        window.trackPointCount ??= Object.create(null);
+        window.analyticsPointCount ??= Object.create(null);
+        window.analyticsLastPoint ??= Object.create(null);
+        window.analyticsPointCache ??= Object.create(null);
+        window.analyticsTrackListeners ??= Object.create(null);
+        window.trackDistanceMap ??= Object.create(null);
+        window.trackDistanceSessionMap ??= Object.create(null);
+        window.staffMarkers ??= Object.create(null);
+        window.staffTracks ??= Object.create(null);
+        window.staffDecorators ??= Object.create(null);
+        window.trackListeners ??= Object.create(null);
 
-    const previousLive =
-        window.liveStaffCache[
-            staffKey
-        ] || {};
+        const cleanupStaffKey = staffKey;
 
+        delete window.liveStaffCache[cleanupStaffKey];
+        delete window.visibleStaffCache[cleanupStaffKey];
+        delete window.activeSessionMap[cleanupStaffKey];
+        delete window.trackPointCount[cleanupStaffKey];
 
-    // ==================================================
-    // 📍 SAFE GPS VALUES
-    // ==================================================
+        const currentSessionId = String(s.sessionId || previous?.sessionId || "").trim();
 
-    const gpsLat =
-        Number(
-            s.lat
-        );
+        if (currentSessionId) {
+            delete window.analyticsPointCount[currentSessionId];
+            delete window.analyticsPointCache[currentSessionId];
+            delete window.analyticsLastPoint[currentSessionId];
 
-    const gpsLon =
-        Number(
-            s.lon
-        );
+            if (window.analyticsTrackListeners[currentSessionId]) {
+                try {
+                    window.analyticsTrackListeners[currentSessionId]();
+                } catch(e) {}
+                delete window.analyticsTrackListeners[currentSessionId];
+            }
+        }
 
+        delete window.trackDistanceMap[cleanupStaffKey];
+        if (window.trackDistanceSessionMap) {
+            delete window.trackDistanceSessionMap[cleanupStaffKey];
+        }
 
-    const hasValidGps =
-        Number.isFinite(gpsLat) &&
-        Number.isFinite(gpsLon) &&
-        gpsLat !== 0 &&
-        gpsLon !== 0;
+        if (window.staffMarkers[cleanupStaffKey]) {
+            try {
+                staffLayer.removeLayer(window.staffMarkers[cleanupStaffKey]);
+            } catch(e) {}
+            delete window.staffMarkers[cleanupStaffKey];
+        }
 
+        if (window.staffTracks[cleanupStaffKey]) {
+            try {
+                staffLayer.removeLayer(window.staffTracks[cleanupStaffKey]);
+            } catch(e) {}
+            delete window.staffTracks[cleanupStaffKey];
+        }
 
-    // ==================================================
-    // 💾 UPDATE LIGHTWEIGHT LIVE CACHE
-    // --------------------------------------------------
-    // Valid GPS:
-    //     use newest GPS.
-    //
-    // Invalid/missing GPS:
-    //     preserve previous known GPS.
-    // ==================================================
+        if (window.staffDecorators[cleanupStaffKey]) {
+            try {
+                staffLayer.removeLayer(window.staffDecorators[cleanupStaffKey]);
+            } catch(e) {}
+            delete window.staffDecorators[cleanupStaffKey];
+        }
 
-    window.liveStaffCache[
-        staffKey
-    ] = {
+        if (window.trackListeners[cleanupStaffKey]) {
+            try {
+                window.trackListeners[cleanupStaffKey]();
+            } catch(e) {}
+            delete window.trackListeners[cleanupStaffKey];
+        }
 
-        ...previousLive,
-
-        cleanName:
-            s.cleanName ||
-            previousLive.cleanName ||
-            staffKey,
-
-        name:
-            s.name ||
-            previousLive.name ||
-            staffKey,
-
-        division:
-            String(
-                s.division ??
-                previousLive.division ??
-                ""
-            ).trim(),
-
-        range:
-            String(
-                s.range ??
-                previousLive.range ??
-                ""
-            ).trim(),
-
-        beat:
-            String(
-                s.beat ??
-                previousLive.beat ??
-                ""
-            ).trim(),
-
-        compartment:
-            String(
-                s.compartment ??
-                previousLive.compartment ??
-                ""
-            ).trim(),
-
-        lat:
-            hasValidGps
-                ? gpsLat
-                : Number(
-                    previousLive.lat || 0
-                ),
-
-        lng:
-            hasValidGps
-                ? gpsLon
-                : Number(
-                    previousLive.lng || 0
-                ),
-
-        dutyActive:
-            s.dutyActive === true,
-
-        sessionId:
-            String(
-                s.sessionId ??
-                previousLive.sessionId ??
-                ""
-            ).trim(),
-
-        lastSeen:
-            Number(
-                s.lastSeen ??
-                previousLive.lastSeen ??
-                0
-            ),
-
-        speed:
-            Number(
-                s.speed ??
-                previousLive.speed ??
-                0
-            ),
-
-        heading:
-            Number(
-                s.heading ??
-                previousLive.heading ??
-                0
-            ),
-
-        accuracy:
-            Number(
-                s.accuracy ??
-                previousLive.accuracy ??
-                0
-            ),
-
-        updatedAt:
-            Number(
-                s.updatedAt ??
-                previousLive.updatedAt ??
-                0
-            ),
-
-        dutyType:
-            String(
-                s.dutyType ??
-                previousLive.dutyType ??
-                ""
-            ),
-
-        team:
-            String(
-                s.team ??
-                previousLive.team ??
-                ""
-            )
-
-    };
-
-// ==================================================
-// 🔐 KEEP TRACK AUTHORIZATION ALIVE
-// --------------------------------------------------
-// GPS-only updates must NOT rebuild visibility.
-//
-// The staff member already passed the heavy
-// visibility calculation previously.
-//
-// Therefore preserve the existing authorization
-// record and only refresh its live GPS fields.
-//
-// IMPORTANT:
-// DO NOT create authorization here.
-// DO NOT change visibility here.
-// Only preserve/update an already-authorized user.
-// ==================================================
-
-if(
-    window.visibleStaffCache?.[
-        staffKey
-    ]
-){
-
-    const previousVisibleStaff =
-        window.visibleStaffCache[
-            staffKey
-        ];
-
-    window.visibleStaffCache[
-        staffKey
-    ] = {
-
-        ...previousVisibleStaff,
-
-        lat:
-            hasValidGps
-                ? gpsLat
-                : Number(
-                    previousVisibleStaff.lat || 0
-                ),
-
-        lng:
-            hasValidGps
-                ? gpsLon
-                : Number(
-                    previousVisibleStaff.lng || 0
-                ),
-
-        speed:
-            Number(
-                s.speed ??
-                previousVisibleStaff.speed ??
-                0
-            ),
-
-        heading:
-            Number(
-                s.heading ??
-                previousVisibleStaff.heading ??
-                0
-            ),
-
-        accuracy:
-            Number(
-                s.accuracy ??
-                previousVisibleStaff.accuracy ??
-                0
-            ),
-
-        lastSeen:
-            Number(
-                s.lastSeen ??
-                previousVisibleStaff.lastSeen ??
-                0
-            ),
-
-        updatedAt:
-            Number(
-                s.updatedAt ??
-                previousVisibleStaff.updatedAt ??
-                0
-            ),
-
-        sessionId:
-            String(
-                s.sessionId ??
-                previousVisibleStaff.sessionId ??
-                ""
-            ).trim(),
-
-        dutyActive:
-            s.dutyActive === true
-
-    };
-
-}
-    // ==================================================
-    // 🧠 IMPORTANT
-    // --------------------------------------------------
-    // DO NOT execute visibility / marker creation /
-    // track listener / analytics listener logic here.
-    //
-    // The session and structural state did not change.
-    // ==================================================
-
-    return;
-
-}
-// ==================================================
-// 🔥 HEAVY PROCESSING CONFIRMED
-// ==================================================
-
-heavyWorkRan = true;
-
-// ==============================================
-// 🔥 STAFF VISIBILITY
-// + GLOBAL EMERGENCY TARGET VISIBILITY
-// ==============================================
-//
-// FINAL RULE:
-//
-// EMERGENCY TARGET:
-//   DEPREDATION DUTY
-//   RESCUE OPERATION
-//
-//   → VISIBLE TO ANY LOGGED-IN USER
-//
-//   Viewer role DOES NOT MATTER.
-//   Viewer division DOES NOT MATTER.
-//   Viewer range DOES NOT MATTER.
-//   Viewer beat DOES NOT MATTER.
-//   Viewer dutyActive DOES NOT MATTER.
-//   Viewer dutyType DOES NOT MATTER.
-//   Viewer status DOES NOT MATTER.
-//   Viewer sessionId DOES NOT MATTER.
-//
-// NORMAL TARGET:
-//
-//   ADMIN
-//      → ALL
-//
-//   DFO / ADFO
-//      → SAME DIVISION
-//
-//   TEAM LEADER / FR / FG / OTHER
-//      → SELF
-//      → SAME RANGE
-//
-// ==============================================
-
-
-// ==============================================
-// 🔧 LOCAL SCOPE NORMALIZER
-// ==============================================
-//
-// Examples:
-//
-// EastDamanpur
-// East Damanpur
-// EAST-DAMANPUR
-// EAST_DAMANPUR
-//
-// all become:
-//
-// EASTDAMANPUR
-//
-// ==============================================
-
-const normalizeStaffScopeValue =
-    function(value){
-
-        return String(
-            value || ""
-        )
-        .trim()
-        .toUpperCase()
-        .replace(
-            /[^A-Z0-9]/g,
+        const currentViewerName = cleanName(
+            window.userProfile?.cleanName ||
+            window.userProfile?.name ||
             ""
         );
 
+        if (cleanupStaffKey === currentViewerName) {
+            window.isDutyActive = false;
+            window.__dutyUpdating = false;
+            window.__dutyChecked = true;
+            if (typeof updateDutyButton === "function") {
+                updateDutyButton();
+            }
+        }
+
+        console.log("🧹 Duty OFF cleanup complete:", cleanupStaffKey, currentSessionId);
+        return;
+    }
+
+    // ==============================================
+    // 👁 2. STAFF VISIBILITY EVALUATION (DUTY IS ACTIVE)
+    // ==============================================
+    const normalizeStaffScopeValue = function(value) {
+        return String(value || "")
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "");
     };
 
-
-// ==============================================
-// 👤 VIEWER ROLE
-// ==============================================
-
-const role =
-    String(
-        window.userProfile?.role || ""
-    )
-    .trim()
-    .toUpperCase();
-
-
-// ==============================================
-// 👤 VIEWER NAME
-// ==============================================
-
-const viewerName =
-    cleanName(
-        window.userProfile?.cleanName ||
-        window.userProfile?.name ||
-        ""
-    );
-
-
-// ==============================================
-// 🗺 VIEWER DIVISION
-// ==============================================
-
-const myDivision =
-    normalizeStaffScopeValue(
-        window.userProfile?.division || ""
-    );
-
-
-// ==============================================
-// 🗺 VIEWER RANGE
-// ==============================================
-
-const myRange =
-    normalizeStaffScopeValue(
-        window.userProfile?.range || ""
-    );
-
-
-// ==============================================
-// 👮 TARGET NAME
-// ==============================================
-
-const targetName =
-    cleanName(
-        s.cleanName ||
-        s.name ||
-        ""
-    );
-
-
-// ==============================================
-// 🗺 TARGET DIVISION
-// ==============================================
-
-const staffDivision =
-    normalizeStaffScopeValue(
-        s.division || ""
-    );
-
-
-// ==============================================
-// 🗺 TARGET RANGE
-// ==============================================
-
-const staffRange =
-    normalizeStaffScopeValue(
-        s.range || ""
-    );
-
-
-// ==============================================
-// 🚨 TARGET DUTY TYPE
-// ==============================================
-
-const targetDutyType =
-    String(
-        s.dutyType || ""
-    )
-    .trim()
-    .toUpperCase();
-
-
-// ==============================================
-// 🚨 GLOBAL EMERGENCY TARGET
-// ==============================================
-//
-// IMPORTANT:
-//
-// THIS CHECK IS ABOUT THE TARGET STAFF.
-//
-// It has NOTHING to do with the logged-in
-// user's role or duty.
-//
-// ==============================================
-
-const targetEmergency =
-    targetDutyType.includes(
-        "DEPREDATION"
-    ) ||
-    targetDutyType.includes(
-        "RESCUE"
-    );
-
-
-// ==============================================
-// 👤 SELF
-// ==============================================
-
-const isSelf =
-    !!viewerName &&
-    !!targetName &&
-    viewerName ===
-    targetName;
-
-
-// ==============================================
-// 🗺 SAME DIVISION
-// ==============================================
-
-const sameDivision =
-    !!myDivision &&
-    !!staffDivision &&
-    myDivision ===
-    staffDivision;
-
-
-// ==============================================
-// 🗺 SAME RANGE
-// ==============================================
-
-const sameRange =
-    !!myRange &&
-    !!staffRange &&
-    myRange ===
-    staffRange;
-
-
-// ==============================================
-// 🔐 FINAL VISIBILITY DECISION
-// ==============================================
-
-let staffVisible =
-    false;
-
-let visibilityReason =
-    "";
-
-
-// ==============================================
-// 🚨 1. EMERGENCY TARGET — GLOBAL
-// ==============================================
-//
-// HIGHEST PRIORITY RULE.
-//
-// DEPREDATION / RESCUE:
-//
-// ANY logged-in user can see this target.
-//
-// NO role test.
-// NO division test.
-// NO range test.
-// NO beat test.
-// NO viewer-duty test.
-//
-// ==============================================
-
-if(
-    targetEmergency
-){
-
-    staffVisible =
-        true;
-
-    visibilityReason =
-        "GLOBAL EMERGENCY TARGET";
-
-}
-
-
-// ==============================================
-// 👑 2. ADMIN — NORMAL TARGETS
-// ==============================================
-
-else if(
-    role === "ADMIN"
-){
-
-    staffVisible =
-        true;
-
-    visibilityReason =
-        "ADMIN";
-
-}
-
-
-// ==============================================
-// 👤 3. SELF — NORMAL TARGET
-// ==============================================
-
-else if(
-    isSelf
-){
-
-    staffVisible =
-        true;
-
-    visibilityReason =
-        "SELF";
-
-}
-
-
-// ==============================================
-// 🟩 4. DFO / ADFO — NORMAL TARGETS
-// ==============================================
-//
-// Normal staff:
-// SAME DIVISION only.
-//
-// Emergency staff never reach this block,
-// because they were already accepted above.
-//
-// ==============================================
-
-else if(
-    role === "DFO" ||
-    role === "ADFO"
-){
-
-    if(
-        sameDivision
-    ){
-
-        staffVisible =
-            true;
-
-        visibilityReason =
-            "SAME DIVISION";
-
-    }
-
-    else {
-
-        staffVisible =
-            false;
-
-        visibilityReason =
-            "BLOCKED OTHER DIVISION";
-
-    }
-
-}
-
-
-// ==============================================
-// 👮 5. TEAM LEADER / FR / FG / OTHER
-// ==============================================
-//
-// NORMAL STAFF:
-// SAME RANGE only.
-//
-// Example:
-//
-// Viewer:
-// TEAM LEADER
-// EastDamanpur
-//
-// Target:
-// Foot Patrolling
-// WestDamanpur
-//
-// → HIDDEN
-//
-// But:
-//
-// Target:
-// Depredation Duty
-// WestDamanpur
-//
-// → already accepted by Rule #1.
-//
-// ==============================================
-
-else {
-
-    if(
-        sameRange
-    ){
-
-        staffVisible =
-            true;
-
-        visibilityReason =
-            "SAME RANGE";
-
-    }
-
-    else {
-
-        staffVisible =
-            false;
-
-        visibilityReason =
-            "BLOCKED OTHER RANGE";
-
-    }
-
-}
-
-
-// ==============================================
-// 🔒 REJECT TARGET
-// ==============================================
-
-if(
-    !staffVisible
-){
-
-    // ==================================================
-    // 🔐 REMOVE TRACK AUTHORIZATION
-    // --------------------------------------------------
-    // Staff is no longer visible under the current
-    // viewer's role / division / range rules.
-    //
-    // This is essential because visibleStaffCache
-    // is now persistent across GPS-only snapshots.
-    // ==================================================
-
-    delete window.visibleStaffCache[
-        staffKey
-    ];
-
-
-    if(
-        window.STAFF_VISIBILITY_DEBUG ===
-        true
-    ){
-
-        console.log(
-            "🔒 STAFF HIDDEN",
-            {
-                viewer:
-                    viewerName,
-
-                viewerRole:
-                    role,
-
-                viewerDivision:
-                    myDivision,
-
-                viewerRange:
-                    myRange,
-
-                target:
-                    targetName,
-
-                targetDivision:
-                    staffDivision,
-
-                targetRange:
-                    staffRange,
-
-                targetDutyType:
-                    targetDutyType,
-
-                targetEmergency:
-                    targetEmergency,
-
-                isSelf:
-                    isSelf,
-
-                sameDivision:
-                    sameDivision,
-
-                sameRange:
-                    sameRange,
-
-                reason:
-                    visibilityReason
-
-            }
-        );
-
-    }
-
-    return;
-
-}
-// ==============================================
-// 👁 TARGET ALLOWED
-// ==============================================
-
-if(
-    window.STAFF_VISIBILITY_DEBUG ===
-    true
-){
-
-    console.log(
-        "👁 STAFF VISIBLE",
-        {
-
-            viewer:
-                viewerName,
-
-            viewerRole:
-                role,
-
-            viewerDivision:
-                myDivision,
-
-            viewerRange:
-                myRange,
-
-            target:
-                targetName,
-
-            targetDivision:
-                staffDivision,
-
-            targetRange:
-                staffRange,
-
-            targetDutyType:
-                targetDutyType,
-
-            targetEmergency:
-                targetEmergency,
-
-            isSelf:
-                isSelf,
-
-            sameDivision:
-                sameDivision,
-
-            sameRange:
-                sameRange,
-
-            reason:
-                visibilityReason
-
+    const role = String(window.userProfile?.role || "").trim().toUpperCase();
+    const viewerName = cleanName(window.userProfile?.cleanName || window.userProfile?.name || "");
+    const myDivision = normalizeStaffScopeValue(window.userProfile?.division || "");
+    const myRange = normalizeStaffScopeValue(window.userProfile?.range || "");
+
+    const targetName = cleanName(s.cleanName || s.name || "");
+    const staffDivision = normalizeStaffScopeValue(s.division || "");
+    const staffRange = normalizeStaffScopeValue(s.range || "");
+    const targetDutyType = String(s.dutyType || "").trim().toUpperCase();
+
+    const targetEmergency =
+        targetDutyType.includes("DEPREDATION") ||
+        targetDutyType.includes("RESCUE");
+
+    const isSelf = !!viewerName && !!targetName && viewerName === targetName;
+    const sameDivision = !!myDivision && !!staffDivision && myDivision === staffDivision;
+    const sameRange = !!myRange && !!staffRange && myRange === staffRange;
+
+    let staffVisible = false;
+    let visibilityReason = "";
+
+    if (targetEmergency) {
+        staffVisible = true;
+        visibilityReason = "GLOBAL EMERGENCY TARGET";
+    } else if (role === "ADMIN") {
+        staffVisible = true;
+        visibilityReason = "ADMIN";
+    } else if (isSelf) {
+        staffVisible = true;
+        visibilityReason = "SELF";
+    } else if (role === "DFO" || role === "ADFO") {
+        if (sameDivision) {
+            staffVisible = true;
+            visibilityReason = "SAME DIVISION";
+        } else {
+            staffVisible = false;
+            visibilityReason = "BLOCKED OTHER DIVISION";
         }
-    );
-
-}    // ==============================================
-    // 🔴 HIDE OFF DUTY
-    // ==============================================
-// ==============================================
-// 🔴 HIDE OFF DUTY
-// ==============================================
-// ==============================================
-// 🔴 DUTY OFF CLEANUP
-// ==============================================
-if(
-  s.dutyActive !== true
-){
-
-  // ==============================================
-  // 🔧 INITIALIZE CLEANUP CACHES
-  // ==============================================
-
-  window.liveStaffCache ??=
-    Object.create(null);
-
-  window.visibleStaffCache ??=
-    Object.create(null);
-
-  window.activeSessionMap ??=
-    Object.create(null);
-
-  window.trackPointCount ??=
-    Object.create(null);
-
-  window.analyticsPointCount ??=
-    Object.create(null);
-
-  window.analyticsLastPoint ??=
-    Object.create(null);
-
-  window.analyticsPointCache ??=
-    Object.create(null);
-
-  window.analyticsTrackListeners ??=
-    Object.create(null);
-
-  window.trackDistanceMap ??=
-    Object.create(null);
-
-  window.trackDistanceSessionMap ??=
-    Object.create(null);
-
-  window.staffMarkers ??=
-    Object.create(null);
-
-  window.staffTracks ??=
-    Object.create(null);
-
-  window.staffDecorators ??=
-    Object.create(null);
-
-  window.trackListeners ??=
-    Object.create(null);
-
-
-  // ==============================================
-  // 🔑 AUTHORITATIVE STAFF CACHE KEY
-  // ------------------------------------------------
-  // IMPORTANT:
-  // Use the same normalized key that was used
-  // earlier in this listener.
-  //
-  // This prevents cleanup from failing when
-  // s.cleanName is missing / differently formatted.
-  // ==============================================
-
-  const cleanupStaffKey =
-    staffKey;
-
-
-  // ==============================================
-  // 🔥 REMOVE LIVE STAFF CACHE
-  // ==============================================
-
-  delete window.liveStaffCache[
-    cleanupStaffKey
-  ];
-
-
-  // ==============================================
-  // 🔐 REMOVE TRACK AUTHORIZATION CACHE
-  // ==============================================
-  // Duty is OFF.
-  // This staff member must no longer be eligible
-  // for lazy/bulk track loading.
-
-  delete window.visibleStaffCache[
-    cleanupStaffKey
-  ];
-
-
-  // ==============================================
-  // 🔥 REMOVE ACTIVE SESSION
-  // ==============================================
-
-  delete window.activeSessionMap[
-    cleanupStaffKey
-  ];
-
-
-  // ==============================================
-  // 🔥 REMOVE VISUAL TRACK COUNT
-  // ==============================================
-
-  delete window.trackPointCount[
-    cleanupStaffKey
-  ];
-
-
-  // ==============================================
-  // 🔥 GET CURRENT SESSION ID
-  // ==============================================
-
-  const currentSessionId =
-    String(
-      s.sessionId || ""
-    ).trim();
-
-
-  // ==============================================
-  // 🔥 REMOVE ANALYTICS COUNTER
-  // ==============================================
-
-  if(
-    currentSessionId
-  ){
-
-    delete window.analyticsPointCount[
-      currentSessionId
-    ];
-
-
-    // ==========================================
-    // 🔥 CLEAR ANALYTICS POINT CACHE
-    // ------------------------------------------
-    // IMPORTANT:
-    // analyticsPointCache belongs to the session.
-    // Once duty is OFF, the session is finished.
-    // ==========================================
-
-    delete window.analyticsPointCache[
-      currentSessionId
-    ];
-
-
-    // ==========================================
-    // 🔥 CLEAR ANALYTICS LAST POINT
-    // ==========================================
-
-    delete window.analyticsLastPoint[
-      currentSessionId
-    ];
-
-
-    // ==========================================
-    // 🔥 STOP ANALYTICS FIRESTORE LISTENER
-    // ==========================================
-
-    if(
-      window.analyticsTrackListeners[
-        currentSessionId
-      ]
-    ){
-
-      try{
-
-        window.analyticsTrackListeners[
-          currentSessionId
-        ]();
-
-      }catch(e){}
-
-      delete window.analyticsTrackListeners[
-        currentSessionId
-      ];
-
+    } else {
+        if (sameRange) {
+            staffVisible = true;
+            visibilityReason = "SAME RANGE";
+        } else {
+            staffVisible = false;
+            visibilityReason = "BLOCKED OTHER RANGE";
+        }
     }
 
-  }
+    // ==============================================
+    // 🔒 REJECT TARGET
+    // ==============================================
+    if (!staffVisible) {
+        delete window.visibleStaffCache[staffKey];
 
+        if (window.STAFF_VISIBILITY_DEBUG === true) {
+            console.log("🔒 STAFF HIDDEN", {
+                viewer: viewerName,
+                viewerRole: role,
+                viewerDivision: myDivision,
+                viewerRange: myRange,
+                target: targetName,
+                targetDivision: staffDivision,
+                targetRange: staffRange,
+                targetDutyType: targetDutyType,
+                targetEmergency: targetEmergency,
+                isSelf: isSelf,
+                sameDivision: sameDivision,
+                sameRange: sameRange,
+                reason: visibilityReason
+            });
+        }
 
-  // ==============================================
-  // 🔥 REMOVE DISTANCE STATE
-  // ==============================================
+        return;
+    }
 
-  delete window.trackDistanceMap[
-    cleanupStaffKey
-  ];
+    // ==============================================
+    // 👁 TARGET ALLOWED
+    // ==============================================
+    if (window.STAFF_VISIBILITY_DEBUG === true) {
+        console.log("👁 STAFF VISIBLE", {
+            viewer: viewerName,
+            viewerRole: role,
+            viewerDivision: myDivision,
+            viewerRange: myRange,
+            target: targetName,
+            targetDivision: staffDivision,
+            targetRange: staffRange,
+            targetDutyType: targetDutyType,
+            targetEmergency: targetEmergency,
+            isSelf: isSelf,
+            sameDivision: sameDivision,
+            sameRange: sameRange,
+            reason: visibilityReason
+        });
+    }   
 
-
-  if(
-    window.trackDistanceSessionMap
-  ){
-
-    delete window.trackDistanceSessionMap[
-      cleanupStaffKey
-    ];
-
-  }
-
-
-  // ==============================================
-  // 🔥 REMOVE STAFF MARKER
-  // ==============================================
-
-  if(
-    window.staffMarkers[
-      cleanupStaffKey
-    ]
-  ){
-
-    try{
-
-      staffLayer.removeLayer(
-        window.staffMarkers[
-          cleanupStaffKey
-        ]
-      );
-
-    }catch(e){}
-
-    delete window.staffMarkers[
-      cleanupStaffKey
-    ];
-
-  }
-
-
-  // ==============================================
-  // 🔥 REMOVE STAFF TRACK
-  // ==============================================
-
-  if(
-    window.staffTracks[
-      cleanupStaffKey
-    ]
-  ){
-
-    try{
-
-      staffLayer.removeLayer(
-        window.staffTracks[
-          cleanupStaffKey
-        ]
-      );
-
-    }catch(e){}
-
-    delete window.staffTracks[
-      cleanupStaffKey
-    ];
-
-  }
-
-
-  // ==============================================
-  // 🔥 REMOVE STAFF DECORATOR
-  // ==============================================
-
-  if(
-    window.staffDecorators[
-      cleanupStaffKey
-    ]
-  ){
-
-    try{
-
-      staffLayer.removeLayer(
-        window.staffDecorators[
-          cleanupStaffKey
-        ]
-      );
-
-    }catch(e){}
-
-    delete window.staffDecorators[
-      cleanupStaffKey
-    ];
-
-  }
-
-
-  // ==============================================
-  // 🔥 STOP VISUAL TRACK LISTENER
-  // ==============================================
-
-  if(
-    window.trackListeners[
-      cleanupStaffKey
-    ]
-  ){
-
-    try{
-
-      window.trackListeners[
-        cleanupStaffKey
-      ]();
-
-    }catch(e){}
-
-    delete window.trackListeners[
-      cleanupStaffKey
-    ];
-
-  }
-
-
-  // ==============================================
-  // 🧹 CLEANUP COMPLETE
-  // ==============================================
-
-  console.log(
-    "🧹 Duty OFF cleanup:",
-    cleanupStaffKey,
-    currentSessionId
-  );
-
-
-  return;
-}
 // ==============================================
 // 🔥 NORMALIZE STAFF
 // ==============================================
