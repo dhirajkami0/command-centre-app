@@ -69807,51 +69807,38 @@ window.staffUnsubscribe = onSnapshot(
                 // Do NOT call docSnap.data() logic for a deleted
                 // staff record.
                 // ==================================================
-                if(
-                    changeType === "removed"
-                ){
+if(
+    removedName
+){
 
-                    const removedName =
-                        cleanName(
-                            docSnap.id ||
-                            ""
-                        );
+    // ------------------------------------------
+    // REMOVE MARKER IF IT EXISTS
+    // ------------------------------------------
+    const removedMarker =
+        window.staffMarkers?.[
+            removedName
+        ];
 
-                    if(
-                        removedName
-                    ){
+    if(
+        removedMarker
+    ){
 
-                        // ------------------------------------------
-                        // REMOVE MARKER IF IT EXISTS
-                        // ------------------------------------------
-                        const removedMarker =
-                            window.staffMarkers?.[
-                                removedName
-                            ];
+        try{
 
-                        if(
-                            removedMarker
-                        ){
+            staffLayer.removeLayer(
+                removedMarker
+            );
 
-                            try{
+        }
+        catch(e){}
 
-                                staffLayer.removeLayer(
-                                    removedMarker
-                                );
+        delete window.staffMarkers[
+            removedName
+        ];
 
-                            }
-                            catch(e){}
+    }
 
-                            delete window.staffMarkers[
-                                removedName
-                            ];
-
-                        }
-
-                    }
-
-                    return;
-                }
+}
 
                 // ==================================================
                 // ❌ INVALID DOCUMENT
@@ -75430,6 +75417,7 @@ delete window.activeSessionMap[
     );
   }
 });
+
 
 // ==================================================
 // 🔥 LIVE STAFF LOADED
