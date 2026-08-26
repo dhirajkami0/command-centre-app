@@ -69800,44 +69800,57 @@ window.staffUnsubscribe = onSnapshot(
                 const s =
                     docSnap.data();
 
-                // ==================================================
-                // ❌ REMOVED DOCUMENT
-                // --------------------------------------------------
-                // We will handle removal separately.
-                // Do NOT call docSnap.data() logic for a deleted
-                // staff record.
-                // ==================================================
+               // ==================================================
+// ❌ REMOVED DOCUMENT
+// --------------------------------------------------
+// We will handle removal separately.
+// Do NOT call docSnap.data() logic for a deleted
+// staff record.
+// ==================================================
 if(
-    removedName
+    changeType === "removed"
 ){
 
-    // ------------------------------------------
-    // REMOVE MARKER IF IT EXISTS
-    // ------------------------------------------
-    const removedMarker =
-        window.staffMarkers?.[
-            removedName
-        ];
+    const removedName =
+        cleanName(
+            docSnap.id ||
+            ""
+        );
 
     if(
-        removedMarker
+        removedName
     ){
 
-        try{
+        // ------------------------------------------
+        // REMOVE MARKER IF IT EXISTS
+        // ------------------------------------------
+        const removedMarker =
+            window.staffMarkers?.[
+                removedName
+            ];
 
-            staffLayer.removeLayer(
-                removedMarker
-            );
+        if(
+            removedMarker
+        ){
+
+            try{
+
+                staffLayer.removeLayer(
+                    removedMarker
+                );
+
+            }
+            catch(e){}
+
+            delete window.staffMarkers[
+                removedName
+            ];
 
         }
-        catch(e){}
-
-        delete window.staffMarkers[
-            removedName
-        ];
 
     }
 
+    return;
 }
 
                 // ==================================================
