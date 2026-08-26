@@ -69789,7 +69789,20 @@ window.staffUnsubscribe = onSnapshot(
                 const changeType =
                     change.type;
 
-                 console.log(
+// ==================================================
+// 📦 CURRENT STAFF DOCUMENT DATA
+// --------------------------------------------------
+// FAST PASS has its own callback scope.
+// The `s` declared later in the heavy
+// snapshot.forEach() is NOT visible here.
+// ==================================================
+
+const s =
+    docSnap.data();
+
+if(!s){
+    return;
+}                 console.log(
     "⚡ LIVE STAFF CHANGE:",
     changeType,
     docSnap.id
@@ -70120,12 +70133,6 @@ if(
 
     return;
 }
-                // ==================================================
-                // ❌ INVALID DOCUMENT
-                // ==================================================
-                if(!s){
-                    return;
-                }
 
                 // ==================================================
                 // 👤 CANONICAL STAFF NAME
