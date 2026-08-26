@@ -23040,22 +23040,66 @@ async function getAnalyticsSummary(
 
 
   // ============================================================
-  // FIRESTORE READ CONCURRENCY
+  // 📊 ANALYTICS DATA ACQUISITION
   //
-  // IMPORTANT FOR LARGE GIS CONTEXTS.
+  // PRIMARY:
+  //     Existing realtime analytics RAM cache
   //
-  // Do not launch hundreds of getDoc() calls simultaneously.
+  // FALLBACK:
+  //     Existing Firestore getDoc()
   //
-  // 20 workers gives good parallelism without creating one huge
-  // Promise.all burst.
+  // IMPORTANT:
+  //     - Does NOT change aggregation logic below.
+  //     - Does NOT change Monthly Status realtime.
+  //     - Does NOT remove Firestore fallback.
+  //     - Uses realtime RAM only when it is confirmed ready
+  //       for the requested month.
   // ============================================================
 
-  const MAX_CONCURRENT_READS =
-    20;
+
+  const realtimeAnalytics =
+    window.monthlyAnalyticsRealtime;
 
 
-  let nextIndex = 0;
+  const realtimeReady =
+    !!realtimeAnalytics &&
+    realtimeAnalytics.started === true &&
+    realtimeAnalytics.initialLoaded === true &&
+    realtimeAnalytics.monthKey === monthKey &&
+    realtimeAnalytics.analyticsByGrid &&
+    typeof realtimeAnalytics.analyticsByGrid === "object";
 
+
+  console.log(
+    realtimeReady
+      ? "⚡ getAnalyticsSummary → using realtime analytics cache"
+      : "🌐 getAnalyticsSummary → realtime cache unavailable/incomplete; Firestore fallback enabled",
+    {
+      monthKey,
+      realtimeMonthKey:
+        realtimeAnalytics?.monthKey,
+
+      realtimeStarted:
+        realtimeAnalytics?.started,
+
+      realtimeInitialLoaded:
+        realtimeAnalytics?.initialLoaded,
+
+      realtimeDocuments:
+        Object.keys(
+          realtimeAnalytics?.analyticsByGrid || {}
+        ).length
+    }
+  );
+
+
+  // ============================================================
+  // RESULT ARRAY
+  //
+  // IMPORTANT:
+  // Keep the exact result structure expected by the
+  // aggregation section below.
+  // ============================================================
 
   const analyticsResults =
     new Array(
@@ -23064,119 +23108,278 @@ async function getAnalyticsSummary(
 
 
   // ============================================================
-  // WORKER
+  // READ MISSING ANALYTICS FROM FIRESTORE
+  //
+  // Only grids NOT already available in the realtime RAM cache
+  // come through this path.
+  //
+  // 20 workers preserve the existing safety limit.
   // ============================================================
 
-  async function readWorker(){
+  const missingGridIds = [];
 
-    while(true){
 
-      const index =
-        nextIndex++;
+  // ============================================================
+  // FIRST PASS — USE REALTIME RAM CACHE
+  // ============================================================
 
+  ids.forEach(
+    (
+      gridId,
+      index
+    ) => {
 
       if(
-        index >= ids.length
+        realtimeReady &&
+        Object.prototype.hasOwnProperty.call(
+          realtimeAnalytics.analyticsByGrid,
+          gridId
+        )
       ){
-        return;
-      }
 
-
-      const gridId =
-        ids[index];
-
-
-      try{
-
-        const ref =
-          window.fb.doc(
-            window.db,
-            "analytics_rebuild",
-            monthKey,
-            "compartments",
-            gridId
-          );
-
-
-        const snap =
-          await window.fb.getDoc(
-            ref
-          );
+        const cachedAnalytics =
+          realtimeAnalytics
+            .analyticsByGrid[
+              gridId
+            ];
 
 
         analyticsResults[
           index
         ] = {
 
-          ok: true,
+          ok:
+            true,
 
           gridId,
 
           exists:
-            snap.exists(),
+            !!cachedAnalytics,
 
           data:
-            snap.exists()
-              ? (
-                  snap.data() ||
-                  {}
-                )
-              : null
+            cachedAnalytics || null
+
         };
 
       }
 
-      catch(err){
+      else{
 
-        analyticsResults[
-          index
-        ] = {
-
-          ok: false,
+        missingGridIds.push({
 
           gridId,
 
-          exists: false,
+          index
 
-          data: null,
+        });
 
-          error: err
-        };
       }
+
     }
-  }
-
-
-  // ============================================================
-  // START BOUNDED WORKERS
-  // ============================================================
-
-  const workerCount =
-    Math.min(
-      MAX_CONCURRENT_READS,
-      ids.length
-    );
-
-
-  const workers = [];
-
-
-  for(
-    let i = 0;
-    i < workerCount;
-    i++
-  ){
-
-    workers.push(
-      readWorker()
-    );
-  }
-
-
-  await Promise.all(
-    workers
   );
 
+
+  console.log(
+    "📊 getAnalyticsSummary source split:",
+    {
+      requested:
+        ids.length,
+
+      fromRealtime:
+        ids.length -
+        missingGridIds.length,
+
+      firestoreFallback:
+        missingGridIds.length
+    }
+  );
+
+
+  // ============================================================
+  // NOTHING MISSING
+  //
+  // IMPORTANT:
+  // No Firestore read is required.
+  // ============================================================
+
+  if(
+    missingGridIds.length === 0
+  ){
+
+    console.log(
+      "⚡ getAnalyticsSummary → 0 Firestore reads"
+    );
+
+  }
+
+
+  // ============================================================
+  // FIRESTORE FALLBACK
+  //
+  // Only missing grids are fetched.
+  //
+  // This preserves the old behavior when:
+  //
+  // - realtime has not started
+  // - initial snapshot has not arrived
+  // - another month is requested
+  // - an individual grid is missing from realtime RAM
+  // ============================================================
+
+  if(
+    missingGridIds.length > 0
+  ){
+
+    const MAX_CONCURRENT_READS =
+      20;
+
+
+    let nextIndex =
+      0;
+
+
+    async function readWorker(){
+
+      while(true){
+
+        const workerIndex =
+          nextIndex++;
+
+
+        if(
+          workerIndex >=
+          missingGridIds.length
+        ){
+
+          return;
+
+        }
+
+
+        const item =
+          missingGridIds[
+            workerIndex
+          ];
+
+
+        const gridId =
+          item.gridId;
+
+
+        const resultIndex =
+          item.index;
+
+
+        try{
+
+          const ref =
+            window.fb.doc(
+              window.db,
+              "analytics_rebuild",
+              monthKey,
+              "compartments",
+              gridId
+            );
+
+
+          const snap =
+            await window.fb.getDoc(
+              ref
+            );
+
+
+          analyticsResults[
+            resultIndex
+          ] = {
+
+            ok:
+              true,
+
+            gridId,
+
+            exists:
+              snap.exists(),
+
+            data:
+              snap.exists()
+                ? (
+                    snap.data() ||
+                    {}
+                  )
+                : null
+
+          };
+
+        }
+
+        catch(err){
+
+          analyticsResults[
+            resultIndex
+          ] = {
+
+            ok:
+              false,
+
+            gridId,
+
+            exists:
+              false,
+
+            data:
+              null,
+
+            error:
+              err
+
+          };
+
+        }
+
+      }
+
+    }
+
+
+    // ==========================================================
+    // START BOUNDED FIRESTORE WORKERS
+    // ==========================================================
+
+    const workerCount =
+      Math.min(
+        MAX_CONCURRENT_READS,
+        missingGridIds.length
+      );
+
+
+    const workers = [];
+
+
+    for(
+      let i = 0;
+      i < workerCount;
+      i++
+    ){
+
+      workers.push(
+        readWorker()
+      );
+
+    }
+
+
+    await Promise.all(
+      workers
+    );
+
+
+    console.log(
+      "🌐 getAnalyticsSummary Firestore fallback completed:",
+      missingGridIds.length,
+      "reads"
+    );
+
+  }
 
   // ============================================================
   // AGGREGATE RESULTS
