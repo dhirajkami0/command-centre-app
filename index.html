@@ -71605,10 +71605,18 @@ if(
 staff.push(s);
 }catch(e){
 
+    // ==================================================
+    // 🛡 SAFE STAFF ERROR IDENTIFICATION
+    // --------------------------------------------------
+    // IMPORTANT:
+    // `s` is declared with const INSIDE the try block.
+    // Therefore `s` MUST NOT be referenced here.
+    //
+    // Use the Firestore document ID instead.
+    // ==================================================
+
     const errorStaffName =
         cleanName(
-            s?.cleanName ||
-            s?.name ||
             docSnap?.id ||
             ""
         );
@@ -71623,16 +71631,12 @@ staff.push(s);
     // ==================================================
     // 🛡 ISOLATE ONE BAD STAFF DOCUMENT
     // --------------------------------------------------
-    // DO NOT rethrow.
-    //
     // One malformed staff document must NOT abort
-    // processing of every other staff member in this
-    // Firestore snapshot.
+    // processing of every other staff member.
     // ==================================================
 
     return;
 }
-
 });
 
     // ==================================================
