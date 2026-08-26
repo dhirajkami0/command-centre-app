@@ -69794,65 +69794,332 @@ window.staffUnsubscribe = onSnapshot(
     changeType,
     docSnap.id
 );
-                // ==================================================
-                // 📦 DOCUMENT DATA
-                // ==================================================
-                const s =
-                    docSnap.data();
-
-               // ==================================================
-// ❌ REMOVED DOCUMENT
+// ==================================================
+// ❌ REMOVED FROM 24-HOUR LIVE STAFF QUERY
 // --------------------------------------------------
-// We will handle removal separately.
-// Do NOT call docSnap.data() logic for a deleted
-// staff record.
+// A "removed" event means this document no longer
+// belongs to the current 24-hour query.
+//
+// This can happen because:
+//
+// 1. The document was deleted
+// 2. Its "time" moved outside the 24-hour window
+//
+// In BOTH cases, remove all runtime state.
 // ==================================================
 if(
     changeType === "removed"
 ){
 
-    const removedName =
+    // ==================================================
+    // 🔑 AUTHORITATIVE STAFF KEY
+    // ==================================================
+    const removedStaffKey =
         cleanName(
             docSnap.id ||
             ""
         );
 
     if(
-        removedName
+        !removedStaffKey
+    ){
+        return;
+    }
+
+
+    // ==================================================
+    // 📦 REMOVED DOCUMENT DATA
+    // ==================================================
+    const removedData =
+        docSnap.data() || {};
+
+    const removedSessionId =
+        String(
+            removedData.sessionId ||
+            ""
+        ).trim();
+
+
+    // ==================================================
+    // 🔥 REMOVE PREVIOUS STATE
+    // ==================================================
+    if(
+        window.liveStaffPreviousState
     ){
 
-        // ------------------------------------------
-        // REMOVE MARKER IF IT EXISTS
-        // ------------------------------------------
-        const removedMarker =
-            window.staffMarkers?.[
-                removedName
-            ];
+        delete window.liveStaffPreviousState[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE LIVE STAFF CACHE
+    // ==================================================
+    if(
+        window.liveStaffCache
+    ){
+
+        delete window.liveStaffCache[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔐 REMOVE VISIBILITY CACHE
+    // ==================================================
+    if(
+        window.visibleStaffCache
+    ){
+
+        delete window.visibleStaffCache[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE ACTIVE SESSION
+    // ==================================================
+    if(
+        window.activeSessionMap
+    ){
+
+        delete window.activeSessionMap[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE TRACK POINT COUNT
+    // ==================================================
+    if(
+        window.trackPointCount
+    ){
+
+        delete window.trackPointCount[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE DISTANCE STATE
+    // ==================================================
+    if(
+        window.trackDistanceMap
+    ){
+
+        delete window.trackDistanceMap[
+            removedStaffKey
+        ];
+
+    }
+
+    if(
+        window.trackDistanceSessionMap
+    ){
+
+        delete window.trackDistanceSessionMap[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE ANALYTICS SESSION STATE
+    // ==================================================
+    if(
+        removedSessionId
+    ){
 
         if(
-            removedMarker
+            window.analyticsPointCount
+        ){
+
+            delete window.analyticsPointCount[
+                removedSessionId
+            ];
+
+        }
+
+        if(
+            window.analyticsPointCache
+        ){
+
+            delete window.analyticsPointCache[
+                removedSessionId
+            ];
+
+        }
+
+        if(
+            window.analyticsLastPoint
+        ){
+
+            delete window.analyticsLastPoint[
+                removedSessionId
+            ];
+
+        }
+
+
+        // ==================================================
+        // 🔥 STOP ANALYTICS LISTENER
+        // ==================================================
+        if(
+            window.analyticsTrackListeners?.[
+                removedSessionId
+            ]
         ){
 
             try{
 
-                staffLayer.removeLayer(
-                    removedMarker
-                );
+                window.analyticsTrackListeners[
+                    removedSessionId
+                ]();
 
             }
             catch(e){}
 
-            delete window.staffMarkers[
-                removedName
+            delete window.analyticsTrackListeners[
+                removedSessionId
             ];
 
         }
 
     }
 
+
+    // ==================================================
+    // 🔥 REMOVE STAFF MARKER
+    // ==================================================
+    const removedMarker =
+        window.staffMarkers?.[
+            removedStaffKey
+        ];
+
+    if(
+        removedMarker
+    ){
+
+        try{
+
+            staffLayer.removeLayer(
+                removedMarker
+            );
+
+        }
+        catch(e){}
+
+        delete window.staffMarkers[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE STAFF TRACK
+    // ==================================================
+    const removedTrack =
+        window.staffTracks?.[
+            removedStaffKey
+        ];
+
+    if(
+        removedTrack
+    ){
+
+        try{
+
+            staffLayer.removeLayer(
+                removedTrack
+            );
+
+        }
+        catch(e){}
+
+        delete window.staffTracks[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 REMOVE STAFF DECORATOR
+    // ==================================================
+    const removedDecorator =
+        window.staffDecorators?.[
+            removedStaffKey
+        ];
+
+    if(
+        removedDecorator
+    ){
+
+        try{
+
+            staffLayer.removeLayer(
+                removedDecorator
+            );
+
+        }
+        catch(e){}
+
+        delete window.staffDecorators[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🔥 STOP VISUAL TRACK LISTENER
+    // ==================================================
+    if(
+        window.trackListeners?.[
+            removedStaffKey
+        ]
+    ){
+
+        try{
+
+            window.trackListeners[
+                removedStaffKey
+            ]();
+
+        }
+        catch(e){}
+
+        delete window.trackListeners[
+            removedStaffKey
+        ];
+
+    }
+
+
+    // ==================================================
+    // 🧹 QUERY REMOVAL COMPLETE
+    // ==================================================
+    console.log(
+        "🧹 LIVE STAFF QUERY REMOVAL:",
+        removedStaffKey,
+        removedSessionId
+    );
+
+
     return;
 }
-
                 // ==================================================
                 // ❌ INVALID DOCUMENT
                 // ==================================================
