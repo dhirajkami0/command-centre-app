@@ -69876,6 +69876,38 @@ if(
 
 
     // ==================================================
+    // 🔥 STRUCTURAL CHANGE MUST SKIP FAST PASS
+    // --------------------------------------------------
+    // Duty ON/OFF, session changes, and other heavy
+    // structural changes must go to the EXISTING
+    // heavy-processing path below.
+    //
+    // GPS-only changes continue through this FAST PASS.
+    // ==================================================
+
+    const fastPreviousState =
+        window.liveStaffPreviousState?.[
+            cleanStaffName
+        ];
+
+    const fastPassIsHeavyChange =
+        typeof isLiveStaffHeavyChange ===
+            "function"
+            ? isLiveStaffHeavyChange(
+                fastPreviousState,
+                s
+            )
+            : false;
+
+    if(
+        fastPreviousState &&
+        fastPassIsHeavyChange
+    ){
+        return;
+    }
+
+
+    // ==================================================
     // 🔎 EXISTING MARKER
     // --------------------------------------------------
     // FAST PASS ONLY updates already-created markers.
@@ -70508,7 +70540,6 @@ const currentLocationElement =
 }
      
 }); // 👈 🔥 ADD THIS CLOSING BRACKET HERE TO CLOSE THE FAST-PASS FOR-EACH
-
        // ==================================================
             // EXISTING HEAVY PROCESSING CONTINUES
             // ==================================================
@@ -71554,6 +71585,9 @@ if(
     // 🔴 HIDE OFF DUTY
     // ==============================================
 // ==============================================
+// 🔴 HIDE OFF DUTY
+// ==============================================
+// ==============================================
 // 🔴 DUTY OFF CLEANUP
 // ==============================================
 if(
@@ -71565,6 +71599,9 @@ if(
   // ==============================================
 
   window.liveStaffCache ??=
+    Object.create(null);
+
+  window.visibleStaffCache ??=
     Object.create(null);
 
   window.activeSessionMap ??=
@@ -71605,29 +71642,47 @@ if(
 
 
   // ==============================================
+  // 🔑 AUTHORITATIVE STAFF CACHE KEY
+  // ------------------------------------------------
+  // IMPORTANT:
+  // Use the same normalized key that was used
+  // earlier in this listener.
+  //
+  // This prevents cleanup from failing when
+  // s.cleanName is missing / differently formatted.
+  // ==============================================
+
+  const cleanupStaffKey =
+    staffKey;
+
+
+  // ==============================================
   // 🔥 REMOVE LIVE STAFF CACHE
   // ==============================================
 
   delete window.liveStaffCache[
-    s.cleanName
+    cleanupStaffKey
   ];
 
-// ==============================================
-// 🔐 REMOVE TRACK AUTHORIZATION CACHE
-// ==============================================
-// Duty is OFF.
-// This staff member must no longer be eligible
-// for lazy/bulk track loading.
 
-delete window.visibleStaffCache[
-    s.cleanName
-];
+  // ==============================================
+  // 🔐 REMOVE TRACK AUTHORIZATION CACHE
+  // ==============================================
+  // Duty is OFF.
+  // This staff member must no longer be eligible
+  // for lazy/bulk track loading.
+
+  delete window.visibleStaffCache[
+    cleanupStaffKey
+  ];
+
+
   // ==============================================
   // 🔥 REMOVE ACTIVE SESSION
   // ==============================================
 
   delete window.activeSessionMap[
-    s.cleanName
+    cleanupStaffKey
   ];
 
 
@@ -71636,7 +71691,7 @@ delete window.visibleStaffCache[
   // ==============================================
 
   delete window.trackPointCount[
-    s.cleanName
+    cleanupStaffKey
   ];
 
 
@@ -71717,7 +71772,7 @@ delete window.visibleStaffCache[
   // ==============================================
 
   delete window.trackDistanceMap[
-    s.cleanName
+    cleanupStaffKey
   ];
 
 
@@ -71726,7 +71781,7 @@ delete window.visibleStaffCache[
   ){
 
     delete window.trackDistanceSessionMap[
-      s.cleanName
+      cleanupStaffKey
     ];
 
   }
@@ -71738,7 +71793,7 @@ delete window.visibleStaffCache[
 
   if(
     window.staffMarkers[
-      s.cleanName
+      cleanupStaffKey
     ]
   ){
 
@@ -71746,14 +71801,14 @@ delete window.visibleStaffCache[
 
       staffLayer.removeLayer(
         window.staffMarkers[
-          s.cleanName
+          cleanupStaffKey
         ]
       );
 
     }catch(e){}
 
     delete window.staffMarkers[
-      s.cleanName
+      cleanupStaffKey
     ];
 
   }
@@ -71765,7 +71820,7 @@ delete window.visibleStaffCache[
 
   if(
     window.staffTracks[
-      s.cleanName
+      cleanupStaffKey
     ]
   ){
 
@@ -71773,14 +71828,14 @@ delete window.visibleStaffCache[
 
       staffLayer.removeLayer(
         window.staffTracks[
-          s.cleanName
+          cleanupStaffKey
         ]
       );
 
     }catch(e){}
 
     delete window.staffTracks[
-      s.cleanName
+      cleanupStaffKey
     ];
 
   }
@@ -71792,7 +71847,7 @@ delete window.visibleStaffCache[
 
   if(
     window.staffDecorators[
-      s.cleanName
+      cleanupStaffKey
     ]
   ){
 
@@ -71800,14 +71855,14 @@ delete window.visibleStaffCache[
 
       staffLayer.removeLayer(
         window.staffDecorators[
-          s.cleanName
+          cleanupStaffKey
         ]
       );
 
     }catch(e){}
 
     delete window.staffDecorators[
-      s.cleanName
+      cleanupStaffKey
     ];
 
   }
@@ -71819,20 +71874,20 @@ delete window.visibleStaffCache[
 
   if(
     window.trackListeners[
-      s.cleanName
+      cleanupStaffKey
     ]
   ){
 
     try{
 
       window.trackListeners[
-        s.cleanName
+        cleanupStaffKey
       ]();
 
     }catch(e){}
 
     delete window.trackListeners[
-      s.cleanName
+      cleanupStaffKey
     ];
 
   }
@@ -71844,7 +71899,7 @@ delete window.visibleStaffCache[
 
   console.log(
     "🧹 Duty OFF cleanup:",
-    s.cleanName,
+    cleanupStaffKey,
     currentSessionId
   );
 
