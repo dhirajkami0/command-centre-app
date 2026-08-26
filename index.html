@@ -31396,35 +31396,98 @@ setTimeout(
             ).length;
 
 
-        if(
-            masterCount > 0 &&
-            cellCount > 0
-        ){
+if(
+    masterCount > 0 &&
+    cellCount > 0
+){
+    window.__ANALYTICS_READY__ =
+        true;
 
-            window.__ANALYTICS_READY__ =
-                true;
 
+    console.log(
+        "✅ STATIC GIS READY:",
+        {
+            masterGrid:
+                masterCount,
+
+            cellLookup:
+                cellCount,
+
+            masterSource:
+                window.__MASTER_GRID_SOURCE__,
+
+            cellSource:
+                window.__CELL_TO_GRID_SOURCE__
+        }
+    );
+
+
+    // ========================================================
+    // 🔥 RE-SYNC MONTHLY STATUS AFTER GIS IS READY
+    //
+    // IMPORTANT:
+    //
+    // Realtime analytics may have loaded BEFORE
+    // Master Grid / Cell Lookup finished.
+    //
+    // The 201 analytics documents are already sitting in:
+    //
+    // window.monthlyAnalyticsRealtime.analyticsByGrid
+    //
+    // Now that GIS is ready, calculate the Monthly Status
+    // again using those existing realtime documents.
+    //
+    // DO NOT start another listener.
+    // DO NOT read Firestore again.
+    // DO NOT rebuild analytics.
+    // ========================================================
+
+    if(
+        window.monthlyAnalyticsRealtime?.started &&
+        window.monthlyAnalyticsRealtime?.initialLoaded &&
+        typeof updateMonthlyStatusFromRealtimeAnalytics ===
+            "function"
+    ){
+
+        console.log(
+            "🔄 GIS READY → RE-SYNC MONTHLY STATUS"
+        );
+
+        try{
+
+            await updateMonthlyStatusFromRealtimeAnalytics();
 
             console.log(
-                "✅ STATIC GIS READY:",
-                {
-                    masterGrid:
-                        masterCount,
+                "✅ MONTHLY STATUS RE-SYNC COMPLETE"
+            );
 
-                    cellLookup:
-                        cellCount,
+        }
+        catch(monthlyResyncErr){
 
-                    masterSource:
-                        window.__MASTER_GRID_SOURCE__,
-
-                    cellSource:
-                        window.__CELL_TO_GRID_SOURCE__
-                }
+            console.error(
+                "❌ MONTHLY STATUS RE-SYNC FAILED:",
+                monthlyResyncErr
             );
 
         }
 
-        else{
+    }
+    else{
+
+        console.log(
+            "⏳ Monthly Status re-sync deferred:",
+            {
+                realtimeStarted:
+                    !!window.monthlyAnalyticsRealtime?.started,
+
+                realtimeInitialLoaded:
+                    !!window.monthlyAnalyticsRealtime?.initialLoaded
+            }
+        );
+
+    }
+
+}        else{
 
             window.__ANALYTICS_READY__ =
                 false;
