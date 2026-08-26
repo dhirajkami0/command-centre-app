@@ -69566,7 +69566,7 @@ catch (
     );
 
 }
-  // ======================================================
+// ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
 function loadStaff(){
@@ -69658,10 +69658,10 @@ if(window.staffListenerActive === true){
 // GPS-only changes do NOT need the heavy staff rebuild.
 //
 // Heavy processing IS required when:
-//   • dutyActive changes
-//   • sessionId changes
-//   • visibility fields change
-//   • staff identity fields change
+//    • dutyActive changes
+//    • sessionId changes
+//    • visibility fields change
+//    • staff identity fields change
 //
 // This keeps the existing heavy logic intact.
 // It simply prevents it from running for ordinary
@@ -70142,46 +70142,126 @@ if(
     }
 
 
-    // ==================================================
-    // 🔥 STRUCTURAL CHANGE MUST SKIP FAST PASS
-    // --------------------------------------------------
-    // Duty ON/OFF, session changes, and other heavy
-    // structural changes must go to the EXISTING
-    // heavy-processing path below.
-    //
-    // GPS-only changes continue through this FAST PASS.
-    // ==================================================
+// ==================================================
+// 🔥 STRUCTURAL CHANGE MUST SKIP FAST PASS
+// --------------------------------------------------
+// GPS-only changes may continue through the FAST PASS.
+//
+// BUT DUTY-OFF IS ABSOLUTE:
+//
+// If dutyActive is anything other than TRUE,
+// NEVER touch the existing marker.
+//
+// This protects against:
+//   • missing previous state
+//   • previous state already false
+//   • listener restart
+//   • query re-entry
+//   • stale marker ghosting
+//
+// Duty-OFF MUST go to the heavy cleanup path.
+// ==================================================
 
-    const fastPreviousState =
-        window.liveStaffPreviousState?.[
-            cleanStaffName
-        ];
+const fastPreviousState =
+    window.liveStaffPreviousState?.[
+        cleanStaffName
+    ];
 
-    const fastPassIsHeavyChange =
-        typeof isLiveStaffHeavyChange ===
-            "function"
-            ? isLiveStaffHeavyChange(
-                fastPreviousState,
-                s
-            )
-            : false;
-console.log("🔥 DUTY-OFF HEAVY TEST", {
-    staff: cleanStaffName,
-    changeType,
-    firestoreDutyActive: s.dutyActive,
-    firestoreSessionId: s.sessionId,
-    previousDutyActive: fastPreviousState?.dutyActive,
-    previousSessionId: fastPreviousState?.sessionId,
-    fastPassIsHeavyChange
-});
-    if(
-        fastPreviousState &&
+// ==================================================
+// 🔴 ABSOLUTE DUTY-OFF BARRIER
+// --------------------------------------------------
+// DO THIS BEFORE ANY MARKER ACCESS.
+//
+// false / undefined / null / anything else
+// = NOT ACTIVE
+//
+// Therefore:
+//     DO NOT move marker
+//     DO NOT update popup
+//     DO NOT update GPS DOM
+//     DO NOT fall through Fast Pass
+//
+// Heavy processing below owns cleanup.
+// ==================================================
+
+if(
+    s.dutyActive !== true
+){
+    console.log(
+        "🔴 FAST PASS BLOCKED — DUTY OFF:",
+        {
+            staff: cleanStaffName,
+            changeType,
+            firestoreDutyActive:
+                s.dutyActive,
+            previousDutyActive:
+                fastPreviousState?.dutyActive,
+            previousSessionId:
+                fastPreviousState?.sessionId,
+            firestoreSessionId:
+                s.sessionId
+        }
+    );
+
+    return;
+}
+
+// ==================================================
+// 🔥 NORMAL STRUCTURAL-CHANGE TEST
+// --------------------------------------------------
+// At this point dutyActive is definitely TRUE.
+//
+// Therefore only:
+//   • session changes
+//   • visibility changes
+//   • identity changes
+// etc.
+// need the heavy path.
+// ==================================================
+
+const fastPassIsHeavyChange =
+    typeof isLiveStaffHeavyChange ===
+        "function"
+        ? isLiveStaffHeavyChange(
+            fastPreviousState,
+            s
+        )
+        : false;
+
+console.log(
+    "🔥 DUTY-OFF HEAVY TEST",
+    {
+        staff:
+            cleanStaffName,
+
+        changeType,
+
+        firestoreDutyActive:
+            s.dutyActive,
+
+        firestoreSessionId:
+            s.sessionId,
+
+        previousDutyActive:
+            fastPreviousState?.dutyActive,
+
+        previousSessionId:
+            fastPreviousState?.sessionId,
+
         fastPassIsHeavyChange
-    ){
-        return;
     }
+);
 
+// ==================================================
+// 🔥 OTHER STRUCTURAL CHANGE
+// ==================================================
 
+if(
+    fastPreviousState &&
+    fastPassIsHeavyChange
+){
+    return;
+}
     // ==================================================
     // 🔎 EXISTING MARKER
     // --------------------------------------------------
@@ -70966,112 +71046,6 @@ if(
     ];
 
 }
-// ==================================================
-    // 💾 SAVE CURRENT STATE
-    // --------------------------------------------------
-    // Do this BEFORE deciding whether to skip or clean up.
-    // ==================================================
-    window.liveStaffPreviousState[staffKey] = {
-        dutyActive: s.dutyActive,
-        sessionId: s.sessionId,
-        cleanName: s.cleanName,
-        name: s.name,
-        role: s.role,
-        team: s.team,
-        division: s.division,
-        range: s.range,
-        beat: s.beat,
-        compartment: s.compartment,
-        dutyType: s.dutyType,
-        status: s.status,
-        type: s.type
-    };
-
-    // ==================================================
-    // ⚡ GPS-ONLY MODIFICATION (FAST PASS ESCAPE)
-    // --------------------------------------------------
-    // The FAST PASS has already moved the marker and
-    // updated the open popup.
-    //
-    // IMPORTANT:
-    // GPS-only updates MUST still participate in
-    // lightweight live-state bookkeeping.
-    //
-    // They must NOT enter the heavy processing.
-    // ==================================================
-    if (!heavyChange) {
-
-        // ==============================================
-        // 🟢 KEEP DUTY-ACTIVE STAFF IN ACTIVE USER SET
-        // ==============================================
-        if (s.dutyActive === true) {
-            activeUsers.add(staffKey);
-        }
-
-        // ==============================================
-        // 🟢 KEEP LIVE STAFF CACHE FRESH
-        // ==============================================
-        window.liveStaffCache ??= Object.create(null);
-
-        const previousLive = window.liveStaffCache[staffKey] || {};
-
-        const gpsLat = Number(s.lat);
-        const gpsLon = Number(s.lon);
-
-        const hasValidGps =
-            Number.isFinite(gpsLat) &&
-            Number.isFinite(gpsLon) &&
-            gpsLat !== 0 &&
-            gpsLon !== 0;
-
-        window.liveStaffCache[staffKey] = {
-            ...previousLive,
-            cleanName: s.cleanName || previousLive.cleanName || staffKey,
-            name: s.name || previousLive.name || staffKey,
-            division: String(s.division ?? previousLive.division ?? "").trim(),
-            range: String(s.range ?? previousLive.range ?? "").trim(),
-            beat: String(s.beat ?? previousLive.beat ?? "").trim(),
-            compartment: String(s.compartment ?? previousLive.compartment ?? "").trim(),
-            lat: hasValidGps ? gpsLat : Number(previousLive.lat || 0),
-            lng: hasValidGps ? gpsLon : Number(previousLive.lng || 0),
-            dutyActive: s.dutyActive === true,
-            sessionId: String(s.sessionId ?? previousLive.sessionId ?? "").trim(),
-            lastSeen: Number(s.lastSeen ?? previousLive.lastSeen ?? 0),
-            speed: Number(s.speed ?? previousLive.speed ?? 0),
-            heading: Number(s.heading ?? previousLive.heading ?? 0),
-            accuracy: Number(s.accuracy ?? previousLive.accuracy ?? 0),
-            updatedAt: Number(s.updatedAt ?? previousLive.updatedAt ?? 0),
-            dutyType: String(s.dutyType ?? previousLive.dutyType ?? ""),
-            team: String(s.team ?? previousLive.team ?? "")
-        };
-
-        // ==============================================
-        // 🔐 KEEP TRACK AUTHORIZATION ALIVE
-        // ==============================================
-        if (window.visibleStaffCache?.[staffKey]) {
-            const previousVisibleStaff = window.visibleStaffCache[staffKey];
-
-            window.visibleStaffCache[staffKey] = {
-                ...previousVisibleStaff,
-                lat: hasValidGps ? gpsLat : Number(previousVisibleStaff.lat || 0),
-                lng: hasValidGps ? gpsLon : Number(previousVisibleStaff.lng || 0),
-                speed: Number(s.speed ?? previousVisibleStaff.speed ?? 0),
-                heading: Number(s.heading ?? previousVisibleStaff.heading ?? 0),
-                accuracy: Number(s.accuracy ?? previousVisibleStaff.accuracy ?? 0),
-                lastSeen: Number(s.lastSeen ?? previousVisibleStaff.lastSeen ?? 0),
-                updatedAt: Number(s.updatedAt ?? previousVisibleStaff.updatedAt ?? 0),
-                sessionId: String(s.sessionId ?? previousVisibleStaff.sessionId ?? "").trim(),
-                dutyActive: s.dutyActive === true
-            };
-        }
-
-        return;
-    }
-
-    // ==================================================
-    // 🔥 HEAVY PROCESSING CONFIRMED
-    // ==================================================
-    heavyWorkRan = true;
 
     // ==================================================
     // 🔴 1. AUTHORITATIVE DUTY OFF CLEANUP (PRIORITY STEP)
@@ -71167,9 +71141,152 @@ if(
             }
         }
 
+        // ==============================================
+        // 💾 SAVE OFF STATE
+        // ==============================================
+        window.liveStaffPreviousState[staffKey] = {
+            dutyActive: false,
+            sessionId: String(s.sessionId || "").trim(),
+            cleanName: s.cleanName,
+            name: s.name,
+            role: s.role,
+            team: s.team,
+            division: s.division,
+            range: s.range,
+            beat: s.beat,
+            compartment: s.compartment,
+            dutyType: s.dutyType,
+            status: s.status,
+            type: s.type
+        };
+
         console.log("🧹 Duty OFF cleanup complete:", cleanupStaffKey, currentSessionId);
         return;
     }
+
+    // ==================================================
+    // ⚡ GPS-ONLY MODIFICATION (FAST PASS ESCAPE)
+    // --------------------------------------------------
+    // The FAST PASS has already moved the marker and
+    // updated the open popup.
+    //
+    // IMPORTANT:
+    // GPS-only updates MUST still participate in
+    // lightweight live-state bookkeeping.
+    //
+    // They must NOT enter the heavy processing.
+    // ==================================================
+    if (!heavyChange) {
+
+        // ==============================================
+        // 🟢 KEEP DUTY-ACTIVE STAFF IN ACTIVE USER SET
+        // ==============================================
+        if (s.dutyActive === true) {
+            activeUsers.add(staffKey);
+        }
+
+        // ==============================================
+        // 🟢 KEEP LIVE STAFF CACHE FRESH
+        // ==============================================
+        window.liveStaffCache ??= Object.create(null);
+
+        const previousLive = window.liveStaffCache[staffKey] || {};
+
+        const gpsLat = Number(s.lat);
+        const gpsLon = Number(s.lon);
+
+        const hasValidGps =
+            Number.isFinite(gpsLat) &&
+            Number.isFinite(gpsLon) &&
+            gpsLat !== 0 &&
+            gpsLon !== 0;
+
+        window.liveStaffCache[staffKey] = {
+            ...previousLive,
+            cleanName: s.cleanName || previousLive.cleanName || staffKey,
+            name: s.name || previousLive.name || staffKey,
+            division: String(s.division ?? previousLive.division ?? "").trim(),
+            range: String(s.range ?? previousLive.range ?? "").trim(),
+            beat: String(s.beat ?? previousLive.beat ?? "").trim(),
+            compartment: String(s.compartment ?? previousLive.compartment ?? "").trim(),
+            lat: hasValidGps ? gpsLat : Number(previousLive.lat || 0),
+            lng: hasValidGps ? gpsLon : Number(previousLive.lng || 0),
+            dutyActive: s.dutyActive === true,
+            sessionId: String(s.sessionId ?? previousLive.sessionId ?? "").trim(),
+            lastSeen: Number(s.lastSeen ?? previousLive.lastSeen ?? 0),
+            speed: Number(s.speed ?? previousLive.speed ?? 0),
+            heading: Number(s.heading ?? previousLive.heading ?? 0),
+            accuracy: Number(s.accuracy ?? previousLive.accuracy ?? 0),
+            updatedAt: Number(s.updatedAt ?? previousLive.updatedAt ?? 0),
+            dutyType: String(s.dutyType ?? previousLive.dutyType ?? ""),
+            team: String(s.team ?? previousLive.team ?? "")
+        };
+
+        // ==============================================
+        // 🔐 KEEP TRACK AUTHORIZATION ALIVE
+        // ==============================================
+        if (window.visibleStaffCache?.[staffKey]) {
+            const previousVisibleStaff = window.visibleStaffCache[staffKey];
+
+            window.visibleStaffCache[staffKey] = {
+                ...previousVisibleStaff,
+                lat: hasValidGps ? gpsLat : Number(previousVisibleStaff.lat || 0),
+                lng: hasValidGps ? gpsLon : Number(previousVisibleStaff.lng || 0),
+                speed: Number(s.speed ?? previousVisibleStaff.speed ?? 0),
+                heading: Number(s.heading ?? previousVisibleStaff.heading ?? 0),
+                accuracy: Number(s.accuracy ?? previousVisibleStaff.accuracy ?? 0),
+                lastSeen: Number(s.lastSeen ?? previousVisibleStaff.lastSeen ?? 0),
+                updatedAt: Number(s.updatedAt ?? previousVisibleStaff.updatedAt ?? 0),
+                sessionId: String(s.sessionId ?? previousVisibleStaff.sessionId ?? "").trim(),
+                dutyActive: s.dutyActive === true
+            };
+        }
+
+        // ==============================================
+        // 💾 SAVE CURRENT STATE (GPS ONLY)
+        // ==============================================
+        window.liveStaffPreviousState[staffKey] = {
+            dutyActive: s.dutyActive,
+            sessionId: s.sessionId,
+            cleanName: s.cleanName,
+            name: s.name,
+            role: s.role,
+            team: s.team,
+            division: s.division,
+            range: s.range,
+            beat: s.beat,
+            compartment: s.compartment,
+            dutyType: s.dutyType,
+            status: s.status,
+            type: s.type
+        };
+
+        return;
+    }
+
+    // ==================================================
+    // 🔥 HEAVY PROCESSING CONFIRMED (DUTY IS ACTIVE)
+    // ==================================================
+    heavyWorkRan = true;
+
+    // ==================================================
+    // 💾 SAVE CURRENT STATE (HEAVY ACTIVE)
+    // ==================================================
+    window.liveStaffPreviousState[staffKey] = {
+        dutyActive: s.dutyActive,
+        sessionId: s.sessionId,
+        cleanName: s.cleanName,
+        name: s.name,
+        role: s.role,
+        team: s.team,
+        division: s.division,
+        range: s.range,
+        beat: s.beat,
+        compartment: s.compartment,
+        dutyType: s.dutyType,
+        status: s.status,
+        type: s.type
+    };
 
     // ==============================================
     // 👁 2. STAFF VISIBILITY EVALUATION (DUTY IS ACTIVE)
@@ -71488,15 +71605,32 @@ if(
 staff.push(s);
 }catch(e){
 
+    const errorStaffName =
+        cleanName(
+            s?.cleanName ||
+            s?.name ||
+            docSnap?.id ||
+            ""
+        );
+
     console.error(
         "❌ Staff parse error:",
-        s?.cleanName,
-        docSnap?.id,
+        errorStaffName,
+        docSnap?.id || "",
         e
     );
 
-    throw e;
+    // ==================================================
+    // 🛡 ISOLATE ONE BAD STAFF DOCUMENT
+    // --------------------------------------------------
+    // DO NOT rethrow.
+    //
+    // One malformed staff document must NOT abort
+    // processing of every other staff member in this
+    // Firestore snapshot.
+    // ==================================================
 
+    return;
 }
 
 });
@@ -71530,14 +71664,14 @@ staff.push(s);
 // The cache is therefore maintained incrementally:
 //
 // HEAVY PATH:
-//     visible  → add/update
-//     hidden   → delete
-//     duty off → delete
-//     invalid GPS → delete
+//      visible  → add/update
+//      hidden   → delete
+//      duty off → delete
+//      invalid GPS → delete
 //
 // GPS PATH:
-//     preserve existing authorization
-//     refresh live GPS fields only
+//      preserve existing authorization
+//      refresh live GPS fields only
 // ==================================================
 
 window.visibleStaffCache ??=
@@ -71718,10 +71852,10 @@ window.sessionTrackCache[
 // Keeps patrol points locally by Firestore document ID.
 //
 // Initial snapshot:
-//   all existing points are loaded once.
+//    all existing points are loaded once.
 //
 // Later snapshots:
-//   only changed documents are processed.
+//    only changed documents are processed.
 // ==============================================
 
 window.sessionPointCache ??=
@@ -71773,12 +71907,12 @@ const pointsRef =
 // DO NOT rebuild the entire point array.
 //
 // Initial Firestore snapshot:
-//   docChanges() contains all existing points
-//   → cache them once.
+//    docChanges() contains all existing points
+//    → cache them once.
 //
 // Later Firestore snapshots:
-//   docChanges() contains only new/changed/removed
-//   documents.
+//    docChanges() contains only new/changed/removed
+//    documents.
 //
 // Therefore normal GPS updates process only the
 // newly arrived patrol point.
@@ -72058,7 +72192,7 @@ cleanedPoints.forEach(
 // We process only:
 //
 //   previous known point
-//          ↓
+//         ↓
 //   new GPS point
 //
 // This keeps grid detection O(new points)
@@ -72383,7 +72517,7 @@ window.trackListeners[
 
   console.warn(
     "⚠ SESSION STREAM FAIL:",
-    s.cleanName,
+    s?.cleanName || "",
     e
   );
 }
@@ -72456,16 +72590,16 @@ if(
 // NEVER rebuild the complete Firestore session.
 //
 // INITIAL SNAPSHOT:
-//   docChanges() contains all existing points
-//   → cache them once
+//    docChanges() contains all existing points
+//    → cache them once
 //
 // LATER SNAPSHOTS:
-//   docChanges() contains only changed documents
-//   → process only newly-added points
+//    docChanges() contains only changed documents
+//    → process only newly-added points
 //
 // IMPORTANT:
-//   The Firestore listener wrapper surrounds
-//   ALL pointSnap processing.
+//    The Firestore listener wrapper surrounds
+//    ALL pointSnap processing.
 // ==================================================
 
 window.analyticsTrackListeners ??=
@@ -72790,37 +72924,89 @@ const unsubscribe =
                 }
 
 
-                // ==================================================
-                // 🔥 AUTO FLUSH
-                // ==================================================
+// ==================================================
+// 🔥 AUTO FLUSH
+// ==================================================
 
-                if(
+if(
     window.analyticsPointCount[
         currentSessionId
     ] >= 5 &&
 
     Object.keys(
         window.analyticsBuffer || {}
-    ).length
+    ).length > 0
 ){
-                   console.log(
-    "📤 AUTO FLUSH",
-    window.analyticsPointCount[
-        currentSessionId
-    ]
-);
 
-window.analyticsPointCount[
-    currentSessionId
-] =
-    0;
+    console.log(
+        "📤 AUTO FLUSH",
+        window.analyticsPointCount[
+            currentSessionId
+        ]
+    );
 
+    // ==================================================
+    // 🛡 SAFE FLUSH FUNCTION CHECK
+    // ==================================================
 
-                    flushAnalyticsBuffer()
-                        .catch(console.error);
+    if(
+        typeof window.flushAnalyticsBuffer ===
+        "function"
+    ){
 
-                }
+        window.analyticsPointCount[
+            currentSessionId
+        ] = 0;
 
+        try{
+
+            const flushResult =
+                window.flushAnalyticsBuffer();
+
+            // ==================================================
+            // 🛡 HANDLE PROMISE SAFELY
+            // ==================================================
+
+            if(
+                flushResult &&
+                typeof flushResult.catch ===
+                "function"
+            ){
+
+                flushResult.catch(
+                    error => {
+
+                        console.error(
+                            "❌ Analytics auto-flush failed:",
+                            error
+                        );
+
+                    }
+                );
+
+            }
+
+        }
+        catch(error){
+
+            console.error(
+                "❌ Analytics auto-flush crashed:",
+                error
+            );
+
+        }
+
+    }
+    else{
+
+        console.warn(
+            "⚠ Analytics auto-flush skipped — " +
+            "flushAnalyticsBuffer() is not available"
+        );
+
+    }
+
+}
             }
             catch(e){
 
@@ -72845,17 +73031,22 @@ window.analyticsTrackListeners[
 ] =
     unsubscribe;
 
-    }
-    catch(e){
+} catch(e){
 
-        console.warn(
-            "⚠ Analytics session listener failed:",
-            s.cleanName,
-            e
-        );
+  const errorStaffName =
+      cleanName(
+          s?.cleanName ||
+          s?.name ||
+          ""
+      );
 
-    }
+  console.warn(
+      "⚠ Analytics session listener failed:",
+      errorStaffName,
+      e
+  );
 
+}
 }
 
 // ==================================================
@@ -72899,7 +73090,9 @@ staff.forEach(s=>{
 
             // ==============================================
             // 🔥 CLEAN TRACK
-            // ==============================================// ==============================================
+            // ==============================================
+
+// ==============================================
 // 🔥 LIVE POSITION
 // ==============================================
 let lat =
@@ -72980,7 +73173,7 @@ if(group.length > 1){
             // ==============================================
             // 🔥 DISTANCE
             // ==============================================
-           
+            
             // ==============================================
             // 🔥 SPEED
             // ==============================================
@@ -74730,10 +74923,10 @@ console.log(
 // ==================================================
 // 🔥 REMOVE DEAD USERS
 // ==================================================
-Object.keys(
-  window.staffMarkers
-).forEach(name=>{
 
+Object.keys(
+    window.staffMarkers || {}
+).forEach(name=>{
   // ================================================
   // 🔥 STILL ACTIVE
   // ================================================
@@ -74877,7 +75070,6 @@ console.log(
   ); // END onSnapshot
 
 } // END loadStaff
-
     // =====================================================
 // LIVE STAFF LOOKUP
 // =====================================================
