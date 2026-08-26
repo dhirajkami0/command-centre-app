@@ -157,6 +157,18 @@ const GG =
 
         false;
 
+    // =========================================================
+// 💾 OFFENCE IDB CACHE CONFIGURATION
+// =========================================================
+
+DataLoader.IDB_KEY =
+    "GG_OFFENCE_DATA";
+
+DataLoader.IDB_META_KEY =
+    "GG_OFFENCE_CACHE_META";
+
+DataLoader.IDB_VERSION =
+    "1.0.0";
 
     /*=========================================================
       INITIALIZE
@@ -334,8 +346,250 @@ const GG =
         return window.db || null;
 
     };
+// =========================================================
+// 💾 IDB READY CHECK
+// =========================================================
+
+DataLoader.isIDBReady = function () {
+
+    return (
+        window.__GG_IDB_READY__ === true &&
+        window.idbKeyval &&
+        typeof window.idbKeyval.get === "function" &&
+        typeof window.idbKeyval.set === "function"
+    );
+
+};
 
 
+// =========================================================
+// 💾 READ OFFENCE CACHE FROM IDB
+// =========================================================
+
+DataLoader.readIDBCache = async function () {
+
+    if (!DataLoader.isIDBReady()) {
+
+        console.warn(
+            "[OffenceDataLoader] IDB not ready."
+        );
+
+        return null;
+    }
+
+    try {
+
+        const data =
+            await window.idbKeyval.get(
+                DataLoader.IDB_KEY
+            );
+
+        if (
+            !data ||
+            typeof data !== "object"
+        ) {
+
+            return null;
+        }
+
+        const validation =
+            DataLoader.validateData(
+                data
+            );
+
+        if (!validation.valid) {
+
+            console.warn(
+                "[OffenceDataLoader] Invalid IDB cache:",
+                validation.error
+            );
+
+            return null;
+        }
+
+        console.log(
+            "💾 Offence data loaded from IDB",
+            DataLoader.getCounts(data)
+        );
+
+        return data;
+
+    }
+    catch (error) {
+
+        console.warn(
+            "[OffenceDataLoader] IDB read failed:",
+            error
+        );
+
+        return null;
+    }
+};
+
+
+// =========================================================
+// 💾 WRITE OFFENCE CACHE TO IDB
+// =========================================================
+
+DataLoader.writeIDBCache = async function (
+    data
+) {
+
+    if (!DataLoader.isIDBReady()) {
+
+        console.warn(
+            "[OffenceDataLoader] IDB not ready. Cache skipped."
+        );
+
+        return false;
+    }
+
+    try {
+
+        const validation =
+            DataLoader.validateData(
+                data
+            );
+
+        if (!validation.valid) {
+
+            console.warn(
+                "[OffenceDataLoader] Refusing invalid IDB write:",
+                validation.error
+            );
+
+            return false;
+        }
+
+        await window.idbKeyval.set(
+            DataLoader.IDB_KEY,
+            data
+        );
+
+        await window.idbKeyval.set(
+            DataLoader.IDB_META_KEY,
+            {
+                version:
+                    DataLoader.IDB_VERSION,
+
+                savedAt:
+                    Date.now(),
+
+                counts:
+                    DataLoader.getCounts(data)
+            }
+        );
+
+        console.log(
+            "💾 Offence data saved to IDB",
+            DataLoader.getCounts(data)
+        );
+
+        return true;
+
+    }
+    catch (error) {
+
+        console.warn(
+            "[OffenceDataLoader] IDB write failed:",
+            error
+        );
+
+        return false;
+    }
+};
+
+    // =========================================================
+// 💾 BUILD STORE FROM CACHED DATA
+// =========================================================
+
+DataLoader.loadCachedDataIntoStore =
+    async function (
+        data
+    ) {
+
+        const validation =
+            DataLoader.validateData(
+                data
+            );
+
+        if (!validation.valid) {
+
+            throw new Error(
+                validation.error
+            );
+        }
+
+        const counts =
+            DataLoader.getCounts(
+                data
+            );
+
+        console.log(
+            "💾 Building Offence Store from IDB cache",
+            counts
+        );
+
+        const storeResult =
+            await Promise.resolve(
+                DataLoader.loadIntoStore(
+                    data
+                )
+            );
+
+        const stats =
+            DataLoader.getStoreStats();
+
+        DataLoader.loaded =
+            true;
+
+        DataLoader.lastLoadedAt =
+            Date.now();
+
+        DataLoader.lastResult = {
+
+            success:
+                true,
+
+            source:
+                "idb",
+
+            version:
+                DataLoader.VERSION,
+
+            counts:
+                counts,
+
+            stats:
+                stats,
+
+            storeResult:
+                storeResult,
+
+            duration:
+                0
+        };
+
+        DataLoader.dispatchEvent(
+            "offence:data-loaded",
+            {
+                counts:
+                    counts,
+
+                stats:
+                    stats,
+
+                source:
+                    "idb"
+            }
+        );
+
+        console.log(
+            "💾 Offence Store restored from IDB"
+        );
+
+        return DataLoader.lastResult;
+    };
     /*=========================================================
       VALIDATE FIREBASE
 
@@ -1571,377 +1825,273 @@ const GG =
     };
 
 
-    /*=========================================================
-      LOAD
+/*=========================================================
+  LOAD DATA
+  IDB HIT  → Render Immediately + Background Firestore Refresh
+  IDB MISS → Await Firestore → Save IDB → Build Store → Render
+=========================================================*/
 
-      Full initial load.
+DataLoader.load = async function (options = {}) {
 
-    =========================================================*/
+    if (DataLoader.loading) {
+        console.warn("[OffenceDataLoader] Load already in progress.");
+        return DataLoader.lastResult;
+    }
 
-    DataLoader.load = async function (
+    DataLoader.loading = true;
+    DataLoader.lastError = null;
 
-        options = {}
+    try {
+        console.group("🔥 OFFENCE DATA LOAD");
 
-    ) {
+        // 1. Check IDB Cache
+        const cachedData = await DataLoader.readIDBCache();
 
-        if (
+        if (cachedData) {
+            // =================================================
+            // ⚡ IDB HIT: Restore fast & refresh in background
+            // =================================================
+            console.log("⚡ OFFENCE CACHE HIT → IDB");
 
-            DataLoader.loading
+            await DataLoader.loadCachedDataIntoStore(cachedData);
 
-        ) {
+            // Trigger background refresh (fire-and-forget)
+            DataLoader.refreshFromFirestoreInBackground();
 
-            console.warn(
-
-                "[OffenceDataLoader] Load already in progress."
-
-            );
-
-
-            return DataLoader
-
-                .lastResult;
-
+            return DataLoader.lastResult;
         }
 
+        // =================================================
+        // ⚠ IDB MISS: Await Firestore (Cold Start Protection)
+        // =================================================
+        console.log("⚠ OFFENCE CACHE MISS → AWAITING FIRESTORE FIRST LOAD");
 
-        DataLoader.loading =
+        const response = await DataLoader.fetchFromFirestore();
+        const data = DataLoader.extractData(response);
 
-            true;
+        const validation = DataLoader.validateData(data);
+        if (!validation.valid) {
+            throw new Error(validation.error);
+        }
 
+        // Save fresh data to IDB
+        await DataLoader.writeIDBCache(data);
 
-        DataLoader.lastError =
+        // Build Store synchronously before startup finishes
+        const storeResult = await Promise.resolve(
+            DataLoader.loadIntoStore(data)
+        );
 
-            null;
+        const counts = DataLoader.getCounts(data);
+        const stats = DataLoader.getStoreStats();
 
+        DataLoader.loaded = true;
+        DataLoader.lastLoadedAt = Date.now();
 
-        const startedAt =
+        DataLoader.lastResult = {
+            success: true,
+            source: "firestore",
+            version: DataLoader.VERSION,
+            counts: counts,
+            stats: stats,
+            storeResult: storeResult,
+            duration: 0
+        };
 
-            Date.now();
+        DataLoader.dispatchEvent("offence:data-loaded", {
+            counts: counts,
+            stats: stats,
+            source: "firestore"
+        });
 
+        console.log("✅ Offence Store built from cold-start Firestore fetch", counts);
+        return DataLoader.lastResult;
+
+    } catch (error) {
+        DataLoader.lastError = error;
+        console.error("[OffenceDataLoader] Load failed:", error);
+
+        DataLoader.dispatchEvent("offence:data-error", {
+            error: error.message,
+            source: "load"
+        });
+
+        throw error;
+    } finally {
+        DataLoader.loading = false;
+        console.groupEnd();
+    }
+};
+
+    // =========================================================
+// 🔄 BACKGROUND FIRESTORE REFRESH
+// =========================================================
+
+DataLoader.refreshFromFirestoreInBackground =
+    async function () {
+
+        console.log(
+            "🔄 OFFENCE BACKGROUND FIRESTORE REFRESH"
+        );
 
         try {
 
-            console.group(
-
-                "🔥 OFFENCE DATA LOAD"
-
-            );
-
-
-            /*----------------------------------
-              Fetch Firestore
-            ----------------------------------*/
-
             const response =
-
                 await DataLoader
-
                     .fetchFromFirestore();
 
 
-            /*----------------------------------
-              Extract Canonical Shape
-            ----------------------------------*/
-
             const data =
-
                 DataLoader
-
                     .extractData(
-
                         response
-
                     );
 
-
-            const counts =
-
-                DataLoader
-
-                    .getCounts(
-
-                        data
-
-                    );
-
-
-            console.log(
-
-                "Extracted Offence Data:",
-
-                counts
-
-            );
-
-
-            /*----------------------------------
-              Validate
-            ----------------------------------*/
 
             const validation =
-
                 DataLoader
-
                     .validateData(
-
                         data
-
                     );
 
 
             if (
-
                 !validation.valid
-
             ) {
 
                 throw new Error(
-
                     validation.error
-
                 );
-
             }
 
 
-            /*----------------------------------
-              Build Store
-            ----------------------------------*/
+            // =============================================
+            // 💾 SAVE AUTHORITATIVE FIRESTORE DATA TO IDB
+            // =============================================
 
-            const storeResult =
-
-                await Promise.resolve(
-
-                    DataLoader
-
-                        .loadIntoStore(
-
-                            data
-
-                        )
-
+            await DataLoader
+                .writeIDBCache(
+                    data
                 );
 
 
-            /*----------------------------------
-              Store Stats
-            ----------------------------------*/
+            // =============================================
+            // 🔥 REBUILD AUTHORITATIVE STORE
+            // =============================================
+
+            const storeResult =
+                await Promise.resolve(
+                    DataLoader
+                        .loadIntoStore(
+                            data
+                        )
+                );
+
+
+            const counts =
+                DataLoader
+                    .getCounts(
+                        data
+                    );
+
 
             const stats =
-
                 DataLoader
-
                     .getStoreStats();
 
 
-            /*----------------------------------
-              Update State
-            ----------------------------------*/
-
             DataLoader.loaded =
-
                 true;
 
-
             DataLoader.lastLoadedAt =
-
                 Date.now();
 
 
             DataLoader.lastResult = {
 
                 success:
-
                     true,
 
                 source:
-
                     "firestore",
 
                 version:
-
                     DataLoader.VERSION,
 
                 counts:
-
                     counts,
 
                 stats:
-
                     stats,
 
                 storeResult:
-
                     storeResult,
 
                 duration:
-
-                    Date.now() -
-
-                    startedAt
-
+                    0
             };
 
 
-            /*----------------------------------
-              Events
-            ----------------------------------*/
+            // =============================================
+            // 🔔 TELL EXISTING OFFENCE UI
+            // =============================================
 
-            DataLoader
+            DataLoader.dispatchEvent(
+                "offence:data-updated",
+                {
 
-                .dispatchEvent(
+                    counts:
+                        counts,
 
-                    "offence:data-loaded",
+                    stats:
+                        stats,
 
-                    {
-
-                        counts:
-
-                            counts,
-
-                        stats:
-
-                            stats,
-
-                        source:
-
-                            "firestore"
-
-                    }
-
-                );
-
-
-            DataLoader
-
-                .dispatchEvent(
-
-                    "offence:data-updated",
-
-                    {
-
-                        counts:
-
-                            counts,
-
-                        stats:
-
-                            stats,
-
-                        source:
-
-                            "firestore"
-
-                    }
-
-                );
+                    source:
+                        "firestore"
+                }
+            );
 
 
             console.log(
-
-                "🔥 Offence Data Loaded",
-
-                DataLoader.lastResult
-
+                "✅ OFFENCE BACKGROUND REFRESH COMPLETE",
+                counts
             );
 
 
-            return DataLoader
-
-                .lastResult;
+            return DataLoader.lastResult;
 
         }
+        catch (error) {
 
-        catch (
-
-            error
-
-        ) {
-
-            DataLoader.loaded =
-
-                false;
-
+            console.error(
+                "[OffenceDataLoader] Background refresh failed:",
+                error
+            );
 
             DataLoader.lastError =
-
                 error;
 
 
-            DataLoader.lastResult = {
+            // IMPORTANT:
+            // Do NOT destroy valid IDB data.
+            //
+            // Existing cached data remains usable.
 
-                success:
+            DataLoader.dispatchEvent(
+                "offence:data-error",
+                {
 
-                    false,
+                    error:
+                        error.message,
 
-                source:
-
-                    "firestore",
-
-                version:
-
-                    DataLoader.VERSION,
-
-                error:
-
-                    error.message,
-
-                duration:
-
-                    Date.now() -
-
-                    startedAt
-
-            };
-
-
-            console.error(
-
-                "[OffenceDataLoader] Load failed:",
-
-                error
-
+                    source:
+                        "firestore-background"
+                }
             );
 
-
-            DataLoader
-
-                .dispatchEvent(
-
-                    "offence:data-error",
-
-                    {
-
-                        error:
-
-                            error.message,
-
-                        source:
-
-                            "firestore"
-
-                    }
-
-                );
-
-
-            throw error;
-
+            return null;
         }
-
-        finally {
-
-            DataLoader.loading =
-
-                false;
-
-
-            console.groupEnd();
-
-        }
-
     };
-
 
     /*=========================================================
       UPDATE / REFRESH DATA
@@ -1953,313 +2103,209 @@ const GG =
 
     =========================================================*/
 
-    DataLoader.update = async function () {
+/*=========================================================
+  UPDATE / MANUAL REFRESH
+  FIRESTORE → IDB → STORE
+=========================================================*/
+
+DataLoader.update = async function () {
+
+    if (
+        DataLoader.loading
+    ) {
+
+        console.warn(
+            "[OffenceDataLoader] Update skipped. Load in progress."
+        );
+
+        return DataLoader.lastResult;
+    }
+
+
+    DataLoader.loading =
+        true;
+
+    DataLoader.lastError =
+        null;
+
+
+    try {
+
+        console.group(
+            "🔥 OFFENCE DATA UPDATE"
+        );
+
+
+        // =================================================
+        // 🔥 FIRESTORE IS AUTHORITATIVE
+        // =================================================
+
+        const response =
+            await DataLoader
+                .fetchFromFirestore();
+
+
+        const data =
+            DataLoader
+                .extractData(
+                    response
+                );
+
+
+        const validation =
+            DataLoader
+                .validateData(
+                    data
+                );
+
 
         if (
-
-            DataLoader.loading
-
+            !validation.valid
         ) {
 
-            console.warn(
-
-                "[OffenceDataLoader] Update skipped. Load in progress."
-
+            throw new Error(
+                validation.error
             );
-
-
-            return DataLoader
-
-                .lastResult;
-
         }
 
 
-        DataLoader.loading =
+        // =================================================
+        // 💾 SAVE FRESH FIRESTORE DATA TO IDB
+        // =================================================
 
+        await DataLoader
+            .writeIDBCache(
+                data
+            );
+
+
+        // =================================================
+        // 🔥 REBUILD STORE
+        // =================================================
+
+        const storeResult =
+            await Promise.resolve(
+                DataLoader
+                    .loadIntoStore(
+                        data
+                    )
+            );
+
+
+        const counts =
+            DataLoader
+                .getCounts(
+                    data
+                );
+
+
+        const stats =
+            DataLoader
+                .getStoreStats();
+
+
+        DataLoader.loaded =
             true;
 
-
-        DataLoader.lastError =
-
-            null;
-
-
-        const startedAt =
-
+        DataLoader.lastLoadedAt =
             Date.now();
 
 
-        try {
+        DataLoader.lastResult = {
 
-            console.group(
+            success:
+                true,
 
-                "🔥 OFFENCE DATA UPDATE"
+            source:
+                "firestore",
 
-            );
+            version:
+                DataLoader.VERSION,
 
+            counts:
+                counts,
 
-            const response =
+            stats:
+                stats,
 
-                await DataLoader
+            storeResult:
+                storeResult,
 
-                    .fetchFromFirestore();
+            duration:
+                0
+        };
 
 
-            const data =
+        // =================================================
+        // 🔔 EXISTING EVENT ARCHITECTURE
+        // =================================================
 
-                DataLoader
-
-                    .extractData(
-
-                        response
-
-                    );
-
-
-            const validation =
-
-                DataLoader
-
-                    .validateData(
-
-                        data
-
-                    );
-
-
-            if (
-
-                !validation.valid
-
-            ) {
-
-                throw new Error(
-
-                    validation.error
-
-                );
-
-            }
-
-
-            const Store =
-
-                DataLoader
-
-                    .getStore();
-
-
-            /*
-             * Full Firestore refresh is authoritative.
-             *
-             * Rebuild the Store from all five datasets so
-             * indexes and POR relationships cannot retain
-             * stale records from a previous load.
-             */
-
-            const storeResult =
-
-                await Promise.resolve(
-
-                    Store
-
-                        .build(
-
-                            data
-
-                        )
-
-                );
-
-
-            const counts =
-
-                DataLoader
-
-                    .getCounts(
-
-                        data
-
-                    );
-
-
-            const stats =
-
-                DataLoader
-
-                    .getStoreStats();
-
-
-            DataLoader.loaded =
-
-                true;
-
-
-            DataLoader.lastLoadedAt =
-
-                Date.now();
-
-
-            DataLoader.lastResult = {
-
-                success:
-
-                    true,
-
-                source:
-
-                    "firestore",
-
-                version:
-
-                    DataLoader.VERSION,
+        DataLoader.dispatchEvent(
+            "offence:data-updated",
+            {
 
                 counts:
-
                     counts,
 
                 stats:
-
                     stats,
 
-                storeResult:
-
-                    storeResult,
-
-                duration:
-
-                    Date.now() -
-
-                    startedAt
-
-            };
-
-
-            DataLoader
-
-                .dispatchEvent(
-
-                    "offence:data-updated",
-
-                    {
-
-                        counts:
-
-                            counts,
-
-                        stats:
-
-                            stats,
-
-                        source:
-
-                            "firestore"
-
-                    }
-
-                );
-
-
-            console.log(
-
-                "🔥 Offence Data Updated",
-
-                DataLoader.lastResult
-
-            );
-
-
-            return DataLoader
-
-                .lastResult;
-
-        }
-
-        catch (
-
-            error
-
-        ) {
-
-            DataLoader.lastError =
-
-                error;
-
-
-            DataLoader.lastResult = {
-
-                success:
-
-                    false,
-
                 source:
+                    "firestore"
+            }
+        );
 
-                    "firestore",
 
-                version:
+        console.log(
+            "🔥 Offence Data Updated",
+            DataLoader.lastResult
+        );
 
-                    DataLoader.VERSION,
+
+        return DataLoader.lastResult;
+
+    }
+    catch (error) {
+
+        DataLoader.lastError =
+            error;
+
+
+        console.error(
+            "[OffenceDataLoader] Update failed:",
+            error
+        );
+
+
+        // =================================================
+        // 🛡 IMPORTANT
+        // Existing Store/IDB is NOT destroyed.
+        // =================================================
+
+        DataLoader.dispatchEvent(
+            "offence:data-error",
+            {
 
                 error:
-
                     error.message,
 
-                duration:
-
-                    Date.now() -
-
-                    startedAt
-
-            };
+                source:
+                    "firestore"
+            }
+        );
 
 
-            console.error(
+        throw error;
 
-                "[OffenceDataLoader] Update failed:",
+    }
+    finally {
 
-                error
+        DataLoader.loading =
+            false;
 
-            );
-
-
-            DataLoader
-
-                .dispatchEvent(
-
-                    "offence:data-error",
-
-                    {
-
-                        error:
-
-                            error.message,
-
-                        source:
-
-                            "firestore"
-
-                    }
-
-                );
-
-
-            throw error;
-
-        }
-
-        finally {
-
-            DataLoader.loading =
-
-                false;
-
-
-            console.groupEnd();
-
-        }
-
-    };
+        console.groupEnd();
+    }
+};
 
 
     /*=========================================================
