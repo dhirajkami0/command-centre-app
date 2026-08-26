@@ -69898,7 +69898,15 @@ if(
                 s
             )
             : false;
-
+console.log("🔥 DUTY-OFF HEAVY TEST", {
+    staff: cleanStaffName,
+    changeType,
+    firestoreDutyActive: s.dutyActive,
+    firestoreSessionId: s.sessionId,
+    previousDutyActive: fastPreviousState?.dutyActive,
+    previousSessionId: fastPreviousState?.sessionId,
+    fastPassIsHeavyChange
+});
     if(
         fastPreviousState &&
         fastPassIsHeavyChange
