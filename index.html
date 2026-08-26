@@ -76424,46 +76424,6 @@ const transactionResult =
   );
 
 
-// ====================================================
-// ⚡ APPEND MONTHLY STATUS CACHE
-// ====================================================
-//
-// IMPORTANT:
-//
-// Do NOT calculate the monthly summary again.
-//
-// incrementMonthlyStatusCache()
-// updates:
-//
-//   RAM
-//   IndexedDB
-//   Monthly Status Card
-//
-// using only the genuine transaction deltas.
-//
-// ====================================================
-
-try{
-
-  await incrementMonthlyStatusCache(
-
-    monthKey,
-
-    gridId,
-
-    transactionResult
-
-  );
-
-}
-catch(monthlyCacheErr){
-
-  console.warn(
-    "⚠ Monthly cache append failed:",
-    monthlyCacheErr
-  );
-
-}
 
 
 // ====================================================
