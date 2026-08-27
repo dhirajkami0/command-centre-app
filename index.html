@@ -107260,29 +107260,120 @@ console.log(
 Promise.allSettled([
 callBackend("markDutyOutWithObs", payload),
 
-      window.fb.setDoc(
-        window.fb.doc(window.db, "live_staff", profile.cleanName),
-        {
-          dutyActive: false,
-          status: "ENDED",
-          sessionId: "",
-          updatedAt: window.fb.serverTimestamp(),
-          lastDutyEnd: new Date().toISOString(),
-          range: window.fb.deleteField(),
-          division: window.fb.deleteField(),
-          lat: window.fb.deleteField(),
-          lon: window.fb.deleteField(),
-          speed: window.fb.deleteField(),
-          heading: window.fb.deleteField(),
-          turnRate: window.fb.deleteField(),
-          accuracy: window.fb.deleteField(),
-          location: window.fb.deleteField(),
-          timestamp: window.fb.deleteField(),
-          time: window.fb.deleteField(),
-          lastSeen: window.fb.deleteField()
-        },
-        { merge: true }
-      ),
+     // ============================================================
+// 🔥 DUTY END → RESET LIVE STAFF
+// ------------------------------------------------------------
+// Keep live_staff document.
+// Do NOT delete the document.
+//
+// Session ended:
+//   sessionId             → ""
+//   dutyActive            → false
+//   status                → ENDED
+//
+// Reset live telemetry:
+//   speed                 → 0
+//   patrolPointCount      → 0
+//   distanceCoveredKm     → 0
+//   distanceCoveredMeters → 0
+//
+// Remove temporary live GPS position fields.
+// Historical patrol points remain untouched.
+// ============================================================
+
+window.fb.setDoc(
+
+  window.fb.doc(
+    window.db,
+    "live_staff",
+    profile.cleanName
+  ),
+
+  {
+
+    // ========================================================
+    // 🔥 DUTY STATE
+    // ========================================================
+
+    dutyActive:
+      false,
+
+    status:
+      "ENDED",
+
+    sessionId:
+      "",
+
+    // ========================================================
+    // 📏 RESET LIVE TELEMETRY
+    // ========================================================
+
+    speed:
+      0,
+
+    patrolPointCount:
+      0,
+
+    distanceCoveredKm:
+      0,
+
+    distanceCoveredMeters:
+      0,
+
+    // ========================================================
+    // 🕐 END INFORMATION
+    // ========================================================
+
+    updatedAt:
+      window.fb.serverTimestamp(),
+
+    lastDutyEnd:
+      new Date().toISOString(),
+
+    // ========================================================
+    // 🧹 REMOVE OLD DUTY PROFILE POSITION
+    // ========================================================
+
+    range:
+      window.fb.deleteField(),
+
+    division:
+      window.fb.deleteField(),
+
+    lat:
+      window.fb.deleteField(),
+
+    lon:
+      window.fb.deleteField(),
+
+    heading:
+      window.fb.deleteField(),
+
+    turnRate:
+      window.fb.deleteField(),
+
+    accuracy:
+      window.fb.deleteField(),
+
+    location:
+      window.fb.deleteField(),
+
+    timestamp:
+      window.fb.deleteField(),
+
+    time:
+      window.fb.deleteField(),
+
+    lastSeen:
+      window.fb.deleteField()
+
+  },
+
+  {
+    merge: true
+  }
+
+),
  
       (async () => {
         try {
