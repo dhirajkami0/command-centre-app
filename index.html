@@ -66784,6 +66784,130 @@ window.__villageCache =
 
 window.analyticsPointCount ??=
     Object.create(null);
+
+
+// ======================================================
+// ⏱️ PATROL SESSION AGE GATE
+// ------------------------------------------------------
+// STRICT RULE:
+//
+// Duty started <= 24 hours ago
+//      → eligible for patrol listener
+//
+// Duty started > 24 hours ago
+//      → NO patrol listener
+//      → NO analytics listener
+//
+// The age is calculated from the timestamp embedded
+// in sessionId.
+//
+// Example:
+// DHIRAJ KAMI_1787368959229
+//                  ↑
+//             duty start
+// ======================================================
+
+const PATROL_SESSION_MAX_AGE_MS =
+    24 * 60 * 60 * 1000;
+
+
+function isPatrolSessionWithin24Hours(
+    sessionId
+){
+
+    const rawSessionId =
+        String(
+            sessionId || ""
+        ).trim();
+
+
+    // ==============================================
+    // ❌ NO SESSION ID
+    // ==============================================
+
+    if(
+        !rawSessionId
+    ){
+
+        return false;
+
+    }
+
+
+    // ==============================================
+    // 🔎 EXTRACT DUTY START TIMESTAMP
+    // ==============================================
+
+    const timestampPart =
+        rawSessionId
+            .split("_")
+            .pop();
+
+
+    const dutyStartMs =
+        Number(
+            timestampPart
+        );
+
+
+    // ==============================================
+    // ❌ INVALID TIMESTAMP
+    // ==============================================
+
+    if(
+        !Number.isFinite(
+            dutyStartMs
+        ) ||
+        dutyStartMs <= 0
+    ){
+
+        console.warn(
+            "⚠️ INVALID PATROL SESSION START:",
+            rawSessionId
+        );
+
+        return false;
+
+    }
+
+
+    // ==============================================
+    // ⏱️ SESSION AGE
+    // ==============================================
+
+    const ageMs =
+        Date.now() -
+        dutyStartMs;
+
+
+    // ==============================================
+    // 🛡 FUTURE TIMESTAMP SAFETY
+    // ==============================================
+
+    if(
+        ageMs < 0
+    ){
+
+        return true;
+
+    }
+
+
+    // ==============================================
+    // ✅ STRICT 24-HOUR TEST
+    // ==============================================
+
+    return (
+        ageMs <=
+        PATROL_SESSION_MAX_AGE_MS
+    );
+
+}
+
+
+// ======================================================
+// 🔥 GLOBAL STAFF CACHE
+// ======================================================
 // ======================================================
 // 🔥 GLOBAL STAFF CACHE
 // ======================================================
@@ -71779,18 +71903,80 @@ activeUsers.add(
 // ALL DUTY ACTIVE STAFF
 // ==============================================
 
+// ==================================================
+// 🔥 ANALYTICS STAFF ELIGIBILITY
+// --------------------------------------------------
+// RULE:
+//
+// 1. Staff must be on duty.
+// 2. Session ID must exist.
+// 3. Duty must have STARTED within the last 24 hours.
+//
+// IMPORTANT:
+// GPS activity does NOT extend this 24-hour window.
+//
+// If duty started >24 hours ago:
+// → exclude from analytics listener
+// → exclude from patrol listener
+// → even if GPS is still updating
+// ==================================================
+
+const analyticsSessionId =
+    String(
+        s.sessionId || ""
+    ).trim();
+
+
 if(
 
     s.dutyActive === true &&
 
-    String(s.sessionId || "").trim()
+    analyticsSessionId &&
+
+    isPatrolSessionWithin24Hours(
+        analyticsSessionId
+    )
 
 ){
 
-    analyticsStaff.push(s);
+    analyticsStaff.push(
+        s
+    );
 
 }
-staff.push(s);
+else if(
+
+    s.dutyActive === true &&
+
+    analyticsSessionId
+
+){
+
+    console.log(
+        "⏭ Staff excluded from patrol/analytics — duty older than 24h:",
+        s.cleanName,
+        analyticsSessionId
+    );
+
+}
+
+
+// ==================================================
+// 👮 KEEP NORMAL STAFF ARRAY
+// --------------------------------------------------
+// IMPORTANT:
+// Do NOT remove this.
+//
+// The 24-hour filter above is ONLY for the
+// patrol/analytics Firestore listeners.
+//
+// `staff` continues to receive the staff record
+// so the rest of the staff system is not broken.
+// ==================================================
+
+staff.push(
+    s
+);
 }catch(e){
 
     // ==================================================
@@ -71883,6 +72069,36 @@ for(const s of staff){
 if(!currentSessionId){
     continue;
 }
+    // ==================================================
+    // ⏱️ STRICT 24-HOUR DUTY SESSION FILTER
+    // --------------------------------------------------
+    // ONLY sessions whose DUTY STARTED within the
+    // last 24 hours are allowed to create a
+    // patrol Firestore listener.
+    //
+    // IMPORTANT:
+    // GPS activity DOES NOT extend this 24-hour limit.
+    //
+    // Duty started >24h ago
+    //       ↓
+    //       ❌ NO patrol listener
+    // ==================================================
+
+    if(
+        !isPatrolSessionWithin24Hours(
+            currentSessionId
+        )
+    ){
+
+        console.log(
+            "⏭ Visual patrol listener skipped — duty older than 24h:",
+            s.cleanName,
+            currentSessionId
+        );
+
+        continue;
+
+    }
 
 // ==============================================
 // ⚡ ONLY CURRENT USER AUTO-LOADS TRACK
