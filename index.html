@@ -27014,16 +27014,37 @@ function updateDutyUI(isActive){
 
 
 // ======================================================
-// 🔥 MAIN DUTY CHECK (FIXED)
+// 🔥 MAIN DUTY CHECK — CACHE BASED
+// ======================================================
+// IMPORTANT:
+//
+// live_staff is already being watched by the existing
+// loadStaff() realtime listener.
+//
+// loadStaff()
+//      ↓
+// window.liveStaffCache
+//      ↓
+// autoShowEndDuty()
+//      ↓
+// window.liveStaffCache[cleanName]
+//
+// Therefore this function DOES NOT perform getDoc()
+// for the current user's live_staff document.
+//
 // ======================================================
 async function autoShowEndDuty() {
 
-  console.group("🧠 autoShowEndDuty START");
+  console.group(
+    "🧠 autoShowEndDuty START"
+  );
 
   // =====================================================
   // 🔒 PREVENT DUPLICATE CHECKS
   // =====================================================
-  if (window.dutyCheckRunning === true) {
+  if (
+    window.dutyCheckRunning === true
+  ) {
 
     console.warn(
       "⛔ Duplicate duty check blocked"
@@ -27040,6 +27061,10 @@ async function autoShowEndDuty() {
 
     // =====================================================
     // 🔥 FIREBASE READY
+    // -----------------------------------------------------
+    // Keep this guard unchanged because the duty system
+    // still depends on Firebase being initialized and the
+    // existing live_staff listener being available.
     // =====================================================
     if (
       !window.firebaseReady ||
@@ -27086,38 +27111,75 @@ async function autoShowEndDuty() {
 
     // =====================================================
     // 🔥 PREVIOUS STATE
+    // -----------------------------------------------------
+    // IMPORTANT:
+    // This remains exactly the transition source of truth.
+    //
+    // false → true = OFF → ON
+    // true  → false = ON → OFF
     // =====================================================
     const wasActive =
       window.isDutyActive === true;
 
+
     // =====================================================
-    // 🔥 FIRESTORE REF
+    // 🔥 READ CURRENT USER FROM LIVE STAFF CACHE
+    // -----------------------------------------------------
+    // NO getDoc()
+    // NO Firestore read
+    //
+    // loadStaff() already maintains:
+    //
+    // window.liveStaffCache
+    //
+    // The current user's document is keyed by cleanName.
     // =====================================================
-    const docRef =
-      window.fb.doc(
-        window.db,
-        "live_staff",
+
+    const liveStaffCache =
+      window.liveStaffCache || {};
+
+    const fireData =
+      liveStaffCache[cleanName] || null;
+
+
+    // =====================================================
+    // 🔍 CACHE STATUS
+    // =====================================================
+    console.log(
+      "📦 LIVE STAFF CACHE:",
+      fireData
+    );
+
+
+    // =====================================================
+    // ❌ CURRENT USER NOT PRESENT IN CACHE
+    // -----------------------------------------------------
+    // This preserves the original NO-DOC behavior.
+    //
+    // Previously:
+    //
+    //     getDoc()
+    //        ↓
+    //     !snap.exists()
+    //
+    // Now:
+    //
+    //     liveStaffCache[cleanName]
+    //        ↓
+    //     !fireData
+    //
+    // The rest of the OFF handling is intentionally
+    // unchanged.
+    // =====================================================
+    if (!fireData) {
+
+      console.warn(
+        "❌ live_staff missing from cache:",
         cleanName
       );
 
-    // =====================================================
-    // 🔥 READ FIRESTORE
-    // =====================================================
-    const snap =
-      await window.fb.getDoc(
-        docRef
-      );
-
-    // =====================================================
-    // ❌ NO DOC
-    // =====================================================
-    if (!snap.exists()) {
-
-      console.warn(
-        "❌ live_staff missing"
-      );
-
       window.isDutyActive = false;
+
       window.currentSessionId = "";
 
       localStorage.removeItem(
@@ -27133,6 +27195,7 @@ async function autoShowEndDuty() {
 
       window.__dutyChecked = true;
 
+
       // =================================================
       // 🔥 STOP REALTIME ANALYTICS IF STILL ATTACHED
       // =================================================
@@ -27144,6 +27207,7 @@ async function autoShowEndDuty() {
         ) {
 
           window.stopRealtimeAnalytics();
+
         }
 
       } catch (e) {
@@ -27152,23 +27216,32 @@ async function autoShowEndDuty() {
           "❌ stopRealtimeAnalytics failed:",
           e
         );
+
       }
 
       return;
     }
 
+
     // =====================================================
     // 🔥 DATA
+    // -----------------------------------------------------
+    // fireData is now coming from:
+    //
+    //     window.liveStaffCache[cleanName]
+    //
+    // instead of:
+    //
+    //     snap.data()
     // =====================================================
-    const fireData =
-      snap.data() || {};
 
     console.log(
-      "📦 FIRESTORE:",
+      "📦 LIVE STAFF:",
       fireData
     );
 
     window.__dutyChecked = true;
+
 
     // =====================================================
     // 🔥 SESSION
@@ -27177,6 +27250,7 @@ async function autoShowEndDuty() {
       String(
         fireData.sessionId || ""
       ).trim();
+
 
     // =====================================================
     // 🟢 DUTY ACTIVE
@@ -27189,6 +27263,7 @@ async function autoShowEndDuty() {
         "🟢 DUTY ACTIVE"
       );
 
+
       // =================================================
       // 🔥 INVALID SESSION
       // =================================================
@@ -27199,6 +27274,7 @@ async function autoShowEndDuty() {
         );
 
         window.isDutyActive = false;
+
         window.currentSessionId = "";
 
         localStorage.removeItem(
@@ -27215,6 +27291,7 @@ async function autoShowEndDuty() {
         return;
       }
 
+
       // =================================================
       // 🔥 GLOBAL STATE
       // =================================================
@@ -27222,6 +27299,7 @@ async function autoShowEndDuty() {
 
       window.currentSessionId =
         firestoreSessionId;
+
 
       // =================================================
       // 🔥 SAVE LOCAL SESSION
@@ -27235,6 +27313,7 @@ async function autoShowEndDuty() {
         "dutyActive",
         "true"
       );
+
 
       // =================================================
       // 🔥 UPDATE BUTTON
@@ -27251,6 +27330,7 @@ async function autoShowEndDuty() {
           "🚀 OFF → ON transition"
         );
 
+
         // =============================================
         // 🔥 RESET GPS MEMORY
         // =============================================
@@ -27264,6 +27344,7 @@ async function autoShowEndDuty() {
           // Ignore localStorage cleanup failure
         }
 
+
         try {
 
           window.lastManualKey = "";
@@ -27275,6 +27356,7 @@ async function autoShowEndDuty() {
           // Ignore runtime cleanup failure
         }
 
+
         // =============================================
         // 🔥 START APK GPS
         // =============================================
@@ -27283,6 +27365,7 @@ async function autoShowEndDuty() {
           console.log(
             "📱 START APK GPS"
           );
+
 
           // =========================================
           // 🔥 SAME SESSION TO APK
@@ -27317,16 +27400,20 @@ async function autoShowEndDuty() {
         }
       }
 
+
       // =================================================
       // 🔥 FRONTEND GPS STATE
       // =================================================
-      if (!window.gpsRunning) {
+      if (
+        !window.gpsRunning
+      ) {
 
         try {
 
           console.log(
             "🚀 FRONTEND GPS READY"
           );
+
 
           // Existing architecture currently leaves
           // frontend auto-GPS disabled here.
@@ -27344,6 +27431,7 @@ async function autoShowEndDuty() {
 
     }
 
+
     // =====================================================
     // 🔴 DUTY OFF
     // =====================================================
@@ -27353,10 +27441,12 @@ async function autoShowEndDuty() {
         "🔴 DUTY OFF"
       );
 
+
       // =================================================
       // 🔥 GLOBAL STATE
       // =================================================
       window.isDutyActive = false;
+
 
       // =================================================
       // 🔥 CLEAR SESSION
@@ -27372,10 +27462,12 @@ async function autoShowEndDuty() {
         "false"
       );
 
+
       // =================================================
       // 🔥 UPDATE BUTTON
       // =================================================
       updateDutyButton();
+
 
       // =================================================
       // 🔥 STOP REALTIME ANALYTICS
@@ -27413,6 +27505,7 @@ async function autoShowEndDuty() {
         );
       }
 
+
       // =================================================
       // 🔥 ONLY ON ON → OFF
       // =================================================
@@ -27422,6 +27515,7 @@ async function autoShowEndDuty() {
           "🛑 ON → OFF transition"
         );
 
+
         // =============================================
         // 🔥 STOP APK GPS
         // =============================================
@@ -27430,6 +27524,7 @@ async function autoShowEndDuty() {
           console.log(
             "📱 STOP APK GPS"
           );
+
 
           if (
             typeof notifyAndroidDuty ===
@@ -27459,6 +27554,7 @@ async function autoShowEndDuty() {
           );
         }
 
+
         // =============================================
         // 🔥 STOP FRONTEND GPS
         // =============================================
@@ -27468,6 +27564,7 @@ async function autoShowEndDuty() {
             "🛑 STOP FRONTEND GPS"
           );
 
+
           // Existing architecture currently leaves
           // frontend auto-GPS disabled here.
           //
@@ -27476,6 +27573,7 @@ async function autoShowEndDuty() {
         } catch (_) {
           // Ignore frontend GPS cleanup failure
         }
+
 
         // =============================================
         // 🔥 CLEAR OFFLINE GPS MEMORY
@@ -27489,6 +27587,7 @@ async function autoShowEndDuty() {
         } catch (_) {
           // Ignore localStorage cleanup failure
         }
+
 
         // =============================================
         // 🔥 CLEAR RUNTIME GPS MEMORY
@@ -27506,6 +27605,7 @@ async function autoShowEndDuty() {
       }
     }
 
+
   } catch (e) {
 
     // =====================================================
@@ -27516,6 +27616,7 @@ async function autoShowEndDuty() {
       e
     );
 
+
   } finally {
 
     // =====================================================
@@ -27524,7 +27625,8 @@ async function autoShowEndDuty() {
     setTimeout(
       () => {
 
-        window.dutyCheckRunning = false;
+        window.dutyCheckRunning =
+          false;
 
         console.groupEnd();
 
@@ -27533,6 +27635,7 @@ async function autoShowEndDuty() {
     );
   }
 }
+
     // ======================================================
 // 🔥 INIT DUTY CONTROL (CLEAN)
 // ======================================================
