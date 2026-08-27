@@ -3768,126 +3768,7 @@ function(
                             }
                         );
 
-// ====================================================
-// 📏 PERMANENT SESSION DISTANCE CALCULATION
-// ----------------------------------------------------
-// Calculate from RAW Firestore points.
-// DO NOT calculate from cleanTrackPoints().
-// ====================================================
-
-window.trackDistanceMap ??=
-    Object.create(null);
-
-window.trackDistanceSessionMap ??=
-    Object.create(null);
-
-
-// ====================================================
-// 🔑 CANONICAL STAFF DISTANCE KEY
-// ----------------------------------------------------
-// IMPORTANT:
-// Same key must be used by:
-// • loadIndividualStaffTrack()
-// • staff popup
-// • cleanup
-// ====================================================
-
-const distanceKey =
-    cleanName(
-        name || ""
-    );
-
-
-// ====================================================
-// 📏 CALCULATE CURRENT SESSION DISTANCE
-// ====================================================
-
-const distanceKm =
-    window.calculatePatrolDistanceKm(
-        points
-    );
-
-
-// ====================================================
-// 📏 SAVE DISTANCE
-// ====================================================
-
-window.trackDistanceMap[
-    distanceKey
-] =
-    Number.isFinite(distanceKm)
-        ? distanceKm
-        : 0;
-
-
-// ====================================================
-// 🔐 REMEMBER WHICH SESSION THIS DISTANCE BELONGS TO
-// ====================================================
-
-window.trackDistanceSessionMap[
-    distanceKey
-] =
-    sessionId;
-
-
-// ====================================================
-// 📏 LIVE UPDATE OPEN/EXISTING STAFF POPUP DISTANCE
-// ----------------------------------------------------
-// If popup is currently open, update its displayed
-// distance immediately after Firestore points arrive.
-// ====================================================
-
-try {
-
-    const distanceElement =
-        document.getElementById(
-            "staffDistance_" +
-            encodeURIComponent(
-                distanceKey
-            )
-        );
-
-    if(
-        distanceElement
-    ){
-
-        distanceElement.textContent =
-            window.trackDistanceMap[
-                distanceKey
-            ].toFixed(2) +
-            " km";
-
-    }
-
-}
-catch(err){
-
-    console.warn(
-        "⚠ Distance popup update failed:",
-        distanceKey,
-        err
-    );
-
-}
-
-
-// ====================================================
-// 🔎 DIAGNOSTIC
-// ====================================================
-
-console.log(
-    "📏 PATROL DISTANCE:",
-    distanceKey,
-    window.trackDistanceMap[
-        distanceKey
-    ].toFixed(3),
-    "km",
-    "session:",
-    sessionId,
-    "raw points:",
-    points.length
-);
-                        // ====================================
+       // ====================================
                         // 📍 NOTHING TO DRAW
                         // ====================================
 
@@ -16499,9 +16380,9 @@ function clearMonthHistory(){
 
 async function processHistoryTrack(
   rawCoords,
-  sessionId
+  sessionId,
+  authoritativeDistanceKm = null
 ){
-
   console.log(
     "PROCESS HISTORY TRACK CALLED"
   );
@@ -19328,12 +19209,47 @@ function calculateDistanceKm(coords){
   return km;
 }
 
-const totalDistanceKm =
-
+const fallbackTotalDistanceKm =
   calculateDistanceKm(
     canonicalLngLatCoords
   );
 
+const totalDistanceKm =
+  Number.isFinite(
+    Number(
+      authoritativeDistanceKm
+    )
+  ) &&
+  Number(
+    authoritativeDistanceKm
+  ) >= 0
+
+    ? Number(
+        authoritativeDistanceKm
+      )
+
+    : fallbackTotalDistanceKm;
+
+console.log(
+  "📏 HISTORY DISTANCE:",
+  {
+    sessionId,
+
+    distanceKm:
+      Number(
+        totalDistanceKm.toFixed(3)
+      ),
+
+    source:
+      Number.isFinite(
+        Number(
+          authoritativeDistanceKm
+        )
+      )
+        ? "live_staff"
+        : "frontend_track_fallback"
+  }
+);
 console.log(
   "📏 TOTAL TRACK KM",
   totalDistanceKm
@@ -32766,7 +32682,7 @@ window.monthlyStatusCache ??= {};
 // ======================================================
 
 window.allGISFeatures = [];
-window.distanceBuffer ??= [];
+
 window.allCompartmentFeatures = [];
 // ==========================================
 // 👁 COMPARTMENT LAYER VISIBILITY
@@ -71493,14 +71409,80 @@ if(
             dutyActive: s.dutyActive === true,
             sessionId: String(s.sessionId ?? previousLive.sessionId ?? "").trim(),
             lastSeen: Number(s.lastSeen ?? previousLive.lastSeen ?? 0),
-            speed: Number(s.speed ?? previousLive.speed ?? 0),
-            heading: Number(s.heading ?? previousLive.heading ?? 0),
-            accuracy: Number(s.accuracy ?? previousLive.accuracy ?? 0),
+speed:
+    Number(
+        s.speed ??
+        previousLive.speed ??
+        0
+    ),
+
+distanceCoveredKm:
+    Number(
+        s.distanceCoveredKm ??
+        previousLive.distanceCoveredKm ??
+        0
+    ),
+
+distanceCoveredMeters:
+    Number(
+        s.distanceCoveredMeters ??
+        previousLive.distanceCoveredMeters ??
+        0
+    ),
+
+heading:
+    Number(
+        s.heading ??
+        previousLive.heading ??
+        0
+    ),            accuracy: Number(s.accuracy ?? previousLive.accuracy ?? 0),
             updatedAt: Number(s.updatedAt ?? previousLive.updatedAt ?? 0),
             dutyType: String(s.dutyType ?? previousLive.dutyType ?? ""),
             team: String(s.team ?? previousLive.team ?? "")
         };
 
+// ==================================================
+// 📏 AUTHORITATIVE LIVE DISTANCE
+// --------------------------------------------------
+// Only capture distance for the current viewer.
+// Do NOT run heavy processing here.
+// ==================================================
+
+const currentViewerName =
+    cleanName(
+        window.userProfile?.cleanName ||
+        window.userProfile?.name ||
+        ""
+    );
+
+if(
+    staffKey ===
+    currentViewerName
+){
+
+    const liveDistanceKm =
+        Number(
+            s.distanceCoveredKm ??
+            (
+                Number(
+                    s.distanceCoveredMeters
+                ) || 0
+            ) / 1000
+        );
+
+    if(
+        Number.isFinite(
+            liveDistanceKm
+        ) &&
+        liveDistanceKm >= 0
+    ){
+
+        window.currentLiveStaffDistanceKm =
+            liveDistanceKm;
+
+    }
+
+}
         // ==============================================
         // 🔐 KEEP TRACK AUTHORIZATION ALIVE
         // ==============================================
@@ -71512,6 +71494,19 @@ if(
                 lat: hasValidGps ? gpsLat : Number(previousVisibleStaff.lat || 0),
                 lng: hasValidGps ? gpsLon : Number(previousVisibleStaff.lng || 0),
                 speed: Number(s.speed ?? previousVisibleStaff.speed ?? 0),
+distanceCoveredKm:
+    Number(
+        s.distanceCoveredKm ??
+        previousVisibleStaff.distanceCoveredKm ??
+        0
+    ),
+
+distanceCoveredMeters:
+    Number(
+        s.distanceCoveredMeters ??
+        previousVisibleStaff.distanceCoveredMeters ??
+        0
+    ),
                 heading: Number(s.heading ?? previousVisibleStaff.heading ?? 0),
                 accuracy: Number(s.accuracy ?? previousVisibleStaff.accuracy ?? 0),
                 lastSeen: Number(s.lastSeen ?? previousVisibleStaff.lastSeen ?? 0),
@@ -72826,40 +72821,6 @@ window.lastPatrolPoint[
     currentSessionId
 ] =
     previousPoint;
-// ======================================
-// 🔥 MONTHLY DISTANCE BUFFER
-// ======================================
-// ======================================
-// 🔥 DISTANCE BUFFER
-// ONLY NEW POINTS
-// PREVENT RE-ADDING ENTIRE SESSION
-// ======================================
-
-const newTrack =
-
-  newPoints.map(p => [
-
-    p.lat,
-
-    p.lon
-
-  ]);
-
-if(
-
-  newTrack.length > 1
-
-){
-
-  window.distanceBuffer ??= [];
-
-  window.distanceBuffer.push(
-
-    newTrack
-
-  );
-
-}
 
 // ======================================
 // 🔥 SAVE POINT COUNT
@@ -76845,99 +76806,6 @@ successfulGridFlushes++;
     }
 
 
-    // ==========================================================
-    // GLOBAL / MONTHLY DISTANCE BUFFER
-    //
-    // Preserve the current distance system for compatibility.
-    //
-    // IMPORTANT:
-    // Snapshot it first so new GPS distance arriving while the
-    // write runs cannot be deleted.
-    // ==========================================================
-
-    try {
-
-      if(
-
-        Array.isArray(
-          window.distanceBuffer
-        )
-
-        &&
-
-        window.distanceBuffer.length > 0
-
-      ){
-
-        // ======================================================
-        // DETACH CURRENT DISTANCE BUFFER
-        // ======================================================
-
-        const flushingDistance =
-          window.distanceBuffer;
-
-
-        window.distanceBuffer = [];
-
-
-        try {
-
-          await updateMonthlyDistanceTotal(
-
-            flushingDistance,
-
-            monthKey
-
-          );
-
-
-          analyticsChanged = true;
-
-
-          console.log(
-            "📏 Monthly Distance Updated",
-            flushingDistance.length
-          );
-
-        }
-
-        catch(distanceWriteErr){
-
-          // ====================================================
-          // RESTORE FAILED DISTANCE DATA
-          //
-          // New distance data may already exist in
-          // window.distanceBuffer, so prepend failed data.
-          // ====================================================
-
-          window.distanceBuffer =
-            [
-              ...flushingDistance,
-
-              ...(
-                Array.isArray(
-                  window.distanceBuffer
-                )
-                  ? window.distanceBuffer
-                  : []
-              )
-            ];
-
-
-          throw distanceWriteErr;
-        }
-      }
-
-    }
-
-    catch(distanceErr){
-
-      console.error(
-        "❌ Distance Update Failed",
-        distanceErr
-      );
-    }
-
 
     // ==========================================================
     // FLUSH RESULT
@@ -76955,12 +76823,7 @@ successfulGridFlushes++;
             window.analyticsBuffer || {}
           ).length,
 
-        remainingDistanceItems:
-          Array.isArray(
-            window.distanceBuffer
-          )
-            ? window.distanceBuffer.length
-            : 0
+       
       }
     );
 
@@ -77036,242 +76899,7 @@ console.log(
   }
 }
 
-  async function updateMonthlyDistanceTotal(
-
-  trackSegments,
-  monthKey
-
-){
-
-  try{
-
-    if(
-
-      !Array.isArray(
-        trackSegments
-      )
-
-      ||
-
-      trackSegments.length === 0
-
-    ){
-
-      return;
-    }
-
-    let totalDistanceMeters = 0;
-
-    // ====================================
-    // 🔥 CALCULATE DISTANCE
-    // ====================================
-
-    for(
-
-      const segment of trackSegments
-
-    ){
-
-      if(
-
-        !Array.isArray(segment)
-
-        ||
-
-        segment.length < 2
-
-      ){
-
-        continue;
-      }
-
-      for(
-
-        let i = 1;
-
-        i < segment.length;
-
-        i++
-
-      ){
-
-        const prev =
-          segment[i - 1];
-
-        const curr =
-          segment[i];
-
-        if(
-
-          !Array.isArray(prev)
-
-          ||
-
-          !Array.isArray(curr)
-
-        ){
-
-          continue;
-        }
-
-        const dist =
-
-          map.distance(
-
-            [
-              Number(prev[0]),
-              Number(prev[1])
-            ],
-
-            [
-              Number(curr[0]),
-              Number(curr[1])
-            ]
-
-          );
-
-        if(
-
-          isFinite(dist)
-
-          &&
-
-          dist > 0
-
-        ){
-
-          totalDistanceMeters += dist;
-
-        }
-
-      }
-
-    }
-
-    if(
-      totalDistanceMeters <= 0
-    ){
-
-      return;
-    }
-
-    console.log(
-
-      "📏 ADDING DISTANCE",
-
-      (
-        totalDistanceMeters / 1000
-      ).toFixed(2),
-
-      "km"
-
-    );
-
-    // ====================================
-    // 🔥 GLOBAL SUMMARY DOC
-    // ====================================
-
-    const summaryRef =
-
-      window.fb.doc(
-
-        window.db,
-
-        "analytics_rebuild",
-
-        monthKey,
-
-        "summary",
-
-        "global"
-
-      );
-
-    // ====================================
-    // 🔥 LOAD EXISTING TOTAL
-    // ====================================
-
-    const snap =
-
-      await window.fb.getDoc(
-        summaryRef
-      );
-
-    const oldDistance =
-
-      Number(
-
-        snap.data()
-          ?.totalDistanceMeters
-
-        ||
-
-        0
-
-      );
-
-    const newDistance =
-
-      oldDistance +
-
-      Math.round(
-        totalDistanceMeters
-      );
-
-    // ====================================
-    // 🔥 SAVE UPDATED TOTAL
-    // ====================================
-
-    await window.fb.setDoc(
-
-      summaryRef,
-
-      {
-
-        totalDistanceMeters:
-          newDistance,
-
-        rebuiltAt:
-          new Date()
-            .toISOString()
-
-      },
-
-      {
-        merge:true
-      }
-
-    );
-
-    console.log(
-
-      "✅ GLOBAL DISTANCE SAVED",
-
-      (
-
-        newDistance / 1000
-
-      ).toFixed(2),
-
-      "km"
-
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-
-      "❌ updateMonthlyDistanceTotal",
-
-      err
-
-    );
-
-  }
-
-}
+ 
     /* =========================
        🚨 INCIDENT SYSTEM (FINAL)
     ========================= */
@@ -106834,6 +106462,502 @@ ${url}`;
 window.showPatrolKMLReady =
   showPatrolKMLReady;
 
+
+// ============================================================
+// 📏 AUTHORITATIVE LIVE STAFF DISTANCE
+// ------------------------------------------------------------
+// Android → live_staff is the authoritative live distance.
+//
+// We read the exact live_staff document for this user/session
+// BEFORE Duty End clears sessionId/time from live_staff.
+//
+// Returns:
+//   kilometres
+//   OR null if the authoritative value is unavailable.
+// ============================================================
+
+async function readAuthoritativeLiveStaffDistance(
+    staffName,
+    expectedSessionId
+){
+
+    try{
+
+        await waitForFirebaseReady();
+
+        const cleanStaffName =
+            cleanName(
+                staffName || ""
+            );
+
+        const sessionId =
+            String(
+                expectedSessionId || ""
+            ).trim();
+
+        if(
+            !cleanStaffName ||
+            !sessionId
+        ){
+
+            console.warn(
+                "⚠ AUTHORITATIVE DISTANCE: missing staff/session"
+            );
+
+            return null;
+        }
+
+        const liveRef =
+            window.fb.doc(
+                window.db,
+                "live_staff",
+                cleanStaffName
+            );
+
+        const snap =
+            await window.fb.getDoc(
+                liveRef
+            );
+
+        if(
+            !snap.exists()
+        ){
+
+            console.warn(
+                "⚠ AUTHORITATIVE DISTANCE: live_staff missing",
+                cleanStaffName
+            );
+
+            return null;
+        }
+
+        const data =
+            snap.data() || {};
+
+        const liveSessionId =
+            String(
+                data.sessionId || ""
+            ).trim();
+
+        // --------------------------------------------------------
+        // 🔒 SESSION SAFETY
+        // --------------------------------------------------------
+        // Never accept a previous duty's distance.
+        // --------------------------------------------------------
+
+        if(
+            liveSessionId !== sessionId
+        ){
+
+            console.error(
+                "❌ AUTHORITATIVE DISTANCE SESSION MISMATCH",
+                {
+                    staff:
+                        cleanStaffName,
+
+                    expectedSessionId:
+                        sessionId,
+
+                    liveSessionId
+                }
+            );
+
+            return null;
+        }
+
+        let distanceKm =
+            Number(
+                data.distanceCoveredKm
+            );
+
+        // --------------------------------------------------------
+        // METRE FALLBACK
+        // --------------------------------------------------------
+
+        if(
+            !Number.isFinite(
+                distanceKm
+            ) ||
+            distanceKm < 0
+        ){
+
+            const distanceMeters =
+                Number(
+                    data.distanceCoveredMeters
+                );
+
+            if(
+                Number.isFinite(
+                    distanceMeters
+                ) &&
+                distanceMeters >= 0
+            ){
+
+                distanceKm =
+                    distanceMeters /
+                    1000;
+            }
+        }
+
+        if(
+            !Number.isFinite(
+                distanceKm
+            ) ||
+            distanceKm < 0
+        ){
+
+            console.warn(
+                "⚠ AUTHORITATIVE DISTANCE unavailable",
+                {
+                    staff:
+                        cleanStaffName,
+
+                    sessionId
+                }
+            );
+
+            return null;
+        }
+
+        console.log(
+            "🎯 AUTHORITATIVE LIVE DISTANCE:",
+            {
+                staff:
+                    cleanStaffName,
+
+                sessionId,
+
+                distanceKm:
+                    Number(
+                        distanceKm.toFixed(3)
+                    )
+            }
+        );
+
+        return distanceKm;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ readAuthoritativeLiveStaffDistance:",
+            err
+        );
+
+        return null;
+    }
+}
+
+// ============================================================
+// 📏 COMMIT AUTHORITATIVE SESSION DISTANCE
+// ------------------------------------------------------------
+// One completed session = one monthly distance addition.
+//
+// Uses a Firestore transaction so two simultaneous attempts
+// cannot count the same session twice.
+//
+// patrol_tracks/{sessionId}.distanceAccountingApplied
+// acts as the session-level idempotency lock.
+// ============================================================
+
+async function commitAuthoritativeSessionDistance(
+    sessionId,
+    distanceKm,
+    endedAt,
+    distanceSource = "live_staff"
+){
+
+    if(
+        !sessionId ||
+        !Number.isFinite(
+            Number(distanceKm)
+        ) ||
+        Number(distanceKm) < 0
+    ){
+
+        return {
+            applied:
+                false,
+
+            reason:
+                "INVALID_DISTANCE"
+        };
+    }
+
+    const trackRef =
+        window.fb.doc(
+            window.db,
+            "patrol_tracks",
+            sessionId
+        );
+
+    const result =
+        await window.fb.runTransaction(
+            window.db,
+            async transaction => {
+
+                // ------------------------------------------------
+                // SESSION DOCUMENT
+                // ------------------------------------------------
+
+                const trackSnap =
+                    await transaction.get(
+                        trackRef
+                    );
+
+                if(
+                    !trackSnap.exists()
+                ){
+
+                    throw new Error(
+                        "patrol_tracks session missing: " +
+                        sessionId
+                    );
+                }
+
+                const trackData =
+                    trackSnap.data() || {};
+
+                // ------------------------------------------------
+                // 🛡 DUPLICATE PROTECTION
+                // ------------------------------------------------
+
+                if(
+                    trackData.distanceAccountingApplied ===
+                    true
+                ){
+
+                    console.log(
+                        "ℹ️ DISTANCE ALREADY ACCOUNTED:",
+                        sessionId
+                    );
+
+                    return {
+                        applied:
+                            true,
+
+                        alreadyApplied:
+                            true
+                    };
+                }
+
+                // ------------------------------------------------
+                // MONTH
+                // ------------------------------------------------
+
+                const storedMonthKey =
+                    String(
+                        trackData.monthKey || ""
+                    ).trim();
+
+                const fallbackDate =
+                    new Date(
+                        Number(
+                            trackData.startedAt ||
+                            endedAt ||
+                            Date.now()
+                        )
+                    );
+
+                const fallbackMonthKey =
+                    `${fallbackDate.getFullYear()}_${
+                        String(
+                            fallbackDate.getMonth() + 1
+                        ).padStart(
+                            2,
+                            "0"
+                        )
+                    }`;
+
+                const monthKey =
+                    storedMonthKey ||
+                    fallbackMonthKey;
+
+                // ------------------------------------------------
+                // GLOBAL MONTHLY SUMMARY
+                // ------------------------------------------------
+
+                const summaryRef =
+                    window.fb.doc(
+                        window.db,
+                        "analytics_rebuild",
+                        monthKey,
+                        "summary",
+                        "global"
+                    );
+
+                const summarySnap =
+                    await transaction.get(
+                        summaryRef
+                    );
+
+                const summaryData =
+                    summarySnap.exists()
+                        ? (
+                            summarySnap.data() || {}
+                        )
+                        : {};
+
+                // ------------------------------------------------
+                // DISTANCE BASELINE
+                // ------------------------------------------------
+                //
+                // If the new authoritative field does not exist
+                // yet, preserve the old global total as a
+                // transition baseline.
+                //
+                // Future additions are then authoritative.
+                // ------------------------------------------------
+
+                const existingAuthoritative =
+                    Number(
+                        summaryData
+                            .authoritativeDistanceMeters
+                    );
+
+                const hasAuthoritativeTotal =
+                    Number.isFinite(
+                        existingAuthoritative
+                    );
+
+                const legacyTotal =
+                    Number(
+                        summaryData
+                            .totalDistanceMeters ||
+                        0
+                    );
+
+                const oldTotal =
+                    hasAuthoritativeTotal
+                        ? existingAuthoritative
+                        : (
+                            Number.isFinite(
+                                legacyTotal
+                            )
+                                ? legacyTotal
+                                : 0
+                        );
+
+                const addedMeters =
+                    Math.round(
+                        Number(distanceKm) *
+                        1000
+                    );
+
+                const nextTotal =
+                    oldTotal +
+                    addedMeters;
+
+                const oldSessionCount =
+                    hasAuthoritativeTotal
+                        ? Number(
+                            summaryData
+                                .authoritativeDistanceSessionCount ||
+                            0
+                        )
+                        : 0;
+
+                // ------------------------------------------------
+                // 🔒 MARK SESSION ACCOUNTED
+                // ------------------------------------------------
+
+                transaction.set(
+                    trackRef,
+                    {
+
+                        distanceKm:
+                            Number(
+                                Number(distanceKm)
+                                    .toFixed(2)
+                            ),
+
+                        distanceSource:
+                            distanceSource,
+
+                        distanceAccountingApplied:
+                            true,
+
+                        distanceAccountedAt:
+                            window.fb.serverTimestamp()
+
+                    },
+                    {
+                        merge:
+                            true
+                    }
+                );
+
+                // ------------------------------------------------
+                // 📊 UPDATE MONTHLY TOTAL
+                // ------------------------------------------------
+
+                transaction.set(
+                    summaryRef,
+                    {
+
+                        authoritativeDistanceMeters:
+                            nextTotal,
+
+                        authoritativeDistanceSessionCount:
+                            oldSessionCount + 1,
+
+                        authoritativeDistanceBaseline:
+                            hasAuthoritativeTotal
+                                ? (
+                                    summaryData
+                                        .authoritativeDistanceBaseline ||
+                                    "authoritative"
+                                )
+                                : "legacy_totalDistanceMeters",
+
+                        lastAuthoritativeDistanceSessionId:
+                            sessionId,
+
+                        lastAuthoritativeDistanceUpdatedAt:
+                            window.fb.serverTimestamp(),
+
+                        rebuiltAt:
+                            new Date()
+                                .toISOString()
+
+                    },
+                    {
+                        merge:
+                            true
+                    }
+                );
+
+                return {
+
+                    applied:
+                        true,
+
+                    alreadyApplied:
+                        false,
+
+                    monthKey:
+
+                        monthKey,
+
+                    addedMeters:
+                        addedMeters,
+
+                    totalMeters:
+                        nextTotal
+                };
+            }
+        );
+
+    console.log(
+        "✅ AUTHORITATIVE SESSION DISTANCE COMMITTED:",
+        {
+            sessionId,
+            result
+        }
+    );
+
+    return result;
+}
 async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
 
@@ -107033,6 +107157,16 @@ console.log(
   "🔒 END DUTY SESSION LOCKED:",
   endedSessionId
 );
+
+// ============================================================
+// 🎯 CAPTURE AUTHORITATIVE DISTANCE BEFORE LIVE STAFF ENDS
+// ============================================================
+
+const authoritativeDistancePromise =
+    readAuthoritativeLiveStaffDistance(
+        profile.cleanName,
+        sessionId
+    );
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
@@ -107090,13 +107224,41 @@ console.log(
       phone: profile.phone
     };
 
-    console.log("📤 PAYLOAD:", payload);
+console.log("📤 PAYLOAD:", payload);
 
-    // ============================================================
-    // 🔥 BACKEND SAVE
-    // ============================================================
-    Promise.allSettled([
-      callBackend("markDutyOutWithObs", payload),
+// ============================================================
+// 🎯 FINAL AUTHORITATIVE DISTANCE
+// ============================================================
+
+const authoritativeDistanceKm =
+    await authoritativeDistancePromise;
+
+const hasAuthoritativeDistance =
+    Number.isFinite(
+        Number(
+            authoritativeDistanceKm
+        )
+    ) &&
+    Number(
+        authoritativeDistanceKm
+    ) >= 0;
+
+console.log(
+    "📏 FINAL DISTANCE SOURCE:",
+    hasAuthoritativeDistance
+        ? "live_staff"
+        : "frontend_track_fallback",
+    hasAuthoritativeDistance
+        ? authoritativeDistanceKm
+        : "UNAVAILABLE"
+);
+
+// ============================================================
+// 🔥 BACKEND SAVE
+// ============================================================
+
+Promise.allSettled([
+callBackend("markDutyOutWithObs", payload),
 
       window.fb.setDoc(
         window.fb.doc(window.db, "live_staff", profile.cleanName),
@@ -107341,9 +107503,9 @@ console.log(
 
 await processHistoryTrack(
   cleanTrack,
-  sessionId
+  sessionId,
+  authoritativeDistanceKm
 );
-
 console.log(
   "STEP A - processHistoryTrack DONE"
 );
@@ -107460,7 +107622,38 @@ for (
 
 const distanceKm =
   distanceMeters / 1000;
+// ============================================================
+// 📏 AUTHORITATIVE FINAL DISTANCE
+// ============================================================
 
+const finalDistanceKm =
+    hasAuthoritativeDistance
+
+        ? Number(
+            Number(
+                authoritativeDistanceKm
+            ).toFixed(2)
+          )
+
+        : Number(
+            distanceKm.toFixed(2)
+          );
+
+const finalDistanceSource =
+    hasAuthoritativeDistance
+        ? "live_staff"
+        : "frontend_track_fallback";
+
+console.log(
+    "📏 FINAL DUTY DISTANCE:",
+    {
+        distanceKm:
+            finalDistanceKm,
+
+        source:
+            finalDistanceSource
+    }
+);
 console.log(
   "📏 FINAL PATROL DISTANCE:",
   distanceKm.toFixed(2),
@@ -107575,9 +107768,69 @@ await window.fb.updateDoc(
     kmlUrl:
       kmlUrl || "",
 
-    endedAt
+    endedAt,
+
+    // ========================================================
+    // 📏 AUTHORITATIVE DISTANCE
+    // ========================================================
+
+    distanceKm:
+      finalDistanceKm,
+
+    authoritativeDistanceKm:
+      hasAuthoritativeDistance
+        ? finalDistanceKm
+        : null,
+
+    distanceSource:
+      finalDistanceSource
   }
 );
+
+
+// ============================================================
+// 📊 MONTHLY AUTHORITATIVE DISTANCE
+// ------------------------------------------------------------
+// Exactly ONE accounting event per completed session.
+// ------------------------------------------------------------
+// IMPORTANT:
+// This runs ONLY AFTER the history document has successfully
+// been written.
+// ============================================================
+
+let distanceAccountingApplied =
+  false;
+
+try{
+
+  const accountingResult =
+    await commitAuthoritativeSessionDistance(
+      sessionId,
+      finalDistanceKm,
+      endedAt,
+      finalDistanceSource
+    );
+
+  distanceAccountingApplied =
+    accountingResult?.applied === true;
+
+  console.log(
+    "📊 DISTANCE ACCOUNTING RESULT:",
+    accountingResult
+  );
+
+}
+catch(distanceAccountingErr){
+
+  console.error(
+    "❌ AUTHORITATIVE DISTANCE ACCOUNTING FAILED:",
+    distanceAccountingErr
+  );
+
+  distanceAccountingApplied =
+    false;
+}
+
 
 console.table({
 
@@ -107587,7 +107840,15 @@ console.table({
     points.length,
 
   kmlGenerated:
-    !!kmlUrl
+    !!kmlUrl,
+
+  distanceKm:
+    finalDistanceKm,
+
+  distanceSource:
+    finalDistanceSource,
+
+  distanceAccountingApplied
 
 });
 
@@ -107634,9 +107895,7 @@ const dutyEndTelegramData = {
     points.length,
 
   distanceKm:
-    Number(
-      distanceKm.toFixed(2)
-    ),
+  finalDistanceKm,
 
   kmlReady:
     !!kmlUrl,
@@ -107679,16 +107938,29 @@ await window.fb.updateDoc(
     "patrol_tracks",
     sessionId
   ),
-  {
-    dutyActive: false,
+ {
+  dutyActive: false,
 
-    status: "ENDED",
+  status: "ENDED",
 
+  endedAt,
+
+  updatedAt:
     endedAt,
 
-    updatedAt:
-      endedAt
-  }
+  // ========================================================
+  // 📏 FINAL SESSION DISTANCE
+  // ========================================================
+
+  distanceKm:
+    finalDistanceKm,
+
+  distanceSource:
+    finalDistanceSource,
+
+  distanceAccountingPending:
+    !distanceAccountingApplied
+}
 );
 
 window.realtimePerformanceData = {
@@ -108067,11 +108339,19 @@ window.realtimePerformanceData = {
   };
 }
     async function buildDutyPerformanceReport({
+
   sessionId,
+
   dutyType,
+
   leader,
+
   trackPoints,
-  kmlUrl = ""
+
+  kmlUrl = "",
+
+  authoritativeDistanceKm = null
+
 }) {
   try {
     const trackSnap =
@@ -108342,51 +108622,102 @@ console.log(
 
 
 
-    // =====================================
-    // DISTANCE FROM ENCODED TRACK
-    // =====================================
+// =====================================
+// 📏 AUTHORITATIVE DISTANCE
+// -----------------------------------------------------
+// Normal source:
+//     live_staff → authoritativeDistanceKm
+//
+// Fallback:
+//     existing Turf calculation from decoded track
+// -----------------------------------------------------
 
-    let distanceKm = 0;
+let distanceKm =
+  Number(
+    authoritativeDistanceKm
+  );
 
-    try {
-      if (
-        decoded.length > 1
-      ) {
-        const line =
-          turf.lineString(
-            decoded.map(
-              p => [
-                Number(p[1]), // lng
-                Number(p[0])  // lat
-              ]
-            )
-          );
+const hasAuthoritativeDistance =
+  Number.isFinite(
+    distanceKm
+  ) &&
+  distanceKm >= 0;
 
-        distanceKm =
-          turf.length(
-            line,
-            {
-              units: "kilometers"
-            }
-          );
-      }
-    } catch (err) {
-      console.error(
-        "❌ Distance calculation failed",
-        err
-      );
+
+// =====================================
+// 🔄 FALLBACK DISTANCE CALCULATION
+// -----------------------------------------------------
+// Only used when live_staff distance is unavailable.
+// =====================================
+
+if(
+  !hasAuthoritativeDistance
+){
+
+  distanceKm = 0;
+
+  try{
+
+    if(
+      decoded.length > 1
+    ){
+
+      const line =
+        turf.lineString(
+          decoded.map(
+            p => [
+
+              Number(p[1]), // lng
+
+              Number(p[0])  // lat
+
+            ]
+          )
+        );
+
+      distanceKm =
+        turf.length(
+          line,
+          {
+            units:
+              "kilometers"
+          }
+        );
+
     }
 
-    distanceKm =
-      Number(
-        distanceKm.toFixed(2)
-      );
+  }
+  catch(err){
 
-    console.log(
-      "📏 TRACK DISTANCE KM",
-      distanceKm
+    console.error(
+      "❌ Distance fallback calculation failed",
+      err
     );
 
+  }
+
+}
+
+
+// =====================================
+// 📏 NORMALIZE DISTANCE
+// =====================================
+
+distanceKm =
+  Number(
+    Number(
+      distanceKm || 0
+    ).toFixed(2)
+  );
+
+console.log(
+  "📏 PERFORMANCE DISTANCE:",
+  distanceKm,
+  "km",
+  hasAuthoritativeDistance
+    ? "SOURCE: LIVE_STAFF"
+    : "SOURCE: TURF_FALLBACK"
+);
    // =====================================
 // COVERAGE + CELL + COMPARTMENT STATS
 // =====================================
@@ -108861,9 +109192,11 @@ ${coordinates}
 </kml>`;
 }   async function uploadPatrolKML(
   sessionId,
-  points
+  points,
+  authoritativeDistanceKm = null
 ) {
   try {
+
     // ==========================================================
     // VALIDATE
     // ==========================================================
@@ -108871,81 +109204,207 @@ ${coordinates}
     if (
       !Array.isArray(points)
     ) {
+
       console.error(
         "KML FAIL: points not array"
       );
+
       console.warn(
         "⚠ Invalid points array"
       );
 
       return null;
+
     }
+
 
     if (
       points.length < 2
     ) {
+
       console.error(
         "KML FAIL: less than 2 points"
       );
+
       console.warn(
         "⚠ Not enough points for KML"
       );
 
       return null;
+
     }
+
 
     console.table({
+
       sessionId,
-      pointCount: points.length,
-      firstPoint: JSON.stringify(points[0]),
-      lastPoint: JSON.stringify(points[points.length - 1])
+
+      pointCount:
+        points.length,
+
+      firstPoint:
+        JSON.stringify(
+          points[0]
+        ),
+
+      lastPoint:
+        JSON.stringify(
+          points[
+            points.length - 1
+          ]
+        )
+
     });
 
+
     // ==========================================================
-    // DISTANCE KM
+    // 📏 AUTHORITATIVE DISTANCE
+    // ----------------------------------------------------------
+    // Normal source:
+    //
+    //     live_staff
+    //          ↓
+    //     finalDistanceKm
+    //          ↓
+    //     authoritativeDistanceKm
+    //
+    // The existing point-by-point calculation below remains
+    // available as a FALLBACK only.
     // ==========================================================
 
-    let distanceKm = 0;
+    let distanceKm =
+      Number(
+        authoritativeDistanceKm
+      );
 
-    for (
-      let i = 1;
-      i < points.length;
-      i++
+
+    const hasAuthoritativeDistance =
+      Number.isFinite(
+        distanceKm
+      ) &&
+      distanceKm >= 0;
+
+
+    // ==========================================================
+    // 🔄 FALLBACK DISTANCE CALCULATION
+    // ----------------------------------------------------------
+    // Only execute the old calculation when an authoritative
+    // distance was NOT supplied.
+    // ==========================================================
+
+    if (
+      !hasAuthoritativeDistance
     ) {
-      const prev = points[i - 1];
-      const curr = points[i];
 
-      const prevLat = Number(prev?.lat);
-      const prevLng = Number(prev?.lng ?? prev?.lon ?? prev?.longitude);
+      distanceKm = 0;
 
-      const currLat = Number(curr?.lat);
-      const currLng = Number(curr?.lng ?? curr?.lon ?? curr?.longitude);
 
-      if (
-        !Number.isFinite(prevLat) ||
-        !Number.isFinite(prevLng) ||
-        !Number.isFinite(currLat) ||
-        !Number.isFinite(currLng)
+      for (
+        let i = 1;
+        i < points.length;
+        i++
       ) {
-        continue;
+
+        const prev =
+          points[
+            i - 1
+          ];
+
+        const curr =
+          points[i];
+
+
+        const prevLat =
+          Number(
+            prev?.lat
+          );
+
+        const prevLng =
+          Number(
+            prev?.lng ??
+            prev?.lon ??
+            prev?.longitude
+          );
+
+
+        const currLat =
+          Number(
+            curr?.lat
+          );
+
+        const currLng =
+          Number(
+            curr?.lng ??
+            curr?.lon ??
+            curr?.longitude
+          );
+
+
+        if (
+          !Number.isFinite(
+            prevLat
+          ) ||
+
+          !Number.isFinite(
+            prevLng
+          ) ||
+
+          !Number.isFinite(
+            currLat
+          ) ||
+
+          !Number.isFinite(
+            currLng
+          )
+        ) {
+
+          continue;
+
+        }
+
+
+        distanceKm +=
+          getDistance(
+
+            [
+              prevLat,
+              prevLng
+            ],
+
+            [
+              currLat,
+              currLng
+            ]
+
+          );
+
       }
 
-      distanceKm += getDistance(
-        [prevLat, prevLng],
-        [currLat, currLng]
-      );
     }
+
+
+    // ==========================================================
+    // 📏 NORMALIZE DISTANCE
+    // ==========================================================
 
     distanceKm =
       Number(
-        distanceKm.toFixed(2)
+        Number(
+          distanceKm || 0
+        ).toFixed(2)
       );
 
+
     console.log(
-      "📏 Distance:",
+      "📏 KML DISTANCE:",
       distanceKm,
-      "km"
+      "km",
+
+      hasAuthoritativeDistance
+        ? "SOURCE: AUTHORITATIVE"
+        : "SOURCE: FALLBACK"
     );
+
 
     // ==========================================================
     // PROFILE
@@ -108954,6 +109413,7 @@ ${coordinates}
     const profile =
       window.userProfile || {};
 
+
     // ==========================================================
     // DATE
     // ==========================================================
@@ -108961,15 +109421,23 @@ ${coordinates}
     const now =
       Date.now();
 
+
     const d =
-      new Date(now);
+      new Date(
+        now
+      );
+
 
     const monthKey =
       `${d.getFullYear()}_${
         String(
           d.getMonth() + 1
-        ).padStart(2, "0")
+        ).padStart(
+          2,
+          "0"
+        )
       }`;
+
 
     // ==========================================================
     // DEBUG INPUT
@@ -108980,10 +109448,12 @@ ${coordinates}
       points.length
     );
 
+
     console.log(
       "🛰 FIRST POINT",
       points[0]
     );
+
 
     console.log(
       "🛰 LAST POINT",
@@ -108991,6 +109461,7 @@ ${coordinates}
         points.length - 1
       ]
     );
+
 
     // ==========================================================
     // GENERATE KML
@@ -109000,15 +109471,22 @@ ${coordinates}
       generateKMLFromTrack(
         points
       );
-console.log(
-  "KML SIZE",
-  kmlText.length
-);
 
-console.log(
-  "HAS COORDINATES",
-  kmlText.includes("<coordinates>")
-);
+
+    console.log(
+      "KML SIZE",
+      kmlText.length
+    );
+
+
+    console.log(
+      "HAS COORDINATES",
+      kmlText.includes(
+        "<coordinates>"
+      )
+    );
+
+
     // ==========================================================
     // DEBUG GENERATED KML
     // ==========================================================
@@ -109020,10 +109498,12 @@ console.log(
           "<coordinates>"
         );
 
+
       const end =
         kmlText.indexOf(
           "</coordinates>"
         );
+
 
       const coordBlock =
         kmlText.substring(
@@ -109031,18 +109511,24 @@ console.log(
           end
         );
 
+
       console.log(
         "🛰 GENERATED KML SAMPLE"
       );
+
 
       console.log(
 
         coordBlock
           .split("\n")
           .filter(
-            x => x.trim()
+            x =>
+              x.trim()
           )
-          .slice(0, 10)
+          .slice(
+            0,
+            10
+          )
           .join("\n")
 
       );
@@ -109057,12 +109543,12 @@ console.log(
 
     }
 
+
     // ==========================================================
     // STORAGE PATH
     // ==========================================================
 
     const storageRef =
-
       window.fb.ref(
 
         window.storage,
@@ -109070,6 +109556,7 @@ console.log(
         `patrol_kml/${monthKey}/${sessionId}.kml`
 
       );
+
 
     await window.fb.uploadString(
 
@@ -109081,11 +109568,12 @@ console.log(
 
     );
 
-    const downloadUrl =
 
+    const downloadUrl =
       await window.fb.getDownloadURL(
         storageRef
       );
+
 
     // ==========================================================
     // FIRESTORE SAVE
@@ -109148,9 +109636,11 @@ console.log(
 
     );
 
+
     console.log(
       "✅ Firestore KML Saved"
     );
+
 
     // ==========================================================
     // APPS SCRIPT SYNC
@@ -109164,70 +109654,82 @@ console.log(
 
         {
 
-          method: "POST",
+          method:
+            "POST",
 
-          body: JSON.stringify({
+          body:
+            JSON.stringify({
 
-            action:
-              "SAVE_PATROL_KML",
+              action:
+                "SAVE_PATROL_KML",
 
-            monthKey,
+              monthKey,
 
-            sessionId,
+              sessionId,
 
-            staffName:
-              profile.cleanName || "",
+              staffName:
+                profile.cleanName || "",
 
-            phone:
-              profile.phone || "",
+              phone:
+                profile.phone || "",
 
-            division:
-              profile.division ||
-              profile.range ||
-              "",
+              division:
+                profile.division ||
+                profile.range ||
+                "",
 
-            range:
-              profile.range || "",
+              range:
+                profile.range || "",
 
-            beat:
-              profile.beat ||
-              profile.range ||
-              profile.division ||
-              "",
+              beat:
+                profile.beat ||
+                profile.range ||
+                profile.division ||
+                "",
 
-            pointCount:
-              points.length,
+              pointCount:
+                points.length,
 
-            distanceKm,
+              distanceKm,
 
-            kmlUrl:
-              downloadUrl,
+              kmlUrl:
+                downloadUrl,
 
-            createdAt:
-              now
+              createdAt:
+                now
 
-          })
+            })
 
         }
 
       )
-        .then(r => r.text())
-        .then(result => {
 
-          console.log(
-            "📄 Apps Script Sync:",
-            result
-          );
+        .then(
+          r =>
+            r.text()
+        )
 
-        })
-        .catch(err => {
+        .then(
+          result => {
 
-          console.error(
-            "❌ Apps Script Sync Failed",
-            err
-          );
+            console.log(
+              "📄 Apps Script Sync:",
+              result
+            );
 
-        });
+          }
+        )
+
+        .catch(
+          err => {
+
+            console.error(
+              "❌ Apps Script Sync Failed",
+              err
+            );
+
+          }
+        );
 
     }
     catch (err) {
@@ -109239,6 +109741,7 @@ console.log(
 
     }
 
+
     // ==========================================================
     // DONE
     // ==========================================================
@@ -109247,6 +109750,7 @@ console.log(
       "✅ KML Stored:",
       downloadUrl
     );
+
 
     return downloadUrl;
 
@@ -109257,16 +109761,21 @@ console.log(
       "❌ uploadPatrolKML CRASH"
     );
 
-    console.error(err);
+
+    console.error(
+      err
+    );
+
 
     console.error(
       err?.stack
     );
 
+
     return null;
+
   }
 }
-
 async function shareDutyKMLReport(){
 
   try{
@@ -116463,10 +116972,20 @@ await setDoc(
     accuracy:
       startAccuracy,
 
-    speed:0,
+speed:0,
 
-    lastSeen:
-      Date.now(),
+// =====================================================
+// 📏 DISTANCE RESET
+// -----------------------------------------------------
+// Android becomes the authoritative live distance writer.
+// Reset old session distance so merge:true can never
+// accidentally carry a previous duty's distance.
+// =====================================================
+distanceCoveredKm: 0,
+distanceCoveredMeters: 0,
+patrolPointCount: 0,
+lastSeen:
+  Date.now(),
 
     updatedAt:
       serverTimestamp(),
@@ -117271,29 +117790,29 @@ async function updateRealtimePerformanceCard(){
 
       "Patrolling";
 
-    const reportData =
+const reportData =
+  await buildDutyPerformanceReport({
 
-      await buildDutyPerformanceReport({
+    sessionId,
 
-        sessionId,
+    dutyType,
 
-        dutyType,
+    leader:
+      profile.cleanName ||
+      profile.name ||
+      "",
 
-        leader:
-          profile.cleanName ||
+    trackPoints:
+      window
+        .realtimePerformanceData
+        .trackPoints,
 
-          profile.name ||
+    authoritativeDistanceKm:
+      Number(
+        window.currentLiveStaffDistanceKm
+      )
 
-          "",
-
-        trackPoints:
-
-          window
-          .realtimePerformanceData
-          .trackPoints
-
-      });
-
+  });
     window.currentRealtimeReport =
       reportData;
 
