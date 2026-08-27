@@ -71564,7 +71564,13 @@ if(
     delete window.analyticsPointCount[
         previousSessionId
     ];
+delete window.analyticsSessionCellSeen[
+    previousSessionId
+];
 
+delete window.analyticsNewSessionCellCount[
+    previousSessionId
+];
 }
 
     // ==================================================
@@ -71598,21 +71604,23 @@ if(
         delete window.activeSessionMap[cleanupStaffKey];
         delete window.trackPointCount[cleanupStaffKey];
 
-        const currentSessionId = String(s.sessionId || previous?.sessionId || "").trim();
+const currentSessionId = String(s.sessionId || previous?.sessionId || "").trim();
 
-        if (currentSessionId) {
-            delete window.analyticsPointCount[currentSessionId];
-            delete window.analyticsPointCache[currentSessionId];
-            delete window.analyticsLastPoint[currentSessionId];
+if (currentSessionId) {
+    delete window.analyticsPointCount[currentSessionId];
+    delete window.analyticsPointCache[currentSessionId];
+    delete window.analyticsLastPoint[currentSessionId];
 
-            if (window.analyticsTrackListeners[currentSessionId]) {
-                try {
-                    window.analyticsTrackListeners[currentSessionId]();
-                } catch(e) {}
-                delete window.analyticsTrackListeners[currentSessionId];
-            }
-        }
+    delete window.analyticsSessionCellSeen[currentSessionId];
+    delete window.analyticsNewSessionCellCount[currentSessionId];
 
+    if (window.analyticsTrackListeners[currentSessionId]) {
+        try {
+            window.analyticsTrackListeners[currentSessionId]();
+        } catch(e) {}
+        delete window.analyticsTrackListeners[currentSessionId];
+    }
+}
         delete window.trackDistanceMap[cleanupStaffKey];
         if (window.trackDistanceSessionMap) {
             delete window.trackDistanceSessionMap[cleanupStaffKey];
