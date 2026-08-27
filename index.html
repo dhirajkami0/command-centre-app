@@ -20617,11 +20617,11 @@ async function updateMonthlyAnalyticsRebuild(
 
     authoritativeTouchedCells,
 
-    visitSessions
+    visitSessions,
 
-){
+    sessionCellVisits
 
-  // ============================================================
+){  // ============================================================
   // PURPOSE
   //
   // Update ONE compartment/month analytics document.
@@ -20820,6 +20820,89 @@ async function updateMonthlyAnalyticsRebuild(
     }
   }
 
+// ============================================================
+// 🔥 NORMALIZE SESSION + CELL VISITS
+//
+// Each key represents:
+//
+//     ONE SESSION
+//     +
+//     ONE GRID
+//     +
+//     ONE CELL
+//
+// Example:
+//
+// ["SESSION_A","GRID_1","CELL_A"]
+//
+// Same key appearing multiple times becomes ONE Set entry.
+// ============================================================
+
+const suppliedSessionCellVisits =
+    new Set();
+
+
+if(
+    sessionCellVisits
+    instanceof Set
+){
+
+    for(
+        const sessionCellKey
+        of sessionCellVisits
+    ){
+
+        const normalizedKey =
+            String(
+                sessionCellKey ||
+                ""
+            ).trim();
+
+
+        if(
+            normalizedKey
+        ){
+
+            suppliedSessionCellVisits.add(
+                normalizedKey
+            );
+
+        }
+
+    }
+
+}
+else if(
+    Array.isArray(
+        sessionCellVisits
+    )
+){
+
+    for(
+        const sessionCellKey
+        of sessionCellVisits
+    ){
+
+        const normalizedKey =
+            String(
+                sessionCellKey ||
+                ""
+            ).trim();
+
+
+        if(
+            normalizedKey
+        ){
+
+            suppliedSessionCellVisits.add(
+                normalizedKey
+            );
+
+        }
+
+    }
+
+}
 
   // ============================================================
   // FALLBACK TRAVERSAL
@@ -21159,8 +21242,29 @@ fallbackCells:
 
             : {};
 
+// ============================================================
+// 🔒 PERSISTENT SESSION + CELL DUPLICATE MAP
+//
+// Key:
+//     SESSION + GRID + CELL
+//
+// This survives page reloads because it is stored in
+// the monthly analytics document itself.
+// ============================================================
 
-          const previousCoveredCount =
+const existingSessionCellVisitMap =
+  (
+    existing.sessionCellVisitMap &&
+    typeof existing.sessionCellVisitMap === "object" &&
+    !Array.isArray(
+      existing.sessionCellVisitMap
+    )
+  )
+  ? {
+      ...existing.sessionCellVisitMap
+    }
+  : {};
+         const previousCoveredCount =
 
             Object.keys(
               existingVisitedCells
@@ -21168,46 +21272,278 @@ fallbackCells:
             .length;
 
 
-          // ====================================================
-          // ADD / INCREMENT CELLS
-          // ====================================================
+// ============================================================
+// 🔒 SESSION + GRID + CELL DEDUPLICATION
+//
+// IMPORTANT:
+//
+// Same session + same grid + same cell
+//                  ↓
+//                 +0
+//
+// Different session + same grid + same cell
+//                  ↓
+//                 +1
+//
+// This check uses the persistent Firestore map loaded above.
+// ============================================================
 
-          let newlyAddedCells =
-            0;
-
-
-          for(
-            const cellId
-            of touchedCells
-          ){
-
-            const previousValue =
-
-              Number(
-                existingVisitedCells[
-                  cellId
-                ] || 0
-              );
+let newlyAddedCells = 0;
 
 
-            if(
-              previousValue === 0
-            ){
+for(
+    const sessionCellKey
+    of suppliedSessionCellVisits
+){
 
-              newlyAddedCells++;
+    // ========================================================
+    // 🔎 DECODE
+    // ========================================================
 
+    let parsed = null;
+
+    try{
+
+        parsed =
+            JSON.parse(
+                sessionCellKey
+            );
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Invalid sessionCellKey",
+            sessionCellKey
+        );
+
+        continue;
+    }
+
+
+    // ========================================================
+    // 🔒 EXPECT:
+    //
+    // [
+    //   sessionId,
+    //   gridId,
+    //   cellId
+    // ]
+    // ========================================================
+
+    if(
+        !Array.isArray(parsed) ||
+        parsed.length !== 3
+    ){
+
+        continue;
+    }
+
+
+    const pairSessionId =
+        String(
+            parsed[0] || ""
+        ).trim();
+
+
+    const pairGridId =
+        String(
+            parsed[1] || ""
+        ).trim();
+
+
+    const pairCellId =
+        String(
+            parsed[2] || ""
+        ).trim();
+
+
+    // ========================================================
+    // 🔒 BASIC VALIDATION
+    // ========================================================
+
+    if(
+        !pairSessionId ||
+        !pairGridId ||
+        !pairCellId
+    ){
+
+        continue;
+    }
+
+
+    // ========================================================
+    // 🔒 GRID VALIDATION
+    // ========================================================
+
+    if(
+        pairGridId !==
+        String(gridId)
+    ){
+
+        continue;
+    }
+
+
+    // ========================================================
+    // 🔒 AUTHORITATIVE CELL VALIDATION
+    // ========================================================
+
+    if(
+        !touchedCells.has(
+            pairCellId
+        )
+    ){
+
+        continue;
+    }
+
+
+    // ========================================================
+    // 🔑 PERMANENT IDENTITY
+    //
+    // One unique identity:
+    //
+    // SESSION + GRID + CELL
+    // ========================================================
+
+    const persistentKey =
+        JSON.stringify([
+            pairSessionId,
+            pairGridId,
+            pairCellId
+        ]);
+
+
+    // ========================================================
+    // 🚫 ALREADY COUNTED
+    //
+    // This is the important part.
+    //
+    // GPS repeated 100 times
+    // same session
+    // same cell
+    //
+    // → STOP HERE
+    // → NO +1
+    // → NO analytics change
+    // ========================================================
+
+    if(
+        existingSessionCellVisitMap[
+            persistentKey
+        ]
+    ){
+
+        console.log(
+            "⏭ SAME SESSION + CELL — SKIP",
+            {
+                sessionId:
+                    pairSessionId,
+
+                gridId:
+                    pairGridId,
+
+                cellId:
+                    pairCellId
             }
+        );
+
+        continue;
+    }
 
 
+    // ========================================================
+    // 🆕 NEW SESSION + CELL
+    //
+    // Remember it permanently.
+    // ========================================================
+
+    existingSessionCellVisitMap[
+        persistentKey
+    ] = true;
+
+
+    // ========================================================
+    // 📊 CURRENT MONTHLY CELL INTENSITY
+    // ========================================================
+
+    const previousValue =
+        Number(
             existingVisitedCells[
-              cellId
-            ] =
-
-              previousValue + 1;
-
-          }
+                pairCellId
+            ] || 0
+        );
 
 
+    // ========================================================
+    // 🌿 FIRST TIME THIS CELL HAS EVER BEEN VISITED
+    // THIS MONTH
+    // ========================================================
+
+    if(
+        previousValue === 0
+    ){
+
+        newlyAddedCells++;
+    }
+
+
+    // ========================================================
+    // 🔥 ONE SESSION = ONE INTENSITY
+    // ========================================================
+
+    existingVisitedCells[
+        pairCellId
+    ] =
+        previousValue + 1;
+
+
+    console.log(
+        "🔥 NEW SESSION + CELL COUNTED",
+        {
+            sessionId:
+                pairSessionId,
+
+            gridId:
+                pairGridId,
+
+            cellId:
+                pairCellId,
+
+            previous:
+                previousValue,
+
+            next:
+                existingVisitedCells[
+                    pairCellId
+                ]
+        }
+    );
+
+}
+
+    console.log(
+        "🔥 CELL INTENSITY UPDATE",
+        {
+            gridId,
+
+            cellId,
+
+            previous:
+                previousValue,
+
+            uniqueSessions:
+                increment,
+
+            next:
+                existingVisitedCells[
+                    cellId
+                ]
+        }
+    );
+
+}
           const totalCoveredCount =
 
             Object.keys(
@@ -21435,15 +21771,17 @@ sessionDistances:
             // 🔥 PERSISTED REAL STAFF/SESSION VISIT IDENTITIES
             // ==================================================
 
-            visitSessions:
-              existingVisitSessions,
+visitSessions:
+    existingVisitSessions,
 
-            visitedCells:
-              existingVisitedCells,
+visitedCells:
+    existingVisitedCells,
 
-            previousCoveredCells:
-              previousCoveredCount,
+sessionCellVisitMap:
+    existingSessionCellVisitMap,
 
+previousCoveredCells:
+    previousCoveredCount,
             lastSessionAddedCells:
               newlyAddedCells,
 
@@ -21541,11 +21879,14 @@ sessionDistances:
 
             nextVisitCount,
 
-            acceptedCells:
-              touchedCells.size,
+                acceptedCells:
+        touchedCells.size,
 
-            distanceMeters:
-              safeDistance
+    sessionCellVisits:
+        suppliedSessionCellVisits.size,
+
+    distanceMeters:
+        safeDistance
 
           };
 
@@ -21690,6 +22031,9 @@ sessionDistances:
 
         suppliedVisitSessions:
           suppliedVisitSessions.size,
+
+sessionCellVisits:
+    suppliedSessionCellVisits.size,
 
         newlyAddedVisits:
           transactionResult
@@ -72872,7 +73216,10 @@ window.analyticsPointCount ??=
     Object.create(null);
 window.analyticsLastPoint ??=
     Object.create(null);
-
+window.analyticsSessionCellSeen ??=
+    Object.create(null);
+window.analyticsNewSessionCellCount ??=
+    Object.create(null);
 for(const s of analyticsStaff){
 
     try{
@@ -72883,7 +73230,19 @@ for(const s of analyticsStaff){
 if(!currentSessionId){
     continue;
 }
+// ==================================================
+// 🔥 LOCAL CELL MEMORY FOR THIS PATROL SESSION
+// ==================================================
 
+window.analyticsSessionCellSeen[
+    currentSessionId
+] ??=
+    new Set();
+
+const sessionCellSeen =
+    window.analyticsSessionCellSeen[
+        currentSessionId
+    ];
 // ==================================================
 // 🔥 ANALYTICS COUNTER FOR THIS SESSION
 // ==================================================
@@ -72892,7 +73251,9 @@ window.analyticsPointCount[
     currentSessionId
 ] ??=
     0;
-
+window.analyticsNewSessionCellCount[
+    currentSessionId
+] = 0;
         // already listening
 if(
     window.analyticsTrackListeners[
@@ -73193,59 +73554,208 @@ const unsubscribe =
                     // ==========================================
                     // 🔥 COLLECT ANALYTICS HITS
                     // ==========================================
+for(
+    const rawCellId
+    of touchedCells
+){
 
-                    for(
-                        const rawCellId
-                        of touchedCells
-                    ){
-
-                        const resolved =
-                            resolveAnalyticsCell(
-                                rawCellId
-                            );
-
-
-                        if(!resolved){
-                            continue;
-                        }
+    const resolved =
+        resolveAnalyticsCell(
+            rawCellId
+        );
 
 
-                        collectAnalyticsHit(
-
-                            resolved.gridId,
-
-                            resolved.cellId,
-
-                            currentPoint.lat,
-
-                            currentPoint.lon,
-
-                            [
-                                [
-                                    [
-                                        previousPoint.lat,
-                                        previousPoint.lon
-                                    ],
-                                    [
-                                        currentPoint.lat,
-                                        currentPoint.lon
-                                    ]
-                                ]
-                            ],
-
-                            s.cleanName,
-
-                            currentSessionId
-
-                        );
-
-                    }
+    if(!resolved){
+        continue;
+    }
 
 
-                    window.analyticsPointCount[
+    // ==================================================
+    // 🔥 SESSION + GRID + CELL IDENTITY
+    //
+    // This is the critical duplicate key.
+    //
+    // SAME:
+    //   session + grid + cell
+    //       ↓
+    //   ignored
+    //
+    // DIFFERENT SESSION:
+    //       ↓
+    //   accepted
+    // ==================================================
+
+    const sessionCellKey =
+        JSON.stringify([
+            currentSessionId,
+            resolved.gridId,
+            resolved.cellId
+        ]);
+
+
+    // ==================================================
+    // 🔒 SAME SESSION + SAME CELL
+    //
+    // GPS may report this cell every 30 seconds.
+    //
+    // DO NOT create another CELL contribution.
+    // ==================================================
+
+    const isNewSessionCell =
+        !sessionCellSeen.has(
+            sessionCellKey
+        );
+
+
+    // ==================================================
+    // 🔥 ALWAYS COLLECT THE GPS PATH
+    //
+    // collectAnalyticsHit() is still called so the
+    // coordinate path is not lost.
+    //
+    // The sessionCellVisits Set below decides whether
+    // this cell contributes to monthly intensity.
+    // ==================================================
+
+    collectAnalyticsHit(
+
+        resolved.gridId,
+
+        resolved.cellId,
+
+        currentPoint.lat,
+
+        currentPoint.lon,
+
+        [
+            [
+                [
+                    previousPoint.lat,
+                    previousPoint.lon
+                ],
+                [
+                    currentPoint.lat,
+                    currentPoint.lon
+                ]
+            ]
+        ],
+
+        s.cleanName,
+
+        currentSessionId
+
+    );
+
+
+    // ==================================================
+    // 🔥 NEW SESSION + CELL
+    // ==================================================
+
+    if(
+        isNewSessionCell
+    ){
+
+        // ----------------------------------------------
+        // Remember permanently for this browser/session
+        // ----------------------------------------------
+
+        sessionCellSeen.add(
+            sessionCellKey
+        );
+
+
+        // ----------------------------------------------
+        // Store the UNIQUE session-cell contribution
+        // in the grid analytics buffer.
+        // ----------------------------------------------
+
+        const buffer =
+            window.analyticsBuffer?.[
+                resolved.gridId
+            ];
+
+
+        if(
+            buffer
+        ){
+
+            buffer.sessionCellVisits ??=
+                new Set();
+
+
+            buffer.sessionCellVisits.add(
+                sessionCellKey
+            );
+
+        }
+
+
+        // ----------------------------------------------
+        // Count ONLY NEW session-cell contributions.
+        // This controls AUTO FLUSH.
+        // ----------------------------------------------
+
+        window.analyticsNewSessionCellCount[
+            currentSessionId
+        ] ??=
+            0;
+
+
+        window.analyticsNewSessionCellCount[
+            currentSessionId
+        ]++;
+
+
+        console.log(
+            "🟢 NEW SESSION-CELL",
+            {
+                session:
+                    currentSessionId,
+
+                grid:
+                    resolved.gridId,
+
+                cell:
+                    resolved.cellId
+            }
+        );
+
+    }
+
+    else{
+
+        console.log(
+            "⏭ DUPLICATE SESSION-CELL",
+            {
+                session:
+                    currentSessionId,
+
+                grid:
+                    resolved.gridId,
+
+                cell:
+                    resolved.cellId
+            }
+        );
+
+    }
+
+}
+
+
+                    // ==================================================
+// 🔥 COUNT ONLY NEW SESSION + CELL CONTRIBUTIONS
+//
+// Repeated GPS in the same session/cell = 0.
+//
+// Therefore repeated GPS cannot cause an analytics
+// Firestore flush by itself.
+// ==================================================
+
+window.analyticsNewSessionCellCount[
     currentSessionId
-] +=
-    touchedCells.length;
+] ??=
+    0;
 
 
                     previousPoint =
@@ -73259,13 +73769,32 @@ const unsubscribe =
 
                 }
 
-
 // ==================================================
 // 🔥 AUTO FLUSH
+//
+// IMPORTANT:
+//
+// Flush based on UNIQUE SESSION + CELL contributions.
+//
+// NOT based on raw GPS points.
+//
+// Therefore:
+//
+// A
+// A
+// A
+// A
+// A
+//
+// = only ONE contribution.
+//
+// A + B + C + D + E
+//
+// = FIVE unique contributions → flush.
 // ==================================================
 
 if(
-    window.analyticsPointCount[
+    window.analyticsNewSessionCellCount[
         currentSessionId
     ] >= 5 &&
 
@@ -73275,11 +73804,12 @@ if(
 ){
 
     console.log(
-        "📤 AUTO FLUSH",
-        window.analyticsPointCount[
+        "📤 AUTO FLUSH — UNIQUE SESSION-CELLS",
+        window.analyticsNewSessionCellCount[
             currentSessionId
         ]
     );
+
 
     // ==================================================
     // 🛡 SAFE FLUSH FUNCTION CHECK
@@ -73290,14 +73820,21 @@ if(
         "function"
     ){
 
-        window.analyticsPointCount[
+        // ----------------------------------------------
+        // Reset UNIQUE contribution counter.
+        // ----------------------------------------------
+
+        window.analyticsNewSessionCellCount[
             currentSessionId
-        ] = 0;
+        ] =
+            0;
+
 
         try{
 
             const flushResult =
                 window.flushAnalyticsBuffer();
+
 
             // ==================================================
             // 🛡 HANDLE PROMISE SAFELY
@@ -76430,7 +76967,57 @@ async function flushAnalyticsBuffer(){
           }
         }
       }
+// ========================================================
+// 🔥 MERGE SESSION + CELL VISITS
+//
+// Required for CELL INTENSITY.
+//
+// If Firestore fails, these identities MUST be restored
+// so the retry does not lose them.
+// ========================================================
 
+if(
+  !(
+    existing.sessionCellVisits
+    instanceof Set
+  )
+){
+
+  existing.sessionCellVisits =
+    new Set(
+      Array.isArray(
+        existing.sessionCellVisits
+      )
+        ? existing.sessionCellVisits
+        : []
+    );
+
+}
+
+
+if(
+  data?.sessionCellVisits
+  instanceof Set
+){
+
+  for(
+    const sessionCellKey
+    of data.sessionCellVisits
+  ){
+
+    if(
+      sessionCellKey
+    ){
+
+      existing.sessionCellVisits.add(
+        sessionCellKey
+      );
+
+    }
+
+  }
+
+}
       // ========================================================
       // PRESERVE OPTIONAL METADATA
       // ========================================================
@@ -76561,6 +77148,12 @@ async function flushAnalyticsBuffer(){
               )
 
             : new Set();
+
+// ====================================================
+// 🔥 UNIQUE SESSION + CELL CONTRIBUTIONS
+// ====================================================
+
+
           // ====================================================
           // 🔥 REAL STAFF + PATROL SESSIONS
           //
@@ -76588,6 +77181,30 @@ async function flushAnalyticsBuffer(){
                   ? data.visitSessions
                   : []
               );
+
+
+// ====================================================
+// 🔥 SESSION + CELL VISITS
+//
+// These are the ONLY entries that are allowed to
+// increase CELL INTENSITY.
+// ====================================================
+
+const sessionCellVisits =
+    data?.sessionCellVisits
+    instanceof Set
+
+    ? new Set(
+        data.sessionCellVisits
+    )
+
+    : new Set(
+        Array.isArray(
+            data?.sessionCellVisits
+        )
+        ? data.sessionCellVisits
+        : []
+    );
 
           // ====================================================
           // 🔒 AUTHORITATIVE OWNERSHIP FILTER
@@ -76644,16 +77261,52 @@ async function flushAnalyticsBuffer(){
           // NOTHING USEFUL
           // ====================================================
 
-          if(
+// ====================================================
+// 🔥 NOTHING NEW TO COUNT
+//
+// GPS coordinates may exist because the patrol remained
+// inside a cell that was already counted for this session.
+//
+// In that situation:
+//
+//     GPS path exists
+//     BUT
+//     sessionCellVisits = 0
+//
+// Therefore:
+//
+//     NO FIRESTORE ANALYTICS WRITE
+//
+// Keep the buffer so a later NEW session-cell can carry
+// the accumulated path forward.
+// ====================================================
 
-            coords.length === 0
+if(
+  sessionCellVisits.size === 0
+){
 
-            &&
+  console.log(
+    "⏭ ANALYTICS SKIP — NO NEW SESSION-CELL",
+    {
+      gridId,
+      points:
+        coords.length,
+      cells:
+        authoritativeCells.size
+    }
+  );
 
-            authoritativeCells.size === 0
 
-          ){
+  // IMPORTANT:
+  // Put the untouched data back.
+  restoreGridBuffer(
+    gridId,
+    data
+  );
 
+
+  continue;
+}
             console.warn(
               "⚠ Empty analytics grid",
               gridId
@@ -76677,27 +77330,29 @@ async function flushAnalyticsBuffer(){
           // simply because coordinates are unavailable.
           // ====================================================
 
-                    console.log(
-            "🔥 ANALYTICS WRITE",
-            {
-              gridId,
+console.log(
+  "🔥 ANALYTICS WRITE",
+  {
+    gridId,
 
-              monthKey,
+    monthKey,
 
-              points:
-                coords.length,
+    points:
+      coords.length,
 
-              bufferedCells:
-                bufferedCells.size,
+    bufferedCells:
+      bufferedCells.size,
 
-              authoritativeCells:
-                authoritativeCells.size,
+    authoritativeCells:
+      authoritativeCells.size,
 
-              visitSessions:
-                visitSessions.size
-            }
-          );
+    visitSessions:
+      visitSessions.size,
 
+    sessionCellVisits:
+      sessionCellVisits.size
+  }
+);
 
           // ====================================================
           // WRITE
@@ -76744,10 +77399,11 @@ const transactionResult =
 
     authoritativeCells,
 
-    visitSessions
+    visitSessions,
+
+    sessionCellVisits
 
   );
-
 
 
 
