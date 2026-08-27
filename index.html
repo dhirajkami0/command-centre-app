@@ -10644,54 +10644,50 @@ else{
 }
 
 // ==============================================
-// 🐅 LOAD WILDLIFE SIGHTINGS
+// 🐅 WILDLIFE REALTIME — SINGLE SOURCE
+// ------------------------------------------------
+// IMPORTANT:
+//
+// DO NOT call loadWildlifeSightings() here.
+//
+// startWildlifeListener() now handles:
+//
+//   Firestore 24-hour query
+//          ↓
+//      ONE onSnapshot()
+//          ↓
+//   Initial 24-hour data
+//          ↓
+//   Realtime added / modified / removed
+//
+// Therefore there is NO separate initial
+// getDocs() call from this startup block.
 // ==============================================
 
 if(
 
-    typeof loadWildlifeSightings ===
+    typeof startWildlifeListener ===
     "function"
 
 ){
 
     console.log(
-        "🐅 Loading wildlife sightings..."
+        "🐅 Starting wildlife 24-hour realtime..."
     );
 
-    await loadWildlifeSightings();
+
+    await startWildlifeListener();
+
 
     console.log(
-        "✅ Wildlife sightings loaded"
+        "✅ Wildlife 24-hour realtime active"
     );
-
-    // ==========================================
-    // START REALTIME LISTENER
-    // ==========================================
-
-    if(
-
-        typeof startWildlifeListener ===
-        "function"
-
-    ){
-
-        console.log(
-            "🐅 Starting wildlife realtime..."
-        );
-
-        startWildlifeListener();
-
-        console.log(
-            "✅ Wildlife realtime active"
-        );
-
-    }
 
 }
 else{
 
     console.warn(
-        "⚠ loadWildlifeSightings() unavailable"
+        "⚠ startWildlifeListener() unavailable"
     );
 
 }
@@ -64234,13 +64230,27 @@ function stopHECListener(){
 // =====================================================
 // =====================================================
 // 🐅 WILDLIFE REALTIME LISTENER
+// -----------------------------------------------------
+// FINAL READ-OPTIMIZED DESIGN
+//
+// ONE Firestore listener only
+// LAST 24 HOURS ONLY
+//
+// Initial onSnapshot()
+//     ↓
+// gives initial 24-hour wildlife data
+//
+// Future onSnapshot() changes
+//     ↓
+// added / modified / removed
+//
+// NO separate getDocs() from this listener.
 // =====================================================
 
 window.wildlifeListener =
-
     window.wildlifeListener ||
-
     null;
+
 
 async function startWildlifeListener(){
 
@@ -64251,273 +64261,381 @@ async function startWildlifeListener(){
         // =================================================
 
         const role =
-
             String(
-
                 window.userProfile?.role ||
-
                 ""
-
             )
-
             .trim()
             .toUpperCase();
 
-        if(
 
+        if(
             role !== "ADMIN"
-
-        ){
-
-            return;
-
-        }
-
-        // =================================================
-        // ALREADY RUNNING
-        // =================================================
-
-        if(
-
-            window.wildlifeListener
-
         ){
 
             console.log(
-
-                "Wildlife Listener already running"
-
+                "🔒 Wildlife realtime skipped — ADMIN only:",
+                role || "UNKNOWN"
             );
 
             return;
 
         }
 
-        console.log(
-
-            "🐅 Starting Wildlife Listener..."
-
-        );
-
-        const {
-
-            collection,
-
-            onSnapshot
-
-        } = window.fb;
 
         // =================================================
-        // START LISTENER
+        // ALREADY RUNNING
         // =================================================
 
-// =================================================
-// START WILDLIFE REALTIME LISTENER
-// =================================================
-
-window.wildlifeListener =
-
-    onSnapshot(
-
-        collection(
-            window.db,
-            "wildlife_sightings"
-        ),
-
-        async function(
-            snapshot
+        if(
+            window.wildlifeListener
         ){
 
-            try{
+            console.log(
+                "⏭ Wildlife Listener already running"
+            );
 
-                // =============================================
-                // ⚡ PROCESS CHANGED DOCUMENTS ONLY
-                // =============================================
+            return;
 
-                for(
-                    const change of
-                    snapshot.docChanges()
+        }
+
+
+        console.log(
+            "🐅 Starting Wildlife 24-hour Realtime Listener..."
+        );
+
+
+        // =================================================
+        // FIREBASE FUNCTIONS
+        // =================================================
+
+        const {
+            collection,
+            query,
+            where,
+            onSnapshot
+        } = window.fb;
+
+
+        // =================================================
+        // SAFETY CHECK
+        // =================================================
+
+        if(
+            !window.db ||
+            !collection ||
+            !query ||
+            !where ||
+            !onSnapshot
+        ){
+
+            console.error(
+                "❌ Wildlife realtime Firebase functions unavailable"
+            );
+
+            return;
+
+        }
+
+
+        // =================================================
+        // 🕒 LAST 24 HOURS CUTOFF
+        // =================================================
+        //
+        // IMPORTANT:
+        //
+        // The listener only receives documents whose
+        // sighting_datetime is within the last 24 hours.
+        //
+        // This replaces the previous FULL COLLECTION
+        // listener.
+        //
+        // =================================================
+
+        const wildlifeCutoff =
+            new Date(
+                Date.now() -
+                (
+                    24 *
+                    60 *
+                    60 *
+                    1000
+                )
+            );
+
+
+        console.log(
+            "🐅 Wildlife realtime cutoff:",
+            wildlifeCutoff.toISOString()
+        );
+
+
+        // =================================================
+        // 🔎 LAST-24-HOUR FIRESTORE QUERY
+        // =================================================
+
+        const wildlifeQuery =
+            query(
+
+                collection(
+                    window.db,
+                    "wildlife_sightings"
+                ),
+
+                where(
+                    "sighting_datetime",
+                    ">=",
+                    wildlifeCutoff
+                )
+
+            );
+
+
+        // =================================================
+        // 🔥 ONE REALTIME LISTENER
+        // =================================================
+        //
+        // IMPORTANT:
+        //
+        // onSnapshot() gives us:
+        //
+        // 1. INITIAL matching documents
+        // 2. FUTURE added documents
+        // 3. FUTURE modified documents
+        // 4. FUTURE removed documents
+        //
+        // Therefore NO getDocs() is needed here.
+        //
+        // =================================================
+
+        window.wildlifeListener =
+
+            onSnapshot(
+
+                wildlifeQuery,
+
+                async function(
+                    snapshot
                 ){
 
-                    const docSnap =
-                        change.doc;
+                    try{
 
+                        // =============================================
+                        // ⚡ PROCESS CHANGED DOCUMENTS ONLY
+                        // =============================================
+                        //
+                        // For the initial snapshot Firestore reports
+                        // the matching documents as "added".
+                        //
+                        // After that we receive only changes.
+                        //
+                        // =============================================
 
-                    const data =
-                        docSnap.data() ||
-                        {};
-
-
-                    const normalized =
-                        {
-                            ...data,
-
-                            firestore_id:
-                                data.firestore_id ||
-                                docSnap.id
-                        };
-
-
-                    const key =
-                        normalized.firestore_id;
-
-
-                    if(
-                        !key
-                    ){
-
-                        console.warn(
-                            "⚠️ Wildlife realtime document without ID skipped"
-                        );
-
-                        continue;
-
-                    }
-
-
-                    // =============================================
-                    // 🗑 REMOVED
-                    // =============================================
-
-                    if(
-                        change.type ===
-                        "removed"
-                    ){
-
-                        delete
-                            window.wildlifeCache[
-                                key
-                            ];
-
-
-                        const marker =
-                            window.wildlifeMarkers?.[
-                                key
-                            ];
-
-
-                        if(
-                            marker
+                        for(
+                            const change of
+                            snapshot.docChanges()
                         ){
 
-                            try{
+                            const docSnap =
+                                change.doc;
+
+
+                            const data =
+                                docSnap.data() ||
+                                {};
+
+
+                            const normalized =
+                                {
+                                    ...data,
+
+                                    firestore_id:
+                                        data.firestore_id ||
+                                        docSnap.id
+                                };
+
+
+                            const key =
+                                normalized.firestore_id;
+
+
+                            if(
+                                !key
+                            ){
+
+                                console.warn(
+                                    "⚠️ Wildlife realtime document without ID skipped"
+                                );
+
+                                continue;
+
+                            }
+
+
+                            // =============================================
+                            // 🗑 REMOVED
+                            // =============================================
+
+                            if(
+                                change.type ===
+                                "removed"
+                            ){
+
+                                delete
+                                    window.wildlifeCache[
+                                        key
+                                    ];
+
+
+                                const marker =
+                                    window.wildlifeMarkers?.[
+                                        key
+                                    ];
+
 
                                 if(
-                                    window.activeWildlifePopupId ===
-                                    key
+                                    marker
                                 ){
 
-                                    window.activeWildlifePopupId =
-                                        null;
+                                    try{
 
-                                    window.activeWildlifePopupMarker =
-                                        null;
+                                        if(
+                                            window.activeWildlifePopupId ===
+                                            key
+                                        ){
+
+                                            window.activeWildlifePopupId =
+                                                null;
+
+                                            window.activeWildlifePopupMarker =
+                                                null;
+
+                                        }
+
+
+                                        wildlifeLayer.removeLayer(
+                                            marker
+                                        );
+
+                                    }
+                                    catch(err){
+
+                                        console.warn(
+                                            "⚠️ Wildlife marker removal failed:",
+                                            key,
+                                            err
+                                        );
+
+                                    }
+
+
+                                    delete
+                                        window.wildlifeMarkers[
+                                            key
+                                        ];
 
                                 }
 
 
-                                wildlifeLayer.removeLayer(
-                                    marker
-                                );
-
-                            }
-                            catch(err){
-
-                                console.warn(
-                                    "⚠️ Wildlife marker removal failed:",
-                                    key,
-                                    err
-                                );
-
-                            }
-
-
-                            delete
-                                window.wildlifeMarkers[
+                                console.log(
+                                    "🗑 Wildlife removed:",
                                     key
-                                ];
+                                );
+
+
+                                continue;
+
+                            }
+
+
+                            // =============================================
+                            // 💾 ADD / MODIFY → CACHE
+                            // =============================================
+
+                            window.wildlifeCache[
+                                key
+                            ] =
+                                {
+                                    ...normalized
+                                };
+
+
+                            // =============================================
+                            // ⚡ EXISTING WILDLIFE RENDERER
+                            // ------------------------------------------------
+                            // IMPORTANT:
+                            //
+                            // Passing an ARRAY tells
+                            // loadWildlifeSightings() that this is
+                            // realtime data.
+                            //
+                            // Therefore its realtime branch is used
+                            // and it does NOT execute getDocs().
+                            // =============================================
+
+                            await loadWildlifeSightings(
+                                [
+                                    normalized
+                                ]
+                            );
+
+
+                            console.log(
+                                "⚡ Wildlife realtime:",
+                                change.type,
+                                key
+                            );
 
                         }
 
+                    }
+                    catch(err){
 
-                        console.log(
-                            "🗑 Wildlife removed:",
-                            key
+                        console.error(
+                            "❌ Wildlife realtime processing failed:",
+                            err
                         );
-
-
-                        continue;
 
                     }
 
+                },
 
-                    // =============================================
-                    // 💾 ADD / MODIFY → CACHE
-                    // =============================================
+                function(err){
 
-                    window.wildlifeCache[
-                        key
-                    ] =
-                        {
-                            ...normalized
-                        };
-
-
-                    // =============================================
-                    // ⚡ EXISTING RENDERER
-                    // ------------------------------------------------
-                    // Pass ONLY this changed document.
-                    //
-                    // loadWildlifeSightings() now detects that
-                    // realtimeWildlife is an array and therefore
-                    // DOES NOT call getDocs().
-                    // =============================================
-
-                    await loadWildlifeSightings(
-                        [
-                            normalized
-                        ]
+                    console.error(
+                        "❌ Wildlife Firestore listener error:",
+                        err
                     );
 
+                    // =============================================
+                    // IMPORTANT:
+                    // Clear the handle if listener fails.
+                    // This allows a future controlled restart.
+                    // =============================================
 
-                    console.log(
-                        "⚡ Wildlife realtime:",
-                        change.type,
-                        key
-                    );
+                    window.wildlifeListener =
+                        null;
 
                 }
 
-            }
-            catch(err){
+            );
 
-                console.error(
-                    "❌ Wildlife realtime processing failed:",
-                    err
-                );
 
-            }
-
-        }
-
-    );
         console.log(
-
-            "✅ Wildlife Listener Started"
-
+            "✅ Wildlife 24-hour Listener Started"
         );
 
-    }
 
+    }
     catch(err){
 
         console.error(
-
-            "Wildlife Listener Error",
-
+            "❌ Wildlife Listener Error:",
             err
-
         );
+
+        window.wildlifeListener =
+            null;
 
     }
 
@@ -91870,14 +91988,67 @@ if (typeof map !== 'undefined') {
                     return;
                 }
 
-                // 🐅 WILDLIFE ON — AVAILABLE TO EVERY LOGGED-IN USER
-                if (layerName === "🐅 Wildlife") {
-                    typeof loadWildlifeSightings === 'function' && await loadWildlifeSightings();
-                    typeof startWildlifeListener === 'function' && startWildlifeListener();
-                    console.log("🐅 Wildlife Enabled");
-                    return;
-                }
+// 🐅 WILDLIFE ON — AVAILABLE TO EVERY LOGGED-IN USER
+if (
+    layerName === "🐅 Wildlife"
+) {
 
+    // =====================================================
+    // 🐅 START SINGLE 24-HOUR REALTIME LISTENER
+    // -----------------------------------------------------
+    // DO NOT call loadWildlifeSightings() here.
+    //
+    // startWildlifeListener() provides:
+    //
+    //   1. Initial 24-hour wildlife data
+    //   2. Added documents
+    //   3. Modified documents
+    //   4. Removed documents
+    //
+    // This avoids the separate getDocs() read.
+    // =====================================================
+
+    if (
+        typeof startWildlifeListener ===
+        "function"
+    ) {
+
+        await startWildlifeListener();
+
+    }
+    else {
+
+        console.warn(
+            "⚠ startWildlifeListener() unavailable"
+        );
+
+    }
+
+
+    // =====================================================
+    // 👁 MAKE WILDLIFE LAYER VISIBLE
+    // =====================================================
+
+    if (
+        window.wildlifeLayer &&
+        !map.hasLayer(
+            window.wildlifeLayer
+        )
+    ) {
+
+        window.wildlifeLayer.addTo(
+            map
+        );
+
+    }
+
+
+    console.log(
+        "🐅 Wildlife Enabled"
+    );
+
+    return;
+}
 if (layerName === "⚠️ Irregularities") {
 
     if (!window.irregularityLayer) {
