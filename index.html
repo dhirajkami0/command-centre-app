@@ -67949,6 +67949,31 @@ window.__DUTY_CACHE_READY__ =
 window.__DUTY_CACHE_PROMISE__ =
   window.__DUTY_CACHE_PROMISE__ || null;
 
+// ============================================================
+// ⏱ STAFF PROFILE FIRESTORE REFRESH TTL
+// ------------------------------------------------------------
+// Staff profiles are mostly static.
+//
+// Do NOT perform a full staff_profiles Firestore read
+// every time a caller asks for staff data.
+//
+// Cache:
+//   IDB → immediate
+//
+// Firestore:
+//   background freshness check only when TTL expires
+//
+// 15 minutes = 900000 ms
+// ============================================================
+
+window.__STAFF_PROFILES_REFRESH_TTL__ =
+  15 * 60 * 1000;
+
+window.__STAFF_PROFILES_LAST_REFRESH__ =
+  window.__STAFF_PROFILES_LAST_REFRESH__ || 0;
+
+window.__STAFF_PROFILES_REFRESH_PROMISE__ =
+  window.__STAFF_PROFILES_REFRESH_PROMISE__ || null;
 
 // ============================================================
 // ⚡ BUILD STAFF RUNTIME INDEX
@@ -68255,279 +68280,376 @@ async function saveStaffProfilesToIDB(
 
 
 // ============================================================
-// 🔥 FIRESTORE STAFF REFRESH
-// ============================================================
-
-// ============================================================
-// 🔥 FIRESTORE STAFF REFRESH
-//
+// 🔥 FIRESTORE STAFF REFRESH — TTL OPTIMIZED
+// ------------------------------------------------------------
 // STAFF PROFILES ARE MOSTLY STATIC.
 //
-// DESIGN:
+// FLOW:
 //
-// Existing IDB cache
-//      ↓
-// Staff UI immediately available
+// IDB CACHE
+//    ↓
+// immediately usable
 //
-// Meanwhile:
-//      ↓
-// Firestore getDocs()
-//      ↓
-// Compare with current profiles
+// Firestore refresh:
+//    ↓
+// only when TTL expired
 //
-// SAME
-//      ↓
-// Do nothing
+// Multiple callers:
+//    ↓
+// share ONE refresh promise
 //
-// CHANGED
-//      ↓
-// Replace memory profiles
-//      ↓
-// Rebuild indexes
-//      ↓
-// Save IDB
+// SAME DATA:
+//    ↓
+// no index rebuild
+// no IDB write
 //
-// IMPORTANT:
-// - NO realtime listener
-// - NO polling loop
-// - NO unnecessary IDB write
-// - NO unnecessary index rebuild
+// CHANGED DATA:
+//    ↓
+// update RAM
+// rebuild indexes
+// save IDB
 // ============================================================
 
 async function refreshStaffProfilesFromFirestore(){
 
+  // ==========================================================
+  // ⏱ TTL CHECK
+  // ==========================================================
+
+  const now =
+    Date.now();
+
+  const lastRefresh =
+    Number(
+      window.__STAFF_PROFILES_LAST_REFRESH__ || 0
+    );
+
+  const ttl =
+    Number(
+      window.__STAFF_PROFILES_REFRESH_TTL__ ||
+      (15 * 60 * 1000)
+    );
+
+
+  // ==========================================================
+  // 🟢 FRESH ENOUGH
+  // ----------------------------------------------------------
+  // Do NOT perform another Firestore read.
+  // ==========================================================
+
+  if(
+    lastRefresh > 0 &&
+    (now - lastRefresh) < ttl
+  ){
+
+    console.log(
+      "⏸ STAFF PROFILES FRESH — FIRESTORE READ SKIPPED:",
+      Math.round(
+        (now - lastRefresh) / 1000
+      ),
+      "sec old"
+    );
+
+    return false;
+  }
+
+
+  // ==========================================================
+  // 🔒 SHARE ONE ACTIVE REFRESH
+  // ----------------------------------------------------------
+  // If another caller is already refreshing,
+  // wait for the same promise.
+  // ==========================================================
+
+  if(
+    window.__STAFF_PROFILES_REFRESH_PROMISE__
+  ){
+
+    console.log(
+      "⏳ STAFF PROFILE REFRESH ALREADY RUNNING — SHARING"
+    );
+
+    return await
+      window.__STAFF_PROFILES_REFRESH_PROMISE__;
+  }
+
+
+  // ==========================================================
+  // 🚀 CREATE SINGLE REFRESH PROMISE
+  // ==========================================================
+
+  window.__STAFF_PROFILES_REFRESH_PROMISE__ =
+    (async()=>{
+
+      try{
+
+        // ====================================================
+        // 🔐 FIREBASE READY
+        // ====================================================
+
+        await waitForFirebaseReady();
+
+
+        if(
+          !window.fb ||
+          !window.db ||
+          typeof window.fb.getDocs !==
+            "function"
+        ){
+
+          console.warn(
+            "⚠ Firebase unavailable for staff refresh"
+          );
+
+          return false;
+        }
+
+
+        // ====================================================
+        // ⏱ DOUBLE-CHECK TTL
+        // ----------------------------------------------------
+        // Another caller may have completed the refresh
+        // while this request was waiting for Firebase.
+        // ====================================================
+
+        const checkNow =
+          Date.now();
+
+        const checkLastRefresh =
+          Number(
+            window.__STAFF_PROFILES_LAST_REFRESH__ || 0
+          );
+
+        if(
+          checkLastRefresh > 0 &&
+          (
+            checkNow -
+            checkLastRefresh
+          ) < ttl
+        ){
+
+          console.log(
+            "⏸ STAFF REFRESH BECAME FRESH — READ SKIPPED"
+          );
+
+          return false;
+        }
+
+
+        console.time(
+          "REFRESH_STAFF_PROFILES"
+        );
+
+        console.log(
+          "🌐 STAFF PROFILES — FIRESTORE REFRESH"
+        );
+
+
+        // ====================================================
+        // 📖 ONE FULL FIRESTORE READ
+        // ====================================================
+
+        const snap =
+          await window.fb.getDocs(
+            window.fb.collection(
+              window.db,
+              "staff_profiles"
+            )
+          );
+
+
+        // ====================================================
+        // 🧹 NORMALIZE
+        // ====================================================
+
+        const freshProfiles =
+          snap.docs.map(
+            doc => {
+
+              const d =
+                doc.data() || {};
+
+              return {
+
+                name:
+                  d.name || "",
+
+                role:
+                  d.role || "",
+
+                division:
+                  d.division || "",
+
+                range:
+                  d.range || "",
+
+                beat:
+                  d.beat || ""
+
+              };
+
+            }
+          );
+
+
+        // ====================================================
+        // 🔎 COMPARE WITH CURRENT RAM
+        // ====================================================
+
+        const currentProfiles =
+          Array.isArray(
+            window.allStaffProfiles
+          )
+            ? window.allStaffProfiles
+            : [];
+
+
+        const profilesChanged =
+          JSON.stringify(
+            currentProfiles
+          ) !==
+          JSON.stringify(
+            freshProfiles
+          );
+
+
+        // ====================================================
+        // 🕒 MARK SUCCESSFUL FIRESTORE REFRESH
+        // ----------------------------------------------------
+        // IMPORTANT:
+        // Only mark the TTL after Firestore successfully
+        // returned data.
+        // ====================================================
+
+        window.__STAFF_PROFILES_LAST_REFRESH__ =
+          Date.now();
+
+
+        // ====================================================
+        // ✅ NOTHING CHANGED
+        // ====================================================
+
+        if(
+          !profilesChanged
+        ){
+
+          console.log(
+            "✅ STAFF PROFILES UNCHANGED — CACHE REMAINS VALID:",
+            freshProfiles.length
+          );
+
+          console.timeEnd(
+            "REFRESH_STAFF_PROFILES"
+          );
+
+          return false;
+        }
+
+
+        // ====================================================
+        // 🔥 STAFF PROFILES CHANGED
+        // ====================================================
+
+        console.log(
+          "🔄 STAFF PROFILES CHANGED — UPDATING CACHE:",
+          {
+            oldCount:
+              currentProfiles.length,
+
+            newCount:
+              freshProfiles.length
+          }
+        );
+
+
+        // ====================================================
+        // 🧠 UPDATE RAM
+        // ====================================================
+
+        window.allStaffProfiles =
+          freshProfiles;
+
+
+        window.__STAFF_PROFILES_SOURCE__ =
+          "FIRESTORE";
+
+
+        window.__STAFF_PROFILES_FROM_IDB__ =
+          false;
+
+
+        window.__STAFF_PROFILES_CACHE_TIME__ =
+          Date.now();
+
+
+        // ====================================================
+        // ⚡ REBUILD INDEXES ONLY WHEN CHANGED
+        // ====================================================
+
+        buildDutyStaffIndexes();
+
+
+        // ====================================================
+        // 💾 WRITE IDB ONLY WHEN CHANGED
+        // ====================================================
+
+        await saveStaffProfilesToIDB(
+          freshProfiles
+        );
+
+
+        console.log(
+          "✅ STAFF PROFILES UPDATED + CACHED:",
+          freshProfiles.length
+        );
+
+
+        console.timeEnd(
+          "REFRESH_STAFF_PROFILES"
+        );
+
+
+        return true;
+
+      }
+
+      catch(err){
+
+        console.error(
+          "❌ STAFF FIRESTORE REFRESH FAILED:",
+          err
+        );
+
+        console.timeEnd(
+          "REFRESH_STAFF_PROFILES"
+        );
+
+        return false;
+
+      }
+
+    })();
+
+
   try{
 
-
-    if(
-      window.__STAFF_PROFILES_REFRESHING__
-    ){
-
-      console.log(
-        "⏸ Staff profile refresh already running"
-      );
-
-      return false;
-
-    }
-
-    window.__STAFF_PROFILES_REFRESHING__ =
-      true;
-    await waitForFirebaseReady();
-
-
-    // ========================================================
-    // 🔐 FIREBASE AVAILABILITY
-    // ========================================================
-
-    if(
-      !window.fb ||
-      !window.db ||
-      !window.fb.getDocs
-    ){
-
-      console.warn(
-        "⚠ Firebase unavailable for staff refresh"
-      );
-
-      return false;
-
-    }
-
-
-    console.time(
-      "REFRESH_STAFF_PROFILES"
-    );
-
-
-    console.log(
-      "🌐 REFRESHING STAFF PROFILES FROM FIRESTORE..."
-    );
-
-
-    // ========================================================
-    // 📖 FIRESTORE READ
-    // ========================================================
-
-    const snap =
-      await window.fb.getDocs(
-        window.fb.collection(
-          window.db,
-          "staff_profiles"
-        )
-      );
-
-
-    // ========================================================
-    // 🧹 NORMALIZE FIRESTORE DATA
-    // ========================================================
-
-    const freshProfiles =
-      snap.docs.map(
-        doc => {
-
-          const d =
-            doc.data() || {};
-
-          return {
-
-            name:
-              d.name || "",
-
-            role:
-              d.role || "",
-
-            division:
-              d.division || "",
-
-            range:
-              d.range || "",
-
-            beat:
-              d.beat || ""
-
-          };
-
-        }
-      );
-
-
-    // ========================================================
-    // 🔎 COMPARE WITH CURRENT MEMORY
-    //
-    // Current memory normally came from IDB.
-    //
-    // If Firestore contains exactly the same profiles,
-    // there is NOTHING to update.
-    // ========================================================
-
-    const currentProfiles =
-      Array.isArray(
-        window.allStaffProfiles
-      )
-        ? window.allStaffProfiles
-        : [];
-
-
-    const profilesChanged =
-      JSON.stringify(
-        currentProfiles
-      ) !==
-      JSON.stringify(
-        freshProfiles
-      );
-
-
-    // ========================================================
-    // ✅ NOTHING CHANGED
-    // ========================================================
-
-    if(
-      !profilesChanged
-    ){
-
-      console.log(
-        "✅ STAFF PROFILES UNCHANGED — CACHE REMAINS VALID:",
-        freshProfiles.length
-      );
-
-
-      console.timeEnd(
-        "REFRESH_STAFF_PROFILES"
-      );
-
-
-      return false;
-
-    }
-
-
-    // ========================================================
-    // 🔥 STAFF PROFILES ACTUALLY CHANGED
-    // ========================================================
-
-    console.log(
-      "🔄 STAFF PROFILES CHANGED — UPDATING CACHE:",
-      {
-        oldCount:
-          currentProfiles.length,
-
-        newCount:
-          freshProfiles.length
-      }
-    );
-
-
-    // ========================================================
-    // 🧠 UPDATE MEMORY
-    // ========================================================
-
-    window.allStaffProfiles =
-      freshProfiles;
-
-
-    window.__STAFF_PROFILES_SOURCE__ =
-      "FIRESTORE";
-
-
-    window.__STAFF_PROFILES_FROM_IDB__ =
-      false;
-
-
-    window.__STAFF_PROFILES_CACHE_TIME__ =
-      Date.now();
-
-
-    // ========================================================
-    // ⚡ REBUILD LOCAL STAFF INDEXES
-    // ========================================================
-
-    buildDutyStaffIndexes();
-
-
-    // ========================================================
-    // 💾 PERSIST NEW VERSION TO IDB
-    // ========================================================
-
-    await saveStaffProfilesToIDB(
-      freshProfiles
-    );
-
-
-    console.log(
-      "✅ STAFF PROFILES UPDATED + CACHED:",
-      freshProfiles.length
-    );
-
-
-    console.timeEnd(
-      "REFRESH_STAFF_PROFILES"
-    );
-
-
-    return true;
+    return await
+      window.__STAFF_PROFILES_REFRESH_PROMISE__;
 
   }
 
-  catch(err){
+  finally{
 
-    console.error(
-      "❌ STAFF FIRESTORE REFRESH FAILED:",
-      err
-    );
+    // ========================================================
+    // 🔓 RELEASE SHARED PROMISE
+    // ========================================================
 
-
-    console.timeEnd(
-      "REFRESH_STAFF_PROFILES"
-    );
-
-
-    return false;
+    window.__STAFF_PROFILES_REFRESH_PROMISE__ =
+      null;
 
   }
 
 }
-
 // ============================================================
 // ⚡ CACHE-FIRST STAFF LOADER
 // ============================================================
