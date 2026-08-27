@@ -17993,100 +17993,33 @@ async function preloadAllCompartments(){
   }
 }
 // ============================================================
-// 🤖 GREENGUARD AI ACCESS CONTROL
-//
-// ADMIN:
-//   ✓ Button exists
-//   ✓ Button attached directly to document.body
-//   ✓ Button visible
-//   ✓ Button clickable
-//
-// NON-ADMIN:
-//   ✓ Button hidden
-//   ✓ AI overlay closed
-//
-// Safe for:
-//   ✓ Desktop
-//   ✓ Android
-//   ✓ PWA
-//   ✓ Hard reload
-//   ✓ Delayed profile loading
-// ============================================================
-
-// ============================================================
-// ⚡ MASTER GRID — IDB FIRST + BACKGROUND FIRESTORE VERIFY
-// ============================================================
-
-// ============================================================
-// ⚡ MASTER GRID LOADER
-//
-// STATIC DATA ARCHITECTURE
-//
-// Priority:
-//
-// 1. MEMORY
-// 2. INDEXEDDB
-// 3. FIRESTORE ONLY IF IDB IS EMPTY
-//
-// After first Firestore load:
-// → save complete master grid to IndexedDB
-//
-// Existing callers continue using:
-//
-//     window.masterGrid
-//
-// No caller changes required.
-// ============================================================
-
-// ============================================================
-// 🔥 MASTER GRID — OPTIMIZED LOAD ENGINE
+// ⚡ STATIC MASTER GRID LOADER
 // ------------------------------------------------------------
-// READ POLICY:
+// DATA:
+//   329 fixed master grids
 //
-// 1. MEMORY FRESH (<15 min)
-//        ↓
-//    NO IDB READ
-//    NO FIRESTORE READ
+// CACHE ARCHITECTURE:
 //
-// 2. COLD START + IDB FRESH (<15 min)
-//        ↓
-//    IDB → MEMORY
-//    NO FIRESTORE READ
-//
-// 3. CACHE >15 min OLD
-//        ↓
-//    ONE FULL FIRESTORE QUERY
-//
-// 4. FIRESTORE DATA UNCHANGED
-//        ↓
-//    UPDATE MEMORY refresh timestamp ONLY
-//    NO IDB WRITE
-//    NO INDEX REBUILD
-//
-// 5. FIRESTORE DATA CHANGED
-//        ↓
-//    UPDATE MEMORY
-//    WRITE IDB
+//   MEMORY
+//      ↓
+//   IDB
+//      ↓
+//   FIRESTORE ONLY IF IDB IS MISSING
 //
 // IMPORTANT:
 //
-// Existing globals are preserved:
+//   NO TTL
+//   NO PERIODIC REFRESH
+//   NO BACKGROUND VERIFICATION
 //
-// window.masterGrid
-// window.__MASTER_GRID_PROMISE__
-// window.__MASTER_GRID_SOURCE__
-// window.__MASTER_GRID_FROM_IDB__
-// window.__MASTER_GRID_CACHE_TIME__
-// window.__ANALYTICS_READY__
+// CACHE VERSION:
 //
-// Existing IDB keys are preserved:
+//   master_grid_cache_v1
 //
-// master_grid_cache_v1
-// master_grid_cache_timestamp_v1
+// If the grid structure is intentionally changed later:
+//   change v1 → v2
 //
-// Existing Firestore source is preserved:
-//
-// grid_master
+// That automatically forces ONE new Firestore build.
 // ============================================================
 
 async function loadMasterGrid(){
@@ -18096,186 +18029,54 @@ async function loadMasterGrid(){
     );
 
 
-    // ============================================================
-    // ⏱ MASTER GRID REFRESH TTL
-    // ============================================================
-
-    window.__MASTER_GRID_REFRESH_TTL__ ??=
-        15 * 60 * 1000;
-
-
-    // ============================================================
-    // 🔥 LAST SUCCESSFUL VALIDATION / LOAD
-    //
-    // This is intentionally separate from the IDB timestamp.
-    //
-    // Why?
-    //
-    // If Firestore says the grid is unchanged, we must NOT
-    // rewrite IDB just to refresh the timestamp.
-    //
-    // Therefore:
-    //
-    // __MASTER_GRID_LAST_REFRESH__
-    //     = last successful memory validation
-    //
-    // __MASTER_GRID_CACHE_TIME__
-    //     = timestamp associated with IDB cache
-    // ============================================================
-
-    window.__MASTER_GRID_LAST_REFRESH__ ??=
-        0;
-
-
-    // ============================================================
+    // ========================================================
     // 🔒 STEP 1
-    // MEMORY CACHE
-    // ============================================================
+    // ALREADY AVAILABLE IN MEMORY
+    // ========================================================
 
-    const memoryGridAvailable =
+    if(
         window.masterGrid &&
         typeof window.masterGrid ===
             "object" &&
-        !Array.isArray(
-            window.masterGrid
-        ) &&
         Object.keys(
             window.masterGrid
-        ).length > 0;
-
-
-    if(
-        memoryGridAvailable
+        ).length > 0
     ){
 
-        const memoryRefreshTime =
-            Number(
-                window.__MASTER_GRID_LAST_REFRESH__
-            );
+        window.__ANALYTICS_READY__ =
+            true;
 
+        window.__MASTER_GRID_FROM_IDB__ =
+            false;
 
-        const fallbackCacheTime =
-            Number(
-                window.__MASTER_GRID_CACHE_TIME__
-            );
+        window.__MASTER_GRID_SOURCE__ =
+            "MEMORY";
 
-
-        const effectiveRefreshTime =
-            Number.isFinite(
-                memoryRefreshTime
-            ) &&
-            memoryRefreshTime > 0
-
-                ? memoryRefreshTime
-
-                : (
-                    Number.isFinite(
-                        fallbackCacheTime
-                    )
-                        ? fallbackCacheTime
-                        : 0
-                );
-
-
-        const memoryAge =
-            effectiveRefreshTime > 0
-                ? (
-                    Date.now() -
-                    effectiveRefreshTime
-                )
-                : Infinity;
-
-
-        // ========================================================
-        // 🟢 MEMORY CACHE STILL FRESH
-        // ========================================================
-
-        if(
-            memoryAge <
-            window.__MASTER_GRID_REFRESH_TTL__
-        ){
-
-            window.__ANALYTICS_READY__ =
-                true;
-
-            window.__MASTER_GRID_FROM_IDB__ =
-                false;
-
-            window.__MASTER_GRID_SOURCE__ =
-                "MEMORY";
-
-
-            console.log(
-                "⏭ MASTER GRID MEMORY CACHE FRESH:",
-                {
-                    grids:
-                        Object.keys(
-                            window.masterGrid
-                        ).length,
-
-                    ageMinutes:
-                        (
-                            memoryAge /
-                            60000
-                        ).toFixed(2),
-
-                    ttlMinutes:
-                        (
-                            window.__MASTER_GRID_REFRESH_TTL__ /
-                            60000
-                        ).toFixed(0)
-                }
-            );
-
-
-            return window.masterGrid;
-
-        }
-
-
-        // ========================================================
-        // 🔴 MEMORY CACHE STALE
-        //
-        // DO NOT RETURN IT.
-        //
-        // Continue to IDB / Firestore refresh path.
-        // ========================================================
 
         console.log(
-            "⏱ MASTER GRID MEMORY CACHE STALE → REFRESH REQUIRED:",
-            {
-                ageMinutes:
-                    Number.isFinite(
-                        memoryAge
-                    )
-                        ? (
-                            memoryAge /
-                            60000
-                        ).toFixed(2)
-                        : "UNKNOWN",
-
-                ttlMinutes:
-                    (
-                        window.__MASTER_GRID_REFRESH_TTL__ /
-                        60000
-                    ).toFixed(0)
-            }
+            "⏭ STATIC MASTER GRID — MEMORY:",
+            Object.keys(
+                window.masterGrid
+            ).length
         );
+
+
+        return window.masterGrid;
 
     }
 
 
-    // ============================================================
-    // ⏳ STEP 2
-    // LOAD ALREADY IN PROGRESS
-    // ============================================================
+    // ========================================================
+    // 🔒 STEP 2
+    // PREVENT DUPLICATE LOADS
+    // ========================================================
 
     if(
         window.__MASTER_GRID_PROMISE__
     ){
 
         console.log(
-            "⏳ Waiting existing master grid load..."
+            "⏳ Waiting existing static master grid load..."
         );
 
 
@@ -18285,204 +18086,89 @@ async function loadMasterGrid(){
     }
 
 
-    // ============================================================
+    // ========================================================
     // 🚀 STEP 3
-    // START SINGLE MASTER GRID LOAD
-    // ============================================================
+    // SINGLE LOAD PIPELINE
+    // ========================================================
 
     window.__MASTER_GRID_PROMISE__ =
-
         (async()=>{
-
-            console.time(
-                "LOAD_MASTER_GRID"
-            );
-
 
             try{
 
+                // ====================================================
+                // ⏳ WAIT FOR IDB READY
+                // ====================================================
 
-                // ==================================================
-                // SAVE CURRENT MEMORY
-                // --------------------------------------------------
-                // Used later to detect whether Firestore changed.
-                // ==================================================
+                if(
+                    window.__GG_IDB_READY__ !== true &&
+                    window.__GG_IDB_READY_PROMISE__
+                ){
 
-                const previousMasterGrid =
-                    window.masterGrid &&
-                    typeof window.masterGrid ===
-                        "object" &&
-                    !Array.isArray(
-                        window.masterGrid
-                    ) &&
-                    Object.keys(
-                        window.masterGrid
-                    ).length > 0
-
-                        ? window.masterGrid
-
-                        : null;
-
-
-                // ==================================================
-                // ⏳ WAIT FOR IDB INITIALIZATION
-                // ==================================================
-
-                try{
-
-                    if(
-                        window.__GG_IDB_READY__ !==
-                        true
-                    ){
-
-                        if(
-                            window.__GG_IDB_READY_PROMISE__
-                        ){
-
-                            console.log(
-                                "⏳ Waiting for GreenGuard IndexedDB..."
-                            );
-
-
-                            await
-                                window.__GG_IDB_READY_PROMISE__;
-
-                        }
-
-                    }
-
-                }
-                catch(idbReadyErr){
-
-                    console.warn(
-                        "⚠ IDB readiness wait failed:",
-                        idbReadyErr
+                    console.log(
+                        "⏳ Waiting for GreenGuard IndexedDB..."
                     );
 
+
+                    await
+                        window.__GG_IDB_READY_PROMISE__;
+
                 }
 
 
-                // ==================================================
-                // 💾 TRY IDB
-                // ==================================================
+                // ====================================================
+                // 💾 STEP 3A
+                // TRY STATIC IDB CACHE
+                // ====================================================
 
                 let cachedMasterGrid =
                     null;
 
-                let cachedMasterTimestamp =
-                    null;
-
 
                 try{
 
                     if(
-                        typeof window.idbKeyval !==
-                            "undefined" &&
+                        window.idbKeyval &&
                         typeof window.idbKeyval.get ===
                             "function"
                     ){
 
-                        console.log(
-                            "💾 MASTER GRID → TRYING IDB CACHE"
-                        );
-
-
-                        // ------------------------------------------
-                        // READ CACHE
-                        // ------------------------------------------
-
                         cachedMasterGrid =
-                            await
-                                window.idbKeyval.get(
-                                    "master_grid_cache_v1"
-                                );
-
-
-                        // ------------------------------------------
-                        // READ CACHE TIMESTAMP
-                        // ------------------------------------------
-
-                        cachedMasterTimestamp =
-                            await
-                                window.idbKeyval.get(
-                                    "master_grid_cache_timestamp_v1"
-                                );
+                            await window.idbKeyval.get(
+                                "master_grid_cache_v1"
+                            );
 
                     }
 
                 }
-                catch(cacheErr){
+                catch(idbReadErr){
 
                     console.warn(
-                        "⚠ MASTER GRID IDB READ FAILED:",
-                        cacheErr
+                        "⚠ STATIC MASTER GRID IDB READ FAILED:",
+                        idbReadErr
                     );
 
-
                     cachedMasterGrid =
-                        null;
-
-                    cachedMasterTimestamp =
                         null;
 
                 }
 
 
-                // ==================================================
-                // 🔍 VALIDATE IDB DATA
-                // ==================================================
+                // ====================================================
+                // ⚡ STEP 3B
+                // IDB HIT
+                // ====================================================
 
-                const idbGridCount =
+                if(
                     cachedMasterGrid &&
                     typeof cachedMasterGrid ===
                         "object" &&
                     !Array.isArray(
                         cachedMasterGrid
-                    )
-
-                        ? Object.keys(
-                            cachedMasterGrid
-                          ).length
-
-                        : 0;
-
-
-                const idbDataValid =
-                    idbGridCount > 0;
-
-
-                const idbTimestamp =
-                    Number(
-                        cachedMasterTimestamp
-                    );
-
-
-                const idbAge =
-                    Number.isFinite(
-                        idbTimestamp
-                    )
-                        ? (
-                            Date.now() -
-                            idbTimestamp
-                        )
-                        : Infinity;
-
-
-                const idbFresh =
-                    idbDataValid &&
-                    Number.isFinite(
-                        idbTimestamp
                     ) &&
-                    idbAge <
-                        window.__MASTER_GRID_REFRESH_TTL__;
-
-
-                // ==================================================
-                // 🟢 FRESH IDB → MEMORY
-                // ==================================================
-
-                if(
-                    idbFresh
+                    Object.keys(
+                        cachedMasterGrid
+                    ).length > 0
                 ){
 
                     window.masterGrid =
@@ -18492,41 +18178,18 @@ async function loadMasterGrid(){
                     window.__ANALYTICS_READY__ =
                         true;
 
-
                     window.__MASTER_GRID_FROM_IDB__ =
                         true;
-
 
                     window.__MASTER_GRID_SOURCE__ =
                         "IDB";
 
 
-                    window.__MASTER_GRID_CACHE_TIME__ =
-                        idbTimestamp;
-
-
-                    window.__MASTER_GRID_LAST_REFRESH__ =
-                        idbTimestamp;
-
-
                     console.log(
-                        "⚡ MASTER GRID IDB HIT:",
-                        {
-                            grids:
-                                idbGridCount,
-
-                            ageMinutes:
-                                (
-                                    idbAge /
-                                    60000
-                                ).toFixed(2),
-
-                            ttlMinutes:
-                                (
-                                    window.__MASTER_GRID_REFRESH_TTL__ /
-                                    60000
-                                ).toFixed(0)
-                        }
+                        "⚡ STATIC MASTER GRID — IDB:",
+                        Object.keys(
+                            window.masterGrid
+                        ).length
                     );
 
 
@@ -18535,82 +18198,10 @@ async function loadMasterGrid(){
                 }
 
 
-                // ==================================================
-                // 🟡 IDB EXISTS BUT STALE
-                // --------------------------------------------------
-                // Keep it only as the comparison baseline.
-                //
-                // DO NOT use it as current authoritative memory.
-                //
-                // Firestore refresh is now required.
-                // ==================================================
-
-                if(
-                    idbDataValid
-                ){
-
-                    console.log(
-                        "⏱ MASTER GRID IDB STALE → FIRESTORE REFRESH REQUIRED:",
-                        {
-                            grids:
-                                idbGridCount,
-
-                            ageMinutes:
-                                Number.isFinite(
-                                    idbAge
-                                )
-                                    ? (
-                                        idbAge /
-                                        60000
-                                    ).toFixed(2)
-                                    : "UNKNOWN",
-
-                            ttlMinutes:
-                                (
-                                    window.__MASTER_GRID_REFRESH_TTL__ /
-                                    60000
-                                ).toFixed(0)
-                        }
-                    );
-
-                }
-                else{
-
-                    console.log(
-                        "🌐 MASTER GRID IDB MISS → FIRESTORE FIRST LOAD"
-                    );
-
-                }
-
-
-                // ==================================================
-                // 🔥 COMPARISON BASELINE
-                // ==================================================
-                //
-                // Prefer currently loaded memory.
-                //
-                // Otherwise use stale IDB.
-                //
-                // This lets us determine:
-                //
-                // Firestore unchanged?
-                //       ↓
-                // NO IDB WRITE
-                //
-                // ==================================================
-
-                const comparisonGrid =
-                    previousMasterGrid ||
-                    (
-                        idbDataValid
-                            ? cachedMasterGrid
-                            : null
-                    );
-
-
-                // ==================================================
-                // 🌐 FIREBASE READY CHECK
-                // ==================================================
+                // ====================================================
+                // 🌐 STEP 4
+                // IDB MISS → FIRST EVER LOAD
+                // ====================================================
 
                 window.__MASTER_GRID_FROM_IDB__ =
                     false;
@@ -18619,71 +18210,44 @@ async function loadMasterGrid(){
                     "FIRESTORE";
 
 
-                if(
-                    !window.fb
-                ){
+                console.log(
+                    "🌐 STATIC MASTER GRID — IDB MISS → FIRST FIRESTORE LOAD"
+                );
 
-                    throw new Error(
-                        "window.fb missing"
-                    );
 
-                }
-
+                // ====================================================
+                // 🔐 FIRESTORE CHECK
+                // ====================================================
 
                 if(
+                    !window.fb ||
                     typeof window.fb.getDocs !==
-                        "function"
-                ){
-
-                    throw new Error(
-                        "window.fb.getDocs missing"
-                    );
-
-                }
-
-
-                if(
+                        "function" ||
                     typeof window.fb.collection !==
-                        "function"
-                ){
-
-                    throw new Error(
-                        "window.fb.collection missing"
-                    );
-
-                }
-
-
-                if(
+                        "function" ||
                     !window.db
                 ){
 
                     throw new Error(
-                        "window.db missing"
+                        "Firestore unavailable"
                     );
 
                 }
 
 
-                // ==================================================
-                // 🔥 ONE FULL FIRESTORE READ
-                // ==================================================
-
-                console.time(
-                    "MASTER_GRID_FIRESTORE"
-                );
-
+                // ====================================================
+                // 🔥 ONE MASTER GRID READ
+                // ====================================================
 
                 const snap =
-                    await
-                        window.fb.getDocs(
+                    await window.fb.getDocs(
 
-                            window.fb.collection(
-                                window.db,
-                                "grid_master"
-                            )
+                        window.fb.collection(
+                            window.db,
+                            "grid_master"
+                        )
 
-                        );
+                    );
 
 
                 console.log(
@@ -18692,9 +18256,9 @@ async function loadMasterGrid(){
                 );
 
 
-                // ==================================================
-                // BUILD FRESH MASTER GRID
-                // ==================================================
+                // ====================================================
+                // 🧩 BUILD MASTER GRID
+                // ====================================================
 
                 const freshMasterGrid =
                     {};
@@ -18723,30 +18287,11 @@ async function loadMasterGrid(){
                 );
 
 
-                // ==================================================
-                // VALID GRID COUNT
-                // ==================================================
-
                 const gridCount =
                     Object.keys(
                         freshMasterGrid
                     ).length;
 
-
-                console.log(
-                    "✅ GRID LOADED:",
-                    gridCount
-                );
-
-
-                console.timeEnd(
-                    "MASTER_GRID_FIRESTORE"
-                );
-
-
-                // ==================================================
-                // ⛔ NO VALID GRID
-                // ==================================================
 
                 if(
                     gridCount === 0
@@ -18759,226 +18304,9 @@ async function loadMasterGrid(){
                 }
 
 
-                // ==================================================
-                // 🔎 CHANGE DETECTION
-                // ==================================================
-                //
-                // Compare:
-                //
-                // old cache
-                //      vs
-                // fresh Firestore
-                //
-                // ==================================================
-
-                let gridChanged =
-                    true;
-
-
-                if(
-                    comparisonGrid
-                ){
-
-                    const oldKeys =
-                        Object.keys(
-                            comparisonGrid
-                        );
-
-
-                    const newKeys =
-                        Object.keys(
-                            freshMasterGrid
-                        );
-
-
-                    if(
-                        oldKeys.length ===
-                        newKeys.length
-                    ){
-
-                        gridChanged =
-                            false;
-
-
-                        // ------------------------------------------
-                        // CHECK EVERY GRID
-                        // ------------------------------------------
-
-                        for(
-                            let i = 0;
-                            i < newKeys.length;
-                            i++
-                        ){
-
-                            const gridId =
-                                newKeys[i];
-
-
-                            if(
-                                !Object.prototype.hasOwnProperty.call(
-                                    comparisonGrid,
-                                    gridId
-                                )
-                            ){
-
-                                gridChanged =
-                                    true;
-
-                                break;
-
-                            }
-
-
-                            const oldData =
-                                comparisonGrid[
-                                    gridId
-                                ];
-
-
-                            const newData =
-                                freshMasterGrid[
-                                    gridId
-                                ];
-
-
-                            let oldSerialized;
-
-                            let newSerialized;
-
-
-                            try{
-
-                                oldSerialized =
-                                    JSON.stringify(
-                                        oldData
-                                    );
-
-                                newSerialized =
-                                    JSON.stringify(
-                                        newData
-                                    );
-
-                            }
-                            catch(compareErr){
-
-                                console.warn(
-                                    "⚠ MASTER GRID comparison failed:",
-                                    compareErr
-                                );
-
-
-                                gridChanged =
-                                    true;
-
-                                break;
-
-                            }
-
-
-                            if(
-                                oldSerialized !==
-                                newSerialized
-                            ){
-
-                                gridChanged =
-                                    true;
-
-                                break;
-
-                            }
-
-                        }
-
-                    }
-
-                }
-
-
-                // ==================================================
-                // 🟢 UNCHANGED
-                // ==================================================
-
-                if(
-                    gridChanged === false
-                ){
-
-                    // ----------------------------------------------
-                    // Keep existing object.
-                    //
-                    // Do NOT replace it unnecessarily.
-                    // ----------------------------------------------
-
-                    if(
-                        previousMasterGrid
-                    ){
-
-                        window.masterGrid =
-                            previousMasterGrid;
-
-                    }
-                    else{
-
-                        window.masterGrid =
-                            comparisonGrid;
-
-                    }
-
-
-                    window.__ANALYTICS_READY__ =
-                        true;
-
-
-                    window.__MASTER_GRID_FROM_IDB__ =
-                        false;
-
-
-                    window.__MASTER_GRID_SOURCE__ =
-                        "FIRESTORE";
-
-
-                    // ----------------------------------------------
-                    // IMPORTANT:
-                    //
-                    // This is a successful Firestore validation.
-                    //
-                    // Refresh the IN-MEMORY TTL only.
-                    //
-                    // DO NOT write IDB.
-                    // DO NOT rebuild indexes.
-                    // ----------------------------------------------
-
-                    const refreshNow =
-                        Date.now();
-
-
-                    window.__MASTER_GRID_LAST_REFRESH__ =
-                        refreshNow;
-
-
-                    console.log(
-                        "✅ MASTER GRID UNCHANGED — CACHE REMAINS VALID:",
-                        gridCount
-                    );
-
-
-                    console.log(
-                        "⏭ MASTER GRID — NO IDB WRITE"
-                    );
-
-
-                    console.log(
-                        "⏭ MASTER GRID — NO INDEX REBUILD"
-                    );
-
-
-                    return window.masterGrid;
-
-                }
-
-
-                // ==================================================
-                // 🔵 CHANGED
-                // ==================================================
+                // ====================================================
+                // 💾 APPLY TO MEMORY
+                // ====================================================
 
                 window.masterGrid =
                     freshMasterGrid;
@@ -18987,68 +18315,34 @@ async function loadMasterGrid(){
                 window.__ANALYTICS_READY__ =
                     true;
 
-
                 window.__MASTER_GRID_FROM_IDB__ =
                     false;
-
 
                 window.__MASTER_GRID_SOURCE__ =
                     "FIRESTORE";
 
 
-                const changedNow =
-                    Date.now();
-
-
-                // ==================================================
-                // UPDATE MEMORY REFRESH TIME
-                // ==================================================
-
-                window.__MASTER_GRID_LAST_REFRESH__ =
-                    changedNow;
-
-
-                window.__MASTER_GRID_CACHE_TIME__ =
-                    changedNow;
-
-
-                // ==================================================
-                // 💾 SAVE CHANGED MASTER GRID TO IDB
-                // ==================================================
+                // ====================================================
+                // 💾 SAVE STATIC CACHE
+                // ====================================================
 
                 try{
 
                     if(
-                        typeof window.idbKeyval !==
-                            "undefined" &&
+                        window.idbKeyval &&
                         typeof window.idbKeyval.set ===
                             "function"
                     ){
 
-                        await
-                            window.idbKeyval.set(
-                                "master_grid_cache_v1",
-                                window.masterGrid
-                            );
-
-
-                        await
-                            window.idbKeyval.set(
-                                "master_grid_cache_timestamp_v1",
-                                changedNow
-                            );
+                        await window.idbKeyval.set(
+                            "master_grid_cache_v1",
+                            window.masterGrid
+                        );
 
 
                         console.log(
-                            "💾 MASTER GRID SAVED TO IDB:",
+                            "💾 STATIC MASTER GRID SAVED TO IDB:",
                             gridCount
-                        );
-
-                    }
-                    else{
-
-                        console.warn(
-                            "⚠ idbKeyval unavailable → MASTER GRID NOT CACHED"
                         );
 
                     }
@@ -19057,41 +18351,32 @@ async function loadMasterGrid(){
                 catch(idbSaveErr){
 
                     console.warn(
-                        "⚠ MASTER GRID IDB SAVE FAILED:",
+                        "⚠ STATIC MASTER GRID IDB SAVE FAILED:",
                         idbSaveErr
                     );
-
-                    // ----------------------------------------------
-                    // IDB failure must NOT break application.
-                    // ----------------------------------------------
 
                 }
 
 
-                // ==================================================
-                // RETURN
-                // ==================================================
+                console.log(
+                    "✅ STATIC MASTER GRID READY:",
+                    gridCount
+                );
+
 
                 return window.masterGrid;
 
             }
-
-
-            // ========================================================
-            // ❌ LOAD ERROR
-            // ========================================================
-
             catch(err){
 
                 console.error(
-                    "❌ loadMasterGrid",
+                    "❌ loadMasterGrid:",
                     err
                 );
 
 
                 window.__ANALYTICS_READY__ =
                     false;
-
 
                 window.__MASTER_GRID_SOURCE__ =
                     "ERROR";
@@ -19100,18 +18385,7 @@ async function loadMasterGrid(){
                 throw err;
 
             }
-
-
-            // ========================================================
-            // 🧹 ALWAYS CLEAN SINGLE-LOAD PROMISE
-            // ========================================================
-
             finally{
-
-                console.timeEnd(
-                    "LOAD_MASTER_GRID"
-                );
-
 
                 window.__MASTER_GRID_PROMISE__ =
                     null;
@@ -19121,15 +18395,10 @@ async function loadMasterGrid(){
         })();
 
 
-    // ============================================================
-    // RETURN SAME MASTER GRID PROMISE
-    // ============================================================
-
     return await
         window.__MASTER_GRID_PROMISE__;
 
-}
-// ============================================================
+}// ============================================================
 // 🔄 BACKGROUND MASTER GRID VERIFICATION
 //
 // FINAL MASTER GRID DESIGN:
@@ -67687,89 +66956,102 @@ async function getCellToGridLookupFromIDB(){
 
 
 // ============================================================
-// 💾 SAVE CELL → GRID LOOKUP TO INDEXEDDB
+// 💾 SAVE STATIC CELL → GRID LOOKUP TO IDB
+// ------------------------------------------------------------
+// DATA:
+//   517,026 fixed cell mappings
+//
+// NO TTL.
+// NO TIMESTAMP.
+//
+// Cache version:
+//   cell_to_grid_lookup_cache_v1
+//
+// Change v1 → v2 only when the GIS grid is intentionally rebuilt.
 // ============================================================
 
 async function saveCellToGridLookupToIDB(
-  lookup
+    lookup
 ){
 
-  try{
+    try{
 
-    if(
-      typeof idbKeyval === "undefined"
-    ){
+        if(
+            typeof idbKeyval ===
+                "undefined"
+        ){
 
-      console.warn(
-        "⚠ idbKeyval unavailable → lookup not cached"
-      );
+            console.warn(
+                "⚠ idbKeyval unavailable → cell lookup not cached"
+            );
 
-      return false;
+            return false;
+
+        }
+
+
+        if(
+            !lookup ||
+            typeof lookup !==
+                "object" ||
+            Array.isArray(
+                lookup
+            )
+        ){
+
+            console.warn(
+                "⚠ Invalid static cell → grid lookup"
+            );
+
+            return false;
+
+        }
+
+
+        const count =
+            Object.keys(
+                lookup
+            ).length;
+
+
+        if(
+            !count
+        ){
+
+            console.warn(
+                "⚠ Empty cell → grid lookup not cached"
+            );
+
+            return false;
+
+        }
+
+
+        await idbKeyval.set(
+            "cell_to_grid_lookup_cache_v1",
+            lookup
+        );
+
+
+        console.log(
+            "💾 STATIC CELL → GRID LOOKUP SAVED TO IDB:",
+            count
+        );
+
+
+        return true;
+
     }
+    catch(err){
 
+        console.warn(
+            "⚠ STATIC CELL → GRID IDB SAVE FAILED:",
+            err
+        );
 
-    if(
-      !lookup ||
-      typeof lookup !== "object" ||
-      Array.isArray(lookup)
-    ){
+        return false;
 
-      console.warn(
-        "⚠ Invalid cell → grid lookup"
-      );
-
-      return false;
     }
-
-
-    const count =
-      Object.keys(
-        lookup
-      ).length;
-
-
-    if(
-      !count
-    ){
-
-      console.warn(
-        "⚠ Empty cell → grid lookup not cached"
-      );
-
-      return false;
-    }
-
-
-    await idbKeyval.set(
-      "cell_to_grid_lookup_cache_v1",
-      lookup
-    );
-
-
-    await idbKeyval.set(
-      "cell_to_grid_lookup_timestamp_v1",
-      Date.now()
-    );
-
-
-    console.log(
-      "💾 CELL → GRID LOOKUP SAVED TO IDB:",
-      count
-    );
-
-
-    return true;
-
-  }
-  catch(err){
-
-    console.warn(
-      "⚠ CELL → GRID IDB SAVE FAILED:",
-      err
-    );
-
-    return false;
-  }
 
 }
 async function buildCellToGridLookup(){
