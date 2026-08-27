@@ -76976,7 +76976,12 @@ console.log(
     ========================= */
     function loadIncidents() {
 
+  // 🚫 INCIDENT SYSTEM TEMPORARILY DISABLED
+  console.log("⏸ INCIDENT SYSTEM DISABLED");
+  return;
+
   console.log("🔥 Firebase incidents loading...");
+  
 
   if (!window.db || !window.collection || !window.onSnapshot) {
     console.error("❌ Firebase not initialized properly");
@@ -88531,7 +88536,18 @@ function toggleWeatherDrawer() {
       icon.className = legend.classList.contains("minimized") ? "fa-solid fa-circle-info" : "fa-solid fa-chevron-down";
     }/* ============================================================
    🔄 BLOCK 12 → AUTO REFRESH SYSTEM (FINAL OPTIMIZED)
+   ------------------------------------------------------------
+   INCIDENT SYSTEM TEMPORARILY DISABLED
+   ------------------------------------------------------------
+   IMPORTANT:
+   • DO NOT add an incidents interval here.
+   • live_staff already has its Firestore listener.
+   • Staff loop remains unchanged.
+   • Village loop remains unchanged.
+   • Weather loop remains unchanged.
+   • Heartbeat remains unchanged.
 ============================================================ */
+
 
 /* ============================================================
    ⚡ FAST LOOP → REAL-TIME STAFF ONLY
@@ -88556,61 +88572,87 @@ setInterval(function () {
 
   }
 
-}, 8000);
+}, 8000); // 8 sec
 
 
-    /* ============================================================
-       🚨 INCIDENT MONITORING
-    ============================================================ */
-    setInterval(function () {
+/* ============================================================
+   🚨 INCIDENT MONITORING
+   ------------------------------------------------------------
+   ⏸ TEMPORARILY DISABLED
+   ------------------------------------------------------------
+   DO NOT call loadIncidents() here.
+   
+   The Incident system itself is also disabled inside
+   loadIncidents(), so there will be NO incidents
+   Firestore listener from this Block.
+============================================================ */
 
-      try {
-        loadIncidents();
-      } catch (err) {
-        console.error("❌ Incident refresh error:", err);
-      }
-
-    }, 20000); // 20 sec
-
-
-    /* ============================================================
-       🏡 VILLAGE RISK UPDATE
-    ============================================================ */
-    setInterval(function () {
-
-      try {
-        loadVillages();
-      } catch (err) {
-        console.error("❌ Village refresh error:", err);
-      }
-
-    }, 60000); // 1 min
+// INCIDENT AUTO-REFRESH DISABLED
 
 
-    /* ============================================================
-       🌦 WEATHER SYSTEM
-    ============================================================ */
-    setInterval(function () {
+/* ============================================================
+   🏡 VILLAGE RISK UPDATE
+   ------------------------------------------------------------
+   KEEP EXISTING 60-SECOND FLOW
+============================================================ */
 
-      try {
-        loadWeatherFull();
-      } catch (err) {
-        console.error("❌ Weather refresh error:", err);
-      }
+setInterval(function () {
 
-    }, 600000); // 10 min
+  try {
+
+    loadVillages();
+
+  } catch (err) {
+
+    console.error(
+      "❌ Village refresh error:",
+      err
+    );
+
+  }
+
+}, 60000); // 1 min
 
 
-    /* ============================================================
-       🧠 OPTIONAL MASTER WATCHDOG (RECOMMENDED)
-       (Prevents silent freeze)
-    ============================================================ */
-    setInterval(function () {
+/* ============================================================
+   🌦 WEATHER SYSTEM
+   ------------------------------------------------------------
+   KEEP EXISTING 10-MINUTE FLOW
+============================================================ */
 
-      console.log("🧠 System heartbeat OK:", new Date().toLocaleTimeString());
+setInterval(function () {
 
-    }, 120000); // 2 min
+  try {
 
+    loadWeatherFull();
+
+  } catch (err) {
+
+    console.error(
+      "❌ Weather refresh error:",
+      err
+    );
+
+  }
+
+}, 600000); // 10 min
+
+
+/* ============================================================
+   🧠 OPTIONAL MASTER WATCHDOG
+   ------------------------------------------------------------
+   Local console heartbeat only.
+   NO FIRESTORE READ.
+============================================================ */
+
+setInterval(function () {
+
+  console.log(
+    "🧠 System heartbeat OK:",
+    new Date().toLocaleTimeString()
+  );
+
+}, 120000); // 2 min
     /* ============================================================
        🧭 BLOCK 13 → LAYER CONTROL + LAZY LOAD (FINAL)
     ============================================================ */
