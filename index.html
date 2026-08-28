@@ -66961,8 +66961,37 @@ async function startWildlifeListener(){
             "🐅 Starting Wildlife 24-hour Realtime Listener..."
         );
 
+// =================================================
+// 🧠 WILDLIFE REALTIME CACHE INITIALIZATION
+// -------------------------------------------------
+// Must exist before ANY realtime document is processed.
+//
+// Prevents:
+//     Cannot set properties of undefined
+//     (setting '<wildlife-id>')
+//
+// RAM cache only.
+// No Firestore read/write.
+// =================================================
 
-        // =================================================
+window.wildlifeCache =
+    window.wildlifeCache &&
+    typeof window.wildlifeCache === "object"
+        ? window.wildlifeCache
+        : {};
+
+window.wildlifeMarkers =
+    window.wildlifeMarkers &&
+    typeof window.wildlifeMarkers === "object"
+        ? window.wildlifeMarkers
+        : {};
+
+window.expiredWildlife =
+    Array.isArray(
+        window.expiredWildlife
+    )
+        ? window.expiredWildlife
+        : [];        // =================================================
         // FIREBASE FUNCTIONS
         // =================================================
 
@@ -67205,18 +67234,25 @@ async function startWildlifeListener(){
                             }
 
 
-                            // =============================================
-                            // 💾 ADD / MODIFY → CACHE
-                            // =============================================
+// =============================================
+// 💾 ADD / MODIFY → CACHE
+// =============================================
 
-                            window.wildlifeCache[
-                                key
-                            ] =
-                                {
-                                    ...normalized
-                                };
+if(
+    !window.wildlifeCache ||
+    typeof window.wildlifeCache !== "object"
+){
 
+    window.wildlifeCache = {};
 
+}
+
+window.wildlifeCache[
+    key
+] =
+{
+    ...normalized
+};
                             // =============================================
                             // ⚡ EXISTING WILDLIFE RENDERER
                             // ------------------------------------------------
