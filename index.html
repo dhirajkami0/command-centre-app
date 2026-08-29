@@ -75261,6 +75261,36 @@ pointSnap.docChanges().forEach(
     }
 );
 
+// ============================================================
+// 💾 PERSIST CURRENT SESSION POINT CACHE TO IDB
+// ============================================================
+
+if(
+    currentSessionId &&
+    window.sessionPointCache &&
+    window.sessionPointCache[currentSessionId]
+){
+
+    clearTimeout(
+        window.__patrolPointIDBSaveTimer
+    );
+
+    window.__patrolPointIDBSaveTimer =
+        setTimeout(
+            function(){
+
+                savePatrolPointsToIDB(
+                    currentSessionId,
+                    window.sessionPointCache[
+                        currentSessionId
+                    ]
+                );
+
+            },
+            1000
+        );
+
+}
 
 // ==================================================
 // 🔥 SORT ONLY THE NEW BATCH
@@ -75699,7 +75729,43 @@ window.trackPointCount[
 }
 }
 );
+// ============================================================
+// 🔥 REUSE SAME FIRESTORE SNAPSHOT FOR ANALYTICS
+// ============================================================
+//
+// IMPORTANT:
+//
+// This does NOT create another Firestore listener.
+//
+// The primary patrol listener has ALREADY received
+// this pointSnap.
+//
+// Analytics processes the exact same snapshot.
+//
+// Therefore:
+//
+// ONE Firestore listener
+//        ↓
+//     pointSnap
+//        ↓
+// ┌──────┴─────────┐
+// ▼                ▼
+// Patrol          Analytics
+// cache           processor
+// ============================================================
 
+if(
+    typeof processPatrolAnalyticsSnapshot ===
+    "function"
+){
+
+    processPatrolAnalyticsSnapshot(
+        pointSnap,
+        s,
+        currentSessionId
+    );
+
+}
 // ==============================================
 // 🔥 SAVE LISTENER
 // ==============================================
@@ -75715,6 +75781,530 @@ window.trackListeners[
     e
   );
 }
+}
+
+// ============================================================
+// 🔥 SHARED PATROL ANALYTICS PROCESSOR
+// ============================================================
+//
+// IMPORTANT:
+//
+// This function does NOT create a Firestore listener.
+//
+// It receives an EXISTING Firestore pointSnap and performs
+// the existing analytics processing on that snapshot.
+//
+// CURRENT USER SESSION:
+//     Primary patrol listener
+//             ↓
+//        pointSnap
+//             ↓
+//     this processor
+//
+// OTHER STAFF SESSIONS:
+//     Analytics listener
+//             ↓
+//        pointSnap
+//             ↓
+//     this processor
+//
+// Therefore the CURRENT USER'S session does not need
+// a second analytics onSnapshot().
+// ============================================================
+
+async function processPatrolAnalyticsSnapshot(
+    pointSnap,
+    s,
+    currentSessionId
+){
+
+    try{
+
+        // ==================================================
+        // 🔥 ANALYTICS CACHE
+        // ==================================================
+
+        window.analyticsPointCache ??=
+            Object.create(null);
+
+        window.analyticsPointCache[
+            currentSessionId
+        ] ??=
+            Object.create(null);
+
+        const analyticsCache =
+            window.analyticsPointCache[
+                currentSessionId
+            ];
+
+
+        // ==================================================
+        // 🔥 ANALYTICS SESSION MEMORY
+        // ==================================================
+
+        window.analyticsSessionCellSeen ??=
+            Object.create(null);
+
+        window.analyticsSessionCellSeen[
+            currentSessionId
+        ] ??=
+            new Set();
+
+        const sessionCellSeen =
+            window.analyticsSessionCellSeen[
+                currentSessionId
+            ];
+
+
+        // ==================================================
+        // 🔥 ANALYTICS COUNTERS
+        // ==================================================
+
+        window.analyticsPointCount ??=
+            Object.create(null);
+
+        window.analyticsNewSessionCellCount ??=
+            Object.create(null);
+
+        window.analyticsPointCount[
+            currentSessionId
+        ] ??=
+            0;
+
+        window.analyticsNewSessionCellCount[
+            currentSessionId
+        ] ??=
+            0;
+
+
+        // ==================================================
+        // 🔥 LAST ANALYTICS POINT
+        // ==================================================
+
+        window.analyticsLastPoint ??=
+            Object.create(null);
+
+
+        // ==================================================
+        // 🔥 NEW ANALYTICS POINTS
+        // ==================================================
+
+        const newPoints = [];
+
+
+        // ==================================================
+        // 🔥 PROCESS FIRESTORE CHANGES
+        // ==================================================
+
+        pointSnap.docChanges().forEach(
+            change => {
+
+                const pointId =
+                    change.doc.id;
+
+
+                // ==========================================
+                // ❌ REMOVED POINT
+                // ==========================================
+
+                if(
+                    change.type === "removed"
+                ){
+
+                    delete analyticsCache[
+                        pointId
+                    ];
+
+                    return;
+
+                }
+
+
+                // ==========================================
+                // 📦 POINT DATA
+                // ==========================================
+
+                const p =
+                    change.doc.data();
+
+                if(!p){
+                    return;
+                }
+
+
+                // ==========================================
+                // 📍 GPS
+                // ==========================================
+
+                const lat =
+                    Number(p.lat);
+
+                const lon =
+                    Number(p.lon);
+
+                if(
+                    !Number.isFinite(lat) ||
+                    !Number.isFinite(lon)
+                ){
+                    return;
+                }
+
+
+                // ==========================================
+                // 🕒 TIME
+                // ==========================================
+
+                const time =
+                    Number(
+                        p.time ??
+                        p.timestamp ??
+                        0
+                    );
+
+
+                // ==========================================
+                // 💾 CACHE POINT
+                // ==========================================
+
+                const cachedPoint = {
+
+                    id:
+                        pointId,
+
+                    lat:
+                        lat,
+
+                    lon:
+                        lon,
+
+                    time:
+                        time
+
+                };
+
+
+                analyticsCache[
+                    pointId
+                ] =
+                    cachedPoint;
+
+
+                // ==========================================
+                // 🔥 ONLY NEW POINTS
+                // ==========================================
+
+                if(
+                    change.type === "added"
+                ){
+
+                    newPoints.push(
+                        cachedPoint
+                    );
+
+                }
+
+            }
+        );
+
+
+        // ==================================================
+        // 🔥 NO NEW POINTS
+        // ==================================================
+
+        if(
+            newPoints.length === 0
+        ){
+            return;
+        }
+
+
+        // ==================================================
+        // 🔥 CHRONOLOGICAL ORDER
+        // ==================================================
+
+        newPoints.sort(
+            (a,b) =>
+                Number(a.time || 0) -
+                Number(b.time || 0)
+        );
+
+
+        // ==================================================
+        // 🔥 PREVIOUS ANALYTICS POINT
+        // ==================================================
+
+        let previousPoint =
+            window.analyticsLastPoint[
+                currentSessionId
+            ] || null;
+
+
+        // ==================================================
+        // 🔥 PROCESS NEW POINTS
+        // ==================================================
+
+        for(
+            const currentPoint
+            of newPoints
+        ){
+
+            if(!currentPoint){
+                continue;
+            }
+
+
+            // ==========================================
+            // FIRST POINT
+            // ==========================================
+
+            if(!previousPoint){
+
+                previousPoint =
+                    currentPoint;
+
+                window.analyticsLastPoint[
+                    currentSessionId
+                ] =
+                    currentPoint;
+
+                continue;
+
+            }
+
+
+            // ==========================================
+            // 🔥 GET TOUCHED CELLS
+            // ==========================================
+
+            const result =
+                getTouchedCells([
+                    [
+                        [
+                            previousPoint.lat,
+                            previousPoint.lon
+                        ],
+                        [
+                            currentPoint.lat,
+                            currentPoint.lon
+                        ]
+                    ]
+                ]);
+
+
+            const touchedCells =
+                Array.from(
+                    result?.touchedCells || []
+                );
+
+
+            // ==========================================
+            // 🔥 PROCESS CELLS
+            // ==========================================
+
+            for(
+                const rawCellId
+                of touchedCells
+            ){
+
+                const resolved =
+                    resolveAnalyticsCell(
+                        rawCellId
+                    );
+
+                if(!resolved){
+                    continue;
+                }
+
+
+                // ==========================================
+                // 🔒 SESSION + GRID + CELL KEY
+                // ==========================================
+
+                const sessionCellKey =
+                    JSON.stringify([
+                        currentSessionId,
+                        resolved.gridId,
+                        resolved.cellId
+                    ]);
+
+
+                const isNewSessionCell =
+                    !sessionCellSeen.has(
+                        sessionCellKey
+                    );
+
+
+                // ==========================================
+                // 🔥 EXISTING ANALYTICS HIT
+                // ==========================================
+
+                collectAnalyticsHit(
+                    resolved.gridId,
+                    resolved.cellId,
+                    currentPoint.lat,
+                    currentPoint.lon,
+                    [
+                        [
+                            [
+                                previousPoint.lat,
+                                previousPoint.lon
+                            ],
+                            [
+                                currentPoint.lat,
+                                currentPoint.lon
+                            ]
+                        ]
+                    ],
+                    s.cleanName,
+                    currentSessionId
+                );
+
+
+                // ==========================================
+                // 🟢 NEW SESSION-CELL
+                // ==========================================
+
+                if(
+                    isNewSessionCell
+                ){
+
+                    sessionCellSeen.add(
+                        sessionCellKey
+                    );
+
+
+                    const buffer =
+                        window.analyticsBuffer?.[
+                            resolved.gridId
+                        ];
+
+
+                    if(
+                        buffer
+                    ){
+
+                        buffer.sessionCellVisits ??=
+                            new Set();
+
+                        buffer.sessionCellVisits.add(
+                            sessionCellKey
+                        );
+
+                    }
+
+
+                    window.analyticsNewSessionCellCount[
+                        currentSessionId
+                    ]++;
+
+
+                }
+
+            }
+
+
+            // ==========================================
+            // 🔥 SAVE LAST POINT
+            // ==========================================
+
+            previousPoint =
+                currentPoint;
+
+            window.analyticsLastPoint[
+                currentSessionId
+            ] =
+                currentPoint;
+
+
+            window.analyticsPointCount[
+                currentSessionId
+            ]++;
+
+        }
+
+
+        // ==================================================
+        // 🔥 AUTO FLUSH
+        // ==================================================
+
+        if(
+            window.analyticsNewSessionCellCount[
+                currentSessionId
+            ] >= 5 &&
+
+            Object.keys(
+                window.analyticsBuffer || {}
+            ).length > 0
+        ){
+
+            console.log(
+                "📤 AUTO FLUSH — UNIQUE SESSION-CELLS",
+                window.analyticsNewSessionCellCount[
+                    currentSessionId
+                ]
+            );
+
+
+            if(
+                typeof window.flushAnalyticsBuffer ===
+                "function"
+            ){
+
+                window.analyticsNewSessionCellCount[
+                    currentSessionId
+                ] = 0;
+
+
+                try{
+
+                    const flushResult =
+                        window.flushAnalyticsBuffer();
+
+
+                    if(
+                        flushResult &&
+                        typeof flushResult.catch ===
+                        "function"
+                    ){
+
+                        flushResult.catch(
+                            error => {
+
+                                console.error(
+                                    "❌ Analytics auto-flush failed:",
+                                    error
+                                );
+
+                            }
+                        );
+
+                    }
+
+                }
+                catch(error){
+
+                    console.error(
+                        "❌ Analytics auto-flush crashed:",
+                        error
+                    );
+
+                }
+
+            }
+
+        }
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ SHARED ANALYTICS PROCESSOR ERROR:",
+            currentSessionId,
+            error
+        );
+
+    }
+
 }
 // ==================================================
 // 🔥 ANALYTICS FOR ALL ACTIVE SESSIONS
@@ -75768,15 +76358,56 @@ window.analyticsPointCount[
 window.analyticsNewSessionCellCount[
     currentSessionId
 ] = 0;
-        // already listening
+// ============================================================
+// 🔥 SAME-SESSION DUPLICATE LISTENER PROTECTION
+// ============================================================
+//
+// The primary patrol listener already owns this session.
+//
+// Its onSnapshot() feeds BOTH:
+//
+//     sessionPointCache
+//     analytics processor
+//
+// Therefore analytics must NOT create another
+// Firestore listener for this same session.
+// ============================================================
+
+const primaryOwnsSession =
+    Object.values(
+        window.activeSessionMap || {}
+    ).includes(
+        currentSessionId
+    );
+
+
+if(
+    primaryOwnsSession
+){
+
+    console.log(
+        "♻️ ANALYTICS — REUSING PRIMARY PATROL LISTENER:",
+        currentSessionId
+    );
+
+    continue;
+
+}
+
+
+// ============================================================
+// 🔒 EXISTING ANALYTICS LISTENER DUPLICATE GUARD
+// ============================================================
+
 if(
     window.analyticsTrackListeners[
         currentSessionId
     ]
 ){
-    continue;
-}
 
+    continue;
+
+}
         const {
             collection,
             query,
@@ -75832,11 +76463,8 @@ const analyticsCache =
         currentSessionId
     ];
 
-
-// ==================================================
 // 🔥 LIVE ANALYTICS POINT STREAM
 // ==================================================
-
 const unsubscribe =
     onSnapshot(
 
@@ -75844,569 +76472,13 @@ const unsubscribe =
 
         (pointSnap)=>{
 
-            try{
-
-                // ==========================================
-                // 🔥 NEW ANALYTICS POINTS
-                // ==========================================
-
-                const newPoints = [];
-
-
-                // ==========================================
-                // 🔥 PROCESS ONLY FIRESTORE CHANGES
-                // ==========================================
-
-                pointSnap.docChanges().forEach(
-                    change => {
-
-                        const pointId =
-                            change.doc.id;
-
-
-                        // ==========================================
-                        // ❌ REMOVED POINT
-                        // ==========================================
-
-                        if(
-                            change.type === "removed"
-                        ){
-
-                            delete analyticsCache[
-                                pointId
-                            ];
-
-                            return;
-                        }
-
-
-                        // ==========================================
-                        // 📦 POINT DATA
-                        // ==========================================
-
-                        const p =
-                            change.doc.data();
-
-                        if(!p){
-                            return;
-                        }
-
-
-                        // ==========================================
-                        // 📍 GPS
-                        // ==========================================
-
-                        const lat =
-                            Number(p.lat);
-
-                        const lon =
-                            Number(p.lon);
-
-
-                        if(
-                            !Number.isFinite(lat) ||
-                            !Number.isFinite(lon)
-                        ){
-
-                            return;
-                        }
-
-
-                        // ==========================================
-                        // 🕒 GPS TIME
-                        // ==========================================
-
-                        const time =
-                            Number(
-                                p.time ??
-                                p.timestamp ??
-                                0
-                            );
-
-
-                        // ==========================================
-                        // 💾 NORMALIZED ANALYTICS POINT
-                        // ==========================================
-
-                        const point = {
-
-                            id:
-                                pointId,
-
-                            lat:
-                                lat,
-
-                            lon:
-                                lon,
-
-                            time:
-                                time
-                        };
-
-
-                        // ==========================================
-                        // 💾 SAVE / UPDATE LOCAL CACHE
-                        // ==========================================
-
-                        analyticsCache[
-                            pointId
-                        ] =
-                            point;
-
-
-                        // ==========================================
-                        // 🔥 ONLY ADDED DOCUMENTS
-                        // → ANALYTICS PIPELINE
-                        // ==========================================
-
-                        if(
-                            change.type === "added"
-                        ){
-
-                            newPoints.push(
-                                point
-                            );
-
-                        }
-
-                    }
-                );
-
-
-                // ==================================================
-                // 🔥 SORT ONLY NEW BATCH
-                // --------------------------------------------------
-                // NEVER sort the complete session.
-                // ==================================================
-
-                newPoints.sort(
-                    (a,b) =>
-                        Number(a.time || 0) -
-                        Number(b.time || 0)
-                );
-
-
-                // ==================================================
-                // 🔥 NOTHING NEW
-                // ==================================================
-
-                if(
-                    newPoints.length === 0
-                ){
-
-                    return;
-                }
-
-
-                // ==================================================
-                // 🔥 LAST KNOWN ANALYTICS POINT
-                // ==================================================
-
-                let previousPoint =
-                    window.analyticsLastPoint[
-                        currentSessionId
-                    ];
-
-
-                // ==================================================
-                // 🔥 PROCESS ONLY NEW POINTS
-                // ==================================================
-
-                for(
-                    const currentPoint
-                    of newPoints
-                ){
-
-                    if(!currentPoint){
-                        continue;
-                    }
-
-
-                    // ==========================================
-                    // 🔥 FIRST EVER POINT
-                    // ==========================================
-
-                    if(!previousPoint){
-
-                        previousPoint =
-                            currentPoint;
-
-                        window.analyticsLastPoint[
-                            currentSessionId
-                        ] =
-                            currentPoint;
-
-                        continue;
-                    }
-
-
-                    // ==========================================
-                    // 🔥 GET TOUCHED GRID CELLS
-                    // ==========================================
-
-                    const result =
-                        getTouchedCells([
-                            [
-                                [
-                                    previousPoint.lat,
-                                    previousPoint.lon
-                                ],
-                                [
-                                    currentPoint.lat,
-                                    currentPoint.lon
-                                ]
-                            ]
-                        ]);
-
-
-                    const touchedCells =
-                        Array.from(
-                            result?.touchedCells || []
-                        );
-
-
-                    // ==========================================
-                    // 🔥 COLLECT ANALYTICS HITS
-                    // ==========================================
-for(
-    const rawCellId
-    of touchedCells
-){
-
-    const resolved =
-        resolveAnalyticsCell(
-            rawCellId
-        );
-
-
-    if(!resolved){
-        continue;
-    }
-
-
-    // ==================================================
-    // 🔥 SESSION + GRID + CELL IDENTITY
-    //
-    // This is the critical duplicate key.
-    //
-    // SAME:
-    //   session + grid + cell
-    //       ↓
-    //   ignored
-    //
-    // DIFFERENT SESSION:
-    //       ↓
-    //   accepted
-    // ==================================================
-
-    const sessionCellKey =
-        JSON.stringify([
-            currentSessionId,
-            resolved.gridId,
-            resolved.cellId
-        ]);
-
-
-    // ==================================================
-    // 🔒 SAME SESSION + SAME CELL
-    //
-    // GPS may report this cell every 30 seconds.
-    //
-    // DO NOT create another CELL contribution.
-    // ==================================================
-
-    const isNewSessionCell =
-        !sessionCellSeen.has(
-            sessionCellKey
-        );
-
-
-    // ==================================================
-    // 🔥 ALWAYS COLLECT THE GPS PATH
-    //
-    // collectAnalyticsHit() is still called so the
-    // coordinate path is not lost.
-    //
-    // The sessionCellVisits Set below decides whether
-    // this cell contributes to monthly intensity.
-    // ==================================================
-
-    collectAnalyticsHit(
-
-        resolved.gridId,
-
-        resolved.cellId,
-
-        currentPoint.lat,
-
-        currentPoint.lon,
-
-        [
-            [
-                [
-                    previousPoint.lat,
-                    previousPoint.lon
-                ],
-                [
-                    currentPoint.lat,
-                    currentPoint.lon
-                ]
-            ]
-        ],
-
-        s.cleanName,
-
-        currentSessionId
-
-    );
-
-
-    // ==================================================
-    // 🔥 NEW SESSION + CELL
-    // ==================================================
-
-    if(
-        isNewSessionCell
-    ){
-
-        // ----------------------------------------------
-        // Remember permanently for this browser/session
-        // ----------------------------------------------
-
-        sessionCellSeen.add(
-            sessionCellKey
-        );
-
-
-        // ----------------------------------------------
-        // Store the UNIQUE session-cell contribution
-        // in the grid analytics buffer.
-        // ----------------------------------------------
-
-        const buffer =
-            window.analyticsBuffer?.[
-                resolved.gridId
-            ];
-
-
-        if(
-            buffer
-        ){
-
-            buffer.sessionCellVisits ??=
-                new Set();
-
-
-            buffer.sessionCellVisits.add(
-                sessionCellKey
+            processPatrolAnalyticsSnapshot(
+                pointSnap,
+                s,
+                currentSessionId
             );
 
         }
-
-
-        // ----------------------------------------------
-        // Count ONLY NEW session-cell contributions.
-        // This controls AUTO FLUSH.
-        // ----------------------------------------------
-
-        window.analyticsNewSessionCellCount[
-            currentSessionId
-        ] ??=
-            0;
-
-
-        window.analyticsNewSessionCellCount[
-            currentSessionId
-        ]++;
-
-
-        console.log(
-            "🟢 NEW SESSION-CELL",
-            {
-                session:
-                    currentSessionId,
-
-                grid:
-                    resolved.gridId,
-
-                cell:
-                    resolved.cellId
-            }
-        );
-
-    }
-
-    else{
-
-        console.log(
-            "⏭ DUPLICATE SESSION-CELL",
-            {
-                session:
-                    currentSessionId,
-
-                grid:
-                    resolved.gridId,
-
-                cell:
-                    resolved.cellId
-            }
-        );
-
-    }
-
-}
-
-
-                    // ==================================================
-// 🔥 COUNT ONLY NEW SESSION + CELL CONTRIBUTIONS
-//
-// Repeated GPS in the same session/cell = 0.
-//
-// Therefore repeated GPS cannot cause an analytics
-// Firestore flush by itself.
-// ==================================================
-
-window.analyticsNewSessionCellCount[
-    currentSessionId
-] ??=
-    0;
-
-
-                    previousPoint =
-                        currentPoint;
-
-
-                    window.analyticsLastPoint[
-                        currentSessionId
-                    ] =
-                        currentPoint;
-
-                }
-
-// ==================================================
-// 🔥 AUTO FLUSH
-//
-// IMPORTANT:
-//
-// Flush based on UNIQUE SESSION + CELL contributions.
-//
-// NOT based on raw GPS points.
-//
-// Therefore:
-//
-// A
-// A
-// A
-// A
-// A
-//
-// = only ONE contribution.
-//
-// A + B + C + D + E
-//
-// = FIVE unique contributions → flush.
-// ==================================================
-
-if(
-    window.analyticsNewSessionCellCount[
-        currentSessionId
-    ] >= 5 &&
-
-    Object.keys(
-        window.analyticsBuffer || {}
-    ).length > 0
-){
-
-    console.log(
-        "📤 AUTO FLUSH — UNIQUE SESSION-CELLS",
-        window.analyticsNewSessionCellCount[
-            currentSessionId
-        ]
-    );
-
-
-    // ==================================================
-    // 🛡 SAFE FLUSH FUNCTION CHECK
-    // ==================================================
-
-    if(
-        typeof window.flushAnalyticsBuffer ===
-        "function"
-    ){
-
-        // ----------------------------------------------
-        // Reset UNIQUE contribution counter.
-        // ----------------------------------------------
-
-        window.analyticsNewSessionCellCount[
-            currentSessionId
-        ] =
-            0;
-
-
-        try{
-
-            const flushResult =
-                window.flushAnalyticsBuffer();
-
-
-            // ==================================================
-            // 🛡 HANDLE PROMISE SAFELY
-            // ==================================================
-
-            if(
-                flushResult &&
-                typeof flushResult.catch ===
-                "function"
-            ){
-
-                flushResult.catch(
-                    error => {
-
-                        console.error(
-                            "❌ Analytics auto-flush failed:",
-                            error
-                        );
-
-                    }
-                );
-
-            }
-
-        }
-        catch(error){
-
-            console.error(
-                "❌ Analytics auto-flush crashed:",
-                error
-            );
-
-        }
-
-    }
-    else{
-
-        console.warn(
-            "⚠ Analytics auto-flush skipped — " +
-            "flushAnalyticsBuffer() is not available"
-        );
-
-    }
-
-}
-            }
-            catch(e){
-
-                console.error(
-                    "Analytics listener error",
-                    s.cleanName,
-                    e
-                );
-
-            }
-
-        }
-
     );
 
 
@@ -107750,6 +107822,138 @@ async function commitAuthoritativeSessionDistance(
     return result;
 
 }
+
+// ============================================================
+// 💾 PATROL POINTS — IDB CACHE HELPERS
+// ============================================================
+
+const PATROL_POINTS_IDB_PREFIX =
+    "patrol_points_cache_v1_";
+
+
+// ============================================================
+// SAVE PATROL SESSION POINTS TO IDB
+// ============================================================
+
+async function savePatrolPointsToIDB(
+    sessionId,
+    points
+){
+    try{
+
+        const key =
+            PATROL_POINTS_IDB_PREFIX +
+            String(sessionId);
+
+        await idbKeyval.set(
+            key,
+            points
+        );
+
+        console.log(
+            "💾 PATROL POINTS SAVED TO IDB:",
+            {
+                sessionId:
+                    sessionId,
+
+                count:
+                    Object.keys(
+                        points || {}
+                    ).length
+            }
+        );
+
+        return true;
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ PATROL POINTS IDB SAVE FAILED:",
+            error
+        );
+
+        return false;
+
+    }
+}
+
+
+// ============================================================
+// LOAD PATROL SESSION POINTS FROM IDB
+// ============================================================
+
+async function loadPatrolPointsFromIDB(
+    sessionId
+){
+    try{
+
+        const key =
+            PATROL_POINTS_IDB_PREFIX +
+            String(sessionId);
+
+        const cached =
+            await idbKeyval.get(
+                key
+            );
+
+        if(
+            !cached ||
+            typeof cached !== "object"
+        ){
+
+            console.log(
+                "📭 PATROL POINTS IDB MISS:",
+                sessionId
+            );
+
+            return null;
+
+        }
+
+        const count =
+            Object.keys(
+                cached
+            ).length;
+
+        if(
+            count < 1
+        ){
+
+            console.log(
+                "📭 PATROL POINTS IDB EMPTY:",
+                sessionId
+            );
+
+            return null;
+
+        }
+
+        console.log(
+            "⚡ PATROL POINTS LOADED FROM IDB:",
+            {
+                sessionId:
+                    sessionId,
+
+                count:
+                    count
+            }
+        );
+
+        return cached;
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ PATROL POINTS IDB LOAD FAILED:",
+            error
+        );
+
+        return null;
+
+    }
+}
 async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
 
@@ -108248,19 +108452,150 @@ console.log(
   fullTrack.length
 );
 
-// ======================================
-// 🛡 FIRESTORE FALLBACK ONLY IF RAM CACHE
-// IS UNAVAILABLE / INCOMPLETE
-// ======================================
+
+// ============================================================
+// 💾 END DUTY TRACK RECOVERY
+//
+// PRIORITY:
+// 1. RAM
+// 2. IDB
+// 3. FIRESTORE
+// ============================================================
+
+
+// ============================================================
+// 1️⃣ RAM CACHE
+// ============================================================
+
+if(
+  fullTrack.length >= 2
+){
+
+  console.log(
+    "⚡ END DUTY TRACK SOURCE — RAM",
+    {
+      sessionId:
+        sessionId,
+
+      count:
+        fullTrack.length
+    }
+  );
+
+}
+
+
+// ============================================================
+// 2️⃣ IDB CACHE
+// ============================================================
+
+if(
+  fullTrack.length < 2
+){
+
+  console.log(
+    "💾 END DUTY — RAM insufficient; checking IDB:",
+    sessionId
+  );
+
+
+  const idbPoints =
+    await loadPatrolPointsFromIDB(
+      sessionId
+    );
+
+
+  if(
+    idbPoints &&
+    typeof idbPoints === "object"
+  ){
+
+    const idbTrack =
+      Object.values(
+        idbPoints
+      )
+
+      .filter(p =>
+        Number.isFinite(
+          Number(p?.lat)
+        )
+        &&
+        Number.isFinite(
+          Number(p?.lon)
+        )
+      )
+
+      .map(p => ({
+        lat:
+          Number(p.lat),
+
+        lng:
+          Number(p.lon),
+
+        time:
+          Number(
+            p.time ??
+            p.timestamp ??
+            0
+          )
+      }));
+
+
+    idbTrack.sort(
+      (a,b) =>
+        Number(a.time || 0) -
+        Number(b.time || 0)
+    );
+
+
+    if(
+      idbTrack.length >= 2
+    ){
+
+      fullTrack =
+        idbTrack;
+
+
+      console.log(
+        "⚡ END DUTY TRACK SOURCE — IDB",
+        {
+          sessionId:
+            sessionId,
+
+          count:
+            fullTrack.length
+        }
+      );
+
+    }
+    else{
+
+      console.warn(
+        "⚠ END DUTY — IDB cache insufficient:",
+        idbTrack.length
+      );
+
+    }
+
+  }
+
+}
+
+
+// ============================================================
+// 3️⃣ FIRESTORE — LAST RESORT ONLY
+// ============================================================
 
 if(
   fullTrack.length < 2
 ){
 
   console.warn(
-    "⚠ RAM TRACK CACHE INSUFFICIENT — " +
-    "using Firestore fallback"
+    "🌐 END DUTY TRACK — RAM + IDB insufficient; " +
+    "using Firestore fallback:",
+    sessionId
   );
+
 
   const pointsSnap =
     await window.fb.getDocs(
@@ -108277,12 +108612,15 @@ if(
       )
     );
 
+
   fullTrack = [];
+
 
   pointsSnap.forEach(doc => {
 
     const p =
       doc.data();
+
 
     if(
       Number.isFinite(
@@ -108312,6 +108650,18 @@ if(
     }
 
   });
+
+
+  console.log(
+    "🌐 END DUTY TRACK SOURCE — FIRESTORE",
+    {
+      sessionId:
+        sessionId,
+
+      count:
+        fullTrack.length
+    }
+  );
 
 }
 if(
