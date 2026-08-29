@@ -75188,28 +75188,68 @@ pointSnap.docChanges().forEach(
         // 💾 STORE / UPDATE LOCAL POINT
         // ==================================
 
-        const cachedPoint = {
+const rawPointTime =
+    p.time ??
+    p.timestamp ??
+    "";
 
-            id:
-                pointId,
+let pointTime = "";
 
-            lat:
-                lat,
+if(
+    typeof rawPointTime === "string"
+){
+    const parsed =
+        Date.parse(
+            rawPointTime
+        );
 
-            lon:
-                lon,
+    if(
+        Number.isFinite(parsed)
+    ){
+        pointTime =
+            parsed;
+    }
+}
+else if(
+    typeof rawPointTime?.toDate ===
+    "function"
+){
+    try{
+        pointTime =
+            rawPointTime
+                .toDate()
+                .getTime();
+    }
+    catch(err){
+        pointTime = "";
+    }
+}
+else if(
+    Number.isFinite(
+        Number(rawPointTime)
+    ) &&
+    Number(rawPointTime) > 0
+){
+    pointTime =
+        Number(rawPointTime);
+}
 
-            time:
-                Number(
-                    p.time ??
-                    p.timestamp ??
-                    0
-                ),
+const cachedPoint = {
+    id:
+        pointId,
 
-            breakTrack:
-                p.breakTrack === true
-        };
+    lat:
+        lat,
 
+    lon:
+        lon,
+
+    time:
+        pointTime,
+
+    breakTrack:
+        p.breakTrack === true
+};
         pointCache[
             pointId
         ] = cachedPoint;
@@ -108382,35 +108422,77 @@ if(
   typeof cachedPointMap === "object"
 ){
 
-  fullTrack =
+fullTrack =
     Object.values(
-      cachedPointMap
+        cachedPointMap
     )
 
     .filter(p =>
-      Number.isFinite(
-        Number(p?.lat)
-      )
-      &&
-      Number.isFinite(
-        Number(p?.lon)
-      )
+        Number.isFinite(
+            Number(p?.lat)
+        )
+        &&
+        Number.isFinite(
+            Number(
+                p?.lon ??
+                p?.lng
+            )
+        )
     )
 
-    .map(p => ({
-      lat:
-        Number(p.lat),
+    .map(p => {
 
-      lng:
-        Number(p.lon),
+        const rawTime =
+            p?.time ??
+            p?.timestamp ??
+            "";
 
-      time:
-        Number(
-          p.time ??
-          p.timestamp ??
-          0
+        let pointTime =
+            Number(rawTime);
+
+        if(
+            !Number.isFinite(
+                pointTime
+            )
+        ){
+            const parsedTime =
+                Date.parse(
+                    String(
+                        rawTime
+                    )
+                );
+
+            if(
+                Number.isFinite(
+                    parsedTime
+                )
+            ){
+                pointTime =
+                    parsedTime;
+            }
+        }
+
+        return {
+            lat:
+                Number(p.lat),
+
+            lng:
+                Number(
+                    p.lon ??
+                    p.lng
+                ),
+
+            time:
+                pointTime
+        };
+
+    })
+
+    .filter(p =>
+        Number.isFinite(
+            p.time
         )
-    }));
+    );
 
 }
 
@@ -108609,21 +108691,52 @@ if(
       )
     ){
 
-      fullTrack.push({
+const rawTime =
+    p.time ??
+    p.timestamp ??
+    "";
+
+let pointTime =
+    Number(rawTime);
+
+if(
+    !Number.isFinite(
+        pointTime
+    )
+){
+    const parsedTime =
+        Date.parse(
+            String(
+                rawTime
+            )
+        );
+
+    if(
+        Number.isFinite(
+            parsedTime
+        )
+    ){
+        pointTime =
+            parsedTime;
+    }
+}
+
+if(
+    Number.isFinite(
+        pointTime
+    )
+){
+    fullTrack.push({
         lat:
-          Number(p.lat),
+            Number(p.lat),
 
         lng:
-          Number(p.lon),
+            Number(p.lon),
 
         time:
-          Number(
-            p.time ??
-            p.timestamp ??
-            0
-          )
-      });
-
+            pointTime
+    });
+}
     }
 
   });
