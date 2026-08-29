@@ -81688,37 +81688,87 @@ async function submitSightingForm(event){
       }
     }
 
-    // =====================================================
-    // 🚀 FINAL DUTY-BASED GPS ROUTING
-    // =====================================================
-    if (dutyActive) {
-      console.log(
-        "🟢 SIGHTING GPS PRIORITY — DUTY ACTIVE:",
-        "window.latestGps → navigator 5-sec BEST → localStorage"
-      );
+// =====================================================
+// 🚀 FINAL GPS ROUTING
+// -----------------------------------------------------
+// AUTHORITATIVE PRIORITY — BOTH DUTY ON AND DUTY OFF
+//
+// 1️⃣ Navigator geolocation — fresh 5-second BEST fix
+// 2️⃣ window.latestGps
+// 3️⃣ localStorage
+//
+// Duty state does NOT change GPS priority.
+// =====================================================
 
-      if (useLatestGps()) {
-        // GPS selected from window.latestGps
-      } else if (await useFreshNavigatorGps()) {
-        // GPS selected from navigator.geolocation
-      } else if (useCachedGps()) {
-        // GPS selected from localStorage
-      }
-    } else {
-      console.log(
-        "🔴 SIGHTING GPS PRIORITY — DUTY INACTIVE:",
-        "navigator 5-sec BEST → window.latestGps → localStorage"
-      );
+console.log(
+  "📡 SIGHTING GPS PRIORITY:",
+  "navigator 5-sec BEST → window.latestGps → localStorage",
+  {
+    dutyActive: !!dutyActive
+  }
+);
 
-      if (await useFreshNavigatorGps()) {
-        // GPS selected from navigator.geolocation
-      } else if (useLatestGps()) {
-        // GPS selected from window.latestGps
-      } else if (useCachedGps()) {
-        // GPS selected from localStorage
-      }
+// =====================================================
+// 1️⃣ PRIMARY — FRESH NAVIGATOR GPS
+// -----------------------------------------------------
+// useFreshNavigatorGps() already:
+// • watches navigator.geolocation
+// • collects fixes for 5 seconds
+// • selects the BEST accuracy
+// • updates lat/lon
+// • updates window.latestGps
+// =====================================================
+
+if (await useFreshNavigatorGps()) {
+
+  console.log(
+    "🏆 SIGHTING GPS SELECTED:",
+    "navigator.geolocation",
+    {
+      lat: lat,
+      lon: lon,
+      accuracy: gpsAccuracy,
+      timestamp: gpsTimestamp
     }
+  );
 
+}
+// =====================================================
+// 2️⃣ SECONDARY — window.latestGps
+// =====================================================
+
+else if (useLatestGps()) {
+
+  console.log(
+    "📍 SIGHTING GPS SELECTED:",
+    "window.latestGps",
+    {
+      lat: lat,
+      lon: lon,
+      accuracy: gpsAccuracy,
+      timestamp: gpsTimestamp
+    }
+  );
+
+}
+// =====================================================
+// 3️⃣ FINAL FALLBACK — localStorage
+// =====================================================
+
+else if (useCachedGps()) {
+
+  console.log(
+    "💾 SIGHTING GPS SELECTED:",
+    "localStorage",
+    {
+      lat: lat,
+      lon: lon,
+      accuracy: gpsAccuracy,
+      timestamp: gpsTimestamp
+    }
+  );
+
+}
     // =====================================================
     // 4️⃣ FINAL GPS VALIDATION
     // =====================================================
@@ -104603,33 +104653,73 @@ async function submitWildlifeForm() {
             });
         }
 
-        // Apply Priority Chain
-        if (dutyActive) {
-            console.log(
-                "🟢 WILDLIFE GPS PRIORITY — DUTY ACTIVE:",
-                "window.latestGps → navigator 5-sec BEST → localStorage"
-            );
+// =================================================
+// 📍 APPLY FINAL GPS PRIORITY
+// -------------------------------------------------
+// SAME PRIORITY FOR DUTY ACTIVE AND DUTY INACTIVE
+//
+// 1️⃣ navigator.geolocation
+//      → search FULL 5 seconds
+//      → collect all valid fixes
+//      → select BEST accuracy
+//
+// 2️⃣ window.latestGps
+//
+// 3️⃣ localStorage
+//
+// window.isDutyActive DOES NOT change priority.
+// =================================================
 
-            if (!useLatestGps()) {
-                const acquired = await useFreshNavigatorGps();
-                if (!acquired) {
-                    useCachedGps();
-                }
-            }
-        } else {
-            console.log(
-                "🔴 WILDLIFE GPS PRIORITY — DUTY INACTIVE:",
-                "navigator 5-sec BEST → window.latestGps → localStorage"
-            );
+console.log(
+    "📍 WILDLIFE GPS PRIORITY:",
+    {
+        dutyActive: window.isDutyActive === true,
+        priority:
+            "navigator.geolocation 5-sec BEST → window.latestGps → localStorage"
+    }
+);
 
-            const acquired = await useFreshNavigatorGps();
-            if (!acquired) {
-                if (!useLatestGps()) {
-                    useCachedGps();
-                }
-            }
-        }
+// =================================================
+// 1️⃣ FRESH NAVIGATOR GPS
+// =================================================
 
+const acquired =
+    await useFreshNavigatorGps();
+
+if (acquired) {
+
+    console.log(
+        "✅ WILDLIFE GPS FINAL SOURCE:",
+        "navigator.geolocation"
+    );
+
+}
+
+// =================================================
+// 2️⃣ window.latestGps
+// =================================================
+
+else if (useLatestGps()) {
+
+    console.log(
+        "✅ WILDLIFE GPS FINAL SOURCE:",
+        "window.latestGps"
+    );
+
+}
+
+// =================================================
+// 3️⃣ localStorage
+// =================================================
+
+else if (useCachedGps()) {
+
+    console.log(
+        "✅ WILDLIFE GPS FINAL SOURCE:",
+        "localStorage"
+    );
+
+}
         // Final Validation
         if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat === 0 || lon === 0) {
             throw new Error("GPS location not available from latestGps, navigator.geolocation, or localStorage.");
