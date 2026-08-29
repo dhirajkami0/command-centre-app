@@ -13286,15 +13286,6 @@ async function notifyAndroidDuty(
 
     // ============================================================
     // 🔥 SESSION ID
-    // ------------------------------------------------------------
-    // Priority:
-    //
-    // 1. providedSessionId
-    // 2. localStorage.sessionId
-    // 3. fallback generation ONLY for active duty
-    //
-    // This guarantees that normal START DUTY sends the
-    // EXACT SAME sessionId created by startDuty().
     // ============================================================
 
     let sessionId =
@@ -13384,10 +13375,23 @@ async function notifyAndroidDuty(
 
     // ============================================================
     // 🚀 PROFILE SYNC
-    // ------------------------------------------------------------
+    //
     // IMPORTANT:
-    // Failure here must NOT prevent duty state from reaching
-    // Android.
+    // Android previously received only window.userProfile.
+    //
+    // window.userProfile does NOT contain the active duty
+    // selections:
+    //
+    //     beat
+    //     team
+    //     dutyType
+    //     compartment
+    //     startedAt
+    //
+    // Build an Android profile containing the existing profile
+    // PLUS the active START-DUTY values.
+    //
+    // Existing window.userProfile itself is NOT modified.
     // ============================================================
 
     if (
@@ -13398,19 +13402,130 @@ async function notifyAndroidDuty(
 
       try {
 
+        // ========================================================
+        // 🔥 START-DUTY VALUES
+        // ========================================================
+
+        const androidProfile = {
+
+          // ------------------------------------------------------
+          // EXISTING USER PROFILE
+          // ------------------------------------------------------
+
+          ...window.userProfile,
+
+
+          // ------------------------------------------------------
+          // 🔥 ACTIVE DUTY VALUES
+          //
+          // These are the SAME values already used by the
+          // START live_staff write.
+          // ------------------------------------------------------
+
+          ...(active ? {
+
+            beat:
+              document.getElementById(
+                "d-beat"
+              )?.value || "",
+
+            team:
+              getCheckedValues(
+                "staffOptions"
+              )
+                .filter(
+                  v => v && v.trim()
+                )
+                .join(", "),
+
+            dutyType:
+              document.getElementById(
+                "d-type"
+              )?.value || "",
+
+            compartment:
+              getCheckedValues(
+                "comptOptions"
+              )
+                .filter(
+                  v => v && v.trim()
+                )
+                .join(", "),
+
+            startedAt:
+              Date.now(),
+
+            dutyActive:
+              true,
+
+            status:
+              "ACTIVE",
+
+            sessionId:
+              sessionId
+
+          } : {
+
+            // --------------------------------------------------
+            // END DUTY
+            //
+            // Keep the existing profile/session behavior.
+            // Do not manufacture a new START timestamp.
+            // --------------------------------------------------
+
+            dutyActive:
+              false,
+
+            sessionId:
+              sessionId
+
+          })
+
+        };
+
+
         console.log(
-          "🚀 Syncing profile before duty..."
+          "🚀 PROFILE SENT TO APK",
+          {
+            beat:
+              androidProfile.beat,
+
+            team:
+              androidProfile.team,
+
+            dutyType:
+              androidProfile.dutyType,
+
+            compartment:
+              androidProfile.compartment,
+
+            startedAt:
+              androidProfile.startedAt,
+
+            sessionId:
+              androidProfile.sessionId,
+
+            dutyActive:
+              androidProfile.dutyActive
+          }
         );
+
+
+        // ========================================================
+        // 🔥 SEND ENRICHED PROFILE TO ANDROID
+        // ========================================================
 
         window.Android.saveUserProfile(
           JSON.stringify(
-            window.userProfile
+            androidProfile
           )
         );
+
 
         console.log(
           "✅ PROFILE SENT TO APK"
         );
+
 
       } catch (
         profileError
@@ -13434,10 +13549,6 @@ async function notifyAndroidDuty(
 
     // ============================================================
     // 📱 PHONE SYNC
-    // ------------------------------------------------------------
-    // IMPORTANT:
-    // Failure here must NOT prevent duty state from reaching
-    // Android.
     // ============================================================
 
     if (
@@ -13485,17 +13596,6 @@ async function notifyAndroidDuty(
 
     // ============================================================
     // 🔥 DUTY + SESSION → ANDROID
-    // ------------------------------------------------------------
-    // THIS IS THE CRITICAL CALL.
-    //
-    // Normal Start Duty:
-    //
-    // notifyAndroidDuty(
-    //     true,
-    //     sessionId
-    // )
-    //
-    // Android receives EXACTLY the same session.
     // ============================================================
 
     if (
@@ -13581,8 +13681,7 @@ async function notifyAndroidDuty(
     return false;
   }
 
-}
-/* ============================================================
+}/* ============================================================
    🔥 GLOBAL MASTER DATA (CRASH-PROOF)
 ============================================================ */
 
