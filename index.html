@@ -32721,20 +32721,8 @@ async function showMonthlyLiveStaff(){
 // Must be unique per live-duty staff/session.
 // ==================================================
 
-const staffDistanceKey =
-    String(
-        staff.sessionId ||
-        staff.uid ||
-        staff.userId ||
-        staff.name ||
-        staff.cleanName ||
-        "staff"
-    )
-    .trim()
-    .replace(
-        /[^a-zA-Z0-9_-]/g,
-        "_"
-    );
+const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
+
 
       html += `
 
@@ -77900,23 +77888,15 @@ const popup = `
   </div>
 
 
-  <!-- ================================ -->
-  <!-- DUTY DURATION -->
-  <!-- ================================ -->
-
-  <div style="
-    margin-bottom:3px;
-  ">
-
-    ⏳ Duty Duration:
-
-    <b>
-      ${dutyDuration}
-    </b>
-
-  </div>
-
-
+<!-- ================================ -->
+<!-- DUTY DURATION -->
+<!-- ================================ -->
+<div style="margin-bottom: 3px;">
+  ⏳ Duty Duration:
+  <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">
+    ${dutyDuration}
+  </b>
+</div>
   <!-- ================================ -->
   <!-- LAST GPS -->
   <!-- ================================ -->
