@@ -73523,82 +73523,52 @@ const pointsElement =
     }
 
 
-    // ==================================================
+// ==================================================
     // ⏱ UPDATED AT
     // --------------------------------------------------
-    // DIRECTLY FROM live_staff.updatedAt
+    // AUTHORITATIVE SOURCE:
+    // live_staff.lastSeen
+    //
+    // lastSeen is written as epoch milliseconds.
+    // Use it directly.
+    //
+    // FALLBACK:
+    // live_staff.time is an ISO date string.
     // ==================================================
 
-    const updatedAtElement =
-    document.getElementById(
-        "staffUpdatedAt_" +
-        popupKey
-    );
+    const updatedAtElement = document.getElementById("staffUpdatedAt_" + popupKey);
 
-    if(updatedAtElement){
+    if (updatedAtElement) {
+        let updatedText = "Unknown";
 
-        let updatedText =
-            "Unknown";
+        try {
+            // ==================================================
+            // 🔥 PRIMARY — LAST GPS UPDATE
+            // ==================================================
+            const lastSeenMs = Number(s.lastSeen);
 
-
-        try{
-
-            if(
-                s.updatedAt
-            ){
-
-                updatedText =
-                    new Date(
-                        Number(
-                            s.updatedAt
-                        )
-                    )
-                    .toLocaleString();
-
+            if (Number.isFinite(lastSeenMs) && lastSeenMs > 0) {
+                updatedText = new Date(lastSeenMs).toLocaleString();
             }
+            // ==================================================
+            // 🔥 FALLBACK — ISO TIME
+            // ==================================================
+            else if (s.time) {
+                const parsedTime = Date.parse(String(s.time));
 
-            else if(
-                s.time
-            ){
-
-                updatedText =
-                    new Date(
-                        Number(
-                            s.time
-                        )
-                    )
-                    .toLocaleString();
-
+                if (Number.isFinite(parsedTime)) {
+                    updatedText = new Date(parsedTime).toLocaleString();
+                }
             }
-
-            else if(
-                s.lastSeen
-            ){
-
-                updatedText =
-                    new Date(
-                        Number(
-                            s.lastSeen
-                        )
-                    )
-                    .toLocaleString();
-
-            }
-
-        }catch(error){
-
+        } catch (error) {
             console.warn(
-                "⚠ live_staff updatedAt parse failed:",
+                "⚠ live_staff last GPS time parse failed:",
                 cleanStaffName,
                 error
             );
-
         }
 
-
-        updatedAtElement.textContent =
-            updatedText;
-
+        updatedAtElement.textContent = updatedText;
     }
 
 // ==================================================
@@ -77147,68 +77117,75 @@ console.log(
 // ==============================================
 
 let liveTime = "Unknown";
+// ==============================================
+// 🔥 LAST GPS / UPDATED TIME — FIXED
+// --------------------------------------------------
+// AUTHORITATIVE LIVE GPS TIME:
+//     live_staff.lastSeen
+//
+// Android writes:
+//     lastSeen = System.currentTimeMillis()
+//
+// Therefore lastSeen is already epoch milliseconds.
+//
+// Do NOT use:
+//     Number(Firestore Timestamp)
+//     Number(ISO date string)
+//
+// Those can produce a 1970 date.
+// ==============================================
 
 try {
 
-  // ==================================================
-  // 🔥 PRIMARY SOURCE
-  // live_staff.updatedAt
-  // ==================================================
-
-  if(
-    s.updatedAt
-  ){
-
-    liveTime =
-      new Date(
+    const lastSeenMs =
         Number(
-          s.updatedAt
-        )
-      ).toLocaleString();
+            s.lastSeen
+        );
 
-  }
+    if(
+        Number.isFinite(lastSeenMs) &&
+        lastSeenMs > 0
+    ){
 
-  // ==================================================
-  // 🔥 FALLBACK
-  // ==================================================
+        liveTime =
+            new Date(
+                lastSeenMs
+            ).toLocaleString();
 
-  else if(
-    s.time
-  ){
+    }
 
-    liveTime =
-      new Date(
-        Number(
-          s.time
-        )
-      ).toLocaleString();
+    else if(
+        s.time
+    ){
 
-  }
+        const parsedTime =
+            Date.parse(
+                String(
+                    s.time
+                )
+            );
 
-  // ==================================================
-  // 🔥 FINAL FALLBACK
-  // ==================================================
+        if(
+            Number.isFinite(parsedTime)
+        ){
 
-  else if(
-    s.lastSeen
-  ){
+            liveTime =
+                new Date(
+                    parsedTime
+                ).toLocaleString();
 
-    liveTime =
-      new Date(
-        Number(
-          s.lastSeen
-        )
-      ).toLocaleString();
+        }
 
-  }
+    }
 
-} catch(e){
+}
+catch(error){
 
-  console.warn(
-    "⚠ live_staff updatedAt parse failed:",
-    s.cleanName,
-    e
-  );
+    console.warn(
+        "⚠ live_staff last GPS time parse failed:",
+        cleanStaffName,
+        error
+    );
 
 }
             // ==================================================
