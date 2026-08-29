@@ -1415,6 +1415,14 @@ async function(
 
         // ====================================================
         // 🧠 GET / CREATE SESSION CACHE
+        // ----------------------------------------------------
+        // Keep this existing cache for compatibility with the
+        // rest of the application.
+        //
+        // IMPORTANT:
+        //
+        // We DO NOT populate this cache from sessionPointCache
+        // because the two caches use different time formats.
         // ====================================================
 
         const cache =
@@ -1491,11 +1499,11 @@ async function(
             // =================================================
             // 🔥 SAME SESSION STILL ACTIVE?
             // -------------------------------------------------
-            // Important race-condition protection:
+            // Race-condition protection.
             //
-            // If old Firestore request finishes after staff
-            // starts another duty session, old route must NOT
-            // overwrite the new route.
+            // If the staff starts another duty session while
+            // this function is running, old route data must
+            // never overwrite the new session route.
             // =================================================
 
             const currentSessionId =
@@ -1546,9 +1554,13 @@ async function(
 
                             return [
 
-                                p.lat,
+                                Number(
+                                    p?.lat
+                                ),
 
-                                p.lon
+                                Number(
+                                    p?.lon
+                                )
 
                             ];
 
@@ -1651,19 +1663,14 @@ async function(
 
 
         // ====================================================
-        // ⚡ PHASE 1 — CACHE-FIRST RENDER
+        // ⚡ PHASE 1 — EXISTING SESSION-TRACK CACHE
         // ----------------------------------------------------
-        // THIS gives fast second/subsequent Staff Tracks ON.
+        // Preserve the existing fast cache behavior.
         //
-        // Example:
+        // This is RAM only.
         //
-        // Cache contains UPEN 346 points
-        //
-        // Staff Tracks ON
-        //       ↓
-        // 346 points render immediately
-        //       ↓
-        // Firestore refresh happens afterward
+        // If this cache already contains a route, render it
+        // immediately before checking sessionPointCache.
         // ====================================================
 
         const cachedPoints =
@@ -1706,7 +1713,10 @@ async function(
 
 
         // ====================================================
-        // 🛑 CHECK AGAIN BEFORE FIRESTORE
+        // 🛑 CHECK AGAIN BEFORE LOCAL SESSION CACHE
+        // ----------------------------------------------------
+        // Bulk may have been disabled while the previous
+        // synchronous work was executing.
         // ====================================================
 
         if(
@@ -1723,185 +1733,89 @@ async function(
 
 
         // ====================================================
-        // 🔥 FIRESTORE FUNCTIONS
-        // ====================================================
-
-        const {
-
-            collection,
-
-            query,
-
-            orderBy,
-
-            where,
-
-            getDocs
-
-        } =
-            window.fb;
-
-
-        if(
-            typeof getDocs !==
-            "function"
-        ){
-
-            console.warn(
-                "⚠ Firestore getDocs unavailable"
-            );
-
-
-            return;
-
-        }
-
-
-        // ====================================================
-        // 📍 FIRESTORE POINT COLLECTION
-        // ====================================================
-
-        const collectionRef =
-            collection(
-
-                window.db,
-
-                "patrol_tracks",
-
-                sessionId,
-
-                "points"
-
-            );
-
-
-        // ====================================================
-        // 🕒 LAST CACHED FIRESTORE TIME
+        // 🔥 REUSE EXISTING SESSION POINT CACHE
         // ----------------------------------------------------
+        //
         // IMPORTANT:
         //
-        // Firestore stores:
+        // The normal realtime patrol session listener already
+        // reads:
         //
-        // time = ISO STRING
+        // patrol_tracks/{sessionId}/points
         //
-        // Example:
+        // and maintains:
         //
-        // "2026-07-25T03:55:37.475Z"
+        // window.sessionPointCache[sessionId]
         //
-        // Therefore DO NOT use Number().
+        // Therefore Bulk Staff Tracks MUST NOT execute its
+        // own Firestore getDocs() here.
+        //
+        // Firestore:
+        //
+        //      ↓
+        //
+        // Existing realtime session listener:
+        //
+        //      ↓
+        //
+        // sessionPointCache[sessionId]
+        //
+        //      ↓
+        //
+        // Bulk Staff Track
+        //
+        // ====================================================
+        //
+        // NO getDocs()
+        // NO query()
+        // NO collection()
+        // NO where()
+        // NO orderBy()
+        // NO second listener()
+        //
         // ====================================================
 
-        const lastTime =
-            String(
-                cache.lastTime || ""
-            )
-            .trim();
+        window.sessionPointCache ??=
+            Object.create(null);
+
+
+        const pointMap =
+            window.sessionPointCache[
+                sessionId
+            ];
 
 
         // ====================================================
-        // 🔎 INITIAL VS INCREMENTAL QUERY
-        // ====================================================
-
-        let pointsRef;
-
-
-        // ====================================================
-        // 🔄 CACHE EXISTS → ONLY FETCH NEWER POINTS
+        // ⏳ SESSION CACHE NOT AVAILABLE YET
+        // ----------------------------------------------------
+        //
+        // This can happen when Bulk Staff Tracks is switched
+        // ON before the existing session listener has received
+        // its first Firestore snapshot.
+        //
+        // DO NOT FALL BACK TO getDocs().
+        //
+        // The existing session listener is already responsible
+        // for obtaining the points from Firestore.
+        //
+        // If cachedPoints were already rendered above, that
+        // route remains visible.
         // ====================================================
 
         if(
-            lastTime &&
-            typeof where ===
-                "function"
+            !pointMap ||
+            typeof pointMap !== "object"
         ){
-
-            pointsRef =
-                query(
-
-                    collectionRef,
-
-                    where(
-
-                        "time",
-
-                        ">",
-
-                        lastTime
-
-                    ),
-
-                    orderBy(
-                        "time"
-                    )
-
-                );
-
 
             console.log(
 
-                "🔄 BULK REFRESH:",
+                "⏳ BULK WAITING FOR SESSION POINT CACHE:",
 
                 name,
 
-                "after",
-
-                lastTime
+                sessionId
 
             );
-
-        }
-
-
-        // ====================================================
-        // 📥 NO CACHE TIME → INITIAL FULL SESSION FETCH
-        // ====================================================
-
-        else {
-
-            pointsRef =
-                query(
-
-                    collectionRef,
-
-                    orderBy(
-                        "time"
-                    )
-
-                );
-
-
-            console.log(
-
-                "📥 BULK INITIAL:",
-
-                name
-
-            );
-
-        }
-
-
-        // ====================================================
-        // 📥 FIRESTORE READ
-        // ====================================================
-
-        const pointSnap =
-            await getDocs(
-                pointsRef
-            );
-
-
-        // ====================================================
-        // 🛑 REQUEST MAY HAVE BEEN CANCELLED WHILE AWAITING
-        // ====================================================
-
-        if(
-            window.staffTrackState
-                ?.bulkEnabled !== true ||
-
-            window.staffTrackState
-                ?.requestId !== requestId
-        ){
 
             return;
 
@@ -1909,14 +1823,96 @@ async function(
 
 
         // ====================================================
-        // 🔐 RECHECK STAFF AFTER ASYNC READ
+        // 📦 CONVERT LOCAL POINT MAP → ARRAY
         // ----------------------------------------------------
-        // Handles:
         //
-        // - staff disappearing
-        // - authorization change
-        // - duty ending
-        // - new duty starting
+        // sessionPointCache is keyed by Firestore document ID.
+        //
+        // Object.values() gives us the actual locally cached
+        // patrol points.
+        //
+        // Sort chronologically so the polyline is always
+        // rendered in patrol order.
+        // ====================================================
+
+        const sessionPoints =
+            Object.values(
+                pointMap
+            )
+            .filter(
+                function(point){
+
+                    return(
+
+                        point &&
+
+                        Number.isFinite(
+                            Number(
+                                point.lat
+                            )
+                        ) &&
+
+                        Number.isFinite(
+                            Number(
+                                point.lon
+                            )
+                        )
+
+                    );
+
+                }
+            )
+            .sort(
+                function(a, b){
+
+                    return(
+
+                        Number(
+                            a?.time || 0
+                        ) -
+
+                        Number(
+                            b?.time || 0
+                        )
+
+                    );
+
+                }
+            );
+
+
+        // ====================================================
+        // 🛑 NO LOCAL POINTS YET
+        // ----------------------------------------------------
+        //
+        // Do NOT clear an already-rendered cached route.
+        // Simply wait for the existing realtime listener.
+        // ====================================================
+
+        if(
+            sessionPoints.length === 0
+        ){
+
+            console.log(
+
+                "⏳ BULK SESSION CACHE EMPTY:",
+
+                name,
+
+                sessionId
+
+            );
+
+            return;
+
+        }
+
+
+        // ====================================================
+        // 🔐 RECHECK STAFF AFTER LOCAL CACHE ACCESS
+        // ----------------------------------------------------
+        // Authorization must still come from
+        // visibleStaffCache.
         // ====================================================
 
         const currentStaff =
@@ -1936,6 +1932,9 @@ async function(
 
         // ====================================================
         // 🔥 RECHECK SESSION
+        // ----------------------------------------------------
+        // Prevent an old session from rendering over a newly
+        // started duty session.
         // ====================================================
 
         const currentSessionId =
@@ -1952,7 +1951,7 @@ async function(
 
             console.log(
 
-                "⛔ BULK SESSION CHANGED:",
+                "⛔ BULK LOCAL CACHE SESSION CHANGED:",
 
                 name,
 
@@ -1964,224 +1963,74 @@ async function(
 
             );
 
-
             return;
 
         }
 
 
         // ====================================================
-        // 📍 COLLECT FIRESTORE POINTS
-        // ====================================================
-
-        const incomingPoints =
-            [];
-
-
-        pointSnap.forEach(
-            function(doc){
-
-                const p =
-                    doc.data();
-
-
-                if(
-                    !p
-                ){
-
-                    return;
-
-                }
-
-
-                // =============================================
-                // 🔧 NORMALIZE
-                // ---------------------------------------------
-                // normalizeSessionTrackPoint preserves:
-                //
-                // time = ISO string
-                // =============================================
-
-                const normalized =
-                    window
-                        .normalizeSessionTrackPoint(
-                            p
-                        );
-
-
-                if(
-                    !normalized
-                ){
-
-                    return;
-
-                }
-
-
-                incomingPoints.push(
-                    normalized
-                );
-
-            }
-        );
-
-
-        // ====================================================
-        // 🧠 COMPLETE LOCALLY-KNOWN ROUTE
-        // ====================================================
-
-        let completePoints =
-            cachedPoints;
-
-
-        // ====================================================
-        // ➕ FIRESTORE RETURNED POINTS
+        // 🛰 FINAL BULK RENDER FROM EXISTING RAM CACHE
         // ----------------------------------------------------
-        // FIRST LOAD:
         //
-        // incomingPoints = complete session
+        // IMPORTANT:
         //
-        // SUBSEQUENT LOAD:
+        // This is a LOCAL operation only.
         //
-        // incomingPoints = only newer points
+        // No Firestore read occurs here.
         //
-        // mergeSessionTrackCache:
+        // Also:
         //
-        // - preserves existing cache
-        // - adds new points
-        // - deduplicates
-        // - sorts chronologically
-        // - updates ISO lastTime
+        // DO NOT write sessionPoints into sessionTrackCache.
+        //
+        // sessionPointCache currently contains numeric point
+        // times, while sessionTrackCache uses normalized
+        // session-track point format.
+        //
+        // Leaving sessionTrackCache untouched here prevents
+        // a time-format regression elsewhere in the app.
         // ====================================================
 
-        if(
-            incomingPoints.length > 0
-        ){
-
-            completePoints =
-                window
-                    .mergeSessionTrackCache(
-
-                        sessionId,
-
-                        incomingPoints
-
-                    );
-
-
-            // =================================================
-            // 📋 DEBUG
-            // =================================================
-
-            console.log(
-
-                lastTime
-                    ?
-                    "➕ BULK NEW POINTS:"
-                    :
-                    "💾 BULK CACHE CREATED:",
-
-                name,
-
-                incomingPoints.length,
-
-                "new |",
-
-                completePoints.length,
-
-                "total"
-
-            );
-
-        }
-
-
-        // ====================================================
-        // ✅ NO NEW FIRESTORE POINTS
-        // ----------------------------------------------------
-        // Existing cache remains authoritative locally.
-        // ====================================================
-
-        else {
-
-            completePoints =
-                window
-                    .getSessionTrackCache(
-                        sessionId
-                    )
-                    ?.points ||
-
-                [];
-
-
-            if(
-                lastTime
-            ){
-
-                console.log(
-
-                    "✅ BULK CACHE CURRENT:",
-
-                    name,
-
-                    completePoints.length,
-
-                    "points"
-
-                );
-
-            }
-
-        }
-
-
-        // ====================================================
-        // 🛰 FINAL RENDER / UPDATE
-        // ----------------------------------------------------
-        // INITIAL:
-        //
-        // Firestore → cache → create polyline
-        //
-        // CACHE HIT:
-        //
-        // cached polyline already appeared immediately;
-        // this updates it if new points arrived.
-        // ====================================================
-
-        if(
-            completePoints.length > 0
-        ){
-
+        const renderedFromPointCache =
             renderBulkTrack(
-                completePoints
+                sessionPoints
             );
-
-        }
 
 
         // ====================================================
         // 📋 FINAL DEBUG
+        // ----------------------------------------------------
+        // This message explicitly proves the new zero-read
+        // Bulk path.
         // ====================================================
 
-        const finalCache =
-            window.peekSessionTrackCache?.(
-                sessionId
+        if(
+            renderedFromPointCache
+        ){
+
+            console.log(
+
+                "⚡ BULK → EXISTING SESSION POINT CACHE:",
+
+                {
+
+                    staff:
+                        name,
+
+                    sessionId:
+                        sessionId,
+
+                    points:
+                        sessionPoints.length,
+
+                    firestoreReads:
+                        0
+
+                }
+
             );
 
+        }
 
-        console.log(
-
-            "🛣 BULK TRACK:",
-
-            name,
-
-            completePoints.length,
-
-            "points | lastTime:",
-
-            finalCache?.lastTime || ""
-
-        );
 
     }
 
@@ -2205,7 +2054,6 @@ async function(
     }
 
 };
-
     // ============================================================
 // 🛣 LOAD ALL VISIBLE STAFF TRACKS — BULK MODE
 // ------------------------------------------------------------
@@ -35157,20 +35005,6 @@ window.__ANALYTICS_READY__ =
 // 🔥 REALTIME ANALYTICS ENGINE
 // =====================================================
 
-window.realtimeAnalyticsState = {
-
-  sessionId: null,
-
-  unsubscribe: null,
-
-  pendingPoints: [],
-
-  firstPendingAt: 0
-
-};
-    window.realtimePerformanceData = {
-  trackPoints: []
-};
     const POINT_THRESHOLD = 8;
 
 const TIME_THRESHOLD = 30000;
@@ -74280,8 +74114,7 @@ delete window.analyticsNewSessionCellCount[
         window.trackPointCount ??= Object.create(null);
         window.analyticsPointCount ??= Object.create(null);
         window.analyticsLastPoint ??= Object.create(null);
-        window.analyticsPointCache ??= Object.create(null);
-        window.analyticsTrackListeners ??= Object.create(null);
+               window.analyticsTrackListeners ??= Object.create(null);
         window.trackDistanceMap ??= Object.create(null);
         window.trackDistanceSessionMap ??= Object.create(null);
         window.staffMarkers ??= Object.create(null);
@@ -81515,534 +81348,335 @@ async function submitSightingForm(event){
 
 
 // =====================================================
-// 📍 GPS — FRESH + BEST FIX REQUIRED FOR SUBMIT
-//
-// IMPORTANT:
-//
-// Submit must NEVER use:
-// - old window.latestGps
-// - localStorage.lastLat
-// - localStorage.lastLon
-//
-// Submit performs a fresh high-accuracy GPS scan,
-// collects fixes for 5 seconds,
-// selects the BEST accuracy fix,
-// updates window.latestGps,
-// and ONLY THEN writes the coordinates to Firestore.
-// =====================================================
+    // 📍 GPS — DUTY-BASED AUTHORITATIVE PRIORITY
+    //
+    // CURRENT USER DUTY STATE:
+    // window.isDutyActive
+    //
+    // 🟢 DUTY ACTIVE:
+    //     1. window.latestGps
+    //     2. navigator.geolocation — 5 sec BEST
+    //     3. localStorage
+    //
+    // 🔴 DUTY INACTIVE:
+    //     1. navigator.geolocation — 5 sec BEST
+    //     2. window.latestGps
+    //     3. localStorage
+    // =====================================================
 
-let lat = "";
-let lon = "";
+    const dutyActive = window.isDutyActive === true;
 
-let bestGpsPosition = null;
-let bestGpsAccuracy = Infinity;
-let gpsWatchId = null;
+    console.log("🔎 SIGHTING FORM GPS — ACTUAL DUTY STATE:", {
+      windowIsDutyActive: window.isDutyActive,
+      dutyActive: dutyActive
+    });
 
-console.log(
-  "📡 SUBMIT GPS: starting fresh 5-second BEST GPS scan..."
-);
+    let lat = 0;
+    let lon = 0;
+    let gpsAccuracy = null;
+    let gpsSpeed = null;
+    let gpsHeading = null;
+    let gpsTimestamp = null;
+    let gpsSource = "";
 
+    // =====================================================
+    // 1️⃣ window.latestGps
+    // =====================================================
+    function useLatestGps() {
+      const latestGps = window.latestGps;
+      const latestLat = Number(latestGps?.lat ?? latestGps?.latitude ?? 0);
+      const latestLon = Number(latestGps?.lng ?? latestGps?.lon ?? latestGps?.longitude ?? 0);
 
-if(
-  !navigator.geolocation
-){
+      if (
+        Number.isFinite(latestLat) &&
+        Number.isFinite(latestLon) &&
+        latestLat !== 0 &&
+        latestLon !== 0
+      ) {
+        lat = latestLat;
+        lon = latestLon;
+        gpsAccuracy = latestGps?.accuracy ?? null;
+        gpsSpeed = latestGps?.speed ?? null;
+        gpsHeading = latestGps?.heading ?? null;
+        gpsTimestamp = latestGps?.timestamp ?? null;
+        gpsSource = "window.latestGps";
 
-  console.error(
-    "❌ SUBMIT GPS: navigator.geolocation unavailable"
-  );
+        console.log("✅ SIGHTING GPS SELECTED — window.latestGps", {
+          lat: lat,
+          lon: lon,
+          accuracy: gpsAccuracy,
+          speed: gpsSpeed,
+          heading: gpsHeading,
+          timestamp: gpsTimestamp
+        });
 
-  alert(
-    "❌ Current GPS unavailable. Please enable GPS and try again."
-  );
+        return true;
+      }
 
-  setSubmitLoading(false);
+      console.log("⚠ SIGHTING GPS — window.latestGps unavailable");
+      return false;
+    }
 
-  return;
+    // =====================================================
+    // 2️⃣ localStorage CACHED GPS
+    // =====================================================
+    function useCachedGps() {
+      const cachedLat = Number(localStorage.getItem("lastLat"));
+      const cachedLon = Number(localStorage.getItem("lastLon"));
 
-}
+      if (
+        Number.isFinite(cachedLat) &&
+        Number.isFinite(cachedLon) &&
+        cachedLat !== 0 &&
+        cachedLon !== 0
+      ) {
+        lat = cachedLat;
+        lon = cachedLon;
+        gpsAccuracy = null;
+        gpsSpeed = null;
+        gpsHeading = null;
+        gpsTimestamp = null;
+        gpsSource = "localStorage";
 
+        console.log("📦 SIGHTING GPS SELECTED — localStorage", {
+          lat: lat,
+          lon: lon
+        });
 
-try{
+        return true;
+      }
 
-  // ============================================================
-  // START FRESH DEVICE GPS WATCH
-  // ============================================================
+      console.log("⚠ SIGHTING GPS — localStorage cached GPS unavailable");
+      return false;
+    }
 
-  gpsWatchId =
-    navigator.geolocation.watchPosition(
+    // =====================================================
+    // 3️⃣ FRESH NAVIGATOR GPS (5-Second Best Fix)
+    // =====================================================
+    async function useFreshNavigatorGps() {
+      if (!navigator.geolocation) {
+        console.error("❌ SIGHTING GPS — navigator.geolocation unavailable");
+        return false;
+      }
 
-      function(position){
+      console.log("📡 SIGHTING GPS — STARTING 5 SECOND BEST GPS SEARCH...");
 
-        try{
+      let bestGpsPosition = null;
+      let bestGpsAccuracy = Infinity;
+      let gpsWatchId = null;
 
-          const gpsLat =
-            Number(
-              position
-                ?.coords
-                ?.latitude
-            );
+      try {
+        gpsWatchId = navigator.geolocation.watchPosition(
+          function (position) {
+            try {
+              const gpsLat = Number(position?.coords?.latitude);
+              const gpsLon = Number(position?.coords?.longitude);
+              const currentAccuracy = Number(position?.coords?.accuracy);
+              const currentTimestamp = Number(position?.timestamp) || Date.now();
 
-          const gpsLon =
-            Number(
-              position
-                ?.coords
-                ?.longitude
-            );
-
-          const gpsAccuracy =
-            Number(
-              position
-                ?.coords
-                ?.accuracy
-            );
-
-          const gpsTimestamp =
-            Number(
-              position
-                ?.timestamp
-            ) || Date.now();
-
-
-          // ======================================================
-          // VALIDATE FIX
-          // ======================================================
-
-          if(
-
-            !Number.isFinite(
-              gpsLat
-            )
-
-            ||
-
-            !Number.isFinite(
-              gpsLon
-            )
-
-            ||
-
-            !Number.isFinite(
-              gpsAccuracy
-            )
-
-            ||
-
-            gpsLat === 0
-
-            ||
-
-            gpsLon === 0
-
-            ||
-
-            gpsAccuracy <= 0
-
-          ){
-
-            console.warn(
-              "⚠️ SUBMIT GPS: invalid fix ignored",
-              {
-                lat:
-                  gpsLat,
-
-                lon:
-                  gpsLon,
-
-                accuracy:
-                  gpsAccuracy
+              // Validate GPS Fix
+              if (
+                !Number.isFinite(gpsLat) ||
+                !Number.isFinite(gpsLon) ||
+                !Number.isFinite(currentAccuracy) ||
+                gpsLat === 0 ||
+                gpsLon === 0 ||
+                currentAccuracy <= 0
+              ) {
+                console.warn("⚠️ SIGHTING GPS — invalid navigator fix ignored:", {
+                  lat: gpsLat,
+                  lon: gpsLon,
+                  accuracy: currentAccuracy
+                });
+                return;
               }
-            );
 
-            return;
-
-          }
-
-
-          // ======================================================
-          // FRESHNESS CHECK
-          //
-          // Ignore a position whose device timestamp is
-          // already too old.
-          // ======================================================
-
-          const gpsAge =
-            Date.now() -
-            gpsTimestamp;
-
-
-          if(
-            gpsAge >
-            10000
-          ){
-
-            console.warn(
-              "⚠️ SUBMIT GPS: stale fix ignored",
-              {
-                ageMs:
-                  gpsAge,
-
-                accuracy:
-                  gpsAccuracy
+              // Freshness Check
+              const gpsAge = Date.now() - currentTimestamp;
+              if (gpsAge > 10000) {
+                console.warn("⚠️ SIGHTING GPS — stale navigator fix ignored:", {
+                  ageMs: gpsAge,
+                  accuracy: currentAccuracy
+                });
+                return;
               }
-            );
 
-            return;
+              console.log("📍 SIGHTING GPS SEARCH FIX:", {
+                lat: gpsLat,
+                lon: gpsLon,
+                accuracy: currentAccuracy + " m",
+                age: gpsAge + " ms"
+              });
 
-          }
+              // Keep best accuracy (lower = better)
+              if (currentAccuracy < bestGpsAccuracy) {
+                bestGpsAccuracy = currentAccuracy;
+                bestGpsPosition = position;
 
-
-          console.log(
-            "📍 SUBMIT GPS FIX:",
-            {
-              lat:
-                gpsLat,
-
-              lon:
-                gpsLon,
-
-              accuracy:
-                gpsAccuracy + " m",
-
-              age:
-                gpsAge + " ms"
+                console.log("🏆 SIGHTING GPS NEW BEST:", {
+                  lat: gpsLat,
+                  lon: gpsLon,
+                  accuracy: currentAccuracy + " m"
+                });
+              }
+            } catch (gpsFixErr) {
+              console.warn("⚠️ SIGHTING GPS fix processing failed:", gpsFixErr);
             }
-          );
-
-
-          // ======================================================
-          // KEEP BEST ACCURACY
-          // ======================================================
-
-          if(
-            gpsAccuracy <
-            bestGpsAccuracy
-          ){
-
-            bestGpsAccuracy =
-              gpsAccuracy;
-
-            bestGpsPosition =
-              position;
-
-
-            console.log(
-              "🏆 SUBMIT GPS NEW BEST:",
-              {
-                lat:
-                  gpsLat,
-
-                lon:
-                  gpsLon,
-
-                accuracy:
-                  gpsAccuracy + " m"
-              }
-            );
-
+          },
+          function (error) {
+            console.warn("⚠️ SIGHTING GPS watch error:", error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
           }
-
-        }
-
-        catch(
-          gpsFixErr
-        ){
-
-          console.warn(
-            "⚠️ SUBMIT GPS fix processing failed:",
-            gpsFixErr
-          );
-
-        }
-
-      },
-
-      function(error){
-
-        console.warn(
-          "⚠️ SUBMIT GPS watch error:",
-          error
         );
 
-      },
+        // ⏱ Full 5-second collection window
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
-      {
+        // Stop GPS watch
+        if (gpsWatchId !== null) {
+          try {
+            navigator.geolocation.clearWatch(gpsWatchId);
+          } catch (clearErr) {
+            console.warn("⚠️ SIGHTING GPS clearWatch failed:", clearErr);
+          }
+          gpsWatchId = null;
+        }
 
-        enableHighAccuracy:
-          true,
+        if (!bestGpsPosition) {
+          console.warn("⚠ SIGHTING GPS — no valid navigator fix after 5 seconds");
+          return false;
+        }
 
-        timeout:
-          10000,
+        const bestCoords = bestGpsPosition.coords;
+        const bestLat = Number(bestCoords.latitude);
+        const bestLon = Number(bestCoords.longitude);
+        const bestAccuracy = Number(bestCoords.accuracy);
+        const bestTimestamp = Number(bestGpsPosition.timestamp) || Date.now();
 
-        maximumAge:
-          0
+        // Final validation
+        if (
+          !Number.isFinite(bestLat) ||
+          !Number.isFinite(bestLon) ||
+          !Number.isFinite(bestAccuracy) ||
+          bestLat === 0 ||
+          bestLon === 0 ||
+          bestAccuracy <= 0
+        ) {
+          console.warn("⚠ SIGHTING GPS — final navigator fix invalid");
+          return false;
+        }
 
+        lat = bestLat;
+        lon = bestLon;
+        gpsAccuracy = bestAccuracy;
+        gpsSpeed = bestCoords.speed ?? null;
+        gpsHeading = bestCoords.heading ?? null;
+        gpsTimestamp = bestTimestamp;
+        gpsSource = "navigator.geolocation";
+
+        // Update global GPS cache
+        window.latestGps = {
+          lat: lat,
+          lng: lon,
+          accuracy: gpsAccuracy,
+          speed: gpsSpeed,
+          heading: gpsHeading,
+          timestamp: gpsTimestamp,
+          time: Date.now(),
+          source: "navigator.geolocation"
+        };
+
+        // Update local storage GPS cache
+        localStorage.setItem("lastLat", String(lat));
+        localStorage.setItem("lastLon", String(lon));
+
+        console.log("🏆 SIGHTING GPS — FINAL BEST NAVIGATOR FIX:", {
+          lat: lat,
+          lon: lon,
+          accuracy: gpsAccuracy,
+          speed: gpsSpeed,
+          heading: gpsHeading,
+          timestamp: gpsTimestamp
+        });
+
+        return true;
+      } catch (gpsErr) {
+        if (gpsWatchId !== null) {
+          try {
+            navigator.geolocation.clearWatch(gpsWatchId);
+          } catch (clearErr) {
+            console.warn("⚠️ SIGHTING GPS clearWatch failed:", clearErr);
+          }
+          gpsWatchId = null;
+        }
+
+        console.error("❌ SIGHTING GPS navigator search failed:", gpsErr);
+        return false;
       }
-
-    );
-
-
-  // ============================================================
-  // COLLECT GPS FOR FULL 5 SECONDS
-  // ============================================================
-
-  await new Promise(
-    resolve => {
-
-      setTimeout(
-        resolve,
-        5000
-      );
-
-    }
-  );
-
-
-  // ============================================================
-  // STOP GPS WATCH
-  // ============================================================
-
-  if(
-    gpsWatchId !== null
-  ){
-
-    try{
-
-      navigator.geolocation.clearWatch(
-        gpsWatchId
-      );
-
-    }
-    catch(
-      clearErr
-    ){
-
-      console.warn(
-        "⚠️ SUBMIT GPS clearWatch failed:",
-        clearErr
-      );
-
     }
 
-    gpsWatchId =
-      null;
+    // =====================================================
+    // 🚀 FINAL DUTY-BASED GPS ROUTING
+    // =====================================================
+    if (dutyActive) {
+      console.log(
+        "🟢 SIGHTING GPS PRIORITY — DUTY ACTIVE:",
+        "window.latestGps → navigator 5-sec BEST → localStorage"
+      );
 
-  }
-
-
-  // ============================================================
-  // NO VALID FRESH FIX
-  // ============================================================
-
-  if(
-    !bestGpsPosition
-  ){
-
-    console.error(
-      "❌ SUBMIT GPS: no fresh valid GPS fix obtained"
-    );
-
-    alert(
-      "❌ Unable to obtain a fresh GPS position. Please wait for GPS and try again."
-    );
-
-    setSubmitLoading(false);
-
-    return;
-
-  }
-
-
-  // ============================================================
-  // EXTRACT BEST FIX
-  // ============================================================
-
-  const bestCoords =
-    bestGpsPosition.coords;
-
-  const bestLat =
-    Number(
-      bestCoords.latitude
-    );
-
-  const bestLon =
-    Number(
-      bestCoords.longitude
-    );
-
-  const bestAccuracy =
-    Number(
-      bestCoords.accuracy
-    );
-
-
-  const bestTimestamp =
-    Number(
-      bestGpsPosition.timestamp
-    ) || Date.now();
-
-
-  // ============================================================
-  // FINAL FRESHNESS CHECK
-  // ============================================================
-
-  const finalGpsAge =
-    Date.now() -
-    bestTimestamp;
-
-
-  if(
-    finalGpsAge >
-    10000
-  ){
-
-    console.error(
-      "❌ SUBMIT GPS: best fix became stale",
-      {
-        ageMs:
-          finalGpsAge
+      if (useLatestGps()) {
+        // GPS selected from window.latestGps
+      } else if (await useFreshNavigatorGps()) {
+        // GPS selected from navigator.geolocation
+      } else if (useCachedGps()) {
+        // GPS selected from localStorage
       }
-    );
-
-    alert(
-      "❌ GPS position became stale. Please try again."
-    );
-
-    setSubmitLoading(false);
-
-    return;
-
-  }
-
-
-  // ============================================================
-  // 🔥 UPDATE CENTRAL LIVE GPS CACHE
-  //
-  // This is now the BEST + FRESH fix actually used for
-  // this sighting submission.
-  // ============================================================
-
-  window.latestGps = {
-
-    lat:
-      bestLat,
-
-    lng:
-      bestLon,
-
-    accuracy:
-      bestAccuracy,
-
-    speed:
-      bestCoords.speed ??
-      null,
-
-    heading:
-      bestCoords.heading ??
-      null,
-
-    timestamp:
-      bestTimestamp,
-
-    time:
-      Date.now(),
-
-    source:
-      "SIGHTING_SUBMIT_FRESH_BEST_GPS"
-
-  };
-
-
-  // ============================================================
-  // USE EXACT SAME FIX FOR SUBMISSION
-  // ============================================================
-
-  lat =
-    bestLat;
-
-  lon =
-    bestLon;
-
-
-  console.log(
-    "============================================================"
-  );
-
-  console.log(
-    "🏆 FINAL SIGHTING GPS — FRESH + BEST"
-  );
-
-  console.log(
-    {
-      lat:
-        lat,
-
-      lon:
-        lon,
-
-      accuracy:
-        bestAccuracy + " m",
-
-      age:
-        finalGpsAge + " ms",
-
-      timestamp:
-        bestTimestamp,
-
-      source:
-        "SIGHTING_SUBMIT_FRESH_BEST_GPS"
-    }
-  );
-
-  console.log(
-    "============================================================"
-  );
-
-
-}
-catch(
-  gpsErr
-){
-
-  // ============================================================
-  // ALWAYS STOP WATCH IF AN EXCEPTION OCCURS
-  // ============================================================
-
-  if(
-    gpsWatchId !== null
-  ){
-
-    try{
-
-      navigator.geolocation.clearWatch(
-        gpsWatchId
+    } else {
+      console.log(
+        "🔴 SIGHTING GPS PRIORITY — DUTY INACTIVE:",
+        "navigator 5-sec BEST → window.latestGps → localStorage"
       );
 
+      if (await useFreshNavigatorGps()) {
+        // GPS selected from navigator.geolocation
+      } else if (useLatestGps()) {
+        // GPS selected from window.latestGps
+      } else if (useCachedGps()) {
+        // GPS selected from localStorage
+      }
     }
-    catch(
-      clearErr
-    ){}
 
-    gpsWatchId =
-      null;
+    // =====================================================
+    // 4️⃣ FINAL GPS VALIDATION
+    // =====================================================
+    if (
+      !Number.isFinite(Number(lat)) ||
+      !Number.isFinite(Number(lon)) ||
+      Number(lat) === 0 ||
+      Number(lon) === 0
+    ) {
+      console.error("❌ SIGHTING GPS — no usable GPS from all sources");
+      alert("❌ Unable to obtain GPS position. Please enable GPS and try again.");
+      setSubmitLoading(false);
+      return;
+    }
 
-  }
+    lat = Number(lat);
+    lon = Number(lon);
 
-
-  console.error(
-    "❌ SUBMIT GPS FAILED:",
-    gpsErr
-  );
-
-  alert(
-    "❌ Unable to obtain current GPS. Please try again."
-  );
-
-  setSubmitLoading(false);
-
-  return;
-
-}
-
+    console.log("📍 FINAL SIGHTING GPS:", {
+      source: gpsSource,
+      lat: lat,
+      lon: lon,
+      accuracy: gpsAccuracy,
+      speed: gpsSpeed,
+      heading: gpsHeading,
+      timestamp: gpsTimestamp
+    });
     // =====================================================
     // VALIDATE GPS
     // =====================================================
@@ -83077,15 +82711,15 @@ setSubmitLoading(false);
         lat:
           lat,
 
-        lon:
-          lon,
-
-        location:
-          location,
-
-        direction:
-          directionVal,
-
+        lat: lat,
+        lon: lon,
+        location: location,
+        gpsSource: gpsSource,
+        gpsAccuracy: gpsAccuracy,
+        gpsSpeed: gpsSpeed,
+        gpsHeading: gpsHeading,
+        gpsTimestamp: gpsTimestamp,
+        direction: directionVal,
         // ===================================================
         // NEW ELEPHANT LIFECYCLE FIELDS
         // ===================================================
@@ -104679,2021 +104313,688 @@ function checkSightingMediaUI(){
 // =====================================================
 // 🐅 SUBMIT WILDLIFE FORM
 // =====================================================
-async function submitWildlifeForm(){
-
-    try{
-
+async function submitWildlifeForm() {
+    try {
         // =================================================
         // 🔄 SUBMIT LOADING
         // =================================================
-
         setSubmitLoading(true);
-
 
         // =================================================
         // ⏳ ALLOW WEBVIEW TO PAINT "SUBMITTING..."
         // BEFORE HEAVY GPS / GIS / PAYLOAD WORK
         // =================================================
-
         await new Promise(resolve => {
-
             requestAnimationFrame(() => {
-
                 requestAnimationFrame(resolve);
-
             });
-
         });
-
 
         // =================================================
         // 🐾 OBSERVATION TYPE
         // =================================================
+        window.currentObservationType = "WILDLIFE";
 
-        window.currentObservationType =
-            "WILDLIFE";
+        // =================================================
+        // 📍 GPS — AUTHORITATIVE DUTY-BASED PRIORITY CHAIN
+        // =================================================
+        let gpsSource = "";
+        let lat = 0;
+        let lon = 0;
+        let gpsAccuracy = null;
+        let gpsSpeed = null;
+        let gpsHeading = null;
+        let gpsTimestamp = null;
 
-// =================================================
-// 📍 GPS — AUTHORITATIVE PRIORITY CHAIN
-//
-// PRIORITY:
-//
-// 1. window.latestGps
-// 2. localStorage cached GPS
-// 3. navigator.geolocation.getCurrentPosition()
-//
-// IMPORTANT:
-// window.latestGps ALWAYS HAS FIRST PRIORITY.
-// =================================================
+        const dutyActive = window.isDutyActive === true;
 
-let gpsSource =
-    "";
+        console.log("🔎 WILDLIFE FORM GPS — ACTUAL DUTY STATE:", {
+            windowIsDutyActive: window.isDutyActive,
+            dutyActive: dutyActive
+        });
 
-let lat =
-    0;
+        // 1️⃣ USE window.latestGps
+        function useLatestGps() {
+            const latestGps = window.latestGps;
+            const latestLat = Number(latestGps?.lat ?? latestGps?.latitude ?? 0);
+            const latestLon = Number(latestGps?.lng ?? latestGps?.lon ?? latestGps?.longitude ?? 0);
 
-let lon =
-    0;
+            if (
+                Number.isFinite(latestLat) &&
+                Number.isFinite(latestLon) &&
+                latestLat !== 0 &&
+                latestLon !== 0
+            ) {
+                lat = latestLat;
+                lon = latestLon;
+                gpsAccuracy = latestGps?.accuracy ?? null;
+                gpsSpeed = latestGps?.speed ?? null;
+                gpsHeading = latestGps?.heading ?? null;
+                gpsTimestamp = latestGps?.timestamp ?? null;
+                gpsSource = "window.latestGps";
 
-let gpsAccuracy =
-    null;
+                console.log("✅ WILDLIFE GPS SELECTED — window.latestGps", {
+                    lat: lat,
+                    lon: lon,
+                    accuracy: gpsAccuracy,
+                    speed: gpsSpeed,
+                    heading: gpsHeading,
+                    timestamp: gpsTimestamp
+                });
 
-let gpsSpeed =
-    null;
-
-let gpsHeading =
-    null;
-
-let gpsTimestamp =
-    null;
-
-
-// =================================================
-// 1️⃣ FIRST PRIORITY — window.latestGps
-// =================================================
-
-const latestGps =
-    window.latestGps;
-
-
-const latestLat =
-    Number(
-        latestGps?.lat ??
-        latestGps?.latitude ??
-        0
-    );
-
-
-const latestLon =
-    Number(
-        latestGps?.lng ??
-        latestGps?.lon ??
-        latestGps?.longitude ??
-        0
-    );
-
-
-if(
-    Number.isFinite(latestLat) &&
-    Number.isFinite(latestLon) &&
-    latestLat !== 0 &&
-    latestLon !== 0
-){
-
-    lat =
-        latestLat;
-
-    lon =
-        latestLon;
-
-    gpsAccuracy =
-        latestGps?.accuracy ??
-        null;
-
-    gpsSpeed =
-        latestGps?.speed ??
-        null;
-
-    gpsHeading =
-        latestGps?.heading ??
-        null;
-
-    gpsTimestamp =
-        latestGps?.timestamp ??
-        null;
-
-    gpsSource =
-        "window.latestGps";
-
-
-    console.log(
-        "✅ GPS SOURCE 1 — window.latestGps",
-        {
-            lat:
-                lat,
-
-            lon:
-                lon,
-
-            accuracy:
-                gpsAccuracy,
-
-            speed:
-                gpsSpeed,
-
-            heading:
-                gpsHeading,
-
-            timestamp:
-                gpsTimestamp
-        }
-    );
-
-}
-
-
-// =================================================
-// 2️⃣ SECOND PRIORITY — EXISTING LOCAL STORAGE CACHE
-//
-// Uses the existing app keys:
-// lastLat
-// lastLon
-//
-// Only used when window.latestGps is unavailable.
-// =================================================
-
-if(
-    gpsSource === ""
-){
-
-    const cachedLat =
-        Number(
-            localStorage.getItem(
-                "lastLat"
-            )
-        );
-
-
-    const cachedLon =
-        Number(
-            localStorage.getItem(
-                "lastLon"
-            )
-        );
-
-
-    if(
-        Number.isFinite(cachedLat) &&
-        Number.isFinite(cachedLon) &&
-        cachedLat !== 0 &&
-        cachedLon !== 0
-    ){
-
-        lat =
-            cachedLat;
-
-        lon =
-            cachedLon;
-
-        gpsAccuracy =
-            null;
-
-        gpsSpeed =
-            null;
-
-        gpsHeading =
-            null;
-
-        gpsTimestamp =
-            null;
-
-        gpsSource =
-            "localStorage";
-
-
-        console.log(
-            "📦 GPS SOURCE 2 — localStorage cached GPS",
-            {
-                lat:
-                    lat,
-
-                lon:
-                    lon
+                return true;
             }
-        );
 
-    }
-
-}
-
-
-// =================================================
-// 3️⃣ THIRD PRIORITY — FRESH DEVICE GPS
-//
-// Only used when:
-//
-// window.latestGps = unavailable
-// AND
-// localStorage cache = unavailable
-// =================================================
-
-if(
-    gpsSource === ""
-){
-
-    console.log(
-        "📡 GPS SOURCE 3 — requesting fresh device GPS..."
-    );
-
-
-    try{
-
-        if(
-            !navigator.geolocation
-        ){
-
-            throw new Error(
-                "Geolocation is not supported."
-            );
-
+            console.log("⚠ WILDLIFE GPS — window.latestGps unavailable");
+            return false;
         }
 
+        // 2️⃣ USE localStorage CACHED GPS
+        function useCachedGps() {
+            const cachedLat = Number(localStorage.getItem("lastLat"));
+            const cachedLon = Number(localStorage.getItem("lastLon"));
 
-        const position =
-            await new Promise(
-                (
-                    resolve,
-                    reject
-                ) => {
+            if (
+                Number.isFinite(cachedLat) &&
+                Number.isFinite(cachedLon) &&
+                cachedLat !== 0 &&
+                cachedLon !== 0
+            ) {
+                lat = cachedLat;
+                lon = cachedLon;
+                gpsAccuracy = null;
+                gpsSpeed = null;
+                gpsHeading = null;
+                gpsTimestamp = null;
+                gpsSource = "localStorage";
 
-                    navigator.geolocation
-                        .getCurrentPosition(
+                console.log("📦 WILDLIFE GPS SELECTED — localStorage", {
+                    lat: lat,
+                    lon: lon
+                });
 
-                            resolve,
+                return true;
+            }
 
-                            reject,
+            console.log("⚠ WILDLIFE GPS — localStorage cached GPS unavailable");
+            return false;
+        }
 
-                            {
+        // 3️⃣ FRESH NAVIGATOR GPS (5-Second Best Fix)
+        async function useFreshNavigatorGps() {
+            if (!navigator.geolocation) {
+                console.error("❌ WILDLIFE GPS — geolocation not supported");
+                return false;
+            }
 
-                                enableHighAccuracy:
-                                    true,
+            console.log("📡 WILDLIFE GPS — STARTING 5 SECOND BEST GPS SEARCH...");
 
-                                timeout:
-                                    10000,
+            return await new Promise(function(resolve) {
+                let bestPos = null;
+                let bestAcc = Infinity;
+                let gpsDone = false;
+                let watchId = null;
 
-                                maximumAge:
-                                    0
+                watchId = navigator.geolocation.watchPosition(
+                    function(pos) {
+                        if (gpsDone) return;
 
-                            }
+                        const currentLat = Number(pos?.coords?.latitude);
+                        const currentLon = Number(pos?.coords?.longitude);
+                        const currentAccuracy = Number(pos?.coords?.accuracy);
 
-                        );
+                        if (
+                            !Number.isFinite(currentLat) ||
+                            !Number.isFinite(currentLon) ||
+                            !Number.isFinite(currentAccuracy) ||
+                            currentLat === 0 ||
+                            currentLon === 0 ||
+                            currentAccuracy <= 0
+                        ) {
+                            console.warn("⚠ WILDLIFE GPS — invalid navigator fix ignored:", {
+                                lat: currentLat,
+                                lon: currentLon,
+                                accuracy: currentAccuracy
+                            });
+                            return;
+                        }
 
+                        console.log("📍 WILDLIFE GPS SEARCH FIX:", {
+                            lat: currentLat,
+                            lon: currentLon,
+                            accuracy: currentAccuracy + "m"
+                        });
+
+                        if (currentAccuracy < bestAcc) {
+                            bestAcc = currentAccuracy;
+                            bestPos = pos;
+                            console.log("🏆 WILDLIFE GPS — NEW BEST FIX:", {
+                                lat: currentLat,
+                                lon: currentLon,
+                                accuracy: currentAccuracy + "m"
+                            });
+                        }
+                    },
+                    function(error) {
+                        console.warn("⚠ WILDLIFE GPS — navigator error:", error?.message ?? error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+
+                setTimeout(function() {
+                    if (gpsDone) return;
+                    gpsDone = true;
+
+                    if (watchId !== null) {
+                        navigator.geolocation.clearWatch(watchId);
+                    }
+
+                    if (bestPos) {
+                        lat = Number(bestPos.coords.latitude);
+                        lon = Number(bestPos.coords.longitude);
+                        gpsAccuracy = bestPos.coords.accuracy ?? null;
+                        gpsSpeed = bestPos.coords.speed ?? null;
+                        gpsHeading = bestPos.coords.heading ?? null;
+                        gpsTimestamp = bestPos.timestamp ?? Date.now();
+                        gpsSource = "navigator.geolocation";
+
+                        window.latestGps = {
+                            lat: lat,
+                            lng: lon,
+                            accuracy: gpsAccuracy,
+                            speed: gpsSpeed,
+                            heading: gpsHeading,
+                            timestamp: gpsTimestamp,
+                            source: "navigator.geolocation"
+                        };
+
+                        localStorage.setItem("lastLat", String(lat));
+                        localStorage.setItem("lastLon", String(lon));
+
+                        console.log("🏆 WILDLIFE GPS — FINAL BEST NAVIGATOR FIX:", {
+                            lat: lat,
+                            lon: lon,
+                            accuracy: gpsAccuracy,
+                            speed: gpsSpeed,
+                            heading: gpsHeading,
+                            timestamp: gpsTimestamp
+                        });
+
+                        resolve(true);
+                        return;
+                    }
+
+                    console.warn("⚠ WILDLIFE GPS — no valid navigator fix after 5 seconds");
+                    resolve(false);
+                }, 5000);
+            });
+        }
+
+        // Apply Priority Chain
+        if (dutyActive) {
+            console.log(
+                "🟢 WILDLIFE GPS PRIORITY — DUTY ACTIVE:",
+                "window.latestGps → navigator 5-sec BEST → localStorage"
+            );
+
+            if (!useLatestGps()) {
+                const acquired = await useFreshNavigatorGps();
+                if (!acquired) {
+                    useCachedGps();
                 }
+            }
+        } else {
+            console.log(
+                "🔴 WILDLIFE GPS PRIORITY — DUTY INACTIVE:",
+                "navigator 5-sec BEST → window.latestGps → localStorage"
             );
 
+            const acquired = await useFreshNavigatorGps();
+            if (!acquired) {
+                if (!useLatestGps()) {
+                    useCachedGps();
+                }
+            }
+        }
 
-        // =================================================
-        // FRESH GPS
-        // =================================================
+        // Final Validation
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat === 0 || lon === 0) {
+            throw new Error("GPS location not available from latestGps, navigator.geolocation, or localStorage.");
+        }
 
-        lat =
-            Number(
-                position.coords.latitude
-            );
-
-
-        lon =
-            Number(
-                position.coords.longitude
-            );
-
-
-        gpsAccuracy =
-            position.coords.accuracy ??
-            null;
-
-
-        gpsSpeed =
-            position.coords.speed ??
-            null;
-
-
-        gpsHeading =
-            position.coords.heading ??
-            null;
-
-
-        gpsTimestamp =
-            position.timestamp ??
-            Date.now();
-
-
-        gpsSource =
-            "navigator.geolocation";
-
-
-        // =================================================
-        // UPDATE GLOBAL GPS CACHE
-        // =================================================
-
-        window.latestGps = {
-
-            lat:
-                lat,
-
-            lng:
-                lon,
-
-            accuracy:
-                gpsAccuracy,
-
-            speed:
-                gpsSpeed,
-
-            heading:
-                gpsHeading,
-
-            timestamp:
-                gpsTimestamp
-
+        const gps = {
+            lat: lat,
+            lng: lon,
+            latitude: lat,
+            longitude: lon,
+            accuracy: gpsAccuracy,
+            speed: gpsSpeed,
+            heading: gpsHeading,
+            timestamp: gpsTimestamp,
+            source: gpsSource
         };
 
-
-        // =================================================
-        // UPDATE EXISTING LOCAL GPS CACHE
-        // =================================================
-
-        localStorage.setItem(
-            "lastLat",
-            String(
-                lat
-            )
-        );
-
-
-        localStorage.setItem(
-            "lastLon",
-            String(
-                lon
-            )
-        );
-
-
-        console.log(
-            "✅ GPS SOURCE 3 — fresh device GPS acquired",
-            {
-                lat:
-                    lat,
-
-                lon:
-                    lon,
-
-                accuracy:
-                    gpsAccuracy,
-
-                speed:
-                    gpsSpeed,
-
-                heading:
-                    gpsHeading,
-
-                timestamp:
-                    gpsTimestamp
-            }
-        );
-
-    }
-    catch(error){
-
-        console.error(
-            "❌ GPS SOURCE 3 FAILED:",
-            error
-        );
-
-    }
-
-}
-
-
-// =================================================
-// 4️⃣ FINAL GPS VALIDATION
-// =================================================
-
-if(
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon) ||
-    lat === 0 ||
-    lon === 0
-){
-
-    throw new Error(
-        "GPS location not available from latestGps, cached GPS, or device GPS."
-    );
-
-}
-
-
-// =================================================
-// 5️⃣ FINAL GPS OBJECT
-// =================================================
-//
-// Keep this local object for the existing
-// submitWildlifeForm() flow.
-// =================================================
-
-gps = {
-
-    lat:
-        lat,
-
-    lng:
-        lon,
-
-    latitude:
-        lat,
-
-    longitude:
-        lon,
-
-    accuracy:
-        gpsAccuracy,
-
-    speed:
-        gpsSpeed,
-
-    heading:
-        gpsHeading,
-
-    timestamp:
-        gpsTimestamp
-
-};
-
-
-console.log(
-    "📍 FINAL WILDLIFE GPS",
-    {
-        source:
-            gpsSource,
-
-        lat:
-            lat,
-
-        lon:
-            lon,
-
-        accuracy:
-            gpsAccuracy,
-
-        speed:
-            gpsSpeed,
-
-        heading:
-            gpsHeading,
-
-        timestamp:
-            gpsTimestamp
-    }
-);
-
+        console.log("📍 FINAL WILDLIFE GPS", {
+            source: gpsSource,
+            lat: lat,
+            lon: lon,
+            accuracy: gpsAccuracy,
+            speed: gpsSpeed,
+            heading: gpsHeading,
+            timestamp: gpsTimestamp
+        });
 
         // =================================================
         // 🗺 GIS RESOLUTION
         // =================================================
+        const gis = window.resolveCurrentGIS ? window.resolveCurrentGIS(lat, lon) : null;
 
-        const gis =
-            window.resolveCurrentGIS
-                ? window.resolveCurrentGIS(
-                    lat,
-                    lon
-                )
-                : null;
-
-
-        if(
-            !gis
-        ){
-
-            throw new Error(
-                "Unable to resolve GIS location."
-            );
-
+        if (!gis) {
+            throw new Error("Unable to resolve GIS location.");
         }
 
-
-        // =================================================
-        // 🛡 GIS FALLBACK VALUES
-        // =================================================
-
-        gis.division =
-            gis.division ||
-            "";
-
-
-        gis.range =
-            gis.range ||
-            "";
-
-
-        gis.beat =
-            gis.beat ||
-            "";
-
-
-        gis.compartment =
-            gis.compartment ||
-            "";
-
-
-        gis.text =
-            gis.text ||
-            "";
-
-
-        gis.village =
-            gis.village ||
-            "";
-
-
-        gis.villageCode =
-            gis.villageCode ||
-            "";
-
-
-        gis.nearestVillage =
-            gis.nearestVillage ||
-            "";
-
-
-        gis.nearestPoint =
-            gis.nearestPoint ||
-            "";
-
-
-        gis.distanceMeters =
-            gis.distanceMeters ??
-            null;
-
+        gis.division = gis.division || "";
+        gis.range = gis.range || "";
+        gis.beat = gis.beat || "";
+        gis.compartment = gis.compartment || "";
+        gis.text = gis.text || "";
+        gis.village = gis.village || "";
+        gis.villageCode = gis.villageCode || "";
+        gis.nearestVillage = gis.nearestVillage || "";
+        gis.nearestPoint = gis.nearestPoint || "";
+        gis.distanceMeters = gis.distanceMeters ?? null;
 
         // =================================================
         // 🐾 ANIMAL
         // =================================================
+        const animalElement = document.getElementById("w-animal");
+        let animal = animalElement?.value || "";
 
-        const animalElement =
-            document.getElementById(
-                "w-animal"
-            );
-
-
-        let animal =
-            animalElement?.value ||
-            "";
-
-
-        if(
-            animal ===
-            "Other"
-        ){
-
-            animal =
-                document
-                    .getElementById(
-                        "w-otherAnimal"
-                    )
-                    ?.value
-                    ?.trim() ||
-                "Other Wildlife";
-
+        if (animal === "Other") {
+            animal = document.getElementById("w-otherAnimal")?.value?.trim() || "Other Wildlife";
         }
-
 
         // =================================================
         // 📦 PAYLOAD
         // =================================================
-
         const payload = {
+            observation_type: "WILDLIFE",
+            animal: animal,
+            count: Number(document.getElementById("w-count")?.value || 0),
+            sex: document.getElementById("w-sex")?.value || "",
+            age: document.getElementById("w-age")?.value || "",
+            behaviour: document.getElementById("w-behaviour")?.value || "",
+            direction: document.getElementById("w-dir")?.value || "",
+            remarks: document.getElementById("w-remarks")?.value || "",
 
-            // ------------------------------------------------
-            // OBSERVATION
-            // ------------------------------------------------
+            injured: !!document.getElementById("w-injured")?.checked,
+            dead: !!document.getElementById("w-dead")?.checked,
+            conflict: !!document.getElementById("w-conflict")?.checked,
+            rescue: !!document.getElementById("w-rescue")?.checked,
+            vet: !!document.getElementById("w-vet")?.checked,
 
-            observation_type:
-                "WILDLIFE",
+            leader: window.userProfile?.rawName || window.userProfile?.name || "",
+            phone: window.userProfile?.phone || "",
+            designation: window.userProfile?.designation || window.userProfile?.role || "",
+            staff: window.userProfile?.cleanName || "",
 
+            lat: lat,
+            lon: lon,
+            location: lat + "," + lon,
+            gpsSource: gpsSource,
+            gpsAccuracy: gpsAccuracy,
+            gpsSpeed: gpsSpeed,
+            gpsHeading: gpsHeading,
+            gpsTimestamp: gpsTimestamp,
 
-            animal:
-                animal,
-
-
-            count:
-                Number(
-                    document
-                        .getElementById(
-                            "w-count"
-                        )
-                        ?.value ||
-                    0
-                ),
-
-
-            sex:
-                document
-                    .getElementById(
-                        "w-sex"
-                    )
-                    ?.value ||
-                "",
-
-
-            age:
-                document
-                    .getElementById(
-                        "w-age"
-                    )
-                    ?.value ||
-                "",
-
-
-            behaviour:
-                document
-                    .getElementById(
-                        "w-behaviour"
-                    )
-                    ?.value ||
-                "",
-
-
-            direction:
-                document
-                    .getElementById(
-                        "w-dir"
-                    )
-                    ?.value ||
-                "",
-
-
-            remarks:
-                document
-                    .getElementById(
-                        "w-remarks"
-                    )
-                    ?.value ||
-                "",
-
-
-            // ------------------------------------------------
-            // FLAGS
-            // ------------------------------------------------
-
-            injured:
-                !!document
-                    .getElementById(
-                        "w-injured"
-                    )
-                    ?.checked,
-
-
-            dead:
-                !!document
-                    .getElementById(
-                        "w-dead"
-                    )
-                    ?.checked,
-
-
-            conflict:
-                !!document
-                    .getElementById(
-                        "w-conflict"
-                    )
-                    ?.checked,
-
-
-            rescue:
-                !!document
-                    .getElementById(
-                        "w-rescue"
-                    )
-                    ?.checked,
-
-
-            vet:
-                !!document
-                    .getElementById(
-                        "w-vet"
-                    )
-                    ?.checked,
-
-
-            // ------------------------------------------------
-            // STAFF
-            // ------------------------------------------------
-
-            leader:
-                window.userProfile?.rawName ||
-                window.userProfile?.name ||
-                "",
-
-
-            phone:
-                window.userProfile?.phone ||
-                "",
-
-
-            designation:
-                window.userProfile?.designation ||
-                window.userProfile?.role ||
-                "",
-
-
-            staff:
-                window.userProfile?.cleanName ||
-                "",
-
-
-            // ------------------------------------------------
-            // GPS
-            // ------------------------------------------------
-
-            lat:
-                lat,
-
-
-            lon:
-                lon,
-
-
-            location:
-                lat +
-                "," +
-                lon,
-
-
-            // ------------------------------------------------
-            // GIS
-            // ------------------------------------------------
-
-            gis_division:
-                gis.division,
-
-
-            gis_range:
-                gis.range,
-
-
-            gis_beat:
-                gis.beat,
-
-
-            gis_compartment:
-                gis.compartment,
-
-
-            resolved_location:
-                gis.text,
-
-
-            forest_block:
-                gis.compartmentResult?.forestBlock ||
+            gis_division: gis.division,
+            gis_range: gis.range,
+            gis_beat: gis.beat,
+            gis_compartment: gis.compartment,
+            resolved_location: gis.text,
+            forest_block: gis.compartmentResult?.forestBlock ||
                 gis.compartmentResult?.forest_block ||
                 gis.compartmentResult?.block ||
-                gis.compartmentResult?.feature
-                    ?.properties
-                    ?.forest_block ||
-                gis.compartmentResult?.feature
-                    ?.properties
-                    ?.block ||
+                gis.compartmentResult?.feature?.properties?.forest_block ||
+                gis.compartmentResult?.feature?.properties?.block ||
                 "",
 
+            village: gis.village,
+            village_code: gis.villageCode,
+            village_lgd: gis.villageCode,
 
-            // ------------------------------------------------
-            // VILLAGE
-            // ------------------------------------------------
-
-            village:
-                gis.village,
-
-
-            village_code:
-                gis.villageCode,
-
-
-            village_lgd:
-                gis.villageCode,
-
-
-            // ------------------------------------------------
-            // NEAREST
-            // ------------------------------------------------
-
-            nearest_location:
-                gis.nearestPoint,
-
-
-            nearest_village:
-                gis.nearestVillage,
-
-
-            nearest_location_distance_m:
-                gis.distanceMeters,
-
-
-            nearest_village_distance_m:
-                gis.distanceMeters
-
+            nearest_location: gis.nearestPoint,
+            nearest_village: gis.nearestVillage,
+            nearest_location_distance_m: gis.distanceMeters,
+            nearest_village_distance_m: gis.distanceMeters
         };
 
-
         // =================================================
-        // 🎥📷🎙 MEDIA
+        // 🎥📷🎙 MEDIA HANDLING
         // =================================================
-        //
-        // IMPORTANT:
-        //
-        // NO FileReader
-        // NO Base64
-        // NO readAsDataURL
-        // NO saveWildlifePayload
-        //
-        // Keep the ORIGINAL media objects.
-        //
-        // This preserves:
-        //
-        // Photo  → File
-        // Video  → File
-        // Audio  → native Android URI / File
-        //
-        // submitToServer() is the single submission owner.
-        // =================================================
+        const wildlifeMedia = window.sightingMedia?.wildlife;
 
-        const wildlifeMedia =
-            window.sightingMedia?.wildlife;
-
-
-        if(
-            wildlifeMedia
-        ){
-
-            // ------------------------------------------------
-            // PHOTO
-            // ------------------------------------------------
-
-            if(
-                wildlifeMedia.photo
-            ){
-
-                payload.photo =
-                    wildlifeMedia.photo;
-
-            }
-
-
-            // ------------------------------------------------
-            // VIDEO
-            // ------------------------------------------------
-
-            if(
-                wildlifeMedia.video
-            ){
-
-                payload.video =
-                    wildlifeMedia.video;
-
-            }
-
-
-            // ------------------------------------------------
-            // AUDIO
-            // ------------------------------------------------
-
-            if(
-                wildlifeMedia.audio
-            ){
-
-                payload.audio =
-                    wildlifeMedia.audio;
-
-            }
-
+        if (wildlifeMedia) {
+            if (wildlifeMedia.photo) payload.photo = wildlifeMedia.photo;
+            if (wildlifeMedia.video) payload.video = wildlifeMedia.video;
+            if (wildlifeMedia.audio) payload.audio = wildlifeMedia.audio;
         }
 
-
-        // =================================================
-        // 📷 NORMAL HTML PHOTO INPUT FALLBACK
-        // =================================================
-        //
-        // If the photo was selected through:
-        //
-        // <input id="w-photo">
-        //
-        // and it has not already entered
-        // window.sightingMedia.wildlife,
-        // preserve that File directly.
-        //
-        // DO NOT convert it to Base64.
-        // =================================================
-
-        if(
-            !payload.photo
-        ){
-
-            const photoInput =
-                document.getElementById(
-                    "w-photo"
-                );
-
-
-            const photoFile =
-                photoInput
-                    ?.files
-                    ?.length
-                    ? photoInput.files[0]
-                    : null;
-
-
-            if(
-                photoFile
-            ){
-
-                payload.photo =
-                    photoFile;
-
+        if (!payload.photo) {
+            const photoInput = document.getElementById("w-photo");
+            const photoFile = photoInput?.files?.length ? photoInput.files[0] : null;
+            if (photoFile) {
+                payload.photo = photoFile;
             }
-
         }
 
-
-        // =================================================
-        // 📦 ENSURE MEDIA STATE EXISTS
-        // =================================================
-
-        if(
-            window.sightingMedia?.wildlife
-        ){
-
-            // Keep state synchronized with
-            // normal HTML photo input.
-
-            if(
-                payload.photo &&
-                !window.sightingMedia
-                    .wildlife
-                    .photo
-            ){
-
-                window.sightingMedia
-                    .wildlife
-                    .photo =
-                        payload.photo;
-
+        if (window.sightingMedia?.wildlife) {
+            if (payload.photo && !window.sightingMedia.wildlife.photo) {
+                window.sightingMedia.wildlife.photo = payload.photo;
             }
-
         }
 
+        console.log("📦 WILDLIFE SUBMIT MEDIA:", {
+            photo: !!payload.photo,
+            video: !!payload.video,
+            audio: !!payload.audio,
+            photoType: payload.photo ? typeof payload.photo : null,
+            videoType: payload.video ? typeof payload.video : null,
+            audioType: payload.audio ? typeof payload.audio : null
+        });
 
         // =================================================
-        // 🧪 MEDIA DEBUG
+        // 🚀 SUBMIT WILDLIFE
         // =================================================
-
-        console.log(
-            "📦 WILDLIFE SUBMIT MEDIA:",
-            {
-
-                photo:
-                    !!payload.photo,
-
-                video:
-                    !!payload.video,
-
-                audio:
-                    !!payload.audio,
-
-                photoType:
-                    payload.photo
-                        ? typeof payload.photo
-                        : null,
-
-                videoType:
-                    payload.video
-                        ? typeof payload.video
-                        : null,
-
-                audioType:
-                    payload.audio
-                        ? typeof payload.audio
-                        : null
-
-            }
-        );
-
-
-        // =================================================
-        // 🚀 SINGLE SUBMISSION PIPELINE
-        // =================================================
-        //
-        // Wildlife now uses the same canonical pipeline:
-        //
-        // submitToServer()
-        //       ↓
-        // Firestore metadata
-        //       ↓
-        // Firebase Storage
-        //       ↓
-        // Update SAME Firestore document
-        //       ↓
-        // Existing Wildlife backend
-        //
-        // =================================================
-
-// ========================================================
-// 🚀 SUBMIT WILDLIFE
-// ========================================================
-
-await submitToServer(
-    "WILDLIFE",
-    payload
-);
-
+        await submitToServer("WILDLIFE", payload);
+    } catch (err) {
+        console.error("❌ Wildlife submission failed:", err);
+        alert(err?.message || "Wildlife sighting submission failed.");
+        setSubmitLoading(false);
     }
-    catch(err){
-
-        console.error(
-            "❌ Wildlife submission failed:",
-            err
-        );
-
-
-        alert(
-            err?.message ||
-            "Wildlife sighting submission failed."
-        );
-
-
-        setSubmitLoading(
-            false
-        );
-
-    }
-
 }
 
 // ============================================================
 // 🐾 WILDLIFE SUBMISSION COMPATIBILITY WRAPPER
 // ============================================================
-
-async function saveWildlifePayload(payload){
-
-    if(
-        !payload ||
-        typeof payload !== "object"
-    ){
-
-        throw new Error(
-            "Wildlife payload is missing."
-        );
-
+async function saveWildlifePayload(payload) {
+    if (!payload || typeof payload !== "object") {
+        throw new Error("Wildlife payload is missing.");
     }
-
-    payload.observation_type =
-        "WILDLIFE";
-
-    return await submitToServer(
-        "WILDLIFE",
-        payload
-    );
+    payload.observation_type = "WILDLIFE";
+    return await submitToServer("WILDLIFE", payload);
 }
-          function updateWildlifeCompt(){
 
-updateCompt();
-
-document
-.getElementById(
-"w-compt-list"
-)
-.innerHTML =
-document
-.getElementById(
-"f-compt-list"
-)
-.innerHTML;
-
+function updateWildlifeCompt() {
+    updateCompt();
+    const wList = document.getElementById("w-compt-list");
+    const fList = document.getElementById("f-compt-list");
+    if (wList && fList) {
+        wList.innerHTML = fList.innerHTML;
+    }
 }
-    /* 3. Open Form + GPS */
- function openSightingForm(){
 
+// ============================================================
+// 🐘 OPEN SIGHTING FORM & INITIALIZE GPS
+// ============================================================
+function openSightingForm() {
     console.group("🐘 openSightingForm START");
+    console.log("⏱ Time:", new Date().toLocaleTimeString());
 
-    console.log(
-        "⏱ Time:",
-        new Date().toLocaleTimeString()
-    );
-
-
-    const modal =
-        document.getElementById(
-            "form-modal"
-        );
-
-
-    if(
-        !modal
-    ){
-
-        console.error(
-            "❌ form-modal NOT FOUND"
-        );
-
-
+    const modal = document.getElementById("form-modal");
+    if (!modal) {
+        console.error("❌ form-modal NOT FOUND");
         console.groupEnd();
-
         return;
-
     }
 
+    modal.style.display = "block";
+    modal.style.visibility = "visible";
+    modal.style.opacity = "1";
+    console.log("✅ Modal visible");
 
-    /* 🔥 FORCE SHOW */
-
-    modal.style.display =
-        "block";
-
-
-    modal.style.visibility =
-        "visible";
-
-
-    modal.style.opacity =
-        "1";
-
-
-    console.log(
-        "✅ Modal visible"
-    );
-
-
-    /* ===============================
-       🧹 RESET FORM
-       =============================== */
-
-    const form =
-        document.getElementById(
-            "elephantForm"
-        );
-
-
-    if(
-        form
-    ){
-
+    const form = document.getElementById("elephantForm");
+    if (form) {
         form.reset();
-
-
-        console.log(
-            "🧹 Form reset done"
-        );
-
+        console.log("🧹 Form reset done");
     }
 
-
-    // =====================================
-    // 🔥 LOAD DYNAMIC BEATS
-    // =====================================
-
-    try{
-
+    try {
         populateSightingBeats();
-
-    }
-    catch(err){
-
-        console.warn(
-            "Beat population failed",
-            err
-        );
-
+    } catch (err) {
+        console.warn("Beat population failed", err);
     }
 
-
-    // =====================================
-    // 🔥 LOAD DYNAMIC BLOCKS
-    // =====================================
-
-    try{
-
+    try {
         populateForestBlocks();
-
-    }
-    catch(err){
-
-        console.warn(
-            "Block population failed",
-            err
-        );
-
+    } catch (err) {
+        console.warn("Block population failed", err);
     }
 
+    const compInput = document.getElementById("f-compt");
+    if (compInput) compInput.value = "";
 
-    // =====================================
-    // 🔥 LOAD DYNAMIC REMARKS
-    // =====================================
+    const compList = document.getElementById("f-compt-list");
+    if (compList) compList.innerHTML = "";
 
+    const profile = window.userProfile;
+    console.log("👤 Profile RAW:", profile);
 
-    // =====================================
-    // RESET COMPARTMENTS
-    // =====================================
-
-    const compInput =
-        document.getElementById(
-            "f-compt"
-        );
-
-
-    if(
-        compInput
-    ){
-
-        compInput.value =
-            "";
-
-    }
-
-
-    const compList =
-        document.getElementById(
-            "f-compt-list"
-        );
-
-
-    if(
-        compList
-    ){
-
-        compList.innerHTML =
-            "";
-
-    }
-
-
-    /* ===============================
-       PROFILE
-       =============================== */
-
-    const profile =
-        window.userProfile;
-
-
-    console.log(
-        "👤 Profile RAW:",
-        profile
-    );
-
-
-    if(
-        !profile ||
-        !profile.rawName
-    ){
-
-        alert(
-            "User not loaded"
-        );
-
-
+    if (!profile || !profile.rawName) {
+        alert("User not loaded");
         console.groupEnd();
-
         return;
-
     }
 
+    const displayName = String(profile.rawName || profile.name || "").trim();
+    console.log("✅ Using RAW Name:", displayName);
 
-    /* ===============================
-       🧠 USE RAW NAME
-       =============================== */
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.error("❌ Missing field:", id);
+            return;
+        }
+        el.value = val;
+    };
 
-    const displayName =
-        String(
-            profile.rawName ||
-            profile.name ||
-            ""
-        ).trim();
+    const teamInput = document.getElementById("f-team");
+    if (teamInput) {
+        teamInput.value = displayName;
+        teamInput.readOnly = true;
+        teamInput.dataset.lockedUser = displayName;
+        console.log("✅ Team Leader set:", displayName);
+    }
 
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    setVal("f-time", hh + ":" + mm);
 
-    console.log(
-        "✅ Using RAW Name:",
-        displayName
-    );
+    function fillLocation(lat, lon) {
+        setVal("f-lat", lat);
+        setVal("f-lon", lon);
+        setVal("f-location", lat + ", " + lon);
 
+        localStorage.setItem("lastLat", String(lat));
+        localStorage.setItem("lastLon", String(lon));
+        console.log("📍 Location set:", lat, lon);
+    }
 
-    /* ===============================
-       SAFE SET
-       =============================== */
+    function tryGPS() {
+        const dutyActive = window.isDutyActive === true;
+        console.log("🔎 FORM GPS — ACTUAL DUTY STATE:", {
+            windowIsDutyActive: window.isDutyActive,
+            dutyActive: dutyActive
+        });
 
-    const setVal =
-        (
-            id,
-            val
-        ) => {
+        function useLatestGps() {
+            const latestGps = window.latestGps;
+            const latestLat = Number(latestGps?.lat ?? latestGps?.latitude ?? 0);
+            const latestLon = Number(latestGps?.lng ?? latestGps?.lon ?? latestGps?.longitude ?? 0);
 
-            const el =
-                document.getElementById(
-                    id
-                );
+            if (
+                Number.isFinite(latestLat) &&
+                Number.isFinite(latestLon) &&
+                latestLat !== 0 &&
+                latestLon !== 0
+            ) {
+                console.log("✅ GPS SELECTED — window.latestGps", {
+                    lat: latestLat,
+                    lon: latestLon,
+                    accuracy: latestGps?.accuracy ?? null,
+                    speed: latestGps?.speed ?? null,
+                    heading: latestGps?.heading ?? null,
+                    timestamp: latestGps?.timestamp ?? null
+                });
 
-
-            if(
-                !el
-            ){
-
-                console.error(
-                    "❌ Missing field:",
-                    id
-                );
-
-
-                return;
-
+                fillLocation(latestLat, latestLon);
+                return true;
             }
 
-
-            el.value =
-                val;
-
-        };
-
-
-    /* ===============================
-       TEAM LEADER
-       =============================== */
-
-    const teamInput =
-        document.getElementById(
-            "f-team"
-        );
-
-
-    if(
-        teamInput
-    ){
-
-        teamInput.value =
-            displayName;
-
-
-        teamInput.readOnly =
-            true;
-
-
-        teamInput.dataset.lockedUser =
-            displayName;
-
-
-        console.log(
-            "✅ Team Leader set:",
-            displayName
-        );
-
-    }
-
-
-    /* ===============================
-       TIME AUTO
-       =============================== */
-
-    const now =
-        new Date();
-
-
-    const hh =
-        String(
-            now.getHours()
-        ).padStart(
-            2,
-            "0"
-        );
-
-
-    const mm =
-        String(
-            now.getMinutes()
-        ).padStart(
-            2,
-            "0"
-        );
-
-
-    setVal(
-        "f-time",
-        hh + ":" + mm
-    );
-
-
-    /* ===============================
-       📍 LOCATION AUTO
-       =============================== */
-
-    function fillLocation(
-        lat,
-        lon
-    ){
-
-        setVal(
-            "f-lat",
-            lat
-        );
-
-
-        setVal(
-            "f-lon",
-            lon
-        );
-
-
-        setVal(
-            "f-location",
-            lat +
-            ", " +
-            lon
-        );
-
-
-        // 🔥 SAVE LAST
-
-        localStorage.setItem(
-            "lastLat",
-            String(
-                lat
-            )
-        );
-
-
-        localStorage.setItem(
-            "lastLon",
-            String(
-                lon
-            )
-        );
-
-
-        console.log(
-            "📍 Location set:",
-            lat,
-            lon
-        );
-
-    }
-
-
-    function tryGPS(){
-
-        // =====================================================
-        // 📍 GPS PRIORITY
-        //
-        // 1. window.latestGps
-        // 2. localStorage.lastLat / lastLon
-        // 3. navigator.geolocation
-        //
-        // Device GPS is scanned for FULL 5 seconds.
-        // The BEST accuracy received during those 5 seconds
-        // is selected.
-        // =====================================================
-
-
-        // =====================================================
-        // 1️⃣ FIRST PRIORITY — window.latestGps
-        // =====================================================
-
-        const latestGps =
-            window.latestGps;
-
-
-        const latestLat =
-            Number(
-                latestGps?.lat ??
-                latestGps?.latitude ??
-                0
-            );
-
-
-        const latestLon =
-            Number(
-                latestGps?.lng ??
-                latestGps?.lon ??
-                latestGps?.longitude ??
-                0
-            );
-
-
-        if(
-
-            Number.isFinite(
-                latestLat
-            ) &&
-
-            Number.isFinite(
-                latestLon
-            ) &&
-
-            latestLat !== 0 &&
-
-            latestLon !== 0
-
-        ){
-
-            console.log(
-                "✅ GPS SOURCE 1 — window.latestGps",
-                {
-                    lat:
-                        latestLat,
-
-                    lon:
-                        latestLon,
-
-                    accuracy:
-                        latestGps?.accuracy ??
-                        null,
-
-                    timestamp:
-                        latestGps?.timestamp ??
-                        null
-                }
-            );
-
-
-            fillLocation(
-                latestLat,
-                latestLon
-            );
-
-
-            return;
-
+            console.log("⚠ GPS — window.latestGps unavailable");
+            return false;
         }
 
+        function useCachedGps() {
+            const cachedLat = Number(localStorage.getItem("lastLat"));
+            const cachedLon = Number(localStorage.getItem("lastLon"));
 
-        // =====================================================
-        // 2️⃣ SECOND PRIORITY — localStorage
-        // =====================================================
+            if (
+                Number.isFinite(cachedLat) &&
+                Number.isFinite(cachedLon) &&
+                cachedLat !== 0 &&
+                cachedLon !== 0
+            ) {
+                console.log("📦 GPS SELECTED — localStorage", {
+                    lat: cachedLat,
+                    lon: cachedLon
+                });
 
-        const cachedLat =
-            Number(
-                localStorage.getItem(
-                    "lastLat"
-                )
-            );
+                fillLocation(cachedLat, cachedLon);
+                return true;
+            }
 
-
-        const cachedLon =
-            Number(
-                localStorage.getItem(
-                    "lastLon"
-                )
-            );
-
-
-        if(
-
-            Number.isFinite(
-                cachedLat
-            ) &&
-
-            Number.isFinite(
-                cachedLon
-            ) &&
-
-            cachedLat !== 0 &&
-
-            cachedLon !== 0
-
-        ){
-
-            console.log(
-                "📦 GPS SOURCE 2 — localStorage cached GPS",
-                {
-                    lat:
-                        cachedLat,
-
-                    lon:
-                        cachedLon
-                }
-            );
-
-
-            fillLocation(
-                cachedLat,
-                cachedLon
-            );
-
-
-            return;
-
+            console.log("⚠ GPS — localStorage cached GPS unavailable");
+            return false;
         }
 
+        function useFreshNavigatorGps() {
+            if (!navigator.geolocation) {
+                console.error("❌ GPS unavailable — geolocation not supported");
+                alert("❌ Could not get GPS location");
+                return;
+            }
 
-        // =====================================================
-        // 3️⃣ THIRD PRIORITY — DEVICE GPS
-        //
-        // Only reached when:
-        //
-        // latestGps unavailable
-        // AND
-        // localStorage unavailable
-        //
-        // Scan GPS continuously for 5 seconds.
-        // Keep every valid fix.
-        // Select the fix with LOWEST accuracy value.
-        // =====================================================
+            console.log("📡 GPS — STARTING FULL 5 SECOND BEST GPS SEARCH...");
 
-        if(
-            !navigator.geolocation
-        ){
+            let bestPos = null;
+            let bestAcc = Infinity;
+            let gpsDone = false;
 
-            console.error(
-                "❌ GPS unavailable — geolocation not supported"
-            );
+            const watchId = navigator.geolocation.watchPosition(
+                function(pos) {
+                    if (gpsDone) return;
 
+                    const lat = Number(pos?.coords?.latitude);
+                    const lon = Number(pos?.coords?.longitude);
+                    const acc = Number(pos?.coords?.accuracy);
 
-            alert(
-                "❌ Could not get GPS location"
-            );
-
-
-            return;
-
-        }
-
-
-        console.log(
-            "📡 GPS SOURCE 3 — Starting 5 second BEST GPS scan..."
-        );
-
-
-        let bestPos =
-            null;
-
-
-        let bestAcc =
-            Infinity;
-
-
-        let gpsDone =
-            false;
-
-
-        // =====================================================
-        // START DEVICE GPS WATCH
-        // =====================================================
-
-        const watchId =
-            navigator.geolocation.watchPosition(
-
-                function(
-                    pos
-                ){
-
-                    if(
-                        gpsDone
-                    ){
-
-                        return;
-
-                    }
-
-
-                    // =================================================
-                    // READ GPS
-                    // =================================================
-
-                    const lat =
-                        Number(
-                            pos?.coords?.latitude
-                        );
-
-
-                    const lon =
-                        Number(
-                            pos?.coords?.longitude
-                        );
-
-
-                    const acc =
-                        Number(
-                            pos?.coords?.accuracy
-                        );
-
-
-                    // =================================================
-                    // VALIDATE GPS FIX
-                    // =================================================
-
-                    if(
-
-                        !Number.isFinite(
-                            lat
-                        ) ||
-
-                        !Number.isFinite(
-                            lon
-                        ) ||
-
-                        !Number.isFinite(
-                            acc
-                        ) ||
-
+                    if (
+                        !Number.isFinite(lat) ||
+                        !Number.isFinite(lon) ||
+                        !Number.isFinite(acc) ||
                         lat === 0 ||
-
                         lon === 0 ||
-
                         acc <= 0
-
-                    ){
-
-                        console.warn(
-                            "⚠ Ignoring invalid GPS fix:",
-                            {
-                                lat,
-                                lon,
-                                accuracy:
-                                    acc
-                            }
-                        );
-
-
+                    ) {
+                        console.warn("⚠ GPS — invalid navigator fix ignored:", { lat, lon, accuracy: acc });
                         return;
-
                     }
 
+                    console.log("📍 GPS SEARCH FIX:", { lat, lon, accuracy: acc + "m" });
 
-                    console.log(
-                        "📍 GPS UPDATE:",
-                        {
-                            lat,
-                            lon,
-                            accuracy:
-                                acc + "m"
-                        }
-                    );
-
-
-                    // =================================================
-                    // KEEP BEST GPS
-                    //
-                    // LOWER accuracy = BETTER GPS
-                    // =================================================
-
-                    if(
-                        acc < bestAcc
-                    ){
-
-                        bestAcc =
-                            acc;
-
-
-                        bestPos =
-                            pos;
-
-
-                        console.log(
-                            "🏆 NEW BEST GPS:",
-                            {
-                                lat,
-                                lon,
-                                accuracy:
-                                    acc + "m"
-                            }
-                        );
-
+                    if (acc < bestAcc) {
+                        bestAcc = acc;
+                        bestPos = pos;
+                        console.log("🏆 NEW BEST GPS:", { lat, lon, accuracy: acc + "m" });
                     }
-
                 },
-
-
-                function(
-                    err
-                ){
-
-                    console.warn(
-                        "⚠ GPS failed:",
-                        err.message
-                    );
-
+                function(err) {
+                    console.warn("⚠ GPS failed:", err?.message ?? err);
                 },
-
-
                 {
-
-                    enableHighAccuracy:
-                        true,
-
-                    // Give individual GPS fixes enough time.
-                    // The overall collection window is 5 seconds.
-
-                    timeout:
-                        10000,
-
-                    maximumAge:
-                        0
-
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 }
-
             );
 
+            setTimeout(function() {
+                if (gpsDone) return;
+                gpsDone = true;
 
-        // =====================================================
-        // COLLECT GPS FOR FULL 5 SECONDS
-        // =====================================================
+                navigator.geolocation.clearWatch(watchId);
 
-        setTimeout(
-            function(){
+                if (bestPos) {
+                    const finalLat = Number(bestPos.coords.latitude);
+                    const finalLon = Number(bestPos.coords.longitude);
+                    const finalAccuracy = Number(bestPos.coords.accuracy);
 
-                if(
-                    gpsDone
-                ){
-
-                    return;
-
-                }
-
-
-                gpsDone =
-                    true;
-
-
-                // =================================================
-                // STOP GPS WATCH
-                // =================================================
-
-                navigator.geolocation
-                    .clearWatch(
-                        watchId
-                    );
-
-
-                // =================================================
-                // BEST GPS FOUND
-                // =================================================
-
-                if(
-                    bestPos
-                ){
-
-                    const finalLat =
-                        Number(
-                            bestPos.coords.latitude
-                        );
-
-
-                    const finalLon =
-                        Number(
-                            bestPos.coords.longitude
-                        );
-
-
-                    const finalAccuracy =
-                        Number(
-                            bestPos.coords.accuracy
-                        );
-
-
-                    console.log(
-                        "✅ GPS SOURCE 3 — FINAL BEST GPS:",
-                        {
-                            lat:
-                                finalLat,
-
-                            lon:
-                                finalLon,
-
-                            accuracy:
-                                finalAccuracy + "m"
-                        }
-                    );
-
-
-                    // =================================================
-                    // UPDATE window.latestGps
-                    // =================================================
+                    console.log("🏆 GPS — FINAL BEST NAVIGATOR FIX:", {
+                        lat: finalLat,
+                        lon: finalLon,
+                        accuracy: finalAccuracy + "m"
+                    });
 
                     window.latestGps = {
-
-                        lat:
-                            finalLat,
-
-                        lng:
-                            finalLon,
-
-                        accuracy:
-                            bestPos.coords.accuracy,
-
-                        speed:
-                            bestPos.coords.speed,
-
-                        heading:
-                            bestPos.coords.heading,
-
-                        timestamp:
-                            bestPos.timestamp ||
-                            Date.now()
-
+                        lat: finalLat,
+                        lng: finalLon,
+                        accuracy: bestPos.coords.accuracy,
+                        speed: bestPos.coords.speed,
+                        heading: bestPos.coords.heading,
+                        timestamp: bestPos.timestamp || Date.now(),
+                        source: "navigator.geolocation"
                     };
 
-
-                    // =================================================
-                    // SAVE LOCAL CACHE
-                    // =================================================
-
-                    fillLocation(
-                        finalLat,
-                        finalLon
-                    );
-
-
+                    fillLocation(finalLat, finalLon);
+                    console.log("✅ GPS SOURCE — navigator.geolocation", window.latestGps);
                     return;
-
                 }
 
+                console.warn("⚠ GPS — no valid navigator fix after full 5-second search");
+                if (useLatestGps()) return;
+                if (useCachedGps()) return;
 
-                // =================================================
-                // NO VALID GPS FIX
-                // =================================================
+                console.error("❌ GPS unavailable — navigator, latestGps and localStorage all unavailable");
+                alert("❌ Could not get GPS location");
+            }, 5000);
+        }
 
-                console.error(
-                    "❌ GPS unavailable — no valid GPS fix received after 5 second scan"
-                );
+        if (dutyActive) {
+            console.log("🟢 FORM GPS PRIORITY — DUTY ACTIVE:", "window.latestGps → navigator 5-sec BEST → localStorage");
+            if (useLatestGps()) return;
+            useFreshNavigatorGps();
+            return;
+        }
 
-
-                alert(
-                    "❌ Could not get GPS location"
-                );
-
-            },
-            5000
-        );
-
+        console.log("🔴 FORM GPS PRIORITY — DUTY INACTIVE:", "navigator 5-sec BEST → window.latestGps → localStorage");
+        useFreshNavigatorGps();
     }
 
-
-    // 🔥 IMPORTANT:
-    // Delay ensures modal + DOM ready
-
-    setTimeout(
-        tryGPS,
-        300
-    );
-
-
-    /* ===============================
-       TOTAL INIT
-       =============================== */
-
-    setTimeout(
-        () => {
-
-            calculateTotal();
-
-        },
-        100
-    );
-
-
+    setTimeout(tryGPS, 300);
+    setTimeout(() => { calculateTotal(); }, 100);
     console.groupEnd();
-
 }
-/* ============================================================
-🚨 DUTY SYSTEM
-============================================================ */
 
+// ============================================================
+// 🚨 DUTY SYSTEM & PRELOAD
+// ============================================================
 let dutyComptMap = {};
-
-// ============================================================
-// 📍 DUTY START GPS CACHE
-// ------------------------------------------------------------
-// GPS is acquired before Start Duty is pressed.
-//
-// RULE:
-// • GPS age <= 30 sec → use immediately
-// • GPS age > 30 sec → acquire fresh GPS
-// • Maximum fresh search = 10 sec
-// • NEVER use 0,0
-// ============================================================
-
 const DUTY_GPS_MAX_AGE_MS = 30000;
 const DUTY_GPS_SEARCH_MS = 10000;
 
@@ -106701,418 +105002,140 @@ window.dutyGpsSearchRunning = false;
 window.dutyGpsWatchId = null;
 window.dutyGpsSearchTimer = null;
 
-// ============================================================
-// 📍 ACQUIRE FRESH DUTY GPS
-// ------------------------------------------------------------
-// Maximum search time = 10 seconds.
-// Multiple valid readings are collected.
-// Lowest accuracy value = BEST GPS.
-// ============================================================
-
-function acquireFreshDutyGps(){
-
-    // --------------------------------------------------------
-    // PREVENT DUPLICATE SEARCH
-    // --------------------------------------------------------
-
-    if(
-        window.dutyGpsSearchRunning === true
-    ){
-
-        console.warn(
-            "⏸ DUTY GPS SEARCH ALREADY RUNNING"
-        );
-
-        return Promise.resolve(
-            null
-        );
+function acquireFreshDutyGps() {
+    if (window.dutyGpsSearchRunning === true) {
+        console.warn("⏸ DUTY GPS SEARCH ALREADY RUNNING");
+        return Promise.resolve(null);
     }
 
-    if(
-        !navigator.geolocation
-    ){
-
-        console.error(
-            "❌ Geolocation unavailable"
-        );
-
-        return Promise.resolve(
-            null
-        );
+    if (!navigator.geolocation) {
+        console.error("❌ Geolocation unavailable");
+        return Promise.resolve(null);
     }
 
-    window.dutyGpsSearchRunning =
-        true;
+    window.dutyGpsSearchRunning = true;
+    console.log("📡 DUTY GPS — FRESH SEARCH STARTED");
 
-    console.log(
-        "📡 DUTY GPS — FRESH SEARCH STARTED"
-    );
+    return new Promise((resolve) => {
+        const samples = [];
+        let finished = false;
 
-    return new Promise(
-        (resolve) => {
+        const finish = (best) => {
+            if (finished) return;
+            finished = true;
 
-            const samples = [];
-
-            let finished =
-                false;
-
-            const finish = (
-                best
-            ) => {
-
-                if(
-                    finished
-                ){
-                    return;
+            if (window.dutyGpsWatchId !== null) {
+                try {
+                    navigator.geolocation.clearWatch(window.dutyGpsWatchId);
+                } catch (e) {
+                    console.warn("⚠ GPS watcher cleanup failed", e);
                 }
+                window.dutyGpsWatchId = null;
+            }
 
-                finished =
-                    true;
+            if (window.dutyGpsSearchTimer !== null) {
+                clearTimeout(window.dutyGpsSearchTimer);
+                window.dutyGpsSearchTimer = null;
+            }
 
-                // ------------------------------------------------
-                // STOP WATCH
-                // ------------------------------------------------
+            window.dutyGpsSearchRunning = false;
 
-                if(
-                    window.dutyGpsWatchId !== null
-                ){
+            if (!best) {
+                console.error("❌ DUTY GPS — NO VALID FIX");
+                resolve(null);
+                return;
+            }
 
-                    try{
+            const finalLat = Number(best.lat);
+            const finalLon = Number(best.lon);
+            const finalAccuracy = Number(best.accuracy);
+            const finalTimestamp = Number(best.timestamp || Date.now());
 
-                        navigator.geolocation
-                            .clearWatch(
-                                window.dutyGpsWatchId
-                            );
-
-                    }catch(e){
-
-                        console.warn(
-                            "⚠ GPS watcher cleanup failed",
-                            e
-                        );
-                    }
-
-                    window.dutyGpsWatchId =
-                        null;
-                }
-
-                if(
-                    window.dutyGpsSearchTimer !== null
-                ){
-
-                    clearTimeout(
-                        window.dutyGpsSearchTimer
-                    );
-
-                    window.dutyGpsSearchTimer =
-                        null;
-                }
-
-                window.dutyGpsSearchRunning =
-                    false;
-
-                // ------------------------------------------------
-                // NO VALID GPS
-                // ------------------------------------------------
-
-                if(
-                    !best
-                ){
-
-                    console.error(
-                        "❌ DUTY GPS — NO VALID FIX"
-                    );
-
-                    resolve(
-                        null
-                    );
-
-                    return;
-                }
-
-                // ------------------------------------------------
-                // SAVE CENTRAL GPS CACHE
-                // ------------------------------------------------
-
-                const finalLat =
-                    Number(
-                        best.lat
-                    );
-
-                const finalLon =
-                    Number(
-                        best.lon
-                    );
-
-                const finalAccuracy =
-                    Number(
-                        best.accuracy
-                    );
-
-                const finalTimestamp =
-                    Number(
-                        best.timestamp ||
-                        Date.now()
-                    );
-
-                window.latestGps = {
-
-                    lat:
-                        finalLat,
-
-                    lng:
-                        finalLon,
-
-                    accuracy:
-                        finalAccuracy,
-
-                    speed:
-                        Number.isFinite(
-                            Number(
-                                best.speed
-                            )
-                        )
-                            ? Number(
-                                best.speed
-                            )
-                            : null,
-
-                    heading:
-                        Number.isFinite(
-                            Number(
-                                best.heading
-                            )
-                        )
-                            ? Number(
-                                best.heading
-                            )
-                            : null,
-
-                    timestamp:
-                        finalTimestamp
-                };
-
-                console.log(
-                    "🏆 DUTY GPS — BEST FIX SAVED",
-                    {
-                        lat:
-                            finalLat,
-
-                        lon:
-                            finalLon,
-
-                        accuracy:
-                            finalAccuracy,
-
-                        timestamp:
-                            finalTimestamp
-                    }
-                );
-
-                resolve(
-                    window.latestGps
-                );
+            window.latestGps = {
+                lat: finalLat,
+                lng: finalLon,
+                accuracy: finalAccuracy,
+                speed: Number.isFinite(Number(best.speed)) ? Number(best.speed) : null,
+                heading: Number.isFinite(Number(best.heading)) ? Number(best.heading) : null,
+                timestamp: finalTimestamp
             };
 
+            console.log("🏆 DUTY GPS — BEST FIX SAVED", {
+                lat: finalLat,
+                lon: finalLon,
+                accuracy: finalAccuracy,
+                timestamp: finalTimestamp
+            });
 
-            // ====================================================
-            // START GPS WATCH
-            // ====================================================
+            resolve(window.latestGps);
+        };
 
-            window.dutyGpsWatchId =
-                navigator.geolocation.watchPosition(
+        window.dutyGpsWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = Number(position?.coords?.latitude);
+                const lon = Number(position?.coords?.longitude);
+                const accuracy = Number(position?.coords?.accuracy);
 
-                    (position) => {
+                if (
+                    !Number.isFinite(lat) ||
+                    !Number.isFinite(lon) ||
+                    !Number.isFinite(accuracy) ||
+                    lat === 0 ||
+                    lon === 0 ||
+                    accuracy <= 0
+                ) {
+                    console.warn("⚠ Ignoring invalid DUTY GPS", { lat, lon, accuracy });
+                    return;
+                }
 
-                        const lat =
-                            Number(
-                                position?.coords?.latitude
-                            );
+                samples.push({
+                    lat,
+                    lon,
+                    accuracy,
+                    speed: position?.coords?.speed,
+                    heading: position?.coords?.heading,
+                    timestamp: position?.timestamp || Date.now()
+                });
 
-                        const lon =
-                            Number(
-                                position?.coords?.longitude
-                            );
+                samples.sort((a, b) => a.accuracy - b.accuracy);
+                console.log("📍 DUTY GPS SAMPLE", {
+                    count: samples.length,
+                    lat,
+                    lon,
+                    accuracy
+                });
+            },
+            (error) => {
+                console.warn("⚠ DUTY GPS ERROR:", error?.message || error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
 
-                        const accuracy =
-                            Number(
-                                position?.coords?.accuracy
-                            );
-
-                        if(
-                            !Number.isFinite(lat) ||
-                            !Number.isFinite(lon) ||
-                            !Number.isFinite(accuracy) ||
-                            lat === 0 ||
-                            lon === 0 ||
-                            accuracy <= 0
-                        ){
-
-                            console.warn(
-                                "⚠ Ignoring invalid DUTY GPS",
-                                {
-                                    lat,
-                                    lon,
-                                    accuracy
-                                }
-                            );
-
-                            return;
-                        }
-
-                        samples.push({
-
-                            lat,
-
-                            lon,
-
-                            accuracy,
-
-                            speed:
-                                position?.coords?.speed,
-
-                            heading:
-                                position?.coords?.heading,
-
-                            timestamp:
-                                position?.timestamp ||
-                                Date.now()
-                        });
-
-                        // -----------------------------------------
-                        // KEEP BEST ACCURACY
-                        // -----------------------------------------
-
-                        samples.sort(
-                            (a,b) =>
-                                a.accuracy -
-                                b.accuracy
-                        );
-
-                        console.log(
-                            "📍 DUTY GPS SAMPLE",
-                            {
-                                count:
-                                    samples.length,
-
-                                lat,
-
-                                lon,
-
-                                accuracy
-                            }
-                        );
-
-                    },
-
-                    (error) => {
-
-                        console.warn(
-                            "⚠ DUTY GPS ERROR:",
-                            error?.message ||
-                            error
-                        );
-
-                    },
-
-                    {
-
-                        enableHighAccuracy:
-                            true,
-
-                        timeout:
-                            10000,
-
-                        maximumAge:
-                            0
-                    }
-                );
-
-
-            // ====================================================
-            // HARD 10 SECOND LIMIT
-            // ====================================================
-
-            window.dutyGpsSearchTimer =
-                setTimeout(
-
-                    () => {
-
-                        console.log(
-                            "⏱ DUTY GPS 10 SECOND WINDOW FINISHED"
-                        );
-
-                        if(
-                            samples.length === 0
-                        ){
-
-                            finish(
-                                null
-                            );
-
-                            return;
-                        }
-
-                        samples.sort(
-                            (a,b) =>
-                                a.accuracy -
-                                b.accuracy
-                        );
-
-                        finish(
-                            samples[0]
-                        );
-
-                    },
-
-                    DUTY_GPS_SEARCH_MS
-                );
-        }
-    );
+        window.dutyGpsSearchTimer = setTimeout(() => {
+            console.log("⏱ DUTY GPS 10 SECOND WINDOW FINISHED");
+            if (samples.length === 0) {
+                finish(null);
+                return;
+            }
+            samples.sort((a, b) => a.accuracy - b.accuracy);
+            finish(samples[0]);
+        }, DUTY_GPS_SEARCH_MS);
+    });
 }
-// ============================================================
-// 📍 GET DUTY START GPS
-// ------------------------------------------------------------
-// <= 30 seconds old → use cached GPS
-// > 30 seconds old → fresh GPS search
-// ============================================================
 
-async function getDutyStartGps(){
+async function getDutyStartGps() {
+    const cached = window.latestGps;
+    const lat = Number(cached?.lat);
+    const lon = Number(cached?.lng ?? cached?.lon);
+    const accuracy = Number(cached?.accuracy);
+    const timestamp = Number(cached?.timestamp);
+    const age = Number.isFinite(timestamp) ? Date.now() - timestamp : Infinity;
 
-    const cached =
-        window.latestGps;
-
-    const lat =
-        Number(
-            cached?.lat
-        );
-
-    const lon =
-        Number(
-            cached?.lng ??
-            cached?.lon
-        );
-
-    const accuracy =
-        Number(
-            cached?.accuracy
-        );
-
-    const timestamp =
-        Number(
-            cached?.timestamp
-        );
-
-    const age =
-        Number.isFinite(timestamp)
-            ? Date.now() - timestamp
-            : Infinity;
-
-    // ========================================================
-    // 🟢 FRESH CACHE — USE IMMEDIATELY
-    // ========================================================
-
-    if(
+    if (
         Number.isFinite(lat) &&
         Number.isFinite(lon) &&
         lat !== 0 &&
@@ -107122,179 +105145,68 @@ async function getDutyStartGps(){
         Number.isFinite(timestamp) &&
         age >= 0 &&
         age <= DUTY_GPS_MAX_AGE_MS
-    ){
-
-        console.log(
-            "✅ DUTY GPS CACHE VALID",
-            {
-                ageMs:
-                    age,
-
-                ageSec:
-                    Math.round(
-                        age / 1000
-                    ),
-
-                lat,
-
-                lon,
-
-                accuracy
-            }
-        );
-
-        return {
-
+    ) {
+        console.log("✅ DUTY GPS CACHE VALID", {
+            ageMs: age,
+            ageSec: Math.round(age / 1000),
             lat,
-
             lon,
+            accuracy
+        });
 
-            accuracy,
-
-            timestamp
-        };
+        return { lat, lon, accuracy, timestamp };
     }
 
-    // ========================================================
-    // 🟡 CACHE MISSING / STALE
-    // ========================================================
+    console.log("🔄 DUTY GPS CACHE STALE — FRESH SEARCH REQUIRED", {
+        ageMs: age,
+        ageSec: Number.isFinite(age) ? Math.round(age / 1000) : "unknown"
+    });
 
-    console.log(
-        "🔄 DUTY GPS CACHE STALE — FRESH SEARCH REQUIRED",
-        {
-            ageMs:
-                age,
+    const fresh = await acquireFreshDutyGps();
+    if (!fresh) return null;
 
-            ageSec:
-                Number.isFinite(age)
-                    ? Math.round(
-                        age / 1000
-                    )
-                    : "unknown"
-        }
-    );
+    const freshLat = Number(fresh.lat);
+    const freshLon = Number(fresh.lng ?? fresh.lon);
+    const freshAccuracy = Number(fresh.accuracy);
+    const freshTimestamp = Number(fresh.timestamp || Date.now());
 
-    const fresh =
-        await acquireFreshDutyGps();
-
-    if(
-        !fresh
-    ){
-
-        return null;
-    }
-
-    const freshLat =
-        Number(
-            fresh.lat
-        );
-
-    const freshLon =
-        Number(
-            fresh.lng ??
-            fresh.lon
-        );
-
-    const freshAccuracy =
-        Number(
-            fresh.accuracy
-        );
-
-    const freshTimestamp =
-        Number(
-            fresh.timestamp ||
-            Date.now()
-        );
-
-    if(
+    if (
         !Number.isFinite(freshLat) ||
         !Number.isFinite(freshLon) ||
         freshLat === 0 ||
         freshLon === 0 ||
         !Number.isFinite(freshAccuracy) ||
         freshAccuracy <= 0
-    ){
-
-        console.error(
-            "❌ FRESH DUTY GPS INVALID",
-            fresh
-        );
-
+    ) {
+        console.error("❌ FRESH DUTY GPS INVALID", fresh);
         return null;
     }
 
     return {
-
-        lat:
-            freshLat,
-
-        lon:
-            freshLon,
-
-        accuracy:
-            freshAccuracy,
-
-        timestamp:
-            freshTimestamp
+        lat: freshLat,
+        lon: freshLon,
+        accuracy: freshAccuracy,
+        timestamp: freshTimestamp
     };
 }
-// ============================================================
-// 🚀 APP LOAD — PRE-ACQUIRE DUTY GPS
-// ------------------------------------------------------------
-// Runs once after the page is ready.
-// Maximum search = 10 seconds.
-// Does NOT start duty.
-// Does NOT write Firestore.
-// ============================================================
 
-function preloadDutyStartGps(){
-
-    console.log(
-        "🚀 APP LOAD → DUTY GPS PRE-ACQUISITION"
-    );
-
+function preloadDutyStartGps() {
+    console.log("🚀 APP LOAD → DUTY GPS PRE-ACQUISITION");
     acquireFreshDutyGps()
-        .then(
-            (gps) => {
-
-                if(
-                    gps
-                ){
-
-                    console.log(
-                        "✅ APP LOAD DUTY GPS READY",
-                        gps
-                    );
-
-                }else{
-
-                    console.warn(
-                        "⚠ APP LOAD DUTY GPS NOT AVAILABLE"
-                    );
-                }
-
+        .then((gps) => {
+            if (gps) {
+                console.log("✅ APP LOAD DUTY GPS READY", gps);
+            } else {
+                console.warn("⚠ APP LOAD DUTY GPS NOT AVAILABLE");
             }
-        )
-        .catch(
-            (error) => {
-
-                console.error(
-                    "❌ APP LOAD DUTY GPS FAILED",
-                    error
-                );
-
-            }
-        );
+        })
+        .catch((error) => {
+            console.error("❌ APP LOAD DUTY GPS FAILED", error);
+        });
 }
 
-// ============================================================
-// 🚀 START DUTY GPS PRELOAD AFTER APP SCRIPT IS READY
-// ============================================================
+setTimeout(preloadDutyStartGps, 1000);
 
-setTimeout(
-    preloadDutyStartGps,
-    1000
-);
 /* ============================================================
 ⚡ OPEN DUTY FORM — CACHE FIRST / NON-BLOCKING UI
 ============================================================ */
@@ -111067,9 +108979,7 @@ if(
 // ============================================================
 
 
-window.realtimePerformanceData = {
-  trackPoints: []
-};
+
         } catch (err) {
           console.error("❌ History write failed", err);
         }
@@ -111098,13 +109008,6 @@ window.realtimePerformanceData = {
   window.historyFlushInProgress =
     false;
 
-  // ==========================================================
-  // 🧹 REALTIME PERFORMANCE RESET
-  // ==========================================================
-
-  window.realtimePerformanceData = {
-    trackPoints: []
-  };
 
   window.lastTrackPoint =
     null;
@@ -119017,9 +116920,7 @@ window.newMonthlyGridsCaptured =
 // RESET LIVE PERFORMANCE
 // =====================================
 
-window.realtimePerformanceData = {
-  trackPoints: []
-};// =====================================================
+// =====================================================
 // 🔥 HISTORY STATE ONLY
 // =====================================================
 
@@ -119527,505 +117428,7 @@ if(typeof closeDutyForm === "function"){
     console.groupEnd();
   }
 }// ✅ FIX: properly closed startDuty
-async function startRealtimeAnalytics() {
 
-  console.assert(
-    typeof processRealtimeQueue === "function",
-    "❌ processRealtimeQueue missing"
-  );
-
-  try {
-
-    // =====================================
-    // DUTY CHECK
-    // =====================================
-
-    if (
-      window.isDutyActive !== true
-    ) {
-
-      console.warn(
-        "⚠ Duty not active"
-      );
-
-      return false;
-    }
-
-    // =====================================
-    // ENSURE STATE
-    // =====================================
-
-    if (
-      !window.realtimeAnalyticsState
-    ) {
-
-      window.realtimeAnalyticsState = {
-
-        sessionId: null,
-
-        unsubscribe: null,
-
-        pendingPoints: [],
-
-        firstPendingAt: 0
-
-      };
-
-    }
-
-    // =====================================
-    // SESSION
-    // =====================================
-
-    const sessionId =
-
-      localStorage.getItem(
-        "sessionId"
-      )
-
-      ||
-
-      window.currentSessionId;
-
-    if (!sessionId) {
-
-      console.warn(
-        "⚠ No sessionId"
-      );
-
-      return false;
-    }
-
-    // =====================================
-    // PREVENT DUPLICATE LISTENER
-    // =====================================
-
-    if (
-
-      window.realtimeAnalyticsState
-        ?.sessionId === sessionId
-
-      &&
-
-      typeof
-      window.realtimeAnalyticsState
-        ?.unsubscribe === "function"
-
-    ) {
-
-      console.log(
-        "⏭ REALTIME ALREADY ACTIVE",
-        sessionId
-      );
-
-      return true;
-    }
-
-    // =====================================
-    // CLEAN OLD LISTENER
-    // =====================================
-
-    if (
-      typeof
-      window.realtimeAnalyticsState
-        ?.unsubscribe === "function"
-    ) {
-
-      try {
-
-        window
-          .realtimeAnalyticsState
-          .unsubscribe();
-
-      }
-
-      catch(err){
-
-        console.warn(
-          "⚠ Previous listener cleanup failed",
-          err
-        );
-
-      }
-
-    }
-
-    // =====================================
-    // RESET STATE
-    // =====================================
-
-    window
-      .realtimeAnalyticsState
-      .sessionId =
-      sessionId;
-
-    window
-      .realtimeAnalyticsState
-      .unsubscribe =
-      null;
-
-    window
-      .realtimeAnalyticsState
-      .pendingPoints =
-      [];
-
-    window
-      .realtimeAnalyticsState
-      .firstPendingAt =
-      0;
-
-    console.log(
-      "🚀 REALTIME ANALYTICS START",
-      sessionId
-    );
-console.log(
-  "🔎 REALTIME ANALYTICS LISTENER ACTIVE:",
-  {
-    sessionId,
-    currentSessionId:
-      window.currentSessionId,
-    sameSession:
-      String(
-        sessionId
-      ) ===
-      String(
-        window.currentSessionId
-      )
-  }
-);
-    // =====================================
-    // QUERY
-    // =====================================
-
-    const pointsRef =
-
-      window.fb.query(
-
-        window.fb.collection(
-
-          window.db,
-
-          "patrol_tracks",
-
-          sessionId,
-
-          "points"
-
-        ),
-
-        window.fb.orderBy(
-          "time"
-        )
-
-      );
-
-    // =====================================
-    // SNAPSHOT LISTENER
-    // =====================================
-
-    const unsubscribe =
-
-      window.fb.onSnapshot(
-
-        pointsRef,
-
-        async snap => {
-
-          try {
-
-            if (
-              window.isDutyActive !== true
-            ) {
-              return;
-            }
-
-            if (
-              !window.realtimeAnalyticsState
-            ) {
-              return;
-            }
-
-            let addedCount = 0;
-
-            snap
-              .docChanges()
-              .forEach(change => {
-
-                if (
-                  change.type !== "added"
-                ) {
-                  return;
-                }
-
-                const p =
-                  change.doc.data();
-
-                if (
-
-                  !Number.isFinite(
-                    Number(p?.lat)
-                  )
-
-                  ||
-
-                  !Number.isFinite(
-                    Number(p?.lon)
-                  )
-
-                ) {
-
-                  return;
-                }
-
-                if (
-
-                  window
-                    .realtimeAnalyticsState
-                    .pendingPoints
-                    .length === 0
-
-                ) {
-
-                  window
-                    .realtimeAnalyticsState
-                    .firstPendingAt =
-                    Date.now();
-
-                }
-
-                window
-                  .realtimeAnalyticsState
-                  .pendingPoints
-                  .push({
-
-                    lat: Number(p.lat),
-
-                    lng: Number(p.lon),
-
-                    ts: Number(
-                      p.time || 0
-                    )
-
-                  });
-
-                addedCount++;
-
-              });
-
-            if (
-              addedCount > 0
-            ) {
-
-              console.log(
-                "🔥 SNAPSHOT RECEIVED",
-                {
-                  addedCount,
-
-                  pending:
-
-                    window
-                      .realtimeAnalyticsState
-                      .pendingPoints
-                      .length
-                }
-              );
-
-            }
-
-            // =====================================
-            // QUEUE TRIGGER
-            // =====================================
-
-            const pendingCount =
-
-              window
-                .realtimeAnalyticsState
-                .pendingPoints
-                .length;
-
-            const queueAge =
-
-              pendingCount > 0
-
-                ?
-
-                Date.now() -
-
-                (
-                  window
-                    .realtimeAnalyticsState
-                    .firstPendingAt || 0
-                )
-
-                :
-
-                0;
-
-         if (
-
-  pendingCount >= POINT_THRESHOLD
-
-  ||
-
-  (
-    pendingCount > 0
-    &&
-    queueAge >= TIME_THRESHOLD
-  )
-
-)
-         {
-
-              console.log(
-                "🚀 CALLING processRealtimeQueue",
-                {
-                  pendingCount,
-                  queueAge
-                }
-              );
-
-              if (
-
-                typeof
-                processRealtimeQueue ===
-                "function"
-
-              ) {
-
-                await processRealtimeQueue();
-
-              }
-
-              else {
-
-                console.error(
-                  "❌ processRealtimeQueue missing"
-                );
-
-              }
-
-            }
-
-          }
-
-          catch(err){
-
-            console.error(
-              "❌ SNAPSHOT PROCESS ERROR",
-              err
-            );
-
-          }
-
-        },
-
-        err => {
-
-          console.error(
-            "❌ REALTIME LISTENER ERROR",
-            err
-          );
-
-        }
-
-      );
-
-    // =====================================
-    // SAVE LISTENER
-    // =====================================
-
-    window
-      .realtimeAnalyticsState
-      .unsubscribe =
-      unsubscribe;
-// =====================================
-// PERIODIC FLUSH TIMER
-// =====================================
-
-if (
-  window.realtimeAnalyticsState
-    ?.flushTimer
-) {
-
-  clearInterval(
-    window.realtimeAnalyticsState
-      .flushTimer
-  );
-
-}
-
-window.realtimeAnalyticsState.flushTimer =
-
-  setInterval(
-    async () => {
-
-      try {
-
-        if (
-          window.isDutyActive !== true
-        ) {
-          return;
-        }
-
-        const pending =
-
-          window
-            .realtimeAnalyticsState
-            ?.pendingPoints
-            ?.length || 0;
-
-        if (
-          pending >= 2
-        ) {
-
-          console.log(
-            "⏰ TIMER FLUSH",
-            pending
-          );
-
-          await processRealtimeQueue();
-
-        }
-
-      }
-
-      catch(err){
-
-        console.error(
-          "❌ TIMER FLUSH",
-          err
-        );
-
-      }
-
-    },
-
-    TIME_THRESHOLD
-
-  );
-    console.log(
-      "✅ REALTIME ANALYTICS ACTIVE",
-      {
-        sessionId,
-        listenerAttached: true
-      }
-    );
-
-    return true;
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ startRealtimeAnalytics",
-      err
-    );
-
-    return false;
-  }
-
-}
     // =====================================================
 // 🔥 REALTIME QUEUE PROCESSOR
 // EVENT DRIVEN
@@ -120034,530 +117437,6 @@ window.realtimeAnalyticsState.flushTimer =
 
 
 
-window.analyticsProcessing = false;
-
-async function processRealtimeQueue() {
-
-  try {
-
-    // =====================================
-    // ALREADY RUNNING
-    // =====================================
-
-    if (
-      window.analyticsProcessing
-    ) {
-
-      console.warn(
-        "⏸ QUEUE ALREADY PROCESSING",
-        {
-          pending:
-            window.realtimeAnalyticsState
-              ?.pendingPoints
-              ?.length || 0
-        }
-      );
-
-      return;
-    }
-
-    // =====================================
-    // ENTRY LOG
-    // =====================================
-
-    console.log(
-      "🟢 ENTER processRealtimeQueue",
-      {
-        pending:
-          window.realtimeAnalyticsState
-            ?.pendingPoints
-            ?.length || 0,
-
-        processing:
-          window.analyticsProcessing,
-
-        duty:
-          window.isDutyActive,
-
-        session:
-          window.realtimeAnalyticsState
-            ?.sessionId
-      }
-    );
-
-    // =====================================
-    // DUTY CHECK
-    // =====================================
-
-    if (
-      window.isDutyActive !== true
-    ) {
-
-      console.warn(
-        "⚠ Duty inactive"
-      );
-
-      return;
-    }
-
-    // =====================================
-    // QUEUE CHECK
-    // =====================================
-
-    const queue =
-      window.realtimeAnalyticsState
-        ?.pendingPoints;
-
-    if (
-      !Array.isArray(queue)
-    ) {
-
-      console.warn(
-        "⚠ Queue missing"
-      );
-
-      return;
-    }
-
-    if (
-      queue.length < 2
-    ) {
-
-      console.log(
-        "⏸ Not enough points",
-        queue.length
-      );
-
-      return;
-    }
-
-    // =====================================
-    // LOCK
-    // =====================================
-
-    window.analyticsProcessing =
-      true;
-
-    console.log(
-      "🔒 QUEUE LOCKED"
-    );
-
-    // =====================================
-    // PROCESS UNTIL EMPTY
-    // =====================================
-
-    while (
-      window.realtimeAnalyticsState
-        ?.pendingPoints
-        ?.length >= 2
-    ) {
-
-      const available =
-        window.realtimeAnalyticsState
-          .pendingPoints
-          .length;
-
-  let batchSize =
-  Math.min(
-    BATCH_SIZE,
-    available
-  );
-
-// Avoid leaving exactly 1 point behind
-if (
-
-  available > BATCH_SIZE
-
-  &&
-
-  available - batchSize === 1
-
-) {
-
-  batchSize++;
-
-}
-
-      if (
-        batchSize < 2
-      ) {
-        break;
-      }
-
-      const batch =
-        window.realtimeAnalyticsState
-          .pendingPoints
-          .splice(
-            0,
-            batchSize
-          );
-
-      console.log(
-        "📦 PROCESSING BATCH",
-        {
-          batchSize:
-            batch.length,
-
-          remaining:
-            window.realtimeAnalyticsState
-              .pendingPoints
-              .length
-        }
-      );
-
-      const sessionId =
-        window.realtimeAnalyticsState
-          .sessionId;
-
-      // =====================================
-      // ANALYTICS
-      // =====================================
-
-     
-
-      // =====================================
-      // LIVE TRACK CACHE
-      // =====================================
-
-      if (
-        !window.realtimePerformanceData
-      ) {
-
-        window.realtimePerformanceData = {
-          trackPoints: []
-        };
-      }
-
-      window.realtimePerformanceData
-        .trackPoints
-        .push(...batch);
-
-      console.log(
-        "📍 TRACK CACHE",
-        window
-          .realtimePerformanceData
-          .trackPoints
-          .length
-      );
-
-      // =====================================
-      // MONTHLY CARD
-      // =====================================
-
-      try {
-
-        updateMonthlyStatusCard();
-
-      }
-
-      catch(e){
-
-        console.error(
-          "❌ updateMonthlyStatusCard",
-          e
-        );
-      }
-
-}
-
-    // =====================================
-    // RESET QUEUE TIMER
-    // =====================================
-
-    if (
-
-      window
-        .realtimeAnalyticsState
-        ?.pendingPoints
-        ?.length === 0
-
-    ) {
-
-      window
-        .realtimeAnalyticsState
-        .firstPendingAt =
-        0;
-
-    }
-
-    console.log(
-      "🏁 QUEUE EMPTY"
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ processRealtimeQueue",
-      err
-    );
-
-  }
-
-  finally {
-
-    window.analyticsProcessing =
-      false;
-
-    console.log(
-      "🔓 QUEUE UNLOCKED"
-    );
-  }
-}
-async function flushRealtimeAnalytics() {
-
-  try {
-
-    console.log(
-      "🏁 FINAL FLUSH START"
-    );
-
-    const pending =
-
-      window
-        .realtimeAnalyticsState
-        ?.pendingPoints || [];
-
-    // =====================================
-    // NORMAL QUEUE FLUSH
-    // =====================================
-
-    if (
-      pending.length >= 2
-    ) {
-
-      await processRealtimeQueue();
-
-    }
-
-    // =====================================
-    // HANDLE FINAL SINGLE POINT
-    // =====================================
-
-    else if (
-      pending.length === 1
-    ) {
-
-      console.log(
-        "📍 STORING FINAL SINGLE POINT"
-      );
-
-      const batch =
-        pending.splice(0, 1);
-
-      if (
-        !window.realtimePerformanceData
-      ) {
-
-        window.realtimePerformanceData = {
-          trackPoints: []
-        };
-      }
-
-      window
-        .realtimePerformanceData
-        .trackPoints
-        .push(...batch);
-
-      console.log(
-        "ℹ Analytics skipped for single point"
-      );
-
-    }
-
-    // =====================================
-    // RESET QUEUE TIMER
-    // =====================================
-
-    if (
-      window
-        .realtimeAnalyticsState
-    ) {
-
-      window
-        .realtimeAnalyticsState
-        .firstPendingAt =
-        0;
-
-    }
-
-    const remaining =
-
-      window
-        .realtimeAnalyticsState
-        ?.pendingPoints
-        ?.length || 0;
-
-    console.log(
-      "🏁 FINAL FLUSH COMPLETE",
-      remaining
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ flushRealtimeAnalytics",
-      err
-    );
-  }
-}function stopRealtimeAnalytics() {
-
-  try {
-
-    console.log(
-      "🛑 STOPPING REALTIME ANALYTICS"
-    );
-
-    // =====================================
-    // REMOVE FIRESTORE LISTENER
-    // =====================================
-
-    if (
-      window.realtimeAnalyticsState
-        ?.unsubscribe
-    ) {
-
-      try {
-
-        window
-          .realtimeAnalyticsState
-          .unsubscribe();
-
-      }
-
-      catch(err){
-
-        console.warn(
-          "⚠ unsubscribe failed",
-          err
-        );
-      }
-
-      window
-        .realtimeAnalyticsState
-        .unsubscribe =
-        null;
-    }
-
-    // =====================================
-    // STOP PERIODIC FLUSH TIMER
-    // =====================================
-
-    if (
-      window.realtimeAnalyticsState
-        ?.flushTimer
-    ) {
-
-      clearInterval(
-
-        window
-          .realtimeAnalyticsState
-          .flushTimer
-
-      );
-
-      window
-        .realtimeAnalyticsState
-        .flushTimer =
-        null;
-
-      console.log(
-        "⏹ FLUSH TIMER STOPPED"
-      );
-    }
-
-    // =====================================
-    // RESET PROCESSOR LOCK
-    // =====================================
-
-    window.analyticsProcessing =
-      false;
-
-    // =====================================
-    // CLEAR STATE
-    // =====================================
-
-    if (
-      window.realtimeAnalyticsState
-    ) {
-
-      window
-        .realtimeAnalyticsState
-        .sessionId =
-        null;
-
-      window
-        .realtimeAnalyticsState
-        .pendingPoints =
-        [];
-
-      window
-        .realtimeAnalyticsState
-        .firstPendingAt =
-        0;
-
-      window
-        .realtimeAnalyticsState
-        .unsubscribe =
-        null;
-
-      window
-        .realtimeAnalyticsState
-        .flushTimer =
-        null;
-    }
-
-    console.log(
-      "✅ REALTIME ANALYTICS STOPPED"
-    );
-
-    console.table({
-
-      sessionId:
-        window
-          .realtimeAnalyticsState
-          ?.sessionId,
-
-      listener:
-        !!window
-          .realtimeAnalyticsState
-          ?.unsubscribe,
-
-      flushTimer:
-        !!window
-          .realtimeAnalyticsState
-          ?.flushTimer,
-
-      pendingPoints:
-        window
-          .realtimeAnalyticsState
-          ?.pendingPoints
-          ?.length || 0,
-
-      firstPendingAt:
-        window
-          .realtimeAnalyticsState
-          ?.firstPendingAt || 0,
-
-      processing:
-        !!window
-          .analyticsProcessing
-
-    });
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ stopRealtimeAnalytics",
-      err
-    );
-  }
-}
 /* ✅ MOVED OUTSIDE (IMPORTANT) */
  function updateDutyButton(){
 
