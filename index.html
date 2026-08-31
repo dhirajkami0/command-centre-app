@@ -107507,12 +107507,32 @@ if(
   fullTrack.length < 2
 ){
 
+  // ============================================================
+  // 🔍 END-DUTY FIRESTORE FALLBACK DIAGNOSTIC
+  // ============================================================
+
+  window.__END_DUTY_TRACK_SOURCE_STATS__ ||= {
+    RAM: 0,
+    IDB: 0,
+    FIRESTORE: 0
+  };
+
+  window.__END_DUTY_TRACK_SOURCE_STATS__.FIRESTORE++;
+
+  console.warn(
+    "🚨 FIRESTORE PATROL FALLBACK TRIGGERED",
+    {
+      sessionId,
+      ramPointCount:
+        fullTrack.length
+    }
+  );
+
   console.warn(
     "🌐 END DUTY TRACK — RAM + IDB insufficient; " +
     "using Firestore fallback:",
     sessionId
   );
-
 
   const pointsSnap =
     await window.fb.getDocs(
