@@ -37898,7 +37898,12 @@ clearHeatmapBoundaryCache();
         compartment : "ALL"
 
       };
-
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}
       // ====================================
       // 🌍 SAVE DIVISION GEOMETRY
       // ====================================
@@ -38118,8 +38123,12 @@ clearHeatmapBoundaryCache();
             "🎯 POPUP LEVEL:",
             window.activePopupContext.level
           );
-
-          // ====================================
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}          // ====================================
           // 🌍 SAVE PLANET AOI
           // ====================================
 
@@ -38486,8 +38495,12 @@ clearHeatmapBoundaryCache();
           compartment : "ALL"
 
         };
-
-        // ====================================
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}        // ====================================
         // 🟩 SAVE RANGE GEOMETRY
         // ====================================
 
@@ -38638,7 +38651,12 @@ clearHeatmapBoundaryCache();
               compartment : "ALL"
 
             };
-
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}
             // ====================================
             // 🟩 SAVE RANGE GEOMETRY
             // ====================================
@@ -39040,7 +39058,12 @@ clearHeatmapBoundaryCache();
             compartment : "ALL"
 
           };
-
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}
           // ====================================
           // 🟩 SAVE RANGE GEOMETRY
           // ====================================
@@ -42389,7 +42412,12 @@ clearHeatmapBoundaryCache();
           console.log(
             "🎯 POPUP LEVEL: BEAT"
           );
-
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}
           // ====================================
           // 🟨 SAVE BEAT GEOMETRY
           // ====================================
@@ -43001,7 +43029,7 @@ async function populateCompartmentButtons(){
     .forEach(btn => {
 
       btn.onclick =
-      function(){
+async function(){
 
         try {
 
@@ -43070,6 +43098,12 @@ clearHeatmapBoundaryCache();
             "🎯 POPUP LEVEL: COMPARTMENT"
           );
 
+if (
+    typeof window.updateMonthlyStatusFromRealtimeAnalytics ===
+    "function"
+) {
+    await window.updateMonthlyStatusFromRealtimeAnalytics();
+}
           // ====================================
           // 📦 SAVE COMPARTMENT GEOMETRY
           // ====================================
