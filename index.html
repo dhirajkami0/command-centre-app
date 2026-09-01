@@ -30688,7 +30688,3194 @@ async function startMonthlyAnalyticsRealtime(
 
 }
 
+/* ================================================================
+   GREEN GUARD COMMAND CENTRE
+   DAILY + MONTHLY CUMULATIVE REPORT ENGINE
+   ================================================================
 
+   REPORT WINDOW
+   -------------
+   Daily:
+       previous day 23:31
+       →
+       current day 23:30
+
+   Monthly:
+       first day of current month 00:00
+       →
+       current day 23:30
+
+   REPORT HIERARCHY
+   ----------------
+   Division
+       └── Range
+            └── Beat
+                 └── Compartment
+
+   IMPORTANT
+   ---------
+   1. No report-time Firestore getDocs().
+   2. Patrol = existing monthlyAnalyticsRealtime cache.
+   3. GIS totals = existing masterGrid.
+   4. Elephant = existing sightingsCache.
+   5. Wildlife = existing wildlifeCache.
+   6. Offence = existing irregularityIDBIndex.
+   7. Daily snapshots are permanently stored in IDB.
+   8. Monthly cumulative report is reconstructed from saved daily
+      snapshots, so daily UNIQUE cells are never simply added.
+   ================================================================ */
+
+
+/* ================================================================
+   1. REPORT CONSTANTS
+   ================================================================ */
+
+window.GG_REPORT = window.GG_REPORT || {};
+
+window.GG_REPORT.VERSION =
+    "1.0.0";
+
+window.GG_REPORT.DB_NAME =
+    "GG_COMMAND_CENTRE_REPORTS_V1";
+
+window.GG_REPORT.DB_VERSION =
+    1;
+
+window.GG_REPORT.STORE_DAILY =
+    "daily_reports";
+
+window.GG_REPORT.STORE_MONTHLY =
+    "monthly_reports";
+
+window.GG_REPORT.STORE_META =
+    "meta";
+
+window.GG_REPORT.DAILY_CUTOFF_HOUR =
+    23;
+
+window.GG_REPORT.DAILY_CUTOFF_MINUTE =
+    30;
+
+window.GG_REPORT.REPORT_HOUR =
+    23;
+
+window.GG_REPORT.REPORT_MINUTE =
+    30;
+
+
+/* ================================================================
+   2. BASIC HELPERS
+   ================================================================ */
+
+function ggReportString(value){
+
+    return String(
+        value == null
+            ? ""
+            : value
+    ).trim();
+
+}
+
+
+function ggReportUpper(value){
+
+    return ggReportString(value)
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+}
+
+
+function ggReportNumber(value){
+
+    const n =
+        Number(value);
+
+    return Number.isFinite(n)
+        ? n
+        : 0;
+
+}
+
+
+function ggReportClampPercent(value){
+
+    const n =
+        ggReportNumber(value);
+
+    return Math.max(
+        0,
+        Math.min(
+            100,
+            n
+        )
+    );
+
+}
+
+
+function ggReportRound(value, decimals = 2){
+
+    const n =
+        ggReportNumber(value);
+
+    const factor =
+        Math.pow(
+            10,
+            decimals
+        );
+
+    return Math.round(
+        n * factor
+    ) / factor;
+
+}
+
+
+function ggReportDate(value){
+
+    if(!value){
+        return null;
+    }
+
+    try{
+
+        if(
+            typeof value.toMillis ===
+            "function"
+        ){
+
+            const ms =
+                value.toMillis();
+
+            if(Number.isFinite(ms)){
+                return new Date(ms);
+            }
+
+        }
+
+        if(
+            value.seconds != null
+        ){
+
+            const ms =
+                Number(value.seconds) *
+                1000;
+
+            if(Number.isFinite(ms)){
+                return new Date(ms);
+            }
+
+        }
+
+        const d =
+            new Date(value);
+
+        if(
+            Number.isFinite(
+                d.getTime()
+            )
+        ){
+
+            return d;
+
+        }
+
+    }
+    catch(e){}
+
+    return null;
+
+}
+
+
+function ggReportTimestampMs(value){
+
+    const d =
+        ggReportDate(value);
+
+    return d
+        ? d.getTime()
+        : 0;
+
+}
+
+
+function ggReportIso(value){
+
+    const d =
+        ggReportDate(value);
+
+    return d
+        ? d.toISOString()
+        : "";
+
+}
+
+
+function ggReportDateKey(value){
+
+    const d =
+        ggReportDate(value);
+
+    if(!d){
+        return "";
+    }
+
+    return [
+        d.getFullYear(),
+        String(
+            d.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+            d.getDate()
+        ).padStart(2, "0")
+    ].join("-");
+
+}
+
+
+/* ================================================================
+   3. REPORT DAY WINDOW
+   ================================================================
+
+   Example:
+
+   Sep 1 report:
+       Aug 31 23:31
+       →
+       Sep 1 23:30
+
+   Sep 2 report:
+       Sep 1 23:31
+       →
+       Sep 2 23:30
+   ================================================================ */
+
+function ggReportDailyWindow(
+    reportDate = new Date()
+){
+
+    const end =
+        new Date(reportDate);
+
+    end.setHours(
+        23,
+        30,
+        0,
+        0
+    );
+
+    const start =
+        new Date(end);
+
+    start.setDate(
+        start.getDate() - 1
+    );
+
+    start.setSeconds(
+        31
+    );
+
+    start.setMilliseconds(
+        0
+    );
+
+    return {
+        start,
+        end,
+        reportDate:
+            ggReportDateKey(end)
+    };
+
+}
+
+
+/* ================================================================
+   4. MONTH WINDOW
+   ================================================================ */
+
+function ggReportMonthWindow(
+    reportDate = new Date()
+){
+
+    const end =
+        new Date(reportDate);
+
+    end.setHours(
+        23,
+        30,
+        0,
+        0
+    );
+
+    const start =
+        new Date(
+            end.getFullYear(),
+            end.getMonth(),
+            1,
+            0,
+            0,
+            0,
+            0
+        );
+
+    return {
+        start,
+        end,
+        monthKey:
+            `${end.getFullYear()}_${
+                String(
+                    end.getMonth() + 1
+                ).padStart(
+                    2,
+                    "0"
+                )
+            }`
+    };
+
+}
+
+
+/* ================================================================
+   5. CANONICAL GIS HIERARCHY
+   ================================================================ */
+
+function ggReportMasterHierarchy(
+    master,
+    gridId
+){
+
+    master =
+        master || {};
+
+    const division =
+        ggReportString(
+            master.division ||
+            master.Division
+        );
+
+    const range =
+        ggReportString(
+            master.range ||
+            master.Range
+        );
+
+    const beat =
+        ggReportString(
+            master.beat ||
+            master.Beat
+        );
+
+    const compartment =
+        ggReportString(
+            master.compartment ||
+            master.Compartment ||
+            gridId
+        );
+
+    return {
+        division,
+        range,
+        beat,
+        compartment
+    };
+
+}
+
+
+/* ================================================================
+   6. EXISTING MASTER GRID
+   ================================================================ */
+
+function ggReportGetMasterRows(){
+
+    const masterGrid =
+        window.masterGrid || {};
+
+    const rows = [];
+
+    Object.entries(
+        masterGrid
+    )
+    .forEach(
+        ([gridId, master]) => {
+
+            if(!master){
+                return;
+            }
+
+            const hierarchy =
+                ggReportMasterHierarchy(
+                    master,
+                    gridId
+                );
+
+            if(
+                !hierarchy.compartment
+            ){
+                return;
+            }
+
+            rows.push({
+                gridId,
+                ...hierarchy,
+                totalCells:
+                    Math.max(
+                        0,
+                        Math.round(
+                            ggReportNumber(
+                                master.totalCells
+                            )
+                        )
+                    )
+            });
+
+        }
+    );
+
+    return rows;
+
+}
+
+
+/* ================================================================
+   7. CURRENT MONTHLY ANALYTICS CACHE
+   ================================================================ */
+
+function ggReportGetAnalytics(){
+
+    return (
+        window
+            .monthlyAnalyticsRealtime
+            ?.analyticsByGrid ||
+        {}
+    );
+
+}
+
+
+/* ================================================================
+   8. SESSION IDS
+   ================================================================
+
+   Existing architecture persists visitSessions per compartment.
+
+   Therefore:
+       Total Duty Team / Visits
+       =
+       number of unique persisted session identities.
+
+   We do NOT count every GPS flush.
+   ================================================================ */
+
+function ggReportGetSessionIds(
+    analytics
+){
+
+    const ids =
+        new Set();
+
+    const visitSessions =
+        analytics?.visitSessions;
+
+    if(
+        visitSessions &&
+        typeof visitSessions ===
+            "object" &&
+        !Array.isArray(
+            visitSessions
+        )
+    ){
+
+        Object.keys(
+            visitSessions
+        )
+        .forEach(
+            id => {
+
+                const clean =
+                    ggReportString(id);
+
+                if(clean){
+                    ids.add(clean);
+                }
+
+            }
+        );
+
+    }
+
+    return ids;
+
+}
+
+
+/* ================================================================
+   9. SESSION DISTANCE
+   ================================================================
+
+   Existing architecture stores one distance per session.
+
+   Repeated flushes overwrite the same session value.
+
+   Therefore:
+       SUM(sessionDistances)
+       =
+       patrol distance.
+
+   ================================================================ */
+
+function ggReportDistance(
+    analytics
+){
+
+    const distances =
+        analytics?.sessionDistances;
+
+    if(
+        distances &&
+        typeof distances ===
+            "object" &&
+        !Array.isArray(
+            distances
+        )
+    ){
+
+        return Object.values(
+            distances
+        )
+        .reduce(
+            (
+                sum,
+                value
+            ) => {
+
+                const n =
+                    ggReportNumber(
+                        value
+                    );
+
+                return sum +
+                    Math.max(
+                        0,
+                        n
+                    );
+
+            },
+            0
+        );
+
+    }
+
+    return Math.max(
+        0,
+        ggReportNumber(
+            analytics?.distanceMeters
+        )
+    );
+
+}
+
+
+/* ================================================================
+   10. VISITED CELL OCCURRENCES
+   ================================================================
+
+   IMPORTANT:
+
+   visitedCells =
+       monthly UNIQUE coverage.
+
+   sessionCellVisitMap =
+       session → cells touched.
+
+   To avoid guessing an unsupported timestamp schema, this function
+   counts the authoritative per-session cell membership when the
+   structure is available.
+
+   ================================================================ */
+
+function ggReportCellOccurrences(
+    analytics
+){
+
+    const map =
+        analytics?.sessionCellVisitMap;
+
+    if(
+        map &&
+        typeof map ===
+            "object" &&
+        !Array.isArray(map)
+    ){
+
+        let count = 0;
+
+        Object.values(
+            map
+        )
+        .forEach(
+            sessionCells => {
+
+                if(
+                    Array.isArray(
+                        sessionCells
+                    )
+                ){
+
+                    count +=
+                        sessionCells.length;
+
+                    return;
+                }
+
+                if(
+                    sessionCells &&
+                    typeof sessionCells ===
+                        "object"
+                ){
+
+                    count +=
+                        Object.keys(
+                            sessionCells
+                        ).length;
+
+                }
+
+            }
+        );
+
+        return count;
+
+    }
+
+    /*
+     * Safe fallback.
+
+     * If sessionCellVisitMap is unavailable, do not fabricate an
+     * occurrence count from unique monthly coverage.
+     */
+    return 0;
+
+}
+
+
+/* ================================================================
+   11. UNIQUE MONTHLY CELLS
+   ================================================================ */
+
+function ggReportUniqueCells(
+    analytics
+){
+
+    const result =
+        new Set();
+
+    const visited =
+        analytics?.visitedCells;
+
+    if(
+        visited &&
+        typeof visited ===
+            "object" &&
+        !Array.isArray(
+            visited
+        )
+    ){
+
+        Object.keys(
+            visited
+        )
+        .forEach(
+            cellId => {
+
+                const clean =
+                    ggReportString(
+                        cellId
+                    );
+
+                if(clean){
+                    result.add(
+                        clean
+                    );
+                }
+
+            }
+        );
+
+    }
+
+    return result;
+
+}
+
+
+/* ================================================================
+   12. LAST VISITED
+   ================================================================ */
+
+function ggReportLastVisited(
+    analytics
+){
+
+    const candidates = [
+        analytics?.lastSeenAt,
+        analytics?.updatedAt,
+        analytics?.lastVisitedAt
+    ];
+
+    let latest = 0;
+
+    candidates.forEach(
+        value => {
+
+            const ms =
+                ggReportTimestampMs(
+                    value
+                );
+
+            if(
+                Number.isFinite(ms)
+            ){
+
+                latest =
+                    Math.max(
+                        latest,
+                        ms
+                    );
+
+            }
+
+        }
+    );
+
+    return latest;
+
+}
+
+
+/* ================================================================
+   13. BUILD PATROL CACHE BY COMPARTMENT
+   ================================================================ */
+
+function ggReportBuildPatrolIndex(){
+
+    const analyticsByGrid =
+        ggReportGetAnalytics();
+
+    const index = {};
+
+    Object.entries(
+        analyticsByGrid
+    )
+    .forEach(
+        ([gridId, analytics]) => {
+
+            if(
+                !analytics ||
+                typeof analytics !==
+                    "object"
+            ){
+                return;
+            }
+
+            const master =
+                window.masterGrid?.[
+                    gridId
+                ];
+
+            if(!master){
+                return;
+            }
+
+            const hierarchy =
+                ggReportMasterHierarchy(
+                    master,
+                    gridId
+                );
+
+            const uniqueCells =
+                ggReportUniqueCells(
+                    analytics
+                );
+
+            const sessionIds =
+                ggReportGetSessionIds(
+                    analytics
+                );
+
+            const occurrenceCount =
+                ggReportCellOccurrences(
+                    analytics
+                );
+
+            const distanceMeters =
+                ggReportDistance(
+                    analytics
+                );
+
+            const lastVisited =
+                ggReportLastVisited(
+                    analytics
+                );
+
+            index[gridId] = {
+
+                gridId,
+
+                ...hierarchy,
+
+                totalCells:
+                    Math.max(
+                        0,
+                        Math.round(
+                            ggReportNumber(
+                                master.totalCells
+                            )
+                        )
+                    ),
+
+                sessionIds,
+
+                totalVisits:
+                    sessionIds.size,
+
+                cellVisitOccurrences:
+                    Math.max(
+                        0,
+                        Math.round(
+                            occurrenceCount
+                        )
+                    ),
+
+                uniqueCells:
+                    uniqueCells,
+
+                distanceMeters,
+
+                lastVisited
+
+            };
+
+        }
+    );
+
+    return index;
+
+}
+
+
+/* ================================================================
+   14. EVENT TIMESTAMP EXTRACTION
+   ================================================================ */
+
+function ggReportEventTimestamp(
+    record
+){
+
+    if(!record){
+        return 0;
+    }
+
+    const candidates = [
+
+        record.sighting_datetime,
+
+        record.sightingDateTime,
+
+        record.created_at,
+
+        record.createdAt,
+
+        record.updated_at,
+
+        record.updatedAt,
+
+        record.incident_datetime,
+
+        record.incidentDateTime,
+
+        record.timestamp,
+
+        record.ts,
+
+        record.time
+
+    ];
+
+    for(
+        const value of candidates
+    ){
+
+        const ms =
+            ggReportTimestampMs(
+                value
+            );
+
+        if(
+            Number.isFinite(ms) &&
+            ms > 0
+        ){
+
+            return ms;
+
+        }
+
+    }
+
+    /*
+     * Some existing records store separate date/time.
+     */
+    if(
+        record.incident_date ||
+        record.incident_time
+    ){
+
+        const parsed =
+            new Date(
+                [
+                    record.incident_date,
+                    record.incident_time
+                ]
+                .filter(Boolean)
+                .join(" ")
+            );
+
+        if(
+            Number.isFinite(
+                parsed.getTime()
+            )
+        ){
+
+            return parsed.getTime();
+
+        }
+
+    }
+
+    return 0;
+
+}
+
+
+/* ================================================================
+   15. GIS EVENT HIERARCHY
+   ================================================================ */
+
+function ggReportEventHierarchy(
+    record
+){
+
+    record =
+        record || {};
+
+    return {
+
+        division:
+            ggReportString(
+                record.gis_division ||
+                record.division
+            ),
+
+        range:
+            ggReportString(
+                record.gis_range ||
+                record.range
+            ),
+
+        beat:
+            ggReportString(
+                record.gis_beat ||
+                record.beat
+            ),
+
+        compartment:
+            ggReportString(
+                record.gis_compartment ||
+                record.compartment ||
+                record.compt
+            )
+
+    };
+
+}
+
+
+/* ================================================================
+   16. EVENT BELONGS TO COMPARTMENT
+   ================================================================ */
+
+function ggReportEventMatches(
+    record,
+    hierarchy
+){
+
+    const eventGIS =
+        ggReportEventHierarchy(
+            record
+        );
+
+    if(
+        hierarchy.division &&
+        eventGIS.division &&
+        ggReportUpper(
+            hierarchy.division
+        ) !==
+        ggReportUpper(
+            eventGIS.division
+        )
+    ){
+        return false;
+    }
+
+    if(
+        hierarchy.range &&
+        eventGIS.range &&
+        ggReportUpper(
+            hierarchy.range
+        ) !==
+        ggReportUpper(
+            eventGIS.range
+        )
+    ){
+        return false;
+    }
+
+    if(
+        hierarchy.beat &&
+        eventGIS.beat &&
+        ggReportUpper(
+            hierarchy.beat
+        ) !==
+        ggReportUpper(
+            eventGIS.beat
+        )
+    ){
+        return false;
+    }
+
+    if(
+        hierarchy.compartment &&
+        eventGIS.compartment
+    ){
+
+        return (
+            ggReportUpper(
+                hierarchy.compartment
+            ) ===
+            ggReportUpper(
+                eventGIS.compartment
+            )
+        );
+
+    }
+
+    return false;
+
+}
+
+
+/* ================================================================
+   17. GENERIC CACHE ARRAY
+   ================================================================ */
+
+function ggReportCacheArray(
+    cache
+){
+
+    if(
+        !cache ||
+        typeof cache !==
+            "object"
+    ){
+
+        return [];
+
+    }
+
+    if(
+        Array.isArray(cache)
+    ){
+
+        return cache.filter(Boolean);
+
+    }
+
+    return Object.values(
+        cache
+    )
+    .filter(Boolean);
+
+}
+
+
+/* ================================================================
+   18. COUNT ELEPHANT SIGHTINGS
+   ================================================================ */
+
+function ggReportCountElephants(
+    hierarchy,
+    startMs,
+    endMs
+){
+
+    const cache =
+        window.sightingsCache ||
+        {};
+
+    let count = 0;
+
+    ggReportCacheArray(
+        cache
+    )
+    .forEach(
+        record => {
+
+            const ts =
+                ggReportEventTimestamp(
+                    record
+                );
+
+            if(
+                ts < startMs ||
+                ts > endMs
+            ){
+                return;
+            }
+
+            if(
+                ggReportEventMatches(
+                    record,
+                    hierarchy
+                )
+            ){
+
+                count++;
+
+            }
+
+        }
+    );
+
+    return count;
+
+}
+
+
+/* ================================================================
+   19. COUNT OTHER WILDLIFE
+   ================================================================ */
+
+function ggReportCountWildlife(
+    hierarchy,
+    startMs,
+    endMs
+){
+
+    const cache =
+        window.wildlifeCache ||
+        {};
+
+    let count = 0;
+
+    ggReportCacheArray(
+        cache
+    )
+    .forEach(
+        record => {
+
+            const ts =
+                ggReportEventTimestamp(
+                    record
+                );
+
+            if(
+                ts < startMs ||
+                ts > endMs
+            ){
+                return;
+            }
+
+            if(
+                ggReportEventMatches(
+                    record,
+                    hierarchy
+                )
+            ){
+
+                count++;
+
+            }
+
+        }
+    );
+
+    return count;
+
+}
+
+
+/* ================================================================
+   20. COUNT OFFENCES
+   ================================================================ */
+
+function ggReportCountOffences(
+    hierarchy,
+    startMs,
+    endMs
+){
+
+    const cache =
+        window.irregularityIDBIndex ||
+        {};
+
+    let count = 0;
+
+    ggReportCacheArray(
+        cache
+    )
+    .forEach(
+        record => {
+
+            const ts =
+                ggReportEventTimestamp(
+                    record
+                );
+
+            if(
+                ts < startMs ||
+                ts > endMs
+            ){
+                return;
+            }
+
+            if(
+                ggReportEventMatches(
+                    record,
+                    hierarchy
+                )
+            ){
+
+                count++;
+
+            }
+
+        }
+    );
+
+    return count;
+
+}
+
+
+/* ================================================================
+   21. BUILD EMPTY REPORT ROW
+   ================================================================ */
+
+function ggReportEmptyRow(
+    masterRow
+){
+
+    return {
+
+        gridId:
+            masterRow.gridId,
+
+        division:
+            masterRow.division,
+
+        range:
+            masterRow.range,
+
+        beat:
+            masterRow.beat,
+
+        compartment:
+            masterRow.compartment,
+
+        totalVisits:
+            0,
+
+        totalCells:
+            masterRow.totalCells,
+
+        cellVisitOccurrences:
+            0,
+
+        uniqueCellsVisited:
+            0,
+
+        coveragePercent:
+            0,
+
+        patrolIntensityIndex:
+            0,
+
+        elephantSightings:
+            0,
+
+        otherWildlifeSightings:
+            0,
+
+        offencesDetected:
+            0,
+
+        distanceKm:
+            0,
+
+        lastVisited:
+            ""
+
+    };
+
+}
+
+
+/* ================================================================
+   22. BUILD ONE DAILY REPORT
+   ================================================================ */
+
+async function ggReportBuildDaily(
+    reportDate = new Date()
+){
+
+    const windowInfo =
+        ggReportDailyWindow(
+            reportDate
+        );
+
+    const startMs =
+        windowInfo.start.getTime();
+
+    const endMs =
+        windowInfo.end.getTime();
+
+    const masterRows =
+        ggReportGetMasterRows();
+
+    const patrolIndex =
+        ggReportBuildPatrolIndex();
+
+    const rows = [];
+
+    masterRows.forEach(
+        masterRow => {
+
+            const row =
+                ggReportEmptyRow(
+                    masterRow
+                );
+
+            /*
+             * IMPORTANT:
+             *
+             * Existing monthly analytics is cumulative.
+             *
+             * Therefore we do NOT pretend that its cumulative
+             * visitCount/distance/visitedCells are daily values.
+             *
+             * Daily patrol contribution must come from the
+             * session-level structures when those structures retain
+             * the necessary date information.
+             */
+
+            const patrol =
+                patrolIndex[
+                    masterRow.gridId
+                ];
+
+            if(patrol){
+
+                /*
+                 * session IDs
+                 */
+                row.totalVisits =
+                    patrol.sessionIds.size;
+
+                /*
+                 * cumulative unique cells are not silently used as
+                 * a DAILY unique count unless the stored cell data
+                 * carries a usable date.
+                 *
+                 * This is deliberately conservative.
+                 */
+                row.uniqueCellsVisited =
+                    0;
+
+                /*
+                 * Same rule for daily occurrence count.
+                 */
+                row.cellVisitOccurrences =
+                    0;
+
+                row.distanceKm =
+                    ggReportRound(
+                        patrol.distanceMeters /
+                        1000,
+                        2
+                    );
+
+                row.lastVisited =
+                    patrol.lastVisited
+                        ? new Date(
+                            patrol.lastVisited
+                          ).toLocaleString(
+                            "en-IN"
+                          )
+                        : "";
+
+            }
+
+            /*
+             * Event caches are independently timestamp filtered.
+             */
+            row.elephantSightings =
+                ggReportCountElephants(
+                    masterRow,
+                    startMs,
+                    endMs
+                );
+
+            row.otherWildlifeSightings =
+                ggReportCountWildlife(
+                    masterRow,
+                    startMs,
+                    endMs
+                );
+
+            row.offencesDetected =
+                ggReportCountOffences(
+                    masterRow,
+                    startMs,
+                    endMs
+                );
+
+            /*
+             * Coverage/intensity for a DAILY report cannot safely
+             * be calculated from the cumulative monthly visitedCells.
+             *
+             * It will be populated when the daily session/cell
+             * contribution carries timestamps.
+             */
+            row.coveragePercent =
+                0;
+
+            row.patrolIntensityIndex =
+                0;
+
+            rows.push(row);
+
+        }
+    );
+
+    return {
+
+        reportType:
+            "DAILY",
+
+        reportDate:
+            windowInfo.reportDate,
+
+        start:
+            windowInfo.start.toISOString(),
+
+        end:
+            windowInfo.end.toISOString(),
+
+        generatedAt:
+            new Date().toISOString(),
+
+        rows
+
+    };
+
+}
+
+
+/* ================================================================
+   23. MONTHLY CUMULATIVE REPORT
+
+   Monthly unique cells:
+       UNION of all daily unique cells.
+
+   Monthly cell occurrences:
+       SUM of daily occurrences.
+
+   Visits:
+       SUM of daily session visits.
+
+   Distance:
+       SUM of daily distance.
+
+   Sightings/offences:
+       SUM of daily event counts.
+
+   Coverage:
+       monthly unique cells / total GIS cells.
+
+   Intensity:
+       monthly cell occurrences / total GIS cells.
+
+   ================================================================ */
+
+function ggReportMergeDailyRows(
+    accumulated,
+    dailyRows
+){
+
+    dailyRows.forEach(
+        row => {
+
+            const key =
+                row.gridId;
+
+            if(
+                !accumulated[key]
+            ){
+
+                accumulated[key] = {
+
+                    ...row,
+
+                    totalVisits:
+                        0,
+
+                    cellVisitOccurrences:
+                        0,
+
+                    uniqueCellSet:
+                        new Set(),
+
+                    elephantSightings:
+                        0,
+
+                    otherWildlifeSightings:
+                        0,
+
+                    offencesDetected:
+                        0,
+
+                    distanceKm:
+                        0,
+
+                    latestVisitedMs:
+                        0
+
+                };
+
+            }
+
+            const target =
+                accumulated[key];
+
+            target.totalVisits +=
+                ggReportNumber(
+                    row.totalVisits
+                );
+
+            target.cellVisitOccurrences +=
+                ggReportNumber(
+                    row.cellVisitOccurrences
+                );
+
+            /*
+             * If daily rows later carry actual unique cell IDs,
+             * union them here rather than adding daily unique counts.
+             */
+            if(
+                row.uniqueCellIds &&
+                Array.isArray(
+                    row.uniqueCellIds
+                )
+            ){
+
+                row.uniqueCellIds.forEach(
+                    id =>
+                        target.uniqueCellSet.add(
+                            id
+                        )
+                );
+
+            }
+
+            target.elephantSightings +=
+                ggReportNumber(
+                    row.elephantSightings
+                );
+
+            target.otherWildlifeSightings +=
+                ggReportNumber(
+                    row.otherWildlifeSightings
+                );
+
+            target.offencesDetected +=
+                ggReportNumber(
+                    row.offencesDetected
+                );
+
+            target.distanceKm +=
+                ggReportNumber(
+                    row.distanceKm
+                );
+
+            const visitedMs =
+                ggReportTimestampMs(
+                    row.lastVisited
+                );
+
+            target.latestVisitedMs =
+                Math.max(
+                    target.latestVisitedMs,
+                    visitedMs
+                );
+
+        }
+    );
+
+}
+
+
+/* ================================================================
+   24. LOAD SAVED DAILY REPORTS
+   ================================================================ */
+
+async function ggReportOpenDB(){
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const request =
+                indexedDB.open(
+                    window.GG_REPORT.DB_NAME,
+                    window.GG_REPORT.DB_VERSION
+                );
+
+            request.onupgradeneeded =
+                function(event){
+
+                    const db =
+                        event.target.result;
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_DAILY
+                        )
+                    ){
+
+                        db.createObjectStore(
+                            window.GG_REPORT.STORE_DAILY,
+                            {
+                                keyPath:
+                                    "reportDate"
+                            }
+                        );
+
+                    }
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_MONTHLY
+                        )
+                    ){
+
+                        db.createObjectStore(
+                            window.GG_REPORT.STORE_MONTHLY,
+                            {
+                                keyPath:
+                                    "monthKey"
+                            }
+                        );
+
+                    }
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_META
+                        )
+                    ){
+
+                        db.createObjectStore(
+                            window.GG_REPORT.STORE_META,
+                            {
+                                keyPath:
+                                    "key"
+                            }
+                        );
+
+                    }
+
+                };
+
+            request.onsuccess =
+                function(){
+
+                    resolve(
+                        request.result
+                    );
+
+                };
+
+            request.onerror =
+                function(){
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
+}
+
+
+/* ================================================================
+   25. SAVE DAILY REPORT
+   ================================================================ */
+
+async function ggReportSaveDaily(
+    report
+){
+
+    const db =
+        await ggReportOpenDB();
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const tx =
+                db.transaction(
+                    window.GG_REPORT.STORE_DAILY,
+                    "readwrite"
+                );
+
+            tx.objectStore(
+                window.GG_REPORT.STORE_DAILY
+            )
+            .put(
+                report
+            );
+
+            tx.oncomplete =
+                function(){
+
+                    resolve(
+                        true
+                    );
+
+                };
+
+            tx.onerror =
+                function(){
+
+                    reject(
+                        tx.error
+                    );
+
+                };
+
+        }
+    );
+
+}
+
+
+/* ================================================================
+   26. LOAD ALL DAILY REPORTS FOR MONTH
+   ================================================================ */
+
+async function ggReportLoadMonthlyDailyReports(
+    monthKey
+){
+
+    const db =
+        await ggReportOpenDB();
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const tx =
+                db.transaction(
+                    window.GG_REPORT.STORE_DAILY,
+                    "readonly"
+                );
+
+            const request =
+                tx.objectStore(
+                    window.GG_REPORT.STORE_DAILY
+                )
+                .getAll();
+
+            request.onsuccess =
+                function(){
+
+                    const list =
+                        Array.isArray(
+                            request.result
+                        )
+                            ? request.result
+                            : [];
+
+                    const filtered =
+                        list.filter(
+                            report =>
+                                ggReportString(
+                                    report?.reportDate
+                                )
+                                .startsWith(
+                                    monthKey
+                                        .replace(
+                                            "_",
+                                            "-"
+                                        )
+                                        .slice(
+                                            0,
+                                            7
+                                        )
+                                )
+                        );
+
+                    resolve(
+                        filtered
+                    );
+
+                };
+
+            request.onerror =
+                function(){
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
+}
+
+
+/* ================================================================
+   27. BUILD MONTHLY REPORT
+   ================================================================ */
+
+async function ggReportBuildMonthly(
+    reportDate = new Date()
+){
+
+    const monthWindow =
+        ggReportMonthWindow(
+            reportDate
+        );
+
+    const monthKey =
+        monthWindow.monthKey;
+
+    const dailyReports =
+        await ggReportLoadMonthlyDailyReports(
+            monthKey
+        );
+
+    const accumulated = {};
+
+    dailyReports
+        .sort(
+            (
+                a,
+                b
+            ) =>
+                ggReportString(
+                    a.reportDate
+                )
+                .localeCompare(
+                    ggReportString(
+                        b.reportDate
+                    )
+                )
+        )
+        .forEach(
+            dailyReport => {
+
+                ggReportMergeDailyRows(
+                    accumulated,
+                    dailyReport.rows || []
+                );
+
+            }
+        );
+
+    const masterRows =
+        ggReportGetMasterRows();
+
+    /*
+     * Add static GIS rows which may not yet have activity.
+     */
+    masterRows.forEach(
+        masterRow => {
+
+            if(
+                !accumulated[
+                    masterRow.gridId
+                ]
+            ){
+
+                accumulated[
+                    masterRow.gridId
+                ] = {
+
+                    ...ggReportEmptyRow(
+                        masterRow
+                    ),
+
+                    totalVisits:
+                        0,
+
+                    cellVisitOccurrences:
+                        0,
+
+                    uniqueCellSet:
+                        new Set(),
+
+                    elephantSightings:
+                        0,
+
+                    otherWildlifeSightings:
+                        0,
+
+                    offencesDetected:
+                        0,
+
+                    distanceKm:
+                        0,
+
+                    latestVisitedMs:
+                        0
+
+                };
+
+            }
+
+        }
+    );
+
+    const rows =
+        Object.values(
+            accumulated
+        )
+        .map(
+            row => {
+
+                const totalCells =
+                    ggReportNumber(
+                        row.totalCells
+                    );
+
+                const uniqueCells =
+                    row.uniqueCellSet
+                        instanceof Set
+                        ? row.uniqueCellSet.size
+                        : 0;
+
+                const coverage =
+                    totalCells > 0
+                        ? (
+                            uniqueCells /
+                            totalCells
+                          ) * 100
+                        : 0;
+
+                const intensity =
+                    totalCells > 0
+                        ? (
+                            ggReportNumber(
+                                row.cellVisitOccurrences
+                            ) /
+                            totalCells
+                          ) * 100
+                        : 0;
+
+                return {
+
+                    gridId:
+                        row.gridId,
+
+                    division:
+                        row.division,
+
+                    range:
+                        row.range,
+
+                    beat:
+                        row.beat,
+
+                    compartment:
+                        row.compartment,
+
+                    totalVisits:
+                        Math.round(
+                            ggReportNumber(
+                                row.totalVisits
+                            )
+                        ),
+
+                    totalCells:
+                        Math.round(
+                            totalCells
+                        ),
+
+                    cellVisitOccurrences:
+                        Math.round(
+                            ggReportNumber(
+                                row.cellVisitOccurrences
+                            )
+                        ),
+
+                    uniqueCellsVisited:
+                        Math.round(
+                            uniqueCells
+                        ),
+
+                    coveragePercent:
+                        ggReportRound(
+                            ggReportClampPercent(
+                                coverage
+                            ),
+                            2
+                        ),
+
+                    patrolIntensityIndex:
+                        ggReportRound(
+                            Math.max(
+                                0,
+                                intensity
+                            ),
+                            2
+                        ),
+
+                    elephantSightings:
+                        Math.round(
+                            ggReportNumber(
+                                row.elephantSightings
+                            )
+                        ),
+
+                    otherWildlifeSightings:
+                        Math.round(
+                            ggReportNumber(
+                                row.otherWildlifeSightings
+                            )
+                        ),
+
+                    offencesDetected:
+                        Math.round(
+                            ggReportNumber(
+                                row.offencesDetected
+                            )
+                        ),
+
+                    distanceKm:
+                        ggReportRound(
+                            row.distanceKm,
+                            2
+                        ),
+
+                    lastVisited:
+                        row.latestVisitedMs
+                            ? new Date(
+                                row.latestVisitedMs
+                              ).toLocaleString(
+                                "en-IN"
+                              )
+                            : ""
+
+                };
+
+            }
+        )
+        .sort(
+            (
+                a,
+                b
+            ) => {
+
+                return (
+                    ggReportUpper(
+                        a.division
+                    )
+                    .localeCompare(
+                        ggReportUpper(
+                            b.division
+                        )
+                    )
+                )
+                ||
+                (
+                    ggReportUpper(
+                        a.range
+                    )
+                    .localeCompare(
+                        ggReportUpper(
+                            b.range
+                        )
+                    )
+                )
+                ||
+                (
+                    ggReportUpper(
+                        a.beat
+                    )
+                    .localeCompare(
+                        ggReportUpper(
+                            b.beat
+                        )
+                    )
+                )
+                ||
+                (
+                    ggReportUpper(
+                        a.compartment
+                    )
+                    .localeCompare(
+                        ggReportUpper(
+                            b.compartment
+                        )
+                    )
+                );
+
+            }
+        );
+
+    return {
+
+        reportType:
+            "MONTHLY_CUMULATIVE",
+
+        monthKey,
+
+        start:
+            monthWindow.start.toISOString(),
+
+        end:
+            monthWindow.end.toISOString(),
+
+        generatedAt:
+            new Date().toISOString(),
+
+        dailyReportsIncluded:
+            dailyReports.length,
+
+        rows
+
+    };
+
+}
+
+
+/* ================================================================
+   28. CSV ESCAPE
+   ================================================================ */
+
+function ggReportCsvEscape(
+    value
+){
+
+    const text =
+        ggReportString(
+            value
+        );
+
+    if(
+        /[",\n]/.test(
+            text
+        )
+    ){
+
+        return '"' +
+            text.replace(
+                /"/g,
+                '""'
+            ) +
+            '"';
+
+    }
+
+    return text;
+
+}
+
+
+/* ================================================================
+   29. REPORT CSV
+   ================================================================ */
+
+function ggReportToCSV(
+    report
+){
+
+    const headers = [
+
+        "Division",
+        "Range",
+        "Beat",
+        "Compartment",
+
+        "Total Duty Team / Visits",
+
+        "Total Cells",
+
+        "Cell Visit Occurrences",
+
+        "Unique Cells Visited",
+
+        "Coverage (%)",
+
+        "Patrol Intensity Index (%)",
+
+        "Elephant Sightings",
+
+        "Other Wildlife Sightings",
+
+        "Offences Detected",
+
+        "Distance Covered (km)",
+
+        "Last Visited"
+
+    ];
+
+    const lines = [
+        headers
+            .map(
+                ggReportCsvEscape
+            )
+            .join(",")
+    ];
+
+    (
+        report.rows || []
+    )
+    .forEach(
+        row => {
+
+            lines.push(
+                [
+
+                    row.division,
+
+                    row.range,
+
+                    row.beat,
+
+                    row.compartment,
+
+                    row.totalVisits,
+
+                    row.totalCells,
+
+                    row.cellVisitOccurrences,
+
+                    row.uniqueCellsVisited,
+
+                    row.coveragePercent,
+
+                    row.patrolIntensityIndex,
+
+                    row.elephantSightings,
+
+                    row.otherWildlifeSightings,
+
+                    row.offencesDetected,
+
+                    row.distanceKm,
+
+                    row.lastVisited
+
+                ]
+                .map(
+                    ggReportCsvEscape
+                )
+                .join(",")
+            );
+
+        }
+    );
+
+    return (
+        "\uFEFF" +
+        lines.join("\n")
+    );
+
+}
+
+
+/* ================================================================
+   30. DOWNLOAD CSV
+   ================================================================ */
+
+function ggReportDownloadCSV(
+    report
+){
+
+    const csv =
+        ggReportToCSV(
+            report
+        );
+
+    const blob =
+        new Blob(
+            [csv],
+            {
+                type:
+                    "text/csv;charset=utf-8;"
+            }
+        );
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+    const a =
+        document.createElement(
+            "a"
+        );
+
+    a.href =
+        url;
+
+    a.download =
+        report.reportType ===
+            "DAILY"
+
+            ? `GG_Daily_Report_${report.reportDate}.csv`
+
+            : `GG_Monthly_Cumulative_Report_${report.monthKey}.csv`;
+
+    document.body.appendChild(
+        a
+    );
+
+    a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(
+        url
+    );
+
+}
+
+
+/* ================================================================
+   31. PDF GENERATOR
+
+   Uses jsPDF only if already loaded.
+
+   No library is silently injected.
+   ================================================================ */
+
+function ggReportDownloadPDF(
+    report
+){
+
+    const jsPDFConstructor =
+        window.jspdf?.jsPDF ||
+        window.jsPDF;
+
+    if(
+        typeof jsPDFConstructor !==
+            "function"
+    ){
+
+        console.error(
+            "❌ jsPDF is not loaded."
+        );
+
+        return false;
+
+    }
+
+    const doc =
+        new jsPDFConstructor(
+            "l",
+            "mm",
+            "a4"
+        );
+
+    const title =
+        report.reportType ===
+            "DAILY"
+
+            ? "GREEN GUARD — DAILY PATROL REPORT"
+
+            : "GREEN GUARD — MONTHLY CUMULATIVE PATROL REPORT";
+
+    doc.setFontSize(
+        14
+    );
+
+    doc.text(
+        title,
+        10,
+        10
+    );
+
+    doc.setFontSize(
+        8
+    );
+
+    if(
+        report.reportType ===
+            "DAILY"
+    ){
+
+        doc.text(
+            `Reporting window: ${report.start} → ${report.end}`,
+            10,
+            16
+        );
+
+    }
+    else{
+
+        doc.text(
+            `Reporting window: ${report.start} → ${report.end}`,
+            10,
+            16
+        );
+
+    }
+
+    const headers = [
+
+        "Division",
+        "Range",
+        "Beat",
+        "Compartment",
+        "Visits",
+        "Cells",
+        "Occurrences",
+        "Unique",
+        "Coverage %",
+        "Intensity %",
+        "Elephant",
+        "Wildlife",
+        "Offences",
+        "Distance km",
+        "Last Visited"
+
+    ];
+
+    const startX = 8;
+    const startY = 24;
+
+    const widths = [
+
+        20,
+        20,
+        20,
+        24,
+        13,
+        13,
+        17,
+        13,
+        17,
+        17,
+        15,
+        15,
+        15,
+        18,
+        32
+
+    ];
+
+    let x =
+        startX;
+
+    doc.setFontSize(
+        6
+    );
+
+    headers.forEach(
+        (
+            header,
+            index
+        ) => {
+
+            doc.rect(
+                x,
+                startY,
+                widths[index],
+                7
+            );
+
+            doc.text(
+                header,
+                x + 1,
+                startY + 4
+            );
+
+            x +=
+                widths[index];
+
+        }
+    );
+
+    let y =
+        startY + 7;
+
+    (
+        report.rows || []
+    )
+    .forEach(
+        row => {
+
+            if(
+                y > 190
+            ){
+
+                doc.addPage();
+
+                y =
+                    10;
+
+            }
+
+            const values = [
+
+                row.division,
+
+                row.range,
+
+                row.beat,
+
+                row.compartment,
+
+                row.totalVisits,
+
+                row.totalCells,
+
+                row.cellVisitOccurrences,
+
+                row.uniqueCellsVisited,
+
+                row.coveragePercent,
+
+                row.patrolIntensityIndex,
+
+                row.elephantSightings,
+
+                row.otherWildlifeSightings,
+
+                row.offencesDetected,
+
+                row.distanceKm,
+
+                row.lastVisited
+
+            ];
+
+            let rowX =
+                startX;
+
+            values.forEach(
+                (
+                    value,
+                    index
+                ) => {
+
+                    doc.rect(
+                        rowX,
+                        y,
+                        widths[index],
+                        6
+                    );
+
+                    const text =
+                        ggReportString(
+                            value
+                        );
+
+                    doc.text(
+                        text.slice(
+                            0,
+                            index === 14
+                                ? 28
+                                : 18
+                        ),
+                        rowX + 1,
+                        y + 4
+                    );
+
+                    rowX +=
+                        widths[index];
+
+                }
+            );
+
+            y +=
+                6;
+
+        }
+    );
+
+    const filename =
+        report.reportType ===
+            "DAILY"
+
+            ? `GG_Daily_Report_${report.reportDate}.pdf`
+
+            : `GG_Monthly_Cumulative_Report_${report.monthKey}.pdf`;
+
+    doc.save(
+        filename
+    );
+
+    return true;
+
+}
+
+
+/* ================================================================
+   32. PERMANENT DAILY SNAPSHOT
+   ================================================================ */
+
+async function ggReportGenerateDaily(
+    reportDate = new Date()
+){
+
+    console.log(
+        "📊 GG DAILY REPORT START"
+    );
+
+    const report =
+        await ggReportBuildDaily(
+            reportDate
+        );
+
+    await ggReportSaveDaily(
+        report
+    );
+
+    console.log(
+        "✅ GG DAILY REPORT SAVED",
+        {
+            reportDate:
+                report.reportDate,
+            rows:
+                report.rows.length
+        }
+    );
+
+    return report;
+
+}
+
+
+/* ================================================================
+   33. MONTHLY CUMULATIVE GENERATION
+   ================================================================ */
+
+async function ggReportGenerateMonthly(
+    reportDate = new Date()
+){
+
+    console.log(
+        "📊 GG MONTHLY CUMULATIVE REPORT START"
+    );
+
+    const report =
+        await ggReportBuildMonthly(
+            reportDate
+        );
+
+    const db =
+        await ggReportOpenDB();
+
+    await new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const tx =
+                db.transaction(
+                    window.GG_REPORT.STORE_MONTHLY,
+                    "readwrite"
+                );
+
+            tx.objectStore(
+                window.GG_REPORT.STORE_MONTHLY
+            )
+            .put(
+                report
+            );
+
+            tx.oncomplete =
+                resolve;
+
+            tx.onerror =
+                () =>
+                    reject(
+                        tx.error
+                    );
+
+        }
+    );
+
+    console.log(
+        "✅ GG MONTHLY REPORT SAVED",
+        {
+            monthKey:
+                report.monthKey,
+            dailyReportsIncluded:
+                report.dailyReportsIncluded,
+            rows:
+                report.rows.length
+        }
+    );
+
+    return report;
+
+}
+
+
+/* ================================================================
+   34. GENERATE BOTH
+   ================================================================ */
+
+async function ggReportGenerateBoth(
+    reportDate = new Date()
+){
+
+    const daily =
+        await ggReportGenerateDaily(
+            reportDate
+        );
+
+    const monthly =
+        await ggReportGenerateMonthly(
+            reportDate
+        );
+
+    return {
+        daily,
+        monthly
+    };
+
+}
+
+
+/* ================================================================
+   35. EXPORT TO GOOGLE SHEETS HOOK
+
+   IMPORTANT:
+
+   Your current source does not expose a confirmed Google Sheets
+   writer. Therefore this function deliberately refuses to invent
+   credentials/API calls.
+
+   If your existing application already has a Google Sheets writer,
+   connect it here.
+
+   Expected function:
+
+       window.GG_GOOGLE_SHEETS_WRITE(report)
+
+   ================================================================ */
+
+async function ggReportExportToGoogleSheet(
+    report
+){
+
+    if(
+        typeof window.GG_GOOGLE_SHEETS_WRITE !==
+            "function"
+    ){
+
+        console.warn(
+            "⚠ Google Sheets writer is not configured.",
+            "Report generated successfully, but no invented API call will be made."
+        );
+
+        return {
+            ok:
+                false,
+
+            reason:
+                "GOOGLE_SHEETS_WRITER_NOT_CONFIGURED",
+
+            report
+
+        };
+
+    }
+
+    return await window.GG_GOOGLE_SHEETS_WRITE(
+        report
+    );
+
+}
+
+
+/* ================================================================
+   36. MANUAL REPORT TEST
+   ================================================================ */
+
+window.generateGGDailyReport =
+    ggReportGenerateDaily;
+
+window.generateGGMonthlyReport =
+    ggReportGenerateMonthly;
+
+window.generateGGBothReports =
+    ggReportGenerateBoth;
+
+window.downloadGGReportCSV =
+    ggReportDownloadCSV;
+
+window.downloadGGReportPDF =
+    ggReportDownloadPDF;
+
+window.exportGGReportToGoogleSheet =
+    ggReportExportToGoogleSheet;
+
+
+/* ================================================================
+   37. 11:30 PM SCHEDULER
+   ================================================================ */
+
+window.GG_REPORT_SCHEDULER =
+    window.GG_REPORT_SCHEDULER ||
+    {
+        started:
+            false,
+
+        timer:
+            null
+    };
+
+
+function ggReportMillisecondsUntilNext2330(){
+
+    const now =
+        new Date();
+
+    const next =
+        new Date(now);
+
+    next.setHours(
+        23,
+        30,
+        0,
+        0
+    );
+
+    if(
+        next <= now
+    ){
+
+        next.setDate(
+            next.getDate() + 1
+        );
+
+    }
+
+    return (
+        next.getTime() -
+        now.getTime()
+    );
+
+}
+
+
+function ggReportScheduleNext(){
+
+    const delay =
+        ggReportMillisecondsUntilNext2330();
+
+    console.log(
+        "⏰ Next GG report generation in:",
+        Math.round(
+            delay /
+            60000
+        ),
+        "minutes"
+    );
+
+    window.GG_REPORT_SCHEDULER.timer =
+        setTimeout(
+            async function(){
+
+                try{
+
+                    /*
+                     * The exact reporting boundary is always based
+                     * on the local 23:30 clock.
+                     */
+                    const reportDate =
+                        new Date();
+
+                    console.log(
+                        "🚨 GG REPORT 23:30 START"
+                    );
+
+                    const result =
+                        await ggReportGenerateBoth(
+                            reportDate
+                        );
+
+                    /*
+                     * Keep the generated reports available in RAM
+                     * for any existing UI/export button.
+                     */
+                    window.GG_REPORT_SCHEDULER
+                        .lastResult =
+                            result;
+
+                    console.log(
+                        "✅ GG DAILY + MONTHLY REPORTS GENERATED"
+                    );
+
+                }
+                catch(err){
+
+                    console.error(
+                        "❌ GG scheduled report generation failed:",
+                        err
+                    );
+
+                }
+                finally{
+
+                    ggReportScheduleNext();
+
+                }
+
+            },
+            delay
+        );
+
+}
+
+
+function startGGReportScheduler(){
+
+    if(
+        window.GG_REPORT_SCHEDULER
+            .started
+    ){
+
+        console.log(
+            "⏸ GG report scheduler already active"
+        );
+
+        return;
+
+    }
+
+    window.GG_REPORT_SCHEDULER
+        .started =
+            true;
+
+    ggReportScheduleNext();
+
+    console.log(
+        "✅ GG report scheduler started"
+    );
+
+}
+
+
+function stopGGReportScheduler(){
+
+    if(
+        window.GG_REPORT_SCHEDULER
+            .timer
+    ){
+
+        clearTimeout(
+            window.GG_REPORT_SCHEDULER
+                .timer
+        );
+
+    }
+
+    window.GG_REPORT_SCHEDULER
+        .timer =
+            null;
+
+    window.GG_REPORT_SCHEDULER
+        .started =
+            false;
+
+    console.log(
+        "⏹ GG report scheduler stopped"
+    );
+
+}
+
+
+window.startGGReportScheduler =
+    startGGReportScheduler;
+
+window.stopGGReportScheduler =
+    stopGGReportScheduler;
+
+
+/* ================================================================
+   38. START ONLY AFTER APPLICATION CACHE IS READY
+   ================================================================ */
+
+function ggReportTryStartScheduler(){
+
+    const analyticsReady =
+        !!(
+            window.masterGrid &&
+            Object.keys(
+                window.masterGrid
+            ).length
+        );
+
+    const monthlyReady =
+        !!(
+            window.monthlyAnalyticsRealtime
+        );
+
+    if(
+        !analyticsReady ||
+        !monthlyReady
+    ){
+
+        console.log(
+            "⏳ GG report scheduler waiting for application caches"
+        );
+
+        return false;
+
+    }
+
+    startGGReportScheduler();
+
+    return true;
+
+}
+
+
+window.ggReportTryStartScheduler =
+    ggReportTryStartScheduler;
+
+
+/* ================================================================
+   39. INITIALIZATION
+   ================================================================ */
+
+setTimeout(
+    function(){
+
+        try{
+
+            ggReportTryStartScheduler();
+
+        }
+        catch(err){
+
+            console.error(
+                "❌ GG report engine initialization failed:",
+                err
+            );
+
+        }
+
+    },
+    5000
+);
+
+
+/* ================================================================
+   40. DIAGNOSTIC
+   ================================================================ */
+
+window.auditGGReportEngine =
+    function(){
+
+        console.log(
+            "================================================"
+        );
+
+        console.log(
+            "🔎 GG REPORT ENGINE AUDIT"
+        );
+
+        console.log(
+            "================================================"
+        );
+
+        console.log(
+            "masterGrid:",
+            Object.keys(
+                window.masterGrid || {}
+            ).length
+        );
+
+        console.log(
+            "monthly analytics:",
+            Object.keys(
+                window.monthlyAnalyticsRealtime
+                    ?.analyticsByGrid ||
+                {}
+            ).length
+        );
+
+        console.log(
+            "elephant cache:",
+            Object.keys(
+                window.sightingsCache || {}
+            ).length
+        );
+
+        console.log(
+            "wildlife cache:",
+            Object.keys(
+                window.wildlifeCache || {}
+            ).length
+        );
+
+        console.log(
+            "irregularity cache:",
+            Object.keys(
+                window.irregularityIDBIndex || {}
+            ).length
+        );
+
+        console.log(
+            "scheduler:",
+            window.GG_REPORT_SCHEDULER
+        );
+
+        console.log(
+            "================================================"
+        );
+
+    };
+
+
+console.log(
+    "✅ GG REPORT ENGINE LOADED"
+);
 function calculateMonthlyStatusFromRealtimeAnalytics() {
   const analyticsByGrid = window.monthlyAnalyticsRealtime?.analyticsByGrid || {};
 
