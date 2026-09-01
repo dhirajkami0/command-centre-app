@@ -75505,11 +75505,12 @@ function(staff, point){
                     // =================================================
 
                     const gpsElement =
-                        popupElement.querySelector(
-                            "#staffGps_" +
-                            popupKey
-                        );
-
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffGps_" + staffName
+        )
+    );
 
                     if(gpsElement){
 
@@ -75525,11 +75526,13 @@ function(staff, point){
                     // SPEED
                     // =================================================
 
-                    const speedElement =
-                        popupElement.querySelector(
-                            "#staffSpeed_" +
-                            popupKey
-                        );
+                   const speedElement =
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffSpeed_" + staffName
+        )
+    );
 
 
                     if(speedElement){
@@ -75561,11 +75564,13 @@ function(staff, point){
                     // DISTANCE
                     // =================================================
 
-                    const distanceElement =
-                        popupElement.querySelector(
-                            "#staffDistance_" +
-                            popupKey
-                        );
+                   const distanceElement =
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffDistance_" + staffName
+        )
+    );
 
 
                     if(distanceElement){
@@ -75617,12 +75622,13 @@ function(staff, point){
                     // PATROL POINTS
                     // =================================================
 
-                    const pointsElement =
-                        popupElement.querySelector(
-                            "#staffPatrolPoints_" +
-                            popupKey
-                        );
-
+const pointsElement =
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffPatrolPoints_" + staffName
+        )
+    );
 
                     if(pointsElement){
 
@@ -75637,12 +75643,13 @@ function(staff, point){
                     // LAST GPS UPDATE
                     // =================================================
 
-                    const updatedAtElement =
-                        popupElement.querySelector(
-                            "#staffUpdatedAt_" +
-                            popupKey
-                        );
-
+const updatedAtElement =
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffUpdatedAt_" + staffName
+        )
+    );
 
                     if(updatedAtElement){
 
