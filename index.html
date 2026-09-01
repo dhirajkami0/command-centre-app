@@ -8388,7 +8388,89 @@ function waitForAndroidBridge(timeout = 8000){
 //   ↓
 //   LOGIN OFFLINE IMMEDIATELY
 // ============================================================
+// ============================================================
+// 🔐 PERSISTENT FIRST-LOGIN STATE
+//
+// FIRST INSTALL:
+//   no marker → login is allowed/required
+//
+// AFTER SUCCESSFUL LOGIN:
+//   marker = "1"
+//
+// FUTURE BOOTS:
+//   marker exists → NEVER show login modal
+//   cached profile is used for offline boot
+//
+// IMPORTANT:
+//   This marker is ONLY written after a genuinely successful
+//   first login. Offline/online state must NOT clear it.
+// ============================================================
 
+const GG_FIRST_LOGIN_KEY =
+    "gg_first_login_completed";
+
+
+// ============================================================
+// 🔎 CHECK FIRST-LOGIN COMPLETION
+// ============================================================
+
+function ggHasCompletedFirstLogin(){
+
+    try{
+
+        return (
+            localStorage.getItem(
+                GG_FIRST_LOGIN_KEY
+            ) === "1"
+        );
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠️ Unable to read persistent first-login state:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+
+
+// ============================================================
+// 💾 MARK FIRST LOGIN COMPLETED
+// ============================================================
+
+function ggMarkFirstLoginCompleted(){
+
+    try{
+
+        localStorage.setItem(
+            GG_FIRST_LOGIN_KEY,
+            "1"
+        );
+
+        console.log(
+            "🔐 FIRST LOGIN PERSISTED"
+        );
+
+        return true;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ Unable to persist first-login state:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
 // ============================================================
 // 🔐 GREEN GUARD — SIMPLE FAST LOGIN
 // ============================================================
@@ -8406,10 +8488,52 @@ function waitForAndroidBridge(timeout = 8000){
 // No complicated frontend authorization
 // ============================================================
 
+// ============================================================
+// 🔐 FIRST LOGIN
+//
+// This is the ONLY place that permanently completes first login.
+//
+// FIRST INSTALL:
+//
+//   no GG_FIRST_LOGIN_KEY marker
+//          ↓
+//   user enters phone
+//          ↓
+//   backend GET_PROFILE
+//          ↓
+//   valid profile returned
+//          ↓
+//   profile normalized
+//          ↓
+//   phone verified
+//          ↓
+//   profile applied + cached
+//          ↓
+//   ggMarkFirstLoginCompleted()
+//          ↓
+//   marker = "1"
+//
+// AFTER FIRST SUCCESS:
+//
+//   marker = "1"
+//          ↓
+//   login is NEVER required again
+//
+// IMPORTANT:
+//
+// • Marker is written ONLY after successful SERVER login.
+// • Backend must have accepted the phone.
+// • Valid profile must have been returned.
+// • Profile must have been successfully applied/cached.
+// • Network failure NEVER clears the marker.
+// • Offline boot is handled by loadProfile/auth boot.
+// • This function does NOT alter analytics/GPS/report flow.
+// ============================================================
+
 async function login(){
 
   console.log(
-    "🔐 GreenGuard LOGIN — LOCAL FIRST → SERVER SECOND"
+    "🔐 GreenGuard LOGIN — FIRST LOGIN ONLY"
   );
 
 
@@ -8429,6 +8553,40 @@ async function login(){
 
   }
 
+
+  // ==========================================================
+  // 🔐 FIRST-LOGIN MARKER ALREADY EXISTS
+  //
+  // IMPORTANT:
+  //
+  // If first login has already been completed, this function
+  // must NEVER perform another login request.
+  //
+  // Normal application startup/loadProfile is responsible for
+  // restoring the cached profile and booting offline.
+  // ==========================================================
+
+  if(
+    typeof ggHasCompletedFirstLogin ===
+    "function" &&
+    ggHasCompletedFirstLogin()
+  ){
+
+    console.log(
+      "🔐 FIRST LOGIN ALREADY COMPLETED — LOGIN SKIPPED"
+    );
+
+    loginCompleted =
+      true;
+
+    return;
+
+  }
+
+
+  // ==========================================================
+  // EXISTING IN-MEMORY AUTH GUARD
+  // ==========================================================
 
   if(
     loginCompleted ||
@@ -8536,15 +8694,16 @@ async function login(){
     // ========================================================
     // ========================================================
     //
-    // NO FIRESTORE
-    // NO NETWORK
-    // NO SERVER WAIT
+    // This preserves the existing local/offline behaviour.
     //
-    // If the same phone has a valid cached profile,
-    // authenticate immediately.
+    // IMPORTANT:
+    //
+    // A local profile is NOT allowed to create the permanent
+    // first-login marker.
+    //
+    // The permanent marker is created ONLY after SERVER success.
     //
     // ========================================================
-
 
     let localProfile =
       null;
@@ -8669,16 +8828,6 @@ async function login(){
         // ====================================================
         // APPLY EXISTING AUTHENTICATED PROFILE HELPER
         // ====================================================
-        //
-        // Existing helper handles:
-        //
-        // • normalization
-        // • GIS lock
-        // • local cache
-        // • window.userProfile
-        // • loginCompleted
-        //
-        // ====================================================
 
         let localApplied =
           false;
@@ -8700,7 +8849,6 @@ async function login(){
 
           // ==================================================
           // FALLBACK
-          // Keep existing behaviour if helper is unavailable.
           // ==================================================
 
           if(
@@ -8755,21 +8903,18 @@ async function login(){
 
 
           // ==================================================
-          // 🚀 USE COMMON AUTHENTICATION BOOT
+          // 🚫 IMPORTANT
+          //
+          // DO NOT call ggMarkFirstLoginCompleted() here.
+          //
+          // A local cached profile does not prove that this
+          // installation has completed the required first
+          // backend authentication.
           // ==================================================
-          //
-          // IMPORTANT:
-          //
-          // Do NOT duplicate:
-          //
-          // • hideLogin()
-          // • role control
-          // • Android sync
-          // • startApp()
-          // • GIS boot
-          //
-          // bootAfterAuthentication() handles those.
-          //
+
+
+          // ==================================================
+          // COMMON AUTHENTICATION BOOT
           // ==================================================
 
           if(
@@ -8806,16 +8951,8 @@ async function login(){
             );
 
 
-            // --------------------------------------------------
-            // HIDE LOGIN
-            // --------------------------------------------------
-
             hideLogin();
 
-
-            // --------------------------------------------------
-            // ROLE CONTROL
-            // --------------------------------------------------
 
             if(
               typeof applyRoleControl ===
@@ -8826,10 +8963,6 @@ async function login(){
 
             }
 
-
-            // --------------------------------------------------
-            // SINGLE APP BOOT
-            // --------------------------------------------------
 
             if(
               !window.__APP_BOOTED_ONCE__
@@ -8857,17 +8990,14 @@ async function login(){
 
 
           // ==================================================
-          // 🌐 SERVER SECOND
-          // ==================================================
+          // SERVER SECOND — BACKGROUND VERIFICATION
           //
           // IMPORTANT:
           //
-          // DO NOT await this.
+          // This does NOT control first-login completion.
           //
-          // User is already inside the application.
-          //
-          // Server verification is background only.
-          //
+          // The first-login marker is written only by the
+          // successful SERVER path below.
           // ==================================================
 
           setTimeout(
@@ -8933,11 +9063,9 @@ async function login(){
     // ========================================================
     // ========================================================
     //
-    // Only reached when:
+    // Reached only when no usable local profile exists.
     //
-    // • no local profile exists
-    // • local profile belongs to another phone
-    // • local profile is unusable
+    // This is the FIRST-INSTALL authentication path.
     //
     // ========================================================
 
@@ -8962,12 +9090,6 @@ async function login(){
 
     // ========================================================
     // ONE FAST RETRY
-    // ========================================================
-    //
-    // ONLY server-required path.
-    //
-    // Local login NEVER reaches this retry.
-    //
     // ========================================================
 
     if(
@@ -9071,6 +9193,13 @@ async function login(){
 
         // ====================================================
         // CLEAR AUTH CACHE ONLY
+        //
+        // IMPORTANT:
+        //
+        // Do NOT clear GG_FIRST_LOGIN_KEY here.
+        //
+        // If marker exists, this function would already have
+        // returned above.
         // ====================================================
 
         if(
@@ -9259,9 +9388,20 @@ async function login(){
     // ========================================================
     // ========================================================
     //
-    // Use the SAME authentication helper as local login.
+    // This is the decisive first-login success point.
     //
-    // This prevents duplicate authentication logic.
+    // At this point:
+    //
+    // • backend returned a profile
+    // • profile was normalized
+    // • phone is valid
+    // • phone matches login number
+    //
+    // applyAuthenticatedProfile() performs the existing
+    // profile application/cache flow.
+    //
+    // ONLY after that succeeds do we permanently mark
+    // first login as completed.
     //
     // ========================================================
 
@@ -9329,6 +9469,12 @@ async function login(){
     // ========================================================
     // SERVER PROFILE COULD NOT BE APPLIED
     // ========================================================
+    //
+    // CRITICAL:
+    //
+    // NO FIRST-LOGIN MARKER IS WRITTEN HERE.
+    //
+    // ========================================================
 
     if(
       !serverApplied
@@ -9349,6 +9495,71 @@ async function login(){
     }
 
 
+    // ========================================================
+    // ========================================================
+    // 🔐 FIRST LOGIN PERMANENTLY COMPLETED
+    // ========================================================
+    // ========================================================
+    //
+    // THIS IS THE ONLY MARKER WRITE IN THE LOGIN FUNCTION.
+    //
+    // At this exact point:
+    //
+    // backend accepted phone
+    //        +
+    // valid profile returned
+    //        +
+    // profile normalized
+    //        +
+    // phone verified
+    //        +
+    // profile successfully applied/cached
+    //
+    // Therefore the installation is now permanently considered
+    // authenticated.
+    //
+    // ========================================================
+
+    if(
+      typeof ggMarkFirstLoginCompleted ===
+      "function"
+    ){
+
+      const markerSaved =
+        ggMarkFirstLoginCompleted();
+
+
+      if(
+        !markerSaved
+      ){
+
+        console.error(
+          "❌ FIRST LOGIN SUCCEEDED BUT PERSISTENT MARKER COULD NOT BE SAVED"
+        );
+
+      }
+      else{
+
+        console.log(
+          "🔐 FIRST LOGIN COMPLETED — FUTURE LOGIN NOT REQUIRED"
+        );
+
+      }
+
+    }
+    else{
+
+      console.error(
+        "❌ ggMarkFirstLoginCompleted() is missing"
+      );
+
+    }
+
+
+    // ========================================================
+    // SERVER LOGIN SUCCESS
+    // ========================================================
+
     console.log(
       "✅ SERVER LOGIN SUCCESS:",
       finalProfile.cleanName ||
@@ -9358,17 +9569,7 @@ async function login(){
 
 
     // ========================================================
-    // 🚀 COMMON AUTHENTICATION BOOT
-    // ========================================================
-    //
-    // This handles:
-    //
-    // • role control
-    // • Android sync
-    // • hide login
-    // • single app boot
-    // • GIS post-login work
-    //
+    // COMMON AUTHENTICATION BOOT
     // ========================================================
 
     if(
@@ -9588,8 +9789,7 @@ async function login(){
     //
     // Do NOT call verifyProfileInBackground() here.
     //
-    // GET_PROFILE just succeeded.
-    //
+    // GET_PROFILE already succeeded.
     // ========================================================
 
   }
@@ -32029,6 +32229,833 @@ function ggReportEmptyRow(
 
 }
 
+/* ================================================================
+   21A. DAILY DISTANCE FROM CACHED PATROL SESSION
+   ================================================================
+
+   PURPOSE:
+
+   Calculate distance for an exact reporting window from the
+   existing in-memory sessionPointCache.
+
+   NO Firestore read.
+
+   Authority:
+
+       patrol_tracks/{sessionId}/points
+                    ↓
+            sessionPointCache
+                    ↓
+             timestamped points
+
+   The function uses distanceCoveredKm / distanceCoveredMeters
+   from the cached patrol points.
+
+   IMPORTANT:
+
+   This calculates the distance contribution occurring inside
+   the requested time window.
+
+   It does NOT use cumulative monthly analytics.
+   ================================================================ */
+
+function ggReportDailySessionDistance(
+    sessionId,
+    startMs,
+    endMs
+){
+
+    try{
+
+        if(
+            !sessionId
+        ){
+            return 0;
+        }
+
+
+        const cachedPoints =
+            window.sessionPointCache?.[
+                sessionId
+            ];
+
+
+        if(
+            !cachedPoints ||
+            typeof cachedPoints !== "object"
+        ){
+
+            return 0;
+
+        }
+
+
+        const points =
+
+            Array.isArray(
+                cachedPoints
+            )
+
+                ? [
+                    ...cachedPoints
+                  ]
+
+                : Object.values(
+                    cachedPoints
+                  );
+
+
+        if(
+            points.length === 0
+        ){
+
+            return 0;
+
+        }
+
+
+        // ========================================================
+        // NORMALIZE POINTS
+        // ========================================================
+
+        const normalized = [];
+
+
+        points.forEach(
+            point => {
+
+                if(
+                    !point ||
+                    typeof point !== "object"
+                ){
+                    return;
+                }
+
+
+                let timestamp =
+
+                    Number(
+                        point.timestamp ??
+                        point.time ??
+                        point.lastSeen ??
+                        0
+                    );
+
+
+                if(
+                    !Number.isFinite(
+                        timestamp
+                    )
+                ){
+
+                    timestamp =
+                        Date.parse(
+                            String(
+                                point.timestamp ??
+                                point.time ??
+                                point.lastSeen ??
+                                ""
+                            )
+                        );
+
+                }
+
+
+                if(
+                    !Number.isFinite(
+                        timestamp
+                    )
+                ){
+                    return;
+                }
+
+
+                let distanceMeters =
+
+                    Number(
+                        point.distanceCoveredMeters
+                    );
+
+
+                let distanceKm =
+
+                    Number(
+                        point.distanceCoveredKm
+                    );
+
+
+                if(
+                    !Number.isFinite(
+                        distanceMeters
+                    ) ||
+                    distanceMeters < 0
+                ){
+
+                    if(
+                        Number.isFinite(
+                            distanceKm
+                        ) &&
+                        distanceKm >= 0
+                    ){
+
+                        distanceMeters =
+                            distanceKm * 1000;
+
+                    }
+
+                }
+
+
+                if(
+                    !Number.isFinite(
+                        distanceMeters
+                    ) ||
+                    distanceMeters < 0
+                ){
+                    return;
+                }
+
+
+                normalized.push({
+
+                    timestamp,
+
+                    distanceMeters
+
+                });
+
+            }
+        );
+
+
+        if(
+            normalized.length === 0
+        ){
+
+            return 0;
+
+        }
+
+
+        // ========================================================
+        // CHRONOLOGICAL ORDER
+        // ========================================================
+
+        normalized.sort(
+            (
+                a,
+                b
+            ) =>
+                a.timestamp -
+                b.timestamp
+        );
+
+
+        // ========================================================
+        // REMOVE DUPLICATE TIMESTAMPS
+        //
+        // Keep the latest distance value for the same timestamp.
+        // ========================================================
+
+        const uniquePoints = [];
+
+
+        normalized.forEach(
+            point => {
+
+                const previous =
+                    uniquePoints[
+                        uniquePoints.length - 1
+                    ];
+
+
+                if(
+                    previous &&
+                    previous.timestamp ===
+                        point.timestamp
+                ){
+
+                    previous.distanceMeters =
+                        Math.max(
+                            previous.distanceMeters,
+                            point.distanceMeters
+                        );
+
+                    return;
+
+                }
+
+
+                uniquePoints.push({
+
+                    timestamp:
+                        point.timestamp,
+
+                    distanceMeters:
+                        point.distanceMeters
+
+                });
+
+            }
+        );
+
+
+        // ========================================================
+        // DISTANCE DELTA INSIDE DAILY WINDOW
+        //
+        // We need the last point BEFORE the window as the
+        // baseline when available.
+        // ========================================================
+
+        let previousPoint =
+            null;
+
+
+        let distanceMeters =
+            0;
+
+
+        for(
+            const point of uniquePoints
+        ){
+
+            // ----------------------------------------------------
+            // Ignore points after the report window.
+            // ----------------------------------------------------
+
+            if(
+                point.timestamp >
+                endMs
+            ){
+
+                break;
+
+            }
+
+
+            // ----------------------------------------------------
+            // Establish baseline.
+            //
+            // A point before the window is retained so the first
+            // point inside the window gets its true distance delta.
+            // ----------------------------------------------------
+
+            if(
+                point.timestamp <
+                startMs
+            ){
+
+                previousPoint =
+                    point;
+
+                continue;
+
+            }
+
+
+            // ----------------------------------------------------
+            // Point is inside reporting window.
+            // ----------------------------------------------------
+
+            if(
+                point.timestamp >=
+                    startMs &&
+
+                point.timestamp <=
+                    endMs
+            ){
+
+                if(
+                    previousPoint
+                ){
+
+                    const delta =
+
+                        point.distanceMeters -
+                        previousPoint.distanceMeters;
+
+
+                    if(
+                        Number.isFinite(
+                            delta
+                        ) &&
+                        delta >= 0
+                    ){
+
+                        distanceMeters +=
+                            delta;
+
+                    }
+
+                }
+
+
+                previousPoint =
+                    point;
+
+            }
+
+        }
+
+
+        return Math.max(
+            0,
+            distanceMeters
+        );
+
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ ggReportDailySessionDistance failed:",
+            sessionId,
+            err
+        );
+
+
+        return 0;
+
+    }
+
+}
+
+
+/* ================================================================
+   21B. DAILY DISTANCE INDEX
+   ================================================================ */
+
+function ggReportBuildDailyDistanceIndex(
+    dailySessionKeys,
+    startMs,
+    endMs
+){
+
+    const index = {};
+
+
+    if(
+        !dailySessionKeys ||
+        typeof dailySessionKeys.forEach !==
+            "function"
+    ){
+
+        return index;
+
+    }
+
+
+    dailySessionKeys.forEach(
+        sessionKey => {
+
+            const cleanKey =
+                ggReportString(
+                    sessionKey
+                );
+
+
+            if(
+                !cleanKey
+            ){
+                return;
+            }
+
+
+            // ----------------------------------------------------
+            // sessionKey format:
+            //
+            // STAFF NAME|SESSION_ID
+            // ----------------------------------------------------
+
+            const separator =
+                cleanKey.indexOf(
+                    "|"
+                );
+
+
+            const sessionId =
+
+                separator >= 0
+
+                    ? cleanKey.slice(
+                        separator + 1
+                      ).trim()
+
+                    : cleanKey;
+
+
+            if(
+                !sessionId
+            ){
+                return;
+            }
+
+
+            const distanceMeters =
+
+                ggReportDailySessionDistance(
+                    sessionId,
+                    startMs,
+                    endMs
+                );
+
+
+            index[
+                cleanKey
+            ] = {
+
+                sessionId,
+
+                distanceMeters,
+
+                distanceKm:
+                    distanceMeters /
+                    1000
+
+            };
+
+        }
+    );
+
+
+    return index;
+
+}
+/* ================================================================
+   22. BUILD ONE DAILY REPORT
+   ================================================================ */
+// ==========================================================
+// 🔥 DAILY DISTANCE — AUTHORITATIVE TIMESTAMPED SEGMENTS
+// ==========================================================
+//
+// Daily window:
+//
+// previous day 11:31 PM
+//        ↓
+// current day 11:30 PM
+//
+// Only distanceSegments belonging to THIS grid and THIS
+// reporting window are counted.
+//
+// Existing cumulative patrolIndex distance is NOT used here.
+// ==========================================================
+
+// ==========================================================
+// 🔥 AUTHORITATIVE DAILY DISTANCE FOR GRID
+//
+// Reads PERSISTED timestamped distance segments.
+//
+// IMPORTANT:
+//
+// This function intentionally does NOT use:
+//     analyticsBuffer
+//     updateMonthlyAnalyticsRebuild()
+//     flushAnalyticsBuffer()
+//
+// Daily distance is calculated from:
+//
+//     distance_segments
+//
+// using:
+//
+//     startMs <= timestamp < endMs
+//
+// and:
+//
+//     segment.gridId === gridId
+// ==========================================================
+
+// ==========================================================
+// 🔥 AUTHORITATIVE DAILY DISTANCE READER
+//
+// SOURCE:
+//     IndexedDB → distance_segments
+//
+// IMPORTANT:
+//     - Does NOT modify monthly analytics
+//     - Does NOT modify existing flush logic
+//     - Does NOT depend on analyticsBuffer
+//     - Uses persisted timestamped segments
+//     - Uses authoritative gridId attribution
+//     - startMs = inclusive
+//     - endMs   = exclusive
+// ==========================================================
+
+async function ggReportDailyDistanceForGrid(
+    gridId,
+    startMs,
+    endMs
+){
+
+    try {
+
+        // ------------------------------------------------------
+        // Validate inputs
+        // ------------------------------------------------------
+
+        if(
+            !gridId
+        ){
+
+            return 0;
+
+        }
+
+
+        const start =
+            Number(
+                startMs
+            );
+
+        const end =
+            Number(
+                endMs
+            );
+
+
+        if(
+            !Number.isFinite(start) ||
+            !Number.isFinite(end) ||
+            end <= start
+        ){
+
+            return 0;
+
+        }
+
+
+        // ------------------------------------------------------
+        // Open report database
+        // ------------------------------------------------------
+
+        const db =
+            await window.ggReportOpenDB();
+
+
+        if(
+            !db
+        ){
+
+            console.warn(
+                "⚠️ Daily distance: report DB unavailable"
+            );
+
+            return 0;
+
+        }
+
+
+        // ------------------------------------------------------
+        // Confirm distance store exists
+        // ------------------------------------------------------
+
+        if(
+            !db.objectStoreNames.contains(
+                window.GG_REPORT.STORE_DISTANCE
+            )
+        ){
+
+            console.warn(
+                "⚠️ Daily distance store missing:",
+                window.GG_REPORT.STORE_DISTANCE
+            );
+
+            return 0;
+
+        }
+
+
+        // ------------------------------------------------------
+        // Read persisted distance segments
+        // ------------------------------------------------------
+
+        const tx =
+            db.transaction(
+                window.GG_REPORT.STORE_DISTANCE,
+                "readonly"
+            );
+
+
+        const store =
+            tx.objectStore(
+                window.GG_REPORT.STORE_DISTANCE
+            );
+
+
+        const records =
+            await new Promise(
+                (
+                    resolve,
+                    reject
+                ) => {
+
+                    const request =
+                        store.getAll();
+
+
+                    request.onsuccess =
+                        () => {
+
+                            resolve(
+                                request.result || []
+                            );
+
+                        };
+
+
+                    request.onerror =
+                        () => {
+
+                            reject(
+                                request.error
+                            );
+
+                        };
+
+                }
+            );
+
+
+        // ------------------------------------------------------
+        // Calculate authoritative daily distance
+        // ------------------------------------------------------
+
+        let totalMeters =
+            0;
+
+
+        const targetGridId =
+            String(
+                gridId
+            );
+
+
+        for(
+            const segment
+            of records
+        ){
+
+            if(
+                !segment
+            ){
+
+                continue;
+
+            }
+
+
+            // --------------------------------------------------
+            // AUTHORITATIVE GRID ATTRIBUTION
+            // --------------------------------------------------
+
+            if(
+                String(
+                    segment.gridId || ""
+                ) !==
+                targetGridId
+            ){
+
+                continue;
+
+            }
+
+
+            // --------------------------------------------------
+            // AUTHORITATIVE TIMESTAMP
+            // --------------------------------------------------
+
+            const timestamp =
+                Number(
+                    segment.timestamp
+                );
+
+
+            if(
+                !Number.isFinite(
+                    timestamp
+                )
+            ){
+
+                continue;
+
+            }
+
+
+            // --------------------------------------------------
+            // DAILY WINDOW
+            //
+            // start inclusive
+            // end exclusive
+            // --------------------------------------------------
+
+            if(
+                timestamp < start ||
+                timestamp >= end
+            ){
+
+                continue;
+
+            }
+
+
+            // --------------------------------------------------
+            // DISTANCE
+            // --------------------------------------------------
+
+            const meters =
+                Number(
+                    segment.distanceMeters
+                );
+
+
+            if(
+                !Number.isFinite(
+                    meters
+                ) ||
+                meters < 0
+            ){
+
+                continue;
+
+            }
+
+
+            totalMeters +=
+                meters;
+
+        }
+
+
+        return totalMeters;
+
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ Daily distance calculation failed:",
+            {
+                gridId,
+                startMs,
+                endMs,
+                error
+            }
+        );
+
+
+        return 0;
+
+    }
+
+}/* ================================================================
+   22. BUILD ONE DAILY REPORT
+   ================================================================ */
+
+/* ================================================================
+   22. BUILD ONE DAILY REPORT
+   ================================================================ */
 
 /* ================================================================
    22. BUILD ONE DAILY REPORT
@@ -32043,155 +33070,562 @@ async function ggReportBuildDaily(
             reportDate
         );
 
+
     const startMs =
         windowInfo.start.getTime();
+
 
     const endMs =
         windowInfo.end.getTime();
 
+
+    // ============================================================
+    // MASTER GIS HIERARCHY
+    // ============================================================
+
     const masterRows =
         ggReportGetMasterRows();
+
+
+    // ============================================================
+    // EXISTING PATROL INDEX
+    //
+    // Retained for compatibility/fallback only.
+    // ============================================================
 
     const patrolIndex =
         ggReportBuildPatrolIndex();
 
-    const rows = [];
 
-    masterRows.forEach(
-        masterRow => {
+    // Prevent unused-variable issues while retaining
+    // the existing compatibility call/flow.
+    void patrolIndex;
 
-            const row =
-                ggReportEmptyRow(
-                    masterRow
-                );
 
-            /*
-             * IMPORTANT:
-             *
-             * Existing monthly analytics is cumulative.
-             *
-             * Therefore we do NOT pretend that its cumulative
-             * visitCount/distance/visitedCells are daily values.
-             *
-             * Daily patrol contribution must come from the
-             * session-level structures when those structures retain
-             * the necessary date information.
-             */
+    // ============================================================
+    // TIMESTAMPED CELL OCCURRENCE CACHE
+    //
+    // Created by collectAnalyticsHit().
+    //
+    // NO Firestore read.
+    // ============================================================
 
-            const patrol =
-                patrolIndex[
-                    masterRow.gridId
-                ];
+    const occurrenceCache =
+        Array.isArray(
+            window.ggReportCellOccurrences
+        )
+            ? window.ggReportCellOccurrences
+            : [];
 
-            if(patrol){
 
-                /*
-                 * session IDs
-                 */
-                row.totalVisits =
-                    patrol.sessionIds.size;
+    // ============================================================
+    // EXACT DAILY WINDOW
+    //
+    // Previous day 11:31 PM
+    //          →
+    // Current day 11:30 PM
+    // ============================================================
 
-                /*
-                 * cumulative unique cells are not silently used as
-                 * a DAILY unique count unless the stored cell data
-                 * carries a usable date.
-                 *
-                 * This is deliberately conservative.
-                 */
-                row.uniqueCellsVisited =
-                    0;
+    const dailyOccurrences =
+        occurrenceCache.filter(
+            occurrence => {
 
-                /*
-                 * Same rule for daily occurrence count.
-                 */
-                row.cellVisitOccurrences =
-                    0;
-
-                row.distanceKm =
-                    ggReportRound(
-                        patrol.distanceMeters /
-                        1000,
-                        2
+                const ts =
+                    Number(
+                        occurrence?.timestamp
                     );
 
-                row.lastVisited =
-                    patrol.lastVisited
-                        ? new Date(
-                            patrol.lastVisited
-                          ).toLocaleString(
-                            "en-IN"
-                          )
-                        : "";
+
+                if(
+                    !Number.isFinite(
+                        ts
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                return (
+                    ts >= startMs &&
+                    ts <= endMs
+                );
+
+            }
+        );
+
+
+    // ============================================================
+    // DAILY GRID INDEX
+    // ============================================================
+
+    const dailyGridIndex = {};
+
+
+    dailyOccurrences.forEach(
+        occurrence => {
+
+            const gridId =
+                ggReportString(
+                    occurrence?.gridId
+                );
+
+
+            const cellId =
+                ggReportString(
+                    occurrence?.cellId
+                );
+
+
+            if(
+                !gridId ||
+                !cellId
+            ){
+
+                return;
 
             }
 
-            /*
-             * Event caches are independently timestamp filtered.
-             */
-            row.elephantSightings =
-                ggReportCountElephants(
-                    masterRow,
-                    startMs,
-                    endMs
+
+            if(
+                !dailyGridIndex[
+                    gridId
+                ]
+            ){
+
+                dailyGridIndex[
+                    gridId
+                ] = {
+
+                    occurrenceCount:
+                        0,
+
+                    uniqueCells:
+                        new Set(),
+
+                    sessionIds:
+                        new Set(),
+
+                    lastVisited:
+                        0
+
+                };
+
+            }
+
+
+            const dailyGrid =
+                dailyGridIndex[
+                    gridId
+                ];
+
+
+            // ----------------------------------------------------
+            // CELL VISIT OCCURRENCES
+            // ----------------------------------------------------
+
+            dailyGrid.occurrenceCount++;
+
+
+            // ----------------------------------------------------
+            // UNIQUE CELLS
+            // ----------------------------------------------------
+
+            dailyGrid
+                .uniqueCells
+                .add(
+                    cellId
                 );
 
-            row.otherWildlifeSightings =
-                ggReportCountWildlife(
-                    masterRow,
-                    startMs,
-                    endMs
+
+            // ----------------------------------------------------
+            // REAL PATROL SESSION
+            // ----------------------------------------------------
+
+            const visitSessionKey =
+                ggReportString(
+                    occurrence?.visitSessionKey
                 );
 
-            row.offencesDetected =
-                ggReportCountOffences(
-                    masterRow,
-                    startMs,
-                    endMs
+
+            if(
+                visitSessionKey
+            ){
+
+                dailyGrid
+                    .sessionIds
+                    .add(
+                        visitSessionKey
+                    );
+
+            }
+
+
+            // ----------------------------------------------------
+            // LAST VISITED
+            // ----------------------------------------------------
+
+            const ts =
+                Number(
+                    occurrence.timestamp
                 );
 
-            /*
-             * Coverage/intensity for a DAILY report cannot safely
-             * be calculated from the cumulative monthly visitedCells.
-             *
-             * It will be populated when the daily session/cell
-             * contribution carries timestamps.
-             */
-            row.coveragePercent =
-                0;
 
-            row.patrolIntensityIndex =
-                0;
+            if(
+                Number.isFinite(
+                    ts
+                )
+            ){
 
-            rows.push(row);
+                dailyGrid.lastVisited =
+                    Math.max(
+                        dailyGrid.lastVisited,
+                        ts
+                    );
+
+            }
 
         }
     );
+
+
+    // ============================================================
+    // BUILD DAILY COMPARTMENT ROWS
+    // ============================================================
+
+    const rows = [];
+
+
+    /*
+     * IMPORTANT:
+     *
+     * This is intentionally a normal for...of loop instead of
+     * masterRows.forEach().
+     *
+     * Reason:
+     *
+     * ggReportDailyDistanceForGrid() reads the persisted
+     * IndexedDB distance_segments store asynchronously.
+     *
+     * Therefore the daily distance must be awaited for each
+     * master GIS row.
+     */
+
+    for(
+        const masterRow
+        of masterRows
+    ){
+
+        const row =
+            ggReportEmptyRow(
+                masterRow
+            );
+
+
+        const gridId =
+            ggReportString(
+                masterRow.gridId
+            );
+
+
+        const dailyGrid =
+            dailyGridIndex[
+                gridId
+            ];
+
+
+        // ========================================================
+        // TOTAL CELLS
+        //
+        // Always authoritative GIS.
+        // ========================================================
+
+        row.totalCells =
+            Math.max(
+                0,
+                Math.round(
+                    ggReportNumber(
+                        masterRow.totalCells
+                    )
+                )
+            );
+
+
+        // ========================================================
+        // DAILY CELL ACTIVITY
+        // ========================================================
+
+        if(
+            dailyGrid
+        ){
+
+            // ----------------------------------------------------
+            // TOTAL DUTY TEAM / VISITS
+            //
+            // Unique staff/session identities for this
+            // compartment during this daily window.
+            // ----------------------------------------------------
+
+            row.totalVisits =
+                dailyGrid
+                    .sessionIds
+                    .size;
+
+
+            // ----------------------------------------------------
+            // CELL VISIT OCCURRENCES
+            // ----------------------------------------------------
+
+            row.cellVisitOccurrences =
+                dailyGrid
+                    .occurrenceCount;
+
+
+            // ----------------------------------------------------
+            // UNIQUE CELLS VISITED
+            // ----------------------------------------------------
+
+            row.uniqueCellIds =
+                [
+                    ...dailyGrid.uniqueCells
+                ];
+
+
+            row.uniqueCellsVisited =
+                dailyGrid
+                    .uniqueCells
+                    .size;
+
+
+            // ----------------------------------------------------
+            // LAST VISITED
+            // ----------------------------------------------------
+
+            row.lastVisited =
+                dailyGrid.lastVisited
+
+                    ? new Date(
+                        dailyGrid.lastVisited
+                      ).toLocaleString(
+                        "en-IN"
+                      )
+
+                    : "";
+
+        }
+
+        else{
+
+            row.totalVisits =
+                0;
+
+
+            row.cellVisitOccurrences =
+                0;
+
+
+            row.uniqueCellsVisited =
+                0;
+
+
+            row.uniqueCellIds =
+                [];
+
+
+            row.lastVisited =
+                "";
+
+        }
+
+
+        // =========================================================
+        // 🔥 AUTHORITATIVE DAILY DISTANCE
+        //
+        // SOURCE:
+        //     IndexedDB → distance_segments
+        //
+        // FILTER:
+        //     gridId
+        //     startMs <= timestamp < endMs
+        //
+        // IMPORTANT:
+        //     This does NOT use cumulative analytics distance.
+        //     This does NOT use analyticsBuffer.
+        //     This does NOT modify monthly analytics.
+        //     This does NOT modify the existing flush logic.
+        // =========================================================
+
+        const dailyDistanceMeters =
+            await ggReportDailyDistanceForGrid(
+                masterRow.gridId,
+                startMs,
+                endMs
+            );
+
+
+        row.distanceKm =
+            ggReportRound(
+                dailyDistanceMeters / 1000,
+                2
+            );
+
+
+        // ========================================================
+        // DAILY EVENT COUNTS
+        // ========================================================
+
+        row.elephantSightings =
+            ggReportCountElephants(
+                masterRow,
+                startMs,
+                endMs
+            );
+
+
+        row.otherWildlifeSightings =
+            ggReportCountWildlife(
+                masterRow,
+                startMs,
+                endMs
+            );
+
+
+        row.offencesDetected =
+            ggReportCountOffences(
+                masterRow,
+                startMs,
+                endMs
+            );
+
+
+        // ========================================================
+        // FINALIZE DAILY ROW
+        //
+        // IMPORTANT:
+        // The previous code called:
+        //
+        //     ggReportFinalizeRow(row)
+        //
+        // but that function does not exist in the current source.
+        //
+        // Keep finalization local so no new global dependency is
+        // introduced and the rest of the application remains
+        // untouched.
+        //
+        // Coverage:
+        //     unique cells / total cells × 100
+        //
+        // Intensity:
+        //     occurrences / total cells × 100
+        // ========================================================
+
+        const totalCells =
+            Math.max(
+                0,
+                ggReportNumber(
+                    row.totalCells
+                )
+            );
+
+
+        const uniqueCellsVisited =
+            Math.max(
+                0,
+                ggReportNumber(
+                    row.uniqueCellsVisited
+                )
+            );
+
+
+        const cellVisitOccurrences =
+            Math.max(
+                0,
+                ggReportNumber(
+                    row.cellVisitOccurrences
+                )
+            );
+
+
+        if(
+            totalCells > 0
+        ){
+
+            row.coveragePercent =
+                ggReportRound(
+                    (
+                        uniqueCellsVisited /
+                        totalCells
+                    ) * 100,
+                    2
+                );
+
+
+            row.intensityPercent =
+                ggReportRound(
+                    (
+                        cellVisitOccurrences /
+                        totalCells
+                    ) * 100,
+                    2
+                );
+
+        }
+
+        else{
+
+            row.coveragePercent =
+                0;
+
+
+            row.intensityPercent =
+                0;
+
+        }
+
+
+        // ========================================================
+        // PUSH FINAL DAILY ROW
+        // ========================================================
+
+        rows.push(
+            row
+        );
+
+    }
+
+
+    // ============================================================
+    // RETURN DAILY REPORT
+    // ============================================================
 
     return {
 
         reportType:
             "DAILY",
 
+
         reportDate:
             windowInfo.reportDate,
+
 
         start:
             windowInfo.start.toISOString(),
 
+
         end:
             windowInfo.end.toISOString(),
 
+
         generatedAt:
             new Date().toISOString(),
+
 
         rows
 
     };
 
-}
-
-
-/* ================================================================
+}/* ================================================================
    23. MONTHLY CUMULATIVE REPORT
 
    Monthly unique cells:
@@ -32338,6 +33772,10 @@ function ggReportMergeDailyRows(
    24. LOAD SAVED DAILY REPORTS
    ================================================================ */
 
+/* ================================================================
+   GG REPORT DATABASE
+   ================================================================ */
+
 async function ggReportOpenDB(){
 
     return new Promise(
@@ -32352,11 +33790,17 @@ async function ggReportOpenDB(){
                     window.GG_REPORT.DB_VERSION
                 );
 
+
             request.onupgradeneeded =
                 function(event){
 
                     const db =
                         event.target.result;
+
+
+                    // ==================================================
+                    // DAILY REPORTS
+                    // ==================================================
 
                     if(
                         !db.objectStoreNames.contains(
@@ -32374,6 +33818,11 @@ async function ggReportOpenDB(){
 
                     }
 
+
+                    // ==================================================
+                    // MONTHLY REPORTS
+                    // ==================================================
+
                     if(
                         !db.objectStoreNames.contains(
                             window.GG_REPORT.STORE_MONTHLY
@@ -32389,6 +33838,11 @@ async function ggReportOpenDB(){
                         );
 
                     }
+
+
+                    // ==================================================
+                    // META
+                    // ==================================================
 
                     if(
                         !db.objectStoreNames.contains(
@@ -32406,7 +33860,40 @@ async function ggReportOpenDB(){
 
                     }
 
+
+                    // ==================================================
+                    // 🔥 DAILY DISTANCE SEGMENTS
+                    //
+                    // Separate from Firestore analytics.
+                    //
+                    // This survives:
+                    //
+                    //     analyticsBuffer reset
+                    //     analytics flush
+                    //     Firestore writes
+                    //
+                    // and allows the report engine to calculate
+                    // genuine daily distance.
+                    // ==================================================
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_DISTANCE
+                        )
+                    ){
+
+                        db.createObjectStore(
+                            window.GG_REPORT.STORE_DISTANCE,
+                            {
+                                keyPath:
+                                    "id"
+                            }
+                        );
+
+                    }
+
                 };
+
 
             request.onsuccess =
                 function(){
@@ -32416,6 +33903,7 @@ async function ggReportOpenDB(){
                     );
 
                 };
+
 
             request.onerror =
                 function(){
@@ -32430,7 +33918,463 @@ async function ggReportOpenDB(){
     );
 
 }
+/* ================================================================
+   PERSIST AUTHORITATIVE DISTANCE SEGMENT
+   ================================================================ */
 
+async function ggReportSaveDistanceSegment(
+    segment
+){
+
+    try{
+
+        if(
+            !segment ||
+            !segment.gridId
+        ){
+
+            return false;
+
+        }
+
+
+        const timestamp =
+            Number(
+                segment.timestamp
+            );
+
+
+        const distanceMeters =
+            Number(
+                segment.distanceMeters
+            );
+
+
+        if(
+            !Number.isFinite(
+                timestamp
+            ) ||
+            !Number.isFinite(
+                distanceMeters
+            ) ||
+            distanceMeters < 0
+        ){
+
+            return false;
+
+        }
+
+
+        const gridId =
+            String(
+                segment.gridId
+            );
+
+
+        const sessionId =
+            String(
+                segment.sessionId ||
+                ""
+            );
+
+
+        /*
+         * Unique immutable ID.
+         *
+         * timestamp + grid + session + coordinates
+         *
+         * prevents accidental duplicate persistence.
+         */
+
+        const id =
+
+            [
+                gridId,
+
+                sessionId,
+
+                timestamp,
+
+                segment.fromLat,
+                segment.fromLon,
+
+                segment.toLat,
+                segment.toLon
+
+            ]
+            .map(
+                value =>
+                    String(
+                        value ?? ""
+                    )
+            )
+            .join("|");
+
+
+        const db =
+            await ggReportOpenDB();
+
+
+        return await new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+
+                const tx =
+                    db.transaction(
+                        window.GG_REPORT.STORE_DISTANCE,
+                        "readwrite"
+                    );
+
+
+                tx.objectStore(
+                    window.GG_REPORT.STORE_DISTANCE
+                )
+                .put({
+
+                    id,
+
+                    gridId,
+
+                    sessionId,
+
+                    staffName:
+                        String(
+                            segment.staffName ||
+                            ""
+                        ),
+
+                    fromLat:
+                        Number(
+                            segment.fromLat
+                        ),
+
+                    fromLon:
+                        Number(
+                            segment.fromLon
+                        ),
+
+                    toLat:
+                        Number(
+                            segment.toLat
+                        ),
+
+                    toLon:
+                        Number(
+                            segment.toLon
+                        ),
+
+                    distanceMeters,
+
+                    timestamp
+
+                });
+
+
+                tx.oncomplete =
+                    function(){
+
+                        resolve(
+                            true
+                        );
+
+                    };
+
+
+                tx.onerror =
+                    function(){
+
+                        reject(
+                            tx.error
+                        );
+
+                    };
+
+            }
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ ggReportSaveDistanceSegment",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+/* ================================================================
+   READ DAILY DISTANCE SEGMENTS
+   ================================================================ */
+
+async function ggReportLoadDistanceSegments(
+    startMs,
+    endMs
+){
+
+    try{
+
+        const db =
+            await ggReportOpenDB();
+
+
+        return await new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+
+                const tx =
+                    db.transaction(
+                        window.GG_REPORT.STORE_DISTANCE,
+                        "readonly"
+                    );
+
+
+                const request =
+                    tx.objectStore(
+                        window.GG_REPORT.STORE_DISTANCE
+                    )
+                    .getAll();
+
+
+                request.onsuccess =
+                    function(){
+
+                        const all =
+                            Array.isArray(
+                                request.result
+                            )
+                                ? request.result
+                                : [];
+
+
+                        const filtered =
+                            all.filter(
+                                segment => {
+
+                                    const timestamp =
+                                        Number(
+                                            segment?.timestamp
+                                        );
+
+
+                                    return (
+
+                                        Number.isFinite(
+                                            timestamp
+                                        ) &&
+
+                                        timestamp >=
+                                            startMs &&
+
+                                        timestamp <
+                                            endMs
+
+                                    );
+
+                                }
+                            );
+
+
+                        resolve(
+                            filtered
+                        );
+
+                    };
+
+
+                request.onerror =
+                    function(){
+
+                        reject(
+                            request.error
+                        );
+
+                    };
+
+            }
+        );
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ ggReportLoadDistanceSegments",
+            err
+        );
+
+        return [];
+
+    }
+
+}
+/* ================================================================
+   DAILY DISTANCE BY AUTHORITATIVE GRID
+   ================================================================ */
+
+async function ggReportBuildDailyDistanceIndex(
+    startMs,
+    endMs
+){
+
+    const segments =
+        await ggReportLoadDistanceSegments(
+            startMs,
+            endMs
+        );
+
+
+    const index = {};
+
+
+    segments.forEach(
+        segment => {
+
+            const gridId =
+                String(
+                    segment?.gridId ||
+                    ""
+                )
+                .trim();
+
+
+            if(!gridId){
+                return;
+            }
+
+
+            const meters =
+                Number(
+                    segment?.distanceMeters
+                );
+
+
+            if(
+                !Number.isFinite(
+                    meters
+                ) ||
+                meters < 0
+            ){
+
+                return;
+
+            }
+
+
+            if(
+                !index[gridId]
+            ){
+
+                index[gridId] = {
+
+                    distanceMeters:
+                        0,
+
+                    segmentCount:
+                        0,
+
+                    firstTimestamp:
+                        0,
+
+                    lastTimestamp:
+                        0
+
+                };
+
+            }
+
+
+            index[gridId]
+                .distanceMeters +=
+                    meters;
+
+
+            index[gridId]
+                .segmentCount++;
+
+
+            const timestamp =
+                Number(
+                    segment.timestamp
+                );
+
+
+            if(
+                timestamp > 0
+            ){
+
+                if(
+                    !index[gridId]
+                        .firstTimestamp ||
+                    timestamp <
+                        index[gridId]
+                            .firstTimestamp
+                ){
+
+                    index[gridId]
+                        .firstTimestamp =
+                            timestamp;
+
+                }
+
+
+                if(
+                    timestamp >
+                        index[gridId]
+                            .lastTimestamp
+                ){
+
+                    index[gridId]
+                        .lastTimestamp =
+                            timestamp;
+
+                }
+
+            }
+
+        }
+    );
+
+
+    console.log(
+        "📏 DAILY DISTANCE INDEX",
+        {
+            start:
+                new Date(
+                    startMs
+                ).toLocaleString(
+                    "en-IN"
+                ),
+
+            end:
+                new Date(
+                    endMs
+                ).toLocaleString(
+                    "en-IN"
+                ),
+
+            segments:
+                segments.length,
+
+            grids:
+                Object.keys(
+                    index
+                ).length
+
+        }
+    );
+
+
+    return index;
+
+}
 
 /* ================================================================
    25. SAVE DAILY REPORT
@@ -38482,7 +40426,30 @@ window.monthlyStatusCache ??= {};
 // ======================================================
 // 🌍 GIS DATASETS
 // ======================================================
+window.GG_REPORT = {
 
+    VERSION:
+        "1.0.0",
+
+    DB_NAME:
+        "GG_COMMAND_CENTRE_REPORTS_V1",
+
+    DB_VERSION:
+        2,
+
+    STORE_DAILY:
+        "daily_reports",
+
+    STORE_MONTHLY:
+        "monthly_reports",
+
+    STORE_META:
+        "meta",
+
+    STORE_DISTANCE:
+        "distance_segments"
+
+};
 window.allGISFeatures = [];
 
 window.allCompartmentFeatures = [];
@@ -78860,96 +80827,96 @@ const updatedAtElement =
                     }
 
 
-                    // =================================================
-                    // CURRENT GIS LOCATION
-                    // =================================================
+// =================================================
+// CURRENT GIS LOCATION
+// =================================================
 
-                    const currentLocationElement =
-                        popupElement.querySelector(
-                            "#staffCurrentLocation_" +
-                            popupKey
-                        );
-
-
-                    if(
-                        currentLocationElement &&
-                        typeof window.resolveCurrentGIS ===
-                        "function"
-                    ){
-
-                        try{
-
-                            const resolved =
-                                window.resolveCurrentGIS(
-                                    lat,
-                                    lon
-                                );
+const currentLocationElement =
+    popupElement.querySelector(
+        "#" +
+        CSS.escape(
+            "staffCurrentLocation_" +
+            popupKey
+        )
+    );
 
 
-                            if(
-                                resolved &&
-                                (
-                                    resolved.compartment ||
-                                    resolved.beat ||
-                                    resolved.range ||
-                                    resolved.division
-                                )
-                            ){
+if(
+    currentLocationElement &&
+    typeof window.resolveCurrentGIS ===
+        "function"
+){
 
-                                currentLocationElement.innerHTML = `
-                                    <div>
-                                        🌲 Compartment:
-                                        <b>
-                                            ${resolved.compartment || "N/A"}
-                                        </b>
-                                    </div>
+    try{
 
-                                    <div>
-                                        🧭 Beat:
-                                        <b>
-                                            ${resolved.beat || "N/A"}
-                                        </b>
-                                    </div>
-
-                                    <div>
-                                        🏢 Range:
-                                        <b>
-                                            ${resolved.range || "N/A"}
-                                        </b>
-                                    </div>
-                                `;
-
-                            }
-                            else if(
-                                resolved &&
-                                resolved.village
-                            ){
-
-                                currentLocationElement.innerHTML = `
-                                    <div>
-                                        🏡 Village:
-                                        <b>
-                                            ${resolved.village}
-                                        </b>
-                                    </div>
-                                `;
-
-                            }
+        const resolved =
+            window.resolveCurrentGIS(
+                lat,
+                lon
+            );
 
 
-                        }catch(e){
+        if(
+            resolved &&
+            (
+                resolved.compartment ||
+                resolved.beat ||
+                resolved.range ||
+                resolved.division
+            )
+        ){
 
-                            console.warn(
-                                "⚠ Patrol point GIS update failed:",
-                                staffName,
-                                e
-                            );
+            currentLocationElement.innerHTML = `
+                <div>
+                    🌲 Compartment:
+                    <b>
+                        ${resolved.compartment || "N/A"}
+                    </b>
+                </div>
 
-                        }
+                <div>
+                    🧭 Beat:
+                    <b>
+                        ${resolved.beat || "N/A"}
+                    </b>
+                </div>
 
-                    }
+                <div>
+                    🏢 Range:
+                    <b>
+                        ${resolved.range || "N/A"}
+                    </b>
+                </div>
+            `;
 
+        }
+        else if(
+            resolved &&
+            resolved.village
+        ){
 
+            currentLocationElement.innerHTML = `
+                <div>
+                    🏡 Village:
+                    <b>
+                        ${resolved.village}
+                    </b>
+                </div>
+            `;
+
+        }
+
+    }catch(e){
+
+        console.warn(
+            "⚠ Patrol point GIS update failed:",
+            staffName,
+            e
+        );
+
+    }
+
+}
                     // =================================================
                     // NAVIGATE BUTTON
                     // -------------------------------------------------
@@ -80468,111 +82435,983 @@ staff.forEach(s => {
 // Reuses the single central sessionPointCache pipeline.
 // No secondary Firestore listener. No separate point cache.
 // ============================================================
-async function processPatrolAnalyticsSnapshot(newPoints, s, currentSessionId){
-  try {
-    if(!newPoints || newPoints.length === 0) return;
+// ============================================================
+// 🔥 SHARED PATROL ANALYTICS PROCESSOR
+// ------------------------------------------------------------
+// Reuses the single central sessionPointCache pipeline.
+//
+// DESIGN:
+// 1. Existing getTouchedCells() remains the PRIMARY
+//    authoritative traversal.
+// 2. collectAnalyticsHit() remains the existing analytics
+//    collector and distance-segment producer.
+// 3. If getTouchedCells() returns authoritative cells,
+//    existing behaviour is preserved.
+// 4. If getTouchedCells() returns ZERO cells because the
+//    strict traversal resolver rejected the generated cell,
+//    the current GPS endpoint is resolved directly through
+//    resolveAnalyticsCell()/cellToGridId.
+// 5. This prevents a strict touched-cell rejection from
+//    silently preventing distance-segment production.
+// 6. No secondary Firestore listener.
+// 7. No separate point cache.
+// 8. Existing unique-session-cell accounting is preserved.
+// ============================================================
 
-    window.analyticsSessionCellSeen ??= Object.create(null);
-    window.analyticsSessionCellSeen[currentSessionId] ??= new Set();
-    const sessionCellSeen = window.analyticsSessionCellSeen[currentSessionId];
+async function processPatrolAnalyticsSnapshot(
+    newPoints,
+    s,
+    currentSessionId
+){
 
-    window.analyticsPointCount ??= Object.create(null);
-    window.analyticsNewSessionCellCount ??= Object.create(null);
-    window.analyticsPointCount[currentSessionId] ??= 0;
-    window.analyticsNewSessionCellCount[currentSessionId] ??= 0;
+    try {
 
-    window.analyticsLastPoint ??= Object.create(null);
+        // --------------------------------------------------------
+        // BASIC VALIDATION
+        // --------------------------------------------------------
 
-    const sortedPoints = [...newPoints].sort((a,b) => Number(a.time || 0) - Number(b.time || 0));
+        if(
+            !Array.isArray(newPoints) ||
+            newPoints.length === 0
+        ){
 
-    let previousPoint = window.analyticsLastPoint[currentSessionId] || null;
+            return;
 
-    for(const currentPoint of sortedPoints){
-      if(!currentPoint) continue;
+        }
 
-      if(!previousPoint){
-        previousPoint = currentPoint;
-        window.analyticsLastPoint[currentSessionId] = currentPoint;
-        continue;
-      }
 
-      const result = typeof getTouchedCells === "function" ? getTouchedCells([
-        [
-          [previousPoint.lat, previousPoint.lon],
-          [currentPoint.lat, currentPoint.lon]
-        ]
-      ]) : null;
+        if(
+            !currentSessionId
+        ){
 
-      const touchedCells = Array.from(result?.touchedCells || []);
+            console.warn(
+                "⚠️ ANALYTICS PROCESSOR: missing sessionId"
+            );
 
-      for(const rawCellId of touchedCells){
-        const resolved = typeof resolveAnalyticsCell === "function" ? resolveAnalyticsCell(rawCellId) : null;
-        if(!resolved) continue;
+            return;
 
-        const sessionCellKey = JSON.stringify([
-          currentSessionId,
-          resolved.gridId,
-          resolved.cellId
-        ]);
+        }
 
-        const isNewSessionCell = !sessionCellSeen.has(sessionCellKey);
 
-        if(typeof collectAnalyticsHit === "function"){
-          collectAnalyticsHit(
-            resolved.gridId,
-            resolved.cellId,
-            currentPoint.lat,
-            currentPoint.lon,
-            [
-              [
-                [previousPoint.lat, previousPoint.lon],
-                [currentPoint.lat, currentPoint.lon]
-              ]
-            ],
-            s.cleanName,
+        // --------------------------------------------------------
+        // SESSION CELL STATE
+        // --------------------------------------------------------
+
+        window.analyticsSessionCellSeen ??=
+            Object.create(null);
+
+
+        window.analyticsSessionCellSeen[
             currentSessionId
-          );
+        ] ??=
+            new Set();
+
+
+        const sessionCellSeen =
+            window.analyticsSessionCellSeen[
+                currentSessionId
+            ];
+
+
+        // --------------------------------------------------------
+        // SESSION COUNTERS
+        // --------------------------------------------------------
+
+        window.analyticsPointCount ??=
+            Object.create(null);
+
+
+        window.analyticsNewSessionCellCount ??=
+            Object.create(null);
+
+
+        window.analyticsPointCount[
+            currentSessionId
+        ] ??=
+            0;
+
+
+        window.analyticsNewSessionCellCount[
+            currentSessionId
+        ] ??=
+            0;
+
+
+        // --------------------------------------------------------
+        // LAST POINT STATE
+        // --------------------------------------------------------
+
+        window.analyticsLastPoint ??=
+            Object.create(null);
+
+
+        // --------------------------------------------------------
+        // SORT NEW POINTS
+        // --------------------------------------------------------
+
+        const sortedPoints =
+            [...newPoints]
+                .filter(
+                    point =>
+                        point &&
+                        Number.isFinite(
+                            Number(point.lat)
+                        ) &&
+                        Number.isFinite(
+                            Number(
+                                point.lon ??
+                                point.lng
+                            )
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        Number(
+                            a.time || 0
+                        ) -
+                        Number(
+                            b.time || 0
+                        )
+                );
+
+
+        if(
+            sortedPoints.length === 0
+        ){
+
+            return;
+
         }
 
-        if(isNewSessionCell){
-          sessionCellSeen.add(sessionCellKey);
-          const buffer = window.analyticsBuffer?.[resolved.gridId];
-          if(buffer){
-            buffer.sessionCellVisits ??= new Set();
-            buffer.sessionCellVisits.add(sessionCellKey);
-          }
-          window.analyticsNewSessionCellCount[currentSessionId]++;
-        }
-      }
 
-      previousPoint = currentPoint;
-      window.analyticsLastPoint[currentSessionId] = currentPoint;
-      window.analyticsPointCount[currentSessionId]++;
+        // --------------------------------------------------------
+        // PREVIOUS SESSION POINT
+        // --------------------------------------------------------
+
+        let previousPoint =
+            window.analyticsLastPoint[
+                currentSessionId
+            ] || null;
+
+
+        // ========================================================
+        // PROCESS EACH NEW GPS POINT
+        // ========================================================
+
+        for(
+            const currentPoint
+            of sortedPoints
+        ){
+
+            if(
+                !currentPoint
+            ){
+
+                continue;
+
+            }
+
+
+            // ----------------------------------------------------
+            // NORMALIZE CURRENT GPS COORDINATES
+            // ----------------------------------------------------
+
+            const currentLat =
+                Number(
+                    currentPoint.lat
+                );
+
+
+            const currentLon =
+                Number(
+                    currentPoint.lon ??
+                    currentPoint.lng
+                );
+
+
+            if(
+                !Number.isFinite(
+                    currentLat
+                ) ||
+                !Number.isFinite(
+                    currentLon
+                )
+            ){
+
+                continue;
+
+            }
+
+
+            // ----------------------------------------------------
+            // FIRST POINT OF SESSION
+            //
+            // There is no movement segment yet.
+            // Preserve existing behaviour.
+            // ----------------------------------------------------
+
+            if(
+                !previousPoint
+            ){
+
+                previousPoint = {
+                    ...currentPoint,
+                    lat: currentLat,
+                    lon: currentLon
+                };
+
+
+                window.analyticsLastPoint[
+                    currentSessionId
+                ] =
+                    previousPoint;
+
+
+                continue;
+
+            }
+
+
+            // ----------------------------------------------------
+            // NORMALIZE PREVIOUS GPS COORDINATES
+            // ----------------------------------------------------
+
+            const previousLat =
+                Number(
+                    previousPoint.lat
+                );
+
+
+            const previousLon =
+                Number(
+                    previousPoint.lon ??
+                    previousPoint.lng
+                );
+
+
+            if(
+                !Number.isFinite(
+                    previousLat
+                ) ||
+                !Number.isFinite(
+                    previousLon
+                )
+            ){
+
+                previousPoint = {
+                    ...currentPoint,
+                    lat: currentLat,
+                    lon: currentLon
+                };
+
+
+                window.analyticsLastPoint[
+                    currentSessionId
+                ] =
+                    previousPoint;
+
+
+                continue;
+
+            }
+
+
+            // ====================================================
+            // ONE PHYSICAL GPS MOVEMENT SEGMENT
+            // ====================================================
+
+            const movementCoords =
+                [
+                    [
+                        previousLat,
+                        previousLon
+                    ],
+                    [
+                        currentLat,
+                        currentLon
+                    ]
+                ];
+
+
+            const localSegment =
+                [
+                    movementCoords
+                ];
+
+
+            // ====================================================
+            // PRIMARY AUTHORITATIVE TRAVERSAL
+            // ====================================================
+
+            let result =
+                null;
+
+
+            try {
+
+                if(
+                    typeof getTouchedCells ===
+                    "function"
+                ){
+
+                    result =
+                        getTouchedCells(
+                            [
+                                movementCoords
+                            ]
+                        );
+
+                }
+
+            }
+            catch(error){
+
+                console.error(
+                    "❌ getTouchedCells() failed inside analytics processor:",
+                    {
+                        sessionId:
+                            currentSessionId,
+
+                        previousPoint,
+
+                        currentPoint,
+
+                        error
+                    }
+                );
+
+            }
+
+
+            // ====================================================
+            // COLLECT AUTHORITATIVE CELLS
+            // ====================================================
+            //
+            // IMPORTANT:
+            //
+            // Use a Set so the fallback endpoint does not call
+            // collectAnalyticsHit() twice for the same physical
+            // grid/cell when getTouchedCells() already returned it.
+            //
+            // ====================================================
+
+            const resolvedTargets =
+                new Map();
+
+
+            const touchedCells =
+                Array.from(
+                    result?.touchedCells || []
+                );
+
+
+            // ----------------------------------------------------
+            // EXISTING AUTHORITATIVE PATH
+            // ----------------------------------------------------
+
+            for(
+                const rawCellId
+                of touchedCells
+            ){
+
+                if(
+                    !rawCellId
+                ){
+
+                    continue;
+
+                }
+
+
+                let resolved =
+                    null;
+
+
+                try {
+
+                    if(
+                        typeof resolveAnalyticsCell ===
+                        "function"
+                    ){
+
+                        resolved =
+                            resolveAnalyticsCell(
+                                rawCellId
+                            );
+
+                    }
+
+                }
+                catch(error){
+
+                    console.warn(
+                        "⚠️ resolveAnalyticsCell() failed:",
+                        {
+                            rawCellId,
+                            error
+                        }
+                    );
+
+                }
+
+
+                if(
+                    !resolved
+                ){
+
+                    continue;
+
+                }
+
+
+                const resolvedGridId =
+                    String(
+                        resolved.gridId ||
+                        ""
+                    ).trim();
+
+
+                const resolvedCellId =
+                    String(
+                        resolved.cellId ||
+                        ""
+                    ).trim();
+
+
+                if(
+                    !resolvedGridId ||
+                    !resolvedCellId
+                ){
+
+                    continue;
+
+                }
+
+
+                const targetKey =
+                    [
+                        resolvedGridId,
+                        resolvedCellId
+                    ].join("|");
+
+
+                resolvedTargets.set(
+                    targetKey,
+                    {
+                        gridId:
+                            resolvedGridId,
+
+                        cellId:
+                            resolvedCellId
+                    }
+                );
+
+            }
+
+
+            // ====================================================
+            // 🔥 SURGICAL FALLBACK
+            // ----------------------------------------------------
+            // If strict getTouchedCells() produced no accepted
+            // cells, directly resolve the CURRENT GPS endpoint.
+            //
+            // This is NOT nearest-grid matching.
+            // This is NOT synthetic attribution.
+            //
+            // It uses the same authoritative resolver and therefore
+            // only proceeds when the actual GPS-derived cell exists
+            // in the authoritative cell→grid mapping.
+            // ====================================================
+
+            if(
+                resolvedTargets.size === 0
+            ){
+
+                let fallbackRawCellId =
+                    null;
+
+
+                // ------------------------------------------------
+                // Generate the exact canonical GPS cell.
+                // ------------------------------------------------
+
+                try {
+
+                    if(
+                        typeof getAnalyticsCellId ===
+                        "function"
+                    ){
+
+                        fallbackRawCellId =
+                            getAnalyticsCellId(
+                                currentLat,
+                                currentLon
+                            );
+
+                    }
+
+                }
+                catch(error){
+
+                    console.warn(
+                        "⚠️ Analytics endpoint cell generation failed:",
+                        {
+                            sessionId:
+                                currentSessionId,
+
+                            lat:
+                                currentLat,
+
+                            lon:
+                                currentLon,
+
+                            error
+                        }
+                    );
+
+                }
+
+
+                // ------------------------------------------------
+                // Resolve through the EXISTING authoritative
+                // resolver.
+                // ------------------------------------------------
+
+                if(
+                    fallbackRawCellId &&
+                    typeof resolveAnalyticsCell ===
+                    "function"
+                ){
+
+                    try {
+
+                        const fallbackResolved =
+                            resolveAnalyticsCell(
+                                fallbackRawCellId
+                            );
+
+
+                        if(
+                            fallbackResolved
+                        ){
+
+                            const fallbackGridId =
+                                String(
+                                    fallbackResolved.gridId ||
+                                    ""
+                                ).trim();
+
+
+                            const fallbackCellId =
+                                String(
+                                    fallbackResolved.cellId ||
+                                    ""
+                                ).trim();
+
+
+                            if(
+                                fallbackGridId &&
+                                fallbackCellId
+                            ){
+
+                                const fallbackKey =
+                                    [
+                                        fallbackGridId,
+                                        fallbackCellId
+                                    ].join("|");
+
+
+                                resolvedTargets.set(
+                                    fallbackKey,
+                                    {
+                                        gridId:
+                                            fallbackGridId,
+
+                                        cellId:
+                                            fallbackCellId
+                                    }
+                                );
+
+
+                                console.warn(
+                                    "⚠️ ANALYTICS TRAVERSAL FALLBACK → CURRENT GPS ENDPOINT",
+                                    {
+                                        sessionId:
+                                            currentSessionId,
+
+                                        gridId:
+                                            fallbackGridId,
+
+                                        cellId:
+                                            fallbackCellId,
+
+                                        previousPoint: [
+                                            previousLat,
+                                            previousLon
+                                        ],
+
+                                        currentPoint: [
+                                            currentLat,
+                                            currentLon
+                                        ],
+
+                                        touchedCells:
+                                            touchedCells.length,
+
+                                        distanceMeters:
+                                            Number(
+                                                result?.distanceMeters ||
+                                                0
+                                            )
+                                    }
+                                );
+
+                            }
+
+                        }
+
+                    }
+                    catch(error){
+
+                        console.warn(
+                            "⚠️ Analytics fallback resolver failed:",
+                            {
+                                sessionId:
+                                    currentSessionId,
+
+                                fallbackRawCellId,
+
+                                error
+                            }
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            // ====================================================
+            // FINAL TARGET COUNT
+            // ====================================================
+
+            if(
+                resolvedTargets.size === 0
+            ){
+
+                console.warn(
+                    "⚠️ ANALYTICS MOVEMENT HAS NO AUTHORITATIVE GRID",
+                    {
+                        sessionId:
+                            currentSessionId,
+
+                        previousPoint: [
+                            previousLat,
+                            previousLon
+                        ],
+
+                        currentPoint: [
+                            currentLat,
+                            currentLon
+                        ],
+
+                        touchedCells:
+                            touchedCells.length,
+
+                        distanceMeters:
+                            Number(
+                                result?.distanceMeters ||
+                                0
+                            )
+                    }
+                );
+
+            }
+
+
+            // ====================================================
+            // COLLECT ANALYTICS + DISTANCE FOR EACH AUTHORITATIVE
+            // GRID/CELL
+            // ====================================================
+
+            for(
+                const target
+                of resolvedTargets.values()
+            ){
+
+                const gridId =
+                    target.gridId;
+
+
+                const cellId =
+                    target.cellId;
+
+
+                if(
+                    !gridId ||
+                    !cellId
+                ){
+
+                    continue;
+
+                }
+
+
+                // ------------------------------------------------
+                // SESSION/CELL IDENTITY
+                // ------------------------------------------------
+
+                const sessionCellKey =
+                    JSON.stringify(
+                        [
+                            currentSessionId,
+                            gridId,
+                            cellId
+                        ]
+                    );
+
+
+                const isNewSessionCell =
+                    !sessionCellSeen.has(
+                        sessionCellKey
+                    );
+
+
+                // =================================================
+                // 🔥 EXISTING COLLECTOR
+                // -------------------------------------------------
+                // This is intentionally unchanged.
+                //
+                // collectAnalyticsHit() remains responsible for:
+                //
+                //   buffer creation
+                //   GPS path merge
+                //   Haversine distance
+                //   physical segment deduplication
+                //   distanceSegments[]
+                //   ggReportSaveDistanceSegment()
+                //
+                // =================================================
+
+                if(
+                    typeof collectAnalyticsHit ===
+                    "function"
+                ){
+
+                    try {
+
+                        collectAnalyticsHit(
+                            gridId,
+                            cellId,
+                            currentLat,
+                            currentLon,
+                            localSegment,
+                            s?.cleanName ||
+                                s?.name ||
+                                "",
+                            currentSessionId
+                        );
+
+                    }
+                    catch(error){
+
+                        console.error(
+                            "❌ collectAnalyticsHit() failed:",
+                            {
+                                gridId,
+
+                                cellId,
+
+                                sessionId:
+                                    currentSessionId,
+
+                                previousPoint: [
+                                    previousLat,
+                                    previousLon
+                                ],
+
+                                currentPoint: [
+                                    currentLat,
+                                    currentLon
+                                ],
+
+                                error
+                            }
+                        );
+
+                    }
+
+                }
+                else{
+
+                    console.error(
+                        "❌ collectAnalyticsHit() is unavailable",
+                        {
+                            gridId,
+
+                            cellId,
+
+                            sessionId:
+                                currentSessionId
+                        }
+                    );
+
+                }
+
+
+                // =================================================
+                // UNIQUE SESSION/CELL ACCOUNTING
+                // -------------------------------------------------
+                // Existing visit semantics preserved.
+                // =================================================
+
+                if(
+                    isNewSessionCell
+                ){
+
+                    sessionCellSeen.add(
+                        sessionCellKey
+                    );
+
+
+                    const buffer =
+                        window.analyticsBuffer?.[
+                            gridId
+                        ];
+
+
+                    if(
+                        buffer
+                    ){
+
+                        buffer.sessionCellVisits ??=
+                            new Set();
+
+
+                        buffer.sessionCellVisits.add(
+                            sessionCellKey
+                        );
+
+                    }
+
+
+                    window.analyticsNewSessionCellCount[
+                        currentSessionId
+                    ]++;
+
+                }
+
+            }
+
+
+            // ====================================================
+            // ADVANCE SESSION POINT
+            // ====================================================
+
+            previousPoint = {
+                ...currentPoint,
+                lat:
+                    currentLat,
+                lon:
+                    currentLon
+            };
+
+
+            window.analyticsLastPoint[
+                currentSessionId
+            ] =
+                previousPoint;
+
+
+            window.analyticsPointCount[
+                currentSessionId
+            ]++;
+
+        }
+
+
+        // ========================================================
+        // EXISTING AUTO FLUSH
+        // ========================================================
+
+        if(
+            window.analyticsNewSessionCellCount[
+                currentSessionId
+            ] >= 5 &&
+            Object.keys(
+                window.analyticsBuffer || {}
+            ).length > 0
+        ){
+
+            console.log(
+                "📤 AUTO FLUSH — UNIQUE SESSION-CELLS",
+                window.analyticsNewSessionCellCount[
+                    currentSessionId
+                ]
+            );
+
+
+            if(
+                typeof window.flushAnalyticsBuffer ===
+                "function"
+            ){
+
+                window.analyticsNewSessionCellCount[
+                    currentSessionId
+                ] = 0;
+
+
+                try {
+
+                    const flushResult =
+                        window.flushAnalyticsBuffer();
+
+
+                    if(
+                        flushResult &&
+                        typeof flushResult.catch ===
+                        "function"
+                    ){
+
+                        flushResult.catch(
+                            error => {
+
+                                console.error(
+                                    "❌ Analytics auto-flush failed:",
+                                    error
+                                );
+
+                            }
+                        );
+
+                    }
+
+                }
+                catch(error){
+
+                    console.error(
+                        "❌ Analytics auto-flush crashed:",
+                        error
+                    );
+
+                }
+
+            }
+
+        }
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ SHARED ANALYTICS PROCESSOR ERROR:",
+            currentSessionId,
+            error
+        );
+
     }
 
-    if(
-      window.analyticsNewSessionCellCount[currentSessionId] >= 5 &&
-      Object.keys(window.analyticsBuffer || {}).length > 0
-    ){
-      console.log("📤 AUTO FLUSH — UNIQUE SESSION-CELLS", window.analyticsNewSessionCellCount[currentSessionId]);
-
-      if(typeof window.flushAnalyticsBuffer === "function"){
-        window.analyticsNewSessionCellCount[currentSessionId] = 0;
-        try {
-          const flushResult = window.flushAnalyticsBuffer();
-          if(flushResult && typeof flushResult.catch === "function"){
-            flushResult.catch(error => {
-              console.error("❌ Analytics auto-flush failed:", error);
-            });
-          }
-        } catch(error){
-          console.error("❌ Analytics auto-flush crashed:", error);
-        }
-      }
-    }
-  } catch(error){
-    console.error("❌ SHARED ANALYTICS PROCESSOR ERROR:", currentSessionId, error);
-  }
 }   // =====================================================
 // LIVE STAFF LOOKUP
 // =====================================================
@@ -80705,14 +83544,15 @@ async function getLiveStaffByName(
 ============================================================ */
 // ==================================================
 // 🔥 COLLECT ANALYTICS HITS
-// ==================================================
-// ==================================================
-// 🔥 COLLECT ANALYTICS HITS
-// ==================================================
-function collectAnalyticsHit(
+// ==========================================================
+// 🔥 AUTHORITATIVE ANALYTICS HIT COLLECTOR
+// ==========================================================
+
+async function collectAnalyticsHit(
 
     gridId,
     cellId,
+
     lat,
     lon,
 
@@ -80723,471 +83563,1058 @@ function collectAnalyticsHit(
 
 ){
 
-  try{
-
-    // ==========================================================
-    // 🔥 VALIDATE REQUIRED ANALYTICS IDENTITY
-    // ==========================================================
-
-    if(
-      !gridId ||
-      !cellId
-    ){
-      return;
-    }
-
-
-    // ==========================================================
-    // 🔥 NORMALIZE STAFF / SESSION
-    //
-    // These identify the REAL patrol session that generated
-    // this analytics hit.
-    //
-    // Example:
-    //
-    // staffName:
-    // NILKUSH MARAK
-    //
-    // sessionId:
-    // NILKUSH MARAK_1785376148055
-    //
-    // Together:
-    //
-    // NILKUSH MARAK|NILKUSH MARAK_1785376148055
-    //
-    // This identity is carried forward to:
-    //
-    // analyticsBuffer
-    //      ↓
-    // flushAnalyticsBuffer()
-    //      ↓
-    // updateMonthlyAnalyticsRebuild()
-    //      ↓
-    // compartment visitCount
-    //
-    // One staff patrol session touching one compartment
-    // must count as ONE compartment visit.
-    // ==========================================================
-
-    const normalizedStaffName =
-
-      String(
-        staffName ||
-        ""
-      )
-      .trim()
-      .toUpperCase();
-
-
-    const normalizedSessionId =
-
-      String(
-        sessionId ||
-        ""
-      )
-      .trim();
-
-
-    // ==========================================================
-    // 🔥 CREATE GRID BUFFER
-    //
-    // ONE BUFFER ENTRY PER AUTHORITATIVE GRID / COMPARTMENT.
-    //
-    // Existing structure is preserved:
-    //
-    // touchedCells
-    // localCoordsArray
-    //
-    // New:
-    //
-    // visitSessions
-    //
-    // visitSessions is a Set so repeated GPS points from the
-    // same staff/session do NOT create repeated visits.
-    // ==========================================================
-
-window.analyticsBuffer ??= {};
-
-if(
-  !window.analyticsBuffer[
-    gridId
-  ]
-){
-
-      window.analyticsBuffer[
-        gridId
-      ] = {
-
-    // Authoritative visited cells
-    touchedCells:
-      new Set(),
-
-    // GPS path (used ONLY for distance)
-    localCoordsArray: [
-      []
-    ],
-
-    // Unique patrol sessions
-    visitSessions:
-      new Set(),
-
-    // New fields
-    pointCount: 0,
-
-    firstTimestamp: Date.now(),
-
-    lastTimestamp: Date.now()
-
-};
-
-
-      console.log(
-        "🆕 NEW ANALYTICS GRID",
-        {
-          gridId,
-
-          staff:
-            normalizedStaffName ||
-            null,
-
-          session:
-            normalizedSessionId ||
-            null
-        }
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔥 BACKWARD-COMPATIBILITY SAFETY
-    //
-    // A buffer may already exist because it was created before
-    // this updated function was loaded.
-    //
-    // Do NOT destroy that buffer.
-    // Add missing structures only.
-    // ==========================================================
-
-    const buffer =
-
-      window.analyticsBuffer[
-        gridId
-      ];
-
-
-    if(
-      !(
-        buffer.touchedCells
-        instanceof Set
-      )
-    ){
-
-      buffer.touchedCells =
-        new Set(
-          Array.isArray(
-            buffer.touchedCells
-          )
-            ? buffer.touchedCells
-            : []
-        );
-    }
-
-
-    if(
-      !Array.isArray(
-        buffer.localCoordsArray
-      )
-    ){
-
-      buffer.localCoordsArray = [
-        []
-      ];
-    }
-
-
-    if(
-      !Array.isArray(
-        buffer.localCoordsArray[0]
-      )
-    ){
-
-      buffer.localCoordsArray[0] =
-        [];
-    }
-
-
-    if(
-      !(
-        buffer.visitSessions
-        instanceof Set
-      )
-    ){
-
-      buffer.visitSessions =
-        new Set(
-          Array.isArray(
-            buffer.visitSessions
-          )
-            ? buffer.visitSessions
-            : []
-        );
-    }
-
-
-    buffer.pointCount =
-        Number(buffer.pointCount || 0) + 1;
-    buffer.firstTimestamp ??=
-        Date.now();
-    buffer.lastTimestamp =
-        Date.now();
-
-
-    // ==========================================================
-    // 🔥 AUTHORITATIVE CELL
-    //
-    // Jurisdiction checking has ALREADY happened before this
-    // function is called:
-    //
-    // staff Division
-    //      +
-    // staff Range
-    //      ↓
-    // authoritative grid
-    //      ↓
-    // authorized
-    //      ↓
-    // collectAnalyticsHit()
-    //
-    // Therefore this function only COLLECTS an already-approved
-    // analytics hit.
-    // ==========================================================
-
-    buffer
-      .touchedCells
-      .add(
-        cellId
-      );
-
-
-    // ==========================================================
-    // 🔥 PRESERVE REAL STAFF + SESSION VISIT IDENTITY
-    //
-    // IMPORTANT:
-    //
-    // We add a visit identity ONLY when BOTH are available.
-    //
-    // We do NOT invent:
-    //
-    // CURRENT
-    // UNKNOWN
-    // gridId
-    //
-    // as a fake patrol session.
-    //
-    // This prevents incorrect compartment visitCount.
-    // ==========================================================
-
-    let visitSessionKey =
-      null;
-
-
-    if(
-      normalizedStaffName &&
-      normalizedSessionId
-    ){
-
-      visitSessionKey =
-
-        `${normalizedStaffName}|${normalizedSessionId}`;
-
-
-      buffer
-        .visitSessions
-        .add(
-          visitSessionKey
-        );
-
-    }
-
-
-    // ==========================================================
-    // 🔥 COORDINATES
-    // ==========================================================
-
-    // ==========================================================
-// 🔥 MERGE SEGMENT COORDINATES
-// Used later by updateMonthlyAnalyticsRebuild()
-// to calculate patrol distance.
-// ==========================================================
-
-if(
-
-    Array.isArray(localCoordsArray) &&
-
-    Array.isArray(localCoordsArray[0])
-
-){
-
-    const coords =
-        buffer.localCoordsArray[0];
-
-    for(
-
-        const point of localCoordsArray[0]
-
-    ){
-
-        const lat =
-            Number(point[0]);
-
-        const lon =
-            Number(point[1]);
+    try{
+
+        // ==========================================================
+        // 🔥 VALIDATE REQUIRED ANALYTICS IDENTITY
+        // ==========================================================
 
         if(
-
-            !Number.isFinite(lat) ||
-
-            !Number.isFinite(lon)
-
+            !gridId ||
+            !cellId
         ){
-            continue;
+
+            return;
+
         }
 
-        const last =
-            coords.length
-                ? coords[
-                    coords.length - 1
-                  ]
-                : null;
+
+        // ==========================================================
+        // 🔥 NORMALIZE STAFF / SESSION
+        // ==========================================================
+
+        const normalizedStaffName =
+
+            String(
+                staffName ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        const normalizedSessionId =
+
+            String(
+                sessionId ||
+                ""
+            )
+            .trim();
+
+
+        // ==========================================================
+        // 🔥 AUTHORITATIVE HIT TIMESTAMP
+        //
+        // This timestamp belongs to THIS analytics hit.
+        //
+        // Daily reporting uses:
+        //
+        // startMs <= timestamp < endMs
+        // ==========================================================
+
+        const hitTimestamp =
+            Date.now();
+
+
+        // ==========================================================
+        // 🔥 CREATE GRID BUFFER
+        //
+        // Existing structure preserved.
+        // ==========================================================
+
+        window.analyticsBuffer ??= {};
+
 
         if(
-
-            !last ||
-
-            last[0] !== lat ||
-
-            last[1] !== lon
-
+            !window.analyticsBuffer[
+                gridId
+            ]
         ){
 
-            coords.push([
+            window.analyticsBuffer[
+                gridId
+            ] = {
 
-                lat,
+                // --------------------------------------------------
+                // Existing authoritative visited cells
+                // --------------------------------------------------
 
-                lon
+                touchedCells:
+                    new Set(),
 
-            ]);
+
+                // --------------------------------------------------
+                // Existing GPS path
+                // --------------------------------------------------
+
+                localCoordsArray:
+                    [
+                        []
+                    ],
+
+
+                // --------------------------------------------------
+                // Existing unique patrol sessions
+                // --------------------------------------------------
+
+                visitSessions:
+                    new Set(),
+
+
+                // --------------------------------------------------
+                // Existing counters
+                // --------------------------------------------------
+
+                pointCount:
+                    0,
+
+
+                firstTimestamp:
+                    hitTimestamp,
+
+
+                lastTimestamp:
+                    hitTimestamp,
+
+
+                // --------------------------------------------------
+                // Daily report distance segments
+                // --------------------------------------------------
+
+                distanceSegments:
+                    [],
+
+
+                // --------------------------------------------------
+                // 🔥 DETERMINISTIC DISTANCE SEGMENT KEYS
+                //
+                // Prevents the same physical segment from being
+                // processed/persisted more than once.
+                // --------------------------------------------------
+
+                distanceSegmentKeys:
+                    new Set()
+
+            };
+
+
+            console.log(
+                "🆕 NEW ANALYTICS GRID",
+                {
+                    gridId,
+
+                    staff:
+                        normalizedStaffName ||
+                        null,
+
+                    session:
+                        normalizedSessionId ||
+                        null
+                }
+            );
 
         }
 
-    }
 
-}
+        // ==========================================================
+        // 🔥 GET BUFFER
+        // ==========================================================
 
-    // ==========================================================
-    // 🔥 DEBUG
-    // ==========================================================
+        const buffer =
 
-    console.log(
-      "➕ BUFFER UPDATE",
-      {
-
-        gridId,
-
-        cellId,
+            window.analyticsBuffer[
+                gridId
+            ];
 
 
-        // ------------------------------------------------------
-        // REAL STAFF / SESSION
-        // ------------------------------------------------------
+        // ==========================================================
+        // 🔥 BACKWARD-COMPATIBILITY SAFETY
+        // ==========================================================
 
-        staff:
-          normalizedStaffName ||
-          null,
+        if(
+            !(
+                buffer.touchedCells
+                instanceof Set
+            )
+        ){
 
-        session:
-          normalizedSessionId ||
-          null,
+            buffer.touchedCells =
+                new Set(
+                    Array.isArray(
+                        buffer.touchedCells
+                    )
+                        ? buffer.touchedCells
+                        : []
+                );
 
-        visitSessionKey,
-
-
-        // ------------------------------------------------------
-        // COORDINATE COUNT
-        // ------------------------------------------------------
-
-        points:
-          buffer
-            .localCoordsArray[0]
-            .length,
+        }
 
 
-        // ------------------------------------------------------
-        // UNIQUE AUTHORITATIVE CELLS
-        // ------------------------------------------------------
+        if(
+            !Array.isArray(
+                buffer.localCoordsArray
+            )
+        ){
 
-        cells:
-          buffer
+            buffer.localCoordsArray =
+                [
+                    []
+                ];
+
+        }
+
+
+        if(
+            !Array.isArray(
+                buffer.localCoordsArray[0]
+            )
+        ){
+
+            buffer.localCoordsArray[0] =
+                [];
+
+        }
+
+
+        if(
+            !(
+                buffer.visitSessions
+                instanceof Set
+            )
+        ){
+
+            buffer.visitSessions =
+                new Set(
+                    Array.isArray(
+                        buffer.visitSessions
+                    )
+                        ? buffer.visitSessions
+                        : []
+                );
+
+        }
+
+
+        // ==========================================================
+        // 🔥 DISTANCE SEGMENT BACKWARD COMPATIBILITY
+        // ==========================================================
+
+        if(
+            !Array.isArray(
+                buffer.distanceSegments
+            )
+        ){
+
+            buffer.distanceSegments =
+                [];
+
+        }
+
+
+        // ==========================================================
+        // 🔥 DISTANCE SEGMENT KEY BACKWARD COMPATIBILITY
+        // ==========================================================
+
+        if(
+            !(
+                buffer.distanceSegmentKeys
+                instanceof Set
+            )
+        ){
+
+            buffer.distanceSegmentKeys =
+                new Set();
+
+        }
+
+
+        // ==========================================================
+        // 🔥 REBUILD EXISTING KEYS
+        //
+        // Important when an existing buffer was created before
+        // distanceSegmentKeys was introduced.
+        // ==========================================================
+
+        if(
+            buffer.distanceSegmentKeys.size === 0 &&
+            buffer.distanceSegments.length > 0
+        ){
+
+            for(
+                const existingSegment
+                of buffer.distanceSegments
+            ){
+
+                if(
+                    !existingSegment
+                ){
+
+                    continue;
+
+                }
+
+
+                const existingDistance =
+                    Number(
+                        existingSegment.distanceMeters
+                    );
+
+
+                const existingKey =
+
+                    [
+
+                        String(
+                            existingSegment.gridId ||
+                            gridId ||
+                            ""
+                        ),
+
+                        String(
+                            existingSegment.sessionId ||
+                            normalizedSessionId ||
+                            ""
+                        ),
+
+                        Number(
+                            existingSegment.fromLat
+                        ).toFixed(7),
+
+                        Number(
+                            existingSegment.fromLon
+                        ).toFixed(7),
+
+                        Number(
+                            existingSegment.toLat
+                        ).toFixed(7),
+
+                        Number(
+                            existingSegment.toLon
+                        ).toFixed(7),
+
+                        Number.isFinite(
+                            existingDistance
+                        )
+                            ? existingDistance.toFixed(3)
+                            : "0"
+
+                    ].join("|");
+
+
+                buffer
+                    .distanceSegmentKeys
+                    .add(
+                        existingKey
+                    );
+
+            }
+
+        }
+
+
+        // ==========================================================
+        // 🔥 EXISTING COUNTER
+        // ==========================================================
+
+        buffer.pointCount =
+
+            Number(
+                buffer.pointCount ||
+                0
+            ) + 1;
+
+
+        buffer.firstTimestamp ??=
+            hitTimestamp;
+
+
+        buffer.lastTimestamp =
+            hitTimestamp;
+
+
+        // ==========================================================
+        // 🔥 AUTHORITATIVE CELL
+        // ==========================================================
+
+        buffer
             .touchedCells
-            .size,
+            .add(
+                cellId
+            );
 
 
-        // ------------------------------------------------------
-        // UNIQUE STAFF PATROL SESSIONS THAT HAVE TOUCHED
-        // THIS GRID DURING THE CURRENT BUFFER WINDOW
-        // ------------------------------------------------------
+        // ==========================================================
+        // 🔥 PRESERVE REAL STAFF + SESSION VISIT IDENTITY
+        // ==========================================================
 
-        visitSessions:
-          buffer
-            .visitSessions
-            .size,
-
-        pointCount:
-          buffer.pointCount,
-
-        firstSeen:
-          new Date(
-              buffer.firstTimestamp
-          ).toLocaleTimeString(),
-
-        lastSeen:
-          new Date(
-              buffer.lastTimestamp
-          ).toLocaleTimeString(),
+        let visitSessionKey =
+            null;
 
 
-        // ------------------------------------------------------
-        // TOTAL GRID BUFFERS
-        // ------------------------------------------------------
+        if(
+            normalizedStaffName &&
+            normalizedSessionId
+        ){
 
-        totalBufferedGrids:
-          Object.keys(
-            window.analyticsBuffer
-          ).length
+            visitSessionKey =
 
-      }
-    );
+                `${normalizedStaffName}|${normalizedSessionId}`;
 
-  }
 
-  catch(err){
+            buffer
+                .visitSessions
+                .add(
+                    visitSessionKey
+                );
 
-    console.error(
-      "❌ collectAnalyticsHit",
-      {
-        gridId,
-        cellId,
-        staffName,
-        sessionId,
-        error:
-          err
-      }
-    );
+        }
 
-  }
+
+        // ==========================================================
+        // 🔥 MERGE SEGMENT COORDINATES
+        //
+        // Existing GPS path behaviour preserved.
+        // ==========================================================
+
+        if(
+
+            Array.isArray(
+                localCoordsArray
+            ) &&
+
+            Array.isArray(
+                localCoordsArray[0]
+            )
+
+        ){
+
+            const coords =
+                buffer.localCoordsArray[0];
+
+
+            for(
+
+                const point
+                of localCoordsArray[0]
+
+            ){
+
+                const pointLat =
+                    Number(
+                        point[0]
+                    );
+
+
+                const pointLon =
+                    Number(
+                        point[1]
+                    );
+
+
+                // --------------------------------------------------
+                // Ignore invalid GPS coordinates
+                // --------------------------------------------------
+
+                if(
+
+                    !Number.isFinite(
+                        pointLat
+                    ) ||
+
+                    !Number.isFinite(
+                        pointLon
+                    )
+
+                ){
+
+                    continue;
+
+                }
+
+
+                const previous =
+
+                    coords.length
+
+                        ? coords[
+                            coords.length - 1
+                        ]
+
+                        : null;
+
+
+                // ==================================================
+                // 🔥 ONLY CREATE A SEGMENT WHEN COORDINATE CHANGED
+                // ==================================================
+
+                if(
+
+                    previous &&
+
+                    (
+                        previous[0] !== pointLat ||
+                        previous[1] !== pointLon
+                    )
+
+                ){
+
+                    // ==================================================
+                    // 🔥 HAVERSINE DISTANCE
+                    // ==================================================
+
+                    const R =
+                        6371000;
+
+
+                    const lat1 =
+                        previous[0] *
+                        Math.PI /
+                        180;
+
+
+                    const lat2 =
+                        pointLat *
+                        Math.PI /
+                        180;
+
+
+                    const dLat =
+
+                        (
+                            pointLat -
+                            previous[0]
+                        ) *
+                        Math.PI /
+                        180;
+
+
+                    const dLon =
+
+                        (
+                            pointLon -
+                            previous[1]
+                        ) *
+                        Math.PI /
+                        180;
+
+
+                    const a =
+
+                        Math.sin(
+                            dLat / 2
+                        ) ** 2
+
+                        +
+
+                        Math.cos(
+                            lat1
+                        ) *
+
+                        Math.cos(
+                            lat2
+                        ) *
+
+                        Math.sin(
+                            dLon / 2
+                        ) ** 2;
+
+
+                    const c =
+
+                        2 *
+
+                        Math.atan2(
+
+                            Math.sqrt(
+                                a
+                            ),
+
+                            Math.sqrt(
+                                1 - a
+                            )
+
+                        );
+
+
+                    const distanceMeters =
+                        R * c;
+
+
+                    // ==================================================
+                    // 🔥 STORE ONLY VALID DISTANCE SEGMENT
+                    // ==================================================
+
+                    if(
+
+                        Number.isFinite(
+                            distanceMeters
+                        ) &&
+
+                        distanceMeters >= 0
+
+                    ){
+
+                        // ==================================================
+                        // 🔥 DETERMINISTIC SEGMENT IDENTITY
+                        //
+                        // IMPORTANT:
+                        //
+                        // timestamp is NOT part of this key.
+                        //
+                        // same grid
+                        // +
+                        // same session
+                        // +
+                        // same coordinates
+                        // +
+                        // same distance
+                        //
+                        // = SAME PHYSICAL SEGMENT
+                        // ==================================================
+
+                        const distanceSegmentKey =
+
+                            [
+
+                                String(
+                                    gridId
+                                ),
+
+                                String(
+                                    normalizedSessionId
+                                ),
+
+                                Number(
+                                    previous[0]
+                                ).toFixed(7),
+
+                                Number(
+                                    previous[1]
+                                ).toFixed(7),
+
+                                Number(
+                                    pointLat
+                                ).toFixed(7),
+
+                                Number(
+                                    pointLon
+                                ).toFixed(7),
+
+                                Number(
+                                    distanceMeters
+                                ).toFixed(3)
+
+                            ].join("|");
+
+
+                        // ==================================================
+                        // 🔥 DEDUPLICATION GATE
+                        // ==================================================
+
+                        if(
+                            !buffer
+                                .distanceSegmentKeys
+                                .has(
+                                    distanceSegmentKey
+                                )
+                        ){
+
+                            buffer
+                                .distanceSegmentKeys
+                                .add(
+                                    distanceSegmentKey
+                                );
+
+
+                            // ==================================================
+                            // 🔥 ONE AUTHORITATIVE SEGMENT OBJECT
+                            // ==================================================
+
+                            const distanceSegment = {
+
+                                gridId:
+                                    gridId,
+
+                                staffName:
+                                    normalizedStaffName,
+
+                                sessionId:
+                                    normalizedSessionId,
+
+                                fromLat:
+                                    previous[0],
+
+                                fromLon:
+                                    previous[1],
+
+                                toLat:
+                                    pointLat,
+
+                                toLon:
+                                    pointLon,
+
+                                distanceMeters:
+                                    distanceMeters,
+
+                                // ------------------------------------------------
+                                // Timestamp remains authoritative for DAILY
+                                // window filtering.
+                                // ------------------------------------------------
+
+                                timestamp:
+                                    hitTimestamp
+
+                            };
+
+
+                            // ==================================================
+                            // 🔥 KEEP SEGMENT IN BUFFER
+                            // ==================================================
+
+                            buffer
+                                .distanceSegments
+                                .push(
+                                    distanceSegment
+                                );
+
+
+                            // ==================================================
+                            // 🔥 PERSIST REPORT DISTANCE
+                            //
+                            // IMPORTANT FIX:
+                            //
+                            // WAIT for IndexedDB persistence.
+                            //
+                            // This prevents the analytics hit from completing
+                            // while the distance write is still pending.
+                            //
+                            // This remains completely separate from:
+                            //
+                            // updateMonthlyAnalyticsRebuild()
+                            // flushAnalyticsBuffer()
+                            // Firestore analytics
+                            // ==================================================
+
+                            if(
+                                typeof
+                                    ggReportSaveDistanceSegment
+                                ===
+                                "function"
+                            ){
+
+                                try{
+
+                                    const saved =
+                                        await
+                                        ggReportSaveDistanceSegment(
+                                            distanceSegment
+                                        );
+
+
+                                    if(
+                                        saved === false
+                                    ){
+
+                                        console.error(
+                                            "❌ REPORT DISTANCE PERSISTENCE RETURNED FALSE",
+                                            {
+                                                gridId,
+
+                                                sessionId:
+                                                    normalizedSessionId,
+
+                                                timestamp:
+                                                    hitTimestamp,
+
+                                                distanceMeters
+                                            }
+                                        );
+
+                                    }
+                                    else{
+
+                                        console.log(
+                                            "💾 REPORT DISTANCE SEGMENT PERSISTED",
+                                            {
+                                                gridId,
+
+                                                sessionId:
+                                                    normalizedSessionId,
+
+                                                from:
+                                                    [
+                                                        previous[0],
+                                                        previous[1]
+                                                    ],
+
+                                                to:
+                                                    [
+                                                        pointLat,
+                                                        pointLon
+                                                    ],
+
+                                                distanceMeters,
+
+                                                timestamp:
+                                                    hitTimestamp
+                                            }
+                                        );
+
+                                    }
+
+                                }
+                                catch(
+                                    err
+                                ){
+
+                                    console.error(
+                                        "❌ REPORT DISTANCE PERSISTENCE FAILED",
+                                        {
+                                            gridId,
+
+                                            sessionId:
+                                                normalizedSessionId,
+
+                                            timestamp:
+                                                hitTimestamp,
+
+                                            distanceMeters,
+
+                                            error:
+                                                err
+                                        }
+                                    );
+
+                                }
+
+                            }
+                            else{
+
+                                console.warn(
+                                    "⚠️ ggReportSaveDistanceSegment() not available yet",
+                                    {
+                                        gridId,
+
+                                        sessionId:
+                                            normalizedSessionId
+                                    }
+                                );
+
+                            }
+
+                        }
+                        else{
+
+                            // ==================================================
+                            // 🔥 DUPLICATE SEGMENT SUPPRESSED
+                            // ==================================================
+
+                            console.log(
+                                "⏭️ DUPLICATE DISTANCE SEGMENT SUPPRESSED",
+                                {
+                                    gridId,
+
+                                    sessionId:
+                                        normalizedSessionId,
+
+                                    from:
+                                        [
+                                            previous[0],
+                                            previous[1]
+                                        ],
+
+                                    to:
+                                        [
+                                            pointLat,
+                                            pointLon
+                                        ],
+
+                                    distanceMeters
+                                }
+                            );
+
+                        }
+
+                    }
+
+                }
+
+
+                // ==================================================
+                // 🔥 EXISTING GPS PATH PRESERVED
+                // ==================================================
+
+                if(
+
+                    !previous ||
+
+                    previous[0] !== pointLat ||
+
+                    previous[1] !== pointLon
+
+                ){
+
+                    coords.push(
+                        [
+                            pointLat,
+                            pointLon
+                        ]
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        // ==========================================================
+        // 🔥 DEBUG
+        // ==========================================================
+
+        console.log(
+            "➕ BUFFER UPDATE",
+            {
+
+                gridId,
+
+                cellId,
+
+
+                // --------------------------------------------------
+                // REAL STAFF / SESSION
+                // --------------------------------------------------
+
+                staff:
+                    normalizedStaffName ||
+                    null,
+
+
+                session:
+                    normalizedSessionId ||
+                    null,
+
+
+                visitSessionKey,
+
+
+                // --------------------------------------------------
+                // COORDINATE COUNT
+                // --------------------------------------------------
+
+                points:
+
+                    buffer
+                        .localCoordsArray[0]
+                        .length,
+
+
+                // --------------------------------------------------
+                // UNIQUE AUTHORITATIVE CELLS
+                // --------------------------------------------------
+
+                cells:
+
+                    buffer
+                        .touchedCells
+                        .size,
+
+
+                // --------------------------------------------------
+                // UNIQUE STAFF PATROL SESSIONS
+                // --------------------------------------------------
+
+                visitSessions:
+
+                    buffer
+                        .visitSessions
+                        .size,
+
+
+                // --------------------------------------------------
+                // DISTANCE SEGMENTS
+                // --------------------------------------------------
+
+                distanceSegments:
+
+                    buffer
+                        .distanceSegments
+                        .length,
+
+
+                // --------------------------------------------------
+                // DEDUPLICATION KEYS
+                // --------------------------------------------------
+
+                distanceSegmentKeys:
+
+                    buffer
+                        .distanceSegmentKeys
+                        .size,
+
+
+                // --------------------------------------------------
+                // EXISTING COUNTER
+                // --------------------------------------------------
+
+                pointCount:
+                    buffer.pointCount,
+
+
+                // --------------------------------------------------
+                // EXISTING TIMESTAMPS
+                // --------------------------------------------------
+
+                firstSeen:
+
+                    new Date(
+                        buffer.firstTimestamp
+                    )
+                    .toLocaleTimeString(),
+
+
+                lastSeen:
+
+                    new Date(
+                        buffer.lastTimestamp
+                    )
+                    .toLocaleTimeString(),
+
+
+                // --------------------------------------------------
+                // TOTAL GRID BUFFERS
+                // --------------------------------------------------
+
+                totalBufferedGrids:
+
+                    Object.keys(
+                        window.analyticsBuffer
+                    ).length
+
+            }
+        );
+
+
+    }
+
+    catch(err){
+
+        console.error(
+            "❌ collectAnalyticsHit",
+            {
+                gridId,
+                cellId,
+                staffName,
+                sessionId,
+                error:
+                    err
+            }
+        );
+
+    }
 
 }
+
 async function flushAnalyticsBuffer(){
 
   // ============================================================
@@ -87407,1140 +90834,586 @@ async function submitToServer(
 // • Existing login() remains unchanged
 // ============================================================
 
+// ============================================================
+// 🔥 LOAD PROFILE — OFFLINE-FIRST / FIRST-LOGIN-ONLY
+//
+// DESIGN:
+//
+// FIRST INSTALL:
+//   no first-login marker
+//       ↓
+//   normal existing login flow allowed
+//
+// AFTER SUCCESSFUL LOGIN:
+//   marker = "1"
+//       ↓
+//   cached local profile becomes authoritative for boot
+//       ↓
+//   NEVER show login modal again
+//
+// ONLINE:
+//   local profile boots immediately
+//   backend verification/refresh may continue separately
+//
+// OFFLINE:
+//   local profile boots normally
+//   NO login modal
+//   NO login retry
+//   NO logout
+//   NO profile clearing
+//
+// IMPORTANT:
+//
+// • Does NOT modify login()
+// • Does NOT modify analytics
+// • Does NOT modify duty
+// • Does NOT modify patrol/GPS
+// • Does NOT clear first-login marker
+// • Does NOT treat network failure as logout
+// ============================================================
+
 async function loadProfile(){
 
-  console.log(
-    "🚀 loadProfile() — LOCAL FIRST → SERVER SECOND"
-  );
-
-
-  // ============================================================
-  // 🔒 PROFILE ALREADY LOADED
-  // ============================================================
-
-  if(
-    window.userProfile
-  ){
-
     console.log(
-      "✅ Already logged in → skip loadProfile"
-    );
-
-    return;
-
-  }
-
-
-  // ============================================================
-  // 🔒 AUTH FLOW ALREADY RUNNING
-  // ============================================================
-
-  if(
-    typeof authFlowRunning !== "undefined" &&
-    authFlowRunning
-  ){
-
-    console.warn(
-      "⛔ Skipping loadProfile (auth running)"
-    );
-
-    return;
-
-  }
-
-
-  // ============================================================
-  // 🔐 START AUTH FLOW
-  // ============================================================
-
-  authFlowRunning =
-    true;
-
-
-  try{
-
-    // ==========================================================
-    // 🔥 STEP 1 — LOCAL SESSION FIRST
-    // ==========================================================
-    //
-    // IMPORTANT:
-    //
-    // NO FIRESTORE
-    // NO BACKEND
-    // NO ANDROID WAIT
-    // NO NETWORK WAIT
-    //
-    // This is the fast startup path.
-    //
-    // ==========================================================
-
-    const localSession =
-      typeof getLocalSession === "function"
-
-        ? getLocalSession()
-
-        : null;
-
-
-    // ==========================================================
-    // ⚡ LOCAL PROFILE FOUND
-    // ==========================================================
-
-    if(
-      localSession &&
-      localSession.profile
-    ){
-
-      console.log(
-        "⚡ LOCAL PROFILE FOUND — BOOTING IMMEDIATELY"
-      );
-
-
-      const offlineProfile =
-        typeof normalizeUserProfile === "function"
-
-          ? normalizeUserProfile(
-              localSession.profile
-            )
-
-          : localSession.profile;
-
-
-      // ========================================================
-      // VALID LOCAL PROFILE
-      // ========================================================
-
-      if(
-        offlineProfile
-      ){
-
-        // ======================================================
-        // APPLY LOCAL PROFILE
-        // ======================================================
-
-        const applied =
-          typeof applyAuthenticatedProfile ===
-          "function"
-
-            ? applyAuthenticatedProfile(
-                offlineProfile,
-                "LOCAL"
-              )
-
-            : false;
-
-
-        // ======================================================
-        // LOCAL PROFILE SUCCESSFULLY APPLIED
-        // ======================================================
-
-        if(
-          applied
-        ){
-
-          console.log(
-            "⚡ LOCAL AUTHENTICATION COMPLETE"
-          );
-
-
-          // ====================================================
-          // 🚀 BOOT APP IMMEDIATELY
-          // ====================================================
-          //
-          // bootAfterAuthentication()
-          // does NOT wait for:
-          //
-          // • Firestore
-          // • Android bridge
-          // • background verification
-          //
-          // ====================================================
-
-          if(
-            typeof bootAfterAuthentication ===
-            "function"
-          ){
-
-            bootAfterAuthentication(
-              window.userProfile,
-              "LOCAL"
-            );
-
-          }
-          else{
-
-            // ==================================================
-            // SAFETY FALLBACK
-            // ==================================================
-
-            window.userProfile =
-              offlineProfile;
-
-
-            loginCompleted =
-              true;
-
-
-            updateNetworkStatus(
-              "offline"
-            );
-
-
-            applyRoleControl();
-
-
-            hideLogin();
-
-
-            if(
-              !window.__appBootRequested
-            ){
-
-              window.__appBootRequested =
-                true;
-
-              startApp();
-
-            }
-
-          }
-
-
-          // ====================================================
-          // 🌐 SERVER SECOND
-          // ====================================================
-          //
-          // IMPORTANT:
-          //
-          // The application is ALREADY running.
-          //
-          // Do NOT await verification.
-          //
-          // ====================================================
-
-          setTimeout(
-            function(){
-
-              try{
-
-                if(
-                  typeof verifyProfileInBackground ===
-                  "function"
-                ){
-
-                  verifyProfileInBackground(
-                    localSession.phone ||
-                    offlineProfile.phone
-                  );
-
-                }
-
-              }
-              catch(err){
-
-                console.warn(
-                  "⚠ Background profile verification skipped:",
-                  err
-                );
-
-              }
-
-            },
-            100
-          );
-
-
-          console.log(
-            "⚡ LOCAL-FIRST STARTUP COMPLETE"
-          );
-
-
-          return;
-
-        }
-
-      }
-
-
-      // ========================================================
-      // LOCAL PROFILE INVALID
-      // ========================================================
-
-      console.warn(
-        "⚠ Local profile exists but could not be applied"
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🌐 STEP 2 — NO USABLE LOCAL PROFILE
-    // ==========================================================
-    //
-    // Only now do we touch the server.
-    //
-    // ==========================================================
-
-    const phone =
-      String(
-        localStorage.getItem(
-          "userPhone"
-        ) || ""
-      )
-      .replace(/\D/g,"")
-      .trim();
-
-
-    // ==========================================================
-    // ❌ NO SAVED PHONE
-    // ==========================================================
-
-    if(
-      phone.length < 10
-    ){
-
-      console.log(
-        "📱 No saved phone → showing login"
-      );
-
-
-      if(
-        !loginModalLocked &&
-        !loginShownOnce
-      ){
-
-        loginShownOnce =
-          true;
-
-        showLogin();
-
-      }
-
-
-      return;
-
-    }
-
-
-    console.log(
-      "🌐 NO LOCAL PROFILE → SERVER PROFILE CHECK:",
-      phone
+        "🚀 loadProfile() — FIRST-LOGIN-ONLY / OFFLINE-FIRST"
     );
 
 
-    // ==========================================================
-    // 🌐 SERVER GET_PROFILE
-    // ==========================================================
-
-    let profile =
-      null;
-
-
-    try{
-
-      profile =
-        await safeBackend(
-          "GET_PROFILE",
-          {
-            phone:
-              phone
-          }
-        );
-
-    }
-    catch(err){
-
-      console.warn(
-        "⚠ GET_PROFILE failed:",
-        err
-      );
-
-      profile =
-        null;
-
-    }
-
-
-    // ==========================================================
-    // ⛔ EXPLICIT AUTHORIZATION FAILURE
-    // ==========================================================
-    //
-    // These are authoritative server responses.
-    //
-    // DO NOT use cached authentication after these.
-    //
-    // ==========================================================
-
-    const explicitRevocation =
-      profile &&
-      profile.status ===
-        "error" &&
-      (
-        profile.code ===
-          "ACCESS_BLOCKED" ||
-
-        profile.code ===
-          "PROFILE_NOT_FOUND" ||
-
-        profile.code ===
-          "NOT_AUTHORIZED" ||
-
-        profile.code ===
-          "ACCESS_NOT_ACTIVE" ||
-
-        profile.error ===
-          "NOT_AUTHORIZED" ||
-
-        profile.error ===
-          "ACCESS_BLOCKED"
-      );
-
+    // ============================================================
+    // 🔒 PROFILE ALREADY LOADED
+    // ============================================================
 
     if(
-      explicitRevocation
+        window.userProfile
     ){
 
-      console.warn(
-        "⛔ APP ACCESS REVOKED:",
-        phone,
-        profile.code ||
-        profile.error
-      );
-
-
-      // ========================================================
-      // 🧹 CLEAR AUTH CACHE ONLY
-      // ========================================================
-      //
-      // DO NOT clear:
-      //
-      // • dutyActive
-      // • sessionId
-      // • offlineGPS
-      // • patrol history
-      // • GPS queue
-      //
-      // ========================================================
-
-      if(
-        typeof clearLocalSession ===
-        "function"
-      ){
-
-        clearLocalSession();
-
-      }
-      else{
-
-        localStorage.removeItem(
-          "userPhone"
+        console.log(
+            "✅ Profile already loaded → skip loadProfile"
         );
 
-        localStorage.removeItem(
-          "userProfile"
-        );
+        return;
 
-        window.userProfile =
-          null;
-
-        window.__appBootRequested =
-          false;
-
-      }
+    }
 
 
-      loginCompleted =
-        false;
+    // ============================================================
+    // 🔒 AUTH FLOW ALREADY RUNNING
+    // ============================================================
 
-
-      // ========================================================
-      // 📱 CLEAR APK AUTH CACHE
-      // ========================================================
-
-      try{
-
-        if(
-          typeof waitForAndroidBridge ===
-          "function"
-        ){
-
-          const bridgeReady =
-            await waitForAndroidBridge();
-
-
-          if(
-            bridgeReady &&
-            window.Android
-          ){
-
-            if(
-              typeof Android.clearUserProfile ===
-              "function"
-            ){
-
-              Android.clearUserProfile();
-
-            }
-
-
-            if(
-              typeof Android.clearPhone ===
-              "function"
-            ){
-
-              Android.clearPhone();
-
-            }
-
-          }
-
-        }
-
-      }
-      catch(err){
+    if(
+        typeof authFlowRunning !== "undefined" &&
+        authFlowRunning
+    ){
 
         console.warn(
-          "⚠ APK revoke cleanup skipped:",
-          err
+            "⛔ Skipping loadProfile — auth flow already running"
         );
 
-      }
-
-
-      // ========================================================
-      // 🔐 SHOW LOGIN
-      // ========================================================
-
-      loginShownOnce =
-        false;
-
-
-      if(
-        !loginModalLocked
-      ){
-
-        loginShownOnce =
-          true;
-
-        showLogin();
-
-      }
-
-
-      return;
+        return;
 
     }
 
 
-    // ==========================================================
-    // 📴 NETWORK / FIRESTORE UNAVAILABLE
-    // ==========================================================
-    //
-    // No local profile was usable above.
-    //
-    // Therefore there is nothing with which we can authenticate
-    // offline.
-    //
-    // ==========================================================
-
-    if(
-      !profile
-    ){
-
-      console.warn(
-        "📴 Firestore unavailable and no usable local profile"
-      );
-
-
-      if(
-        !loginModalLocked &&
-        !loginShownOnce
-      ){
-
-        loginShownOnce =
-          true;
-
-        showLogin();
-
-      }
-
-
-      return;
-
-    }
-
-
-    // ==========================================================
-    // ⚠ OTHER BACKEND ERROR
-    // ==========================================================
-    //
-    // Do NOT interpret unknown errors as revocation.
-    //
-    // If a local session suddenly became available, use it.
-    //
-    // ==========================================================
-
-    if(
-      profile.status ===
-        "error" ||
-      profile.error
-    ){
-
-      console.warn(
-        "⚠ Non-authoritative profile error:",
-        profile
-      );
-
-
-      const fallbackSession =
-        typeof getLocalSession ===
-        "function"
-
-          ? getLocalSession()
-
-          : null;
-
-
-      if(
-        fallbackSession &&
-        fallbackSession.profile
-      ){
-
-        const fallbackProfile =
-          typeof normalizeUserProfile ===
-          "function"
-
-            ? normalizeUserProfile(
-                fallbackSession.profile
-              )
-
-            : fallbackSession.profile;
-
-
-        if(
-          fallbackProfile
-        ){
-
-          console.warn(
-            "📦 Using cached profile after backend error"
-          );
-
-
-          const applied =
-            typeof applyAuthenticatedProfile ===
-            "function"
-
-              ? applyAuthenticatedProfile(
-                  fallbackProfile,
-                  "LOCAL"
-                )
-
-              : false;
-
-
-          if(
-            applied
-          ){
-
-            if(
-              typeof bootAfterAuthentication ===
-              "function"
-            ){
-
-              bootAfterAuthentication(
-                window.userProfile,
-                "LOCAL"
-              );
-
-            }
-            else{
-
-              window.userProfile =
-                fallbackProfile;
-
-              loginCompleted =
-                true;
-
-              updateNetworkStatus(
-                "offline"
-              );
-
-              applyRoleControl();
-
-              hideLogin();
-
-
-              if(
-                !window.__appBootRequested
-              ){
-
-                window.__appBootRequested =
-                  true;
-
-                startApp();
-
-              }
-
-            }
-
-
-            setTimeout(
-              function(){
-
-                try{
-
-                  if(
-                    typeof verifyProfileInBackground ===
-                    "function"
-                  ){
-
-                    verifyProfileInBackground(
-                      fallbackSession.phone ||
-                      fallbackProfile.phone
-                    );
-
-                  }
-
-                }
-                catch(err){
-
-                  console.warn(
-                    "⚠ Background verification skipped:",
-                    err
-                  );
-
-                }
-
-              },
-              100
-            );
-
-
-            return;
-
-          }
-
-        }
-
-      }
-
-
-      // ========================================================
-      // NO USABLE CACHE
-      // ========================================================
-
-      if(
-        !loginModalLocked &&
-        !loginShownOnce
-      ){
-
-        loginShownOnce =
-          true;
-
-        showLogin();
-
-      }
-
-
-      return;
-
-    }
-
-
-    // ==========================================================
-    // ✅ ONLINE PROFILE MUST BE OK
-    // ==========================================================
-
-    if(
-      profile.status !==
-      "ok"
-    ){
-
-      console.warn(
-        "⚠ Invalid GET_PROFILE response:",
-        profile
-      );
-
-
-      return;
-
-    }
-
-
-    // ==========================================================
-    // 🔥 NORMALIZE ONLINE PROFILE
-    // ==========================================================
-
-    const finalProfile =
-      typeof normalizeUserProfile ===
-      "function"
-
-        ? normalizeUserProfile(
-            profile
-          )
-
-        : profile;
-
-
-    // ==========================================================
-    // ❌ INVALID NORMALIZED PROFILE
-    // ==========================================================
-
-    if(
-      !finalProfile ||
-      !finalProfile.phone
-    ){
-
-      console.warn(
-        "⚠ Invalid normalized profile"
-      );
-
-
-      return;
-
-    }
-
-
-    // ==========================================================
-    // 🔒 APPLY STAFF GIS LOCK
-    // ==========================================================
-
-    if(
-      typeof applyStaffGISLock ===
-      "function"
-    ){
-
-      applyStaffGISLock(
-        finalProfile
-      );
-
-    }
-
-
-    // ==========================================================
-    // 💾 SAVE ONLINE SESSION
-    // ==========================================================
-
-    if(
-      typeof saveLocalSession ===
-      "function"
-    ){
-
-      saveLocalSession(
-        finalProfile
-      );
-
-    }
-    else{
-
-      // ========================================================
-      // SAFETY FALLBACK
-      // ========================================================
-
-      localStorage.setItem(
-        "userPhone",
-        String(
-          finalProfile.phone
-        ).trim()
-      );
-
-
-      localStorage.setItem(
-        "userProfile",
-        JSON.stringify(
-          finalProfile
-        )
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔥 GLOBAL PROFILE
-    // ==========================================================
-
-    window.userProfile =
-      finalProfile;
-
-
-    // ==========================================================
-    // 🔐 LOGIN STATE
-    // ==========================================================
-
-    loginCompleted =
-      true;
-
-
-    // ==========================================================
-    // 🌐 ONLINE
-    // ==========================================================
-
-    updateNetworkStatus(
-      "online"
-    );
-
-
-    // ==========================================================
-    // 🎛 ROLE CONTROL
-    // ==========================================================
-
-    applyRoleControl();
-
-
-    // ==========================================================
-    // 📱 APK PROFILE SYNC
-    // ==========================================================
-    //
-    // IMPORTANT:
-    //
-    // Use the new NON-BLOCKING helper.
-    //
-    // Do NOT wait for Android bridge here.
-    //
-    // ==========================================================
-
-    if(
-      typeof syncProfileToAndroid ===
-      "function"
-    ){
-
-      syncProfileToAndroid(
-        finalProfile
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔐 HIDE LOGIN
-    // ==========================================================
-
-    hideLogin();
-
-
-    // ==========================================================
-    // 🚀 SINGLE APP BOOT
-    // ==========================================================
-
-    if(
-      !window.__appBootRequested
-    ){
-
-      window.__appBootRequested =
+    // ============================================================
+    // 🔐 START AUTH FLOW
+    // ============================================================
+
+    authFlowRunning =
         true;
 
-
-      if(
-        typeof startApp ===
-        "function"
-      ){
-
-        startApp();
-
-      }
-
-    }
-
-
-    console.log(
-      "✅ PROFILE LOADED FROM SERVER:",
-      finalProfile.cleanName ||
-      finalProfile.rawName ||
-      finalProfile.phone
-    );
-
-  }
-  catch(err){
-
-    // ==========================================================
-    // ❌ UNEXPECTED LOAD ERROR
-    // ==========================================================
-
-    console.error(
-      "❌ loadProfile() exception:",
-      err
-    );
-
-
-    // ==========================================================
-    // 📴 LAST-SAFE LOCAL FALLBACK
-    // ==========================================================
 
     try{
 
-      const localSession =
-        typeof getLocalSession ===
-        "function"
+        // ========================================================
+        // 🔐 FIRST-LOGIN STATE
+        // ========================================================
 
-          ? getLocalSession()
+        const firstLoginCompleted =
+            typeof ggHasCompletedFirstLogin ===
+            "function"
+                ? ggHasCompletedFirstLogin()
+                : false;
 
-          : null;
+
+        console.log(
+            "🔐 FIRST LOGIN STATE:",
+            firstLoginCompleted
+                ? "COMPLETED"
+                : "NOT COMPLETED"
+        );
 
 
-      if(
-        localSession &&
-        localSession.profile
-      ){
+        // ========================================================
+        // STEP 1
+        // LOCAL SESSION — ALWAYS CHECK FIRST
+        // ========================================================
 
-        const fallbackProfile =
-          typeof normalizeUserProfile ===
-          "function"
+        let localSession =
+            null;
 
-            ? normalizeUserProfile(
-                localSession.profile
-              )
+        try{
 
-            : localSession.profile;
+            localSession =
+                typeof getLocalSession ===
+                "function"
+                    ? getLocalSession()
+                    : null;
+
+        }
+        catch(localReadError){
+
+            console.warn(
+                "⚠️ Local session read failed:",
+                localReadError
+            );
+
+            localSession =
+                null;
+
+        }
+
+
+        // ========================================================
+        // STEP 2
+        // LOCAL PROFILE FOUND
+        // ========================================================
+
+        if(
+            localSession &&
+            localSession.profile
+        ){
+
+            console.log(
+                "⚡ LOCAL PROFILE FOUND — BOOTING FROM CACHE"
+            );
+
+
+            const offlineProfile =
+                typeof normalizeUserProfile ===
+                "function"
+
+                    ? normalizeUserProfile(
+                        localSession.profile
+                    )
+
+                    : localSession.profile;
+
+
+            // ====================================================
+            // VALID PROFILE
+            // ====================================================
+
+            if(
+                offlineProfile
+            ){
+
+                const applied =
+                    typeof applyAuthenticatedProfile ===
+                    "function"
+
+                        ? applyAuthenticatedProfile(
+                            offlineProfile,
+                            "LOCAL"
+                        )
+
+                        : false;
+
+
+                // ==================================================
+                // LOCAL PROFILE SUCCESS
+                // ==================================================
+
+                if(
+                    applied
+                ){
+
+                    console.log(
+                        "⚡ LOCAL PROFILE APPLIED"
+                    );
+
+
+                    // =================================================
+                    // 🔐 IMPORTANT
+                    //
+                    // Existing installations that already have a
+                    // valid local authenticated profile are treated
+                    // as already authenticated.
+                    //
+                    // This does NOT overwrite or clear the marker.
+                    // =================================================
+
+                    if(
+                        firstLoginCompleted
+                    ){
+
+                        console.log(
+                            "🔐 FIRST LOGIN ALREADY COMPLETED → " +
+                            "LOCAL PROFILE IS AUTHORITATIVE"
+                        );
+
+                    }
+
+
+                    // =================================================
+                    // BOOT APPLICATION
+                    // =================================================
+
+                    if(
+                        typeof bootAfterAuthentication ===
+                        "function"
+                    ){
+
+                        bootAfterAuthentication(
+                            window.userProfile,
+                            "LOCAL"
+                        );
+
+                    }
+                    else{
+
+                        window.userProfile =
+                            offlineProfile;
+
+
+                        loginCompleted =
+                            true;
+
+
+                        try{
+
+                            updateNetworkStatus(
+                                navigator.onLine
+                                    ? "online"
+                                    : "offline"
+                            );
+
+                        }
+                        catch(
+                            networkStatusError
+                        ){
+
+                            console.warn(
+                                "⚠️ Network status update skipped:",
+                                networkStatusError
+                            );
+
+                        }
+
+
+                        try{
+
+                            applyRoleControl();
+
+                        }
+                        catch(
+                            roleError
+                        ){
+
+                            console.warn(
+                                "⚠️ Role control skipped:",
+                                roleError
+                            );
+
+                        }
+
+
+                        try{
+
+                            hideLogin();
+
+                        }
+                        catch(
+                            hideLoginError
+                        ){
+
+                            console.warn(
+                                "⚠️ hideLogin skipped:",
+                                hideLoginError
+                            );
+
+                        }
+
+
+                        if(
+                            !window.__appBootRequested
+                        ){
+
+                            window.__appBootRequested =
+                                true;
+
+
+                            if(
+                                typeof startApp ===
+                                "function"
+                            ){
+
+                                startApp();
+
+                            }
+
+                        }
+
+                    }
+
+
+                    // =================================================
+                    // 🔐 NO LOGIN MODAL AFTER FIRST LOGIN
+                    // =================================================
+
+                    if(
+                        firstLoginCompleted
+                    ){
+
+                        console.log(
+                            "🔐 FIRST LOGIN COMPLETED → " +
+                            "LOGIN MODAL PERMANENTLY BYPASSED"
+                        );
+
+                    }
+
+
+                    // =================================================
+                    // OPTIONAL BACKGROUND VERIFICATION
+                    //
+                    // IMPORTANT:
+                    //
+                    // This MUST NOT block offline boot.
+                    // Failure MUST NOT log the user out.
+                    // =================================================
+
+                    setTimeout(
+                        function(){
+
+                            try{
+
+                                if(
+                                    typeof verifyProfileInBackground ===
+                                    "function"
+                                ){
+
+                                    const phone =
+                                        localSession.phone ||
+                                        offlineProfile.phone;
+
+
+                                    if(
+                                        phone
+                                    ){
+
+                                        verifyProfileInBackground(
+                                            phone
+                                        );
+
+                                    }
+
+                                }
+
+                            }
+                            catch(
+                                backgroundVerifyError
+                            ){
+
+                                console.warn(
+                                    "⚠️ Background profile verification skipped:",
+                                    backgroundVerifyError
+                                );
+
+                            }
+
+                        },
+                        100
+                    );
+
+
+                    return;
+
+                }
+
+            }
+
+        }
+
+
+        // ========================================================
+        // STEP 3
+        // NO LOCAL PROFILE
+        // ========================================================
+        //
+        // THIS IS THE CRITICAL FIRST-INSTALL DECISION.
+        //
+        // ========================================================
 
 
         if(
-          fallbackProfile
+            firstLoginCompleted
         ){
 
-          console.warn(
-            "📴 Exception → restoring local profile"
-          );
+            // ====================================================
+            // 🔐 MARKER EXISTS
+            //
+            // User has already completed first login.
+            //
+            // There must NEVER be another login modal.
+            //
+            // Even if:
+            // • offline
+            // • cache unavailable
+            // • backend unavailable
+            // • temporary storage issue
+            //
+            // ====================================================
+
+            console.warn(
+                "🔐 FIRST LOGIN COMPLETED BUT LOCAL PROFILE " +
+                "IS CURRENTLY UNAVAILABLE"
+            );
+
+            console.warn(
+                "📴 Preserving authenticated state — " +
+                "NO LOGIN MODAL WILL BE SHOWN"
+            );
 
 
-          const applied =
-            typeof applyAuthenticatedProfile ===
-            "function"
-
-              ? applyAuthenticatedProfile(
-                  fallbackProfile,
-                  "LOCAL"
-                )
-
-              : false;
+            // ----------------------------------------------------
+            // Do NOT call showLogin()
+            // Do NOT call login()
+            // Do NOT clear localStorage
+            // Do NOT revoke the marker
+            // ----------------------------------------------------
 
 
-          if(
-            applied
-          ){
+            try{
 
-            if(
-              typeof bootAfterAuthentication ===
-              "function"
+                updateNetworkStatus(
+                    navigator.onLine
+                        ? "online"
+                        : "offline"
+                );
+
+            }
+            catch(
+                networkError
             ){
 
-              bootAfterAuthentication(
-                window.userProfile,
-                "LOCAL"
-              );
+                console.warn(
+                    "⚠️ Network status update skipped:",
+                    networkError
+                );
 
             }
-            else{
-
-              window.userProfile =
-                fallbackProfile;
-
-              loginCompleted =
-                true;
-
-              updateNetworkStatus(
-                "offline"
-              );
-
-              applyRoleControl();
-
-              hideLogin();
-
-
-              if(
-                !window.__appBootRequested
-              ){
-
-                window.__appBootRequested =
-                  true;
-
-                startApp();
-
-              }
-
-            }
-
-
-            setTimeout(
-              function(){
-
-                try{
-
-                  if(
-                    typeof verifyProfileInBackground ===
-                    "function"
-                  ){
-
-                    verifyProfileInBackground(
-                      localSession.phone ||
-                      fallbackProfile.phone
-                    );
-
-                  }
-
-                }
-                catch(err){
-
-                  console.warn(
-                    "⚠ Background verification skipped:",
-                    err
-                  );
-
-                }
-
-              },
-              100
-            );
 
 
             return;
 
-          }
+        }
+
+
+        // ========================================================
+        // STEP 4
+        // FIRST INSTALL ONLY
+        //
+        // No marker + no local profile
+        //
+        // This is the ONLY situation where login UI may appear.
+        // ========================================================
+
+        console.log(
+            "🔐 FIRST INSTALL / FIRST LOGIN NOT COMPLETED"
+        );
+
+
+        if(
+            !loginModalLocked &&
+            !loginShownOnce &&
+            !loginCompleted &&
+            !window.userProfile
+        ){
+
+            console.log(
+                "🔐 First-login modal allowed"
+            );
+
+
+            showLogin();
+
+        }
+        else{
+
+            console.log(
+                "⛔ Login modal blocked by existing auth/UI state"
+            );
 
         }
 
-      }
-
     }
-    catch(fallbackErr){
-
-      console.error(
-        "❌ Local profile fallback failed:",
-        fallbackErr
-      );
-
-    }
-
-
-    // ==========================================================
-    // 🔐 NO USABLE SESSION
-    // ==========================================================
-
-    if(
-      !loginModalLocked &&
-      !loginShownOnce
+    catch(
+        error
     ){
 
-      loginShownOnce =
-        true;
+        // ========================================================
+        // ❌ GENERAL LOAD PROFILE ERROR
+        // ========================================================
+        //
+        // NEVER convert a general/network failure into logout.
+        //
+        // ========================================================
 
-      showLogin();
+        console.error(
+            "❌ loadProfile() failed:",
+            error
+        );
+
+
+        // ========================================================
+        // 🔐 FIRST LOGIN ALREADY COMPLETED
+        //
+        // NEVER show login again.
+        // ========================================================
+
+        if(
+            typeof ggHasCompletedFirstLogin ===
+            "function" &&
+            ggHasCompletedFirstLogin()
+        ){
+
+            console.warn(
+                "🔐 First login already completed → " +
+                "suppressing login modal after error"
+            );
+
+            return;
+
+        }
+
+
+        // ========================================================
+        // FIRST INSTALL ONLY
+        // ========================================================
+
+        if(
+            !loginModalLocked &&
+            !loginShownOnce &&
+            !loginCompleted &&
+            !window.userProfile
+        ){
+
+            showLogin();
+
+        }
+
+    }
+    finally{
+
+        // ========================================================
+        // 🔓 RELEASE AUTH FLOW LOCK
+        // ========================================================
+
+        authFlowRunning =
+            false;
 
     }
 
-  }
-  finally{
-
-    // ==========================================================
-    // 🔓 RELEASE AUTH FLOW LOCK
-    // ==========================================================
-
-    authFlowRunning =
-      false;
-
-  }
-
-}
-    // ============================================================
+}    // ============================================================
 // 📍 FIND NEAREST NAMED VILLAGE / LOCATION
 // Uses existing window.__villageCache
 // NO FIRESTORE READ HERE
@@ -88868,42 +91741,276 @@ function saveSightingOffline(data){
 /* ============================================================
    🔥 AUTO SYNC
 ============================================================ */
-function syncOfflineSightings(){
-
-  let records;
-
-  try{
-    records = JSON.parse(localStorage.getItem("offlineSightings") || "[]");
-  }catch(e){
-    console.error("❌ Corrupt offlineSightings");
-    localStorage.removeItem("offlineSightings");
-    return;
-  }
-
-  if (!records.length) return;
-
-  console.log("🔄 Syncing offline sightings...");
-
-  let remaining = [];
-
-  const promises = records.map(rec => {
-
-    return callBackend("saveElephantSighting", rec)
-      .then(() => {
-        console.log("✅ Synced:", rec.sighting_id);
-      })
-      .catch(() => {
-        remaining.push(rec);
-      });
-
-  });
-
-  Promise.all(promises).then(() => {
-    localStorage.setItem("offlineSightings", JSON.stringify(remaining));
-    console.log("✅ Sync complete");
-  });
-}
 /* ============================================================
+   🔥 AUTO SYNC — OFFLINE SIGHTINGS
+   ------------------------------------------------------------
+   DESIGN:
+   • Offline submissions remain local.
+   • Wildlife → saveWildlifeSighting
+   • Elephant → saveElephantSighting
+   • Failed records remain queued.
+   • Successful records are removed from queue.
+   • No analytics/GPS/report flow is touched.
+   ============================================================ */
+
+async function syncOfflineSightings(){
+
+    let records;
+
+    try{
+
+        records =
+            JSON.parse(
+                localStorage.getItem(
+                    "offlineSightings"
+                ) || "[]"
+            );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Corrupt offlineSightings queue:",
+            error
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !Array.isArray(records) ||
+        records.length === 0
+    ){
+
+        return;
+
+    }
+
+
+    /*
+     * Do not attempt network sync while offline.
+     */
+    if(
+        !navigator.onLine
+    ){
+
+        console.log(
+            "📴 Still offline → offline sighting queue preserved:",
+            records.length
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "🔄 Syncing offline sightings:",
+        records.length
+    );
+
+
+    const remaining = [];
+
+
+    for(
+        const rec
+        of records
+    ){
+
+        try{
+
+            if(
+                !rec ||
+                typeof rec !== "object"
+            ){
+
+                continue;
+
+            }
+
+
+            /*
+             * ----------------------------------------------------
+             * DETERMINE ORIGINAL OBSERVATION TYPE
+             * ----------------------------------------------------
+             */
+
+            const observationType =
+                String(
+                    rec.observation_type ||
+                    rec.observationType ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+
+            let backendMethod;
+
+
+            if(
+                observationType === "WILDLIFE"
+            ){
+
+                backendMethod =
+                    "saveWildlifeSighting";
+
+            }
+            else if(
+                observationType === "ELEPHANT"
+            ){
+
+                backendMethod =
+                    "saveElephantSighting";
+
+            }
+            else{
+
+                /*
+                 * Unknown type must NEVER be silently sent
+                 * to the elephant backend.
+                 *
+                 * Preserve it locally for inspection/retry.
+                 */
+
+                console.error(
+                    "❌ Offline sighting has invalid observation type:",
+                    rec
+                );
+
+                remaining.push(
+                    rec
+                );
+
+                continue;
+
+            }
+
+
+            console.log(
+                "📤 OFFLINE SYNC:",
+                {
+                    observationType,
+                    backendMethod,
+                    sightingId:
+                        rec.sighting_id ||
+                        rec.id ||
+                        ""
+                }
+            );
+
+
+            /*
+             * ----------------------------------------------------
+             * USE EXISTING BACKEND
+             * ----------------------------------------------------
+             */
+
+            await callBackend(
+                backendMethod,
+                rec
+            );
+
+
+            console.log(
+                "✅ Offline sighting synced:",
+                {
+                    observationType,
+                    sightingId:
+                        rec.sighting_id ||
+                        rec.id ||
+                        ""
+                }
+            );
+
+        }
+        catch(error){
+
+            /*
+             * Network/backend failure:
+             * KEEP RECORD IN LOCAL QUEUE.
+             */
+
+            console.warn(
+                "⏳ Offline sighting sync pending:",
+                {
+                    observationType:
+                        rec?.observation_type ||
+                        rec?.observationType ||
+                        "",
+                    sightingId:
+                        rec?.sighting_id ||
+                        rec?.id ||
+                        "",
+                    error
+                }
+            );
+
+
+            remaining.push(
+                rec
+            );
+
+        }
+
+    }
+
+
+    /*
+     * ------------------------------------------------------------
+     * ATOMIC QUEUE UPDATE
+     * ------------------------------------------------------------
+     *
+     * Only records that failed remain.
+     *
+     * Successfully synced records disappear from the
+     * pending queue.
+     */
+
+    try{
+
+        localStorage.setItem(
+            "offlineSightings",
+            JSON.stringify(
+                remaining
+            )
+        );
+
+        console.log(
+            "✅ Offline sighting sync complete:",
+            {
+                attempted:
+                    records.length,
+
+                remaining:
+                    remaining.length,
+
+                synced:
+                    records.length -
+                    remaining.length
+            }
+        );
+
+    }
+    catch(error){
+
+        /*
+         * Extremely defensive:
+         * Never destroy the existing queue if localStorage
+         * itself fails during the final write.
+         */
+
+        console.error(
+            "❌ Unable to update offline sighting queue:",
+            error
+        );
+
+    }
+
+}/* ============================================================
    🌐 SMART NETWORK ENGINE
 ============================================================ */
 
