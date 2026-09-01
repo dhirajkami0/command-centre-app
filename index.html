@@ -30974,11 +30974,9 @@ function ggReportDailyWindow(
         start.getDate() - 1
     );
 
-    start.setSeconds(
-        31
-    );
-
-    start.setMilliseconds(
+    start.setMinutes(
+        31,
+        0,
         0
     );
 
@@ -30990,7 +30988,6 @@ function ggReportDailyWindow(
     };
 
 }
-
 
 /* ================================================================
    4. MONTH WINDOW
