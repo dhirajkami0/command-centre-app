@@ -117231,41 +117231,446 @@ function populateForestBlocks(){
     [...blocks]
   );
 
-}function generateAndShowReport(){
+}async function generateAndShowReport(){
 
-  const btn = document.getElementById("generateAndShowBtn");
+    const btn =
+        document.getElementById(
+            "generateAndShowBtn"
+        );
 
-  btn.disabled = true;
-  btn.innerText = "⏳ Generating...";
+    if(!btn){
+        console.error(
+            "❌ BTRGuard report button not found"
+        );
+        return;
+    }
 
-  callBackend("GENERATE_REPORT", {})
-    .then(function(res){
 
-      console.log("📊 Report Generated:", res);
+    btn.disabled = true;
 
-      if(res && res.fileUrl){
+    btn.innerText =
+        "⏳ GENERATING DAILY + MONTHLY...";
 
-        // 🔥 OPEN EXCEL FILE (NOT SHEET)
-        window.open(res.fileUrl, "_blank");
 
-      } else {
-        alert("❌ File URL not received");
-      }
+    try{
 
-      btn.disabled = false;
-      btn.innerText = "📊 GENERATE & VIEW REPORT";
+        console.log(
+            "========== BTRGUARD MANUAL REPORT GENERATION =========="
+        );
 
-    })
-    .catch(function(err){
 
-      console.error("❌ Error:", err);
+        /*
+         * Use the selected/current report date.
+         *
+         * The existing BTRGuard report builders remain
+         * completely untouched.
+         */
+        const reportDate =
+            new Date();
 
-      alert("❌ Failed to generate report");
 
-      btn.disabled = false;
-      btn.innerText = "📊 GENERATE & VIEW REPORT";
+        console.log(
+            "📅 BTRGuard report date:",
+            reportDate
+        );
 
-    });
+
+        /* ============================================================
+           1. GENERATE DAILY + MONTHLY
+           ============================================================ */
+
+        const result =
+            await ggReportGenerateBoth(
+                reportDate
+            );
+
+
+        if(!result){
+            throw new Error(
+                "BTRGuard report generation returned no result"
+            );
+        }
+
+
+        const daily =
+            result.daily;
+
+        const monthly =
+            result.monthly;
+
+
+        if(!daily){
+            throw new Error(
+                "BTRGuard Daily report was not generated"
+            );
+        }
+
+
+        if(!monthly){
+            throw new Error(
+                "BTRGuard Monthly report was not generated"
+            );
+        }
+
+
+        console.log(
+            "✅ BTRGUARD DAILY GENERATED",
+            {
+                reportDate:
+                    daily.reportDate,
+
+                rows:
+                    daily.rows?.length || 0
+            }
+        );
+
+
+        console.log(
+            "✅ BTRGUARD MONTHLY GENERATED",
+            {
+                monthKey:
+                    monthly.monthKey,
+
+                rows:
+                    monthly.rows?.length || 0
+            }
+        );
+
+
+        /* ============================================================
+           2. HARD BTR SCOPE CHECK
+           ============================================================ */
+
+        function verifyBTRScope(
+            report,
+            name
+        ){
+
+            const rows =
+                Array.isArray(
+                    report.rows
+                )
+                    ? report.rows
+                    : [];
+
+
+            const east =
+                rows.filter(
+                    row =>
+                        String(
+                            row?.division || ""
+                        )
+                        .trim()
+                        .toUpperCase() ===
+                        "BTR_E"
+                ).length;
+
+
+            const west =
+                rows.filter(
+                    row =>
+                        String(
+                            row?.division || ""
+                        )
+                        .trim()
+                        .toUpperCase() ===
+                        "BTR_W"
+                ).length;
+
+
+            const unexpected =
+                rows.filter(
+                    row => {
+
+                        const division =
+                            String(
+                                row?.division || ""
+                            )
+                            .trim()
+                            .toUpperCase();
+
+                        return (
+                            division !== "BTR_E" &&
+                            division !== "BTR_W"
+                        );
+
+                    }
+                ).length;
+
+
+            console.log(
+                `🔎 ${name} BTR SCOPE`,
+                {
+                    rows:
+                        rows.length,
+
+                    BTR_E:
+                        east,
+
+                    BTR_W:
+                        west,
+
+                    unexpected
+                }
+            );
+
+
+            if(
+                unexpected > 0
+            ){
+
+                throw new Error(
+                    name +
+                    " contains " +
+                    unexpected +
+                    " unexpected division rows"
+                );
+
+            }
+
+
+            if(
+                rows.length !==
+                east + west
+            ){
+
+                throw new Error(
+                    name +
+                    " BTR scope validation failed"
+                );
+
+            }
+
+
+            return {
+                rows:
+                    rows.length,
+
+                BTR_E:
+                    east,
+
+                BTR_W:
+                    west
+            };
+
+        }
+
+
+        const dailyScope =
+            verifyBTRScope(
+                daily,
+                "DAILY"
+            );
+
+
+        const monthlyScope =
+            verifyBTRScope(
+                monthly,
+                "MONTHLY"
+            );
+
+
+        /* ============================================================
+           3. SAVE FINAL REPORT REFERENCES
+           
+           Useful for View/Send/recovery buttons and manual testing.
+           This does NOT replace IndexedDB.
+           ============================================================ */
+
+        window.__GG_FINAL_DAILY =
+            daily;
+
+        window.__GG_FINAL_MONTHLY =
+            monthly;
+
+
+        /* ============================================================
+           4. SEND DAILY THROUGH EXISTING APPS SCRIPT PIPELINE
+           ============================================================ */
+
+        btn.innerText =
+            "📤 SENDING DAILY...";
+
+
+        console.log(
+            "📤 BTRGUARD DAILY → APPS SCRIPT"
+        );
+
+
+        const dailyDelivery =
+            await callBackend(
+                "SEND_GG_REPORT",
+                {
+                    report:
+                        daily,
+
+                    reportType:
+                        "DAILY"
+                }
+            );
+
+
+        console.log(
+            "📨 BTRGUARD DAILY DELIVERY RESULT:",
+            dailyDelivery
+        );
+
+
+        if(
+            !dailyDelivery ||
+            dailyDelivery.success !== true
+        ){
+
+            throw new Error(
+                "BTRGuard Daily delivery failed: " +
+                JSON.stringify(
+                    dailyDelivery
+                )
+            );
+
+        }
+
+
+        /* ============================================================
+           5. SEND MONTHLY THROUGH EXISTING APPS SCRIPT PIPELINE
+           ============================================================ */
+
+        btn.innerText =
+            "📤 SENDING MONTHLY...";
+
+
+        console.log(
+            "📤 BTRGUARD MONTHLY → APPS SCRIPT"
+        );
+
+
+        const monthlyDelivery =
+            await callBackend(
+                "SEND_GG_REPORT",
+                {
+                    report:
+                        monthly,
+
+                    reportType:
+                        "MONTHLY_CUMULATIVE"
+                }
+            );
+
+
+        console.log(
+            "📨 BTRGUARD MONTHLY DELIVERY RESULT:",
+            monthlyDelivery
+        );
+
+
+        if(
+            !monthlyDelivery ||
+            monthlyDelivery.success !== true
+        ){
+
+            throw new Error(
+                "BTRGuard Monthly delivery failed: " +
+                JSON.stringify(
+                    monthlyDelivery
+                )
+            );
+
+        }
+
+
+        /* ============================================================
+           6. FINAL RESULT
+           ============================================================ */
+
+        console.log(
+            "========== BTRGUARD GENERATE + SEND COMPLETE =========="
+        );
+
+
+        console.table({
+
+            dailyReportDate:
+                daily.reportDate ||
+                "",
+
+            dailyRows:
+                dailyScope.rows,
+
+            dailyBTR_E:
+                dailyScope.BTR_E,
+
+            dailyBTR_W:
+                dailyScope.BTR_W,
+
+            monthlyMonthKey:
+                monthly.monthKey ||
+                "",
+
+            monthlyRows:
+                monthlyScope.rows,
+
+            monthlyBTR_E:
+                monthlyScope.BTR_E,
+
+            monthlyBTR_W:
+                monthlyScope.BTR_W,
+
+            dailyEmail:
+                dailyDelivery.emailSent === true
+                    ? "SENT"
+                    : "NOT CONFIRMED",
+
+            dailyTelegram:
+                dailyDelivery.telegramSent === true
+                    ? "SENT"
+                    : "NOT CONFIRMED",
+
+            monthlyEmail:
+                monthlyDelivery.emailSent === true
+                    ? "SENT"
+                    : "NOT CONFIRMED",
+
+            monthlyTelegram:
+                monthlyDelivery.telegramSent === true
+                    ? "SENT"
+                    : "NOT CONFIRMED"
+
+        });
+
+
+        alert(
+            "✅ BTRGuard Daily + Monthly reports generated and sent successfully."
+        );
+
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ BTRGUARD GENERATE + SEND FAILED:",
+            error
+        );
+
+
+        alert(
+            "❌ BTRGuard report generation/delivery failed.\n\n" +
+            (
+                error?.message ||
+                error
+            )
+        );
+
+    }
+    finally{
+
+        btn.disabled =
+            false;
+
+        btn.innerText =
+            "📊 GENERATE & SEND BTRGUARD REPORTS";
+
+    }
+
 }
 // ============================================================
 // 🌐 NETWORK STATUS
