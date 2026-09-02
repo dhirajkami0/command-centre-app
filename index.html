@@ -36135,7 +36135,9 @@ console.log(
 const result =
     await ggReportGenerateBoth(
         reportDate
-    );window.GG_REPORT_SCHEDULER
+    );
+
+window.GG_REPORT_SCHEDULER
     .lastResult =
         result;
 
@@ -117253,15 +117255,20 @@ function populateForestBlocks(){
             "generateAndShowBtn"
         );
 
+
     if(!btn){
+
         console.error(
             "❌ BTRGuard report button not found"
         );
+
         return;
+
     }
 
 
     btn.disabled = true;
+
 
     btn.innerText =
         "⏳ GENERATING DAILY + MONTHLY...";
@@ -117280,6 +117287,7 @@ function populateForestBlocks(){
          * The existing BTRGuard report builders remain
          * completely untouched.
          */
+
         const reportDate =
             new Date();
 
@@ -117301,30 +117309,37 @@ function populateForestBlocks(){
 
 
         if(!result){
+
             throw new Error(
                 "BTRGuard report generation returned no result"
             );
+
         }
 
 
         const daily =
             result.daily;
 
+
         const monthly =
             result.monthly;
 
 
         if(!daily){
+
             throw new Error(
                 "BTRGuard Daily report was not generated"
             );
+
         }
 
 
         if(!monthly){
+
             throw new Error(
                 "BTRGuard Monthly report was not generated"
             );
+
         }
 
 
@@ -117404,6 +117419,7 @@ function populateForestBlocks(){
                             .trim()
                             .toUpperCase();
 
+
                         return (
                             division !== "BTR_E" &&
                             division !== "BTR_W"
@@ -117458,6 +117474,7 @@ function populateForestBlocks(){
 
 
             return {
+
                 rows:
                     rows.length,
 
@@ -117466,6 +117483,7 @@ function populateForestBlocks(){
 
                 BTR_W:
                     west
+
             };
 
         }
@@ -117488,19 +117506,125 @@ function populateForestBlocks(){
         /* ============================================================
            3. SAVE FINAL REPORT REFERENCES
            
-           Useful for View/Send/recovery buttons and manual testing.
+           Useful for View/Send/recovery buttons.
            This does NOT replace IndexedDB.
            ============================================================ */
 
         window.__GG_FINAL_DAILY =
             daily;
 
+
         window.__GG_FINAL_MONTHLY =
             monthly;
 
 
         /* ============================================================
-           4. SEND DAILY THROUGH EXISTING APPS SCRIPT PIPELINE
+           4. SYNC FINAL REPORTS TO APPS SCRIPT
+           
+           IMPORTANT:
+           This stores the already-built BTRGuard reports on the
+           server so the 00:05 Apps Script trigger can deliver them
+           even when the browser is closed.
+
+           No report calculations are changed here.
+           ============================================================ */
+
+        btn.innerText =
+            "☁️ SAVING REPORTS TO SERVER...";
+
+
+        console.log(
+            "☁️ BTRGUARD DAILY → SERVER SNAPSHOT"
+        );
+
+
+        const dailySync =
+            await callBackend(
+                "SYNC_BTRGUARD_REPORT_DATA",
+                {
+                    report:
+                        daily,
+
+                    reportType:
+                        "DAILY"
+                }
+            );
+
+
+        console.log(
+            "📦 BTRGUARD DAILY SNAPSHOT RESULT:",
+            dailySync
+        );
+
+
+        if(
+            !dailySync ||
+            dailySync.success !== true
+        ){
+
+            throw new Error(
+                "BTRGuard Daily snapshot sync failed: " +
+                JSON.stringify(
+                    dailySync
+                )
+            );
+
+        }
+
+
+        console.log(
+            "☁️ BTRGUARD MONTHLY → SERVER SNAPSHOT"
+        );
+
+
+        const monthlySync =
+            await callBackend(
+                "SYNC_BTRGUARD_REPORT_DATA",
+                {
+                    report:
+                        monthly,
+
+                    reportType:
+                        "MONTHLY_CUMULATIVE"
+                }
+            );
+
+
+        console.log(
+            "📦 BTRGUARD MONTHLY SNAPSHOT RESULT:",
+            monthlySync
+        );
+
+
+        if(
+            !monthlySync ||
+            monthlySync.success !== true
+        ){
+
+            throw new Error(
+                "BTRGuard Monthly snapshot sync failed: " +
+                JSON.stringify(
+                    monthlySync
+                )
+            );
+
+        }
+
+
+        console.log(
+            "✅ BTRGUARD DAILY + MONTHLY SNAPSHOTS SYNCED",
+            {
+                daily:
+                    dailySync,
+
+                monthly:
+                    monthlySync
+            }
+        );
+
+
+        /* ============================================================
+           5. SEND DAILY THROUGH EXISTING APPS SCRIPT PIPELINE
            ============================================================ */
 
         btn.innerText =
@@ -117547,7 +117671,7 @@ function populateForestBlocks(){
 
 
         /* ============================================================
-           5. SEND MONTHLY THROUGH EXISTING APPS SCRIPT PIPELINE
+           6. SEND MONTHLY THROUGH EXISTING APPS SCRIPT PIPELINE
            ============================================================ */
 
         btn.innerText =
@@ -117594,7 +117718,7 @@ function populateForestBlocks(){
 
 
         /* ============================================================
-           6. FINAL RESULT
+           7. FINAL RESULT
            ============================================================ */
 
         console.log(
@@ -117630,6 +117754,16 @@ function populateForestBlocks(){
             monthlyBTR_W:
                 monthlyScope.BTR_W,
 
+            dailySnapshot:
+                dailySync.success === true
+                    ? "SAVED"
+                    : "NOT CONFIRMED",
+
+            monthlySnapshot:
+                monthlySync.success === true
+                    ? "SAVED"
+                    : "NOT CONFIRMED",
+
             dailyEmail:
                 dailyDelivery.emailSent === true
                     ? "SENT"
@@ -117654,7 +117788,7 @@ function populateForestBlocks(){
 
 
         alert(
-            "✅ BTRGuard Daily + Monthly reports generated and sent successfully."
+            "✅ BTRGuard Daily + Monthly reports generated, saved to server, and sent successfully."
         );
 
 
@@ -117680,6 +117814,7 @@ function populateForestBlocks(){
 
         btn.disabled =
             false;
+
 
         btn.innerText =
             "📊 GENERATE & SEND BTRGUARD REPORTS";
