@@ -30997,8 +30997,35 @@ function ggReportNumber(value){
         : 0;
 
 }
+/* ================================================================
+   CANONICAL BTR DIVISION
+   ----------------------------------------------------------------
+   BTR_E   = BuxaTR_EAST
+   BTR_W   = BuxaTR_WEST
 
+   The report engine uses BTR_E / BTR_W as the canonical values.
+   All other divisions are intentionally preserved as-is.
+   ================================================================ */
 
+function ggReportCanonicalDivision(value) {
+    const normalized = ggReportUpper(value);
+
+    if (
+        normalized === "BTR_E" ||
+        normalized === "BUXATR_EAST"
+    ) {
+        return "BTR_E";
+    }
+
+    if (
+        normalized === "BTR_W" ||
+        normalized === "BUXATR_WEST"
+    ) {
+        return "BTR_W";
+    }
+
+    return ggReportString(value);
+}
 function ggReportClampPercent(value){
 
     const n =
@@ -31239,38 +31266,24 @@ function ggReportMonthWindow(
    5. CANONICAL GIS HIERARCHY
    ================================================================ */
 
-function ggReportMasterHierarchy(
-    master,
-    gridId
-){
+function ggReportMasterHierarchy(master, gridId) {
+    master = master || {};
 
-    master =
-        master || {};
+    const division = ggReportCanonicalDivision(
+        master.division || master.Division
+    );
 
-    const division =
-        ggReportString(
-            master.division ||
-            master.Division
-        );
+    const range = ggReportString(
+        master.range || master.Range
+    );
 
-    const range =
-        ggReportString(
-            master.range ||
-            master.Range
-        );
+    const beat = ggReportString(
+        master.beat || master.Beat
+    );
 
-    const beat =
-        ggReportString(
-            master.beat ||
-            master.Beat
-        );
-
-    const compartment =
-        ggReportString(
-            master.compartment ||
-            master.Compartment ||
-            gridId
-        );
+    const compartment = ggReportString(
+        master.compartment || master.Compartment || gridId
+    );
 
     return {
         division,
@@ -31278,9 +31291,7 @@ function ggReportMasterHierarchy(
         beat,
         compartment
     };
-
 }
-
 
 /* ================================================================
    6. EXISTING MASTER GRID
@@ -31309,6 +31320,39 @@ function ggReportGetMasterRows(){
                     gridId
                 );
 
+            /*
+             * ========================================================
+             * BTR REPORT SCOPE
+             *
+             * Canonical divisions:
+             *
+             *     BTR_E
+             *     BuxaTR_EAST
+             *             ↓
+             *          BTR_E
+             *
+             *     BTR_W
+             *     BuxaTR_WEST
+             *             ↓
+             *          BTR_W
+             *
+             * Everything else is excluded.
+             *
+             * Therefore:
+             *
+             *     Gorumara  → excluded
+             *     Jaldapara  → excluded
+             *
+             * ========================================================
+             */
+
+            if(
+                hierarchy.division !== "BTR_E" &&
+                hierarchy.division !== "BTR_W"
+            ){
+                return;
+            }
+
             if(
                 !hierarchy.compartment
             ){
@@ -31316,8 +31360,11 @@ function ggReportGetMasterRows(){
             }
 
             rows.push({
+
                 gridId,
+
                 ...hierarchy,
+
                 totalCells:
                     Math.max(
                         0,
@@ -31327,6 +31374,7 @@ function ggReportGetMasterRows(){
                             )
                         )
                     )
+
             });
 
         }
@@ -31335,7 +31383,6 @@ function ggReportGetMasterRows(){
     return rows;
 
 }
-
 
 /* ================================================================
    7. CURRENT MONTHLY ANALYTICS CACHE
@@ -31906,10 +31953,11 @@ function ggReportEventHierarchy(
     record =
         record || {};
 
+
     return {
 
         division:
-            ggReportString(
+            ggReportCanonicalDivision(
                 record.gis_division ||
                 record.division
             ),
@@ -31936,8 +31984,6 @@ function ggReportEventHierarchy(
     };
 
 }
-
-
 /* ================================================================
    16. EVENT BELONGS TO COMPARTMENT
    ================================================================ */
