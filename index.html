@@ -33539,20 +33539,31 @@ async function ggReportBuildDaily(
         //     This does NOT modify the existing flush logic.
         // =========================================================
 
-        const dailyDistanceMeters =
-            await ggReportDailyDistanceForGrid(
-                masterRow.gridId,
-                startMs,
-                endMs
-            );
+const dailyDistanceEntry =
+    dailyDistanceIndex[
+        String(
+            masterRow.gridId
+        )
+        .trim()
+    ];
 
+const dailyDistanceMeters =
+    dailyDistanceEntry &&
+    Number.isFinite(
+        Number(
+            dailyDistanceEntry.distanceMeters
+        )
+    )
+        ? Number(
+            dailyDistanceEntry.distanceMeters
+        )
+        : 0;
 
-        row.distanceKm =
-            ggReportRound(
-                dailyDistanceMeters / 1000,
-                2
-            );
-
+row.distanceKm =
+    ggReportRound(
+        dailyDistanceMeters / 1000,
+        2
+    );
 
         // ========================================================
         // DAILY EVENT COUNTS
