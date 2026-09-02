@@ -31184,38 +31184,38 @@ function ggReportDailyWindow(
     reportDate = new Date()
 ){
 
+    const start =
+        new Date(reportDate);
+
+    start.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+
     const end =
         new Date(reportDate);
 
     end.setHours(
         23,
-        30,
-        0,
-        0
+        59,
+        59,
+        999
     );
 
-    const start =
-        new Date(end);
-
-    start.setDate(
-        start.getDate() - 1
-    );
-
-    start.setMinutes(
-        31,
-        0,
-        0
-    );
 
     return {
         start,
         end,
         reportDate:
-            ggReportDateKey(end)
+            ggReportDateKey(
+                start
+            )
     };
 
 }
-
 /* ================================================================
    4. MONTH WINDOW
    ================================================================ */
@@ -36089,19 +36089,38 @@ function ggReportScheduleNext(){
                      * The exact reporting boundary is always based
                      * on the local 23:30 clock.
                      */
-                    const reportDate =
-                        new Date();
+/*
+ * Generate the COMPLETE previous calendar day.
+ *
+ * At 23:30 on 02 Sep, the report generated here is
+ * for 01 Sep 00:00:00 → 01 Sep 23:59:59.999.
+ *
+ * The Daily window itself remains defined by
+ * ggReportDailyWindow().
+ */
 
-                    console.log(
-                        "🚨 GG REPORT 23:30 START"
-                    );
+const reportDate =
+    new Date();
+
+reportDate.setDate(
+    reportDate.getDate() - 1
+);
+
+console.log(
+    "🚨 BTRGuard REPORT 23:30 START"
+);
+
+console.log(
+    "📅 BTRGuard COMPLETE DAILY REPORT DATE:",
+    ggReportDateKey(
+        reportDate
+    )
+);
 
 const result =
     await ggReportGenerateBoth(
         reportDate
-    );
-
-window.GG_REPORT_SCHEDULER
+    );window.GG_REPORT_SCHEDULER
     .lastResult =
         result;
 
