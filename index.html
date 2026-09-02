@@ -36033,7 +36033,24 @@ window.exportGGReportToGoogleSheet =
 
 
 /* ================================================================
-   37. 11:30 PM SCHEDULER
+   37. BTRGUARD SERVER-SIDE REPORT SCHEDULER
+   ================================================================
+
+   IMPORTANT:
+
+   BTRGuard reports are NO LONGER automatically generated
+   by browser JavaScript.
+
+   Automatic nightly generation/delivery is handled by
+   Apps Script BTRGUARD_NIGHTLY_REPORT().
+
+   The browser remains responsible only for:
+
+   1. Manual admin report generation.
+   2. Synchronizing the generated reports to Apps Script.
+   3. Viewing/downloading reports.
+
+   This prevents browser-close / sleep / tab-close failures.
    ================================================================ */
 
 window.GG_REPORT_SCHEDULER =
@@ -36043,199 +36060,46 @@ window.GG_REPORT_SCHEDULER =
             false,
 
         timer:
-            null
+            null,
+
+        disabled:
+            true
     };
-
-
-function ggReportMillisecondsUntilNext2330(){
-
-    const now =
-        new Date();
-
-    const next =
-        new Date(now);
-
-    next.setHours(
-        23,
-        30,
-        0,
-        0
-    );
-
-    if(
-        next <= now
-    ){
-
-        next.setDate(
-            next.getDate() + 1
-        );
-
-    }
-
-    return (
-        next.getTime() -
-        now.getTime()
-    );
-
-}
-
-
-function ggReportScheduleNext(){
-
-    const delay =
-        ggReportMillisecondsUntilNext2330();
-
-    console.log(
-        "⏰ Next GG report generation in:",
-        Math.round(
-            delay /
-            60000
-        ),
-        "minutes"
-    );
-
-    window.GG_REPORT_SCHEDULER.timer =
-        setTimeout(
-            async function(){
-
-                try{
-
-                    /*
-                     * The exact reporting boundary is always based
-                     * on the local 23:30 clock.
-                     */
-/*
- * Generate the COMPLETE previous calendar day.
- *
- * At 23:30 on 02 Sep, the report generated here is
- * for 01 Sep 00:00:00 → 01 Sep 23:59:59.999.
- *
- * The Daily window itself remains defined by
- * ggReportDailyWindow().
- */
-
-const reportDate =
-    new Date();
-
-reportDate.setDate(
-    reportDate.getDate() - 1
-);
-
-console.log(
-    "🚨 BTRGuard REPORT 23:30 START"
-);
-
-console.log(
-    "📅 BTRGuard COMPLETE DAILY REPORT DATE:",
-    ggReportDateKey(
-        reportDate
-    )
-);
-
-const result =
-    await ggReportGenerateBoth(
-        reportDate
-    );
-
-window.GG_REPORT_SCHEDULER
-    .lastResult =
-        result;
-
-
-/* ================================================================
-   SEND SAVED GG REPORTS THROUGH EXISTING APPS SCRIPT PIPELINE
-   ================================================================ */
-
-console.log(
-    "📤 SENDING GG DAILY REPORT"
-);
-
-const dailyDelivery =
-    await callBackend(
-        "SEND_GG_REPORT",
-        {
-            report:
-                result.daily,
-            reportType:
-                "DAILY"
-        }
-    );
-
-console.log(
-    "📨 GG DAILY DELIVERY RESULT:",
-    dailyDelivery
-);
-
-
-console.log(
-    "📤 SENDING GG MONTHLY REPORT"
-);
-
-const monthlyDelivery =
-    await callBackend(
-        "SEND_GG_REPORT",
-        {
-            report:
-                result.monthly,
-            reportType:
-                "MONTHLY_CUMULATIVE"
-        }
-    );
-
-console.log(
-    "📨 GG MONTHLY DELIVERY RESULT:",
-    monthlyDelivery
-);
-
-console.log(
-    "✅ GG DAILY + MONTHLY REPORTS GENERATED AND SENT"
-);
-
-}
-                catch(err){
-
-                    console.error(
-                        "❌ GG scheduled report generation failed:",
-                        err
-                    );
-
-                }
-                finally{
-
-                    ggReportScheduleNext();
-
-                }
-
-            },
-            delay
-        );
-
-}
 
 
 function startGGReportScheduler(){
 
+    window.GG_REPORT_SCHEDULER
+        .started =
+            false;
+
+    window.GG_REPORT_SCHEDULER
+        .disabled =
+            true;
+
     if(
         window.GG_REPORT_SCHEDULER
-            .started
+            .timer
     ){
 
-        console.log(
-            "⏸ GG report scheduler already active"
+        clearTimeout(
+            window.GG_REPORT_SCHEDULER
+                .timer
         );
-
-        return;
 
     }
 
     window.GG_REPORT_SCHEDULER
-        .started =
-            true;
+        .timer =
+            null;
 
-    ggReportScheduleNext();
 
     console.log(
-        "✅ GG report scheduler started"
+        "⏹ BTRGuard browser scheduler disabled"
+    );
+
+    console.log(
+        "☁️ Automatic BTRGuard reports are handled by Apps Script."
     );
 
 }
@@ -36255,16 +36119,24 @@ function stopGGReportScheduler(){
 
     }
 
+
     window.GG_REPORT_SCHEDULER
         .timer =
             null;
+
 
     window.GG_REPORT_SCHEDULER
         .started =
             false;
 
+
+    window.GG_REPORT_SCHEDULER
+        .disabled =
+            true;
+
+
     console.log(
-        "⏹ GG report scheduler stopped"
+        "⏹ BTRGuard browser scheduler stopped/disabled"
     );
 
 }
@@ -36273,45 +36145,27 @@ function stopGGReportScheduler(){
 window.startGGReportScheduler =
     startGGReportScheduler;
 
+
 window.stopGGReportScheduler =
     stopGGReportScheduler;
 
 
 /* ================================================================
-   38. START ONLY AFTER APPLICATION CACHE IS READY
+   38. LEGACY START HOOK — INTENTIONALLY DISABLED
    ================================================================ */
 
 function ggReportTryStartScheduler(){
 
-    const analyticsReady =
-        !!(
-            window.masterGrid &&
-            Object.keys(
-                window.masterGrid
-            ).length
-        );
+    console.log(
+        "⏭ BTRGuard browser scheduler not started."
+    );
 
-    const monthlyReady =
-        !!(
-            window.monthlyAnalyticsRealtime
-        );
+    console.log(
+        "☁️ Apps Script handles nightly BTRGuard delivery."
+    );
 
-    if(
-        !analyticsReady ||
-        !monthlyReady
-    ){
 
-        console.log(
-            "⏳ GG report scheduler waiting for application caches"
-        );
-
-        return false;
-
-    }
-
-    startGGReportScheduler();
-
-    return true;
+    return false;
 
 }
 
@@ -36321,31 +36175,20 @@ window.ggReportTryStartScheduler =
 
 
 /* ================================================================
-   39. INITIALIZATION
+   39. NO AUTOMATIC BROWSER INITIALIZATION
    ================================================================ */
 
-setTimeout(
-    function(){
-
-        try{
-
-            ggReportTryStartScheduler();
-
-        }
-        catch(err){
-
-            console.error(
-                "❌ GG report engine initialization failed:",
-                err
-            );
-
-        }
-
-    },
-    5000
-);
-
-
+/*
+ * Intentionally no setTimeout().
+ *
+ * Intentionally no 23:30 timer.
+ *
+ * Intentionally no automatic ggReportGenerateBoth().
+ *
+ * Intentionally no automatic SEND_GG_REPORT from browser.
+ *
+ * Manual admin button remains available.
+ */
 /* ================================================================
    40. DIAGNOSTIC
    ================================================================ */
