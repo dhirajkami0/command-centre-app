@@ -117839,18 +117839,18 @@ function populateForestBlocks(){
         );
 
 
-        const dailySync =
-            await callBackend(
-                "SYNC_BTRGUARD_REPORT_DATA",
-                {
-                    report:
-                        daily,
+const dailySync =
+    await callBackend(
+        "SYNC_BTRGUARD_REPORT_DATA",
+        {
+            report:
+                daily,
 
-                    reportType:
-                        "DAILY"
-                }
-            );
-
+            reportType:
+                "DAILY"
+        },
+        60000
+    );
 
         console.log(
             "📦 BTRGUARD DAILY SNAPSHOT RESULT:",
@@ -117879,16 +117879,17 @@ function populateForestBlocks(){
 
 
         const monthlySync =
-            await callBackend(
-                "SYNC_BTRGUARD_REPORT_DATA",
-                {
-                    report:
-                        monthly,
+    await callBackend(
+        "SYNC_BTRGUARD_REPORT_DATA",
+        {
+            report:
+                monthly,
 
-                    reportType:
-                        "MONTHLY_CUMULATIVE"
-                }
-            );
+            reportType:
+                "MONTHLY_CUMULATIVE"
+        },
+        60000
+    );
 
 
         console.log(
