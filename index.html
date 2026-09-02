@@ -35666,7 +35666,282 @@ async function ggReportGenerateBoth(
 
 }
 
+/* ================================================================
+   GG REPORT → APPS SCRIPT TRANSMISSION
+   BTR_E / BTR_W ONLY
+   Uses the already-saved/generated report object.
+   ================================================================ */
 
+async function ggReportSendToAppsScript(
+    report,
+    reportType
+){
+
+    try{
+
+        if(!report){
+
+            throw new Error(
+                "Missing GG report"
+            );
+
+        }
+
+
+        const type =
+            String(
+                reportType ||
+                report.reportType ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        if(
+            type !== "DAILY" &&
+            type !== "MONTHLY_CUMULATIVE"
+        ){
+
+            throw new Error(
+                "Unsupported GG report type: " +
+                type
+            );
+
+        }
+
+
+        /*
+         * Transmission-boundary protection.
+         *
+         * Do not trust the report rows blindly.
+         * Only BTR_E / BTR_W rows leave the application.
+         */
+
+        const sourceRows =
+            Array.isArray(report.rows)
+                ? report.rows
+                : [];
+
+
+        const rows =
+            sourceRows.filter(
+                row => {
+
+                    const division =
+                        String(
+                            row?.division ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+                    return (
+                        division === "BTR_E" ||
+                        division === "BTR_W"
+                    );
+
+                }
+            );
+
+
+        const unexpected =
+            sourceRows.filter(
+                row => {
+
+                    const division =
+                        String(
+                            row?.division ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+                    return (
+                        division !== "BTR_E" &&
+                        division !== "BTR_W"
+                    );
+
+                }
+            );
+
+
+        if(unexpected.length){
+
+            throw new Error(
+                "GG report transmission blocked: " +
+                unexpected.length +
+                " unexpected division rows"
+            );
+
+        }
+
+
+        if(
+            rows.length === 0
+        ){
+
+            throw new Error(
+                "GG report transmission blocked: no BTR_E/BTR_W rows"
+            );
+
+        }
+
+
+        const payload = {
+
+            reportType:
+                type,
+
+            report: {
+
+                ...report,
+
+                rows
+
+            }
+
+        };
+
+
+        console.log(
+            "📤 GG REPORT → APPS SCRIPT",
+            {
+                reportType:
+                    type,
+
+                rows:
+                    rows.length,
+
+                btrEast:
+                    rows.filter(
+                        r =>
+                            String(
+                                r.division || ""
+                            )
+                            .toUpperCase() ===
+                            "BTR_E"
+                    ).length,
+
+                btrWest:
+                    rows.filter(
+                        r =>
+                            String(
+                                r.division || ""
+                            )
+                            .toUpperCase() ===
+                            "BTR_W"
+                    ).length
+            }
+        );
+
+
+        const response =
+            await fetch(
+                window.APPS_SCRIPT_URL,
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        JSON.stringify({
+                            action:
+                                "SEND_GG_REPORT",
+
+                            reportType:
+                                type,
+
+                            report:
+                                payload.report
+                        })
+                }
+            );
+
+
+        const text =
+            await response.text();
+
+
+        let result;
+
+        try{
+
+            result =
+                JSON.parse(
+                    text
+                );
+
+        }
+        catch(_){
+
+            result = {
+                success:
+                    response.ok,
+
+                raw:
+                    text
+            };
+
+        }
+
+
+        console.log(
+            "📥 GG REPORT APPS SCRIPT RESULT",
+            result
+        );
+
+
+        if(
+            !response.ok ||
+            result?.success === false
+        ){
+
+            throw new Error(
+                result?.error ||
+                "Apps Script GG report transmission failed"
+            );
+
+        }
+
+
+        return result;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ GG REPORT TRANSMISSION FAILED",
+            err
+        );
+
+        throw err;
+
+    }
+
+}
+
+async function ggReportSendDailyToAppsScript(
+    report
+){
+
+    return ggReportSendToAppsScript(
+        report,
+        "DAILY"
+    );
+
+}
+
+
+async function ggReportSendMonthlyToAppsScript(
+    report
+){
+
+    return ggReportSendToAppsScript(
+        report,
+        "MONTHLY_CUMULATIVE"
+    );
+
+}
 /* ================================================================
    35. EXPORT TO GOOGLE SHEETS HOOK
 
@@ -35821,24 +36096,66 @@ function ggReportScheduleNext(){
                         "🚨 GG REPORT 23:30 START"
                     );
 
-                    const result =
-                        await ggReportGenerateBoth(
-                            reportDate
-                        );
+const result =
+    await ggReportGenerateBoth(
+        reportDate
+    );
 
-                    /*
-                     * Keep the generated reports available in RAM
-                     * for any existing UI/export button.
-                     */
-                    window.GG_REPORT_SCHEDULER
-                        .lastResult =
-                            result;
+window.GG_REPORT_SCHEDULER
+    .lastResult =
+        result;
 
-                    console.log(
-                        "✅ GG DAILY + MONTHLY REPORTS GENERATED"
-                    );
 
-                }
+/* ================================================================
+   SEND SAVED GG REPORTS THROUGH EXISTING APPS SCRIPT PIPELINE
+   ================================================================ */
+
+console.log(
+    "📤 SENDING GG DAILY REPORT"
+);
+
+const dailyDelivery =
+    await callBackend(
+        "SEND_GG_REPORT",
+        {
+            report:
+                result.daily,
+            reportType:
+                "DAILY"
+        }
+    );
+
+console.log(
+    "📨 GG DAILY DELIVERY RESULT:",
+    dailyDelivery
+);
+
+
+console.log(
+    "📤 SENDING GG MONTHLY REPORT"
+);
+
+const monthlyDelivery =
+    await callBackend(
+        "SEND_GG_REPORT",
+        {
+            report:
+                result.monthly,
+            reportType:
+                "MONTHLY_CUMULATIVE"
+        }
+    );
+
+console.log(
+    "📨 GG MONTHLY DELIVERY RESULT:",
+    monthlyDelivery
+);
+
+console.log(
+    "✅ GG DAILY + MONTHLY REPORTS GENERATED AND SENT"
+);
+
+}
                 catch(err){
 
                     console.error(
