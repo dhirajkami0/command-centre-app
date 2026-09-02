@@ -33372,7 +33372,11 @@ async function ggReportBuildDaily(
         }
     );
 
-
+const dailyDistanceIndex =
+    await ggReportBuildDailyDistanceIndex(
+        startMs,
+        endMs
+    );
     // ============================================================
     // BUILD DAILY COMPARTMENT ROWS
     // ============================================================
