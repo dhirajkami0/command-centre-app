@@ -30939,7 +30939,7 @@ window.GG_REPORT.DB_NAME =
     "GG_COMMAND_CENTRE_REPORTS_V1";
 
 window.GG_REPORT.DB_VERSION =
-    1;
+    2;
 
 window.GG_REPORT.STORE_DAILY =
     "daily_reports";
@@ -30949,7 +30949,7 @@ window.GG_REPORT.STORE_MONTHLY =
 
 window.GG_REPORT.STORE_META =
     "meta";
-
+window.GG_REPORT.STORE_DISTANCE = "distance_segments";
 window.GG_REPORT.DAILY_CUTOFF_HOUR =
     23;
 
@@ -33148,10 +33148,9 @@ async function ggReportBuildDaily(
 
 
                 return (
-                    ts >= startMs &&
-                    ts <= endMs
-                );
-
+    ts >= startMs &&
+    ts < endMs
+);
             }
         );
 
@@ -33538,59 +33537,59 @@ async function ggReportBuildDaily(
             );
 
 
-        const cellVisitOccurrences =
-            Math.max(
-                0,
-                ggReportNumber(
-                    row.cellVisitOccurrences
-                )
-            );
+const cellVisitOccurrences =
+    Math.max(
+        0,
+        ggReportNumber(
+            row.cellVisitOccurrences
+        )
+    );
 
 
-        if(
-            totalCells > 0
-        ){
+if(
+    totalCells > 0
+){
 
-            row.coveragePercent =
-                ggReportRound(
-                    (
-                        uniqueCellsVisited /
-                        totalCells
-                    ) * 100,
-                    2
-                );
-
-
-            row.intensityPercent =
-                ggReportRound(
-                    (
-                        cellVisitOccurrences /
-                        totalCells
-                    ) * 100,
-                    2
-                );
-
-        }
-
-        else{
-
-            row.coveragePercent =
-                0;
-
-
-            row.intensityPercent =
-                0;
-
-        }
-
-
-        // ========================================================
-        // PUSH FINAL DAILY ROW
-        // ========================================================
-
-        rows.push(
-            row
+    row.coveragePercent =
+        ggReportRound(
+            (
+                uniqueCellsVisited /
+                totalCells
+            ) * 100,
+            2
         );
+
+
+    row.patrolIntensityIndex =
+        ggReportRound(
+            (
+                cellVisitOccurrences /
+                totalCells
+            ) * 100,
+            2
+        );
+
+}
+else{
+
+    row.coveragePercent =
+        0;
+
+
+    row.patrolIntensityIndex =
+        0;
+
+}
+
+
+// ========================================================
+// PUSH FINAL DAILY ROW
+// ========================================================
+
+rows.push(
+    row
+);
+
 
     }
 
@@ -83631,73 +83630,45 @@ async function collectAnalyticsHit(
             ]
         ){
 
-            window.analyticsBuffer[
-                gridId
-            ] = {
+window.analyticsBuffer[gridId] = {
+    // --------------------------------------------------
+    // Authoritative visited cells
+    // --------------------------------------------------
+    touchedCells: new Set(),
 
-                // --------------------------------------------------
-                // Existing authoritative visited cells
-                // --------------------------------------------------
+    // --------------------------------------------------
+    // GPS path array structure
+    // --------------------------------------------------
+    localCoordsArray: [
+        []
+    ],
 
-                touchedCells:
-                    new Set(),
+    // --------------------------------------------------
+    // Unique patrol sessions
+    // --------------------------------------------------
+    visitSessions: new Set(),
 
+    // --------------------------------------------------
+    // 🔥 Session + Cell Contributions
+    // One identity for one real patrol session touching
+    // one authoritative cell. Used to prevent duplicate 
+    // session/cell contributions.
+    // --------------------------------------------------
+    sessionCellVisits: new Set(),
 
-                // --------------------------------------------------
-                // Existing GPS path
-                // --------------------------------------------------
+    // --------------------------------------------------
+    // Counters & Timestamps
+    // --------------------------------------------------
+    pointCount: 0,
+    firstTimestamp: hitTimestamp,
+    lastTimestamp: hitTimestamp,
 
-                localCoordsArray:
-                    [
-                        []
-                    ],
-
-
-                // --------------------------------------------------
-                // Existing unique patrol sessions
-                // --------------------------------------------------
-
-                visitSessions:
-                    new Set(),
-
-
-                // --------------------------------------------------
-                // Existing counters
-                // --------------------------------------------------
-
-                pointCount:
-                    0,
-
-
-                firstTimestamp:
-                    hitTimestamp,
-
-
-                lastTimestamp:
-                    hitTimestamp,
-
-
-                // --------------------------------------------------
-                // Daily report distance segments
-                // --------------------------------------------------
-
-                distanceSegments:
-                    [],
-
-
-                // --------------------------------------------------
-                // 🔥 DETERMINISTIC DISTANCE SEGMENT KEYS
-                //
-                // Prevents the same physical segment from being
-                // processed/persisted more than once.
-                // --------------------------------------------------
-
-                distanceSegmentKeys:
-                    new Set()
-
-            };
-
-
+    // --------------------------------------------------
+    // Daily report distance segments & keys
+    // --------------------------------------------------
+    distanceSegments: [],
+    distanceSegmentKeys: new Set()
+};
             console.log(
                 "🆕 NEW ANALYTICS GRID",
                 {
@@ -83969,8 +83940,25 @@ async function collectAnalyticsHit(
 
         }
 
+window.ggReportCellOccurrences ??= [];
 
-        // ==========================================================
+window.ggReportCellOccurrences.push({
+    gridId: String(gridId).trim(),
+    cellId: String(cellId).trim(),
+    visitSessionKey,
+    staffName: normalizedStaffName,
+    sessionId: normalizedSessionId,
+    timestamp: hitTimestamp
+});
+
+if (normalizedSessionId && cellId) {
+    const sessionCellKey = [
+        normalizedSessionId,
+        String(cellId).trim()
+    ].join("|");
+
+    buffer.sessionCellVisits.add(sessionCellKey);
+}        // ==========================================================
         // 🔥 MERGE SEGMENT COORDINATES
         //
         // Existing GPS path behaviour preserved.
