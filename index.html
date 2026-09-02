@@ -14077,373 +14077,252 @@ window.STAFF_MASTER = window.STAFF_MASTER || {
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzniaIOGUHFg4q8WxyuBjnutkWEoq0jPuRGfi_Zi0ipBkLbYBPXCNYLM0qQtEWFiOuo/exec";
 
 function callBackend(
-  action,
-  payload = {}
-) {
+    action,
+    payload = {},
+    timeoutMs = 15000
+){
 
-  // ============================================================
-  // BTRGUARD REPORT ACTION DETECTION
-  // ============================================================
-  //
-  // IMPORTANT:
-  // Keep the existing 15-second timeout for ALL normal
-  // application/backend requests.
-  //
-  // Only BTRGuard snapshot/report operations receive the
-  // extended timeout because Apps Script may take longer while:
-  //
-  //   - writing snapshot data
-  //   - formatting Sheets
-  //   - generating PDF/XLSX
-  //   - sending Email
-  //   - sending Telegram
-  //
-  // This does NOT change any report calculation or other
-  // application flow.
-  // ============================================================
+    // ============================================================
+    // TIMEOUT CONTROL
+    //
+    // Existing callers keep the original 15-second timeout.
+    // BTRGuard report synchronization can explicitly request
+    // a longer timeout because Apps Script may be cold-starting
+    // or writing the snapshot sheet.
+    // ============================================================
 
-  const actionName =
-    String(
-      action || ""
+    const controller =
+        new AbortController();
+
+    const timeout =
+        setTimeout(
+            () => controller.abort(),
+            timeoutMs
+        );
+
+
+    return fetch(
+        GAS_URL,
+        {
+            method:
+                "POST",
+
+            // ====================================================
+            // FORCE SIMPLE REQUEST
+            // ====================================================
+
+            headers: {
+                "Content-Type":
+                    "text/plain;charset=utf-8"
+            },
+
+            body:
+                JSON.stringify({
+                    action:
+                        action,
+                    ...payload
+                }),
+
+            signal:
+                controller.signal
+        }
     )
-      .trim()
-      .toUpperCase();
 
+    .then(
+        res => {
 
-  const isBTRGuardReportAction =
-    actionName ===
-      "SYNC_BTRGUARD_REPORT_DATA" ||
-
-    actionName ===
-      "SEND_GG_REPORT";
-
-
-  // ============================================================
-  // TIMEOUT CONTROL
-  // ============================================================
-  //
-  // Existing normal requests:
-  //     15 seconds
-  //
-  // BTRGuard report operations:
-  //     180 seconds
-  //
-  // 180 seconds prevents the browser from prematurely
-  // declaring the report operation as null while still
-  // protecting against a genuinely hung request.
-  // ============================================================
-
-  const timeoutMs =
-    isBTRGuardReportAction
-      ? 180000
-      : 15000;
-
-
-  const controller =
-    new AbortController();
-
-
-  const timeout =
-    setTimeout(
-      () => controller.abort(),
-      timeoutMs
-    );
-
-
-  return fetch(
-    GAS_URL,
-    {
-
-      method:
-        "POST",
-
-
-      // ========================================================
-      // FORCE SIMPLE REQUEST
-      // ========================================================
-
-      headers: {
-        "Content-Type":
-          "text/plain;charset=utf-8"
-      },
-
-
-      body:
-        JSON.stringify(
-          {
-            action:
-              action,
-
-            ...payload
-          }
-        ),
-
-
-      signal:
-        controller.signal
-
-    }
-  )
-
-
-  .then(
-    res => {
-
-      clearTimeout(
-        timeout
-      );
-
-
-      // ========================================================
-      // DEBUG STATUS
-      // ========================================================
-
-      console.log(
-        `🌐 ${action} → STATUS:`,
-        res.status
-      );
-
-
-      // GAS may return HTTP 200 even for logical errors.
-      if(
-        !res.ok
-      ){
-
-        console.warn(
-          `⚠ ${action}: HTTP ${res.status}`
-        );
-
-        return null;
-
-      }
-
-
-      return res.text();
-
-    }
-  )
-
-
-  .then(
-    text => {
-
-      // ========================================================
-      // RAW RESPONSE
-      // ========================================================
-
-      console.log(
-        `📦 ${action} RAW:`,
-        text
-      );
-
-
-      if(
-        !text ||
-        text.trim() === ""
-      ){
-
-        console.warn(
-          `⚠ ${action}: Empty response`
-        );
-
-        return null;
-
-      }
-
-
-      let data;
-
-
-      try{
-
-        data =
-          JSON.parse(
-            text
-          );
-
-      }
-      catch(e){
-
-        console.warn(
-          `⚠ ${action}: Invalid JSON`,
-          text
-        );
-
-        return null;
-
-      }
-
-
-      // ========================================================
-      // TRACCAR DETECTION
-      // ========================================================
-      //
-      // EXISTING LOGIC PRESERVED.
-      // ========================================================
-
-      try{
-
-        if(
-          data
-        ){
-
-          const act =
-            (
-              action ||
-              ""
-            )
-              .toUpperCase();
-
-
-          const isTrackingAction =
-            act.includes(
-              "MAP"
-            ) ||
-
-            act.includes(
-              "TRACK"
-            ) ||
-
-            act.includes(
-              "PATROL"
+            clearTimeout(
+                timeout
             );
 
 
-          if(
-            isTrackingAction
-          ){
-
-            // ==================================================
-            // CASE 1 — ARRAY
-            // ==================================================
-
-            if(
-              Array.isArray(
-                data
-              ) &&
-              data.length > 0
-            ){
-
-              markTraccarAlive();
-
-              console.log(
-                "🟢 Traccar Alive (array)"
-              );
-
-            }
+            console.log(
+                `🌐 ${action} → STATUS:`,
+                res.status
+            );
 
 
-            // ==================================================
-            // CASE 2 — OBJECT
-            // ==================================================
+            if(!res.ok){
 
-            else if(
-              typeof data ===
-              "object"
-            ){
-
-              if(
-
-                data.lat !==
-                  undefined ||
-
-                data.latitude !==
-                  undefined ||
-
-                data.lon !==
-                  undefined ||
-
-                data.longitude !==
-                  undefined ||
-
-                data.track !==
-                  undefined ||
-
-                data.positions !==
-                  undefined
-
-              ){
-
-                markTraccarAlive();
-
-                console.log(
-                  "🟢 Traccar Alive (object)"
+                console.warn(
+                    `⚠ ${action}: HTTP ${res.status}`
                 );
 
-              }
+                return null;
 
             }
 
-          }
+
+            return res.text();
 
         }
+    )
 
-      }
-      catch(err){
+    .then(
+        text => {
 
-        console.warn(
-          "⚠ Traccar detection error:",
-          err
-        );
-
-      }
-
-
-      // ========================================================
-      // RETURN ORIGINAL PARSED RESPONSE
-      // ========================================================
-
-      return data;
-
-    }
-  )
+            console.log(
+                `📦 ${action} RAW:`,
+                text
+            );
 
 
-  .catch(
-    err => {
+            if(
+                !text ||
+                text.trim() === ""
+            ){
 
-      clearTimeout(
-        timeout
-      );
+                console.warn(
+                    `⚠ ${action}: Empty response`
+                );
 
+                return null;
 
-      // ========================================================
-      // ERROR HANDLING
-      // ========================================================
-
-      if(
-        err &&
-        err.name ===
-          "AbortError"
-      ){
-
-        console.warn(
-          `⏱ ${action} timeout after ${timeoutMs / 1000}s`
-        );
-
-      }
-      else{
-
-        console.warn(
-          `⚠ ${action} failed:`,
-          err &&
-          err.message
-        );
-
-      }
+            }
 
 
-      // ========================================================
-      // EXISTING CONTRACT PRESERVED
-      // ========================================================
+            let data;
 
-      return null;
 
-    }
-  );
+            try{
 
-}  
-function updateDutyStaff(source = "UNKNOWN"){
+                data =
+                    JSON.parse(
+                        text
+                    );
+
+            }
+            catch(e){
+
+                console.warn(
+                    `⚠ ${action}: Invalid JSON`,
+                    text
+                );
+
+                return null;
+
+            }
+
+
+            // ====================================================
+            // TRACCAR DETECTION
+            // EXISTING BEHAVIOUR PRESERVED
+            // ====================================================
+
+            try{
+
+                if(data){
+
+                    const act =
+                        (
+                            action ||
+                            ""
+                        )
+                        .toUpperCase();
+
+
+                    const isTrackingAction =
+                        act.includes("MAP") ||
+                        act.includes("TRACK") ||
+                        act.includes("PATROL");
+
+
+                    if(
+                        isTrackingAction
+                    ){
+
+                        if(
+                            Array.isArray(data) &&
+                            data.length > 0
+                        ){
+
+                            markTraccarAlive();
+
+                            console.log(
+                                "🟢 Traccar Alive (array)"
+                            );
+
+                        }
+
+                        else
+                        if(
+                            typeof data ===
+                            "object"
+                        ){
+
+                            if(
+                                data.lat !== undefined ||
+                                data.latitude !== undefined ||
+                                data.lon !== undefined ||
+                                data.longitude !== undefined ||
+                                data.track !== undefined ||
+                                data.positions !== undefined
+                            ){
+
+                                markTraccarAlive();
+
+                                console.log(
+                                    "🟢 Traccar Alive (object)"
+                                );
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+            catch(err){
+
+                console.warn(
+                    "⚠ Traccar detection error:",
+                    err
+                );
+
+            }
+
+
+            return data;
+
+        }
+    )
+
+    .catch(
+        err => {
+
+            clearTimeout(
+                timeout
+            );
+
+
+            if(
+                err.name ===
+                "AbortError"
+            ){
+
+                console.warn(
+                    `⏱ ${action} timeout after ${timeoutMs} ms`
+                );
+
+            }
+            else{
+
+                console.warn(
+                    `⚠ ${action} failed:`,
+                    err.message
+                );
+
+            }
+
+
+            return null;
+
+        }
+    );
+
+}function updateDutyStaff(source = "UNKNOWN"){
 
   console.group("👮 updateDutyStaff");
 
