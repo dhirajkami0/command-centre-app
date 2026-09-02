@@ -31498,8 +31498,44 @@ function ggReportCellOccurrences(
     analytics
 ){
 
+    /*
+     * Authoritative occurrence source:
+     *
+     * sessionCellVisits is populated by
+     * collectAnalyticsHit().
+     *
+     * Each entry represents:
+     *
+     * [sessionId, gridId, cellId]
+     *
+     * Therefore the Set size is the number
+     * of unique session-cell visit occurrences.
+     */
+
+    const sessionCellVisits =
+        analytics?.sessionCellVisits;
+
+
+    if(
+        sessionCellVisits instanceof Set
+    ){
+
+        return sessionCellVisits.size;
+
+    }
+
+
+    /*
+     * Compatibility fallback.
+     *
+     * Preserve support for any existing
+     * analytics objects that still provide
+     * sessionCellVisitMap.
+     */
+
     const map =
         analytics?.sessionCellVisitMap;
+
 
     if(
         map &&
@@ -31509,6 +31545,7 @@ function ggReportCellOccurrences(
     ){
 
         let count = 0;
+
 
         Object.values(
             map
@@ -31528,6 +31565,7 @@ function ggReportCellOccurrences(
                     return;
                 }
 
+
                 if(
                     sessionCells &&
                     typeof sessionCells ===
@@ -31538,26 +31576,27 @@ function ggReportCellOccurrences(
                         Object.keys(
                             sessionCells
                         ).length;
-
                 }
 
             }
         );
 
+
         return count;
 
     }
 
+
     /*
      * Safe fallback.
-
-     * If sessionCellVisitMap is unavailable, do not fabricate an
-     * occurrence count from unique monthly coverage.
+     *
+     * Never fabricate occurrences from
+     * unique-cell coverage or visit count.
      */
+
     return 0;
 
 }
-
 
 /* ================================================================
    11. UNIQUE MONTHLY CELLS
