@@ -33140,8 +33140,285 @@ async function ggReportDailyDistanceForGrid(
 /* ================================================================
    22. BUILD ONE DAILY REPORT
    ================================================================ */
+/* ================================================================
+   BTRGUARD DAILY EVENT INDEX
+   ---------------------------------------------------------------
+   Performance-only optimization.
+
+   Existing event matching semantics are preserved:
+
+   • Elephant sightings → local sightingsCache
+   • Wildlife sightings → local wildlifeCache
+   • Offences → local irregularityIDBIndex
+   • Date filtering remains identical
+   • GIS hierarchy matching remains local
+   • No Firestore access
+   ================================================================ */
+
+function ggReportBuildDailyEventCountIndex(
+    cache,
+    startMs,
+    endMs
+){
+
+    const index =
+        new Map();
+
+
+    ggReportCacheArray(
+        cache
+    )
+    .forEach(
+        record => {
+
+            const ts =
+                ggReportEventTimestamp(
+                    record
+                );
+
+
+            if(
+                !Number.isFinite(ts) ||
+                ts < startMs ||
+                ts > endMs
+            ){
+
+                return;
+
+            }
+
+
+            const hierarchy =
+                ggReportEventHierarchy(
+                    record
+                );
+
+
+            /*
+             * Compartment is required by the existing
+             * ggReportEventMatches() logic.
+             */
+            const compartment =
+                ggReportUpper(
+                    hierarchy.compartment
+                );
+
+
+            if(
+                !compartment
+            ){
+
+                return;
+
+            }
+
+
+            /*
+             * Existing matcher treats missing
+             * division/range/beat on the EVENT as
+             * a wildcard.
+             *
+             * Therefore store "*" for missing
+             * event hierarchy values.
+             */
+            const division =
+                hierarchy.division
+                    ? ggReportUpper(
+                        hierarchy.division
+                      )
+                    : "*";
+
+
+            const range =
+                hierarchy.range
+                    ? ggReportUpper(
+                        hierarchy.range
+                      )
+                    : "*";
+
+
+            const beat =
+                hierarchy.beat
+                    ? ggReportUpper(
+                        hierarchy.beat
+                      )
+                    : "*";
+
+
+            const key =
+                [
+                    division,
+                    range,
+                    beat,
+                    compartment
+                ]
+                .join("|");
+
+
+            index.set(
+                key,
+                (
+                    index.get(key) ||
+                    0
+                ) + 1
+            );
+
+        }
+    );
+
+
+    return index;
+
+}
+
 
 /* ================================================================
+   BTRGUARD DAILY EVENT LOOKUP
+   ================================================================ */
+
+function ggReportLookupDailyEventCount(
+    index,
+    hierarchy
+){
+
+    /*
+     * If the report hierarchy itself is incomplete,
+     * preserve the old matching implementation.
+     */
+    if(
+        !hierarchy ||
+        !hierarchy.division ||
+        !hierarchy.range ||
+        !hierarchy.beat ||
+        !hierarchy.compartment
+    ){
+
+        return null;
+
+    }
+
+
+    const division =
+        ggReportUpper(
+            hierarchy.division
+        );
+
+
+    const range =
+        ggReportUpper(
+            hierarchy.range
+        );
+
+
+    const beat =
+        ggReportUpper(
+            hierarchy.beat
+        );
+
+
+    const compartment =
+        ggReportUpper(
+            hierarchy.compartment
+        );
+
+
+    if(
+        !compartment
+    ){
+
+        return 0;
+
+    }
+
+
+    let count =
+        0;
+
+
+    /*
+     * Event hierarchy may omit:
+     *
+     *   division
+     *   range
+     *   beat
+     *
+     * Existing matching treats those missing event
+     * values as wildcards.
+     *
+     * Query all eight possible wildcard combinations.
+     */
+    for(
+        let mask = 0;
+        mask < 8;
+        mask++
+    ){
+
+        const key =
+            [
+                mask & 1
+                    ? "*"
+                    : division,
+
+                mask & 2
+                    ? "*"
+                    : range,
+
+                mask & 4
+                    ? "*"
+                    : beat,
+
+                compartment
+            ]
+            .join("|");
+
+
+        count +=
+            index.get(key) ||
+            0;
+
+    }
+
+
+    return count;
+
+}
+
+
+/* ================================================================
+   BTRGUARD DAILY EVENT INDEX SET
+   ================================================================ */
+
+function ggReportBuildDailyEventIndexes(
+    startMs,
+    endMs
+){
+
+    return {
+
+        elephant:
+            ggReportBuildDailyEventCountIndex(
+                window.sightingsCache || {},
+                startMs,
+                endMs
+            ),
+
+        wildlife:
+            ggReportBuildDailyEventCountIndex(
+                window.wildlifeCache || {},
+                startMs,
+                endMs
+            ),
+
+        offences:
+            ggReportBuildDailyEventCountIndex(
+                window.irregularityIDBIndex || {},
+                startMs,
+                endMs
+            )
+
+    };
+
+}/* ================================================================
    22. BUILD ONE DAILY REPORT
    ================================================================ */
 
@@ -33171,21 +33448,26 @@ async function ggReportBuildDaily(
         ggReportGetMasterRows();
 
 
-    // ============================================================
-    // EXISTING PATROL INDEX
-    //
-    // Retained for compatibility/fallback only.
-    // ============================================================
+// ============================================================
+// PERFORMANCE
+//
+// The old ggReportBuildPatrolIndex() pass was only retained
+// for compatibility and its result was never consumed by the
+// current daily builder.
+//
+// Do NOT rebuild the legacy patrol index here.
+//
+// The authoritative daily data continues to come from:
+//   • ggReportCellOccurrences
+//   • IndexedDB distance_segments
+//   • local elephant cache
+//   • local wildlife cache
+//   • local irregularity cache
+//
+// No Firestore read is introduced.
+// ============================================================
 
-    const patrolIndex =
-        ggReportBuildPatrolIndex();
-
-
-    // Prevent unused-variable issues while retaining
-    // the existing compatibility call/flow.
-    void patrolIndex;
-
-
+const patrolIndex = null;
     // ============================================================
     // TIMESTAMPED CELL OCCURRENCE CACHE
     //
@@ -33377,6 +33659,21 @@ const dailyDistanceIndex =
         startMs,
         endMs
     );
+
+// ============================================================
+// DAILY EVENT INDEXES
+//
+// Build each event cache once.
+// Do NOT rescan the complete event cache for every
+// compartment row.
+// ============================================================
+
+const dailyEventIndexes =
+    ggReportBuildDailyEventIndexes(
+        startMs,
+        endMs
+    );
+
     // ============================================================
     // BUILD DAILY COMPARTMENT ROWS
     // ============================================================
@@ -33573,29 +33870,79 @@ row.distanceKm =
         // DAILY EVENT COUNTS
         // ========================================================
 
-        row.elephantSightings =
-            ggReportCountElephants(
-                masterRow,
-                startMs,
-                endMs
-            );
+// ========================================================
+// DAILY EVENT COUNTS
+//
+// Indexed once before the compartment loop.
+// Each compartment now performs direct index lookups
+// instead of rescanning the complete event caches.
+// ========================================================
+
+const elephantCount =
+    ggReportLookupDailyEventCount(
+        dailyEventIndexes.elephant,
+        masterRow
+    );
 
 
-        row.otherWildlifeSightings =
-            ggReportCountWildlife(
-                masterRow,
-                startMs,
-                endMs
-            );
+const wildlifeCount =
+    ggReportLookupDailyEventCount(
+        dailyEventIndexes.wildlife,
+        masterRow
+    );
 
 
-        row.offencesDetected =
-            ggReportCountOffences(
-                masterRow,
-                startMs,
-                endMs
-            );
+const offenceCount =
+    ggReportLookupDailyEventCount(
+        dailyEventIndexes.offences,
+        masterRow
+    );
 
+
+/*
+ * Preserve the existing event-matching implementation
+ * as a safety fallback when a hierarchy is incomplete.
+ */
+row.elephantSightings =
+    elephantCount === null
+        ? ggReportCountElephants(
+            masterRow,
+            startMs,
+            endMs
+          )
+        : Math.round(
+            Number(
+                elephantCount
+            ) || 0
+          );
+
+
+row.otherWildlifeSightings =
+    wildlifeCount === null
+        ? ggReportCountWildlife(
+            masterRow,
+            startMs,
+            endMs
+          )
+        : Math.round(
+            Number(
+                wildlifeCount
+            ) || 0
+          );
+
+
+row.offencesDetected =
+    offenceCount === null
+        ? ggReportCountOffences(
+            masterRow,
+            startMs,
+            endMs
+          )
+        : Math.round(
+            Number(
+                offenceCount
+            ) || 0
+          );
 
         // ========================================================
         // FINALIZE DAILY ROW
