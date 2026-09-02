@@ -34615,6 +34615,61 @@ async function ggReportBuildMonthly(
 
     const accumulated = {};
 
+    /*
+     * ============================================================
+     * BTR DIVISION CANONICALIZATION
+     *
+     * BTR_E       = BuxaTR_EAST
+     * BTR_W       = BuxaTR_WEST
+     *
+     * Monthly reports must contain BTR divisions only.
+     * Older persisted daily snapshots may still contain
+     * Gorumara / Jaldapara / other legacy rows.
+     * ============================================================
+     */
+
+    function canonicalBTRDivision(
+        division
+    ){
+
+        const value =
+            String(
+                division || ""
+            )
+            .trim()
+            .toUpperCase();
+
+        if(
+            value === "BTR_E" ||
+            value === "BUXATR_EAST"
+        ){
+            return "BTR_E";
+        }
+
+        if(
+            value === "BTR_W" ||
+            value === "BUXATR_WEST"
+        ){
+            return "BTR_W";
+        }
+
+        return "";
+    }
+
+
+    /*
+     * ============================================================
+     * MERGE ONLY BTR DAILY ROWS
+     *
+     * Important:
+     *
+     * Existing IndexedDB daily snapshots can contain the old
+     * 329-row master scope.
+     *
+     * Therefore they MUST NOT be merged wholesale.
+     * ============================================================
+     */
+
     dailyReports
         .sort(
             (
@@ -34633,22 +34688,84 @@ async function ggReportBuildMonthly(
         .forEach(
             dailyReport => {
 
+                const btrRows =
+                    (
+                        dailyReport.rows ||
+                        []
+                    )
+                    .filter(
+                        dailyRow => {
+
+                            return !!canonicalBTRDivision(
+                                dailyRow?.division
+                            );
+
+                        }
+                    )
+                    .map(
+                        dailyRow => {
+
+                            /*
+                             * Normalize the division name so
+                             * BuxaTR_EAST / BTR_E become BTR_E
+                             * and BuxaTR_WEST / BTR_W become BTR_W.
+                             */
+
+                            const canonicalDivision =
+                                canonicalBTRDivision(
+                                    dailyRow.division
+                                );
+
+                            return {
+                                ...dailyRow,
+
+                                division:
+                                    canonicalDivision
+                            };
+
+                        }
+                    );
+
                 ggReportMergeDailyRows(
                     accumulated,
-                    dailyReport.rows || []
+                    btrRows
                 );
 
             }
         );
 
-    const masterRows =
-        ggReportGetMasterRows();
 
     /*
-     * Add static GIS rows which may not yet have activity.
+     * ============================================================
+     * MASTER ROWS
+     *
+     * ggReportGetMasterRows() is already authoritative and
+     * currently returns the 218 BTR rows.
+     *
+     * Add static GIS rows only for those BTR master rows.
+     * ============================================================
      */
+
+    const masterRows =
+        ggReportGetMasterRows()
+        .filter(
+            masterRow => {
+
+                return !!canonicalBTRDivision(
+                    masterRow?.division
+                );
+
+            }
+        );
+
+
     masterRows.forEach(
         masterRow => {
+
+            const canonicalDivision =
+                canonicalBTRDivision(
+                    masterRow.division
+                );
 
             if(
                 !accumulated[
@@ -34663,6 +34780,9 @@ async function ggReportBuildMonthly(
                     ...ggReportEmptyRow(
                         masterRow
                     ),
+
+                    division:
+                        canonicalDivision,
 
                     totalVisits:
                         0,
@@ -34691,13 +34811,49 @@ async function ggReportBuildMonthly(
                 };
 
             }
+            else {
+
+                /*
+                 * Ensure an existing accumulated master row also
+                 * carries the canonical BTR division.
+                 */
+
+                accumulated[
+                    masterRow.gridId
+                ].division =
+                    canonicalDivision;
+
+            }
 
         }
     );
 
+
+    /*
+     * ============================================================
+     * BUILD FINAL ROWS
+     * ============================================================
+     */
+
     const rows =
         Object.values(
             accumulated
+        )
+        .filter(
+            row => {
+
+                /*
+                 * Final hard scope guard.
+                 *
+                 * Even if an unexpected legacy row somehow entered
+                 * accumulated, it cannot enter the monthly report.
+                 */
+
+                return !!canonicalBTRDivision(
+                    row?.division
+                );
+
+            }
         )
         .map(
             row => {
@@ -34737,7 +34893,9 @@ async function ggReportBuildMonthly(
                         row.gridId,
 
                     division:
-                        row.division,
+                        canonicalBTRDivision(
+                            row.division
+                        ),
 
                     range:
                         row.range,
@@ -34882,6 +35040,13 @@ async function ggReportBuildMonthly(
             }
         );
 
+
+    /*
+     * ============================================================
+     * FINAL REPORT
+     * ============================================================
+     */
+
     return {
 
         reportType:
@@ -34906,7 +35071,6 @@ async function ggReportBuildMonthly(
     };
 
 }
-
 
 /* ================================================================
    28. CSV ESCAPE
