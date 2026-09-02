@@ -31494,7 +31494,7 @@ function ggReportDistance(
 
    ================================================================ */
 
-function ggReportCellOccurrences(
+function ggReportCountSessionCellOccurrences(
     analytics
 ){
 
@@ -31591,13 +31591,12 @@ function ggReportCellOccurrences(
      * Safe fallback.
      *
      * Never fabricate occurrences from
-     * unique-cell coverage or visit count.
+     * unique monthly coverage.
      */
 
     return 0;
 
 }
-
 /* ================================================================
    11. UNIQUE MONTHLY CELLS
    ================================================================ */
@@ -31743,9 +31742,9 @@ function ggReportBuildPatrolIndex(){
                 );
 
             const occurrenceCount =
-                ggReportCellOccurrences(
-                    analytics
-                );
+                ggReportCountSessionCellOccurrences(
+    analytics
+)
 
             const distanceMeters =
                 ggReportDistance(
