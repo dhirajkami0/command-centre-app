@@ -21028,14 +21028,18 @@ function getTouchedCells(
 async function updateMonthlyAnalyticsRebuild(
 
     gridId,
-    localCoordsArray,
-    monthKey,
-    authoritativeTouchedCells,
-    visitSessions,
-    sessionCellVisits,
-    distanceSegments
 
-){ // ============================================================
+    localCoordsArray,
+
+    monthKey,
+
+    authoritativeTouchedCells,
+
+    visitSessions,
+
+    sessionCellVisits
+
+){  // ============================================================
   // PURPOSE
   //
   // Update ONE compartment/month analytics document.
@@ -21317,236 +21321,6 @@ else if(
     }
 
 }
-
-
-// ============================================================
-// 🔥 AUTHORITATIVE DISTANCE SEGMENTS
-//
-// Distance must come from the already-created GPS segments.
-//
-// IMPORTANT:
-// We do NOT calculate the complete coordinate-array distance
-// and assign it to every supplied patrol session.
-//
-// Each segment already belongs to one real session.
-// ============================================================
-
-const suppliedDistanceSegments =
-    Array.isArray(
-        distanceSegments
-    )
-        ? distanceSegments
-            .filter(
-                segment => {
-
-                    if(
-                        !segment ||
-                        typeof segment !== "object"
-                    ){
-                        return false;
-                    }
-
-                    const segmentGridId =
-                        String(
-                            segment.gridId ||
-                            ""
-                        ).trim();
-
-                    return (
-                        segmentGridId ===
-                        String(
-                            gridId
-                        ).trim()
-                    );
-
-                }
-            )
-        : [];
-
-
-// ============================================================
-// 🔒 DEDUPLICATE SEGMENTS INSIDE THIS FLUSH
-//
-// Use the SAME identity scheme already used when the segment
-// was created in collectAnalyticsHit().
-//
-// Timestamp is intentionally NOT used.
-//
-// grid + session + from/to coordinates + distance
-// ============================================================
-
-const distanceSegmentMap =
-    new Map();
-
-for(
-    const segment
-    of suppliedDistanceSegments
-){
-
-    const sessionId =
-        String(
-            segment.sessionId ||
-            ""
-        ).trim();
-
-    const fromLat =
-        Number(
-            segment.fromLat
-        );
-
-    const fromLon =
-        Number(
-            segment.fromLon
-        );
-
-    const toLat =
-        Number(
-            segment.toLat
-        );
-
-    const toLon =
-        Number(
-            segment.toLon
-        );
-
-    const segmentDistance =
-        Number(
-            segment.distanceMeters
-        );
-
-
-    if(
-        !sessionId ||
-        !Number.isFinite(fromLat) ||
-        !Number.isFinite(fromLon) ||
-        !Number.isFinite(toLat) ||
-        !Number.isFinite(toLon) ||
-        !Number.isFinite(segmentDistance) ||
-        segmentDistance < 0
-    ){
-        continue;
-    }
-
-
-    const segmentKey =
-        [
-            String(
-                gridId
-            ),
-
-            sessionId,
-
-            fromLat.toFixed(7),
-            fromLon.toFixed(7),
-
-            toLat.toFixed(7),
-            toLon.toFixed(7),
-
-            segmentDistance.toFixed(3)
-
-        ].join("|");
-
-
-    if(
-        !distanceSegmentMap.has(
-            segmentKey
-        )
-    ){
-
-        distanceSegmentMap.set(
-            segmentKey,
-            {
-                sessionId,
-                distanceMeters:
-                    segmentDistance
-            }
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// 🔥 BUILD DISTANCE BY REAL PATROL SESSION
-// ============================================================
-
-const suppliedSessionDistances =
-    {};
-
-for(
-    const segment
-    of distanceSegmentMap.values()
-){
-
-    const sessionId =
-        segment.sessionId;
-
-    const value =
-        Number(
-            segment.distanceMeters
-        );
-
-    if(
-        !Number.isFinite(
-            value
-        ) ||
-        value < 0
-    ){
-        continue;
-    }
-
-    suppliedSessionDistances[
-        sessionId
-    ] =
-        Number(
-            suppliedSessionDistances[
-                sessionId
-            ] || 0
-        )
-        +
-        value;
-
-}
-
-
-// ============================================================
-// SAFE DISTANCE TOTAL FOR THIS FLUSH
-// ============================================================
-
-const suppliedDistanceTotal =
-    Object.values(
-        suppliedSessionDistances
-    )
-    .reduce(
-        (
-            sum,
-            value
-        ) => {
-
-            const n =
-                Number(
-                    value
-                );
-
-            return (
-                sum +
-                (
-                    Number.isFinite(n)
-                        ? Math.max(
-                            0,
-                            n
-                        )
-                        : 0
-                )
-            );
-
-        },
-        0
-    );
-
-
-
 
   // ============================================================
   // FALLBACK TRAVERSAL
@@ -22313,130 +22087,62 @@ for(
 // Repeated flushes overwrite, never accumulate.
 // ====================================================
 
-// ============================================================
-// 🔥 SESSION-OWNED DISTANCE
-//
-// IMPORTANT FIX
-//
-// NEVER assign the complete grid/path distance to every
-// supplied session.
-//
-// Distance is now owned by the actual sessionId carried by
-// each authoritative distance segment.
-//
-// Repeated processing of the same segment inside this
-// transaction is deduplicated.
-// ============================================================
-
 const existingSessionDistances =
+
     (
         existing.sessionDistances &&
         typeof existing.sessionDistances === "object" &&
-        !Array.isArray(
-            existing.sessionDistances
-        )
+        !Array.isArray(existing.sessionDistances)
     )
-        ? {
-            ...existing.sessionDistances
-        }
-        : {};
 
+    ? {
 
-// ============================================================
-// 🔥 APPLY ONLY SESSION-OWNED SEGMENTS
-//
-// Existing session totals are preserved.
-//
-// A supplied session gets its actual segment contribution,
-// not the entire grid coordinate-path distance.
-// ============================================================
+        ...existing.sessionDistances
 
-for(
-    const sessionKey
-    of Object.keys(
-        suppliedSessionDistances
-    )
-){
-
-    const contribution =
-        Number(
-            suppliedSessionDistances[
-                sessionKey
-            ]
-        );
-
-    if(
-        !Number.isFinite(
-            contribution
-        ) ||
-        contribution <= 0
-    ){
-        continue;
     }
 
+    : {};
 
-    /*
-     * IMPORTANT:
-     *
-     * This flush represents the authoritative segment set
-     * currently being committed.
-     *
-     * Do NOT overwrite an existing session total with the
-     * current coordinate-path distance.
-     *
-     * Instead, add only the newly supplied physical segment
-     * contribution.
-     */
+const safeDistance =
+
+    Number.isFinite(distanceMeters)
+
+    ? Math.max(0, distanceMeters)
+
+    : 0;
+
+for(
+
+    const sessionKey of suppliedVisitSessions
+
+){
+
     existingSessionDistances[
         sessionKey
-    ] =
-        Number(
-            existingSessionDistances[
-                sessionKey
-            ] || 0
-        )
-        +
-        contribution;
+    ] = safeDistance;
 
 }
 
-
-// ============================================================
-// 🔒 SAFE TOTAL
-// ============================================================
-
 const nextDistance =
+
     Object.values(
+
         existingSessionDistances
+
     )
+
     .reduce(
-        (
-            sum,
-            value
-        ) => {
 
-            const numericValue =
-                Number(
-                    value
-                );
+        (sum,value)=>
 
-            return (
-                sum +
-                (
-                    Number.isFinite(
-                        numericValue
-                    )
-                        ? Math.max(
-                            0,
-                            numericValue
-                        )
-                        : 0
-                )
-            );
+            sum +
 
-        },
+            Number(value || 0),
+
         0
+
     );
+
           // ====================================================
           // DOCUMENT
           // ====================================================
@@ -22553,25 +22259,34 @@ previousCoveredCells:
 
           return {
 
-    gridId,
-    isFirstVisitThisMonth,
-    newlyAddedVisits,
-    newlyAddedVisitKeys,
-    newlyAddedCells,
-    previousCoveredCount,
-    totalCoveredCount,
-    previousVisitCount:
-        safePreviousVisitCount,
-    nextVisitCount,
+            gridId,
 
-    acceptedCells:
+            isFirstVisitThisMonth,
+
+            newlyAddedVisits,
+
+            newlyAddedVisitKeys,
+
+            newlyAddedCells,
+
+            previousCoveredCount,
+
+            totalCoveredCount,
+
+            previousVisitCount:
+              safePreviousVisitCount,
+
+            nextVisitCount,
+
+                acceptedCells:
         touchedCells.size,
 
     sessionCellVisits:
         suppliedSessionCellVisits.size,
 
     distanceMeters:
-        nextDistance
+        safeDistance
+
           };
 
         }
@@ -37004,863 +36719,116 @@ console.log(
     "✅ GG REPORT ENGINE LOADED"
 );
 function calculateMonthlyStatusFromRealtimeAnalytics() {
+  const analyticsByGrid = window.monthlyAnalyticsRealtime?.analyticsByGrid || {};
 
-    const analyticsByGrid =
-        window.monthlyAnalyticsRealtime?.analyticsByGrid || {};
+  // ============================================================
+  // 1. RESOLVE CURRENT GIS CONTEXT FIRST
+  // ============================================================
+  const level = String(window.activePopupContext?.level || "btr").toLowerCase();
+  const filterValue =
+    level === "compartment" ? window.gisFilter?.compartment :
+    level === "beat" ? window.gisFilter?.beat :
+    level === "range" ? window.gisFilter?.range :
+    level === "division" ? window.gisFilter?.division : "";
 
+  let requestedGridIds = [];
 
-    // ============================================================
-    // 1. RESOLVE CURRENT GIS CONTEXT FIRST
-    // ============================================================
+  try {
+    const resolved = getAnalyticsGridIds(level, filterValue);
+    if (Array.isArray(resolved)) {
+      requestedGridIds = resolved.filter(Boolean);
+    } else if (resolved instanceof Set) {
+      requestedGridIds = [...resolved].filter(Boolean);
+    }
+  } catch (err) {
+    console.warn("⚠ Realtime grid resolution failed:", err);
+    requestedGridIds = Object.keys(window.masterGrid || {});
+  }
 
-    const level =
-        String(
-            window.activePopupContext?.level || "btr"
-        ).toLowerCase();
+  // ============================================================
+  // 2. MASTER GRID TOTALS (Across all requested compartments in boundary)
+  // ============================================================
+  let totalCells = 0;
+  let areaHa = 0;
 
+  for (const gridId of requestedGridIds) {
+    const master = window.masterGrid?.[gridId];
+    if (!master) continue;
 
-    const filterValue =
-        level === "compartment"
-            ? window.gisFilter?.compartment
-            : level === "beat"
-            ? window.gisFilter?.beat
-            : level === "range"
-            ? window.gisFilter?.range
-            : level === "division"
-            ? window.gisFilter?.division
-            : "";
+    const cells = Number(master.totalCells || 0);
+    const area = Number(master.actualAreaHa || 0);
 
+    if (Number.isFinite(cells)) totalCells += Math.max(0, cells);
+    if (Number.isFinite(area)) areaHa += Math.max(0, area);
+  }
 
-    let requestedGridIds = [];
+  // ============================================================
+  // 3. AGGREGATE ACTIVITY DELTAS
+  // ============================================================
+  let distanceMeters = 0;
+  let visitCount = 0;
+  let visitedCompartments = 0;
+  const uniqueVisitedCells = new Set();
+  let latestUpdatedAt = 0;
 
+  requestedGridIds.forEach(gridId => {
+    const analytics = analyticsByGrid[gridId];
+    if (!analytics) return;
 
+    visitedCompartments++;
+
+    const distance = Number(analytics.distanceMeters || 0);
+    if (Number.isFinite(distance)) distanceMeters += Math.max(0, distance);
+
+    const visits = Number(analytics.visitCount || 0);
+    if (Number.isFinite(visits)) visitCount += Math.max(0, visits);
+
+    const visitedCells = analytics.visitedCells && typeof analytics.visitedCells === "object" && !Array.isArray(analytics.visitedCells)
+      ? analytics.visitedCells
+      : {};
+
+    Object.keys(visitedCells).forEach(cellId => {
+      uniqueVisitedCells.add(`${gridId}_${cellId}`);
+    });
+
+    let updatedAtMs = 0;
     try {
-
-        const resolved =
-            getAnalyticsGridIds(
-                level,
-                filterValue
-            );
-
-
-        if (
-            Array.isArray(resolved)
-        ) {
-
-            requestedGridIds =
-                resolved.filter(Boolean);
-
-        }
-
-        else if (
-            resolved instanceof Set
-        ) {
-
-            requestedGridIds =
-                [...resolved].filter(Boolean);
-
-        }
-
+      if (typeof analytics?.updatedAt?.toMillis === "function") {
+        updatedAtMs = analytics.updatedAt.toMillis();
+      } else if (analytics?.updatedAt?.seconds) {
+        updatedAtMs = Number(analytics.updatedAt.seconds) * 1000;
+      } else if (analytics.updatedAt) {
+        updatedAtMs = new Date(analytics.updatedAt).getTime();
+      }
+    } catch (e) {
+      updatedAtMs = 0;
     }
 
-    catch (err) {
-
-        console.warn(
-            "⚠ Realtime grid resolution failed:",
-            err
-        );
-
-
-        requestedGridIds =
-            Object.keys(
-                window.masterGrid || {}
-            );
-
+    if (Number.isFinite(updatedAtMs)) {
+      latestUpdatedAt = Math.max(latestUpdatedAt, updatedAtMs);
     }
-
-
-    // ============================================================
-    // FAST GRID LOOKUP
-    // ============================================================
-
-    const requestedGridSet =
-        new Set(
-            requestedGridIds
-        );
-
-
-    // ============================================================
-    // 2. MASTER GRID TOTALS
-    // ============================================================
-
-    let totalCells = 0;
-    let areaHa = 0;
-
-
-    for (
-        const gridId of requestedGridIds
-    ) {
-
-        const master =
-            window.masterGrid?.[gridId];
-
-
-        if (!master) continue;
-
-
-        const cells =
-            Number(
-                master.totalCells || 0
-            );
-
-
-        const area =
-            Number(
-                master.actualAreaHa || 0
-            );
-
-
-        if (
-            Number.isFinite(cells)
-        ) {
-
-            totalCells +=
-                Math.max(
-                    0,
-                    cells
-                );
-
-        }
-
-
-        if (
-            Number.isFinite(area)
-        ) {
-
-            areaHa +=
-                Math.max(
-                    0,
-                    area
-                );
-
-        }
-
-    }
-
-
-    // ============================================================
-    // 3. ACTIVITY DELTAS
-    // ============================================================
-
-    let visitCount = 0;
-
-    let visitedCompartments = 0;
-
-    const uniqueVisitedCells =
-        new Set();
-
-    let latestUpdatedAt = 0;
-
-
-    for (
-        const gridId of requestedGridIds
-    ) {
-
-        const analytics =
-            analyticsByGrid[gridId];
-
-
-        if (!analytics) continue;
-
-
-        visitedCompartments++;
-
-
-        // ========================================================
-        // IMPORTANT:
-        //
-        // DO NOT READ:
-        //
-        // analytics.distanceMeters
-        //
-        // That value is grid aggregated and can contain the same
-        // physical patrol path multiple times across grids.
-        //
-        // Monthly Status distance is calculated separately below
-        // from sessionPointCache.
-        // ========================================================
-
-
-        const visits =
-            Number(
-                analytics.visitCount || 0
-            );
-
-
-        if (
-            Number.isFinite(visits)
-        ) {
-
-            visitCount +=
-                Math.max(
-                    0,
-                    visits
-                );
-
-        }
-
-
-        // ========================================================
-        // VISITED CELLS
-        // ========================================================
-
-        const visitedCells =
-            analytics.visitedCells &&
-            typeof analytics.visitedCells === "object" &&
-            !Array.isArray(
-                analytics.visitedCells
-            )
-                ? analytics.visitedCells
-                : {};
-
-
-        Object.keys(
-            visitedCells
-        ).forEach(
-            cellId => {
-
-                uniqueVisitedCells.add(
-                    `${gridId}_${cellId}`
-                );
-
-            }
-        );
-
-
-        // ========================================================
-        // UPDATED TIME
-        // ========================================================
-
-        let updatedAtMs = 0;
-
-
-        try {
-
-            if (
-                typeof analytics?.updatedAt?.toMillis ===
-                "function"
-            ) {
-
-                updatedAtMs =
-                    analytics.updatedAt.toMillis();
-
-            }
-
-            else if (
-                analytics?.updatedAt?.seconds
-            ) {
-
-                updatedAtMs =
-                    Number(
-                        analytics.updatedAt.seconds
-                    ) * 1000;
-
-            }
-
-            else if (
-                analytics.updatedAt
-            ) {
-
-                updatedAtMs =
-                    new Date(
-                        analytics.updatedAt
-                    ).getTime();
-
-            }
-
-        }
-
-        catch (e) {
-
-            updatedAtMs = 0;
-
-        }
-
-
-        if (
-            Number.isFinite(
-                updatedAtMs
-            )
-        ) {
-
-            latestUpdatedAt =
-                Math.max(
-                    latestUpdatedAt,
-                    updatedAtMs
-                );
-
-        }
-
-    }
-
-
-    // ============================================================
-    // 4. AUTHORITATIVE PATROL DISTANCE
-    //
-    // SOURCE:
-    //
-    // patrol_tracks/{sessionId}/points
-    //          ↓
-    // sessionPointCache[sessionId]
-    //          ↓
-    // latest cumulative distance
-    //
-    // ONE SESSION = ONE DISTANCE
-    //
-    // This completely bypasses:
-    //
-    // analyticsByGrid[gridId].distanceMeters
-    //
-    // Therefore a session crossing multiple grids cannot multiply
-    // its distance.
-    // ============================================================
-
-    let distanceMeters = 0;
-
-
-    const sessionDistanceMap =
-        new Map();
-
-
-    const sessionPointCache =
-        window.sessionPointCache || {};
-
-
-    try {
-
-        Object.entries(
-            sessionPointCache
-        ).forEach(
-            (
-                [
-                    sessionId,
-                    cachedPoints
-                ]
-            ) => {
-
-
-                // ==================================================
-                // BASIC VALIDATION
-                // ==================================================
-
-                if (
-                    !sessionId ||
-                    !cachedPoints ||
-                    typeof cachedPoints !==
-                        "object"
-                ) {
-
-                    return;
-
-                }
-
-
-                const points =
-                    Array.isArray(
-                        cachedPoints
-                    )
-                        ? cachedPoints
-                        : Object.values(
-                            cachedPoints
-                        );
-
-
-                if (
-                    !points.length
-                ) {
-
-                    return;
-
-                }
-
-
-                // ==================================================
-                // DETERMINE WHETHER THIS SESSION BELONGS TO
-                // CURRENT GIS CONTEXT
-                // ==================================================
-
-                let hasRequestedGrid =
-                    false;
-
-                let hasGridIdentity =
-                    false;
-
-
-                for (
-                    const point of points
-                ) {
-
-                    const pointGridId =
-                        String(
-                            point?.gridId ||
-                            point?.gridID ||
-                            point?.grid ||
-                            ""
-                        ).trim();
-
-
-                    if (
-                        pointGridId
-                    ) {
-
-                        hasGridIdentity = true;
-
-
-                        if (
-                            requestedGridSet.has(
-                                pointGridId
-                            )
-                        ) {
-
-                            hasRequestedGrid =
-                                true;
-
-                            break;
-
-                        }
-
-                    }
-
-                }
-
-
-                // ==================================================
-                // FILTERED LEVELS
-                //
-                // If the track explicitly identifies its grid(s),
-                // exclude sessions outside the selected GIS area.
-                //
-                // For BTR, retain all sessions.
-                //
-                // If no grid identity exists, retain the session
-                // because sessionPointCache itself is the
-                // authoritative session-distance store.
-                // ==================================================
-
-                if (
-                    level !== "btr" &&
-                    hasGridIdentity &&
-                    !hasRequestedGrid
-                ) {
-
-                    return;
-
-                }
-
-
-                // ==================================================
-                // FIND LATEST VALID CUMULATIVE DISTANCE POINT
-                //
-                // NEVER SUM PATROL POINTS.
-                //
-                // We only use the latest cumulative value belonging
-                // to this session.
-                // ==================================================
-
-                let latestPoint =
-                    null;
-
-
-                let latestTimestamp =
-                    -Infinity;
-
-
-                for (
-                    const point of points
-                ) {
-
-                    const distanceKm =
-                        Number(
-                            point?.distanceCoveredKm
-                        );
-
-
-                    const distanceM =
-                        Number(
-                            point?.distanceCoveredMeters
-                        );
-
-
-                    const validDistance =
-                        (
-                            Number.isFinite(
-                                distanceKm
-                            ) &&
-                            distanceKm >= 0
-                        )
-                        ||
-                        (
-                            Number.isFinite(
-                                distanceM
-                            ) &&
-                            distanceM >= 0
-                        );
-
-
-                    if (
-                        !validDistance
-                    ) {
-
-                        continue;
-
-                    }
-
-
-                    // ==================================================
-                    // TIMESTAMP
-                    // ==================================================
-
-                    let timestamp = 0;
-
-
-                    try {
-
-                        if (
-                            typeof point?.timestamp?.toMillis ===
-                            "function"
-                        ) {
-
-                            timestamp =
-                                point.timestamp.toMillis();
-
-                        }
-
-                        else if (
-                            point?.timestamp?.seconds
-                        ) {
-
-                            timestamp =
-                                Number(
-                                    point.timestamp.seconds
-                                ) * 1000;
-
-                        }
-
-                        else {
-
-                            timestamp =
-                                Number(
-                                    point?.timestamp ??
-                                    point?.time ??
-                                    point?.lastSeen ??
-                                    0
-                                );
-
-                        }
-
-                    }
-
-                    catch (e) {
-
-                        timestamp = 0;
-
-                    }
-
-
-                    if (
-                        !Number.isFinite(
-                            timestamp
-                        )
-                    ) {
-
-                        timestamp = 0;
-
-                    }
-
-
-                    if (
-                        timestamp >=
-                        latestTimestamp
-                    ) {
-
-                        latestTimestamp =
-                            timestamp;
-
-                        latestPoint =
-                            point;
-
-                    }
-
-                }
-
-
-                if (
-                    !latestPoint
-                ) {
-
-                    return;
-
-                }
-
-
-                // ==================================================
-                // PREFER CUMULATIVE KM
-                // ==================================================
-
-                let sessionDistanceMeters =
-                    NaN;
-
-
-                const distanceKm =
-                    Number(
-                        latestPoint
-                            ?.distanceCoveredKm
-                    );
-
-
-                if (
-                    Number.isFinite(
-                        distanceKm
-                    ) &&
-                    distanceKm >= 0
-                ) {
-
-                    sessionDistanceMeters =
-                        distanceKm * 1000;
-
-                }
-
-
-                // ==================================================
-                // METRE FALLBACK
-                // ==================================================
-
-                if (
-                    !Number.isFinite(
-                        sessionDistanceMeters
-                    )
-                ) {
-
-                    const distanceM =
-                        Number(
-                            latestPoint
-                                ?.distanceCoveredMeters
-                        );
-
-
-                    if (
-                        Number.isFinite(
-                            distanceM
-                        ) &&
-                        distanceM >= 0
-                    ) {
-
-                        sessionDistanceMeters =
-                            distanceM;
-
-                    }
-
-                }
-
-
-                if (
-                    !Number.isFinite(
-                        sessionDistanceMeters
-                    ) ||
-                    sessionDistanceMeters < 0
-                ) {
-
-                    return;
-
-                }
-
-
-                // ==================================================
-                // ONE SESSION = ONE VALUE
-                //
-                // This is the critical anti-duplication boundary.
-                //
-                // A session may:
-                //
-                // - have hundreds/thousands of points
-                // - cross multiple grids
-                // - appear multiple times in the cache
-                //
-                // None of those cause its distance to be added
-                // more than once.
-                // ==================================================
-
-                const normalizedSessionId =
-                    String(
-                        sessionId
-                    );
-
-
-                const previous =
-                    sessionDistanceMap.get(
-                        normalizedSessionId
-                    );
-
-
-                // Keep the largest valid cumulative value.
-                //
-                // This protects against an older/stale cache entry
-                // being encountered after a newer one.
-                //
-
-                if (
-                    previous === undefined ||
-                    sessionDistanceMeters >
-                        previous
-                ) {
-
-                    sessionDistanceMap.set(
-                        normalizedSessionId,
-                        sessionDistanceMeters
-                    );
-
-                }
-
-            }
-        );
-
-
-        // ========================================================
-        // SUM ONE CUMULATIVE VALUE PER SESSION
-        // ========================================================
-
-        for (
-            const sessionDistance
-                of sessionDistanceMap.values()
-        ) {
-
-            if (
-                Number.isFinite(
-                    sessionDistance
-                ) &&
-                sessionDistance >= 0
-            ) {
-
-                distanceMeters +=
-                    sessionDistance;
-
-            }
-
-        }
-
-    }
-
-    catch (distanceError) {
-
-        console.warn(
-            "⚠ Authoritative patrol distance calculation failed:",
-            distanceError
-        );
-
-
-        // IMPORTANT:
-        //
-        // NEVER fall back to:
-        //
-        // analytics.distanceMeters
-        //
-        // because that would reintroduce the confirmed
-        // grid-level distance multiplication.
-        //
-
-        distanceMeters = 0;
-
-    }
-
-
-    // ============================================================
-    // 5. COVERAGE
-    // ============================================================
-
-    const totalCovered =
-        uniqueVisitedCells.size;
-
-
-    const coveragePercent =
-        totalCells > 0
-            ? (
-                totalCovered /
-                totalCells
-            ) * 100
-            : 0;
-
-
-    // ============================================================
-    // 6. FINAL SUMMARY
-    // ============================================================
-
-    return {
-
-        compartments:
-            requestedGridIds.length,
-
-
-        visitedCompartments,
-
-
-        totalCells,
-
-
-        areaHa,
-
-
-        // ========================================================
-        // AUTHORITATIVE SESSION-BASED DISTANCE
-        // ========================================================
-
-        distanceMeters:
-            Math.round(
-                distanceMeters
-            ),
-
-
-        visitCount:
-            Math.round(
-                visitCount
-            ),
-
-
-        previouslyCovered:
-            0,
-
-
-        newlyCovered:
-            totalCovered,
-
-
-        totalCovered,
-
-
-        latestUpdatedAt,
-
-
-        coveragePercent,
-
-
-        analyticsDocsFound:
-            visitedCompartments,
-
-
-        missingAnalyticsDocs:
-            Math.max(
-                0,
-                requestedGridIds.length -
-                visitedCompartments
-            ),
-
-
-        failedAnalyticsReads:
-            0
-
-    };
-
+  });
+
+  const totalCovered = uniqueVisitedCells.size;
+  const coveragePercent = totalCells > 0 ? (totalCovered / totalCells) * 100 : 0;
+
+  return {
+    compartments: requestedGridIds.length,
+    visitedCompartments,
+    totalCells,
+    areaHa,
+    distanceMeters: Math.round(distanceMeters),
+    visitCount: Math.round(visitCount),
+    previouslyCovered: 0,
+    newlyCovered: totalCovered,
+    totalCovered,
+    latestUpdatedAt,
+    coveragePercent,
+    analyticsDocsFound: visitedCompartments,
+    missingAnalyticsDocs: Math.max(0, requestedGridIds.length - visitedCompartments),
+    failedAnalyticsReads: 0
+  };
 }
-
 async function updateMonthlyStatusFromRealtimeAnalytics(){
 
     try{
@@ -87170,6 +86138,29 @@ console.log(
           // already resolved by the live patrol pipeline.
           // ====================================================
 
+          // ====================================================
+// 🔥 AUTHORITATIVE MONTHLY ANALYTICS WRITE
+// ====================================================
+//
+// IMPORTANT:
+//
+// Capture the returned transaction result.
+//
+// updateMonthlyAnalyticsRebuild() returns:
+//   success
+//   newlyAddedCells
+//   newlyAddedVisits
+//   isFirstVisitThisMonth
+//   totalCoveredCount
+//   nextVisitCount
+//   distanceMeters
+//
+// We use the genuine deltas to append to the
+// existing Monthly Status cache.
+//
+// NO full recalculation here.
+// ====================================================
+
 const transactionResult =
   await updateMonthlyAnalyticsRebuild(
 
@@ -87187,15 +86178,11 @@ const transactionResult =
 
     visitSessions,
 
-    sessionCellVisits,
-
-    Array.isArray(
-      data?.distanceSegments
-    )
-      ? data.distanceSegments
-      : []
+    sessionCellVisits
 
   );
+
+
 
 // ====================================================
 // SUCCESSFUL GRID FLUSH
