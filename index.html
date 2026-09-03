@@ -22553,34 +22553,25 @@ previousCoveredCells:
 
           return {
 
-            gridId,
+    gridId,
+    isFirstVisitThisMonth,
+    newlyAddedVisits,
+    newlyAddedVisitKeys,
+    newlyAddedCells,
+    previousCoveredCount,
+    totalCoveredCount,
+    previousVisitCount:
+        safePreviousVisitCount,
+    nextVisitCount,
 
-            isFirstVisitThisMonth,
-
-            newlyAddedVisits,
-
-            newlyAddedVisitKeys,
-
-            newlyAddedCells,
-
-            previousCoveredCount,
-
-            totalCoveredCount,
-
-            previousVisitCount:
-              safePreviousVisitCount,
-
-            nextVisitCount,
-
-                acceptedCells:
+    acceptedCells:
         touchedCells.size,
 
     sessionCellVisits:
         suppliedSessionCellVisits.size,
 
     distanceMeters:
-        safeDistance
-
+        nextDistance
           };
 
         }
