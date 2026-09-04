@@ -93906,9 +93906,54 @@ function saveSightingOffline(data){
    • No analytics/GPS/report flow is touched.
    ============================================================ */
 
+/* ============================================================
+   🔥 AUTO SYNC — OFFLINE SIGHTINGS
+   ------------------------------------------------------------
+   FINAL CORRECT FLOW:
+
+   OFFLINE:
+       Form
+         ↓
+       localStorage
+         ↓
+       offlineSightings
+
+   ONLINE:
+       offlineSightings
+         ↓
+       Firebase ready
+         ↓
+       Firestore metadata FIRST
+         ↓
+       Firebase Storage media
+         ↓
+       SAME Firestore document updated
+         ↓
+       Existing Command Centre backend
+         ↓
+       Google Sheet
+         ↓
+       Remove ONLY successfully completed record
+
+   IMPORTANT:
+   • Firestore is mandatory.
+   • Google Sheet is NOT considered the primary save.
+   • Failed Firestore writes remain queued.
+   • Failed Storage writes remain queued.
+   • Failed backend writes remain queued.
+   • Existing generated Firestore ID is preserved for retries.
+   • No login/auth flow is touched.
+   • No GIS/STAFF/duty/analytics flow is touched.
+   ============================================================ */
+
 async function syncOfflineSightings(){
 
     let records;
+
+
+    // ============================================================
+    // 📦 READ OFFLINE QUEUE
+    // ============================================================
 
     try{
 
@@ -93932,6 +93977,10 @@ async function syncOfflineSightings(){
     }
 
 
+    // ============================================================
+    // NOTHING TO SYNC
+    // ============================================================
+
     if(
         !Array.isArray(records) ||
         records.length === 0
@@ -93942,15 +93991,16 @@ async function syncOfflineSightings(){
     }
 
 
-    /*
-     * Do not attempt network sync while offline.
-     */
+    // ============================================================
+    // 📴 STILL OFFLINE
+    // ============================================================
+
     if(
         !navigator.onLine
     ){
 
         console.log(
-            "📴 Still offline → offline sighting queue preserved:",
+            "📴 Still offline → queue preserved:",
             records.length
         );
 
@@ -93960,7 +94010,7 @@ async function syncOfflineSightings(){
 
 
     console.log(
-        "🔄 Syncing offline sightings:",
+        "🔄 OFFLINE SIGHTING FIRESTORE SYNC START:",
         records.length
     );
 
@@ -93968,28 +94018,42 @@ async function syncOfflineSightings(){
     const remaining = [];
 
 
+    // ============================================================
+    // PROCESS ONE RECORD AT A TIME
+    // ============================================================
+
     for(
-        const rec
+        const originalRecord
         of records
     ){
 
+        let rec =
+            originalRecord;
+
+
         try{
+
+            // ====================================================
+            // VALID RECORD
+            // ====================================================
 
             if(
                 !rec ||
                 typeof rec !== "object"
             ){
 
+                console.warn(
+                    "⚠ Invalid offline sighting record skipped"
+                );
+
                 continue;
 
             }
 
 
-            /*
-             * ----------------------------------------------------
-             * DETERMINE ORIGINAL OBSERVATION TYPE
-             * ----------------------------------------------------
-             */
+            // ====================================================
+            // OBSERVATION TYPE
+            // ====================================================
 
             const observationType =
                 String(
@@ -94001,36 +94065,13 @@ async function syncOfflineSightings(){
                 .toUpperCase();
 
 
-            let backendMethod;
-
-
             if(
-                observationType === "WILDLIFE"
+                observationType !== "WILDLIFE" &&
+                observationType !== "ELEPHANT"
             ){
-
-                backendMethod =
-                    "saveWildlifeSighting";
-
-            }
-            else if(
-                observationType === "ELEPHANT"
-            ){
-
-                backendMethod =
-                    "saveElephantSighting";
-
-            }
-            else{
-
-                /*
-                 * Unknown type must NEVER be silently sent
-                 * to the elephant backend.
-                 *
-                 * Preserve it locally for inspection/retry.
-                 */
 
                 console.error(
-                    "❌ Offline sighting has invalid observation type:",
+                    "❌ Invalid offline observation type:",
                     rec
                 );
 
@@ -94043,62 +94084,712 @@ async function syncOfflineSightings(){
             }
 
 
+            // ====================================================
+            // NORMALIZE PAYLOAD TYPE
+            // ====================================================
+
+            rec.observation_type =
+                observationType;
+
+
             console.log(
-                "📤 OFFLINE SYNC:",
+                "================================================"
+            );
+
+            console.log(
+                "📤 OFFLINE SIGHTING PROCESSING:",
                 {
+                    observationType:
+                        observationType,
+
+                    sightingId:
+                        rec.sighting_id ||
+                        "",
+
+                    firestoreId:
+                        rec.firestore_id ||
+                        ""
+                }
+            );
+
+
+            // ====================================================
+            // 🔥 WAIT FOR FIREBASE
+            // ====================================================
+
+            if(
+                !window.db ||
+                !window.fb
+            ){
+
+                if(
+                    typeof waitForFirebaseReady ===
+                    "function"
+                ){
+
+                    console.log(
+                        "⏳ Waiting for Firebase before offline Firestore sync..."
+                    );
+
+                    await waitForFirebaseReady();
+
+                }
+
+            }
+
+
+            // ====================================================
+            // FINAL FIREBASE CHECK
+            // ====================================================
+
+            if(
+                !window.db ||
+                !window.fb
+            ){
+
+                throw new Error(
+                    "Firebase is not ready"
+                );
+
+            }
+
+
+            // ====================================================
+            // 🔥 FIRESTORE FIRST
+            // ====================================================
+            //
+            // If this offline record already has a Firestore ID,
+            // DO NOT CREATE A SECOND FIRESTORE DOCUMENT.
+            //
+            // This is important when:
+            //
+            // Firestore succeeded
+            //       ↓
+            // Storage failed
+            //       ↓
+            // retry
+            //
+            // ====================================================
+
+            let firestoreResult = null;
+
+
+            const existingFirestoreId =
+                String(
+                    rec.firestore_id ||
+                    ""
+                )
+                .trim();
+
+
+            const existingSightingId =
+                String(
+                    rec.sighting_id ||
+                    ""
+                )
+                .trim();
+
+
+            if(
+                existingFirestoreId &&
+                existingSightingId
+            ){
+
+                // ==================================================
+                // EXISTING FIRESTORE DOCUMENT
+                // ==================================================
+
+                console.log(
+                    "♻️ Existing Firestore ID found → reusing:",
+                    {
+                        firestoreId:
+                            existingFirestoreId,
+
+                        sightingId:
+                            existingSightingId
+                    }
+                );
+
+
+                firestoreResult = {
+
+                    firestoreId:
+                        existingFirestoreId,
+
+                    sightingId:
+                        existingSightingId,
+
+                    financialYear:
+                        rec.financial_year ||
+                        "",
+
+                    division:
+                        rec.gis_division ||
+                        rec.division ||
+                        "",
+
+                    range:
+                        rec.gis_range ||
+                        rec.range ||
+                        "",
+
+                    beat:
+                        rec.gis_beat ||
+                        rec.beat ||
+                        "",
+
+                    compartment:
+                        rec.gis_compartment ||
+                        rec.compartment ||
+                        "",
+
+                    divisionCode:
+                        rec.division_code ||
+                        rec.divisionCode ||
+                        "",
+
+                    rangeCode:
+                        rec.range_code ||
+                        rec.rangeCode ||
+                        "",
+
+                    rangeCount:
+                        rec.range_sighting_no ??
+                        null,
+
+                    divisionCount:
+                        rec.division_sighting_no ??
+                        null
+
+                };
+
+            }
+            else{
+
+                // ==================================================
+                // CREATE NEW FIRESTORE DOCUMENT
+                // ==================================================
+
+                if(
+                    typeof window.saveSightingToFirestore !==
+                    "function"
+                ){
+
+                    if(
+                        typeof saveSightingToFirestore !==
+                        "function"
+                    ){
+
+                        throw new Error(
+                            "saveSightingToFirestore() is unavailable"
+                        );
+
+                    }
+
+                }
+
+
+                const firestoreSaveFunction =
+                    typeof window.saveSightingToFirestore ===
+                    "function"
+
+                        ? window.saveSightingToFirestore
+
+                        : saveSightingToFirestore;
+
+
+                // ==================================================
+                // REMOVE LARGE MEDIA FROM FIRESTORE PAYLOAD
+                // ==================================================
+
+                const firestorePayload =
+                    typeof createFirestoreSafeSightingPayload ===
+                    "function"
+
+                        ? createFirestoreSafeSightingPayload(
+                            rec
+                        )
+
+                        : {
+                            ...rec,
+
+                            photo:
+                                "",
+
+                            video:
+                                "",
+
+                            audio:
+                                "",
+
+                            photo_url:
+                                "",
+
+                            video_url:
+                                "",
+
+                            audio_url:
+                                "",
+
+                            photo_storage_path:
+                                "",
+
+                            video_storage_path:
+                                "",
+
+                            audio_storage_path:
+                                "",
+
+                            media_status:
+                                "PENDING"
+                        };
+
+
+                firestorePayload.observation_type =
+                    observationType;
+
+
+                console.log(
+                    "🔥 OFFLINE → CREATING FIRESTORE SIGHTING:",
+                    observationType
+                );
+
+
+                firestoreResult =
+                    await firestoreSaveFunction(
+                        firestorePayload
+                    );
+
+
+                // ==================================================
+                // FIRESTORE RESULT IS MANDATORY
+                // ==================================================
+
+                if(
+                    !firestoreResult ||
+                    !firestoreResult.sightingId ||
+                    !firestoreResult.firestoreId
+                ){
+
+                    throw new Error(
+                        "Firestore returned no valid sighting ID"
+                    );
+
+                }
+
+
+                // ==================================================
+                // SAVE FIRESTORE IDS INTO QUEUE RECORD
+                // ==================================================
+                //
+                // This prevents duplicate Firestore documents if
+                // Storage or Google Sheet synchronization fails.
+                //
+                // ==================================================
+
+                rec.sighting_id =
+                    firestoreResult.sightingId;
+
+
+                rec.firestore_id =
+                    firestoreResult.firestoreId;
+
+
+                rec.financial_year =
+                    firestoreResult.financialYear ||
+                    rec.financial_year ||
+                    "";
+
+
+                rec.division_code =
+                    firestoreResult.divisionCode ||
+                    rec.division_code ||
+                    "";
+
+
+                rec.range_code =
+                    firestoreResult.rangeCode ||
+                    rec.range_code ||
+                    "";
+
+
+                rec.range_sighting_no =
+                    firestoreResult.rangeCount ??
+                    rec.range_sighting_no ??
+                    null;
+
+
+                rec.division_sighting_no =
+                    firestoreResult.divisionCount ??
+                    rec.division_sighting_no ??
+                    null;
+
+
+                // ==================================================
+                // 🔐 PERSIST GENERATED FIRESTORE ID IMMEDIATELY
+                // ==================================================
+                //
+                // If the browser/app dies after this point,
+                // retry will reuse the same Firestore document.
+                //
+                // ==================================================
+
+                try{
+
+                    const queueSnapshot =
+                        records.map(
+                            function(item){
+
+                                if(
+                                    item ===
+                                    originalRecord
+                                ){
+
+                                    return rec;
+
+                                }
+
+                                return item;
+
+                            }
+                        );
+
+
+                    localStorage.setItem(
+                        "offlineSightings",
+                        JSON.stringify(
+                            queueSnapshot
+                        )
+                    );
+
+                }
+                catch(queueError){
+
+                    console.warn(
+                        "⚠ Could not persist Firestore ID into offline queue:",
+                        queueError
+                    );
+
+                }
+
+
+                console.log(
+                    "🔥 OFFLINE FIRESTORE CREATED:",
+                    {
+                        observationType:
+                            observationType,
+
+                        firestoreId:
+                            rec.firestore_id,
+
+                        sightingId:
+                            rec.sighting_id
+                    }
+                );
+
+            }
+
+
+            // ====================================================
+            // 🔥 FIRESTORE IDENTIFIERS MUST EXIST
+            // ====================================================
+
+            if(
+                !rec.firestore_id ||
+                !rec.sighting_id
+            ){
+
+                throw new Error(
+                    "Offline sighting has no Firestore identity"
+                );
+
+            }
+
+
+            // ====================================================
+            // 📦 FIREBASE STORAGE
+            // ====================================================
+            //
+            // Use the SAME existing Storage function used by the
+            // normal online submission.
+            //
+            // ====================================================
+
+            let mediaResult = {
+
+                photo_url:
+                    rec.photo_url ||
+                    "",
+
+                video_url:
+                    rec.video_url ||
+                    "",
+
+                audio_url:
+                    rec.audio_url ||
+                    "",
+
+                photo_storage_path:
+                    rec.photo_storage_path ||
+                    "",
+
+                video_storage_path:
+                    rec.video_storage_path ||
+                    "",
+
+                audio_storage_path:
+                    rec.audio_storage_path ||
+                    "",
+
+                media_status:
+                    rec.media_status ||
+                    "NONE"
+
+            };
+
+
+            if(
+                typeof uploadSightingMediaToStorage ===
+                "function"
+            ){
+
+                console.log(
+                    "📦 OFFLINE → FIREBASE STORAGE:",
+                    observationType
+                );
+
+
+                const uploaded =
+                    await uploadSightingMediaToStorage(
+                        observationType,
+                        rec
+                    );
+
+
+                if(
+                    uploaded
+                ){
+
+                    mediaResult =
+                        uploaded;
+
+                }
+
+            }
+
+
+            // ====================================================
+            // 🔗 UPDATE SAME FIRESTORE DOCUMENT
+            // ====================================================
+
+            if(
+                typeof updateSightingMediaInFirestore ===
+                "function"
+            ){
+
+                console.log(
+                    "🔗 OFFLINE → UPDATING SAME FIRESTORE DOCUMENT:",
+                    rec.firestore_id
+                );
+
+
+                await updateSightingMediaInFirestore(
                     observationType,
+                    rec.firestore_id ||
+                        rec.sighting_id,
+
+                    mediaResult
+                );
+
+            }
+
+
+            // ====================================================
+            // COPY STORAGE VALUES BACK INTO RECORD
+            // ====================================================
+
+            rec.photo_url =
+                mediaResult?.photo_url ||
+                rec.photo_url ||
+                "";
+
+
+            rec.video_url =
+                mediaResult?.video_url ||
+                rec.video_url ||
+                "";
+
+
+            rec.audio_url =
+                mediaResult?.audio_url ||
+                rec.audio_url ||
+                "";
+
+
+            rec.photo_storage_path =
+                mediaResult?.photo_storage_path ||
+                rec.photo_storage_path ||
+                "";
+
+
+            rec.video_storage_path =
+                mediaResult?.video_storage_path ||
+                rec.video_storage_path ||
+                "";
+
+
+            rec.audio_storage_path =
+                mediaResult?.audio_storage_path ||
+                rec.audio_storage_path ||
+                "";
+
+
+            rec.media_status =
+                mediaResult?.media_status ||
+                rec.media_status ||
+                "NONE";
+
+
+            // ====================================================
+            // 📤 EXISTING COMMAND CENTRE BACKEND
+            // ====================================================
+            //
+            // This is the Google Sheet / Apps Script pathway.
+            //
+            // IMPORTANT:
+            //
+            // Firestore has ALREADY succeeded above.
+            //
+            // ====================================================
+
+            const backendMethod =
+                observationType === "WILDLIFE"
+
+                    ? "saveWildlifeSighting"
+
+                    : "saveElephantSighting";
+
+
+            console.log(
+                "📤 OFFLINE → EXISTING BACKEND:",
+                backendMethod
+            );
+
+
+            if(
+                typeof callBackend !==
+                "function"
+            ){
+
+                throw new Error(
+                    "callBackend() is unavailable"
+                );
+
+            }
+
+
+            const backendResult =
+                await callBackend(
                     backendMethod,
+                    rec
+                );
+
+
+            // ====================================================
+            // BACKEND RESPONSE VALIDATION
+            // ====================================================
+            //
+            // callBackend() returns null for:
+            //
+            // • timeout
+            // • HTTP failure
+            // • invalid JSON
+            // • network failure
+            // • empty response
+            //
+            // Therefore null is NOT success.
+            //
+            // ====================================================
+
+            if(
+                backendResult === null ||
+                typeof backendResult ===
+                "undefined"
+            ){
+
+                throw new Error(
+                    "Existing backend returned no successful response"
+                );
+
+            }
+
+
+            // ====================================================
+            // 🎉 COMPLETE
+            // ====================================================
+
+            console.log(
+                "✅ OFFLINE SIGHTING FULLY SYNCHRONIZED:",
+                {
+                    observationType:
+                        observationType,
+
+                    firestoreId:
+                        rec.firestore_id,
+
                     sightingId:
-                        rec.sighting_id ||
-                        rec.id ||
-                        ""
+                        rec.sighting_id,
+
+                    backend:
+                        backendMethod
                 }
-            );
-
-
-            /*
-             * ----------------------------------------------------
-             * USE EXISTING BACKEND
-             * ----------------------------------------------------
-             */
-
-            await callBackend(
-                backendMethod,
-                rec
             );
 
 
             console.log(
-                "✅ Offline sighting synced:",
-                {
-                    observationType,
-                    sightingId:
-                        rec.sighting_id ||
-                        rec.id ||
-                        ""
-                }
+                "================================================"
             );
+
+
+            // ====================================================
+            // DO NOT PUSH INTO remaining
+            // ====================================================
+            //
+            // This record is now fully synchronized.
+            //
+            // ====================================================
 
         }
         catch(error){
 
-            /*
-             * Network/backend failure:
-             * KEEP RECORD IN LOCAL QUEUE.
-             */
+            // ====================================================
+            // ❌ ANY FAILURE
+            // ====================================================
+            //
+            // NEVER lose the offline record.
+            //
+            // Keep it for the next retry.
+            //
+            // ====================================================
 
             console.warn(
-                "⏳ Offline sighting sync pending:",
+                "⏳ OFFLINE SIGHTING SYNC PENDING:",
                 {
                     observationType:
                         rec?.observation_type ||
                         rec?.observationType ||
                         "",
+
                     sightingId:
                         rec?.sighting_id ||
-                        rec?.id ||
                         "",
-                    error
+
+                    firestoreId:
+                        rec?.firestore_id ||
+                        "",
+
+                    error:
+                        error
                 }
             );
 
@@ -94112,16 +94803,9 @@ async function syncOfflineSightings(){
     }
 
 
-    /*
-     * ------------------------------------------------------------
-     * ATOMIC QUEUE UPDATE
-     * ------------------------------------------------------------
-     *
-     * Only records that failed remain.
-     *
-     * Successfully synced records disappear from the
-     * pending queue.
-     */
+    // ============================================================
+    // 💾 FINAL QUEUE UPDATE
+    // ============================================================
 
     try{
 
@@ -94132,8 +94816,9 @@ async function syncOfflineSightings(){
             )
         );
 
+
         console.log(
-            "✅ Offline sighting sync complete:",
+            "✅ OFFLINE SIGHTING SYNC COMPLETE:",
             {
                 attempted:
                     records.length,
@@ -94150,14 +94835,8 @@ async function syncOfflineSightings(){
     }
     catch(error){
 
-        /*
-         * Extremely defensive:
-         * Never destroy the existing queue if localStorage
-         * itself fails during the final write.
-         */
-
         console.error(
-            "❌ Unable to update offline sighting queue:",
+            "❌ Unable to update offlineSightings queue:",
             error
         );
 
