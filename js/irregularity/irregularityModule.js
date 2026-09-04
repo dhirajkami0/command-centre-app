@@ -2713,6 +2713,20 @@ async function ggSavePendingIrregularities(
    ADD ONE PENDING IRREGULARITY
    ============================================================ */
 
+/* ============================================================
+   ADD ONE PENDING IRREGULARITY
+   ============================================================
+
+   IMPORTANT
+   ------------------------------------------------------------
+   The payload and media are captured AT THE MOMENT OF OFFLINE
+   SUBMISSION.
+
+   This prevents loss of File / Blob references when the form
+   is subsequently cleared or closed.
+   ============================================================ */
+
+
 async function ggQueueIrregularity(
     payload
 ){
@@ -2730,9 +2744,40 @@ async function ggQueueIrregularity(
         }
 
 
+        /* ====================================================
+           CAPTURE MEDIA BEFORE FORM IS CLEARED
+           ==================================================== */
+
+        let media =
+            null;
+
+
+        if(
+            window.GGIrregularity &&
+            GGIrregularity.Media &&
+            typeof GGIrregularity.Media
+                .getOfflineMediaSnapshot ===
+                "function"
+        ){
+
+            media =
+                await GGIrregularity.Media
+                    .getOfflineMediaSnapshot();
+
+        }
+
+
+        /* ====================================================
+           READ EXISTING QUEUE
+           ==================================================== */
+
         const queue =
             await ggGetPendingIrregularities();
 
+
+        /* ====================================================
+           QUEUE ID
+           ==================================================== */
 
         const queueId =
             "IRR-OFFLINE-" +
@@ -2745,6 +2790,10 @@ async function ggQueueIrregularity(
                     8
                 );
 
+
+        /* ====================================================
+           PENDING RECORD
+           ==================================================== */
 
         const pendingRecord = {
 
@@ -2763,16 +2812,35 @@ async function ggQueueIrregularity(
             last_error:
                 "",
 
+            /* ================================================
+               COMPLETE PAYLOAD
+               ================================================ */
+
             payload:
-                payload
+                payload,
+
+            /* ================================================
+               OFFLINE MEDIA SNAPSHOT
+               ================================================ */
+
+            media:
+                media
 
         };
 
+
+        /* ====================================================
+           ADD TO QUEUE
+           ==================================================== */
 
         queue.push(
             pendingRecord
         );
 
+
+        /* ====================================================
+           PERSIST
+           ==================================================== */
 
         const saved =
             await ggSavePendingIrregularities(
@@ -2791,9 +2859,25 @@ async function ggQueueIrregularity(
         }
 
 
+        /* ====================================================
+           LOG
+           ==================================================== */
+
         console.log(
             "📦 IRREGULARITY QUEUED OFFLINE:",
-            pendingRecord
+            {
+                queueId:
+                    queueId,
+
+                hasPhoto:
+                    !!media?.photo,
+
+                hasVideo:
+                    !!media?.video,
+
+                hasAudio:
+                    !!media?.audio
+            }
         );
 
 
