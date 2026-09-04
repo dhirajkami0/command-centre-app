@@ -9866,22 +9866,87 @@ function showLogin(){
     // • any forgotten showLogin() caller
     //
     // ============================================================
+// ============================================================
+// 🔐 PERMANENT FIRST-LOGIN BARRIER
+// ============================================================
+//
+// Once first SERVER login has completed:
+//
+//   • NEVER show login modal
+//   • NEVER leave login modal visible
+//   • NEVER restart login flow
+//   • NEVER require phone entry again
+//
+// ============================================================
 
-    if(
-        typeof ggHasCompletedFirstLogin ===
-        "function" &&
-        ggHasCompletedFirstLogin()
-    ){
+if(
+    typeof ggHasCompletedFirstLogin ===
+    "function" &&
+    ggHasCompletedFirstLogin()
+){
 
-        console.warn(
-            "🔐 FIRST LOGIN ALREADY COMPLETED → " +
-            "LOGIN MODAL PERMANENTLY BLOCKED"
+    console.warn(
+        "🔐 FIRST LOGIN ALREADY COMPLETED → " +
+        "LOGIN MODAL PERMANENTLY BLOCKED"
+    );
+
+
+    // --------------------------------------------------------
+    // 🔒 FORCE LOGIN MODAL CLOSED
+    // --------------------------------------------------------
+
+    const completedModal =
+        document.getElementById(
+            "loginModal"
         );
 
-        return;
+
+    if(
+        completedModal
+    ){
+
+        completedModal.style.display =
+            "none";
 
     }
 
+
+    // --------------------------------------------------------
+    // 🔓 RESET LOGIN UI STATE
+    //
+    // The installation is permanently authenticated.
+    // These flags must not leave the UI in a locked/shown
+    // state after the modal is forcibly closed.
+    // --------------------------------------------------------
+
+    loginUIShown =
+        false;
+
+    loginShownOnce =
+        false;
+
+
+    // --------------------------------------------------------
+    // IMPORTANT:
+    //
+    // Do NOT clear:
+    //
+    // userProfile
+    // userPhone
+    // dutyActive
+    // sessionId
+    // patrol queue
+    // GPS
+    // IDB
+    // GIS state
+    // STAFF marker state
+    //
+    // --------------------------------------------------------
+
+
+    return;
+
+}
 
     // ============================================================
     // 🔥 HARD SESSION LOCK
@@ -118828,12 +118893,60 @@ function normalizeUserProfile(profile){
 // ================= APP START =================
 
 
-// ================= ONLINE LOGIN FLOW =================
+// ============================================================
+// 🔐 ONLINE LOGIN FLOW
+// PERMANENT FIRST-LOGIN ARCHITECTURE
+// ============================================================
+//
+// RULE:
+//
+// FIRST LOGIN NOT COMPLETED
+//      ↓
+// TRUE ONLINE LOGIN FLOW
+//
+// FIRST LOGIN COMPLETED
+//      ↓
+// NEVER START LOGIN AGAIN
+//
+// After first login:
+//
+// OFFLINE
+//      ↓
+// LOCAL PROFILE
+//      ↓
+// APPLY LOCAL PROFILE
+//      ↓
+// LOAD APP
+//
+// ONLINE
+//      ↓
+// LOCAL PROFILE
+//      ↓
+// APPLY LOCAL PROFILE
+//      ↓
+// OPTIONAL BACKGROUND REFRESH
+//
+// IMPORTANT:
+//
+// This function is NOT allowed to revoke an established
+// installation session.
+//
+// No:
+//   • clearLocalSession()
+//   • localStorage.removeItem("userPhone")
+//   • localStorage.removeItem("userProfile")
+//   • showLogin() after first login
+//   • login modal after first login
+//   • loginCompleted = false after first login
+//   • Android cache clearing
+//
+// ============================================================
+
 function startOnlineLoginFlow(){
 
-  // ============================================================
+  // ==========================================================
   // 🔒 HARD AUTH FLOW LOCK
-  // ============================================================
+  // ==========================================================
 
   if(
     authFlowRunning
@@ -118844,146 +118957,684 @@ function startOnlineLoginFlow(){
     );
 
     return;
+
   }
 
+
+  // ==========================================================
+  // 🔐 PERMANENT FIRST-LOGIN CHECK
+  // ==========================================================
+  //
+  // THIS MUST BE THE FIRST AUTHENTICATION DECISION.
+  //
+  // If this installation has already completed first login,
+  // this function MUST NEVER enter the online login flow.
+  //
+  // ==========================================================
+
+  const firstLoginCompleted =
+
+    typeof ggHasCompletedFirstLogin ===
+    "function"
+
+      ? ggHasCompletedFirstLogin()
+
+      : localStorage.getItem(
+          "gg_first_login_completed"
+        ) === "1";
+
+
+  // ==========================================================
+  // 🔥 ESTABLISHED INSTALLATION
+  // ==========================================================
+
+  if(
+    firstLoginCompleted
+  ){
+
+    console.log(
+      "🔐 FIRST LOGIN ALREADY COMPLETED — " +
+      "LOGIN FLOW PERMANENTLY SKIPPED"
+    );
+
+
+    // ========================================================
+    // 🔒 NEVER SHOW LOGIN
+    // ========================================================
+
+    loginCompleted =
+      true;
+
+
+    // ========================================================
+    // 📱 LOAD SAVED LOCAL PROFILE
+    // ========================================================
+
+    let localProfile = null;
+
+
+    try{
+
+      const savedProfile =
+
+        localStorage.getItem(
+          "userProfile"
+        );
+
+
+      if(
+        savedProfile
+      ){
+
+        try{
+
+          localProfile =
+            JSON.parse(
+              savedProfile
+            );
+
+        }
+        catch(parseError){
+
+          console.warn(
+            "⚠ Saved userProfile JSON invalid:",
+            parseError
+          );
+
+        }
+
+      }
+
+    }
+    catch(storageError){
+
+      console.warn(
+        "⚠ Unable to read local userProfile:",
+        storageError
+      );
+
+    }
+
+
+    // ========================================================
+    // 📱 LOCAL PHONE
+    // ========================================================
+
+    let localPhone =
+
+      String(
+        localStorage.getItem(
+          "userPhone"
+        ) || ""
+      )
+      .replace(
+        /\D/g,
+        ""
+      )
+      .trim();
+
+
+    // ========================================================
+    // 🔥 PROFILE RECOVERY FROM LOCAL CACHE
+    // ========================================================
+
+    if(
+      localProfile
+    ){
+
+      try{
+
+        const applied =
+
+          typeof applyAuthenticatedProfile ===
+          "function"
+
+            ? applyAuthenticatedProfile(
+                localProfile,
+                "LOCAL"
+              )
+
+            : false;
+
+
+        if(
+          applied
+        ){
+
+          console.log(
+            "⚡ LOCAL PROFILE RECOVERED — " +
+            "LOGIN NOT REQUIRED"
+          );
+
+
+          // ==================================================
+          // 🌐 NETWORK STATE
+          // ==================================================
+
+          if(
+            typeof navigator !==
+            "undefined"
+          ){
+
+            updateNetworkStatus(
+              navigator.onLine
+                ? "online"
+                : "offline"
+            );
+
+          }
+
+
+          // ==================================================
+          // 🔐 ROLE CONTROL
+          // ==================================================
+
+          try{
+
+            if(
+              typeof applyRoleControl ===
+              "function"
+            ){
+
+              applyRoleControl();
+
+            }
+
+          }
+          catch(roleError){
+
+            console.warn(
+              "⚠ applyRoleControl failed:",
+              roleError
+            );
+
+          }
+
+
+          // ==================================================
+          // 🔒 ABSOLUTE LOGIN UI PROTECTION
+          // ==================================================
+
+          try{
+
+            if(
+              typeof hideLogin ===
+              "function"
+            ){
+
+              hideLogin();
+
+            }
+
+          }
+          catch(hideError){
+
+            console.warn(
+              "⚠ hideLogin failed:",
+              hideError
+            );
+
+          }
+
+
+          // ==================================================
+          // 🚀 APP BOOT
+          // ==================================================
+
+          if(
+            typeof bootAfterAuthentication ===
+            "function"
+          ){
+
+            try{
+
+              bootAfterAuthentication(
+                window.userProfile,
+                "LOCAL"
+              );
+
+            }
+            catch(bootError){
+
+              console.warn(
+                "⚠ Local authentication boot failed:",
+                bootError
+              );
+
+            }
+
+          }
+          else if(
+            typeof startApp ===
+            "function" &&
+            !window.__APP_BOOTED_ONCE__
+          ){
+
+            window.__APP_BOOTED_ONCE__ =
+              true;
+
+            window.__LOGIN_JUST_FINISHED__ =
+              false;
+
+            try{
+
+              startApp();
+
+            }
+            catch(appError){
+
+              console.warn(
+                "⚠ startApp failed:",
+                appError
+              );
+
+            }
+
+          }
+
+
+          // ==================================================
+          // 🔥 IMPORTANT
+          // ==================================================
+          //
+          // DO NOT call safeBackend() here as an
+          // authentication gate.
+          //
+          // Any online server refresh must be handled by
+          // refreshOnlineProfile(), which is NON-AUTHORITATIVE.
+          //
+          // ==================================================
+
+          if(
+            navigator.onLine &&
+            typeof refreshOnlineProfile ===
+            "function"
+          ){
+
+            try{
+
+              refreshOnlineProfile();
+
+            }
+            catch(refreshError){
+
+              console.warn(
+                "⚠ Background profile refresh failed:",
+                refreshError
+              );
+
+            }
+
+          }
+
+
+          return;
+
+        }
+
+      }
+      catch(profileError){
+
+        console.warn(
+          "⚠ Local profile application failed:",
+          profileError
+        );
+
+      }
+
+    }
+
+
+    // ========================================================
+    // 📱 ANDROID PROFILE RECOVERY
+    // ========================================================
+    //
+    // If localStorage profile is temporarily unavailable,
+    // try Android's persisted profile.
+    //
+    // IMPORTANT:
+    //
+    // Even if Android recovery fails, DO NOT SHOW LOGIN.
+    //
+    // The permanent marker still means this installation
+    // must never return to the login modal.
+    //
+    // ========================================================
+
+    try{
+
+      if(
+        window.Android &&
+        typeof Android.getUserProfile ===
+        "function"
+      ){
+
+        const androidProfile =
+          Android.getUserProfile();
+
+
+        if(
+          androidProfile
+        ){
+
+          let recoveredProfile =
+            androidProfile;
+
+
+          if(
+            typeof androidProfile ===
+            "string"
+          ){
+
+            try{
+
+              recoveredProfile =
+                JSON.parse(
+                  androidProfile
+                );
+
+            }
+            catch(androidParseError){
+
+              console.warn(
+                "⚠ Android profile JSON invalid:",
+                androidParseError
+              );
+
+              recoveredProfile =
+                null;
+
+            }
+
+          }
+
+
+          if(
+            recoveredProfile &&
+            typeof applyAuthenticatedProfile ===
+            "function"
+          ){
+
+            const recovered =
+
+              applyAuthenticatedProfile(
+                recoveredProfile,
+                "ANDROID"
+              );
+
+
+            if(
+              recovered
+            ){
+
+              console.log(
+                "📱 ANDROID PROFILE RECOVERED — " +
+                "LOGIN NOT REQUIRED"
+              );
+
+
+              if(
+                typeof hideLogin ===
+                "function"
+              ){
+
+                hideLogin();
+
+              }
+
+
+              if(
+                typeof bootAfterAuthentication ===
+                "function"
+              ){
+
+                try{
+
+                  bootAfterAuthentication(
+                    window.userProfile,
+                    "ANDROID"
+                  );
+
+                }
+                catch(androidBootError){
+
+                  console.warn(
+                    "⚠ Android authentication boot failed:",
+                    androidBootError
+                  );
+
+                }
+
+              }
+              else if(
+                typeof startApp ===
+                "function" &&
+                !window.__APP_BOOTED_ONCE__
+              ){
+
+                window.__APP_BOOTED_ONCE__ =
+                  true;
+
+                window.__LOGIN_JUST_FINISHED__ =
+                  false;
+
+                startApp();
+
+              }
+
+
+              return;
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+    catch(androidRecoveryError){
+
+      console.warn(
+        "⚠ Android authentication recovery unavailable:",
+        androidRecoveryError
+      );
+
+    }
+
+
+    // ========================================================
+    // 🚨 PERMANENT MARKER EXISTS BUT PROFILE IS UNAVAILABLE
+    // ========================================================
+    //
+    // THIS IS NOT A LOGIN FAILURE.
+    //
+    // NEVER:
+    //   • showLogin()
+    //   • clear cache
+    //   • reset loginCompleted
+    //
+    // Keep the installation in established-session mode.
+    //
+    // ========================================================
+
+    console.warn(
+      "⚠ FIRST-LOGIN MARKER EXISTS BUT LOCAL PROFILE " +
+      "COULD NOT BE RECOVERED"
+    );
+
+
+    console.warn(
+      "🔐 PERMANENT LOGIN BARRIER ACTIVE — " +
+      "LOGIN MODAL WILL NOT BE SHOWN"
+    );
+
+
+    loginCompleted =
+      true;
+
+
+    try{
+
+      if(
+        typeof hideLogin ===
+        "function"
+      ){
+
+        hideLogin();
+
+      }
+
+    }
+    catch(hideError){
+
+      console.warn(
+        "⚠ Unable to hide login modal:",
+        hideError
+      );
+
+    }
+
+
+    if(
+      typeof updateNetworkStatus ===
+      "function"
+    ){
+
+      updateNetworkStatus(
+        "offline"
+      );
+
+    }
+
+
+    // ========================================================
+    // 🔚 ESTABLISHED INSTALLATION — STOP HERE
+    // ========================================================
+
+    return;
+
+  }
+
+
+  // ==========================================================
+  // 🔥 FROM THIS POINT DOWN:
+  // TRUE FIRST LOGIN ONLY
+  // ==========================================================
 
   authFlowRunning =
     true;
 
 
   console.log(
-    "🚀 startOnlineLoginFlow()"
+    "🚀 startOnlineLoginFlow() — " +
+    "TRUE FIRST LOGIN"
   );
 
 
-  // ============================================================
-  // 🔥 BLOCK IMMEDIATE POST-LOGIN REFRESH
-  // ============================================================
-
-  const justLoggedIn =
-
-    Date.now() -
-    (
-      window.__LOGIN_TIME__ ||
-      0
-    )
-    < 20000;
-
-
-  if(
-    justLoggedIn
-  ){
-
-    console.warn(
-      "⛔ Skipping refresh after login"
-    );
-
-
-    authFlowRunning =
-      false;
-
-
-    return;
-  }
-
-
-  // ============================================================
-  // 📱 LOCAL PHONE
-  // ============================================================
+  // ==========================================================
+  // 📱 SAVED PHONE
+  // ==========================================================
 
   const phone =
 
-    localStorage.getItem(
-      "userPhone"
-    ) || "";
+    String(
+      localStorage.getItem(
+        "userPhone"
+      ) || ""
+    )
+    .replace(
+      /\D/g,
+      ""
+    )
+    .trim();
 
 
-  // ============================================================
+  // ==========================================================
   // 🔴 NO SAVED PHONE
-  // ============================================================
+  // ==========================================================
 
   if(
-    !phone
+    phone.length < 10
   ){
 
     console.warn(
-      "⚠ No saved phone"
+      "⚠ No saved phone — TRUE FIRST LOGIN"
     );
 
 
-    /*
-     * IMPORTANT:
-     *
-     * Do not allow loginShownOnce to block the
-     * first login screen.
-     *
-     * showLogin() is the final authority for
-     * displaying the modal.
-     */
+    // ========================================================
+    // 🔐 LOGIN MODAL IS ALLOWED ONLY HERE
+    // ========================================================
 
-    if(
-      !loginModalLocked &&
-      !window.userProfile
-    ){
+    try{
 
-      loginShownOnce =
+      if(
+        !loginModalLocked &&
+        !window.userProfile
+      ){
+
+        loginShownOnce =
+          false;
+
+        showLogin();
+
+      }
+
+    }
+    finally{
+
+      authFlowRunning =
         false;
-
-      showLogin();
 
     }
 
 
-    authFlowRunning =
-      false;
-
-
     return;
+
   }
 
 
-  // ============================================================
-  // 🔐 AUTHORITATIVE PROFILE CHECK
-  // ------------------------------------------------------------
-  // ACTIVE  → profile returned
-  // BLOCKED → ACCESS_BLOCKED
-  // MISSING → PROFILE_NOT_FOUND / NOT_AUTHORIZED
-  // offline → null
-  // ============================================================
+  // ==========================================================
+  // 🔐 AUTHORITATIVE SERVER CHECK
+  // ==========================================================
+  //
+  // THIS SECTION IS ONLY FOR TRUE FIRST LOGIN.
+  //
+  // Established installations never reach this section.
+  //
+  // ==========================================================
 
   safeBackend(
-
     "GET_PROFILE",
-
     {
       phone:
         phone
     }
-
   )
 
   .then(
-
     function(profile){
 
-
-      // ==========================================================
-      // 📴 BACKEND / NETWORK UNAVAILABLE
-      // ----------------------------------------------------------
+      // ======================================================
+      // 📴 NETWORK / FIRESTORE UNAVAILABLE
+      // ======================================================
+      //
       // IMPORTANT:
       //
-      // No cached profile is usable here.
+      // This can only happen before first login is completed.
       //
-      // Do NOT silently leave the user on the application
-      // without authentication.
-      // ==========================================================
+      // Therefore login remains available.
+      //
+      // ======================================================
 
       if(
-        !profile
+        profile === null
       ){
 
         console.warn(
-          "📴 Online profile check unavailable"
+          "📴 First-login server check unavailable"
         );
 
 
@@ -118992,24 +119643,9 @@ function startOnlineLoginFlow(){
         );
 
 
-        /*
-         * ======================================================
-         * 🔐 NO USABLE AUTHENTICATION
-         * ======================================================
-         *
-         * If there is no active global profile, the user
-         * must be given the login screen.
-         *
-         * Do not depend on loginShownOnce here.
-         * That flag may have been set by an earlier startup
-         * attempt even though the modal was never actually
-         * displayed.
-         * ======================================================
-         */
-
         if(
-          !window.userProfile &&
-          !loginModalLocked
+          !loginModalLocked &&
+          !window.userProfile
         ){
 
           loginShownOnce =
@@ -119021,12 +119657,13 @@ function startOnlineLoginFlow(){
 
 
         return false;
+
       }
 
 
-      // ==========================================================
-      // ⛔ BLOCKED STAFF
-      // ==========================================================
+      // ======================================================
+      // ⛔ ACCESS BLOCKED
+      // ======================================================
 
       if(
         profile.status ===
@@ -119037,41 +119674,29 @@ function startOnlineLoginFlow(){
       ){
 
         console.warn(
-          "⛔ STAFF ACCESS REVOKED:",
+          "⛔ FIRST LOGIN ACCESS BLOCKED:",
           phone
         );
 
 
-        // ========================================================
-        // 🔥 REMOVE AUTHENTICATION CACHE ONLY
-        // ========================================================
+        // ----------------------------------------------------
+        // TRUE FIRST LOGIN:
+        // authentication has NOT been completed yet.
+        // ----------------------------------------------------
 
-        localStorage.removeItem(
-          "userPhone"
-        );
+        if(
+          typeof clearLocalSession ===
+          "function"
+        ){
 
+          clearLocalSession();
 
-        localStorage.removeItem(
-          "userProfile"
-        );
-
-
-        window.userProfile =
-          null;
+        }
 
 
         loginCompleted =
           false;
 
-
-        // ========================================================
-        // ⚠ DO NOT DELETE PATROL SESSION DATA
-        // --------------------------------------------------------
-        // Preserve:
-        // dutyActive
-        // sessionId
-        // offlineGPS
-        // ========================================================
 
         if(
           !loginModalLocked
@@ -119086,17 +119711,18 @@ function startOnlineLoginFlow(){
 
 
         alert(
-          "⛔ Access to GreenGuard has been revoked."
+          "⛔ Access to GreenGuard has been blocked."
         );
 
 
         return false;
+
       }
 
 
-      // ==========================================================
-      // ⛔ PROFILE MISSING / NOT AUTHORIZED
-      // ==========================================================
+      // ======================================================
+      // ⛔ PROFILE NOT FOUND / NOT AUTHORIZED
+      // ======================================================
 
       if(
         profile.status ===
@@ -119109,29 +119735,36 @@ function startOnlineLoginFlow(){
           profile.code ===
             "NOT_AUTHORIZED" ||
 
+          profile.code ===
+            "ACCESS_NOT_ACTIVE" ||
+
           profile.error ===
-            "NOT_AUTHORIZED"
+            "PROFILE_NOT_FOUND" ||
+
+          profile.error ===
+            "NOT_AUTHORIZED" ||
+
+          profile.error ===
+            "ACCESS_NOT_ACTIVE"
         )
       ){
 
         console.warn(
-          "⛔ STAFF PROFILE NOT AUTHORIZED:",
-          phone
+          "⛔ FIRST LOGIN NOT AUTHORIZED:",
+          phone,
+          profile.code ||
+          profile.error
         );
 
 
-        localStorage.removeItem(
-          "userPhone"
-        );
+        if(
+          typeof clearLocalSession ===
+          "function"
+        ){
 
+          clearLocalSession();
 
-        localStorage.removeItem(
-          "userProfile"
-        );
-
-
-        window.userProfile =
-          null;
+        }
 
 
         loginCompleted =
@@ -119156,43 +119789,28 @@ function startOnlineLoginFlow(){
 
 
         return false;
+
       }
 
 
-      // ==========================================================
-      // 🔴 OTHER INVALID PROFILE
-      // ==========================================================
+      // ======================================================
+      // ❌ OTHER SERVER ERROR
+      // ======================================================
 
       if(
-        profile.error
+        profile.status ===
+        "error"
       ){
 
         console.warn(
-          "⚠ Invalid profile:",
+          "⚠ First-login backend error:",
           profile
         );
 
 
-        localStorage.removeItem(
-          "userPhone"
-        );
-
-
-        localStorage.removeItem(
-          "userProfile"
-        );
-
-
-        window.userProfile =
-          null;
-
-
-        loginCompleted =
-          false;
-
-
         if(
-          !loginModalLocked
+          !loginModalLocked &&
+          !window.userProfile
         ){
 
           loginShownOnce =
@@ -119204,34 +119822,28 @@ function startOnlineLoginFlow(){
 
 
         return false;
+
       }
 
 
-      // ==========================================================
-      // 🔐 EXPLICIT SUCCESS REQUIRED
-      // ==========================================================
+      // ======================================================
+      // 🔐 SUCCESS REQUIRED
+      // ======================================================
 
       if(
         profile.status !==
-          "ok"
+        "ok"
       ){
 
         console.warn(
-          "⛔ Invalid authorization response:",
+          "⛔ Invalid first-login response:",
           profile
         );
 
 
-        /*
-         * Do not silently continue.
-         *
-         * If there is no authenticated profile,
-         * restore the login UI.
-         */
-
         if(
-          !window.userProfile &&
-          !loginModalLocked
+          !loginModalLocked &&
+          !window.userProfile
         ){
 
           loginShownOnce =
@@ -119243,23 +119855,29 @@ function startOnlineLoginFlow(){
 
 
         return false;
+
       }
 
 
-      // ==========================================================
+      // ======================================================
       // 🔥 NORMALIZE PROFILE
-      // ==========================================================
+      // ======================================================
 
       const fixedProfile =
 
-        normalizeUserProfile(
-          profile
-        );
+        typeof normalizeUserProfile ===
+        "function"
+
+          ? normalizeUserProfile(
+              profile
+            )
+
+          : profile;
 
 
-      // ==========================================================
-      // 🔐 NORMALIZED PROFILE VALIDATION
-      // ==========================================================
+      // ======================================================
+      // 🔐 VALIDATE PROFILE
+      // ======================================================
 
       if(
         !fixedProfile ||
@@ -119267,13 +119885,13 @@ function startOnlineLoginFlow(){
       ){
 
         console.warn(
-          "⛔ Invalid normalized profile"
+          "⛔ Invalid normalized first-login profile"
         );
 
 
         if(
-          !window.userProfile &&
-          !loginModalLocked
+          !loginModalLocked &&
+          !window.userProfile
         ){
 
           loginShownOnce =
@@ -119285,83 +119903,193 @@ function startOnlineLoginFlow(){
 
 
         return false;
+
       }
 
 
-      // ==========================================================
-      // 🔥 SAVE GLOBAL PROFILE
-      // ==========================================================
+      // ======================================================
+      // 📱 PHONE CONSISTENCY
+      // ======================================================
 
-      window.userProfile =
-        fixedProfile;
-
-
-      localStorage.setItem(
-
-        "userProfile",
-
-        JSON.stringify(
-          fixedProfile
-        )
-
-      );
-
-
-      // ==========================================================
-      // 🔥 SAVE PHONE
-      // ==========================================================
-
-      localStorage.setItem(
-
-        "userPhone",
+      const returnedPhone =
 
         String(
-          fixedProfile.phone
+          fixedProfile.phone ||
+          ""
         )
+        .replace(
+          /\D/g,
+          ""
+        )
+        .trim();
 
-      );
+
+      if(
+        returnedPhone !==
+        phone
+      ){
+
+        console.error(
+          "❌ FIRST LOGIN PHONE MISMATCH:",
+          {
+            enteredPhone:
+              phone,
+
+            returnedPhone:
+              returnedPhone
+          }
+        );
 
 
-      // ==========================================================
+        return false;
+
+      }
+
+
+      // ======================================================
+      // 🔥 APPLY AUTHENTICATED PROFILE
+      // ======================================================
+
+      let applied =
+        false;
+
+
+      if(
+        typeof applyAuthenticatedProfile ===
+        "function"
+      ){
+
+        applied =
+          applyAuthenticatedProfile(
+            fixedProfile,
+            "SERVER"
+          );
+
+      }
+
+
+      // ======================================================
+      // FALLBACK
+      // ======================================================
+
+      if(
+        !applied
+      ){
+
+        console.error(
+          "❌ First-login profile could not be applied"
+        );
+
+
+        return false;
+
+      }
+
+
+      // ======================================================
+      // 🔐 PERMANENT FIRST-LOGIN MARKER
+      // ======================================================
+      //
+      // IMPORTANT:
+      //
+      // Marker is written ONLY after:
+      //
+      // server success
+      //       +
+      // valid profile
+      //       +
+      // phone verified
+      //       +
+      // profile successfully applied
+      //
+      // ======================================================
+
+      let markerSaved =
+        false;
+
+
+      if(
+        typeof ggMarkFirstLoginCompleted ===
+        "function"
+      ){
+
+        markerSaved =
+          ggMarkFirstLoginCompleted();
+
+      }
+
+
+      if(
+        !markerSaved
+      ){
+
+        console.error(
+          "❌ FIRST LOGIN SUCCEEDED BUT " +
+          "PERMANENT MARKER COULD NOT BE SAVED"
+        );
+
+        // Do NOT pretend permanent authentication succeeded.
+
+        return false;
+
+      }
+
+
+      // ======================================================
       // 🔥 LOGIN COMPLETE
-      // ==========================================================
+      // ======================================================
 
       loginCompleted =
         true;
 
 
-      // ==========================================================
-      // 🌐 NETWORK
-      // ==========================================================
+      window.__LOGIN_TIME__ =
+        Date.now();
+
+
+      console.log(
+        "🔐 FIRST LOGIN COMPLETED PERMANENTLY"
+      );
+
+
+      // ======================================================
+      // 🌐 ONLINE
+      // ======================================================
 
       updateNetworkStatus(
         "online"
       );
 
 
-      // ==========================================================
+      // ======================================================
       // 🔐 ROLE CONTROL
-      // ==========================================================
+      // ======================================================
 
       try{
 
-        applyRoleControl?.();
+        if(
+          typeof applyRoleControl ===
+          "function"
+        ){
+
+          applyRoleControl();
+
+        }
 
       }
-
-      catch(e){
+      catch(roleError){
 
         console.warn(
-          "⚠ applyRoleControl failed",
-          e
+          "⚠ applyRoleControl failed:",
+          roleError
         );
 
       }
 
 
-      // ==========================================================
-      // 🔐 LOGIN UI NO LONGER REQUIRED
-      // ==========================================================
+      // ======================================================
+      // 🔒 HIDE LOGIN
+      // ======================================================
 
       try{
 
@@ -119375,112 +120103,154 @@ function startOnlineLoginFlow(){
         }
 
       }
-
-      catch(e){
+      catch(hideError){
 
         console.warn(
-          "⚠ hideLogin failed",
-          e
+          "⚠ hideLogin failed:",
+          hideError
         );
 
       }
 
 
+      // ======================================================
+      // 🚀 COMMON AUTHENTICATION BOOT
+      // ======================================================
+
+      if(
+        typeof bootAfterAuthentication ===
+        "function"
+      ){
+
+        try{
+
+          bootAfterAuthentication(
+            fixedProfile,
+            "SERVER"
+          );
+
+        }
+        catch(bootError){
+
+          console.warn(
+            "⚠ bootAfterAuthentication failed:",
+            bootError
+          );
+
+        }
+
+      }
+      else if(
+        typeof startApp ===
+        "function" &&
+        !window.__APP_BOOTED_ONCE__
+      ){
+
+        window.__APP_BOOTED_ONCE__ =
+          true;
+
+        window.__LOGIN_JUST_FINISHED__ =
+          true;
+
+        try{
+
+          startApp();
+
+        }
+        catch(appError){
+
+          console.warn(
+            "⚠ startApp failed:",
+            appError
+          );
+
+        }
+
+      }
+
+
+      // ======================================================
+      // 🔥 POST LOGIN GIS REFRESH
+      // ======================================================
+
+      setTimeout(
+        async function(){
+
+          try{
+
+            if(
+              typeof renderFilteredGIS ===
+              "function"
+            ){
+
+              renderFilteredGIS();
+
+            }
+
+
+            if(
+              typeof populateBeatButtons ===
+              "function"
+            ){
+
+              await populateBeatButtons();
+
+            }
+
+
+            if(
+              typeof loadCompartmentsForRange ===
+              "function"
+            ){
+
+              await loadCompartmentsForRange();
+
+            }
+
+
+            if(
+              typeof renderFilteredCompartments ===
+              "function"
+            ){
+
+              renderFilteredCompartments();
+
+            }
+
+          }
+          catch(gisError){
+
+            console.warn(
+              "⚠ GIS post-login initialization:",
+              gisError
+            );
+
+          }
+
+        },
+        300
+      );
+
+
+      // ======================================================
+      // 🔐 DO NOT CALL BACKGROUND AUTH CHECK HERE
+      // ======================================================
+
       console.log(
-        "✅ Profile refresh completed"
+        "✅ SERVER FIRST LOGIN SUCCESS"
       );
 
 
       return true;
 
     }
-
   )
-
-
-  // ============================================================
-  // 🔥 SAFE UI REFRESH ONLY
-  // ============================================================
-
-  .then(
-
-    function(authorized){
-
-      /*
-       * Failed / unavailable authorization:
-       * nothing further to refresh.
-       */
-
-      if(
-        authorized !==
-        true
-      ){
-
-        return;
-      }
-
-
-      // ========================================================
-      // 🔥 NEVER RUN DURING LOGIN WINDOW
-      // ========================================================
-
-      const stillInLoginWindow =
-
-        Date.now() -
-        (
-          window.__LOGIN_TIME__ ||
-          0
-        )
-        < 20000;
-
-
-      if(
-        stillInLoginWindow
-      ){
-
-        console.warn(
-          "⛔ Heavy refresh skipped"
-        );
-
-
-        return;
-      }
-
-
-      // ========================================================
-      // 🔥 LIGHT REFRESH ONLY
-      // ========================================================
-
-      try{
-
-        refreshAll?.();
-
-      }
-
-      catch(e){
-
-        console.warn(
-          "⚠ refreshAll failed",
-          e
-        );
-
-      }
-
-    }
-
-  )
-
-
-  // ============================================================
-  // 🔴 UNEXPECTED FAILURE
-  // ============================================================
 
   .catch(
-
     function(err){
 
       console.warn(
-        "⚠ startOnlineLoginFlow failed:",
+        "⚠ First-login network/runtime failure:",
         err
       );
 
@@ -119490,13 +120260,13 @@ function startOnlineLoginFlow(){
       );
 
 
-      // ========================================================
-      // 🔐 SHOW LOGIN IF NO AUTHENTICATED PROFILE EXISTS
-      // ========================================================
+      // ======================================================
+      // TRUE FIRST LOGIN ONLY
+      // ======================================================
 
       if(
-        !window.userProfile &&
-        !loginModalLocked
+        !loginModalLocked &&
+        !window.userProfile
       ){
 
         loginShownOnce =
@@ -119507,16 +120277,9 @@ function startOnlineLoginFlow(){
       }
 
     }
-
   )
 
-
-  // ============================================================
-  // 🔓 FINALLY
-  // ============================================================
-
   .finally(
-
     function(){
 
       authFlowRunning =
@@ -119528,11 +120291,9 @@ function startOnlineLoginFlow(){
       );
 
     }
-
   );
 
-}
-    function hideSplash(){
+}    function hideSplash(){
 
   const splash = document.getElementById("splash-screen");
   if(!splash) return;
