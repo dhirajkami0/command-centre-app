@@ -8414,64 +8414,39 @@ const GG_FIRST_LOGIN_KEY =
 // 🔎 CHECK FIRST-LOGIN COMPLETION
 // ============================================================
 
-function ggHasCompletedFirstLogin(){
+function ggHasCompletedFirstLogin() {
+    try {
+        return localStorage.getItem(GG_FIRST_LOGIN_KEY) === "1";
+    } catch (err) {
+        console.warn("⚠️ Unable to read persistent first-login state:", err);
 
-    try{
-
-        return (
-            localStorage.getItem(
-                GG_FIRST_LOGIN_KEY
-            ) === "1"
-        );
-
+        // ========================================================
+        // 🔐 FAIL-SAFE
+        // --------------------------------------------------------
+        // If persistent authentication state cannot be read,
+        // NEVER manufacture a "first login required" state.
+        //
+        // The app must NOT open the login modal because of a
+        // temporary storage/read failure.
+        // ========================================================
+        return true;
     }
-    catch(err){
-
-        console.warn(
-            "⚠️ Unable to read persistent first-login state:",
-            err
-        );
-
-        return false;
-
-    }
-
 }
-
 
 // ============================================================
 // 💾 MARK FIRST LOGIN COMPLETED
 // ============================================================
 
-function ggMarkFirstLoginCompleted(){
-
-    try{
-
-        localStorage.setItem(
-            GG_FIRST_LOGIN_KEY,
-            "1"
-        );
-
-        console.log(
-            "🔐 FIRST LOGIN PERSISTED"
-        );
-
+function ggMarkFirstLoginCompleted() {
+    try {
+        localStorage.setItem(GG_FIRST_LOGIN_KEY, "1");
+        console.log("🔐 FIRST LOGIN PERSISTED PERMANENTLY");
         return true;
-
-    }
-    catch(err){
-
-        console.error(
-            "❌ Unable to persist first-login state:",
-            err
-        );
-
+    } catch (err) {
+        console.error("❌ Unable to persist first-login state:", err);
         return false;
-
     }
-
-}
-// ============================================================
+}// ============================================================
 // 🔐 GREEN GUARD — SIMPLE FAST LOGIN
 // ============================================================
 //
@@ -9853,119 +9828,131 @@ async function login(){
 // FINAL HARDENED VERSION
 // ============================================================
 // ============================================================
-// 🔥 SHOW LOGIN (FINAL DOUBLE-OPEN FIX)
+// 🔥 SHOW LOGIN
+// 🔐 FIRST-INSTALL ONLY
 // ============================================================
-function showLogin(){
 
-  console.log("🔐 showLogin called");
+function showLogin() {
+    console.log("🔐 showLogin called");
 
-  // ============================================================
-  // 🔥 HARD SESSION LOCK
-  // ============================================================
-  if(loginCompleted){
+    // ============================================================
+    // 🔐 PERMANENT FIRST-LOGIN LOCK
+    //
+    // Once the installation has successfully completed its first
+    // login, the login modal is NEVER allowed to appear again.
+    //
+    // This applies:
+    // • ONLINE
+    // • OFFLINE
+    // • SERVER DOWN
+    // • NETWORK ERROR
+    // • PROFILE CACHE TEMPORARILY UNAVAILABLE
+    // • APP RESTART
+    // • PAGE RELOAD
+    // ============================================================
 
-    console.warn(
-      "⛔ Login already completed"
-    );
+    try {
+        if (typeof ggHasCompletedFirstLogin === "function" && ggHasCompletedFirstLogin()) {
+            console.warn("🔐 FIRST LOGIN ALREADY COMPLETED → LOGIN MODAL PERMANENTLY BLOCKED");
 
-    return;
-  }
-
-  // ============================================================
-  // 🔥 PROFILE EXISTS
-  // ============================================================
-  if(window.userProfile){
-
-    console.warn(
-      "⛔ Already logged in"
-    );
-
-    return;
-  }
-
-  // ============================================================
-  // 🔥 UI ALREADY SHOWN
-  // ============================================================
-  if(loginUIShown){
-
-    console.warn(
-      "⛔ Login UI already shown"
-    );
-
-    return;
-  }
-
-  // ============================================================
-  // 🔥 HARD MODAL LOCK
-  // ============================================================
-  if(loginModalLocked){
-
-    console.warn(
-      "⛔ Modal locked"
-    );
-
-    return;
-  }
-
-  const modal =
-    document.getElementById(
-      "loginModal"
-    );
-
-  if(!modal){
-
-    console.warn(
-      "⚠ loginModal not found"
-    );
-
-    return;
-  }
-
-  // ============================================================
-  // 🔥 LOCK IMMEDIATELY
-  // ============================================================
-  loginModalLocked = true;
-
-  loginUIShown = true;
-
-  loginShownOnce = true;
-
-  // ============================================================
-  // 🔥 SHOW MODAL
-  // ============================================================
-  modal.style.display = "flex";
-
-  console.log(
-    "✅ Login modal shown"
-  );
-
-  // ============================================================
-  // 🔥 AUTO FOCUS
-  // ============================================================
-  const input =
-    document.getElementById(
-      "loginPhone"
-    );
-
-  if(input){
-
-    setTimeout(() => {
-
-      input.focus();
-
-    }, 100);
-
-    input.onkeypress =
-      function(e){
-
-        if(e.key === "Enter"){
-
-          login();
+            // Make sure any accidental visible modal is hidden.
+            const existingModal = document.getElementById("loginModal");
+            if (existingModal) {
+                existingModal.style.display = "none";
+            }
+            return;
         }
-      };
-  }
-}
-// ============================================================
+    } catch (err) {
+        console.warn("⚠️ First-login state check failed:", err);
+        // Do not manufacture an authenticated session here.
+        // Continue with the normal first-install checks.
+    }
+
+    // ============================================================
+    // 🔒 IN-MEMORY AUTH LOCK
+    // ============================================================
+
+    if (loginCompleted) {
+        console.warn("⛔ Login already completed");
+        return;
+    }
+
+    // ============================================================
+    // 🔒 PROFILE EXISTS
+    // ============================================================
+
+    if (window.userProfile) {
+        console.warn("⛔ Already authenticated");
+        return;
+    }
+
+    // ============================================================
+    // 🔒 UI ALREADY SHOWN
+    // ============================================================
+
+    if (loginUIShown) {
+        console.warn("⛔ Login UI already shown");
+        return;
+    }
+
+    // ============================================================
+    // 🔒 MODAL LOCK
+    // ============================================================
+
+    if (loginModalLocked) {
+        console.warn("⛔ Login modal locked");
+        return;
+    }
+
+    // ============================================================
+    // LOGIN MODAL
+    // ============================================================
+
+    const modal = document.getElementById("loginModal");
+
+    if (!modal) {
+        console.warn("⚠️ loginModal not found");
+        return;
+    }
+
+    // ============================================================
+    // 🔒 LOCK BEFORE DISPLAY
+    // ============================================================
+
+    loginModalLocked = true;
+    loginUIShown = true;
+    loginShownOnce = true;
+
+    // ============================================================
+    // SHOW
+    // ============================================================
+
+    modal.style.display = "flex";
+
+    console.log("✅ FIRST-INSTALL LOGIN MODAL SHOWN");
+
+    // ============================================================
+    // AUTO FOCUS
+    // ============================================================
+
+    const input = document.getElementById("loginPhone");
+
+    if (input) {
+        setTimeout(function() {
+            try {
+                input.focus();
+            } catch (err) {
+                console.warn("⚠️ Login focus skipped:", err);
+            }
+        }, 100);
+
+        input.onkeypress = function(e) {
+            if (e.key === "Enter") {
+                login();
+            }
+        };
+    }
+}// ============================================================
 // 🔥 LOGOUT (UNCHANGED)
 // ============================================================
 // =====================================================
