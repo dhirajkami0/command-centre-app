@@ -2727,11 +2727,58 @@ async function ggSavePendingIrregularities(
    ============================================================ */
 
 
+/* ============================================================
+   ADD ONE PENDING IRREGULARITY
+   ============================================================
+
+   QUEUE RECORD:
+
+       {
+           queue_id,
+           queued_at,
+           status,
+           attempts,
+           last_error,
+
+           payload: {
+               ...complete irregularity payload...
+           },
+
+           media: {
+               photo,
+               video,
+               audio
+           }
+       }
+
+   IMPORTANT
+   ------------------------------------------------------------
+   payload and media are deliberately stored separately.
+
+   IndexedDB can structured-clone the File / Blob objects
+   supplied by getOfflineMediaSnapshot().
+
+   This avoids:
+
+       payload: {
+           payload: {...},
+           media: {...}
+       }
+
+   and makes replay deterministic.
+   ============================================================ */
+
+
 async function ggQueueIrregularity(
-    payload
+    payload,
+    media = null
 ){
 
     try{
+
+        /* ====================================================
+           VALIDATE PAYLOAD
+           ==================================================== */
 
         if(
             !payload
@@ -2745,29 +2792,6 @@ async function ggQueueIrregularity(
 
 
         /* ====================================================
-           CAPTURE MEDIA BEFORE FORM IS CLEARED
-           ==================================================== */
-
-        let media =
-            null;
-
-
-        if(
-            window.GGIrregularity &&
-            GGIrregularity.Media &&
-            typeof GGIrregularity.Media
-                .getOfflineMediaSnapshot ===
-                "function"
-        ){
-
-            media =
-                await GGIrregularity.Media
-                    .getOfflineMediaSnapshot();
-
-        }
-
-
-        /* ====================================================
            READ EXISTING QUEUE
            ==================================================== */
 
@@ -2776,7 +2800,7 @@ async function ggQueueIrregularity(
 
 
         /* ====================================================
-           QUEUE ID
+           GENERATE LOCAL QUEUE ID
            ==================================================== */
 
         const queueId =
@@ -2792,7 +2816,35 @@ async function ggQueueIrregularity(
 
 
         /* ====================================================
-           PENDING RECORD
+           NORMALIZE MEDIA OBJECT
+           ====================================================
+
+           Keep only the actual offline media snapshot.
+
+           No object URLs.
+           No base64.
+           No Firebase URLs.
+           ==================================================== */
+
+        const offlineMedia = {
+
+            photo:
+                media?.photo ||
+                null,
+
+            video:
+                media?.video ||
+                null,
+
+            audio:
+                media?.audio ||
+                null
+
+        };
+
+
+        /* ====================================================
+           CREATE PENDING RECORD
            ==================================================== */
 
         const pendingRecord = {
@@ -2812,25 +2864,17 @@ async function ggQueueIrregularity(
             last_error:
                 "",
 
-            /* ================================================
-               COMPLETE PAYLOAD
-               ================================================ */
-
             payload:
                 payload,
 
-            /* ================================================
-               OFFLINE MEDIA SNAPSHOT
-               ================================================ */
-
             media:
-                media
+                offlineMedia
 
         };
 
 
         /* ====================================================
-           ADD TO QUEUE
+           APPEND TO QUEUE
            ==================================================== */
 
         queue.push(
@@ -2839,7 +2883,7 @@ async function ggQueueIrregularity(
 
 
         /* ====================================================
-           PERSIST
+           PERSIST QUEUE
            ==================================================== */
 
         const saved =
@@ -2860,23 +2904,62 @@ async function ggQueueIrregularity(
 
 
         /* ====================================================
-           LOG
+           DIAGNOSTIC
            ==================================================== */
 
         console.log(
             "📦 IRREGULARITY QUEUED OFFLINE:",
             {
-                queueId:
-                    queueId,
+                queue_id:
+                    pendingRecord.queue_id,
 
-                hasPhoto:
-                    !!media?.photo,
+                payload:
+                    pendingRecord.payload,
 
-                hasVideo:
-                    !!media?.video,
+                media:
+                    {
+                        photo:
+                            pendingRecord.media.photo
+                                ? {
+                                    name:
+                                        pendingRecord.media.photo.name,
 
-                hasAudio:
-                    !!media?.audio
+                                    type:
+                                        pendingRecord.media.photo.type,
+
+                                    size:
+                                        pendingRecord.media.photo.size
+                                }
+                                : null,
+
+                        video:
+                            pendingRecord.media.video
+                                ? {
+                                    name:
+                                        pendingRecord.media.video.name,
+
+                                    type:
+                                        pendingRecord.media.video.type,
+
+                                    size:
+                                        pendingRecord.media.video.size
+                                }
+                                : null,
+
+                        audio:
+                            pendingRecord.media.audio
+                                ? {
+                                    name:
+                                        pendingRecord.media.audio.name,
+
+                                    type:
+                                        pendingRecord.media.audio.type,
+
+                                    size:
+                                        pendingRecord.media.audio.size
+                                }
+                                : null
+                    }
             }
         );
 
@@ -2890,6 +2973,7 @@ async function ggQueueIrregularity(
             "❌ Could not queue irregularity:",
             err
         );
+
 
         throw err;
 
