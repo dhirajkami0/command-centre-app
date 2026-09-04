@@ -2712,7 +2712,1022 @@ async function ggSavePendingIrregularities(
 /* ============================================================
    ADD ONE PENDING IRREGULARITY
    ============================================================ */
+/* ============================================================
+   IRREGULARITY PENDING QUEUE — ONLINE REPLAY
+   ============================================================
 
+   PURPOSE
+   ------------------------------------------------------------
+   Replays irregularities captured while offline.
+
+   QUEUE ITEM SHAPE
+   ------------------------------------------------------------
+
+   {
+       queue_id,
+       queued_at,
+       status,
+       attempts,
+       last_error,
+       payload,
+       media
+   }
+
+   REPLAY FLOW
+   ------------------------------------------------------------
+
+   PENDING
+       ↓
+   createDocument(payload)
+       ↓
+   Firestore document created
+       ↓
+   uploadMedia(documentRef, payload)
+       ↓
+   SUCCESS
+       ↓
+   remove ONLY that queue item
+
+   FAILURE
+       ↓
+   keep queue item
+   ↓
+   attempts++
+   ↓
+   last_error updated
+   ↓
+   retry later
+
+   IMPORTANT
+   ------------------------------------------------------------
+   The existing createDocument() remains authoritative for
+   Firestore counters and official Irregularity IDs.
+
+   No Firestore document is created while offline.
+
+   A queue item is removed ONLY after its complete replay
+   succeeds.
+   ============================================================ */
+
+
+/* ============================================================
+   QUEUE UPDATE HELPER
+   ============================================================ */
+
+async function ggUpdatePendingIrregularity(
+    queueId,
+    changes
+){
+
+    try{
+
+        const queue =
+            await ggGetPendingIrregularities();
+
+
+        if(
+            !Array.isArray(queue)
+        ){
+
+            return false;
+
+        }
+
+
+        const index =
+            queue.findIndex(
+                item =>
+                    String(
+                        item?.queue_id || ""
+                    ) ===
+                    String(
+                        queueId
+                    )
+            );
+
+
+        if(
+            index < 0
+        ){
+
+            console.warn(
+                "⚠ Pending Irregularity not found:",
+                queueId
+            );
+
+            return false;
+
+        }
+
+
+        queue[index] = {
+
+            ...queue[index],
+
+            ...changes
+
+        };
+
+
+        return await ggSavePendingIrregularities(
+            queue
+        );
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ Could not update pending Irregularity:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* ============================================================
+   REMOVE ONE QUEUE ITEM
+   ============================================================ */
+
+async function ggRemovePendingIrregularity(
+    queueId
+){
+
+    try{
+
+        const queue =
+            await ggGetPendingIrregularities();
+
+
+        if(
+            !Array.isArray(queue)
+        ){
+
+            return false;
+
+        }
+
+
+        const filtered =
+            queue.filter(
+                item =>
+                    String(
+                        item?.queue_id || ""
+                    ) !==
+                    String(
+                        queueId
+                    )
+            );
+
+
+        if(
+            filtered.length ===
+            queue.length
+        ){
+
+            console.warn(
+                "⚠ Pending Irregularity already absent:",
+                queueId
+            );
+
+            return true;
+
+        }
+
+
+        const saved =
+            await ggSavePendingIrregularities(
+                filtered
+            );
+
+
+        if(
+            saved
+        ){
+
+            console.log(
+                "🗑️ PENDING IRREGULARITY REMOVED:",
+                queueId
+            );
+
+        }
+
+
+        return saved;
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ Could not remove pending Irregularity:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* ============================================================
+   SINGLE PENDING IRREGULARITY REPLAY
+   ============================================================ */
+
+async function ggReplayPendingIrregularity(
+    pending
+){
+
+    if(
+        !pending ||
+        !pending.queue_id
+    ){
+
+        throw new Error(
+            "Invalid pending Irregularity queue item."
+        );
+
+    }
+
+
+    const queueId =
+        String(
+            pending.queue_id
+        );
+
+
+    console.group(
+        "🔄 REPLAY IRREGULARITY:",
+        queueId
+    );
+
+
+    try{
+
+        /* ====================================================
+           NETWORK GUARD
+           ==================================================== */
+
+        if(
+            navigator.onLine !== true
+        ){
+
+            throw new Error(
+                "Device is offline."
+            );
+
+        }
+
+
+        /* ====================================================
+           FIREBASE
+           ==================================================== */
+
+        await GGIrregularity.waitForFirebase();
+
+
+        /* ====================================================
+           QUEUED PAYLOAD
+           ==================================================== */
+
+        const payload =
+            pending.payload;
+
+
+        if(
+            !payload ||
+            typeof payload !==
+            "object"
+        ){
+
+            throw new Error(
+                "Pending Irregularity payload is missing."
+            );
+
+        }
+
+
+        console.log(
+            "📦 REPLAY PAYLOAD:",
+            payload
+        );
+
+
+        /* ====================================================
+           MARK PROCESSING
+
+           This prevents another replay cycle from treating
+           the same item as untouched while it is executing.
+           ==================================================== */
+
+        await ggUpdatePendingIrregularity(
+
+            queueId,
+
+            {
+
+                status:
+                    "PROCESSING",
+
+                attempts:
+                    Number(
+                        pending.attempts || 0
+                    ) + 1,
+
+                last_error:
+                    ""
+
+            }
+
+        );
+
+
+        /* ====================================================
+           CREATE FIRESTORE DOCUMENT
+
+           IMPORTANT:
+           ----------------------------------------------------
+           Existing authoritative transaction.
+
+           DO NOT replace this with addDoc/setDoc.
+
+           createDocument() remains responsible for the official
+           Irregularity number/counter transaction.
+           ==================================================== */
+
+        const documentRef =
+            await GGIrregularity.createDocument(
+                payload
+            );
+
+
+        if(
+            !documentRef ||
+            !documentRef.id
+        ){
+
+            throw new Error(
+                "Firestore document reference was not returned."
+            );
+
+        }
+
+
+        console.log(
+            "✅ REPLAY FIRESTORE DOCUMENT CREATED:",
+            documentRef.id
+        );
+
+
+        /* ====================================================
+           MEDIA
+           ==================================================== */
+
+        const media =
+            pending.media || {
+
+                photo:
+                    null,
+
+                video:
+                    null,
+
+                audio:
+                    null
+
+            };
+
+
+        const hasQueuedMedia =
+            !!(
+                media.photo ||
+                media.video ||
+                media.audio
+            );
+
+
+        if(
+            hasQueuedMedia
+        ){
+
+            console.log(
+                "📷 REPLAY QUEUED MEDIA:",
+                {
+
+                    photo:
+                        !!media.photo,
+
+                    video:
+                        !!media.video,
+
+                    audio:
+                        !!media.audio
+
+                }
+            );
+
+
+            /*
+             * Restore the queued media into the media module's
+             * existing offline media source.
+             *
+             * The media module already owns the actual media
+             * handling/snapshot representation.
+             */
+
+            if(
+                GGIrregularity.Media &&
+                typeof GGIrregularity.Media.restoreOfflineMediaSnapshot ===
+                    "function"
+            ){
+
+                await GGIrregularity.Media
+                    .restoreOfflineMediaSnapshot(
+                        media
+                    );
+
+            }
+            else{
+
+                /*
+                 * If the uploaded media module exposes its
+                 * snapshot under the existing generic restore
+                 * function, use that instead.
+                 *
+                 * We deliberately do not silently mark the
+                 * queue successful if queued media cannot be
+                 * restored.
+                 */
+
+                throw new Error(
+                    "Irregularity offline media restore function is unavailable."
+                );
+
+            }
+
+
+            /* =================================================
+               UPLOAD QUEUED MEDIA
+               ================================================= */
+
+            const mediaResult =
+                await GGIrregularity.uploadMedia(
+                    documentRef,
+                    payload
+                );
+
+
+            console.log(
+                "✅ REPLAY MEDIA UPLOAD COMPLETE:",
+                mediaResult
+            );
+
+
+            /* =================================================
+               UPDATE FIRESTORE MEDIA FIELDS
+
+               uploadMedia() normally performs the appropriate
+               media handling. Keep the returned payload fields
+               available for the final status update.
+               ================================================= */
+
+            if(
+                mediaResult &&
+                typeof mediaResult ===
+                "object"
+            ){
+
+                const mediaUpdate = {
+
+                    photo_url:
+                        mediaResult.photo_url ||
+                        "",
+
+                    video_url:
+                        mediaResult.video_url ||
+                        "",
+
+                    audio_url:
+                        mediaResult.audio_url ||
+                        "",
+
+                    photo_storage_path:
+                        mediaResult.photo_storage_path ||
+                        "",
+
+                    video_storage_path:
+                        mediaResult.video_storage_path ||
+                        "",
+
+                    audio_storage_path:
+                        mediaResult.audio_storage_path ||
+                        "",
+
+                    media_status:
+                        mediaResult.media_status ||
+                        "NONE",
+
+                    updated_at:
+                        window.fb.serverTimestamp()
+
+                };
+
+
+                await window.fb.updateDoc(
+                    documentRef,
+                    mediaUpdate
+                );
+
+
+                console.log(
+                    "✅ REPLAY MEDIA METADATA UPDATED:",
+                    documentRef.id
+                );
+
+            }
+
+        }
+        else{
+
+            console.log(
+                "ℹ️ REPLAY HAS NO MEDIA:",
+                queueId
+            );
+
+        }
+
+
+        /* ====================================================
+           COMPLETE SUCCESS
+           ====================================================
+
+           IMPORTANT:
+           Queue removal occurs LAST.
+
+           Therefore:
+
+               Firestore failure
+                    → queue retained
+
+               Media failure
+                    → queue retained
+
+               Metadata failure
+                    → queue retained
+
+               Everything successful
+                    → queue removed
+           ==================================================== */
+
+        const removed =
+            await ggRemovePendingIrregularity(
+                queueId
+            );
+
+
+        if(
+            !removed
+        ){
+
+            throw new Error(
+                "Irregularity succeeded but queue cleanup failed."
+            );
+
+        }
+
+
+        console.log(
+            "🎉 IRREGULARITY OFFLINE REPLAY COMPLETE:",
+            {
+
+                queueId:
+                    queueId,
+
+                firestoreId:
+                    documentRef.id
+
+            }
+        );
+
+
+        console.groupEnd();
+
+
+        return {
+
+            success:
+                true,
+
+            queueId:
+                queueId,
+
+            firestoreId:
+                documentRef.id
+
+        };
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ IRREGULARITY REPLAY FAILED:",
+            queueId,
+            error
+        );
+
+
+        /* ====================================================
+           RETAIN QUEUE ITEM
+           ==================================================== */
+
+        try{
+
+            const latestQueue =
+                await ggGetPendingIrregularities();
+
+
+            const latestItem =
+                latestQueue.find(
+                    item =>
+                        String(
+                            item?.queue_id || ""
+                        ) ===
+                        queueId
+                );
+
+
+            if(
+                latestItem
+            ){
+
+                await ggUpdatePendingIrregularity(
+
+                    queueId,
+
+                    {
+
+                        status:
+                            "PENDING",
+
+                        last_error:
+                            String(
+                                error?.message ||
+                                error ||
+                                "Unknown replay error"
+                            )
+
+                    }
+
+                );
+
+            }
+
+        }
+        catch(
+            queueError
+        ){
+
+            console.error(
+                "❌ Could not preserve replay failure state:",
+                queueError
+            );
+
+        }
+
+
+        console.groupEnd();
+
+
+        return {
+
+            success:
+                false,
+
+            queueId:
+                queueId,
+
+            error:
+                String(
+                    error?.message ||
+                    error ||
+                    "Unknown replay error"
+                )
+
+        };
+
+    }
+
+}
+
+
+/* ============================================================
+   SYNC ALL PENDING IRREGULARITIES
+   ============================================================ */
+
+async function syncPendingIrregularities(){
+
+    console.group(
+        "🌐 IRREGULARITY OFFLINE → ONLINE SYNC"
+    );
+
+
+    try{
+
+        /* ====================================================
+           NETWORK GUARD
+           ==================================================== */
+
+        if(
+            navigator.onLine !== true
+        ){
+
+            console.log(
+                "📴 Device still offline — sync skipped."
+            );
+
+
+            console.groupEnd();
+
+
+            return {
+
+                success:
+                    false,
+
+                skipped:
+                    true,
+
+                reason:
+                    "offline"
+
+            };
+
+        }
+
+
+        /* ====================================================
+           READ QUEUE
+           ==================================================== */
+
+        const queue =
+            await ggGetPendingIrregularities();
+
+
+        if(
+            !Array.isArray(queue) ||
+            queue.length === 0
+        ){
+
+            console.log(
+                "📭 NO PENDING IRREGULARITIES"
+            );
+
+
+            console.groupEnd();
+
+
+            return {
+
+                success:
+                    true,
+
+                processed:
+                    0,
+
+                remaining:
+                    0
+
+            };
+
+        }
+
+
+        console.log(
+            "📦 PENDING IRREGULARITIES:",
+            queue.length
+        );
+
+
+        /* ====================================================
+           PROCESS ONE AT A TIME
+           ====================================================
+
+           IMPORTANT:
+
+           Do not run Promise.all() here.
+
+           Each createDocument() uses the authoritative
+           Firestore counters.
+
+           Sequential replay avoids unnecessary contention
+           between queued counter transactions.
+           ==================================================== */
+
+        let successful =
+            0;
+
+        let failed =
+            0;
+
+
+        for(
+            const pending of queue
+        ){
+
+            if(
+                navigator.onLine !== true
+            ){
+
+                console.warn(
+                    "📴 Connection lost during replay — stopping."
+                );
+
+                break;
+
+            }
+
+
+            /* =================================================
+               SKIP ALREADY PROCESSING ITEMS
+
+               This protects against duplicate execution if
+               another sync invocation is currently handling
+               an item.
+               ================================================= */
+
+            if(
+                pending?.status ===
+                "PROCESSING"
+            ){
+
+                console.warn(
+                    "⏭️ SKIPPING PROCESSING ITEM:",
+                    pending.queue_id
+                );
+
+                continue;
+
+            }
+
+
+            const result =
+                await ggReplayPendingIrregularity(
+                    pending
+                );
+
+
+            if(
+                result.success
+            ){
+
+                successful++;
+
+            }
+            else{
+
+                failed++;
+
+            }
+
+        }
+
+
+        /* ====================================================
+           FINAL QUEUE COUNT
+           ==================================================== */
+
+        const remainingQueue =
+            await ggGetPendingIrregularities();
+
+
+        console.log(
+            "📊 IRREGULARITY SYNC RESULT:",
+            {
+
+                queuedBefore:
+                    queue.length,
+
+                successful:
+                    successful,
+
+                failed:
+                    failed,
+
+                remaining:
+                    remainingQueue.length
+
+            }
+        );
+
+
+        console.groupEnd();
+
+
+        return {
+
+            success:
+                failed === 0,
+
+            processed:
+                successful,
+
+            failed:
+                failed,
+
+            remaining:
+                remainingQueue.length
+
+        };
+
+    }
+    catch(
+        error
+    ){
+
+        console.error(
+            "❌ IRREGULARITY OFFLINE SYNC FAILED:",
+            error
+        );
+
+
+        console.groupEnd();
+
+
+        return {
+
+            success:
+                false,
+
+            processed:
+                0,
+
+            failed:
+                1,
+
+            error:
+                String(
+                    error?.message ||
+                    error
+                )
+
+        };
+
+    }
+
+}
+
+
+/* ============================================================
+   EXPOSE FOR CONSOLE / ONLINE HANDLER
+   ============================================================ */
+
+window.syncPendingIrregularities =
+    syncPendingIrregularities;
+
+
+/* ============================================================
+   AUTOMATIC ONLINE TRIGGER
+   ============================================================ */
+
+window.addEventListener(
+    "online",
+    function(){
+
+        console.log(
+            "🌐 ONLINE EVENT → IRREGULARITY SYNC"
+        );
+
+
+        setTimeout(
+            function(){
+
+                syncPendingIrregularities()
+                    .catch(
+                        error => {
+
+                            console.error(
+                                "❌ Automatic Irregularity sync failed:",
+                                error
+                            );
+
+                        }
+                    );
+
+            },
+            1000
+        );
+
+    }
+);
 /* ============================================================
    ADD ONE PENDING IRREGULARITY
    ============================================================
