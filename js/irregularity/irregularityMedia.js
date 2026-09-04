@@ -736,7 +736,354 @@ function(){
     };
 
 };
+/* ============================================================
+   OFFLINE MEDIA SNAPSHOT
+   ============================================================
 
+   PURPOSE
+   ------------------------------------------------------------
+   Capture the actual File / Blob objects from the form while
+   they still exist.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   • Does NOT upload anything.
+   • Does NOT modify Firebase.
+   • Does NOT modify Firestore.
+   • Does NOT modify Elephant / Wildlife.
+   • Uses IndexedDB structured-clone capable File / Blob objects.
+   • No base64 conversion.
+   • No object URLs are stored.
+   ============================================================ */
+
+
+GGIrregularity.Media.getOfflineMediaSnapshot =
+async function(){
+
+    try{
+
+        const formMedia =
+            GGIrregularity.Media.getFormMedia();
+
+
+        const snapshot = {
+
+            photo:
+                formMedia?.photo ||
+                null,
+
+            video:
+                formMedia?.video ||
+                null,
+
+            audio:
+                formMedia?.audio ||
+                null
+
+        };
+
+
+        console.log(
+            "📸 IRREGULARITY OFFLINE MEDIA SNAPSHOT:",
+            {
+                photo:
+                    snapshot.photo
+                        ? {
+                            name:
+                                snapshot.photo.name,
+
+                            type:
+                                snapshot.photo.type,
+
+                            size:
+                                snapshot.photo.size
+                        }
+                        : null,
+
+                video:
+                    snapshot.video
+                        ? {
+                            name:
+                                snapshot.video.name,
+
+                            type:
+                                snapshot.video.type,
+
+                            size:
+                                snapshot.video.size
+                        }
+                        : null,
+
+                audio:
+                    snapshot.audio
+                        ? {
+                            name:
+                                snapshot.audio.name,
+
+                            type:
+                                snapshot.audio.type,
+
+                            size:
+                                snapshot.audio.size
+                        }
+                        : null
+            }
+        );
+
+
+        return snapshot;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Could not create irregularity offline media snapshot:",
+            error
+        );
+
+        throw error;
+
+    }
+
+};
+
+
+/* ============================================================
+   RESTORE OFFLINE MEDIA TO FORM
+   ============================================================
+
+   This is primarily a restoration helper.
+
+   It does NOT upload.
+
+   It places the saved File objects back into the existing
+   irregularity form inputs so the existing media pipeline can
+   consume them.
+   ============================================================ */
+
+
+GGIrregularity.Media.restoreOfflineMediaSnapshot =
+async function(
+    snapshot
+){
+
+    try{
+
+        if(
+            !snapshot
+        ){
+
+            console.log(
+                "📭 No irregularity offline media to restore"
+            );
+
+            return false;
+
+        }
+
+
+        const photoInput =
+            document.getElementById(
+                "gg-irregularity-photo"
+            );
+
+
+        const videoInput =
+            document.getElementById(
+                "gg-irregularity-video"
+            );
+
+
+        const audioInput =
+            document.getElementById(
+                "gg-irregularity-audio"
+            );
+
+
+        let restored =
+            0;
+
+
+        /* ====================================================
+           PHOTO
+           ==================================================== */
+
+        if(
+            snapshot.photo &&
+            photoInput
+        ){
+
+            const ok =
+                GGIrregularity.Media._setInputFile(
+                    photoInput,
+                    snapshot.photo
+                );
+
+
+            if(
+                ok
+            ){
+
+                restored++;
+
+
+                console.log(
+                    "📸 OFFLINE PHOTO RESTORED:",
+                    {
+                        name:
+                            snapshot.photo.name,
+
+                        type:
+                            snapshot.photo.type,
+
+                        size:
+                            snapshot.photo.size
+                    }
+                );
+
+
+                try{
+
+                    GGIrregularity.Media.previewPhoto(
+                        photoInput
+                    );
+
+                }
+                catch(_){
+                }
+
+            }
+
+        }
+
+
+        /* ====================================================
+           VIDEO
+           ==================================================== */
+
+        if(
+            snapshot.video &&
+            videoInput
+        ){
+
+            const ok =
+                GGIrregularity.Media._setInputFile(
+                    videoInput,
+                    snapshot.video
+                );
+
+
+            if(
+                ok
+            ){
+
+                restored++;
+
+
+                console.log(
+                    "🎥 OFFLINE VIDEO RESTORED:",
+                    {
+                        name:
+                            snapshot.video.name,
+
+                        type:
+                            snapshot.video.type,
+
+                        size:
+                            snapshot.video.size
+                    }
+                );
+
+
+                try{
+
+                    GGIrregularity.Media.previewVideo(
+                        videoInput
+                    );
+
+                }
+                catch(_){
+                }
+
+            }
+
+        }
+
+
+        /* ====================================================
+           AUDIO
+           ==================================================== */
+
+        if(
+            snapshot.audio &&
+            audioInput
+        ){
+
+            const ok =
+                GGIrregularity.Media._setInputFile(
+                    audioInput,
+                    snapshot.audio
+                );
+
+
+            if(
+                ok
+            ){
+
+                restored++;
+
+
+                console.log(
+                    "🎙 OFFLINE AUDIO RESTORED:",
+                    {
+                        name:
+                            snapshot.audio.name,
+
+                        type:
+                            snapshot.audio.type,
+
+                        size:
+                            snapshot.audio.size
+                    }
+                );
+
+
+                try{
+
+                    GGIrregularity.Media.previewAudio(
+                        audioInput
+                    );
+
+                }
+                catch(_){
+                }
+
+            }
+
+        }
+
+
+        console.log(
+            "✅ IRREGULARITY OFFLINE MEDIA RESTORE COMPLETE:",
+            restored
+        );
+
+
+        return restored > 0;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ Could not restore irregularity offline media:",
+            error
+        );
+
+        return false;
+
+    }
+
+};
 
 /* ============================================================
    CHECK MEDIA
