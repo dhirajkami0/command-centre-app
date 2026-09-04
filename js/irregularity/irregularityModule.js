@@ -3055,6 +3055,50 @@ async function(){
    ============================================================ */
 
 
+/* ============================================================
+   GG IRREGULARITY SAVE
+   ============================================================
+
+   ONLINE
+   ------------------------------------------------------------
+   Existing behaviour remains:
+
+       buildPayload()
+            ↓
+       waitForFirebase()
+            ↓
+       createDocument()
+            ↓
+       uploadMedia()
+            ↓
+       return Firestore result
+
+
+   OFFLINE
+   ------------------------------------------------------------
+   New behaviour:
+
+       buildPayload()
+            ↓
+       getOfflineMediaSnapshot()
+            ↓
+       persist payload + media to IDB
+            ↓
+       DO NOT call Firestore
+            ↓
+       return offline result
+
+
+   IMPORTANT
+   ------------------------------------------------------------
+   • createDocument() remains untouched.
+   • Existing online transaction remains authoritative.
+   • Existing online media upload remains untouched.
+   • Elephant/Wildlife code is not touched.
+   • Offline media is captured from the existing media module.
+   ============================================================ */
+
+
 GGIrregularity.save =
 async function(
     formData
@@ -3107,13 +3151,122 @@ async function(
 
            Do NOT generate an official Firestore ID.
 
-           The complete payload is persisted locally and will
-           later be replayed through createDocument().
+           First capture the EXISTING media files.
+
+           Then persist:
+
+               payload
+               +
+               media snapshot
+
+           to the pending IDB queue.
+
+           The queued item will later be replayed through
+           the existing createDocument() transaction.
            ==================================================== */
 
         if(
             navigator.onLine !== true
         ){
+
+            console.warn(
+                "📴 OFFLINE — PREPARING IRREGULARITY QUEUE"
+            );
+
+
+            /* =================================================
+               OFFLINE MEDIA SNAPSHOT
+               =================================================
+
+               Use the existing media module.
+
+               This captures the actual current
+               photo/video/audio File or Blob objects.
+
+               No base64 conversion.
+               No object URL persistence.
+               No new media storage system.
+               ================================================= */
+
+            let media =
+                null;
+
+
+            try{
+
+                if(
+                    GGIrregularity.Media &&
+                    typeof
+                        GGIrregularity.Media
+                            .getOfflineMediaSnapshot ===
+                        "function"
+                ){
+
+                    media =
+                        await
+                            GGIrregularity.Media
+                                .getOfflineMediaSnapshot();
+
+
+                    console.log(
+                        "📸 OFFLINE MEDIA SNAPSHOT CAPTURED:",
+                        media
+                    );
+
+                }
+                else{
+
+                    console.log(
+                        "ℹ️ NO OFFLINE MEDIA SNAPSHOT FUNCTION — CONTINUING WITHOUT MEDIA"
+                    );
+
+                }
+
+            }
+            catch(
+                mediaSnapshotError
+            ){
+
+                console.error(
+                    "❌ OFFLINE MEDIA SNAPSHOT FAILED:",
+                    mediaSnapshotError
+                );
+
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * Do NOT silently queue a submission whose
+                 * media could not be captured.
+                 *
+                 * The user selected media, but the media
+                 * snapshot failed.
+                 *
+                 * Therefore the save operation fails rather
+                 * than creating a false-success queue entry.
+                 */
+
+                throw mediaSnapshotError;
+
+            }
+
+
+            /* =================================================
+               PENDING QUEUE OBJECT
+               =================================================
+
+               Preserve the existing queue mechanism.
+
+               The queue receives:
+
+                   {
+                       payload: payload,
+                       media:   media
+                   }
+
+               ggQueueIrregularity() remains responsible for
+               generating queue_id and persisting the item.
+               ================================================= */
 
             console.warn(
                 "📴 OFFLINE — QUEUING IRREGULARITY"
@@ -3122,7 +3275,13 @@ async function(
 
             const pending =
                 await ggQueueIrregularity(
-                    payload
+                    {
+                        payload:
+                            payload,
+
+                        media:
+                            media
+                    }
                 );
 
 
@@ -3134,6 +3293,10 @@ async function(
 
             console.groupEnd();
 
+
+            /* =================================================
+               OFFLINE RESULT
+               ================================================= */
 
             return {
 
@@ -3150,7 +3313,10 @@ async function(
                     "",
 
                 payload:
-                    payload
+                    payload,
+
+                media:
+                    media
 
             };
 
@@ -3166,7 +3332,8 @@ async function(
            Existing online behaviour preserved.
            ==================================================== */
 
-        await GGIrregularity.waitForFirebase();
+        await
+            GGIrregularity.waitForFirebase();
 
 
         /* ====================================================
@@ -3177,13 +3344,18 @@ async function(
 
            This is the EXISTING authoritative transaction.
 
-           DO NOT replace or duplicate createDocument().
+           DO NOT replace it.
+
+           DO NOT generate an ID locally.
+
+           DO NOT bypass the existing counters.
            ==================================================== */
 
         const documentRef =
-            await GGIrregularity.createDocument(
-                payload
-            );
+            await
+                GGIrregularity.createDocument(
+                    payload
+                );
 
 
         console.log(
@@ -3194,12 +3366,17 @@ async function(
 
         /* ====================================================
            MEDIA
+           ====================================================
+
+           Existing ONLINE media flow remains unchanged.
 
            Firestore document already exists.
 
            Therefore media can safely use:
 
-               payload.firestore_id
+               documentRef.id
+
+           through the existing uploadMedia() implementation.
            ==================================================== */
 
         if(
@@ -3209,10 +3386,11 @@ async function(
             try{
 
                 const mediaResult =
-                    await GGIrregularity.uploadMedia(
-                        documentRef,
-                        payload
-                    );
+                    await
+                        GGIrregularity.uploadMedia(
+                            documentRef,
+                            payload
+                        );
 
 
                 /* ============================================
@@ -3270,34 +3448,35 @@ async function(
                 );
 
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * The observation itself has already been
-                 * successfully saved.
-                 *
-                 * Do NOT delete it.
-                 */
+                /* ============================================
+                   IMPORTANT
+
+                   The observation itself has already been
+                   successfully saved.
+
+                   Do NOT delete the Firestore document.
+                   ============================================ */
 
                 try{
 
-                    await window.fb.updateDoc(
-                        documentRef,
-                        {
+                    await
+                        window.fb.updateDoc(
+                            documentRef,
+                            {
 
-                            media_status:
-                                "FAILED",
+                                media_status:
+                                    "FAILED",
 
-                            media_error:
-                                GGIrregularity.text(
-                                    mediaError?.message
-                                ),
+                                media_error:
+                                    GGIrregularity.text(
+                                        mediaError?.message
+                                    ),
 
-                            updated_at:
-                                window.fb.serverTimestamp()
+                                updated_at:
+                                    window.fb.serverTimestamp()
 
-                        }
-                    );
+                            }
+                        );
 
                 }
                 catch(
@@ -3321,7 +3500,7 @@ async function(
 
 
         /* ====================================================
-           FINAL RESULT
+           FINAL ONLINE RESULT
            ==================================================== */
 
         const result = {
@@ -3371,7 +3550,6 @@ async function(
     }
 
 };
-
 
 /* ============================================================
    SUBMIT
