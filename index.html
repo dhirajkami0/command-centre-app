@@ -9832,132 +9832,228 @@ async function login(){
 // 🔐 FIRST-INSTALL ONLY
 // ============================================================
 
-function showLogin() {
-    console.log("🔐 showLogin called");
+// ============================================================
+// 🔥 SHOW LOGIN
+// FINAL PERMANENT FIRST-LOGIN BARRIER
+// ============================================================
+
+function showLogin(){
+
+    console.log(
+        "🔐 showLogin called"
+    );
+
 
     // ============================================================
-    // 🔐 PERMANENT FIRST-LOGIN LOCK
+    // 🔐 PERMANENT FIRST-LOGIN MARKER
     //
-    // Once the installation has successfully completed its first
-    // login, the login modal is NEVER allowed to appear again.
+    // THIS IS THE FINAL SAFETY BARRIER.
     //
-    // This applies:
-    // • ONLINE
-    // • OFFLINE
-    // • SERVER DOWN
-    // • NETWORK ERROR
-    // • PROFILE CACHE TEMPORARILY UNAVAILABLE
-    // • APP RESTART
-    // • PAGE RELOAD
+    // Once the installation has successfully completed its
+    // first SERVER login, the login modal must NEVER appear again.
+    //
+    // This protects against:
+    //
+    // • loadProfile()
+    // • background verification
+    // • ACCESS_BLOCKED
+    // • PROFILE_NOT_FOUND
+    // • NOT_AUTHORIZED
+    // • ACCESS_NOT_ACTIVE
+    // • network failures
+    // • cache problems
+    // • logout + reload
+    // • any forgotten showLogin() caller
+    //
     // ============================================================
 
-    try {
-        if (typeof ggHasCompletedFirstLogin === "function" && ggHasCompletedFirstLogin()) {
-            console.warn("🔐 FIRST LOGIN ALREADY COMPLETED → LOGIN MODAL PERMANENTLY BLOCKED");
+    if(
+        typeof ggHasCompletedFirstLogin ===
+        "function" &&
+        ggHasCompletedFirstLogin()
+    ){
 
-            // Make sure any accidental visible modal is hidden.
-            const existingModal = document.getElementById("loginModal");
-            if (existingModal) {
-                existingModal.style.display = "none";
-            }
-            return;
-        }
-    } catch (err) {
-        console.warn("⚠️ First-login state check failed:", err);
-        // Do not manufacture an authenticated session here.
-        // Continue with the normal first-install checks.
-    }
+        console.warn(
+            "🔐 FIRST LOGIN ALREADY COMPLETED → " +
+            "LOGIN MODAL PERMANENTLY BLOCKED"
+        );
 
-    // ============================================================
-    // 🔒 IN-MEMORY AUTH LOCK
-    // ============================================================
-
-    if (loginCompleted) {
-        console.warn("⛔ Login already completed");
         return;
+
     }
 
+
     // ============================================================
-    // 🔒 PROFILE EXISTS
+    // 🔥 HARD SESSION LOCK
     // ============================================================
 
-    if (window.userProfile) {
-        console.warn("⛔ Already authenticated");
+    if(
+        loginCompleted
+    ){
+
+        console.warn(
+            "⛔ Login already completed"
+        );
+
         return;
+
     }
 
+
     // ============================================================
-    // 🔒 UI ALREADY SHOWN
+    // 🔥 PROFILE EXISTS
     // ============================================================
 
-    if (loginUIShown) {
-        console.warn("⛔ Login UI already shown");
+    if(
+        window.userProfile
+    ){
+
+        console.warn(
+            "⛔ Already logged in"
+        );
+
         return;
+
     }
 
+
     // ============================================================
-    // 🔒 MODAL LOCK
+    // 🔥 UI ALREADY SHOWN
     // ============================================================
 
-    if (loginModalLocked) {
-        console.warn("⛔ Login modal locked");
+    if(
+        loginUIShown
+    ){
+
+        console.warn(
+            "⛔ Login UI already shown"
+        );
+
         return;
+
     }
+
+
+    // ============================================================
+    // 🔥 HARD MODAL LOCK
+    // ============================================================
+
+    if(
+        loginModalLocked
+    ){
+
+        console.warn(
+            "⛔ Modal locked"
+        );
+
+        return;
+
+    }
+
 
     // ============================================================
     // LOGIN MODAL
     // ============================================================
 
-    const modal = document.getElementById("loginModal");
+    const modal =
+        document.getElementById(
+            "loginModal"
+        );
 
-    if (!modal) {
-        console.warn("⚠️ loginModal not found");
+
+    if(
+        !modal
+    ){
+
+        console.warn(
+            "⚠ loginModal not found"
+        );
+
         return;
+
     }
 
-    // ============================================================
-    // 🔒 LOCK BEFORE DISPLAY
-    // ============================================================
-
-    loginModalLocked = true;
-    loginUIShown = true;
-    loginShownOnce = true;
 
     // ============================================================
-    // SHOW
+    // 🔥 LOCK IMMEDIATELY
     // ============================================================
 
-    modal.style.display = "flex";
+    loginModalLocked =
+        true;
 
-    console.log("✅ FIRST-INSTALL LOGIN MODAL SHOWN");
+    loginUIShown =
+        true;
+
+    loginShownOnce =
+        true;
+
 
     // ============================================================
-    // AUTO FOCUS
+    // 🔥 SHOW MODAL
+    //
+    // This line can only be reached when the permanent marker
+    // does NOT exist.
     // ============================================================
 
-    const input = document.getElementById("loginPhone");
+    modal.style.display =
+        "flex";
 
-    if (input) {
-        setTimeout(function() {
-            try {
+
+    console.log(
+        "✅ Login modal shown — FIRST LOGIN ONLY"
+    );
+
+
+    // ============================================================
+    // 🔥 AUTO FOCUS
+    // ============================================================
+
+    const input =
+        document.getElementById(
+            "loginPhone"
+        );
+
+
+    if(
+        input
+    ){
+
+        setTimeout(
+            () => {
+
                 input.focus();
-            } catch (err) {
-                console.warn("⚠️ Login focus skipped:", err);
-            }
-        }, 100);
 
-        input.onkeypress = function(e) {
-            if (e.key === "Enter") {
-                login();
-            }
-        };
+            },
+            100
+        );
+
+
+        input.onkeypress =
+            function(e){
+
+                if(
+                    e.key ===
+                    "Enter"
+                ){
+
+                    login();
+
+                }
+
+            };
+
     }
+
 }// ============================================================
 // 🔥 LOGOUT (UNCHANGED)
 // ============================================================
 // =====================================================
 // LOGOUT
 // =====================================================
+// ============================================================
+// 🔥 LOGOUT
+// FIRST-LOGIN MARKER IS PERMANENT
+// ============================================================
 
 function logout(){
 
@@ -9972,39 +10068,104 @@ function logout(){
                 // =============================================
 
                 if(
-                    typeof stopHECListener === "function"
+                    typeof stopHECListener ===
+                    "function"
                 ){
+
                     stopHECListener();
+
                 }
+
 
                 // =============================================
                 // CLEAR USER SESSION
+                //
+                // IMPORTANT:
+                //
+                // DO NOT REMOVE:
+                //
+                // GG_FIRST_LOGIN_KEY
+                //
+                // That marker permanently records that this
+                // installation has completed its first login.
                 // =============================================
 
-                localStorage.removeItem("userPhone");
-                localStorage.removeItem("userProfile");
-                localStorage.removeItem("sessionId");
-                localStorage.removeItem("dutyActive");
+                localStorage.removeItem(
+                    "userPhone"
+                );
+
+                localStorage.removeItem(
+                    "userProfile"
+                );
+
+                localStorage.removeItem(
+                    "sessionId"
+                );
+
+                localStorage.removeItem(
+                    "dutyActive"
+                );
+
+
+                // =============================================
+                // 🔐 PERMANENT FIRST-LOGIN MARKER
+                //
+                // DO NOT DO THIS:
+                //
+                // localStorage.removeItem(
+                //     GG_FIRST_LOGIN_KEY
+                // );
+                //
+                // It must remain permanently.
+                // =============================================
+
+                console.log(
+                    "🔐 FIRST LOGIN MARKER PRESERVED DURING LOGOUT"
+                );
+
 
                 // =============================================
                 // RESET GLOBALS
                 // =============================================
 
-                window.userProfile = null;
-                window.currentHECPopup = null;
-                window.hecMarkers = {};
-                window.hecAlertCache = {};
-                window.hecInitialized = false;
+                window.userProfile =
+                    null;
 
-                loginCompleted = false;
-                loginInProgress = false;
-                authFlowRunning = false;
+                window.currentHECPopup =
+                    null;
 
-                window.__appBootRequested = false;
-                window.__APP_BOOTED_ONCE__ = false;
+                window.hecMarkers =
+                    {};
+
+                window.hecAlertCache =
+                    {};
+
+                window.hecInitialized =
+                    false;
+
+
+                loginCompleted =
+                    false;
+
+                loginInProgress =
+                    false;
+
+                authFlowRunning =
+                    false;
+
+
+                window.__appBootRequested =
+                    false;
+
+                window.__APP_BOOTED_ONCE__ =
+                    false;
+
 
                 // =============================================
                 // RELOAD
+                //
+                // loadProfile() will see the permanent marker
+                // and will NOT show the login modal.
                 // =============================================
 
                 location.reload();
@@ -10018,6 +10179,12 @@ function logout(){
                     err
                 );
 
+
+                // IMPORTANT:
+                //
+                // Even in the error path, do NOT clear
+                // GG_FIRST_LOGIN_KEY.
+
                 location.reload();
 
             }
@@ -10026,9 +10193,7 @@ function logout(){
 
     );
 
-}
-
-    // =====================================================
+}    // =====================================================
 // LOGOUT DIALOG
 // =====================================================
 
@@ -119433,438 +119598,250 @@ function startOnlineLoginFlow(){
 // No patrol-session deletion.
 // ============================================================
 
-function refreshOnlineProfile(){
-
-  try{
-
+function refreshOnlineProfile() {
+  try {
     // ==========================================================
     // 📱 GET SAVED PHONE
     // ==========================================================
-
-    const phone =
-      String(
-        localStorage.getItem(
-          "userPhone"
-        ) || ""
-      )
-      .replace(
-        /\D/g,
-        ""
-      )
+    const phone = String(localStorage.getItem("userPhone") || "")
+      .replace(/\D/g, "")
       .trim();
-
 
     // ==========================================================
     // ❌ NO SAVED PHONE
     // ==========================================================
-
-    if(
-      phone.length < 10
-    ){
-
-      console.warn(
-        "⚠ No valid saved phone for online profile refresh"
-      );
-
+    if (phone.length < 10) {
+      console.warn("⚠ No valid saved phone for online profile refresh");
       return;
-
     }
 
-
     // ==========================================================
-    // 🔐 AUTHORITATIVE PROFILE CHECK
+    // 🔄 NON-AUTHORITATIVE ONLINE PROFILE REFRESH
+    //
+    // IMPORTANT:
+    //
+    // This function runs AFTER first login / during an
+    // already-established local application session.
+    //
+    // The server response here MUST NOT force logout.
+    //
+    // ONLY a successful "ok" response is allowed to
+    // refresh the local profile.
+    //
+    // Network failure / backend failure / authorization
+    // response MUST preserve the current local session.
     // ==========================================================
+    safeBackend("GET_PROFILE", {
+      phone: phone
+    })
+    .then(function(profile) {
+      // ======================================================
+      // 📴 NETWORK / FIRESTORE UNAVAILABLE
+      //
+      // null / undefined is NOT an authorization failure.
+      //
+      // DO NOT:
+      //
+      //   clear localStorage
+      //   clear userProfile
+      //   show login
+      //   reset login state
+      //   stop duty
+      //   clear Android cache
+      //   logout
+      //
+      // KEEP CURRENT LOCAL SESSION.
+      // ======================================================
+      if (profile === null || typeof profile === "undefined") {
+        console.warn("📴 Online profile check unavailable → preserving session");
 
-    safeBackend(
-      "GET_PROFILE",
-      {
-        phone: phone
+        if (typeof updateNetworkStatus === "function") {
+          updateNetworkStatus("offline");
+        }
+        return;
       }
-    )
 
-    .then(
-      function(profile){
-
-        // ======================================================
-        // 📴 NETWORK / FIRESTORE UNAVAILABLE
-        //
-        // null is NOT an authorization failure.
-        //
-        // DO NOT:
-        //   clear localStorage
-        //   clear userProfile
-        //   show login
-        //   stop duty
-        // ======================================================
-
-        if(
-          profile === null
-        ){
-
-          console.warn(
-            "📴 Online profile check unavailable → preserving session"
-          );
-
-          updateNetworkStatus(
-            "offline"
-          );
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // ⛔ EXPLICIT AUTHORIZATION FAILURE
-        //
-        // ONLY a server response with an explicit denial
-        // reaches this section.
-        // ======================================================
-
-        const isExplicitRevocation =
-
-          profile.status === "error" &&
-
-          (
-            profile.code === "ACCESS_BLOCKED" ||
-
-            profile.code === "PROFILE_NOT_FOUND" ||
-
-            profile.code === "NOT_AUTHORIZED" ||
-
-            profile.error === "ACCESS_BLOCKED" ||
-
-            profile.error === "PROFILE_NOT_FOUND" ||
-
-            profile.error === "NOT_AUTHORIZED"
-          );
-
-
-        if(
-          isExplicitRevocation
-        ){
-
-          console.warn(
-            "⛔ EXPLICIT PROFILE AUTHORIZATION FAILURE:",
-            phone,
-            profile.code ||
-            profile.error
-          );
-
-
-          // ====================================================
-          // 🔥 CLEAR ONLY AUTHENTICATION CACHE
-          //
-          // This does NOT touch:
-          //
-          // dutyActive
-          // sessionId
-          // offlineGPS
-          // patrol queue
-          // patrol tracks
-          // Room database
-          // ====================================================
-
-          clearLocalSession();
-
-
-          // ====================================================
-          // 🔐 SHOW LOGIN AGAIN
-          // ====================================================
-
-          if(
-            !loginModalLocked &&
-            !loginShownOnce
-          ){
-
-            loginShownOnce = true;
-
-            showLogin();
-
-          }
-
-
-          // ====================================================
-          // ⚠ USER MESSAGE
-          // ====================================================
-
-          if(
-            profile.code === "PROFILE_NOT_FOUND"
-          ){
-
-            alert(
-              "⛔ This mobile number is not authorized to use GreenGuard."
-            );
-
-          }
-
-          else if(
-            profile.code === "ACCESS_BLOCKED"
-          ){
-
-            alert(
-              "⛔ Access to GreenGuard has been blocked."
-            );
-
-          }
-
-          else{
-
-            alert(
-              "⛔ This mobile number is not authorized to use GreenGuard."
-            );
-
-          }
-
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // ❌ OTHER BACKEND ERROR
-        //
-        // DO NOT revoke authentication.
-        // ======================================================
-
-        if(
-          profile.status === "error"
-        ){
-
-          console.warn(
-            "⚠ PROFILE REFRESH BACKEND ERROR:",
-            profile
-          );
-
-          return;
-
-        }
-
-
-        if(
-          profile.error
-        ){
-
-          console.warn(
-            "⚠ PROFILE REFRESH ERROR:",
-            profile
-          );
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // 🔐 ONLY ACCEPT EXPLICIT SUCCESS
-        // ======================================================
-
-        if(
-          profile.status !== "ok"
-        ){
-
-          console.warn(
-            "⚠ Invalid profile refresh response:",
-            profile
-          );
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // 🔥 NORMALIZE PROFILE
-        // ======================================================
-
-        const fixedProfile =
-
-          typeof normalizeUserProfile === "function"
-
-            ? normalizeUserProfile(
-                profile
-              )
-
-            : profile;
-
-
-        // ======================================================
-        // 🔐 VALIDATE PROFILE
-        // ======================================================
-
-        if(
-          !fixedProfile ||
-          !fixedProfile.phone
-        ){
-
-          console.warn(
-            "⚠ Online profile normalization failed"
-          );
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // 📱 VERIFY PHONE CONSISTENCY
-        //
-        // Prevent an unexpected profile from replacing
-        // the currently authenticated phone session.
-        // ======================================================
-
-        const refreshedPhone =
-
-          String(
-            fixedProfile.phone || ""
-          )
-          .replace(
-            /\D/g,
-            ""
-          )
-          .trim();
-
-
-        if(
-          refreshedPhone !== phone
-        ){
-
-          console.error(
-            "❌ PROFILE PHONE MISMATCH:",
-            {
-              savedPhone: phone,
-              returnedPhone: refreshedPhone
-            }
-          );
-
-          return;
-
-        }
-
-
-        // ======================================================
-        // 💾 UPDATE AUTHENTICATED PROFILE
-        // ======================================================
-
-        window.userProfile =
-          fixedProfile;
-
-
-        localStorage.setItem(
-          "userPhone",
-          phone
+      // ======================================================
+      // ⛔ EXPLICIT AUTHORIZATION RESPONSE
+      //
+      // IMPORTANT:
+      //
+      // This is a BACKGROUND / ONLINE PROFILE REFRESH.
+      //
+      // It is NON-AUTHORITATIVE.
+      //
+      // Therefore:
+      //
+      //   NO clearLocalSession()
+      //   NO Android cache clear
+      //   NO logout
+      //   NO login reset
+      //   NO showLogin()
+      //   NO login modal
+      //   NO forced alert
+      //
+      // The currently running local session remains active.
+      // ======================================================
+      const isExplicitRevocation =
+        profile.status === "error" &&
+        (
+          profile.code === "ACCESS_BLOCKED" ||
+          profile.code === "PROFILE_NOT_FOUND" ||
+          profile.code === "NOT_AUTHORIZED" ||
+          profile.code === "ACCESS_NOT_ACTIVE" ||
+          profile.error === "ACCESS_BLOCKED" ||
+          profile.error === "PROFILE_NOT_FOUND" ||
+          profile.error === "NOT_AUTHORIZED" ||
+          profile.error === "ACCESS_NOT_ACTIVE"
         );
 
-
-        localStorage.setItem(
-          "userProfile",
-          JSON.stringify(
-            fixedProfile
-          )
+      if (isExplicitRevocation) {
+        console.warn(
+          "⛔ SERVER AUTHORIZATION RESPONSE DURING BACKGROUND PROFILE REFRESH:",
+          phone,
+          profile.code || profile.error
         );
-
-
-        // ======================================================
-        // 🔒 RE-APPLY GIS LOCK
-        //
-        // Uses the latest authoritative profile.
-        // ======================================================
-
-        if(
-          typeof applyStaffGISLock === "function"
-        ){
-
-          applyStaffGISLock(
-            fixedProfile
-          );
-
-        }
-
-
-        // ======================================================
-        // 🌐 ONLINE
-        // ======================================================
-
-        updateNetworkStatus(
-          "online"
+        console.warn(
+          "🔐 NON-AUTHORITATIVE BACKGROUND CHECK — CURRENT LOCAL SESSION KEPT"
         );
-
-
-        // ======================================================
-        // 🔥 RESET AUTH FAILURE COUNTER
-        //
-        // If you have the 3-confirmation background protection,
-        // a successful profile lookup resets it.
-        // ======================================================
-
-        if(
-          typeof window.__PROFILE_AUTH_FAIL_COUNT__ !==
-          "undefined"
-        ){
-
-          window.__PROFILE_AUTH_FAIL_COUNT__ = 0;
-
-        }
-
-
-        // ======================================================
-        // ✅ SUCCESS LOG
-        // ======================================================
-
-        console.log(
-          "✅ Online profile refreshed:",
-          fixedProfile.cleanName ||
-          fixedProfile.rawName ||
-          phone
-        );
-
+        return;
       }
-    )
 
+      // ======================================================
+      // ❌ OTHER BACKEND ERROR
+      //
+      // DO NOT revoke authentication.
+      // DO NOT clear local session.
+      // DO NOT show login.
+      // ======================================================
+      if (profile.status === "error") {
+        console.warn("⚠ PROFILE REFRESH BACKEND ERROR:", profile);
+        return;
+      }
+
+      // ======================================================
+      // ❌ GENERIC PROFILE ERROR
+      //
+      // DO NOT revoke authentication.
+      // ======================================================
+      if (profile.error) {
+        console.warn("⚠ PROFILE REFRESH ERROR:", profile);
+        return;
+      }
+
+      // ======================================================
+      // 🔐 ONLY ACCEPT EXPLICIT SUCCESS
+      //
+      // Anything other than status:"ok" is ignored.
+      // The existing local session remains untouched.
+      // ======================================================
+      if (profile.status !== "ok") {
+        console.warn("⚠ Invalid profile refresh response:", profile);
+        return;
+      }
+
+      // ======================================================
+      // 🔥 NORMALIZE PROFILE
+      // ======================================================
+      const fixedProfile = typeof normalizeUserProfile === "function"
+        ? normalizeUserProfile(profile)
+        : profile;
+
+      // ======================================================
+      // 🔐 VALIDATE PROFILE
+      // ======================================================
+      if (!fixedProfile || !fixedProfile.phone) {
+        console.warn("⚠ Online profile normalization failed");
+        return;
+      }
+
+      // ======================================================
+      // 📱 VERIFY PHONE CONSISTENCY
+      //
+      // Prevent an unexpected profile from replacing
+      // the currently authenticated phone session.
+      // ======================================================
+      const refreshedPhone = String(fixedProfile.phone || "")
+        .replace(/\D/g, "")
+        .trim();
+
+      if (refreshedPhone !== phone) {
+        console.error("❌ PROFILE PHONE MISMATCH:", {
+          savedPhone: phone,
+          returnedPhone: refreshedPhone
+        });
+        return;
+      }
+
+      // ======================================================
+      // 💾 UPDATE AUTHENTICATED PROFILE
+      //
+      // ONLY SUCCESSFUL SERVER PROFILE DATA reaches here.
+      // ======================================================
+      window.userProfile = fixedProfile;
+
+      localStorage.setItem("userPhone", phone);
+      localStorage.setItem("userProfile", JSON.stringify(fixedProfile));
+
+      // ======================================================
+      // 🔒 RE-APPLY GIS LOCK
+      //
+      // Uses the latest successfully retrieved profile.
+      // ======================================================
+      if (typeof applyStaffGISLock === "function") {
+        applyStaffGISLock(fixedProfile);
+      }
+
+      // ======================================================
+      // 🌐 ONLINE
+      // ======================================================
+      if (typeof updateNetworkStatus === "function") {
+        updateNetworkStatus("online");
+      }
+
+      // ======================================================
+      // 🔥 RESET AUTH FAILURE COUNTER
+      //
+      // If the 3-confirmation background protection exists,
+      // successful profile lookup resets it.
+      // ======================================================
+      if (typeof window.__PROFILE_AUTH_FAIL_COUNT__ !== "undefined") {
+        window.__PROFILE_AUTH_FAIL_COUNT__ = 0;
+      }
+
+      // ======================================================
+      // ✅ SUCCESS LOG
+      // ======================================================
+      console.log(
+        "✅ Online profile refreshed:",
+        fixedProfile.cleanName || fixedProfile.rawName || phone
+      );
+    })
     // ==========================================================
     // 📴 UNEXPECTED NETWORK / RUNTIME FAILURE
     //
     // NEVER revoke the session here.
     // ==========================================================
+    .catch(function(err) {
+      console.warn("⚠ refreshOnlineProfile network/runtime failure:", err);
 
-    .catch(
-      function(err){
-
-        console.warn(
-          "⚠ refreshOnlineProfile network/runtime failure:",
-          err
-        );
-
-        updateNetworkStatus(
-          "offline"
-        );
-
+      if (typeof updateNetworkStatus === "function") {
+        updateNetworkStatus("offline");
       }
-    );
-
-  }
-
-  catch(err){
-
+    });
+  } catch (err) {
     // ==========================================================
     // 🛡 OUTER SAFETY
     //
-    // Even an unexpected local JavaScript error must not
+    // Even an unexpected local JavaScript error must NOT
     // invalidate the authenticated field session.
     // ==========================================================
+    console.error("❌ refreshOnlineProfile crashed:", err);
 
-    console.error(
-      "❌ refreshOnlineProfile crashed:",
-      err
-    );
-
-    updateNetworkStatus(
-      "offline"
-    );
-
+    if (typeof updateNetworkStatus === "function") {
+      updateNetworkStatus("offline");
+    }
   }
-
 }/* ============================================================
    🌐 NETWORK LISTENERS (UNCHANGED BUT FIXED BEHAVIOR)
 ============================================================ */
