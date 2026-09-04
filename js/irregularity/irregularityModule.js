@@ -2547,11 +2547,429 @@ async function(
     return mediaResult;
 
 };
+/* ============================================================
+   IRREGULARITY PENDING-WRITE QUEUE
+   ============================================================
 
+   PURPOSE
+   ------------------------------------------------------------
+   Online:
+       Existing Firestore save flow remains unchanged.
+
+   Offline:
+       Complete payload is persisted locally.
+       No Firestore transaction is attempted.
+
+   When online:
+       Pending payload is replayed through the EXISTING
+       GGIrregularity.createDocument() transaction.
+
+   IMPORTANT
+   ------------------------------------------------------------
+   This is a separate queue.
+
+   It is NOT the existing:
+       irregularities_operational_cache_v1
+
+   The operational cache remains untouched.
+   ============================================================ */
+
+
+const GG_IRREGULARITY_PENDING_KEY =
+    "irregularities_pending_writes_v1";
+
+
+/* ============================================================
+   GET PENDING QUEUE
+   ============================================================ */
+
+async function ggGetPendingIrregularities(){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.get !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Irregularity pending queue IDB unavailable"
+            );
+
+            return [];
+
+        }
+
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        const queue =
+            await window.idbKeyval.get(
+                GG_IRREGULARITY_PENDING_KEY
+            );
+
+
+        if(
+            !Array.isArray(queue)
+        ){
+
+            return [];
+
+        }
+
+
+        return queue;
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Irregularity pending queue READ failed:",
+            err
+        );
+
+        return [];
+
+    }
+
+}
+
+
+/* ============================================================
+   SAVE PENDING QUEUE
+   ============================================================ */
+
+async function ggSavePendingIrregularities(
+    queue
+){
+
+    try{
+
+        if(
+            !window.idbKeyval ||
+            typeof window.idbKeyval.set !==
+                "function"
+        ){
+
+            console.warn(
+                "⚠ Irregularity pending queue IDB unavailable for save"
+            );
+
+            return false;
+
+        }
+
+
+        if(
+            window.__GG_IDB_READY__ !== true &&
+            window.__GG_IDB_READY_PROMISE__
+        ){
+
+            await
+                window.__GG_IDB_READY_PROMISE__;
+
+        }
+
+
+        await window.idbKeyval.set(
+
+            GG_IRREGULARITY_PENDING_KEY,
+
+            Array.isArray(queue)
+                ? queue
+                : []
+
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ Irregularity pending queue SAVE failed:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* ============================================================
+   ADD ONE PENDING IRREGULARITY
+   ============================================================ */
+
+async function ggQueueIrregularity(
+    payload
+){
+
+    try{
+
+        if(
+            !payload
+        ){
+
+            throw new Error(
+                "Cannot queue empty irregularity payload."
+            );
+
+        }
+
+
+        const queue =
+            await ggGetPendingIrregularities();
+
+
+        const queueId =
+            "IRR-OFFLINE-" +
+            Date.now() +
+            "-" +
+            Math.random()
+                .toString(36)
+                .slice(
+                    2,
+                    8
+                );
+
+
+        const pendingRecord = {
+
+            queue_id:
+                queueId,
+
+            queued_at:
+                Date.now(),
+
+            status:
+                "PENDING",
+
+            attempts:
+                0,
+
+            last_error:
+                "",
+
+            payload:
+                payload
+
+        };
+
+
+        queue.push(
+            pendingRecord
+        );
+
+
+        const saved =
+            await ggSavePendingIrregularities(
+                queue
+            );
+
+
+        if(
+            !saved
+        ){
+
+            throw new Error(
+                "Unable to persist offline irregularity."
+            );
+
+        }
+
+
+        console.log(
+            "📦 IRREGULARITY QUEUED OFFLINE:",
+            pendingRecord
+        );
+
+
+        return pendingRecord;
+
+    }
+    catch(err){
+
+        console.error(
+            "❌ Could not queue irregularity:",
+            err
+        );
+
+        throw err;
+
+    }
+
+}
+
+
+/* ============================================================
+   PENDING QUEUE COUNT
+   ============================================================ */
+
+async function ggGetPendingIrregularityCount(){
+
+    const queue =
+        await ggGetPendingIrregularities();
+
+
+    return queue.length;
+
+}
+
+
+/* ============================================================
+   REMOVE ONE PENDING RECORD
+   ============================================================ */
+
+async function ggRemovePendingIrregularity(
+    queueId
+){
+
+    try{
+
+        const queue =
+            await ggGetPendingIrregularities();
+
+
+        const filtered =
+            queue.filter(
+                function(record){
+
+                    return String(
+                        record?.queue_id ||
+                        ""
+                    ) !==
+                    String(
+                        queueId ||
+                        ""
+                    );
+
+                }
+            );
+
+
+        await ggSavePendingIrregularities(
+            filtered
+        );
+
+
+        console.log(
+            "🗑️ IRREGULARITY PENDING ITEM REMOVED:",
+            queueId
+        );
+
+
+        return true;
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Could not remove pending irregularity:",
+            err
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* ============================================================
+   DEBUG HELPER
+   ============================================================ */
+
+window.debugIrregularityPendingQueue =
+async function(){
+
+    const queue =
+        await ggGetPendingIrregularities();
+
+
+    console.group(
+        "📦 IRREGULARITY PENDING QUEUE"
+    );
+
+
+    console.log(
+        "Storage key:",
+        GG_IRREGULARITY_PENDING_KEY
+    );
+
+
+    console.log(
+        "Count:",
+        queue.length
+    );
+
+
+    console.log(
+        "Queue:",
+        queue
+    );
+
+
+    console.groupEnd();
+
+
+    return queue;
+
+};
 
 /* ============================================================
    SAVE
    ============================================================ */
+
+/* ============================================================
+   GG IRREGULARITY SAVE
+   ============================================================
+
+   ONLINE
+   ------------------------------------------------------------
+   Existing behaviour remains:
+
+       buildPayload()
+            ↓
+       waitForFirebase()
+            ↓
+       createDocument()
+            ↓
+       uploadMedia()
+            ↓
+       return Firestore result
+
+
+   OFFLINE
+   ------------------------------------------------------------
+   New behaviour:
+
+       buildPayload()
+            ↓
+       persist complete payload to IDB
+            ↓
+       DO NOT call Firestore
+            ↓
+       return offline result
+
+   IMPORTANT
+   ------------------------------------------------------------
+   createDocument() remains untouched and remains the
+   authoritative Firestore transaction / ID generator.
+   ============================================================ */
+
 
 GGIrregularity.save =
 async function(
@@ -2564,13 +2982,6 @@ async function(
 
 
     try{
-
-        /* ====================================================
-           FIREBASE
-           ==================================================== */
-
-        await GGIrregularity.waitForFirebase();
-
 
         /* ====================================================
            COMPLETE PAYLOAD
@@ -2599,7 +3010,90 @@ async function(
 
 
         /* ====================================================
+           OFFLINE
+           ====================================================
+
+           IMPORTANT:
+
+           Do NOT wait for Firebase.
+
+           Do NOT call createDocument().
+
+           Do NOT execute the Firestore transaction.
+
+           Do NOT generate an official Firestore ID.
+
+           The complete payload is persisted locally and will
+           later be replayed through createDocument().
+           ==================================================== */
+
+        if(
+            navigator.onLine !== true
+        ){
+
+            console.warn(
+                "📴 OFFLINE — QUEUING IRREGULARITY"
+            );
+
+
+            const pending =
+                await ggQueueIrregularity(
+                    payload
+                );
+
+
+            console.log(
+                "📦 IRREGULARITY SAVED TO PENDING QUEUE:",
+                pending.queue_id
+            );
+
+
+            console.groupEnd();
+
+
+            return {
+
+                offline:
+                    true,
+
+                queued:
+                    true,
+
+                queueId:
+                    pending.queue_id,
+
+                firestoreId:
+                    "",
+
+                payload:
+                    payload
+
+            };
+
+        }
+
+
+        /* ====================================================
+           FIREBASE
+           ====================================================
+
+           ONLINE ONLY.
+
+           Existing online behaviour preserved.
+           ==================================================== */
+
+        await GGIrregularity.waitForFirebase();
+
+
+        /* ====================================================
            CREATE FIRESTORE DOCUMENT
+           ====================================================
+
+           IMPORTANT:
+
+           This is the EXISTING authoritative transaction.
+
+           DO NOT replace or duplicate createDocument().
            ==================================================== */
 
         const documentRef =
@@ -2645,25 +3139,31 @@ async function(
                     mediaResult?.photo_url ||
                     "";
 
+
                 payload.video_url =
                     mediaResult?.video_url ||
                     "";
+
 
                 payload.audio_url =
                     mediaResult?.audio_url ||
                     "";
 
+
                 payload.photo_storage_path =
                     mediaResult?.photo_storage_path ||
                     "";
+
 
                 payload.video_storage_path =
                     mediaResult?.video_storage_path ||
                     "";
 
+
                 payload.audio_storage_path =
                     mediaResult?.audio_storage_path ||
                     "";
+
 
                 payload.media_status =
                     mediaResult?.media_status ||
@@ -2741,6 +3241,12 @@ async function(
            ==================================================== */
 
         const result = {
+
+            offline:
+                false,
+
+            queued:
+                false,
 
             firestoreId:
                 documentRef.id,
