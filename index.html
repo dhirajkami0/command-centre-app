@@ -120678,14 +120678,13 @@ function normalizeUserProfile(profile){
             .trim()
             .toUpperCase();
 
-
-        // ====================================================
-        // 🔵 BTR WEST
-        // ====================================================
-
         switch(
             division
         ){
+
+            // =================================================
+            // 🔵 BTR WEST — CANONICAL = BTR_W
+            // =================================================
 
             case "BTR_W":
 
@@ -120700,13 +120699,13 @@ function normalizeUserProfile(profile){
             case "BUXA TR(W)":
 
                 division =
-                    "BuxaTR_WEST";
+                    "BTR_W";
 
                 break;
 
 
             // =================================================
-            // 🟢 BTR EAST
+            // 🟢 BTR EAST — CANONICAL = BTR_E
             // =================================================
 
             case "BTR_E":
@@ -120722,7 +120721,7 @@ function normalizeUserProfile(profile){
             case "BUXA TR(E)":
 
                 division =
-                    "BuxaTR_EAST";
+                    "BTR_E";
 
                 break;
 
