@@ -18182,6 +18182,7 @@ async function preloadAllCompartments(){
   );
 
 }async function buildAndStoreMasterGrid() {
+
   console.group(
     "🔲 BUILDING MASTER GRID"
   );
@@ -18190,7 +18191,10 @@ async function preloadAllCompartments(){
     performance.now();
 
   try {
-    const STEP = 0.00045; // 50m
+
+    const STEP =
+      0.00045; // ~50m
+
 
     console.log(
       "📏 Grid Size:",
@@ -18198,28 +18202,68 @@ async function preloadAllCompartments(){
       "(~50m)"
     );
 
+
     const allFeatures =
       window.allCompartmentFeatures || [];
+
 
     console.log(
       "📦 Total Features:",
       allFeatures.length
     );
 
-    if (!allFeatures.length) {
+
+    if(
+      !allFeatures.length
+    ){
+
       console.error(
         "❌ No compartment features loaded"
       );
+
       return;
+
     }
 
-    let totalGridCells = 0;
-    let compartmentsSaved = 0;
 
-    for (const [featureIndex, feature] of allFeatures.entries()) {
-      try {
+    // ============================================================
+    // 🧠 NEW
+    // REBUILT MASTER GRID
+    // ============================================================
+
+    const rebuiltMasterGrid =
+      {};
+
+
+    let totalGridCells =
+      0;
+
+
+    let compartmentsSaved =
+      0;
+
+
+    // ============================================================
+    // 🔨 BUILD EACH COMPARTMENT
+    // ============================================================
+
+    for(
+      const [
+        featureIndex,
+        feature
+      ]
+      of allFeatures.entries()
+    ){
+
+      try{
+
         const props =
           feature?.properties || {};
+
+
+        // ========================================================
+        // COMPARTMENT
+        // ========================================================
 
         const compartment =
           String(
@@ -18230,14 +18274,28 @@ async function preloadAllCompartments(){
           )
           .trim()
           .toUpperCase()
-          .replace(/\s+/g, "_");
+          .replace(
+            /\s+/g,
+            "_"
+          );
 
-        if (!compartment) {
+
+        if(
+          !compartment
+        ){
+
           console.warn(
             "⚠ Missing compartment"
           );
+
           continue;
+
         }
+
+
+        // ========================================================
+        // BEAT
+        // ========================================================
 
         const beat =
           String(
@@ -18246,12 +18304,22 @@ async function preloadAllCompartments(){
             ""
           ).trim();
 
+
+        // ========================================================
+        // RANGE
+        // ========================================================
+
         const range =
           String(
             props.range ||
             props.Range ||
             ""
           ).trim();
+
+
+        // ========================================================
+        // DIVISION
+        // ========================================================
 
         const division =
           normalizeDivision(
@@ -18260,7 +18328,11 @@ async function preloadAllCompartments(){
             ""
           );
 
-        // Stable gridId using hierarchy path instead of featureIndex
+
+        // ========================================================
+        // STABLE GRID ID
+        // ========================================================
+
         const gridId =
           [
             division,
@@ -18271,46 +18343,91 @@ async function preloadAllCompartments(){
           .filter(Boolean)
           .join("_")
           .toUpperCase()
-          .replace(/\s+/g, "_");
+          .replace(
+            /\s+/g,
+            "_"
+          );
+
 
         console.group(
           `📍 ${gridId}`
         );
 
+
+        // ========================================================
+        // BBOX
+        // ========================================================
+
         const bbox =
-          turf.bbox(feature);
+          turf.bbox(
+            feature
+          );
 
-        const minLng = bbox[0];
-        const minLat = bbox[1];
-        const maxLng = bbox[2];
-        const maxLat = bbox[3];
 
-        const cells = [];
+        const minLng =
+          bbox[0];
 
-        let bboxChecked = 0;
-        let validCells = 0;
+        const minLat =
+          bbox[1];
 
-        for (
+        const maxLng =
+          bbox[2];
+
+        const maxLat =
+          bbox[3];
+
+
+        // ========================================================
+        // CELLS
+        // ========================================================
+
+        const cells =
+          [];
+
+
+        let bboxChecked =
+          0;
+
+
+        let validCells =
+          0;
+
+
+        // ========================================================
+        // GENERATE CELLS
+        // ========================================================
+
+        for(
           let lat = minLat;
           lat < maxLat;
           lat += STEP
-        ) {
-          for (
+        ){
+
+          for(
             let lng = minLng;
             lng < maxLng;
             lng += STEP
-          ) {
+          ){
+
             bboxChecked++;
 
+
             const centerLat =
-              lat + STEP / 2;
+              lat +
+              STEP / 2;
+
 
             const centerLng =
-              lng + STEP / 2;
+              lng +
+              STEP / 2;
 
-            let inside = false;
 
-            try {
+            let inside =
+              false;
+
+
+            try{
+
               inside =
                 turf.booleanPointInPolygon(
                   turf.point([
@@ -18319,54 +18436,147 @@ async function preloadAllCompartments(){
                   ]),
                   feature
                 );
-            } catch(e) {}
 
-            if (!inside) {
-              continue;
+            }
+            catch(e){
+
+              inside =
+                false;
+
             }
 
+
+            if(
+              !inside
+            ){
+
+              continue;
+
+            }
+
+
             validCells++;
+
+
             totalGridCells++;
+
 
             const row =
               Math.round(
-                centerLat / STEP
+                centerLat /
+                STEP
               );
+
 
             const col =
               Math.round(
-                centerLng / STEP
+                centerLng /
+                STEP
               );
+
 
             cells.push(
               `${row}_${col}`
             );
+
           }
+
         }
+
 
         console.log(
           "🔲 Candidates:",
           bboxChecked
         );
 
+
         console.log(
           "✅ Valid Cells:",
           validCells
         );
 
+
+        // ========================================================
+        // AREA
+        // ========================================================
+
         const estimatedAreaHa =
           Number(
             (
-              validCells * 0.25
+              validCells *
+              0.25
             ).toFixed(2)
           );
+
 
         const actualAreaHa =
           Number(
             (
-              turf.area(feature) / 10000
+              turf.area(
+                feature
+              ) /
+              10000
             ).toFixed(2)
           );
+
+
+        // ========================================================
+        // MASTER GRID RECORD
+        // ========================================================
+
+        const gridRecord = {
+
+          gridId,
+
+          compartment,
+
+          beat,
+
+          range,
+
+          division,
+
+          bbox: {
+            minLat,
+            minLng,
+            maxLat,
+            maxLng
+          },
+
+          totalCells:
+            validCells,
+
+          estimatedAreaHa,
+
+          actualAreaHa,
+
+          gridSizeMeters:
+            50,
+
+          gridVersion:
+            1,
+
+          updatedAt:
+            Date.now(),
+
+          cells
+
+        };
+
+
+        // ========================================================
+        // 🧠 ADD TO REBUILT MEMORY MASTER GRID
+        // ========================================================
+
+        rebuiltMasterGrid[
+          gridId
+        ] =
+          gridRecord;
+
+
+        // ========================================================
+        // 🔥 FIRESTORE METADATA
+        // ========================================================
 
         const metadataRef =
           window.fb.doc(
@@ -18375,41 +18585,75 @@ async function preloadAllCompartments(){
             gridId
           );
 
+
         await window.fb.setDoc(
           metadataRef,
           {
+
             gridId,
+
             compartment,
+
             beat,
+
             range,
+
             division,
-            bbox: { minLat, minLng, maxLat, maxLng },
-            totalCells: validCells,
+
+            bbox: {
+              minLat,
+              minLng,
+              maxLat,
+              maxLng
+            },
+
+            totalCells:
+              validCells,
+
             estimatedAreaHa,
+
             actualAreaHa,
-            gridSizeMeters: 50,
-            gridVersion: 1,
+
+            gridSizeMeters:
+              50,
+
+            gridVersion:
+              1,
+
             updatedAt:
               window.fb.serverTimestamp()
+
           }
         );
 
-        const CHUNK_SIZE = 500;
 
-        let shardIndex = 0;
+        // ========================================================
+        // 🔥 FIRESTORE CELL SHARDS
+        // ========================================================
 
-        for (
+        const CHUNK_SIZE =
+          500;
+
+
+        let shardIndex =
+          0;
+
+
+        for(
           let i = 0;
           i < cells.length;
           i += CHUNK_SIZE
-        ) {
+        ){
+
           shardIndex++;
+
 
           const shard =
             cells.slice(
               i,
               i + CHUNK_SIZE
             );
+
 
           const shardRef =
             window.fb.doc(
@@ -18425,37 +18669,139 @@ async function preloadAllCompartments(){
               )}`
             );
 
+
           await window.fb.setDoc(
             shardRef,
             {
+
               gridId,
+
               compartment,
+
               shardIndex,
+
               cells: shard
+
             }
           );
+
         }
+
 
         console.log(
           "💾 Metadata Saved"
         );
+
 
         console.log(
           "💾 Shards:",
           shardIndex
         );
 
+
         compartmentsSaved++;
+
 
         console.groupEnd();
 
-      } catch(err) {
+      }
+      catch(err){
+
         console.error(
           "❌ Compartment Failed",
           err
         );
+
       }
+
     }
+
+
+    // ============================================================
+    // 📊 FINAL BUILT GRID COUNT
+    // ============================================================
+
+    const rebuiltGridCount =
+      Object.keys(
+        rebuiltMasterGrid
+      ).length;
+
+
+    console.log(
+      "🧠 REBUILT MASTER GRID:",
+      rebuiltGridCount
+    );
+
+
+    // ============================================================
+    // 🔒 SAFETY CHECK
+    // ============================================================
+
+    if(
+      rebuiltGridCount === 0
+    ){
+
+      throw new Error(
+        "Rebuild produced zero master grids"
+      );
+
+    }
+
+
+    // ============================================================
+    // 🧠 APPLY REBUILT GRID TO MEMORY
+    // ============================================================
+
+    window.masterGrid =
+      rebuiltMasterGrid;
+
+
+    window.__ANALYTICS_READY__ =
+      true;
+
+
+    window.__MASTER_GRID_FROM_IDB__ =
+      false;
+
+
+    window.__MASTER_GRID_SOURCE__ =
+      "REBUILD";
+
+
+    // ============================================================
+    // 💾 SAVE V2 TO INDEXEDDB
+    // ============================================================
+
+    if(
+      window.idbKeyval &&
+      typeof window.idbKeyval.set ===
+        "function"
+    ){
+
+      await window.idbKeyval.set(
+        "master_grid_cache_v2",
+        rebuiltMasterGrid
+      );
+
+
+      console.log(
+        "💾 MASTER GRID V2 SAVED TO IDB:",
+        rebuiltGridCount
+      );
+
+    }
+    else{
+
+      console.warn(
+        "⚠ idbKeyval unavailable → V2 cache NOT saved"
+      );
+
+    }
+
+
+    // ============================================================
+    // ⏱ ELAPSED
+    // ============================================================
 
     const elapsed =
       (
@@ -18463,17 +18809,28 @@ async function preloadAllCompartments(){
         buildStart
       ).toFixed(0);
 
+
+    // ============================================================
+    // ✅ FINAL BUILD REPORT
+    // ============================================================
+
     console.log(
       "━━━━━━━━━━━━━━━━━━"
     );
+
 
     console.log(
       "✅ GRID BUILD COMPLETE"
     );
 
+
     console.table({
+
       Compartments:
         compartmentsSaved,
+
+      MasterGrid:
+        rebuiltGridCount,
 
       TotalCells:
         totalGridCells,
@@ -18483,20 +18840,57 @@ async function preloadAllCompartments(){
 
       ElapsedMs:
         elapsed
+
     });
+
+
+    console.log(
+      "💾 V2 CACHE KEY:",
+      "master_grid_cache_v2"
+    );
+
+
+    console.log(
+      "🧠 MEMORY MASTER GRID:",
+      Object.keys(
+        window.masterGrid
+      ).length
+    );
+
 
     console.log(
       "━━━━━━━━━━━━━━━━━━"
     );
 
-  } catch(err) {
+
+    return window.masterGrid;
+
+  }
+  catch(err){
+
     console.error(
       "❌ GRID BUILD FAILED",
       err
     );
-  } finally {
-    console.groupEnd();
+
+
+    window.__ANALYTICS_READY__ =
+      false;
+
+
+    window.__MASTER_GRID_SOURCE__ =
+      "ERROR";
+
+
+    throw err;
+
   }
+  finally{
+
+    console.groupEnd();
+
+  }
+
 }
 // ============================================================
 // ⚡ STATIC MASTER GRID LOADER
