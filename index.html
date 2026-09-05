@@ -17295,7 +17295,7 @@ async function preloadAllCompartments(){
 
             cachedCompartments =
               await idbKeyval.get(
-                "all_compartments_cache_v1"
+                "all_compartments_cache_v2"
               );
 
           }
@@ -17857,12 +17857,12 @@ async function preloadAllCompartments(){
 
               await idbKeyval.set(
 
-                "all_compartments_cache_v1",
+                "all_compartments_cache_v2",
 
                 {
 
                   version:
-                    1,
+                    2,
 
                   timestamp:
                     Date.now(),
@@ -18641,7 +18641,7 @@ async function loadMasterGrid(){
 
                         cachedMasterGrid =
                             await window.idbKeyval.get(
-                                "master_grid_cache_v1"
+                                "master_grid_cache_v2"
                             );
 
                     }
@@ -18841,7 +18841,7 @@ async function loadMasterGrid(){
                     ){
 
                         await window.idbKeyval.set(
-                            "master_grid_cache_v1",
+                            "master_grid_cache_v2",
                             window.masterGrid
                         );
 
@@ -19205,13 +19205,13 @@ async function refreshMasterGridFromFirestore(
       ){
 
         await window.idbKeyval.set(
-          "master_grid_cache_v1",
+          "master_grid_cache_v2",
           freshMasterGrid
         );
 
 
         await window.idbKeyval.set(
-          "master_grid_cache_timestamp_v1",
+          "master_grid_cache_timestamp_v2",
           Date.now()
         );
 
@@ -77620,7 +77620,7 @@ async function loadDutyCompartmentsFromIDB(){
 
     const cached =
       await window.idbKeyval.get(
-        "all_compartments_cache_v1"
+        "all_compartments_cache_v2"
       );
 
 
