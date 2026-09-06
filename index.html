@@ -34936,14 +34936,6 @@ function ggReportMergeDailyRows(
 }
 
 
-/* ================================================================
-   24. LOAD SAVED DAILY REPORTS
-   ================================================================ */
-
-/* ================================================================
-   GG REPORT DATABASE
-   ================================================================ */
-
 async function ggReportOpenDB(){
 
     return new Promise(
@@ -35030,53 +35022,23 @@ async function ggReportOpenDB(){
 
 
                     // ==================================================
-                    // 🔥 DAILY DISTANCE SEGMENTS
+                    // 🔥 AUTHORITATIVE CELL OCCURRENCES
                     //
-                    // Separate from Firestore analytics.
+                    // Persistent source for pre-transmission
+                    // daily-report validation.
                     //
-                    // This survives:
+                    // This is local IndexedDB only.
+                    // No Firestore.
                     //
-                    //     analyticsBuffer reset
-                    //     analytics flush
-                    //     Firestore writes
-                    //
-                    // and allows the report engine to calculate
-                    // genuine daily distance.
-                    // ==================================================
-
-                    if(
-                        !db.objectStoreNames.contains(
-                            window.GG_REPORT.STORE_DISTANCE
-                        )
-                    ){
-
-                        db.createObjectStore(
-                            window.GG_REPORT.STORE_DISTANCE,
-                            {
-                                keyPath:
-                                    "id"
-                            }
-                        );
-
-                    }
-
-
-                    // ==================================================
-                    // 🔥 DAILY CELL OCCURRENCES
-                    //
-                    // Persistent local source for daily patrol
-                    // occurrence validation/reporting.
-                    //
-                    // IMPORTANT:
-                    // This is completely separate from:
+                    // This store is completely separate from:
                     //
                     //     analyticsBuffer
                     //     Firestore analytics
                     //     patrol tracking
                     //     distance_segments
                     //
-                    // Every individual cell-hit occurrence can be
-                    // persisted here with:
+                    // Each individual cell-hit occurrence is persisted
+                    // with:
                     //
                     //     id
                     //     gridId
@@ -35094,8 +35056,8 @@ async function ggReportOpenDB(){
                     //     page reload
                     //     browser restart
                     //
-                    // and provides the persistent local data required
-                    // for pre-transmission report validation.
+                    // and provides the persistent local source
+                    // required for pre-transmission validation.
                     // ==================================================
 
                     if(
@@ -35171,6 +35133,38 @@ async function ggReportOpenDB(){
 
                     }
 
+
+                    // ==================================================
+                    // 🔥 DAILY DISTANCE SEGMENTS
+                    //
+                    // Separate from Firestore analytics.
+                    //
+                    // This survives:
+                    //
+                    //     analyticsBuffer reset
+                    //     analytics flush
+                    //     Firestore writes
+                    //
+                    // and allows the report engine to calculate
+                    // genuine daily distance.
+                    // ==================================================
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_DISTANCE
+                        )
+                    ){
+
+                        db.createObjectStore(
+                            window.GG_REPORT.STORE_DISTANCE,
+                            {
+                                keyPath:
+                                    "id"
+                            }
+                        );
+
+                    }
+
                 };
 
 
@@ -35195,6 +35189,102 @@ async function ggReportOpenDB(){
 
         }
     );
+
+}
+/* ================================================================
+   PENDING CELL-OCCURRENCE WRITE BARRIER
+   ================================================================
+
+   collectAnalyticsHit() must remain non-blocking.
+
+   Every asynchronous occurrence write is registered here so
+   report validation can wait until all writes launched before
+   validation have completed.
+
+   No Firestore.
+   No network.
+   No report mutation.
+
+   ================================================================ */
+
+window.__GG_PENDING_OCCURRENCE_WRITES ??=
+    new Set();
+
+
+function ggReportTrackOccurrenceWrite(
+    promise
+){
+
+    if(
+        !promise ||
+        typeof promise.then !==
+            "function"
+    ){
+
+        return promise;
+
+    }
+
+
+    const trackedPromise =
+        Promise.resolve(
+            promise
+        );
+
+
+    window.__GG_PENDING_OCCURRENCE_WRITES.add(
+        trackedPromise
+    );
+
+
+    trackedPromise
+        .finally(
+            function(){
+
+                window.__GG_PENDING_OCCURRENCE_WRITES.delete(
+                    trackedPromise
+                );
+
+            }
+        )
+        .catch(
+            function(){
+
+                /*
+                 * The original caller remains responsible for
+                 * its own catch handling.
+                 *
+                 * This catch prevents an unhandled rejection
+                 * from the finally-chain itself.
+                 */
+
+            }
+        );
+
+
+    return trackedPromise;
+
+}
+
+
+async function ggReportWaitForPendingOccurrenceWrites(){
+
+    while(
+        window.__GG_PENDING_OCCURRENCE_WRITES &&
+        window.__GG_PENDING_OCCURRENCE_WRITES.size > 0
+    ){
+
+        const pending =
+            Array.from(
+                window.__GG_PENDING_OCCURRENCE_WRITES
+            );
+
+
+        await Promise.allSettled(
+            pending
+        );
+
+    }
 
 }
 /* ================================================================
@@ -35370,7 +35460,96 @@ async function ggReportSaveCellOccurrence(
     }
 
 }
+/* ================================================================
+   LOAD AUTHORITATIVE CELL OCCURRENCES
+   ================================================================ */
 
+async function ggReportLoadCellOccurrences(
+    startMs,
+    endMs
+){
+
+    const db =
+        await ggReportOpenDB();
+
+
+    return await new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const tx =
+                db.transaction(
+                    window.GG_REPORT.STORE_OCCURRENCES,
+                    "readonly"
+                );
+
+
+            const request =
+                tx.objectStore(
+                    window.GG_REPORT.STORE_OCCURRENCES
+                )
+                .getAll();
+
+
+            request.onsuccess =
+                function(){
+
+                    const all =
+                        Array.isArray(
+                            request.result
+                        )
+                            ? request.result
+                            : [];
+
+
+                    const filtered =
+                        all.filter(
+                            occurrence => {
+
+                                const timestamp =
+                                    Number(
+                                        occurrence?.timestamp
+                                    );
+
+
+                                return (
+                                    Number.isFinite(
+                                        timestamp
+                                    ) &&
+
+                                    timestamp >=
+                                        startMs &&
+
+                                    timestamp <
+                                        endMs
+                                );
+
+                            }
+                        );
+
+
+                    resolve(
+                        filtered
+                    );
+
+                };
+
+
+            request.onerror =
+                function(){
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
+}
 /* ================================================================
    PERSIST AUTHORITATIVE DISTANCE SEGMENT
    ================================================================ */
@@ -36905,7 +37084,1668 @@ function ggReportDownloadPDF(
     return true;
 
 }
+/* ================================================================
+   PRE-TRANSMISSION DAILY REPORT VALIDATION
+   ================================================================
 
+   IMPORTANT:
+
+   This validator is READ-ONLY.
+
+   It validates the already-built report against the persistent
+   IndexedDB cell_occurrences source for the exact same report
+   window.
+
+   It does NOT:
+
+       • modify the report
+       • write IndexedDB
+       • read Firestore
+       • call Apps Script
+       • create a snapshot
+       • send email
+       • send Telegram
+
+   A failed validation MUST block transmission.
+
+   ================================================================ */
+
+async function ggReportValidateBeforeTransmission(
+    report,
+    reportType
+){
+
+    const errors = [];
+
+
+    const warnings = [];
+
+
+    try{
+
+        /* ==========================================================
+           1. BASIC REPORT VALIDATION
+           ========================================================== */
+
+        if(
+            !report
+        ){
+
+            errors.push(
+                "Missing report object"
+            );
+
+        }
+
+
+        const type =
+            String(
+                reportType ||
+                report?.reportType ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+
+        if(
+            type !==
+                "DAILY"
+        ){
+
+            /*
+             * The new exact-window occurrence validator is for
+             * DAILY transmission.
+             *
+             * Monthly transmission remains on the existing
+             * monthly calculation path.
+             */
+
+            return {
+
+                ok:
+                    true,
+
+                skipped:
+                    true,
+
+                reportType:
+                    type,
+
+                errors:
+                    [],
+
+                warnings:
+                    [
+                        "Occurrence validation skipped for non-DAILY report"
+                    ]
+
+            };
+
+        }
+
+
+        if(
+            errors.length
+        ){
+
+            return {
+
+                ok:
+                    false,
+
+                blocked:
+                    true,
+
+                reportType:
+                    type,
+
+                errors,
+
+                warnings
+
+            };
+
+        }
+
+
+        if(
+            !report.reportDate
+        ){
+
+            errors.push(
+                "Missing report.reportDate"
+            );
+
+        }
+
+
+        if(
+            !Array.isArray(
+                report.rows
+            )
+        ){
+
+            errors.push(
+                "Report rows are not an array"
+            );
+
+        }
+
+
+        if(
+            errors.length
+        ){
+
+            return {
+
+                ok:
+                    false,
+
+                blocked:
+                    true,
+
+                reportType:
+                    type,
+
+                errors,
+
+                warnings
+
+            };
+
+        }
+
+
+        /* ==========================================================
+           2. EXACT REPORT WINDOW
+           ========================================================== */
+
+        const windowInfo =
+            ggReportDailyWindow(
+                report.reportDate
+            );
+
+
+        const startMs =
+            windowInfo.start.getTime();
+
+
+        const endMs =
+            windowInfo.end.getTime();
+
+
+        if(
+            !Number.isFinite(
+                startMs
+            ) ||
+            !Number.isFinite(
+                endMs
+            ) ||
+            endMs <= startMs
+        ){
+
+            errors.push(
+                "Invalid report window"
+            );
+
+        }
+
+
+        /* ==========================================================
+           3. REPORT WINDOW CONSISTENCY
+           ========================================================== */
+
+        const reportStartMs =
+            Date.parse(
+                report.start
+            );
+
+
+        const reportEndMs =
+            Date.parse(
+                report.end
+            );
+
+
+        if(
+            Number.isFinite(
+                reportStartMs
+            ) &&
+            reportStartMs !==
+                startMs
+        ){
+
+            errors.push(
+                "Report start does not match ggReportDailyWindow()"
+            );
+
+        }
+
+
+        if(
+            Number.isFinite(
+                reportEndMs
+            ) &&
+            reportEndMs !==
+                endMs
+        ){
+
+            errors.push(
+                "Report end does not match ggReportDailyWindow()"
+            );
+
+        }
+
+
+        /* ==========================================================
+           4. WAIT FOR ALL OCCURRENCE WRITES
+           ========================================================== */
+
+        await ggReportWaitForPendingOccurrenceWrites();
+
+
+        /* ==========================================================
+           5. LOAD EXACT DAILY SOURCE FROM IDB
+           ========================================================== */
+
+        const sourceOccurrences =
+            await ggReportLoadCellOccurrences(
+                startMs,
+                endMs
+            );
+
+
+        if(
+            !Array.isArray(
+                sourceOccurrences
+            )
+        ){
+
+            errors.push(
+                "IndexedDB occurrence source is unavailable"
+            );
+
+        }
+
+
+        if(
+            errors.length
+        ){
+
+            return {
+
+                ok:
+                    false,
+
+                blocked:
+                    true,
+
+                reportType:
+                    type,
+
+                reportDate:
+                    report.reportDate,
+
+                start:
+                    new Date(
+                        startMs
+                    ).toISOString(),
+
+                end:
+                    new Date(
+                        endMs
+                    ).toISOString(),
+
+                sourceOccurrenceCount:
+                    Array.isArray(
+                        sourceOccurrences
+                    )
+                        ? sourceOccurrences.length
+                        : 0,
+
+                errors,
+
+                warnings
+
+            };
+
+        }
+
+
+        /* ==========================================================
+           6. HARD SOURCE VALIDATION
+           ========================================================== */
+
+        const invalidSourceOccurrences =
+            sourceOccurrences.filter(
+                occurrence => {
+
+                    const gridId =
+                        ggReportString(
+                            occurrence?.gridId
+                        );
+
+                    const cellId =
+                        ggReportString(
+                            occurrence?.cellId
+                        );
+
+                    const timestamp =
+                        Number(
+                            occurrence?.timestamp
+                        );
+
+                    return (
+                        !gridId ||
+                        !cellId ||
+                        !Number.isFinite(
+                            timestamp
+                        )
+                    );
+
+                }
+            );
+
+
+        if(
+            invalidSourceOccurrences.length
+        ){
+
+            errors.push(
+                "IndexedDB contains " +
+                invalidSourceOccurrences.length +
+                " invalid occurrence records in the report window"
+            );
+
+        }
+
+
+        /* ==========================================================
+           7. BTR SCOPE
+           ========================================================== */
+
+        const reportRows =
+            report.rows.filter(
+                row => {
+
+                    const division =
+                        ggReportString(
+                            row?.division
+                        )
+                        .toUpperCase();
+
+                    return (
+                        division ===
+                            "BTR_E" ||
+
+                        division ===
+                            "BTR_W"
+                    );
+
+                }
+            );
+
+
+        const unexpectedReportRows =
+            report.rows.filter(
+                row => {
+
+                    const division =
+                        ggReportString(
+                            row?.division
+                        )
+                        .toUpperCase();
+
+                    return (
+                        division !==
+                            "BTR_E" &&
+
+                        division !==
+                            "BTR_W"
+                    );
+
+                }
+            );
+
+
+        if(
+            unexpectedReportRows.length
+        ){
+
+            errors.push(
+                "Report contains " +
+                unexpectedReportRows.length +
+                " rows outside BTR_E/BTR_W"
+            );
+
+        }
+
+
+        if(
+            reportRows.length ===
+                0
+        ){
+
+            errors.push(
+                "Report contains no BTR_E/BTR_W rows"
+            );
+
+        }
+
+
+        /* ==========================================================
+           8. AUTHORITATIVE GRID SET
+           ========================================================== */
+
+        const reportGridIds =
+            new Set();
+
+
+        reportRows.forEach(
+            row => {
+
+                const gridId =
+                    ggReportString(
+                        row?.gridId
+                    );
+
+                if(
+                    gridId
+                ){
+
+                    reportGridIds.add(
+                        gridId
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================================
+           9. SOURCE GRID INDEX
+           ========================================================== */
+
+        const sourceByGrid =
+            new Map();
+
+
+        sourceOccurrences.forEach(
+            occurrence => {
+
+                const division =
+                    ggReportString(
+                        occurrence?.division
+                    )
+                    .toUpperCase();
+
+
+                /*
+                 * Occurrences currently do not carry division.
+                 *
+                 * Therefore division is intentionally NOT used
+                 * here. The authoritative gridId is the join key
+                 * to the report GIS rows.
+                 */
+
+                const gridId =
+                    ggReportString(
+                        occurrence?.gridId
+                    );
+
+
+                const cellId =
+                    ggReportString(
+                        occurrence?.cellId
+                    );
+
+
+                if(
+                    !gridId ||
+                    !cellId
+                ){
+
+                    return;
+
+                }
+
+
+                if(
+                    !sourceByGrid.has(
+                        gridId
+                    )
+                ){
+
+                    sourceByGrid.set(
+                        gridId,
+                        []
+                    );
+
+                }
+
+
+                sourceByGrid
+                    .get(
+                        gridId
+                    )
+                    .push(
+                        occurrence
+                    );
+
+            }
+        );
+
+
+        /* ==========================================================
+           10. REPORT GRID MAP
+           ========================================================== */
+
+        const reportByGrid =
+            new Map();
+
+
+        reportRows.forEach(
+            row => {
+
+                const gridId =
+                    ggReportString(
+                        row?.gridId
+                    );
+
+
+                if(
+                    gridId
+                ){
+
+                    reportByGrid.set(
+                        gridId,
+                        row
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================================
+           11. EVERY SOURCE GRID MUST EXIST IN REPORT GIS
+           ========================================================== */
+
+        sourceByGrid.forEach(
+            (
+                occurrences,
+                gridId
+            ) => {
+
+                if(
+                    !reportByGrid.has(
+                        gridId
+                    )
+                ){
+
+                    errors.push(
+                        "IndexedDB occurrence grid not present in report GIS: " +
+                        gridId
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================================
+           12. PER-GRID DEFINITIONS
+           ========================================================== */
+
+        const perGrid =
+            {};
+
+
+        reportByGrid.forEach(
+            (
+                row,
+                gridId
+            ) => {
+
+                const occurrences =
+                    sourceByGrid.get(
+                        gridId
+                    ) ||
+                    [];
+
+
+                const uniqueCells =
+                    new Set();
+
+
+                const sessions =
+                    new Set();
+
+
+                let occurrenceCount =
+                    0;
+
+
+                occurrences.forEach(
+                    occurrence => {
+
+                        const cellId =
+                            ggReportString(
+                                occurrence?.cellId
+                            );
+
+
+                        if(
+                            cellId
+                        ){
+
+                            uniqueCells.add(
+                                cellId
+                            );
+
+                        }
+
+
+                        const visitSessionKey =
+                            ggReportString(
+                                occurrence?.visitSessionKey
+                            );
+
+
+                        if(
+                            visitSessionKey
+                        ){
+
+                            sessions.add(
+                                visitSessionKey
+                            );
+
+                        }
+
+
+                        occurrenceCount++;
+
+                    }
+                );
+
+
+                const actualOccurrences =
+                    occurrenceCount;
+
+
+                const actualUniqueCells =
+                    uniqueCells.size;
+
+
+                const actualVisits =
+                    sessions.size;
+
+
+                const reportedOccurrences =
+                    Number(
+                        row?.cellVisitOccurrences
+                    ) || 0;
+
+
+                const reportedUniqueCells =
+                    Number(
+                        row?.uniqueCellsVisited
+                    ) || 0;
+
+
+                const reportedVisits =
+                    Number(
+                        row?.totalVisits
+                    ) || 0;
+
+
+                perGrid[
+                    gridId
+                ] = {
+
+                    division:
+                        ggReportString(
+                            row?.division
+                        )
+                        .toUpperCase(),
+
+                    range:
+                        ggReportString(
+                            row?.range
+                        ),
+
+                    beat:
+                        ggReportString(
+                            row?.beat
+                        ),
+
+                    compartment:
+                        ggReportString(
+                            row?.compartment
+                        ),
+
+                    sourceOccurrences:
+                        actualOccurrences,
+
+                    reportOccurrences:
+                        reportedOccurrences,
+
+                    sourceUniqueCells:
+                        actualUniqueCells,
+
+                    reportUniqueCells:
+                        reportedUniqueCells,
+
+                    sourceVisits:
+                        actualVisits,
+
+                    reportVisits:
+                        reportedVisits
+
+                };
+
+
+                if(
+                    actualOccurrences !==
+                        reportedOccurrences
+                ){
+
+                    errors.push(
+                        "Grid " +
+                        gridId +
+                        " occurrence mismatch: source=" +
+                        actualOccurrences +
+                        " report=" +
+                        reportedOccurrences
+                    );
+
+                }
+
+
+                if(
+                    actualUniqueCells !==
+                        reportedUniqueCells
+                ){
+
+                    errors.push(
+                        "Grid " +
+                        gridId +
+                        " unique-cell mismatch: source=" +
+                        actualUniqueCells +
+                        " report=" +
+                        reportedUniqueCells
+                    );
+
+                }
+
+
+                if(
+                    actualVisits !==
+                        reportedVisits
+                ){
+
+                    errors.push(
+                        "Grid " +
+                        gridId +
+                        " duty-session mismatch: source=" +
+                        actualVisits +
+                        " report=" +
+                        reportedVisits
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* ==========================================================
+           13. GLOBAL SOURCE OCCURRENCES
+           ========================================================== */
+
+        const globalOccurrences =
+            sourceOccurrences.filter(
+                occurrence => {
+
+                    const gridId =
+                        ggReportString(
+                            occurrence?.gridId
+                        );
+
+                    const cellId =
+                        ggReportString(
+                            occurrence?.cellId
+                        );
+
+                    return (
+                        gridId &&
+                        cellId &&
+                        reportByGrid.has(
+                            gridId
+                        )
+                    );
+
+                }
+            );
+
+
+        const globalOccurrenceCount =
+            globalOccurrences.length;
+
+
+        /* ==========================================================
+           14. GLOBAL UNIQUE CELL UNION
+           ========================================================== */
+
+        const globalUniqueCellIds =
+            new Set();
+
+
+        globalOccurrences.forEach(
+            occurrence => {
+
+                const gridId =
+                    ggReportString(
+                        occurrence?.gridId
+                    );
+
+
+                const cellId =
+                    ggReportString(
+                        occurrence?.cellId
+                    );
+
+
+                if(
+                    gridId &&
+                    cellId
+                ){
+
+                    globalUniqueCellIds.add(
+                        `${gridId}|${cellId}`
+                    );
+
+                }
+
+            }
+        );
+
+
+        const globalUniqueCellCount =
+            globalUniqueCellIds.size;
+
+
+        /* ==========================================================
+           15. GLOBAL DUTY SESSION UNION
+           ========================================================== */
+
+        const globalSessionIds =
+            new Set();
+
+
+        globalOccurrences.forEach(
+            occurrence => {
+
+                const visitSessionKey =
+                    ggReportString(
+                        occurrence?.visitSessionKey
+                    );
+
+
+                if(
+                    visitSessionKey
+                ){
+
+                    globalSessionIds.add(
+                        visitSessionKey
+                    );
+
+                }
+
+            }
+        );
+
+
+        const globalDutySessionCount =
+            globalSessionIds.size;
+
+
+        /* ==========================================================
+           16. REPORT GLOBAL TOTALS
+           ========================================================== */
+
+        const reportOccurrenceTotal =
+            reportRows.reduce(
+                (
+                    sum,
+                    row
+                ) =>
+                    sum +
+                    (
+                        Number(
+                            row?.cellVisitOccurrences
+                        ) || 0
+                    ),
+                0
+            );
+
+
+        const reportUniqueCellSum =
+            reportRows.reduce(
+                (
+                    sum,
+                    row
+                ) =>
+                    sum +
+                    (
+                        Number(
+                            row?.uniqueCellsVisited
+                        ) || 0
+                    ),
+                0
+            );
+
+
+        const reportDutyVisitSum =
+            reportRows.reduce(
+                (
+                    sum,
+                    row
+                ) =>
+                    sum +
+                    (
+                        Number(
+                            row?.totalVisits
+                        ) || 0
+                    ),
+                0
+            );
+
+
+        /*
+         * IMPORTANT:
+         *
+         * The sum of row unique cells is NOT the global unique
+         * cell count.
+         *
+         * The sum of row visits is NOT the global duty-session
+         * count.
+         *
+         * Both are independently validated using UNION above.
+         */
+
+
+        if(
+            globalOccurrenceCount !==
+                reportOccurrenceTotal
+        ){
+
+            errors.push(
+                "Global occurrence mismatch: source=" +
+                globalOccurrenceCount +
+                " report=" +
+                reportOccurrenceTotal
+            );
+
+        }
+
+
+        if(
+            reportUniqueCellSum <
+                globalUniqueCellCount
+        ){
+
+            errors.push(
+                "Report row unique-cell sum is smaller than global union"
+            );
+
+        }
+
+
+        if(
+            reportDutyVisitSum <
+                globalDutySessionCount
+        ){
+
+            errors.push(
+                "Report row duty-session sum is smaller than global session union"
+            );
+
+        }
+
+
+        /* ==========================================================
+           17. TOTAL GIS CELLS
+           ========================================================== */
+
+        const totalCells =
+            reportRows.reduce(
+                (
+                    sum,
+                    row
+                ) =>
+                    sum +
+                    Math.max(
+                        0,
+                        Math.round(
+                            Number(
+                                row?.totalCells
+                            ) || 0
+                        )
+                    ),
+                0
+            );
+
+
+        if(
+            totalCells <=
+                0
+        ){
+
+            errors.push(
+                "Total GIS cell count is zero"
+            );
+
+        }
+
+
+        /* ==========================================================
+           18. RECALCULATE GLOBAL HA / COVERAGE / INTENSITY
+           ========================================================== */
+
+        const visitedHectares =
+            globalUniqueCellCount *
+            0.25;
+
+
+        const calculatedCoverage =
+            totalCells > 0
+                ? (
+                    globalUniqueCellCount /
+                    totalCells
+                ) * 100
+                : 0;
+
+
+        const calculatedIntensity =
+            totalCells > 0
+                ? (
+                    globalOccurrenceCount /
+                    totalCells
+                ) * 100
+                : 0;
+
+
+        /*
+         * The report itself currently stores these values at
+         * compartment-row level.
+         *
+         * We therefore validate the mathematical definitions
+         * independently rather than inventing a new report field.
+         */
+
+        const expectedGlobalVisitedHectares =
+            globalUniqueCellCount *
+            0.25;
+
+
+        if(
+            Math.abs(
+                visitedHectares -
+                expectedGlobalVisitedHectares
+            ) >
+                0.000001
+        ){
+
+            errors.push(
+                "Visited hectares calculation failed"
+            );
+
+        }
+
+
+        /* ==========================================================
+           19. DIVISION RECONCILIATION
+           ========================================================== */
+
+        const divisionSource =
+            {
+                BTR_E: {
+                    occurrences:
+                        0,
+                    uniqueCells:
+                        new Set(),
+                    sessions:
+                        new Set(),
+                    rows:
+                        0
+                },
+
+                BTR_W: {
+                    occurrences:
+                        0,
+                    uniqueCells:
+                        new Set(),
+                    sessions:
+                        new Set(),
+                    rows:
+                        0
+                }
+            };
+
+
+        reportRows.forEach(
+            row => {
+
+                const division =
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase();
+
+
+                if(
+                    divisionSource[
+                        division
+                    ]
+                ){
+
+                    divisionSource[
+                        division
+                    ].rows++;
+
+                }
+
+            }
+        );
+
+
+        globalOccurrences.forEach(
+            occurrence => {
+
+                const gridId =
+                    ggReportString(
+                        occurrence?.gridId
+                    );
+
+
+                const row =
+                    reportByGrid.get(
+                        gridId
+                    );
+
+
+                const division =
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase();
+
+
+                if(
+                    !divisionSource[
+                        division
+                    ]
+                ){
+
+                    return;
+
+                }
+
+
+                divisionSource[
+                    division
+                ].occurrences++;
+
+
+                const cellId =
+                    ggReportString(
+                        occurrence?.cellId
+                    );
+
+
+                if(
+                    cellId
+                ){
+
+                    divisionSource[
+                        division
+                    ].uniqueCells.add(
+                        `${gridId}|${cellId}`
+                    );
+
+                }
+
+
+                const visitSessionKey =
+                    ggReportString(
+                        occurrence?.visitSessionKey
+                    );
+
+
+                if(
+                    visitSessionKey
+                ){
+
+                    divisionSource[
+                        division
+                    ].sessions.add(
+                        visitSessionKey
+                    );
+
+                }
+
+            }
+        );
+
+
+        reportRows.forEach(
+            row => {
+
+                const division =
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase();
+
+
+                if(
+                    !divisionSource[
+                        division
+                    ]
+                ){
+
+                    return;
+
+                }
+
+                /*
+                 * Row occurrence reconciliation is already checked
+                 * above. Here we verify the division occurrence
+                 * total against the source.
+                 */
+
+            }
+        );
+
+
+        ["BTR_E","BTR_W"]
+            .forEach(
+                division => {
+
+                    const source =
+                        divisionSource[
+                            division
+                        ];
+
+
+                    const reportOccurrence =
+                        reportRows
+                            .filter(
+                                row =>
+                                    ggReportString(
+                                        row?.division
+                                    )
+                                    .toUpperCase() ===
+                                    division
+                            )
+                            .reduce(
+                                (
+                                    sum,
+                                    row
+                                ) =>
+                                    sum +
+                                    (
+                                        Number(
+                                            row?.cellVisitOccurrences
+                                        ) || 0
+                                    ),
+                                0
+                            );
+
+
+                    if(
+                        source.occurrences !==
+                            reportOccurrence
+                    ){
+
+                        errors.push(
+                            division +
+                            " occurrence reconciliation failed: source=" +
+                            source.occurrences +
+                            " report=" +
+                            reportOccurrence
+                        );
+
+                    }
+
+                }
+            );
+
+
+        /* ==========================================================
+           20. HIERARCHY VALIDATION
+           ========================================================== */
+
+        const divisions =
+            new Set();
+
+
+        const ranges =
+            new Map();
+
+
+        const beats =
+            new Map();
+
+
+        reportRows.forEach(
+            row => {
+
+                const division =
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase();
+
+
+                const range =
+                    ggReportString(
+                        row?.range
+                    );
+
+
+                const beat =
+                    ggReportString(
+                        row?.beat
+                    );
+
+
+                if(
+                    division
+                ){
+
+                    divisions.add(
+                        division
+                    );
+
+                }
+
+
+                if(
+                    division &&
+                    range
+                ){
+
+                    const rangeKey =
+                        `${division}|${range}`;
+
+
+                    ranges.set(
+                        rangeKey,
+                        true
+                    );
+
+                }
+
+
+                if(
+                    division &&
+                    range &&
+                    beat
+                ){
+
+                    const beatKey =
+                        `${division}|${range}|${beat}`;
+
+
+                    beats.set(
+                        beatKey,
+                        true
+                    );
+
+                }
+
+            }
+        );
+
+
+        /*
+         * Current intended BTR hierarchy:
+         *
+         *   2 divisions
+         *   14 ranges
+         *   48 territorial beats
+         *
+         * We validate the represented report hierarchy, but do
+         * not invent missing GIS rows.
+         */
+
+        if(
+            divisions.size !==
+                2
+        ){
+
+            errors.push(
+                "Expected 2 BTR divisions; found " +
+                divisions.size
+            );
+
+        }
+
+
+        if(
+            ranges.size !==
+                14
+        ){
+
+            errors.push(
+                "Expected 14 BTR ranges; found " +
+                ranges.size
+            );
+
+        }
+
+
+        if(
+            beats.size !==
+                48
+        ){
+
+            errors.push(
+                "Expected 48 BTR territorial beats; found " +
+                beats.size
+            );
+
+        }
+
+
+        /* ==========================================================
+           21. REPORT ROW TOTALS
+           ========================================================== */
+
+        const eastRows =
+            reportRows.filter(
+                row =>
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase() ===
+                    "BTR_E"
+            ).length;
+
+
+        const westRows =
+            reportRows.filter(
+                row =>
+                    ggReportString(
+                        row?.division
+                    )
+                    .toUpperCase() ===
+                    "BTR_W"
+            ).length;
+
+
+        if(
+            reportRows.length !==
+                eastRows +
+                westRows
+        ){
+
+            errors.push(
+                "BTR division row reconciliation failed"
+            );
+
+        }
+
+
+        /* ==========================================================
+           22. FINAL RESULT
+           ========================================================== */
+
+        const result = {
+
+            ok:
+                errors.length ===
+                    0,
+
+            blocked:
+                errors.length >
+                    0,
+
+            reportType:
+                type,
+
+            reportDate:
+                report.reportDate,
+
+            start:
+                new Date(
+                    startMs
+                ).toISOString(),
+
+            end:
+                new Date(
+                    endMs
+                ).toISOString(),
+
+            sourceOccurrenceCount:
+                globalOccurrenceCount,
+
+            reportOccurrenceCount:
+                reportOccurrenceTotal,
+
+            sourceGlobalUniqueCells:
+                globalUniqueCellCount,
+
+            reportRowUniqueCellSum:
+                reportUniqueCellSum,
+
+            sourceGlobalDutySessions:
+                globalDutySessionCount,
+
+            reportRowDutyVisitSum:
+                reportDutyVisitSum,
+
+            totalCells,
+
+            visitedHectares,
+
+            coveragePercent:
+                ggReportRound(
+                    calculatedCoverage,
+                    2
+                ),
+
+            patrolIntensityIndex:
+                ggReportRound(
+                    calculatedIntensity,
+                    2
+                ),
+
+            hierarchy:
+                {
+                    divisions:
+                        divisions.size,
+
+                    ranges:
+                        ranges.size,
+
+                    beats:
+                        beats.size
+                },
+
+            perGrid,
+
+            errors,
+
+            warnings
+
+        };
+
+
+        if(
+            result.ok
+        ){
+
+            console.log(
+                "✅ GG REPORT VALIDATION PASSED",
+                result
+            );
+
+        }
+        else{
+
+            console.error(
+                "🛑 GG REPORT VALIDATION FAILED — TRANSMISSION BLOCKED",
+                result
+            );
+
+        }
+
+
+        return result;
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ GG REPORT VALIDATION EXCEPTION",
+            error
+        );
+
+
+        return {
+
+            ok:
+                false,
+
+            blocked:
+                true,
+
+            reportType:
+                reportType,
+
+            errors:
+                [
+                    error?.message ||
+                    String(
+                        error
+                    )
+                ],
+
+            warnings:
+                []
+
+        };
+
+    }
+
+}
 
 /* ================================================================
    32. PERMANENT DAILY SNAPSHOT
@@ -36919,12 +38759,12 @@ async function ggReportGenerateDaily(
         "📊 GG DAILY REPORT START"
     );
 
-    const report =
-        await ggReportBuildDaily(
-            reportDate
-        );
+await ggReportWaitForPendingOccurrenceWrites();
 
-    await ggReportSaveDaily(
+const report =
+    await ggReportBuildDaily(
+        reportDate
+    );    await ggReportSaveDaily(
         report
     );
 
@@ -37080,7 +38920,59 @@ async function ggReportSendToAppsScript(
 
         }
 
+        /* ==========================================================
+           🔐 FINAL TRANSMISSION VALIDATION GATE
+           ==========================================================
 
+           DAILY:
+               Validate exact daily report against IDB occurrence
+               source before fetch().
+
+           MONTHLY:
+               Preserve existing monthly transmission behaviour.
+
+           ========================================================== */
+
+        const validation =
+            await ggReportValidateBeforeTransmission(
+                report,
+                type
+            );
+
+
+        if(
+            !validation ||
+            validation.ok !== true
+        ){
+
+            console.error(
+                "🛑 GG REPORT TRANSMISSION BLOCKED",
+                validation
+            );
+
+
+            return {
+
+                success:
+                    false,
+
+                blocked:
+                    true,
+
+                validation
+
+            };
+
+        }
+
+
+        console.log(
+            "✅ GG REPORT VALIDATION PASSED → FETCH ALLOWED",
+            {
+                reportType:
+                    type
+            }
+        );
         /*
          * Transmission-boundary protection.
          *
@@ -85757,35 +87649,35 @@ window.ggReportCellOccurrences.push(
 );
 
 
-/*
- * ================================================================
- * 🔥 PERSIST HISTORICAL OCCURRENCE
- *
- * IMPORTANT:
- *
- * This is deliberately separate from the existing analytics
- * buffer / Firestore monthly analytics path.
- *
- * collectAnalyticsHit() remains responsible for the existing
- * analyticsBuffer, distance, and monthly analytics behaviour.
- *
- * Failure here must NOT break patrol tracking.
- * ================================================================
- */
+/* ==========================================================
+   PERSIST AUTHORITATIVE REPORT OCCURRENCE
+
+   This is intentionally fire-and-forget from the patrol
+   perspective.
+
+   The pending-write tracker gives report generation a
+   persistence barrier later.
+
+   Patrol/GPS behavior is not blocked by IndexedDB.
+   ========================================================== */
 
 if(
-    typeof window.ggReportSaveCellOccurrence ===
+    typeof ggReportSaveCellOccurrence ===
     "function"
 ){
 
-    window.ggReportSaveCellOccurrence(
-        cellOccurrence
+    ggReportTrackOccurrenceWrite(
+
+        ggReportSaveCellOccurrence(
+            cellOccurrence
+        )
+
     )
     .catch(
         error => {
 
             console.error(
-                "❌ Persistent cell occurrence save failed:",
+                "❌ REPORT OCCURRENCE PERSISTENCE FAILED",
                 {
                     gridId,
                     cellId,
@@ -85799,6 +87691,15 @@ if(
 
         }
     );
+
+}
+else{
+
+    console.warn(
+        "⚠️ ggReportSaveCellOccurrence() not available"
+    );
+
+}
 
 }
 if (normalizedSessionId && cellId) {
@@ -86452,7 +88353,6 @@ if (normalizedSessionId && cellId) {
     }
 
 }
-
 async function flushAnalyticsBuffer(){
 
   // ============================================================
@@ -120512,6 +122412,55 @@ function populateForestBlocks(){
         );
 
 
+/* ============================================================
+   🔐 FINAL DAILY TRANSMISSION VALIDATION GATE
+
+   NOTHING reaches Apps Script until the exact daily report
+   has been reconciled against the persistent local
+   cell_occurrences source.
+
+   ============================================================ */
+
+const dailyValidation =
+    await ggReportValidateBeforeTransmission(
+        daily,
+        "DAILY"
+    );
+
+
+console.log(
+    "🔎 DAILY PRE-TRANSMISSION VALIDATION:",
+    dailyValidation
+);
+
+
+if(
+    !dailyValidation ||
+    dailyValidation.ok !== true
+){
+
+    console.error(
+        "🛑 DAILY REPORT TRANSMISSION BLOCKED",
+        dailyValidation
+    );
+
+
+    throw new Error(
+        "BTRGuard Daily report validation failed. " +
+        "Apps Script snapshot was NOT sent. " +
+        JSON.stringify(
+            dailyValidation
+        )
+    );
+
+}
+
+
+console.log(
+    "✅ DAILY VALIDATION PASSED → SNAPSHOT MAY BE SENT"
+);
+
+
 const dailySync =
     await callBackend(
         "SYNC_BTRGUARD_REPORT_DATA",
@@ -120523,9 +122472,7 @@ const dailySync =
                 "DAILY"
         },
         60000
-    );
-
-        console.log(
+    );        console.log(
             "📦 BTRGUARD DAILY SNAPSHOT RESULT:",
             dailySync
         );
