@@ -38469,12 +38469,23 @@ async function ggReportValidateBeforeTransmission(
                 : 0;
 
 
-        /*
-         * The report itself currently stores these values at
-         * compartment-row level.
+               /*
+         * ==========================================================
+         * REPORT-LEVEL METRIC RECONCILIATION
          *
-         * We therefore validate the mathematical definitions
-         * independently rather than inventing a new report field.
+         * ggReportBuildDaily() now stores the authoritative
+         * report-level values directly:
+         *
+         *     report.visitedHa
+         *     report.coveragePercent
+         *     report.patrolIntensityIndex
+         *
+         * The validator must compare those fields against the
+         * independently recalculated IDB values.
+         *
+         * Coverage and intensity are rounded to the same 2-decimal
+         * precision used by the daily report builder.
+         * ==========================================================
          */
 
         const expectedGlobalVisitedHectares =
@@ -38482,20 +38493,143 @@ async function ggReportValidateBeforeTransmission(
             0.25;
 
 
+        const expectedVisitedHa =
+            ggReportRound(
+                expectedGlobalVisitedHectares,
+                2
+            );
+
+
+        const expectedCoveragePercent =
+            ggReportRound(
+                calculatedCoverage,
+                2
+            );
+
+
+        const expectedIntensityPercent =
+            ggReportRound(
+                calculatedIntensity,
+                2
+            );
+
+
+        const reportedVisitedHa =
+            Number(
+                report?.visitedHa
+            );
+
+
+        const reportedCoveragePercent =
+            Number(
+                report?.coveragePercent
+            );
+
+
+        const reportedIntensityPercent =
+            Number(
+                report?.patrolIntensityIndex
+            );
+
+
+        /*
+         * ----------------------------------------------------------
+         * VISITED HECTARES
+         * ----------------------------------------------------------
+         */
+
         if(
+            !Number.isFinite(
+                reportedVisitedHa
+            ) ||
             Math.abs(
-                visitedHectares -
-                expectedGlobalVisitedHectares
+                reportedVisitedHa -
+                expectedVisitedHa
             ) >
                 0.000001
         ){
 
             errors.push(
-                "Visited hectares calculation failed"
+                "Report visited hectares mismatch: expected=" +
+                expectedVisitedHa +
+                " report=" +
+                reportedVisitedHa
             );
 
         }
 
+
+        /*
+         * ----------------------------------------------------------
+         * COVERAGE
+         * ----------------------------------------------------------
+         *
+         * Both sides are compared AFTER rounding to 2 decimals.
+         *
+         * Example:
+         *
+         * authoritative:
+         *     0.4832459539...
+         *
+         * report:
+         *     0.48
+         *
+         * Both become:
+         *     0.48
+         */
+
+        if(
+            !Number.isFinite(
+                reportedCoveragePercent
+            ) ||
+            reportedCoveragePercent !==
+                expectedCoveragePercent
+        ){
+
+            errors.push(
+                "Report coverage mismatch: expected=" +
+                expectedCoveragePercent +
+                " report=" +
+                reportedCoveragePercent
+            );
+
+        }
+
+
+        /*
+         * ----------------------------------------------------------
+         * PATROL INTENSITY
+         * ----------------------------------------------------------
+         *
+         * Definition:
+         *
+         *     cell visit occurrences
+         *     -------------------- × 100
+         *       total GIS cells
+         *
+         * Example:
+         *
+         *     22462 / 350960 × 100
+         *     = 6.400159...
+         *     = 6.40%
+         */
+
+        if(
+            !Number.isFinite(
+                reportedIntensityPercent
+            ) ||
+            reportedIntensityPercent !==
+                expectedIntensityPercent
+        ){
+
+            errors.push(
+                "Report patrol intensity mismatch: expected=" +
+                expectedIntensityPercent +
+                " report=" +
+                reportedIntensityPercent
+            );
+
+        }
 
         /* ==========================================================
            19. DIVISION RECONCILIATION
