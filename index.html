@@ -31661,8 +31661,9 @@ window.GG_REPORT.DB_NAME =
     "GG_COMMAND_CENTRE_REPORTS_V1";
 
 window.GG_REPORT.DB_VERSION =
-    2;
-
+    3;
+window.GG_REPORT.STORE_OCCURRENCES =
+    "cell_occurrences";
 window.GG_REPORT.STORE_DAILY =
     "daily_reports";
 
@@ -35059,6 +35060,117 @@ async function ggReportOpenDB(){
 
                     }
 
+
+                    // ==================================================
+                    // 🔥 DAILY CELL OCCURRENCES
+                    //
+                    // Persistent local source for daily patrol
+                    // occurrence validation/reporting.
+                    //
+                    // IMPORTANT:
+                    // This is completely separate from:
+                    //
+                    //     analyticsBuffer
+                    //     Firestore analytics
+                    //     patrol tracking
+                    //     distance_segments
+                    //
+                    // Every individual cell-hit occurrence can be
+                    // persisted here with:
+                    //
+                    //     id
+                    //     gridId
+                    //     cellId
+                    //     visitSessionKey
+                    //     staffName
+                    //     sessionId
+                    //     timestamp
+                    //
+                    // This survives:
+                    //
+                    //     analyticsBuffer reset
+                    //     analytics flush
+                    //     Firestore writes
+                    //     page reload
+                    //     browser restart
+                    //
+                    // and provides the persistent local data required
+                    // for pre-transmission report validation.
+                    // ==================================================
+
+                    if(
+                        !db.objectStoreNames.contains(
+                            window.GG_REPORT.STORE_OCCURRENCES
+                        )
+                    ){
+
+                        const occurrenceStore =
+                            db.createObjectStore(
+                                window.GG_REPORT.STORE_OCCURRENCES,
+                                {
+                                    keyPath:
+                                        "id"
+                                }
+                            );
+
+
+                        // ==================================================
+                        // INDEX: TIMESTAMP
+                        // ==================================================
+
+                        occurrenceStore.createIndex(
+                            "timestamp",
+                            "timestamp",
+                            {
+                                unique:
+                                    false
+                            }
+                        );
+
+
+                        // ==================================================
+                        // INDEX: SESSION ID
+                        // ==================================================
+
+                        occurrenceStore.createIndex(
+                            "sessionId",
+                            "sessionId",
+                            {
+                                unique:
+                                    false
+                            }
+                        );
+
+
+                        // ==================================================
+                        // INDEX: GRID ID
+                        // ==================================================
+
+                        occurrenceStore.createIndex(
+                            "gridId",
+                            "gridId",
+                            {
+                                unique:
+                                    false
+                            }
+                        );
+
+
+                        // ==================================================
+                        // INDEX: CELL ID
+                        // ==================================================
+
+                        occurrenceStore.createIndex(
+                            "cellId",
+                            "cellId",
+                            {
+                                unique:
+                                    false
+                            }
+                        );
+
+                    }
+
                 };
 
 
@@ -35085,6 +35197,180 @@ async function ggReportOpenDB(){
     );
 
 }
+/* ================================================================
+   PERSIST AUTHORITATIVE CELL OCCURRENCE
+   ================================================================ */
+
+async function ggReportSaveCellOccurrence(
+    occurrence
+){
+
+    try{
+
+        if(
+            !occurrence ||
+            !occurrence.gridId ||
+            !occurrence.cellId ||
+            !occurrence.sessionId ||
+            !Number.isFinite(
+                Number(
+                    occurrence.timestamp
+                )
+            )
+        ){
+
+            return false;
+
+        }
+
+
+        const gridId =
+            String(
+                occurrence.gridId
+            )
+            .trim();
+
+
+        const cellId =
+            String(
+                occurrence.cellId
+            )
+            .trim();
+
+
+        const sessionId =
+            String(
+                occurrence.sessionId
+            )
+            .trim();
+
+
+        const timestamp =
+            Number(
+                occurrence.timestamp
+            );
+
+
+        const staffName =
+            String(
+                occurrence.staffName ||
+                ""
+            )
+            .trim();
+
+
+        const visitSessionKey =
+            String(
+                occurrence.visitSessionKey ||
+                ""
+            )
+            .trim();
+
+
+        /*
+         * Immutable occurrence identity.
+         *
+         * Multiple legitimate hits can occur for the same
+         * session + grid + cell, therefore timestamp is part
+         * of the key.
+         *
+         * If two hits somehow receive the exact same timestamp,
+         * the generated sequence component prevents one from
+         * replacing the other.
+         */
+
+        const id =
+            [
+                sessionId,
+                gridId,
+                cellId,
+                timestamp,
+                staffName
+            ]
+            .map(
+                value =>
+                    String(
+                        value ?? ""
+                    )
+            )
+            .join("|");
+
+
+        const db =
+            await ggReportOpenDB();
+
+
+        return await new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+
+                const tx =
+                    db.transaction(
+                        window.GG_REPORT.STORE_OCCURRENCES,
+                        "readwrite"
+                    );
+
+
+                tx.objectStore(
+                    window.GG_REPORT.STORE_OCCURRENCES
+                )
+                .put({
+
+                    id,
+
+                    gridId,
+
+                    cellId,
+
+                    visitSessionKey,
+
+                    staffName,
+
+                    sessionId,
+
+                    timestamp
+
+                });
+
+
+                tx.oncomplete =
+                    function(){
+
+                        resolve(
+                            true
+                        );
+
+                    };
+
+
+                tx.onerror =
+                    function(){
+
+                        reject(
+                            tx.error
+                        );
+
+                    };
+
+            }
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "❌ ggReportSaveCellOccurrence",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
 /* ================================================================
    PERSIST AUTHORITATIVE DISTANCE SEGMENT
    ================================================================ */
@@ -85455,15 +85741,90 @@ window.analyticsBuffer[gridId] = {
 
 window.ggReportCellOccurrences ??= [];
 
-window.ggReportCellOccurrences.push({
-    gridId: String(gridId).trim(),
-    cellId: String(cellId).trim(),
-    visitSessionKey,
-    staffName: normalizedStaffName,
-    sessionId: normalizedSessionId,
-    timestamp: hitTimestamp
-});
+const occurrenceId =
+    [
+        normalizedSessionId,
+        String(gridId).trim(),
+        String(cellId).trim(),
+        hitTimestamp,
+        crypto.randomUUID()
+    ].join("|");
 
+
+const cellOccurrence = {
+
+    id:
+        occurrenceId,
+
+    gridId:
+        String(gridId).trim(),
+
+    cellId:
+        String(cellId).trim(),
+
+    visitSessionKey,
+
+    staffName:
+        normalizedStaffName,
+
+    sessionId:
+        normalizedSessionId,
+
+    timestamp:
+        hitTimestamp
+
+};
+
+
+window.ggReportCellOccurrences.push(
+    cellOccurrence
+);
+
+
+/*
+ * ================================================================
+ * 🔥 PERSIST HISTORICAL OCCURRENCE
+ *
+ * IMPORTANT:
+ *
+ * This is deliberately separate from the existing analytics
+ * buffer / Firestore monthly analytics path.
+ *
+ * collectAnalyticsHit() remains responsible for the existing
+ * analyticsBuffer, distance, and monthly analytics behaviour.
+ *
+ * Failure here must NOT break patrol tracking.
+ * ================================================================
+ */
+
+if(
+    typeof window.ggReportSaveCellOccurrence ===
+    "function"
+){
+
+    window.ggReportSaveCellOccurrence(
+        cellOccurrence
+    )
+    .catch(
+        error => {
+
+            console.error(
+                "❌ Persistent cell occurrence save failed:",
+                {
+                    gridId,
+                    cellId,
+                    sessionId:
+                        normalizedSessionId,
+                    timestamp:
+                        hitTimestamp,
+                    error
+                }
+            );
+
+        }
+    );
+
+}
 if (normalizedSessionId && cellId) {
     const sessionCellKey = [
         normalizedSessionId,
