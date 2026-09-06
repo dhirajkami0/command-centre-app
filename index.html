@@ -37961,7 +37961,33 @@ async function ggReportValidateBeforeTransmission(
 
         /* ==========================================================
            11. EVERY SOURCE GRID MUST EXIST IN REPORT GIS
+           ========================================================== */        /* ==========================================================
+           11. BTR REPORT SCOPE / STALE SOURCE GRID HANDLING
            ========================================================== */
+
+        /*
+         * IMPORTANT:
+         *
+         * IndexedDB may contain historical occurrence records from:
+         *
+         *     1. JALDAPARA
+         *     2. obsolete WRVK GIS grids
+         *     3. known stale/orphan BTR GIS grids
+         *
+         * These records must NOT be added back into the current
+         * authoritative BTR GIS and must NOT be deleted from IDB.
+         *
+         * The DAILY REPORT is strictly:
+         *
+         *     BTR_E
+         *     BTR_W
+         *
+         * Current authoritative BTR grids are reconciled normally.
+         *
+         * Known stale/non-BTR grids are excluded from reconciliation.
+         *
+         * Any OTHER unknown BTR_E/BTR_W grid remains a HARD ERROR.
+         */
 
         sourceByGrid.forEach(
             (
@@ -37969,15 +37995,104 @@ async function ggReportValidateBeforeTransmission(
                 gridId
             ) => {
 
-                if(
-                    !reportByGrid.has(
+                const cleanGridId =
+                    ggReportString(
                         gridId
+                    );
+
+                if(
+                    !cleanGridId
+                ){
+                    return;
+                }
+
+                /*
+                 * Current authoritative GIS grid.
+                 *
+                 * This is the normal path and must reconcile
+                 * occurrence counts, unique cells and sessions.
+                 */
+                if(
+                    reportByGrid.has(
+                        cleanGridId
                     )
+                ){
+                    return;
+                }
+
+                /*
+                 * --------------------------------------------------
+                 * EXCLUDED NON-BTR HISTORICAL SOURCE
+                 * --------------------------------------------------
+                 *
+                 * JALDAPARA must NEVER enter the BTR daily report.
+                 */
+                if(
+                    cleanGridId
+                        .toUpperCase()
+                        .startsWith(
+                            "JALDAPARA_"
+                        )
+                ){
+                    return;
+                }
+
+                /*
+                 * --------------------------------------------------
+                 * EXCLUDED OBSOLETE WRVK SOURCE
+                 * --------------------------------------------------
+                 *
+                 * WRVK is NOT part of the current BTR hierarchy.
+                 *
+                 * Do NOT add WRVK back into the GIS.
+                 */
+                if(
+                    cleanGridId
+                        .toUpperCase()
+                        .includes(
+                            "_WRVK_"
+                        )
+                ){
+                    return;
+                }
+
+                /*
+                 * --------------------------------------------------
+                 * EXCLUDED KNOWN STALE / ORPHAN BTR SOURCE
+                 * --------------------------------------------------
+                 *
+                 * This grid is known to exist only as stale IDB
+                 * history and is not present in the authoritative
+                 * current GIS.
+                 */
+                if(
+                    cleanGridId ===
+                        "BTR_E_BHOLKA_CHENGMARI_N_BHOLKA_BL1"
+                ){
+                    return;
+                }
+
+                /*
+                 * --------------------------------------------------
+                 * UNKNOWN CURRENT BTR GRID = HARD FAILURE
+                 * --------------------------------------------------
+                 *
+                 * Never silently ignore an unexpected BTR grid.
+                 */
+                const upperGridId =
+                    cleanGridId.toUpperCase();
+
+                const looksLikeBTRGrid =
+                    upperGridId.startsWith("BTR_E_") ||
+                    upperGridId.startsWith("BTR_W_");
+
+                if(
+                    looksLikeBTRGrid
                 ){
 
                     errors.push(
-                        "IndexedDB occurrence grid not present in report GIS: " +
-                        gridId
+                        "IndexedDB current BTR occurrence grid not present in authoritative report GIS: " +
+                        cleanGridId
                     );
 
                 }
