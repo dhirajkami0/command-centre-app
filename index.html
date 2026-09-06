@@ -34855,6 +34855,153 @@ rows.push(
     }
 
 
+        // ============================================================
+    // REPORT-LEVEL DAILY METRICS
+    //
+    // IMPORTANT:
+    //     These are derived ONLY from the already-built daily rows.
+    //
+    //     No Firestore.
+    //     No Apps Script.
+    //     No additional GIS read.
+    //     No additional occurrence read.
+    //
+    //     50m × 50m cell = 2,500 m² = 0.25 ha
+    //
+    //     unique cells:
+    //         sum of uniqueCellIds across the authoritative
+    //         master GIS compartment rows
+    //
+    //     occurrences:
+    //         sum of cellVisitOccurrences
+    //
+    //     totalCells:
+    //         authoritative GIS total
+    // ============================================================
+
+    let reportTotalCells = 0;
+
+    let reportCellVisitOccurrences = 0;
+
+    const reportUniqueCellKeys =
+        new Set();
+
+
+    rows.forEach(
+        row => {
+
+            reportTotalCells +=
+                Math.max(
+                    0,
+                    Math.round(
+                        ggReportNumber(
+                            row.totalCells
+                        )
+                    )
+                );
+
+
+            reportCellVisitOccurrences +=
+                Math.max(
+                    0,
+                    Math.round(
+                        ggReportNumber(
+                            row.cellVisitOccurrences
+                        )
+                    )
+                );
+
+
+            /*
+             * IMPORTANT:
+             *
+             * uniqueCellIds are cell IDs local to their grid.
+             *
+             * Therefore the gridId must be included in the
+             * uniqueness key.
+             *
+             * This prevents the same cellId appearing in two
+             * different GIS grids from being incorrectly merged.
+             */
+
+            const gridId =
+                ggReportString(
+                    row.gridId
+                );
+
+
+            const uniqueCellIds =
+                Array.isArray(
+                    row.uniqueCellIds
+                )
+                    ? row.uniqueCellIds
+                    : [];
+
+
+            uniqueCellIds.forEach(
+                cellId => {
+
+                    const cleanCellId =
+                        ggReportString(
+                            cellId
+                        );
+
+
+                    if(
+                        gridId &&
+                        cleanCellId
+                    ){
+
+                        reportUniqueCellKeys.add(
+                            gridId +
+                            "|" +
+                            cleanCellId
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+    const reportUniqueCells =
+        reportUniqueCellKeys.size;
+
+
+    const reportVisitedHa =
+        ggReportRound(
+            reportUniqueCells * 0.25,
+            2
+        );
+
+
+    const reportCoveragePercent =
+        reportTotalCells > 0
+            ? ggReportRound(
+                (
+                    reportUniqueCells /
+                    reportTotalCells
+                ) * 100,
+                2
+            )
+            : 0;
+
+
+    const reportPatrolIntensityIndex =
+        reportTotalCells > 0
+            ? ggReportRound(
+                (
+                    reportCellVisitOccurrences /
+                    reportTotalCells
+                ) * 100,
+                2
+            )
+            : 0;
+
+
     // ============================================================
     // RETURN DAILY REPORT
     // ============================================================
@@ -34879,6 +35026,56 @@ rows.push(
 
         generatedAt:
             new Date().toISOString(),
+
+
+        // --------------------------------------------------------
+        // REPORT-LEVEL AUTHORITATIVE METRICS
+        // --------------------------------------------------------
+
+        totalCells:
+            reportTotalCells,
+
+
+        totalVisits:
+            rows.reduce(
+                (
+                    total,
+                    row
+                ) => {
+
+                    return total +
+                        Math.max(
+                            0,
+                            Math.round(
+                                ggReportNumber(
+                                    row.totalVisits
+                                )
+                            )
+                        );
+
+                },
+                0
+            ),
+
+
+        cellVisitOccurrences:
+            reportCellVisitOccurrences,
+
+
+        uniqueCellsVisited:
+            reportUniqueCells,
+
+
+        visitedHa:
+            reportVisitedHa,
+
+
+        coveragePercent:
+            reportCoveragePercent,
+
+
+        patrolIntensityIndex:
+            reportPatrolIntensityIndex,
 
 
         rows
