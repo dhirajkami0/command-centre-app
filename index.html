@@ -39289,20 +39289,76 @@ async function ggReportValidateBeforeTransmission(
    32. PERMANENT DAILY SNAPSHOT
    ================================================================ */
 
+/* ================================================================
+   32. PERMANENT DAILY SNAPSHOT
+   ---------------------------------------------------------------
+   DAILY REPORT ALWAYS COVERS THE PREVIOUS CALENDAR DAY.
+
+   Example:
+       Generated on 06-09-2026
+       → Report date = 05-09-2026
+
+       Generated on 07-09-2026
+       → Report date = 06-09-2026
+
+       Generated on 08-09-2026
+       → Report date = 07-09-2026
+
+   Report window:
+       00:00:00.000
+       →
+       23:59:59.999
+
+   IMPORTANT:
+   This change is ONLY for DAILY REPORT GENERATION.
+   No operational duty/GPS/session logic is changed.
+   ================================================================ */
+
 async function ggReportGenerateDaily(
-    reportDate = new Date()
+    reportDate
 ){
 
+    /*
+     * If no explicit report date is supplied,
+     * use the PREVIOUS calendar day.
+     *
+     * This keeps manual Generate Report and
+     * automatic daily generation on the same
+     * previous-day reporting rule.
+     */
+    if(
+        !(reportDate instanceof Date) ||
+        !Number.isFinite(
+            reportDate.getTime()
+        )
+    ){
+
+        reportDate =
+            new Date();
+
+        reportDate.setDate(
+            reportDate.getDate() - 1
+        );
+    }
+
     console.log(
-        "📊 GG DAILY REPORT START"
+        "📊 GG DAILY REPORT START",
+        {
+            reportDate:
+                ggReportDateKey(
+                    reportDate
+                )
+        }
     );
 
-await ggReportWaitForPendingOccurrenceWrites();
+    await ggReportWaitForPendingOccurrenceWrites();
 
-const report =
-    await ggReportBuildDaily(
-        reportDate
-    );    await ggReportSaveDaily(
+    const report =
+        await ggReportBuildDaily(
+            reportDate
+        );
+
+    await ggReportSaveDaily(
         report
     );
 
@@ -39311,16 +39367,14 @@ const report =
         {
             reportDate:
                 report.reportDate,
+
             rows:
                 report.rows.length
         }
     );
 
     return report;
-
 }
-
-
 /* ================================================================
    33. MONTHLY CUMULATIVE GENERATION
    ================================================================ */
