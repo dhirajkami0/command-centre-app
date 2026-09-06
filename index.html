@@ -34170,8 +34170,14 @@ async function ggReportBuildDaily(
     const masterRows =
         ggReportGetMasterRows();
 
+if(
+    typeof ggReportWaitForPendingOccurrenceWrites ===
+    "function"
+){
 
-// ============================================================
+    await ggReportWaitForPendingOccurrenceWrites();
+
+}// ============================================================
 // PERFORMANCE
 //
 // The old ggReportBuildPatrolIndex() pass was only retained
@@ -34180,69 +34186,155 @@ async function ggReportBuildDaily(
 //
 // Do NOT rebuild the legacy patrol index here.
 //
-// The authoritative daily data continues to come from:
-//   • ggReportCellOccurrences
-//   • IndexedDB distance_segments
-//   • local elephant cache
-//   • local wildlife cache
-//   • local irregularity cache
+// The authoritative daily occurrence source is now:
+//     IndexedDB → cell_occurrences
 //
-// No Firestore read is introduced.
+// RAM window.ggReportCellOccurrences remains a live/UI cache,
+// but it is NOT authoritative for daily reporting.
+//
+// NO Firestore read.
+// NO Apps Script call.
+// NO report write.
 // ============================================================
 
 const patrolIndex = null;
-    // ============================================================
-    // TIMESTAMPED CELL OCCURRENCE CACHE
-    //
-    // Created by collectAnalyticsHit().
-    //
-    // NO Firestore read.
-    // ============================================================
-
-    const occurrenceCache =
-        Array.isArray(
-            window.ggReportCellOccurrences
-        )
-            ? window.ggReportCellOccurrences
-            : [];
 
 
-    // ============================================================
-    // EXACT DAILY WINDOW
-    //
-    // Previous day 11:31 PM
-    //          →
-    // Current day 11:30 PM
-    // ============================================================
+// ============================================================
+// WAIT FOR ALREADY-LAUNCHED OCCURRENCE WRITES
+//
+// collectAnalyticsHit() intentionally launches the existing
+// ggReportSaveCellOccurrence() asynchronously.
+//
+// This barrier ensures those already-launched writes finish
+// before the daily report reads cell_occurrences.
+//
+// DO NOT modify collectAnalyticsHit().
+// DO NOT modify ggReportSaveCellOccurrence().
+// ============================================================
 
-    const dailyOccurrences =
-        occurrenceCache.filter(
-            occurrence => {
+if(
+    typeof ggReportWaitForPendingOccurrenceWrites ===
+    "function"
+){
 
-                const ts =
-                    Number(
-                        occurrence?.timestamp
+    await ggReportWaitForPendingOccurrenceWrites();
+
+}
+
+
+// ============================================================
+// AUTHORITATIVE TIMESTAMPED CELL OCCURRENCES
+//
+// SOURCE:
+//     IndexedDB → GG_COMMAND_CENTRE_REPORTS_V1
+//     store     → cell_occurrences
+//
+// IMPORTANT:
+//     This replaces ONLY the previous RAM occurrence source.
+//
+//     All existing daily aggregation logic below remains
+//     unchanged.
+// ============================================================
+
+const occurrenceDb =
+    await ggReportOpenDB();
+
+
+const occurrenceRecords =
+    await new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const tx =
+                occurrenceDb.transaction(
+                    window.GG_REPORT.STORE_OCCURRENCES,
+                    "readonly"
+                );
+
+
+            const request =
+                tx
+                    .objectStore(
+                        window.GG_REPORT.STORE_OCCURRENCES
+                    )
+                    .getAll();
+
+
+            request.onsuccess =
+                () => {
+
+                    resolve(
+                        Array.isArray(
+                            request.result
+                        )
+                            ? request.result
+                            : []
                     );
 
-
-                if(
-                    !Number.isFinite(
-                        ts
-                    )
-                ){
-
-                    return false;
-
-                }
+                };
 
 
-                return (
-    ts >= startMs &&
-    ts < endMs
-);
+            request.onerror =
+                () => {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
+
+occurrenceDb.close();
+
+
+// ============================================================
+// EXACT DAILY WINDOW
+//
+// Uses the SAME startMs / endMs already calculated above.
+//
+// startMs:
+//     00:00:00.000 IST for reportDate
+//
+// endMs:
+//     next calendar day 00:00:00.000 IST
+//
+// Existing window semantics are unchanged.
+// ============================================================
+
+const dailyOccurrences =
+    occurrenceRecords.filter(
+        occurrence => {
+
+            const ts =
+                Number(
+                    occurrence?.timestamp
+                );
+
+
+            if(
+                !Number.isFinite(
+                    ts
+                )
+            ){
+
+                return false;
+
             }
-        );
 
+
+            return (
+                ts >= startMs &&
+                ts < endMs
+            );
+
+        }
+    );
 
     // ============================================================
     // DAILY GRID INDEX
