@@ -84419,10 +84419,14 @@ if(
               delete window.activeSessionMap[cleanupStaffKey];
               delete window.trackPointCount[cleanupStaffKey];
 
-              const currentSessionId = String(s.sessionId || previous?.sessionId || "").trim();
-              if (currentSessionId) {
-                window.releasePatrolSessionListener(currentSessionId);
-              }
+            const currentSessionId = String(s.sessionId || previous?.sessionId || "").trim();
+
+if (
+  currentSessionId &&
+  currentSessionId !== String(window.currentSessionId || "").trim()
+) {
+  window.releasePatrolSessionListener(currentSessionId);
+}
 
               delete window.trackDistanceMap[cleanupStaffKey];
               if (window.trackDistanceSessionMap) {
