@@ -122234,9 +122234,7 @@ async function ggBuildCompletedSessionReportSnapshot(
                 cleanSessionId,
 
             staffName,
-    /* Backward-compatible snapshot alias */
-    staff:
-        staffName,
+    
             phone,
 
             division,
@@ -124038,7 +124036,9 @@ const snapshot = {
 
     staffName,
 
-
+    /* Backward-compatible snapshot alias */
+    staff:
+        staffName,
     phone,
 
 
