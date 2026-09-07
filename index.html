@@ -32708,7 +32708,26 @@ function ggReportEventHierarchy(
 
 }
 /* ================================================================
-   16. EVENT BELONGS TO COMPARTMENT
+   16. EVENT BELONGS TO COMPARTMENT / COMPLETED SESSION
+   ----------------------------------------------------------------
+   SURGICAL / NON-BREAKING FIX
+   ----------------------------------------------------------------
+   PRIMARY AUTHORITY:
+       Exact sessionId when the event record contains one.
+
+   FALLBACK:
+       Existing GIS hierarchy + compartment matching.
+
+   IMPORTANT:
+       Do NOT globally normalize or equate different division
+       codes such as BuxaTR_WEST and BTR_W.
+
+       If an observation explicitly belongs to this completed
+       patrol session, sessionId is stronger than the observation's
+       stored GIS division label.
+
+   This preserves the existing hierarchy logic for historical
+   records / records which do not carry sessionId.
    ================================================================ */
 
 function ggReportEventMatches(
@@ -32716,10 +32735,76 @@ function ggReportEventMatches(
     hierarchy
 ){
 
+    record =
+        record || {};
+
+    hierarchy =
+        hierarchy || {};
+
+
+    // ============================================================
+    // 1. SESSION-AUTHORITATIVE MATCH
+    // ============================================================
+    //
+    // If the event explicitly carries a sessionId, use that
+    // session identity as the primary authority.
+    //
+    // This is essential because Elephant records may contain
+    // division labels such as BuxaTR_WEST while the patrol
+    // session hierarchy uses BTR_W.
+    //
+    // DO NOT use phone alone.
+    // DO NOT loosen division matching globally.
+    // ============================================================
+
+    const eventSessionId =
+        String(
+            record.sessionId ??
+            record.session_id ??
+            ""
+        ).trim();
+
+
+    const reportSessionId =
+        String(
+            hierarchy.sessionId ??
+            ""
+        ).trim();
+
+
+    if(
+        eventSessionId &&
+        reportSessionId
+    ){
+
+        return (
+            eventSessionId ===
+            reportSessionId
+        );
+
+    }
+
+
+    // ============================================================
+    // 2. EXISTING GIS HIERARCHY LOGIC
+    // ============================================================
+    //
+    // Records without a usable sessionId continue through the
+    // original hierarchy/compartment matching logic.
+    //
+    // This deliberately preserves the existing reporting behavior
+    // for older records and the current Offence/Irregularity flow.
+    // ============================================================
+
     const eventGIS =
         ggReportEventHierarchy(
             record
         );
+
+
+    // ============================================================
+    // 3. DIVISION
+    // ============================================================
 
     if(
         hierarchy.division &&
@@ -32731,8 +32816,15 @@ function ggReportEventMatches(
             eventGIS.division
         )
     ){
+
         return false;
+
     }
+
+
+    // ============================================================
+    // 4. RANGE
+    // ============================================================
 
     if(
         hierarchy.range &&
@@ -32744,8 +32836,15 @@ function ggReportEventMatches(
             eventGIS.range
         )
     ){
+
         return false;
+
     }
+
+
+    // ============================================================
+    // 5. BEAT
+    // ============================================================
 
     if(
         hierarchy.beat &&
@@ -32757,8 +32856,22 @@ function ggReportEventMatches(
             eventGIS.beat
         )
     ){
+
         return false;
+
     }
+
+
+    // ============================================================
+    // 6. COMPARTMENT
+    // ============================================================
+    //
+    // Preserve the original behavior exactly:
+    //
+    // If both requested hierarchy and event contain a
+    // compartment, they must match.
+    //
+    // ============================================================
 
     if(
         hierarchy.compartment &&
@@ -32766,20 +32879,34 @@ function ggReportEventMatches(
     ){
 
         return (
+
             ggReportUpper(
                 hierarchy.compartment
             ) ===
             ggReportUpper(
                 eventGIS.compartment
             )
+
         );
 
     }
 
+
+    // ============================================================
+    // 7. NO COMPARTMENT
+    // ============================================================
+    //
+    // Preserve the existing function's behavior.
+    //
+    // IMPORTANT:
+    // We intentionally do not change this to TRUE here.
+    // That would alter historical report semantics beyond the
+    // requested session-authority fix.
+    // ============================================================
+
     return false;
 
 }
-
 
 /* ================================================================
    17. GENERIC CACHE ARRAY
