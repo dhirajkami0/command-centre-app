@@ -94414,8 +94414,47 @@ async function submitToServer(
     finalPayload.observation_type =
         observationType;
 
+// ========================================================
+// 🔗 ACTIVE DUTY SESSION STAMP
+// --------------------------------------------------------
+// ONLY NEW SIGHTINGS created during an active duty session
+// receive the current sessionId.
+//
+// IMPORTANT:
+// • Existing sighting edits are NOT changed.
+// • Offline records are stamped BEFORE they enter the
+//   offline queue.
+// • Offline sync later preserves the already-stamped ID.
+// • No new Firestore write is introduced here.
+// ========================================================
 
-    // ========================================================
+if (
+    !window.isEditingSighting &&
+    window.isDutyActive === true
+) {
+
+    const activeSessionId =
+        String(
+            window.currentSessionId ||
+            ""
+        ).trim();
+
+    if (activeSessionId) {
+
+        finalPayload.sessionId =
+            activeSessionId;
+
+        console.log(
+            "🔗 SIGHTING SESSION STAMPED:",
+            {
+                observationType,
+                sessionId:
+                    activeSessionId
+            }
+        );
+
+    }
+}    // ========================================================
     // DEBUG
     // ========================================================
 
@@ -120620,6 +120659,29 @@ console.table({
     points.length
 
 });
+// ============================================================
+// 📊 BUILD COMPLETED SESSION REPORT SNAPSHOT
+// ------------------------------------------------------------
+// pointCount authority:
+//     final completed track → points.length
+//
+// No Firestore point-count read.
+// No IDB point-count read.
+// ============================================================
+
+const sessionReportSnapshot =
+    await ggBuildCompletedSessionReportSnapshot(
+        sessionId,
+        dutyStartedAt,
+        endedAt,
+        finalDistanceKm,
+        points.length
+    );
+
+console.log(
+    "📊 COMPLETED SESSION REPORT SNAPSHOT:",
+    sessionReportSnapshot
+);
 // ======================================
 // KML GENERATION
 // ======================================
@@ -120632,10 +120694,19 @@ console.log(
   "STEP C - uploadPatrolKML START"
 );
 
+const sessionReportSnapshot =
+  await ggBuildCompletedSessionReportSnapshot(
+    sessionId,
+    dutyStartedAt,
+    endedAt,
+    finalDistanceKm
+  );
+
 const kmlUrl = await uploadPatrolKML(
   sessionId,
   points,
-  authoritativeDistanceKm
+  authoritativeDistanceKm,
+  sessionReportSnapshot
 );
 console.log(
   "STEP C RESULT",
@@ -121134,9 +121205,9 @@ async function ggBuildCompletedSessionReportSnapshot(
     sessionId,
     startedAt,
     endedAt,
-    distanceKm
+    distanceKm,
+    pointCount
 ){
-
     const cleanSessionId =
         String(
             sessionId || ""
@@ -121677,7 +121748,12 @@ async function ggBuildCompletedSessionReportSnapshot(
         beat,
 
         pointCount:
-            0,
+    Math.max(
+        0,
+        Number(
+            pointCount || 0
+        )
+    ),
 
         distanceKm:
             Number(
@@ -121717,12 +121793,11 @@ async function ggBuildCompletedSessionReportSnapshot(
 }
 
 async function uploadPatrolKML(
-  sessionId,
-  points,
-  authoritativeDistanceKm = null,
-  sessionReportSnapshot = null
+    sessionId,
+    points,
+    authoritativeDistanceKm = null,
+    sessionReportSnapshot = null
 ) {
-
   try {
 
     // ==========================================================
