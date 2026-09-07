@@ -121601,10 +121601,89 @@ const sessionReportSnapshot =
         finalDistanceKm,
         points.length
     );
+// ==========================================================
+// 🔎 DIAGNOSTIC 1 — END DUTY SNAPSHOT BEFORE KML UPLOAD
+// ----------------------------------------------------------
+// This is the LAST frontend checkpoint before
+// uploadPatrolKML() receives the completed-session values.
+// If these values are correct here but the Sheet becomes 0,
+// the failure is downstream of snapshot generation.
+// ==========================================================
 
 console.log(
-    "📊 COMPLETED SESSION REPORT SNAPSHOT:",
-    sessionReportSnapshot
+  "🔎 DIAG 1 — END DUTY COMPLETED SNAPSHOT BEFORE UPLOAD:",
+  {
+    sessionId:
+      sessionReportSnapshot?.sessionId,
+
+    staffName:
+      sessionReportSnapshot?.staffName,
+
+    phone:
+      sessionReportSnapshot?.phone,
+
+    division:
+      sessionReportSnapshot?.division,
+
+    range:
+      sessionReportSnapshot?.range,
+
+    beat:
+      sessionReportSnapshot?.beat,
+
+    startedAt:
+      sessionReportSnapshot?.startedAt,
+
+    endedAt:
+      sessionReportSnapshot?.endedAt,
+
+    durationMinutes:
+      sessionReportSnapshot?.durationMinutes,
+
+    distanceKm:
+      finalDistanceKm,
+
+    pointCount:
+      points?.length,
+
+    cellVisitOccurrences:
+      sessionReportSnapshot?.cellVisitOccurrences,
+
+    uniqueCellsVisited:
+      sessionReportSnapshot?.uniqueCellsVisited,
+
+    visitedHa:
+      sessionReportSnapshot?.visitedHa,
+
+    coveragePercent:
+      sessionReportSnapshot?.coveragePercent,
+
+    patrolIntensityPercent:
+      sessionReportSnapshot?.patrolIntensityPercent,
+
+    elephantSightings:
+      sessionReportSnapshot?.elephantSightings,
+
+    wildlifeSightings:
+      sessionReportSnapshot?.wildlifeSightings ??
+      sessionReportSnapshot?.otherWildlifeSightings,
+
+    offencesDetected:
+      sessionReportSnapshot?.offencesDetected,
+
+    compartmentsVisited:
+      sessionReportSnapshot?.compartmentsVisited,
+
+    uniqueCellIds:
+      Array.isArray(sessionReportSnapshot?.uniqueCellIds)
+        ? sessionReportSnapshot.uniqueCellIds.length
+        : 0,
+
+    compartmentIds:
+      Array.isArray(sessionReportSnapshot?.compartmentIds)
+        ? sessionReportSnapshot.compartmentIds.length
+        : 0
+  }
 );
 // ======================================
 // KML GENERATION
@@ -125155,7 +125234,276 @@ console.log(
     // This is only the existing Apps Script register sync.
     // ==========================================================
 
-    try {
+        try {
+
+      // ==========================================================
+      // 🔎 DIAGNOSTIC 2 — BUILD EXACT REGISTER PAYLOAD
+      // ----------------------------------------------------------
+      // IMPORTANT:
+      // This object is the EXACT data that will be sent to
+      // SAVE_PATROL_KML.
+      //
+      // We log this object BEFORE fetch().
+      //
+      // If these values are correct here but the Google Sheet
+      // contains zeros, the problem is AFTER the browser POST:
+      //
+      //     Apps Script doPost(e)
+      //            ↓
+      //     SAVE_PATROL_KML
+      //            ↓
+      //     PatrolKMLRegister
+      // ==========================================================
+
+      const registerPayload = {
+
+        action:
+          "SAVE_PATROL_KML",
+
+
+        // ----------------------------------------------
+        // REGISTER IDENTITY
+        // ----------------------------------------------
+
+        monthKey,
+
+        reportDate,
+
+        sessionId:
+          cleanSessionId,
+
+        staffName:
+          registerStaffName,
+
+        phone:
+          registerPhone,
+
+        division:
+          registerDivision,
+
+        range:
+          registerRange,
+
+        beat:
+          registerBeat,
+
+
+        // ----------------------------------------------
+        // SESSION TIME / VALIDITY
+        // ----------------------------------------------
+
+        startedAt:
+          normalizedStartedAt,
+
+        endedAt:
+          normalizedEndedAt,
+
+        durationMinutes,
+
+        validSession,
+
+
+        // ----------------------------------------------
+        // TRACK
+        // ----------------------------------------------
+
+        pointCount:
+          points.length,
+
+        distanceKm,
+
+
+        // ----------------------------------------------
+        // PATROL METRICS
+        // ----------------------------------------------
+
+        cellVisitOccurrences,
+
+        uniqueCellsVisited,
+
+        visitedHa,
+
+        coveragePercent,
+
+        patrolIntensityPercent,
+
+
+        // ----------------------------------------------
+        // INTELLIGENCE / OBSERVATIONS
+        // ----------------------------------------------
+
+        elephantSightings,
+
+        wildlifeSightings,
+
+        offencesDetected:
+          offencesIrregularities,
+
+
+        // ----------------------------------------------
+        // COMPARTMENTS / CELLS
+        // ----------------------------------------------
+
+        compartmentsVisited,
+
+        uniqueCellIds,
+
+        compartmentIds,
+
+
+        // ----------------------------------------------
+        // KML
+        // ----------------------------------------------
+
+        kmlUrl:
+          downloadUrl,
+
+        createdAt:
+          Date.now()
+
+      };
+
+
+      // ==========================================================
+      // 🔎 DIAGNOSTIC 2A — EXACT VALUES BEFORE POST
+      // ==========================================================
+
+      console.log(
+        "🔎 DIAG 2 — EXACT SAVE_PATROL_KML PAYLOAD:",
+        registerPayload
+      );
+
+
+      // ==========================================================
+      // 🔎 DIAGNOSTIC 2B — CRITICAL REGISTER VALUES
+      // ----------------------------------------------------------
+      // This makes the important A:Y values easy to read in the
+      // browser console without opening the complete object.
+      // ==========================================================
+
+      console.table({
+
+        // ----------------------------------------------
+        // IDENTITY
+        // ----------------------------------------------
+
+        sessionId:
+          registerPayload.sessionId,
+
+        staffName:
+          registerPayload.staffName,
+
+        phone:
+          registerPayload.phone,
+
+        division:
+          registerPayload.division,
+
+        range:
+          registerPayload.range,
+
+        beat:
+          registerPayload.beat,
+
+
+        // ----------------------------------------------
+        // SESSION
+        // ----------------------------------------------
+
+        startedAt:
+          registerPayload.startedAt,
+
+        endedAt:
+          registerPayload.endedAt,
+
+        durationMinutes:
+          registerPayload.durationMinutes,
+
+        validSession:
+          registerPayload.validSession,
+
+
+        // ----------------------------------------------
+        // TRACK
+        // ----------------------------------------------
+
+        pointCount:
+          registerPayload.pointCount,
+
+        distanceKm:
+          registerPayload.distanceKm,
+
+
+        // ----------------------------------------------
+        // O:Y PATROL REGISTER METRICS
+        // ----------------------------------------------
+
+        O_cellVisitOccurrences:
+          registerPayload.cellVisitOccurrences,
+
+        P_uniqueCellsVisited:
+          registerPayload.uniqueCellsVisited,
+
+        Q_visitedHa:
+          registerPayload.visitedHa,
+
+        R_coveragePercent:
+          registerPayload.coveragePercent,
+
+        S_patrolIntensityPercent:
+          registerPayload.patrolIntensityPercent,
+
+        T_elephantSightings:
+          registerPayload.elephantSightings,
+
+        U_wildlifeSightings:
+          registerPayload.wildlifeSightings,
+
+        V_offencesDetected:
+          registerPayload.offencesDetected,
+
+        W_compartmentsVisited:
+          registerPayload.compartmentsVisited,
+
+        X_uniqueCellIds:
+          Array.isArray(
+            registerPayload.uniqueCellIds
+          )
+            ? registerPayload.uniqueCellIds.length
+            : 0,
+
+        Y_compartmentIds:
+          Array.isArray(
+            registerPayload.compartmentIds
+          )
+            ? registerPayload.compartmentIds.length
+            : 0
+
+      });
+
+
+      // ==========================================================
+      // 🔎 DIAGNOSTIC 2C — RAW JSON ACTUALLY SENT
+      // ----------------------------------------------------------
+      // JSON.stringify() is performed ONCE.
+      // The exact same string is passed to fetch().
+      // ==========================================================
+
+      const registerJson =
+        JSON.stringify(
+          registerPayload
+        );
+
+
+      console.log(
+        "🔎 DIAG 2C — RAW JSON SENT TO APPS SCRIPT:",
+        registerJson
+      );
+
+
+      // ==========================================================
+      // 🚀 APPS SCRIPT POST
+      // ==========================================================
 
       fetch(
 
@@ -125167,136 +125515,82 @@ console.log(
             "POST",
 
           body:
-            JSON.stringify({
-
-              action:
-                "SAVE_PATROL_KML",
-
-
-              // ----------------------------------------------
-              // REGISTER IDENTITY
-              // ----------------------------------------------
-              // IMPORTANT:
-              // These values belong to THIS completed session,
-              // not necessarily the current browser user.
-              // ----------------------------------------------
-
-              monthKey,
-
-              reportDate,
-
-              sessionId:
-                cleanSessionId,
-
-              staffName:
-                registerStaffName,
-
-              phone:
-                registerPhone,
-
-              division:
-                registerDivision,
-
-              range:
-                registerRange,
-
-              beat:
-                registerBeat,
-
-
-              // ----------------------------------------------
-              // SESSION TIME / VALIDITY
-              // ----------------------------------------------
-
-              startedAt:
-                normalizedStartedAt,
-
-              endedAt:
-                normalizedEndedAt,
-
-              durationMinutes,
-
-              validSession,
-
-
-              // ----------------------------------------------
-              // TRACK
-              // ----------------------------------------------
-
-              pointCount:
-                points.length,
-
-              distanceKm,
-
-
-              // ----------------------------------------------
-              // PATROL METRICS
-              // ----------------------------------------------
-
-              cellVisitOccurrences,
-
-              uniqueCellsVisited,
-
-              visitedHa,
-
-              coveragePercent,
-
-              patrolIntensityPercent,
-
-
-// ----------------------------------------------
-// INTELLIGENCE / OBSERVATIONS
-// ----------------------------------------------
-
-elephantSightings,
-
-wildlifeSightings,
-
-offencesDetected:
-  offencesIrregularities,
-
-              // ----------------------------------------------
-              // COMPARTMENTS / CELLS
-              // ----------------------------------------------
-
-              compartmentsVisited,
-
-              uniqueCellIds,
-
-              compartmentIds,
-
-
-              // ----------------------------------------------
-              // KML
-              // ----------------------------------------------
-
-              kmlUrl:
-                downloadUrl,
-
-              createdAt:
-                Date.now()
-
-            })
+            registerJson
 
         }
 
       )
 
+        // ========================================================
+        // 🔎 DIAGNOSTIC 3 — HTTP RESPONSE
+        // ========================================================
+
         .then(
-          r =>
-            r.text()
+          async r => {
+
+            console.log(
+              "🔎 DIAG 3 — APPS SCRIPT HTTP RESPONSE:",
+              {
+                ok:
+                  r.ok,
+
+                status:
+                  r.status,
+
+                statusText:
+                  r.statusText,
+
+                url:
+                  r.url
+              }
+            );
+
+
+            const responseText =
+              await r.text();
+
+
+            return {
+
+              ok:
+                r.ok,
+
+              status:
+                r.status,
+
+              statusText:
+                r.statusText,
+
+              url:
+                r.url,
+
+              responseText
+
+            };
+
+          }
         )
+
+
+        // ========================================================
+        // 🔎 DIAGNOSTIC 3A — APPS SCRIPT RESPONSE BODY
+        // ========================================================
 
         .then(
           result => {
 
             console.log(
-              "📄 Apps Script Sync:",
+              "📄 DIAG 3A — APPS SCRIPT RESPONSE BODY:",
               result
             );
 
           }
         )
+
+
+        // ========================================================
+        // ❌ NETWORK / FETCH ERROR
+        // ========================================================
 
         .catch(
           err => {
@@ -125319,7 +125613,6 @@ offencesDetected:
       );
 
     }
-
 
     // ==========================================================
     // DONE
