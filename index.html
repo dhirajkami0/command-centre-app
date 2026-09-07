@@ -122182,14 +122182,29 @@ async function ggBuildCompletedSessionReportSnapshot(
 
     let uniqueCellIds = [];
 
-    let compartmentIds = [];
+let compartmentIds = [];
 
 
-    if(
-        hasOperationalPosting
-    ){
+/* ============================================================
+   ACTUAL GIS BEAT-WISE METRICS
+   ------------------------------------------------------------
+   IMPORTANT:
+   Declared OUTSIDE the operational-session block because the
+   final completed-session snapshot is also created outside
+   that block.
 
-        /* ========================================================
+   This prevents block-scope ReferenceError.
+
+   For non-operational sessions it remains an empty object.
+   ============================================================ */
+
+const beatMetrics =
+    Object.create(null);
+
+
+if(
+    hasOperationalPosting
+){        /* ========================================================
            MASTER GIS
            --------------------------------------------------------
            AUTHORITATIVE RULE:
@@ -122645,28 +122660,11 @@ const compartmentSet =
 /* ============================================================
    ACTUAL GIS BEAT METRICS
    ------------------------------------------------------------
-   Each actual Master GIS Beat gets its own metrics.
+   `beatMetrics` is declared once above the operational GIS
+   block so that it is also available to the final snapshot.
 
-       beatMetrics[actualBeat] = {
-
-           beat,
-           totalCells,
-           cellVisitOccurrences,
-           uniqueCellsVisited,
-           visitedHa,
-           coveragePercent,
-           patrolIntensityPercent,
-           compartmentsVisited,
-           uniqueCellIds,
-           compartmentIds
-
-       }
-
+   DO NOT redeclare it here.
    ============================================================ */
-
-const beatMetrics =
-    Object.create(null);
-
 
 /* ============================================================
    ENSURE ACTUAL GIS BEAT ENTRY
