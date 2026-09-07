@@ -32730,32 +32730,61 @@ function ggReportEventHierarchy(
    records / records which do not carry sessionId.
    ================================================================ */
 
+/* ============================================================
+   EVENT MATCHING
+   ------------------------------------------------------------
+   AUTHORITATIVE RULES
+   ------------------------------------------------------------
+
+   1. sessionId
+      = strongest SESSION OWNERSHIP authority.
+
+   2. Division + Range
+      = geographic fence when the observation/event carries
+        authoritative GIS Division/Range.
+
+   3. Beat
+      = NEVER restricts a session-authoritative event.
+
+      Therefore:
+
+          Profile Beat A
+              +
+          Event GIS Beat B
+              +
+          Same sessionId
+              +
+          Same Division + Range
+              =
+          MATCH
+
+   4. Records without sessionId
+      = continue through the existing GIS hierarchy logic.
+
+   5. Phone is NEVER used as ownership authority.
+
+   6. Existing historical hierarchy semantics are preserved
+      outside the explicit sessionId path.
+
+   ============================================================ */
+
 function ggReportEventMatches(
     record,
     hierarchy
 ){
 
     record =
-        record || {};
+        record ||
+        {};
 
     hierarchy =
-        hierarchy || {};
+        hierarchy ||
+        {};
 
 
-    // ============================================================
-    // 1. SESSION-AUTHORITATIVE MATCH
-    // ============================================================
-    //
-    // If the event explicitly carries a sessionId, use that
-    // session identity as the primary authority.
-    //
-    // This is essential because Elephant records may contain
-    // division labels such as BuxaTR_WEST while the patrol
-    // session hierarchy uses BTR_W.
-    //
-    // DO NOT use phone alone.
-    // DO NOT loosen division matching globally.
-    // ============================================================
+    /* ============================================================
+       1. READ SESSION IDs
+       ============================================================ */
 
     const eventSessionId =
         String(
@@ -32772,10 +32801,118 @@ function ggReportEventMatches(
         ).trim();
 
 
+    /* ============================================================
+       2. READ EVENT GIS HIERARCHY
+       ------------------------------------------------------------
+       Read this BEFORE the session-authoritative branch because
+       Division + Range remain the geographic fence.
+
+       IMPORTANT:
+       This does NOT use profile Beat as a fence.
+       ============================================================ */
+
+    const eventGIS =
+        ggReportEventHierarchy(
+            record
+        );
+
+
+    /* ============================================================
+       3. SESSION-AUTHORITATIVE MATCH
+       ------------------------------------------------------------
+       If BOTH sides have a usable sessionId:
+
+           sessionId
+                +
+           geographic Division/Range fence
+                +
+           NO Beat restriction
+
+       ============================================================ */
+
     if(
         eventSessionId &&
         reportSessionId
     ){
+
+        /* ========================================================
+           3A. DIVISION FENCE
+           --------------------------------------------------------
+           Only reject when BOTH the requested session Division
+           and event GIS Division are present and they differ.
+
+           This preserves compatibility with older observations
+           that may not have GIS Division populated.
+           ======================================================== */
+
+        if(
+            hierarchy.division &&
+            eventGIS.division &&
+            ggReportUpper(
+                hierarchy.division
+            ) !==
+            ggReportUpper(
+                eventGIS.division
+            )
+        ){
+
+            return false;
+
+        }
+
+
+        /* ========================================================
+           3B. RANGE FENCE
+           --------------------------------------------------------
+           Range is the geographic boundary.
+
+           Example:
+
+               Session:
+                   BTR_W / WestDamanpur
+
+               Observation:
+                   BTR_W / EastDamanpur
+
+               Result:
+                   FALSE
+
+           ======================================================== */
+
+        if(
+            hierarchy.range &&
+            eventGIS.range &&
+            ggReportUpper(
+                hierarchy.range
+            ) !==
+            ggReportUpper(
+                eventGIS.range
+            )
+        ){
+
+            return false;
+
+        }
+
+
+        /* ========================================================
+           3C. SESSION OWNERSHIP
+           --------------------------------------------------------
+           Exact sessionId establishes ownership.
+
+           IMPORTANT:
+
+           DO NOT check Beat here.
+
+           This allows:
+
+               Beat A
+               Beat B
+               Beat C
+
+           to all belong to the same completed patrol session
+           when they are inside the authorised Division + Range.
+           ======================================================== */
 
         return (
             eventSessionId ===
@@ -32785,26 +32922,20 @@ function ggReportEventMatches(
     }
 
 
-    // ============================================================
-    // 2. EXISTING GIS HIERARCHY LOGIC
-    // ============================================================
-    //
-    // Records without a usable sessionId continue through the
-    // original hierarchy/compartment matching logic.
-    //
-    // This deliberately preserves the existing reporting behavior
-    // for older records and the current Offence/Irregularity flow.
-    // ============================================================
+    /* ============================================================
+       4. EXISTING GIS HIERARCHY LOGIC
+       ------------------------------------------------------------
+       Only records WITHOUT a complete session-authority pair
+       reach this section.
 
-    const eventGIS =
-        ggReportEventHierarchy(
-            record
-        );
+       This preserves historical/offline records that pre-date
+       sessionId stamping.
+       ============================================================ */
 
 
-    // ============================================================
-    // 3. DIVISION
-    // ============================================================
+    /* ============================================================
+       5. DIVISION
+       ============================================================ */
 
     if(
         hierarchy.division &&
@@ -32822,9 +32953,9 @@ function ggReportEventMatches(
     }
 
 
-    // ============================================================
-    // 4. RANGE
-    // ============================================================
+    /* ============================================================
+       6. RANGE
+       ============================================================ */
 
     if(
         hierarchy.range &&
@@ -32842,9 +32973,16 @@ function ggReportEventMatches(
     }
 
 
-    // ============================================================
-    // 5. BEAT
-    // ============================================================
+    /* ============================================================
+       7. BEAT
+       ------------------------------------------------------------
+       IMPORTANT:
+
+       This Beat comparison applies ONLY to the legacy
+       no-sessionId hierarchy path.
+
+       It is NOT used for session-authoritative observations.
+       ============================================================ */
 
     if(
         hierarchy.beat &&
@@ -32862,16 +33000,14 @@ function ggReportEventMatches(
     }
 
 
-    // ============================================================
-    // 6. COMPARTMENT
-    // ============================================================
-    //
-    // Preserve the original behavior exactly:
-    //
-    // If both requested hierarchy and event contain a
-    // compartment, they must match.
-    //
-    // ============================================================
+    /* ============================================================
+       8. COMPARTMENT
+       ------------------------------------------------------------
+       Preserve existing compartment behavior.
+
+       If both requested hierarchy and event contain a
+       compartment, they must match.
+       ============================================================ */
 
     if(
         hierarchy.compartment &&
@@ -32879,30 +33015,24 @@ function ggReportEventMatches(
     ){
 
         return (
-
             ggReportUpper(
                 hierarchy.compartment
             ) ===
             ggReportUpper(
                 eventGIS.compartment
             )
-
         );
 
     }
 
 
-    // ============================================================
-    // 7. NO COMPARTMENT
-    // ============================================================
-    //
-    // Preserve the existing function's behavior.
-    //
-    // IMPORTANT:
-    // We intentionally do not change this to TRUE here.
-    // That would alter historical report semantics beyond the
-    // requested session-authority fix.
-    // ============================================================
+    /* ============================================================
+       9. NO COMPARTMENT
+       ------------------------------------------------------------
+       Preserve the existing historical behavior.
+
+       DO NOT change this to TRUE.
+       ============================================================ */
 
     return false;
 
