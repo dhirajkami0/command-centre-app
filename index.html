@@ -122061,6 +122061,48 @@ async function ggBuildCompletedSessionReportSnapshot(
 
         /* ========================================================
            MASTER GIS
+           --------------------------------------------------------
+           AUTHORITATIVE RULE:
+
+           ELIGIBILITY
+               = Profile / Session Division
+               + Profile / Session Range
+
+           ATTRIBUTION
+               = Actual GIS Grid/Cell
+               + Actual GIS Beat from Master GIS
+
+           IMPORTANT:
+           The profile Beat is NEVER used as the GIS filtering key.
+
+           Therefore:
+
+           Profile:
+               BTR_W / WestDamanpur / Beat A
+
+           GIS:
+               WestDamanpur / Beat A → VALID
+               WestDamanpur / Beat B → VALID
+               WestDamanpur / Beat C → VALID
+
+           EastDamanpur / any Beat → INVALID
+
+           Also:
+
+           Profile:
+               BTR_W / WestDamanpur / Range HQ
+
+           "Range HQ" does NOT need to exist in GIS.
+
+           We search only:
+
+               BTR_W + WestDamanpur
+
+           and let the actual GIS Grid/Cell determine its
+           authoritative GIS Beat.
+
+           This is report-time GIS attribution only.
+           The profile itself is NOT modified.
            ======================================================== */
 
         const masterRows =
@@ -122069,6 +122111,15 @@ async function ggBuildCompletedSessionReportSnapshot(
                 ? ggReportGetMasterRows()
                 : [];
 
+
+        /* ========================================================
+           RANGE-SCOPED GIS ROWS
+           --------------------------------------------------------
+           DO NOT filter by profile Beat.
+
+           The assigned Range is the geographic fence.
+           Every actual GIS Beat/Grid inside that Range is eligible.
+           ======================================================== */
 
         const beatRows =
             masterRows.filter(
@@ -122091,13 +122142,25 @@ async function ggBuildCompletedSessionReportSnapshot(
                         .trim();
 
 
-                    const rowBeat =
-                        String(
-                            row?.beat ||
-                            ""
-                        )
-                        .trim();
-
+                    /*
+                     * =================================================
+                     * HARD ELIGIBILITY RULE
+                     * =================================================
+                     *
+                     * Division MUST match.
+                     *
+                     * Range MUST match.
+                     *
+                     * Profile Beat is deliberately NOT checked.
+                     *
+                     * This prevents:
+                     *
+                     *     rowBeat === beat
+                     *
+                     * from restricting patrol credit to the
+                     * profile Beat.
+                     * =================================================
+                     */
 
                     return (
 
@@ -122109,22 +122172,34 @@ async function ggBuildCompletedSessionReportSnapshot(
                         rowRange ===
                         range
 
-                        &&
-
-                        rowBeat ===
-                        beat
-
                     );
 
                 }
             );
 
 
+        /* ========================================================
+           AUTHORITATIVE GRID SCOPE
+           --------------------------------------------------------
+           Every Grid inside the valid Division + Range becomes
+           eligible.
+
+           The Grid's own Master GIS row remains authoritative for:
+
+               - Beat
+               - Compartment
+               - Total Cells
+           ======================================================== */
+
         const allowedGridIds =
             new Set();
 
 
         const compartmentByGrid =
+            new Map();
+
+
+        const beatByGrid =
             new Map();
 
 
@@ -122145,10 +122220,58 @@ async function ggBuildCompletedSessionReportSnapshot(
                 }
 
 
+                /*
+                 * =====================================================
+                 * GRID ELIGIBILITY
+                 * =====================================================
+                 *
+                 * This Grid is inside the staff's assigned
+                 * Division + Range.
+                 *
+                 * Therefore it is eligible for this completed
+                 * patrol session.
+                 * =====================================================
+                 */
+
                 allowedGridIds.add(
                     gridId
                 );
 
+
+                /*
+                 * =====================================================
+                 * ACTUAL GIS BEAT
+                 * =====================================================
+                 *
+                 * IMPORTANT:
+                 *
+                 * This Beat comes from the actual Master GIS row.
+                 *
+                 * It does NOT come from:
+                 *
+                 *     profile.beat
+                 *
+                 *     sessionStaff.beat
+                 *
+                 * Therefore a patrol can be credited to multiple
+                 * actual GIS Beats within the assigned Range.
+                 * =====================================================
+                 */
+
+                beatByGrid.set(
+                    gridId,
+                    String(
+                        row?.beat ||
+                        ""
+                    ).trim()
+                );
+
+
+                /*
+                 * =====================================================
+                 * ACTUAL GIS COMPARTMENT
+                 * =====================================================
+                 */
 
                 compartmentByGrid.set(
                     gridId,
@@ -122158,6 +122281,12 @@ async function ggBuildCompletedSessionReportSnapshot(
                     ).trim()
                 );
 
+
+                /*
+                 * =====================================================
+                 * AUTHORITATIVE TOTAL CELLS
+                 * =====================================================
+                 */
 
                 totalCells +=
                     Math.max(
@@ -122174,27 +122303,67 @@ async function ggBuildCompletedSessionReportSnapshot(
         );
 
 
+        /* ========================================================
+           SESSION GIS DEBUG
+           --------------------------------------------------------
+           "beat" below is retained only for diagnostic visibility.
+
+           It is NOT used to restrict GIS rows.
+
+           beatRows now means:
+
+               ALL GIS rows
+               Division = profile/session Division
+               Range    = profile/session Range
+
+           not:
+
+               Division + Range + profile Beat
+           ======================================================== */
+
         console.log(
-            "🗺️ SESSION GIS:",
+            "🗺️ SESSION GIS RANGE-SCOPED:",
             {
+                sessionId:
+                    cleanSessionId,
+
                 division,
-                range,
-                beat,
+
+                profileRange:
+                    range,
+
+                profileBeat:
+                    beat,
 
                 masterRows:
                     masterRows.length,
 
-                beatRows:
+                rangeRows:
                     beatRows.length,
 
                 allowedGridCount:
                     allowedGridIds.size,
 
+                actualGISBeats:
+                    Array.from(
+                        new Set(
+                            beatRows
+                                .map(
+                                    row =>
+                                        String(
+                                            row?.beat ||
+                                            ""
+                                        ).trim()
+                                )
+                                .filter(
+                                    Boolean
+                                )
+                        )
+                    ),
+
                 totalCells
             }
         );
-
-
         /* ========================================================
            READ EXISTING CELL OCCURRENCES
            ======================================================== */
@@ -122286,92 +122455,522 @@ async function ggBuildCompletedSessionReportSnapshot(
             );
 
 
-        const uniqueCellSet =
-            new Set();
+/* ============================================================
+   SESSION OCCURRENCES
+   ------------------------------------------------------------
+   AUTHORITATIVE FLOW:
+
+       SESSION ID
+           ↓
+       occurrence.gridId
+           ↓
+       allowedGridIds
+           ↓
+       MASTER GIS GRID
+           ↓
+       beatByGrid.get(gridId)
+           ↓
+       ACTUAL GIS BEAT
+
+   IMPORTANT:
+
+   • Profile Beat is NOT used for GIS attribution.
+   • Profile Division + Profile Range are the geographic fence.
+   • Actual Master GIS Grid determines the actual GIS Beat.
+   • Actual Master GIS Grid also determines Compartment.
+   • A single patrol session may therefore cover multiple
+     actual GIS Beats within the authorised Range.
+
+   Example:
+
+       Profile:
+           Division = BTR_W
+           Range    = WestDamanpur
+           Beat     = Range HQ
+
+       Actual patrol:
+           Grid A → Beat A
+           Grid B → Beat B
+           Grid C → Beat C
+
+       Result:
+           All three are valid because they are inside
+           BTR_W + WestDamanpur.
+
+   ============================================================ */
 
 
-        const compartmentSet =
-            new Set();
+/* ============================================================
+   GLOBAL SESSION UNIQUE SETS
+   ============================================================ */
+
+const uniqueCellSet =
+    new Set();
 
 
-        sessionOccurrences.forEach(
-            occurrence => {
-
-                const gridId =
-                    String(
-                        occurrence?.gridId ||
-                        ""
-                    ).trim();
+const compartmentSet =
+    new Set();
 
 
-                const cellId =
-                    String(
-                        occurrence?.cellId ||
-                        ""
-                    ).trim();
+/* ============================================================
+   ACTUAL GIS BEAT METRICS
+   ------------------------------------------------------------
+   Each actual Master GIS Beat gets its own metrics.
+
+       beatMetrics[actualBeat] = {
+
+           beat,
+           totalCells,
+           cellVisitOccurrences,
+           uniqueCellsVisited,
+           visitedHa,
+           coveragePercent,
+           patrolIntensityPercent,
+           compartmentsVisited,
+           uniqueCellIds,
+           compartmentIds
+
+       }
+
+   ============================================================ */
+
+const beatMetrics =
+    Object.create(null);
 
 
-                if(
-                    !gridId ||
-                    !cellId
-                ){
-                    return;
-                }
+/* ============================================================
+   ENSURE ACTUAL GIS BEAT ENTRY
+   ============================================================ */
+
+function ensureBeatMetrics(
+    actualBeat
+){
+
+    const beatKey =
+        String(
+            actualBeat ||
+            ""
+        ).trim();
 
 
-                cellVisitOccurrences++;
+    /*
+     * Never invent a Beat.
+     *
+     * If Master GIS does not provide a Beat for the Grid,
+     * that occurrence may still contribute to the global
+     * session metrics, but it will not be assigned to a
+     * fabricated Beat.
+     */
+
+    if(
+        !beatKey
+    ){
+        return null;
+    }
 
 
-                uniqueCellSet.add(
-                    gridId +
-                    "|" +
-                    cellId
-                );
+    if(
+        !beatMetrics[
+            beatKey
+        ]
+    ){
+
+        beatMetrics[
+            beatKey
+        ] = {
+
+            beat:
+                beatKey,
+
+            totalCells:
+                0,
+
+            cellVisitOccurrences:
+                0,
+
+            uniqueCellSet:
+                new Set(),
+
+            compartmentSet:
+                new Set(),
+
+            uniqueCellIds:
+                new Set()
+
+        };
+
+    }
 
 
-                compartmentSet.add(
-                    compartmentByGrid.get(
-                        gridId
-                    ) ||
-                    gridId
-                );
+    return beatMetrics[
+        beatKey
+    ];
 
-            }
+}
+
+
+/* ============================================================
+   BUILD TOTAL-CELL COUNT BY ACTUAL GIS BEAT
+   ------------------------------------------------------------
+   IMPORTANT:
+
+   totalCells is authoritative Master GIS data.
+
+   It is NOT calculated from patrol occurrences.
+
+   beatRows is already restricted to:
+
+       Profile Division
+       +
+       Profile Range
+
+   Profile Beat is intentionally NOT part of that filter.
+   ============================================================ */
+
+beatRows.forEach(
+    row => {
+
+        const gridId =
+            String(
+                row?.gridId ||
+                ""
+            ).trim();
+
+
+        if(
+            !gridId
+        ){
+            return;
+        }
+
+
+        const actualBeat =
+            String(
+                row?.beat ||
+                ""
+            ).trim();
+
+
+        const beatEntry =
+            ensureBeatMetrics(
+                actualBeat
+            );
+
+
+        if(
+            !beatEntry
+        ){
+            return;
+        }
+
+
+        beatEntry.totalCells +=
+            Math.max(
+                0,
+                Math.round(
+                    Number(
+                        row?.totalCells ||
+                        0
+                    )
+                )
+            );
+
+    }
+);
+
+
+/* ============================================================
+   PROCESS SESSION OCCURRENCES
+   ------------------------------------------------------------
+   CRITICAL ATTRIBUTION:
+
+       occurrence.gridId
+              ↓
+       beatByGrid.get(gridId)
+              ↓
+       actual GIS Beat
+
+   NEVER use:
+
+       profile Beat
+       session Beat
+
+   for GIS attribution.
+
+   ============================================================ */
+
+sessionOccurrences.forEach(
+    occurrence => {
+
+        const gridId =
+            String(
+                occurrence?.gridId ||
+                ""
+            ).trim();
+
+
+        const cellId =
+            String(
+                occurrence?.cellId ||
+                ""
+            ).trim();
+
+
+        /*
+         * An occurrence without both Grid and Cell cannot
+         * contribute to cell-based patrol metrics.
+         */
+
+        if(
+            !gridId ||
+            !cellId
+        ){
+            return;
+        }
+
+
+        /* ======================================================
+           GLOBAL SESSION OCCURRENCE COUNT
+           ====================================================== */
+
+        cellVisitOccurrences++;
+
+
+        /* ======================================================
+           GLOBAL UNIQUE CELL
+           ------------------------------------------------------
+           Grid + Cell uniquely identifies the visited cell.
+           ====================================================== */
+
+        const uniqueCellKey =
+            gridId +
+            "|" +
+            cellId;
+
+
+        uniqueCellSet.add(
+            uniqueCellKey
         );
 
 
-        uniqueCellIds =
-            Array.from(
-                uniqueCellSet
+        /* ======================================================
+           AUTHORITATIVE COMPARTMENT
+           ------------------------------------------------------
+           Compartment comes from Master GIS Grid mapping.
+
+           Fallback to Grid ID is retained exactly as a safe
+           existing fallback and does not invent a GIS
+           compartment name.
+           ====================================================== */
+
+        const actualCompartment =
+            compartmentByGrid.get(
+                gridId
+            ) ||
+            gridId;
+
+
+        compartmentSet.add(
+            actualCompartment
+        );
+
+
+        /* ======================================================
+           AUTHORITATIVE ACTUAL GIS BEAT
+           ------------------------------------------------------
+           Range is the eligibility fence.
+
+           Master GIS Grid is the attribution authority.
+           ====================================================== */
+
+        const actualBeat =
+            String(
+                beatByGrid.get(
+                    gridId
+                ) ||
+                ""
+            ).trim();
+
+
+        const beatEntry =
+            ensureBeatMetrics(
+                actualBeat
             );
 
 
-        compartmentIds =
+        /*
+         * If the authorised Master GIS Grid has no actual
+         * GIS Beat, retain the global session metrics but
+         * do not invent a Beat attribution.
+         */
+
+        if(
+            !beatEntry
+        ){
+            return;
+        }
+
+
+        /* ======================================================
+           ACTUAL GIS BEAT OCCURRENCE COUNT
+           ====================================================== */
+
+        beatEntry.cellVisitOccurrences++;
+
+
+        /* ======================================================
+           ACTUAL GIS BEAT UNIQUE CELL
+           ====================================================== */
+
+        beatEntry.uniqueCellSet.add(
+            uniqueCellKey
+        );
+
+
+        beatEntry.uniqueCellIds.add(
+            uniqueCellKey
+        );
+
+
+        /* ======================================================
+           ACTUAL GIS BEAT COMPARTMENT
+           ====================================================== */
+
+        beatEntry.compartmentSet.add(
+            actualCompartment
+        );
+
+    }
+);
+
+
+/* ============================================================
+   FINAL GLOBAL SESSION METRICS
+   ============================================================ */
+
+uniqueCellIds =
+    Array.from(
+        uniqueCellSet
+    );
+
+
+compartmentIds =
+    Array.from(
+        compartmentSet
+    );
+
+
+uniqueCellsVisited =
+    uniqueCellIds.length;
+
+
+visitedHa =
+    Number(
+        (
+            uniqueCellsVisited *
+            0.25
+        ).toFixed(2)
+    );
+
+
+coveragePercent =
+    totalCells > 0
+        ? Number(
+            (
+                (
+                    uniqueCellsVisited /
+                    totalCells
+                ) *
+                100
+            ).toFixed(2)
+        )
+        : 0;
+
+
+patrolIntensityPercent =
+    totalCells > 0
+        ? Number(
+            (
+                (
+                    cellVisitOccurrences /
+                    totalCells
+                ) *
+                100
+            ).toFixed(2)
+        )
+        : 0;
+
+
+/* ============================================================
+   FINALISE ACTUAL GIS BEAT METRICS
+   ------------------------------------------------------------
+   Convert internal Sets into serialisable arrays before the
+   completed-session snapshot is created.
+   ============================================================ */
+
+Object.keys(
+    beatMetrics
+).forEach(
+    actualBeat => {
+
+        const entry =
+            beatMetrics[
+                actualBeat
+            ];
+
+
+        /* ======================================================
+           UNIQUE CELLS
+           ====================================================== */
+
+        entry.uniqueCellIds =
             Array.from(
-                compartmentSet
+                entry.uniqueCellIds
             );
 
 
-        uniqueCellsVisited =
-            uniqueCellIds.length;
+        entry.uniqueCellsVisited =
+            entry.uniqueCellIds.length;
 
 
-        visitedHa =
+        /* ======================================================
+           VISITED HECTARES
+           ====================================================== */
+
+        entry.visitedHa =
             Number(
                 (
-                    uniqueCellsVisited *
+                    entry.uniqueCellsVisited *
                     0.25
                 ).toFixed(2)
             );
 
 
-        coveragePercent =
-            totalCells > 0
+        /* ======================================================
+           COMPARTMENTS
+           ====================================================== */
+
+        entry.compartmentsVisited =
+            entry.compartmentSet.size;
+
+
+        entry.compartmentIds =
+            Array.from(
+                entry.compartmentSet
+            );
+
+
+        /* ======================================================
+           COVERAGE
+           ====================================================== */
+
+        entry.coveragePercent =
+            entry.totalCells > 0
                 ? Number(
                     (
                         (
-                            uniqueCellsVisited /
-                            totalCells
+                            entry.uniqueCellsVisited /
+                            entry.totalCells
                         ) *
                         100
                     ).toFixed(2)
@@ -122379,13 +122978,17 @@ async function ggBuildCompletedSessionReportSnapshot(
                 : 0;
 
 
-        patrolIntensityPercent =
-            totalCells > 0
+        /* ======================================================
+           PATROL INTENSITY
+           ====================================================== */
+
+        entry.patrolIntensityPercent =
+            entry.totalCells > 0
                 ? Number(
                     (
                         (
-                            cellVisitOccurrences /
-                            totalCells
+                            entry.cellVisitOccurrences /
+                            entry.totalCells
                         ) *
                         100
                     ).toFixed(2)
@@ -122393,217 +122996,61 @@ async function ggBuildCompletedSessionReportSnapshot(
                 : 0;
 
 
-        console.log(
-            "🧭 SESSION CELL METRICS:",
-            {
-                sessionId:
-                    cleanSessionId,
+        /* ======================================================
+           REMOVE INTERNAL SETS
+           ------------------------------------------------------
+           Sets are used only while calculating metrics.
+           The final snapshot must contain plain serialisable
+           objects/arrays.
+           ====================================================== */
 
-                cellVisitOccurrences,
+        delete entry.uniqueCellSet;
 
-                uniqueCellsVisited,
-
-                visitedHa,
-
-                totalCells,
-
-                coveragePercent,
-
-                patrolIntensityPercent,
-
-                compartmentsVisited:
-                    compartmentIds.length
-            }
-        );
+        delete entry.compartmentSet;
 
     }
+);
 
 
-    /* ============================================================
-       8. EVENT COUNTS
-       ------------------------------------------------------------
-       IMPORTANT:
-       DO NOT use __GG_SESSION_EVENT_COUNTS.
+/* ============================================================
+   DEBUG — ACTUAL GIS BEAT ATTRIBUTION
+   ============================================================ */
 
-       That object has no active writer in the current application.
-
-       Use the EXISTING report event engines directly.
-       ============================================================ */
-
-    let elephantSightings = 0;
-
-    let wildlifeSightings = 0;
-
-    let offencesDetected = 0;
-
-
-    if(
-        hasOperationalPosting &&
-        Number.isFinite(startMs) &&
-        Number.isFinite(endMs) &&
-        endMs >= startMs
-    ){
-
-        const eventHierarchy = {
-
-    // ============================================================
-    // 🔒 SESSION AUTHORITY
-    // ------------------------------------------------------------
-    // Completed-session event ownership is stronger than
-    // stored GIS labels.
-    //
-    // Elephant / Wildlife / Irregularity records created
-    // during this duty carry the same sessionId.
-    // ============================================================
-
-    sessionId:
-        cleanSessionId,
-
-    // ============================================================
-    // EXISTING GIS FALLBACK
-    // ------------------------------------------------------------
-
-    division:
-        division,
-
-    range:
-        range,
-
-    beat:
-        beat
-};
-
-
-        /* ========================================================
-           ELEPHANT
-           ======================================================== */
-
-        if(
-            typeof ggReportCountElephants ===
-            "function"
-        ){
-
-            elephantSightings =
-                Math.max(
-                    0,
-                    Number(
-                        ggReportCountElephants(
-                            eventHierarchy,
-                            startMs,
-                            endMs
-                        ) || 0
-                    )
-                );
-
-        }
-
-
-        /* ========================================================
-           WILDLIFE
-           ======================================================== */
-
-        if(
-            typeof ggReportCountWildlife ===
-            "function"
-        ){
-
-            wildlifeSightings =
-                Math.max(
-                    0,
-                    Number(
-                        ggReportCountWildlife(
-                            eventHierarchy,
-                            startMs,
-                            endMs
-                        ) || 0
-                    )
-                );
-
-        }
-
-
-        /* ========================================================
-           OFFENCE / IRREGULARITY
-           ======================================================== */
-
-        if(
-            typeof ggReportCountOffences ===
-            "function"
-        ){
-
-            offencesDetected =
-                Math.max(
-                    0,
-                    Number(
-                        ggReportCountOffences(
-                            eventHierarchy,
-                            startMs,
-                            endMs
-                        ) || 0
-                    )
-                );
-
-        }
-
-    }
-
-
-    console.log(
-        "🐘🦌⚠️ SESSION EVENT COUNTS:",
-        {
-            sessionId:
-                cleanSessionId,
-
-            elephantSightings,
-
-            wildlifeSightings,
-
-            offencesDetected
-        }
-    );
-
-
-    /* ============================================================
-       9. FINAL SNAPSHOT
-       ============================================================ */
-
-    const snapshot = {
-
+console.log(
+    "🗺️ SESSION ACTUAL GIS BEAT ATTRIBUTION:",
+    {
         sessionId:
             cleanSessionId,
 
-        startedAt:
-            startMs,
+        profileDivision:
+            division,
 
-        endedAt:
-            endMs,
+        profileRange:
+            range,
 
-        durationMinutes,
+        profileBeat:
+            beat,
 
-        validSession,
-
-        staffName,
-
-        phone,
-
-        division,
-
-        range,
-
-        beat,
-
-        pointCount:
-            Math.max(
-                0,
-                Number(
-                    pointCount || 0
-                )
+        eligibleGISBeats:
+            Object.keys(
+                beatMetrics
             ),
 
-        distanceKm:
-            Number(
-                finalDistanceKm.toFixed(2)
-            ),
+        beatMetrics:
+            beatMetrics
+    }
+);
+
+
+/* ============================================================
+   DEBUG — GLOBAL SESSION CELL METRICS
+   ============================================================ */
+
+console.log(
+    "🧭 SESSION CELL METRICS:",
+    {
+        sessionId:
+            cleanSessionId,
 
         cellVisitOccurrences,
 
@@ -122617,28 +123064,812 @@ async function ggBuildCompletedSessionReportSnapshot(
 
         patrolIntensityPercent,
 
-        elephantSightings,
-
-        otherWildlifeSightings:
-            wildlifeSightings,
-
-        offencesDetected,
-
         compartmentsVisited:
-            compartmentIds.length,
+            compartmentIds.length
+    }
+);
+    }
 
-        uniqueCellIds,
 
-        compartmentIds
+/* ============================================================
+   8. EVENT COUNTS
+   ------------------------------------------------------------
+   SURGICAL / NON-BREAKING OBSERVATION ATTRIBUTION
+   ------------------------------------------------------------
+
+   EXISTING SCALAR COUNTS ARE PRESERVED:
+
+       Elephant
+           ↓
+       ggReportCountElephants()
+
+       Wildlife
+           ↓
+       ggReportCountWildlife()
+
+       Irregularity / Offence
+           ↓
+       ggReportCountOffences()
+
+   NEW:
+
+       observationBeatMetrics
+
+   is additionally calculated for the completed session.
+
+   AUTHORITATIVE OBSERVATION FLOW:
+
+       completed sessionId
+              ↓
+       observation.sessionId
+              ↓
+       EXACT SESSION MATCH
+              ↓
+       observation GIS
+              ↓
+       gis_division
+       gis_range
+       gis_beat
+       gis_compartment
+              ↓
+       ACTUAL GIS BEAT
+
+   IMPORTANT:
+
+   • Profile Beat is NOT used for observation attribution.
+   • Profile Division + Profile Range are the geographic fence.
+   • Exact sessionId is the strongest ownership authority.
+   • Actual observation gis_beat determines Beat attribution.
+   • Existing event engines are NOT modified.
+   • Existing scalar counts are NOT modified.
+   • Historical records without sessionId are NOT reassigned
+     to the completed session.
+   ============================================================ */
+
+
+/* ============================================================
+   EXISTING SCALAR EVENT COUNTS
+   ============================================================ */
+
+let elephantSightings =
+    0;
+
+let wildlifeSightings =
+    0;
+
+let offencesDetected =
+    0;
+
+
+/* ============================================================
+   NEW ACTUAL GIS BEAT-WISE OBSERVATION METRICS
+   ============================================================ */
+
+const observationBeatMetrics =
+    Object.create(null);
+
+
+/* ============================================================
+   ENSURE ONE ACTUAL GIS BEAT ENTRY
+   ============================================================ */
+
+function ensureObservationBeatMetrics(
+    actualBeat
+){
+
+    const beatKey =
+        String(
+            actualBeat ||
+            ""
+        ).trim();
+
+
+    if(
+        !beatKey
+    ){
+        return null;
+    }
+
+
+    if(
+        !observationBeatMetrics[
+            beatKey
+        ]
+    ){
+
+        observationBeatMetrics[
+            beatKey
+        ] = {
+
+            beat:
+                beatKey,
+
+            elephantSightings:
+                0,
+
+            wildlifeSightings:
+                0,
+
+            offencesDetected:
+                0,
+
+            totalObservations:
+                0
+
+        };
+
+    }
+
+
+    return observationBeatMetrics[
+        beatKey
+    ];
+
+}
+
+
+/* ============================================================
+   OBSERVATION EVENT ARRAY HELPER
+   ------------------------------------------------------------
+   Uses the EXISTING local caches only.
+
+   Elephant:
+       window.sightingsCache
+
+   Wildlife:
+       window.wildlifeCache
+
+   Offence:
+       window.irregularityIDBIndex
+   ============================================================ */
+
+function collectSessionObservationBeatMetrics(
+    cache,
+    eventType
+){
+
+    const records =
+        ggReportCacheArray(
+            cache
+        );
+
+
+    records.forEach(
+        record => {
+
+            if(
+                !record
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               1. TIMESTAMP
+               ================================================== */
+
+            const ts =
+                ggReportEventTimestamp(
+                    record
+                );
+
+
+            if(
+                !Number.isFinite(
+                    ts
+                )
+            ){
+                return;
+            }
+
+
+            if(
+                ts < startMs ||
+                ts > endMs
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               2. EXACT SESSION OWNERSHIP
+               --------------------------------------------------
+               A completed-session observation is counted only
+               when its own sessionId matches this session.
+
+               DO NOT use phone.
+
+               DO NOT use profile Beat.
+
+               DO NOT use current browser user.
+
+               ================================================== */
+
+            const eventSessionId =
+                String(
+                    record.sessionId ??
+                    record.session_id ??
+                    ""
+                ).trim();
+
+
+            if(
+                eventSessionId !==
+                cleanSessionId
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               3. READ EXISTING OBSERVATION GIS
+               ================================================== */
+
+            const eventGIS =
+                ggReportEventHierarchy(
+                    record
+                );
+
+
+            /* ==================================================
+               4. DIVISION FENCE
+               --------------------------------------------------
+               Observation must remain inside the completed
+               session's authorised Division.
+
+               Exact sessionId is ownership authority, but the
+               geographic fence is still retained.
+               ================================================== */
+
+            const eventDivision =
+                String(
+                    eventGIS.division ||
+                    ""
+                ).trim();
+
+
+            if(
+                division &&
+                eventDivision &&
+                ggReportUpper(
+                    eventDivision
+                ) !==
+                ggReportUpper(
+                    division
+                )
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               5. RANGE FENCE
+               --------------------------------------------------
+               Range is the geographic boundary.
+
+               Profile Beat is deliberately NOT checked here.
+               ================================================== */
+
+            const eventRange =
+                String(
+                    eventGIS.range ||
+                    ""
+                ).trim();
+
+
+            if(
+                range &&
+                eventRange &&
+                ggReportUpper(
+                    eventRange
+                ) !==
+                ggReportUpper(
+                    range
+                )
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               6. ACTUAL GIS BEAT
+               --------------------------------------------------
+               THIS is the attribution authority.
+
+               Never:
+
+                   profile.beat
+
+               Never:
+
+                   sessionStaff.beat
+
+               Use:
+
+                   observation.gis_beat
+               ================================================== */
+
+            const actualBeat =
+                String(
+                    eventGIS.beat ||
+                    ""
+                ).trim();
+
+
+            const beatEntry =
+                ensureObservationBeatMetrics(
+                    actualBeat
+                );
+
+
+            /*
+             * If the observation has no authoritative GIS Beat,
+             * do not invent one.
+             *
+             * The existing scalar session count remains
+             * untouched.
+             */
+
+            if(
+                !beatEntry
+            ){
+                return;
+            }
+
+
+            /* ==================================================
+               7. INCREMENT ACTUAL GIS BEAT
+               ================================================== */
+
+            if(
+                eventType ===
+                "ELEPHANT"
+            ){
+
+                beatEntry.elephantSightings++;
+
+            }
+
+
+            else if(
+                eventType ===
+                "WILDLIFE"
+            ){
+
+                beatEntry.wildlifeSightings++;
+
+            }
+
+
+            else if(
+                eventType ===
+                "OFFENCE"
+            ){
+
+                beatEntry.offencesDetected++;
+
+            }
+
+
+            beatEntry.totalObservations++;
+
+        }
+    );
+
+}
+
+
+/* ============================================================
+   ONLY BUILD EVENT DATA FOR A VALID OPERATIONAL SESSION
+   ============================================================ */
+
+if(
+    hasOperationalPosting &&
+    Number.isFinite(startMs) &&
+    Number.isFinite(endMs) &&
+    endMs >= startMs
+){
+
+    /* ========================================================
+       EXISTING EVENT HIERARCHY
+       --------------------------------------------------------
+       KEEP THIS EXACTLY FOR THE EXISTING SCALAR COUNTERS.
+
+       sessionId = strongest authority
+       division/range/beat = existing fallback
+       ======================================================== */
+
+    const eventHierarchy = {
+
+        /* ====================================================
+           SESSION AUTHORITY
+           ==================================================== */
+
+        sessionId:
+            cleanSessionId,
+
+
+        /* ====================================================
+           EXISTING GIS FALLBACK
+           ==================================================== */
+
+        division:
+            division,
+
+        range:
+            range,
+
+        beat:
+            beat
 
     };
 
 
-    console.log(
-        "📊 FINAL COMPLETED SESSION SNAPSHOT:",
-        snapshot
+    /* ========================================================
+       ELEPHANT — EXISTING ENGINE
+       ======================================================== */
+
+    if(
+        typeof ggReportCountElephants ===
+        "function"
+    ){
+
+        elephantSightings =
+            Math.max(
+                0,
+                Number(
+                    ggReportCountElephants(
+                        eventHierarchy,
+                        startMs,
+                        endMs
+                    ) || 0
+                )
+            );
+
+    }
+
+
+    /* ========================================================
+       WILDLIFE — EXISTING ENGINE
+       ======================================================== */
+
+    if(
+        typeof ggReportCountWildlife ===
+        "function"
+    ){
+
+        wildlifeSightings =
+            Math.max(
+                0,
+                Number(
+                    ggReportCountWildlife(
+                        eventHierarchy,
+                        startMs,
+                        endMs
+                    ) || 0
+                )
+            );
+
+    }
+
+
+    /* ========================================================
+       OFFENCE / IRREGULARITY — EXISTING ENGINE
+       ======================================================== */
+
+    if(
+        typeof ggReportCountOffences ===
+        "function"
+    ){
+
+        offencesDetected =
+            Math.max(
+                0,
+                Number(
+                    ggReportCountOffences(
+                        eventHierarchy,
+                        startMs,
+                        endMs
+                    ) || 0
+                )
+            );
+
+    }
+
+
+    /* ========================================================
+       NEW ACTUAL GIS BEAT ATTRIBUTION
+       --------------------------------------------------------
+       IMPORTANT:
+
+       This does NOT replace the three existing counters.
+
+       It creates a separate Beat-wise attribution index.
+       ======================================================== */
+
+    collectSessionObservationBeatMetrics(
+        window.sightingsCache ||
+        {},
+        "ELEPHANT"
     );
 
+
+    collectSessionObservationBeatMetrics(
+        window.wildlifeCache ||
+        {},
+        "WILDLIFE"
+    );
+
+
+    collectSessionObservationBeatMetrics(
+        window.irregularityIDBIndex ||
+        {},
+        "OFFENCE"
+    );
+
+}
+
+
+/* ============================================================
+   DEBUG — SCALAR SESSION COUNTS
+   ============================================================ */
+
+console.log(
+    "🐘🦌⚠️ SESSION EVENT COUNTS:",
+    {
+        sessionId:
+            cleanSessionId,
+
+        elephantSightings,
+
+        wildlifeSightings,
+
+        offencesDetected
+    }
+);
+
+
+/* ============================================================
+   DEBUG — ACTUAL GIS BEAT-WISE OBSERVATION ATTRIBUTION
+   ============================================================ */
+
+console.log(
+    "🗺️ SESSION OBSERVATION ACTUAL GIS BEAT ATTRIBUTION:",
+    {
+        sessionId:
+            cleanSessionId,
+
+        profileDivision:
+            division,
+
+        profileRange:
+            range,
+
+        profileBeat:
+            beat,
+
+        observationGISBeats:
+            Object.keys(
+                observationBeatMetrics
+            ),
+
+        observationBeatMetrics:
+            observationBeatMetrics
+    }
+);
+    /* ============================================================
+       9. FINAL SNAPSHOT
+       ============================================================ */
+
+/* ============================================================
+   COMPLETED SESSION REPORT SNAPSHOT
+   ------------------------------------------------------------
+   AUTHORITATIVE SESSION DATA:
+
+       sessionId
+       ↓
+       completed-session metrics
+       ↓
+       uploadPatrolKML()
+       ↓
+       PatrolKMLRegister
+
+   IMPORTANT:
+
+   • staffName / phone / division / range / beat remain the
+     session/profile identity fields.
+   • `beat` is retained for backward compatibility and register
+     identity.
+   • GIS patrol attribution is NOT restricted by profile Beat.
+   • `beatMetrics` contains the actual Master GIS Beat-wise
+     attribution derived from Grid → GIS Beat.
+   ============================================================ */
+
+const snapshot = {
+
+    /* ========================================================
+       SESSION IDENTITY
+       ======================================================== */
+
+    sessionId:
+        cleanSessionId,
+
+
+    startedAt:
+        startMs,
+
+
+    endedAt:
+        endMs,
+
+
+    durationMinutes,
+
+
+    validSession,
+
+
+    /* ========================================================
+       SESSION / PROFILE IDENTITY
+       --------------------------------------------------------
+       These fields identify the completed patrol session.
+
+       `beat` remains the profile/session posting Beat.
+       It is NOT used as the GIS attribution authority.
+       ======================================================== */
+
+    staffName,
+
+
+    phone,
+
+
+    division,
+
+
+    range,
+
+
+    beat,
+
+
+    /* ========================================================
+       PATROL TRACK
+       ======================================================== */
+
+    pointCount:
+        Math.max(
+            0,
+            Number(
+                pointCount || 0
+            )
+        ),
+
+
+    distanceKm:
+        Number(
+            finalDistanceKm.toFixed(2)
+        ),
+
+
+    /* ========================================================
+       GLOBAL SESSION CELL METRICS
+       --------------------------------------------------------
+       These are calculated across all valid GIS cells visited
+       during this completed session inside the authorised
+       Division + Range.
+       ======================================================== */
+
+    cellVisitOccurrences,
+
+
+    uniqueCellsVisited,
+
+
+    visitedHa,
+
+
+    totalCells,
+
+
+    coveragePercent,
+
+
+    patrolIntensityPercent,
+
+
+    /* ========================================================
+       OBSERVATION / EVENT COUNTS
+       --------------------------------------------------------
+       Existing authoritative event counters are retained.
+       ======================================================== */
+
+    elephantSightings,
+
+
+    otherWildlifeSightings:
+        wildlifeSightings,
+
+
+    offencesDetected,
+
+
+    /* ========================================================
+       GLOBAL COMPARTMENT METRICS
+       ======================================================== */
+
+    compartmentsVisited:
+        compartmentIds.length,
+
+
+    uniqueCellIds,
+
+
+    compartmentIds,
+
+
+    /* ========================================================
+       ACTUAL GIS BEAT-WISE METRICS
+       --------------------------------------------------------
+       IMPORTANT:
+
+       This is the authoritative GIS Beat attribution.
+
+       It is derived as:
+
+           occurrence.gridId
+                    ↓
+           Master GIS Grid
+                    ↓
+           actual GIS Beat
+
+       Therefore a single session may contain:
+
+           Beat A
+           Beat B
+           Beat C
+
+       even when the staff profile contains only one posting
+       Beat or says "Range HQ".
+
+       Example structure:
+
+           beatMetrics: {
+
+               "Beat A": {
+                   totalCells,
+                   cellVisitOccurrences,
+                   uniqueCellsVisited,
+                   visitedHa,
+                   coveragePercent,
+                   patrolIntensityPercent,
+                   compartmentsVisited,
+                   uniqueCellIds,
+                   compartmentIds
+               },
+
+               "Beat B": {
+                   ...
+               }
+
+           }
+
+       No profile Beat is substituted here.
+       ======================================================== */
+
+    beatMetrics
+
+};
+
+
+/* ============================================================
+   DEBUG — FINAL COMPLETED SESSION SNAPSHOT
+   ============================================================ */
+
+console.log(
+    "📦 COMPLETED SESSION REPORT SNAPSHOT:",
+    snapshot
+);
 
     return snapshot;
 
