@@ -119901,18 +119901,43 @@ console.log(
 // NO Firestore READ.
 // ============================================================
 
+// ============================================================
+// 🎯 AUTHORITATIVE SESSION DISTANCE
+// ------------------------------------------------------------
+// SOURCE:
+//
+// patrol_tracks/{sessionId}/points
+//          ↓
+// central patrol listener
+//          ↓
+// sessionPointCache[sessionId]
+//          ↓
+// latest timestamped patrol point
+//          ↓
+// distanceCoveredKm / distanceCoveredMeters
+//
+// IMPORTANT:
+// • NO Firestore read
+// • NO second listener
+// • NO profile distance
+// • NO current-browser-user distance
+// • sessionId is the authority
+// ============================================================
+
 const authoritativeDistancePromise =
     (async () => {
 
         try {
 
             const cachedPoints =
-                window.sessionPointCache?.[sessionId];
+                window.sessionPointCache?.[
+                    sessionId
+                ];
 
-            if (
+            if(
                 !cachedPoints ||
                 typeof cachedPoints !== "object"
-            ) {
+            ){
 
                 console.warn(
                     "⚠ END DUTY: sessionPointCache missing",
@@ -119924,12 +119949,24 @@ const authoritativeDistancePromise =
                 return null;
             }
 
+
+            // ========================================================
+            // 📦 OBJECT CACHE → ARRAY
+            // ========================================================
+
             const points =
                 Array.isArray(cachedPoints)
-                    ? cachedPoints
-                    : Object.values(cachedPoints);
+                    ? [
+                        ...cachedPoints
+                    ]
+                    : Object.values(
+                        cachedPoints
+                    );
 
-            if (points.length === 0) {
+
+            if(
+                points.length === 0
+            ){
 
                 console.warn(
                     "⚠ END DUTY: no cached patrol points",
@@ -119941,141 +119978,320 @@ const authoritativeDistancePromise =
                 return null;
             }
 
-            // ----------------------------------------------------
-            // Find latest valid patrol point.
-            // ----------------------------------------------------
 
-            const validPoints =
-                points.filter(point => {
+            // ========================================================
+            // 🕒 ROBUST PATROL POINT TIME
+            // --------------------------------------------------------
+            // Supports:
+            //
+            // timestamp = milliseconds
+            // time      = milliseconds
+            // time      = ISO string
+            // Firestore Timestamp
+            // ========================================================
 
-                    const km =
+            function getPatrolPointTimestamp(
+                point
+            ){
+
+                if(
+                    !point ||
+                    typeof point !== "object"
+                ){
+                    return 0;
+                }
+
+
+                const raw =
+                    point.timestamp ??
+                    point.time ??
+                    point.lastSeen ??
+                    null;
+
+
+                if(
+                    raw &&
+                    typeof raw.toMillis ===
+                        "function"
+                ){
+
+                    try{
+
+                        const ms =
+                            raw.toMillis();
+
+                        if(
+                            Number.isFinite(ms)
+                        ){
+                            return ms;
+                        }
+
+                    }
+                    catch(e){}
+                }
+
+
+                if(
+                    raw &&
+                    typeof raw.toDate ===
+                        "function"
+                ){
+
+                    try{
+
+                        const ms =
+                            raw
+                                .toDate()
+                                .getTime();
+
+                        if(
+                            Number.isFinite(ms)
+                        ){
+                            return ms;
+                        }
+
+                    }
+                    catch(e){}
+                }
+
+
+                if(
+                    typeof raw === "number" &&
+                    Number.isFinite(raw) &&
+                    raw > 0
+                ){
+
+                    // Seconds → milliseconds
+                    if(
+                        raw < 100000000000
+                    ){
+                        return raw * 1000;
+                    }
+
+                    return raw;
+                }
+
+
+                if(
+                    typeof raw === "string" &&
+                    raw.trim()
+                ){
+
+                    const numeric =
                         Number(
-                            point?.distanceCoveredKm
+                            raw.trim()
                         );
 
-                    const meters =
-                        Number(
-                            point?.distanceCoveredMeters
+                    if(
+                        Number.isFinite(numeric) &&
+                        numeric > 0
+                    ){
+
+                        if(
+                            numeric < 100000000000
+                        ){
+                            return numeric * 1000;
+                        }
+
+                        return numeric;
+                    }
+
+
+                    const parsed =
+                        Date.parse(
+                            raw.trim()
                         );
 
-                    return (
-                        Number.isFinite(km) &&
-                        km >= 0
-                    ) || (
-                        Number.isFinite(meters) &&
-                        meters >= 0
-                    );
+                    if(
+                        Number.isFinite(parsed)
+                    ){
+                        return parsed;
+                    }
+                }
 
-                });
 
-            if (validPoints.length === 0) {
+                return 0;
+            }
+
+
+            // ========================================================
+            // 🔒 SESSION FILTER
+            // --------------------------------------------------------
+            // Prevent an accidental point from another session
+            // from becoming the distance authority.
+            // ========================================================
+
+            const sessionPoints =
+                points.filter(
+                    point => {
+
+                        if(
+                            !point ||
+                            typeof point !== "object"
+                        ){
+                            return false;
+                        }
+
+
+                        const pointSessionId =
+                            String(
+                                point.sessionId ||
+                                sessionId
+                            ).trim();
+
+
+                        return (
+                            !pointSessionId ||
+                            pointSessionId ===
+                                sessionId
+                        );
+                    }
+                );
+
+
+            if(
+                sessionPoints.length === 0
+            ){
 
                 console.warn(
-                    "⚠ END DUTY: cached points contain no distance",
+                    "⚠ END DUTY: no points belong to session",
                     {
-                        sessionId,
-                        pointCount: points.length
+                        sessionId
                     }
                 );
 
                 return null;
             }
 
-            // ----------------------------------------------------
-            // Latest point by timestamp.
-            // ----------------------------------------------------
 
-            validPoints.sort(
+            // ========================================================
+            // 🕒 SORT CHRONOLOGICALLY
+            // ========================================================
+
+            sessionPoints.sort(
                 (a, b) => {
 
                     const ta =
-                        Number(
-                            a?.timestamp ??
-                            a?.time ??
-                            a?.lastSeen ??
-                            0
+                        getPatrolPointTimestamp(
+                            a
                         );
 
                     const tb =
-                        Number(
-                            b?.timestamp ??
-                            b?.time ??
-                            b?.lastSeen ??
-                            0
+                        getPatrolPointTimestamp(
+                            b
                         );
 
                     return ta - tb;
                 }
             );
 
-            const latestPoint =
-                validPoints[
-                    validPoints.length - 1
-                ];
 
-            // ----------------------------------------------------
-            // Prefer kilometres.
-            // ----------------------------------------------------
+            // ========================================================
+            // 📏 FIND LAST POINT WITH REAL DISTANCE
+            // --------------------------------------------------------
+            // Search backwards.
+            //
+            // This prevents the START point (distance 0) from
+            // becoming authoritative when later patrol points
+            // already contain cumulative distance.
+            // ========================================================
+
+            let latestPoint =
+                null;
 
             let distanceKm =
-                Number(
-                    latestPoint?.distanceCoveredKm
-                );
+                NaN;
 
-            // ----------------------------------------------------
-            // Metre fallback.
-            // ----------------------------------------------------
 
-            if (
-                !Number.isFinite(distanceKm) ||
-                distanceKm < 0
-            ) {
+            for(
+                let i =
+                    sessionPoints.length - 1;
 
-                const distanceMeters =
+                i >= 0;
+
+                i--
+            ){
+
+                const point =
+                    sessionPoints[i];
+
+
+                const km =
                     Number(
-                        latestPoint?.distanceCoveredMeters
+                        point?.distanceCoveredKm
                     );
 
-                if (
-                    Number.isFinite(distanceMeters) &&
-                    distanceMeters >= 0
-                ) {
+
+                if(
+                    Number.isFinite(km) &&
+                    km >= 0
+                ){
+
+                    latestPoint =
+                        point;
 
                     distanceKm =
-                        distanceMeters / 1000;
+                        km;
 
+                    break;
                 }
 
+
+                const meters =
+                    Number(
+                        point?.distanceCoveredMeters
+                    );
+
+
+                if(
+                    Number.isFinite(meters) &&
+                    meters >= 0
+                ){
+
+                    latestPoint =
+                        point;
+
+                    distanceKm =
+                        meters / 1000;
+
+                    break;
+                }
             }
 
-            if (
+
+            if(
+                !latestPoint ||
                 !Number.isFinite(distanceKm) ||
                 distanceKm < 0
-            ) {
+            ){
 
                 console.warn(
-                    "⚠ END DUTY: latest cached distance invalid",
+                    "⚠ END DUTY: cached points contain no usable distance",
                     {
                         sessionId,
-                        latestPoint
+                        pointCount:
+                            sessionPoints.length
                     }
                 );
 
                 return null;
             }
 
-            console.log(
-                "⚡ FINAL DISTANCE FROM sessionPointCache:",
-                {
-                    staff:
-                        profile.cleanName,
 
+            console.log(
+                "⚡ FINAL DISTANCE FROM SESSION MEMORY:",
+                {
                     sessionId,
 
                     pointId:
                         latestPoint?.id ??
                         latestPoint?.pointId ??
                         null,
+
+                    pointTimestamp:
+                        getPatrolPointTimestamp(
+                            latestPoint
+                        ),
 
                     patrolPointCount:
                         latestPoint?.patrolPointCount ??
@@ -120088,10 +120304,11 @@ const authoritativeDistancePromise =
                 }
             );
 
+
             return distanceKm;
 
         }
-        catch (err) {
+        catch(err){
 
             console.error(
                 "❌ END DUTY cached distance resolution failed:",
@@ -120102,6 +120319,7 @@ const authoritativeDistancePromise =
         }
 
     })();
+
     // ============================================================
     // 🔥 BUTTON
     // ============================================================
@@ -120170,15 +120388,9 @@ const authoritativeDistanceKm =
 
 const hasAuthoritativeDistance =
     Number.isFinite(
-        Number(
-            authoritativeDistanceKm
-        )
+        Number(authoritativeDistanceKm)
     ) &&
-    Number(
-        authoritativeDistanceKm
-    ) >= 0;
-
-console.log(
+    Number(authoritativeDistanceKm) > 0;console.log(
     "📏 FINAL DISTANCE SOURCE:",
     hasAuthoritativeDistance
         ? "sessionPointCache"
@@ -122234,16 +122446,32 @@ async function ggBuildCompletedSessionReportSnapshot(
 
         const eventHierarchy = {
 
-            division:
-                division,
+    // ============================================================
+    // 🔒 SESSION AUTHORITY
+    // ------------------------------------------------------------
+    // Completed-session event ownership is stronger than
+    // stored GIS labels.
+    //
+    // Elephant / Wildlife / Irregularity records created
+    // during this duty carry the same sessionId.
+    // ============================================================
 
-            range:
-                range,
+    sessionId:
+        cleanSessionId,
 
-            beat:
-                beat
+    // ============================================================
+    // EXISTING GIS FALLBACK
+    // ------------------------------------------------------------
 
-        };
+    division:
+        division,
+
+    range:
+        range,
+
+    beat:
+        beat
+};
 
 
         /* ========================================================
@@ -122542,11 +122770,10 @@ async function ggBuildCompletedSessionReportSnapshot(
 
 
     const hasAuthoritativeDistance =
-      Number.isFinite(
-        distanceKm
-      ) &&
-      distanceKm >= 0;
-
+    Number.isFinite(
+        Number(authoritativeDistanceKm)
+    ) &&
+    Number(authoritativeDistanceKm) > 0;
 
     // ==========================================================
     // 🔄 FALLBACK DISTANCE CALCULATION
