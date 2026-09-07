@@ -59157,24 +59157,30 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
+        // ============================================================
+        // 🕒 FIND RAW TIMESTAMP
+        // ============================================================
+
         let timestamp =
-            sighting.sighting_datetime ||
-            sighting.createdAt ||
-            sighting.timestamp ||
-            sighting.date ||
+            sighting.sighting_datetime ??
+            sighting.created_at ??
+            sighting.createdAt ??
+            sighting.timestamp ??
+            sighting.date ??
             null;
 
 
         if(
-            !timestamp
+            timestamp === null ||
+            timestamp === undefined
         ){
             return false;
         }
 
 
-        // ========================================================
-        // FIREBASE TIMESTAMP OBJECT
-        // ========================================================
+        // ============================================================
+        // 🔥 FIREBASE TIMESTAMP OBJECT
+        // ============================================================
 
         if(
             typeof timestamp.toDate ===
@@ -59187,9 +59193,9 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
-        // ========================================================
-        // SERIALIZED FIREBASE TIMESTAMP
-        // --------------------------------------------------------
+        // ============================================================
+        // 🔥 SERIALIZED FIREBASE TIMESTAMP
+        //
         // Example:
         //
         // {
@@ -59197,28 +59203,16 @@ function isElephantSightingWithinLast24Hours(
         //     nanoseconds: 734000000
         // }
         //
-        // Also support:
+        // Also supports:
         //
         // {
-        //     _seconds: ...,
-        //     _nanoseconds: ...
+        //     _seconds: 1788795273,
+        //     _nanoseconds: 734000000
         // }
-        // ========================================================
+        // ============================================================
 
         else if(
-            typeof timestamp ===
-                "object" &&
-            (
-                Object.prototype.hasOwnProperty.call(
-                    timestamp,
-                    "seconds"
-                )
-                ||
-                Object.prototype.hasOwnProperty.call(
-                    timestamp,
-                    "_seconds"
-                )
-            )
+            typeof timestamp === "object"
         ){
 
             const seconds =
@@ -59236,36 +59230,40 @@ function isElephantSightingWithinLast24Hours(
 
 
             if(
-                !Number.isFinite(
-                    seconds
-                )
+                Number.isFinite(seconds) &&
+                seconds > 0
             ){
-                return false;
+
+                timestamp =
+                    (
+                        seconds * 1000
+                    ) +
+                    (
+                        Number.isFinite(
+                            nanoseconds
+                        )
+                            ? nanoseconds / 1000000
+                            : 0
+                    );
+
             }
 
+            else{
 
-            timestamp =
-                (
-                    seconds *
-                    1000
-                )
-                +
-                (
-                    nanoseconds /
-                    1000000
-                );
+                return false;
+
+            }
 
         }
 
 
-        // ========================================================
-        // CONVERT TO MILLISECONDS
-        // ========================================================
+        // ============================================================
+        // 🕒 CONVERT TO MILLISECONDS
+        // ============================================================
 
-        let time;
+        let time = 0;
 
 
-        // Native Date
         if(
             timestamp instanceof Date
         ){
@@ -59276,60 +59274,65 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
-        // Already numeric
         else if(
-            typeof timestamp ===
-                "number"
+            typeof timestamp === "number" &&
+            Number.isFinite(timestamp)
         ){
 
-            // ----------------------------------------------------
-            // Firebase / Unix seconds
-            // ----------------------------------------------------
+            /*
+             * Firebase / Unix seconds
+             * versus JavaScript milliseconds.
+             */
+
+            time =
+                timestamp < 100000000000
+                    ? timestamp * 1000
+                    : timestamp;
+
+        }
+
+
+        else if(
+            typeof timestamp === "string" &&
+            timestamp.trim() !== ""
+        ){
+
+            const numeric =
+                Number(
+                    timestamp
+                );
+
 
             if(
-                Math.abs(timestamp) <
-                100000000000
+                Number.isFinite(numeric)
             ){
 
                 time =
-                    timestamp *
-                    1000;
+                    numeric < 100000000000
+                        ? numeric * 1000
+                        : numeric;
 
             }
-
-            // ----------------------------------------------------
-            // JavaScript milliseconds
-            // ----------------------------------------------------
 
             else{
 
                 time =
-                    timestamp;
+                    Date.parse(
+                        timestamp
+                    );
 
             }
 
         }
 
 
-        // String / other date-compatible value
-        else{
-
-            time =
-                new Date(
-                    timestamp
-                ).getTime();
-
-        }
-
-
-        // ========================================================
-        // INVALID DATE
-        // ========================================================
+        // ============================================================
+        // ❌ INVALID TIME
+        // ============================================================
 
         if(
-            !Number.isFinite(
-                time
-            )
+            !Number.isFinite(time) ||
+            time <= 0
         ){
 
             return false;
@@ -59337,17 +59340,32 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
-        // ========================================================
-        // 24-HOUR WINDOW
-        // ========================================================
+        // ============================================================
+        // ⏱ EXACT 24-HOUR OPERATIONAL WINDOW
+        // ============================================================
 
         const age =
             Date.now() -
             time;
 
 
+        /*
+         * Future timestamps are not accepted.
+         *
+         * This prevents a bad device clock from making
+         * a future record appear permanently "fresh".
+         */
+
+        if(
+            age < 0
+        ){
+
+            return false;
+
+        }
+
+
         return (
-            age >= 0 &&
             age <=
             (
                 24 *
@@ -59362,7 +59380,7 @@ function isElephantSightingWithinLast24Hours(
     catch(err){
 
         console.warn(
-            "⚠ Elephant sighting age check failed:",
+            "⚠ Elephant 24-hour timestamp check failed:",
             err
         );
 
@@ -59370,9 +59388,7 @@ function isElephantSightingWithinLast24Hours(
 
     }
 
-}
-
-// ============================================================
+}// ============================================================
 // 🔑 CANONICAL SIGHTING KEY
 // ============================================================
 
