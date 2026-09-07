@@ -119592,54 +119592,76 @@ async function submitEndDuty(event) {
     // ============================================================
     const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
 // ============================================================
-// 🕐 CAPTURE DUTY START TIME
+// 🕐 CAPTURE AUTHORITATIVE DUTY START TIME
 // ------------------------------------------------------------
-// IMPORTANT:
-// Use the actual duty-start timestamp saved by Start Duty.
-// Do NOT use the first GPS point as duty start.
-// ============================================================
-
-// ============================================================
-// 🕐 CAPTURE DUTY START TIME
-// ------------------------------------------------------------
-// PRIMARY:
-//   existing dedicated duty-start cache
+// Existing sources only:
 //
-// FALLBACK:
-//   authoritative timestamp embedded in sessionId
+// 1. window.dutyStartedAt
+// 2. localStorage.dutyStartedAt
+// 3. existing legacy dutyStartTime
+// 4. sessionId timestamp
 //
-// Example:
-//   DHIRAJ KAMI_1788752599268
-//                     ↑
-//                duty start
-//
-// IMPORTANT:
-//   • Do NOT use first GPS point.
-//   • Do NOT query another point-count source.
-//   • sessionId is already the actual Start-Duty session identity.
+// sessionId remains the final authoritative recovery source.
 // ============================================================
 
 let dutyStartedAt =
-  window.dutyStartedAt ||
-  localStorage.getItem("dutyStartedAt") ||
-  localStorage.getItem("dutyStartTime") ||
-  "";
+  Number(
+    window.dutyStartedAt
+  );
 
+if (
+  !Number.isFinite(
+    dutyStartedAt
+  ) ||
+  dutyStartedAt <= 0
+) {
+
+  dutyStartedAt =
+    Number(
+      localStorage.getItem(
+        "dutyStartedAt"
+      )
+    );
+
+}
+
+if (
+  !Number.isFinite(
+    dutyStartedAt
+  ) ||
+  dutyStartedAt <= 0
+) {
+
+  dutyStartedAt =
+    Number(
+      localStorage.getItem(
+        "dutyStartTime"
+      )
+    );
+
+}
 
 // ============================================================
 // 🔒 SESSION ID START-TIME FALLBACK
 // ============================================================
 
 if (
-  !dutyStartedAt &&
+  (
+    !Number.isFinite(
+      dutyStartedAt
+    ) ||
+    dutyStartedAt <= 0
+  ) &&
   sessionId
 ) {
 
   const sessionTimestamp =
     Number(
-      String(sessionId)
-        .split("_")
-        .pop()
+      String(
+        sessionId
+      )
+      .split("_")
+      .pop()
     );
 
   if (
@@ -119652,23 +119674,61 @@ if (
     dutyStartedAt =
       sessionTimestamp;
 
+    window.dutyStartedAt =
+      sessionTimestamp;
+
+    localStorage.setItem(
+      "dutyStartedAt",
+      String(
+        sessionTimestamp
+      )
+    );
+
     console.log(
       "🕐 DUTY START RECOVERED FROM SESSION ID:",
-      dutyStartedAt
+      sessionTimestamp
     );
 
   }
+
 }
 
+// ============================================================
+// 🛑 DO NOT CREATE A FAKE START TIME
+// ============================================================
+
+if (
+  !Number.isFinite(
+    dutyStartedAt
+  ) ||
+  dutyStartedAt <= 0
+) {
+
+  console.error(
+    "❌ END DUTY BLOCKED — VALID START TIME NOT AVAILABLE",
+    {
+      sessionId,
+      dutyStartedAt
+    }
+  );
+
+  showToast(
+    "❌ Duty start time could not be recovered.",
+    "error"
+  );
+
+  console.groupEnd();
+  return;
+
+}
 
 console.log(
-  "🕐 DUTY START:",
-  dutyStartedAt
-);console.log(
-  "🕐 DUTY START:",
-  dutyStartedAt
-);
-  // ============================================================
+  "🕐 AUTHORITATIVE DUTY START:",
+  {
+    sessionId,
+    dutyStartedAt
+  }
+);  // ============================================================
 // 🔒 END-DUTY SESSION LOCK
 // ------------------------------------------------------------
 // Once this session is ended, no old-session GPS/write flow
@@ -121432,30 +121492,30 @@ async function ggBuildCompletedSessionReportSnapshot(
         {};
 
 
-    const division =
-        String(
-            profile.division ||
-            ""
-        )
-        .trim()
-        .toUpperCase();
+const division =
+    String(
+        profile.division ||
+        ""
+    )
+    .trim()
+    .toUpperCase();
 
+const range =
+    String(
+        profile.range ||
+        ""
+    )
+    .trim();
 
-    const range =
-        String(
-            profile.range ||
-            ""
-        )
-        .trim();
-
-
-    const beat =
-        String(
-            profile.beat ||
-            ""
-        )
-        .trim();
-
+const beat =
+    String(
+        document.getElementById(
+            "d-beat"
+        )?.value ||
+        profile.beat ||
+        ""
+    )
+    .trim();
 
     // ============================================================
     // REPORTING POSTING SCOPE
@@ -121995,45 +122055,87 @@ async function ggBuildCompletedSessionReportSnapshot(
     }
 
 
-    // ============================================================
-    // EVENT COUNTS
-    //
-    // IMPORTANT:
-    // These require events to carry this sessionId.
-    // Until that is implemented, do NOT silently guess.
-    // ============================================================
+// ============================================================
+// EVENT COUNTS
+// ------------------------------------------------------------
+// USE EXISTING LOCAL REPORT CACHES.
+// Do not create another event-count system.
+//
+// Existing sources:
+//   Elephant  → sightingsCache
+//   Wildlife  → wildlifeCache
+//   Offences  → irregularityIDBIndex
+//
+// The existing report functions already know how to match
+// hierarchy + event time.
+// ============================================================
 
-    const elephantSightings =
+let elephantSightings =
+    0;
+
+let wildlifeSightings =
+    0;
+
+let offencesDetected =
+    0;
+
+if (
+    hasOperationalPosting
+) {
+
+    const reportHierarchy = {
+        division:
+            division,
+
+        range:
+            range,
+
+        beat:
+            beat
+    };
+
+    elephantSightings =
         Number(
-            window.__GG_SESSION_EVENT_COUNTS
-                ?.[
-                    cleanSessionId
-                ]
-                ?.elephant || 0
-        );
+            ggReportCountElephants(
+                reportHierarchy,
+                startMs,
+                endMs
+            )
+        ) || 0;
 
-
-    const wildlifeSightings =
+    wildlifeSightings =
         Number(
-            window.__GG_SESSION_EVENT_COUNTS
-                ?.[
-                    cleanSessionId
-                ]
-                ?.wildlife || 0
-        );
+            ggReportCountWildlife(
+                reportHierarchy,
+                startMs,
+                endMs
+            )
+        ) || 0;
 
-
-    const offencesDetected =
+    offencesDetected =
         Number(
-            window.__GG_SESSION_EVENT_COUNTS
-                ?.[
-                    cleanSessionId
-                ]
-                ?.offences || 0
-        );
+            ggReportCountOffences(
+                reportHierarchy,
+                startMs,
+                endMs
+            )
+        ) || 0;
 
+}
 
-    // ============================================================
+console.log(
+    "🦣 SESSION EVENT COUNTS:",
+    {
+        sessionId:
+            cleanSessionId,
+
+        elephantSightings,
+
+        wildlifeSightings,
+
+        offencesDetected
+    }
+);    // ============================================================
     // FINAL COMPLETED SESSION SNAPSHOT
     // ============================================================
 
@@ -122638,36 +122740,47 @@ async function uploadPatrolKML(
       );
 
 
-    const elephantSightings =
-      Math.max(
-        0,
-        Number(
-          snapshot.elephantSightings || 0
-        )
-      );
+// ============================================================
+// 🐘🦌⚠️ COMPLETED SESSION EVENT COUNTS
+// ------------------------------------------------------------
+// IMPORTANT:
+// ggBuildCompletedSessionReportSnapshot() currently returns:
+//
+//   elephantSightings
+//   otherWildlifeSightings
+//   offencesDetected
+//
+// Therefore uploadPatrolKML() MUST read those exact snapshot
+// field names.
+//
+// The secondary names below are retained only as backward-
+// compatibility fallbacks and do not change the existing flow.
+// ============================================================
 
+const elephantSightings = Math.max(
+  0,
+  Number(snapshot.elephantSightings || 0)
+);
 
-    const wildlifeSightings =
-      Math.max(
-        0,
-        Number(
-          snapshot.wildlifeSightings || 0
-        )
-      );
+const wildlifeSightings = Math.max(
+  0,
+  Number(
+    snapshot.otherWildlifeSightings ??
+    snapshot.wildlifeSightings ??
+    0
+  )
+);
 
-
-    const offencesIrregularities =
-      Math.max(
-        0,
-        Number(
-          snapshot.offencesIrregularities ??
-          snapshot.offences ??
-          snapshot.irregularities ??
-          0
-        )
-      );
-
-
+const offencesIrregularities = Math.max(
+  0,
+  Number(
+    snapshot.offencesDetected ??
+    snapshot.offencesIrregularities ??
+    snapshot.offences ??
+    snapshot.irregularities ??
+    0
+  )
+);
     const compartmentsVisited =
       Math.max(
         0,
@@ -131408,13 +131521,33 @@ const now =
   new Date();
 
 // =====================================================
+// 🔥 AUTHORITATIVE DUTY START TIME
+// -----------------------------------------------------
+// ONE existing timestamp is used for:
+//   • sessionId
+//   • window.dutyStartedAt
+//   • localStorage dutyStartedAt
+//
+// Do NOT create another start-time source.
+// =====================================================
+
+const startMs =
+  Date.now();
+
+window.dutyStartedAt =
+  startMs;
+
+localStorage.setItem(
+  "dutyStartedAt",
+  String(startMs)
+);
+
+// =====================================================
 // 🔥 SESSION ID
 // =====================================================
-const sessionId =
-  `${cleanLeader}_${
-    Date.now()
-  }`;
 
+const sessionId =
+  `${cleanLeader}_${startMs}`;
 // =====================================================
 // 🔥 SAVE LOCALLY
 // =====================================================
@@ -131773,18 +131906,22 @@ await setDoc(
     status:
       "ACTIVE",
 
-    // ====================================
-    // 🔥 TIME
-    // ====================================
-    startedAt:
-      Date.now(),
+// ====================================
+// 🔥 TIME
+// ====================================
+// IMPORTANT:
+// startMs was created once at the beginning of Start Duty.
+//
+// Use the SAME timestamp for:
+//   • sessionId
+//   • startedAt
+//
+// updatedAt remains the actual document-update time.
+// Do NOT use startMs for updatedAt.
 
-    endedAt:
-      null,
-
-    updatedAt:
-      Date.now(),
-
+startedAt: startMs,
+endedAt: null,
+updatedAt: Date.now(),
     // ====================================
     // 🔥 TRACK SUMMARY
     // ====================================
