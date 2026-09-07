@@ -59117,6 +59117,33 @@ const GG_SIGHTINGS_IDB_META_KEY =
 // 🕒 24-HOUR ELIGIBILITY
 // ============================================================
 
+// ============================================================
+// 🕒 24-HOUR ELIGIBILITY
+// ------------------------------------------------------------
+// SUPPORTS ALL CURRENT TIMESTAMP FORMS:
+//
+// 1. Firebase Timestamp object
+//       timestamp.toDate()
+//
+// 2. Serialized Firebase Timestamp
+//       { seconds, nanoseconds }
+//
+// 3. Serialized/internal Timestamp
+//       { _seconds, _nanoseconds }
+//
+// 4. Native Date
+//
+// 5. Numeric milliseconds
+//
+// 6. Numeric seconds
+//
+// 7. Normal date string
+//
+// IMPORTANT:
+//     Firestore remains authoritative.
+//     IDB remains a 24-hour operational cache.
+// ============================================================
+
 function isElephantSightingWithinLast24Hours(
     sighting
 ){
@@ -59126,9 +59153,7 @@ function isElephantSightingWithinLast24Hours(
         if(
             !sighting
         ){
-
             return false;
-
         }
 
 
@@ -59140,12 +59165,18 @@ function isElephantSightingWithinLast24Hours(
             null;
 
 
-        // ----------------------------------------------------
-        // FIREBASE TIMESTAMP
-        // ----------------------------------------------------
+        if(
+            !timestamp
+        ){
+            return false;
+        }
+
+
+        // ========================================================
+        // FIREBASE TIMESTAMP OBJECT
+        // ========================================================
 
         if(
-            timestamp &&
             typeof timestamp.toDate ===
                 "function"
         ){
@@ -59156,17 +59187,144 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
-        // ----------------------------------------------------
-        // DATE
-        // ----------------------------------------------------
+        // ========================================================
+        // SERIALIZED FIREBASE TIMESTAMP
+        // --------------------------------------------------------
+        // Example:
+        //
+        // {
+        //     seconds: 1788795273,
+        //     nanoseconds: 734000000
+        // }
+        //
+        // Also support:
+        //
+        // {
+        //     _seconds: ...,
+        //     _nanoseconds: ...
+        // }
+        // ========================================================
 
-        const time =
+        else if(
+            typeof timestamp ===
+                "object" &&
+            (
+                Object.prototype.hasOwnProperty.call(
+                    timestamp,
+                    "seconds"
+                )
+                ||
+                Object.prototype.hasOwnProperty.call(
+                    timestamp,
+                    "_seconds"
+                )
+            )
+        ){
+
+            const seconds =
+                Number(
+                    timestamp.seconds ??
+                    timestamp._seconds
+                );
+
+            const nanoseconds =
+                Number(
+                    timestamp.nanoseconds ??
+                    timestamp._nanoseconds ??
+                    0
+                );
+
+
+            if(
+                !Number.isFinite(
+                    seconds
+                )
+            ){
+                return false;
+            }
+
+
+            timestamp =
+                (
+                    seconds *
+                    1000
+                )
+                +
+                (
+                    nanoseconds /
+                    1000000
+                );
+
+        }
+
+
+        // ========================================================
+        // CONVERT TO MILLISECONDS
+        // ========================================================
+
+        let time;
+
+
+        // Native Date
+        if(
             timestamp instanceof Date
-                ? timestamp.getTime()
-                : new Date(
+        ){
+
+            time =
+                timestamp.getTime();
+
+        }
+
+
+        // Already numeric
+        else if(
+            typeof timestamp ===
+                "number"
+        ){
+
+            // ----------------------------------------------------
+            // Firebase / Unix seconds
+            // ----------------------------------------------------
+
+            if(
+                Math.abs(timestamp) <
+                100000000000
+            ){
+
+                time =
+                    timestamp *
+                    1000;
+
+            }
+
+            // ----------------------------------------------------
+            // JavaScript milliseconds
+            // ----------------------------------------------------
+
+            else{
+
+                time =
+                    timestamp;
+
+            }
+
+        }
+
+
+        // String / other date-compatible value
+        else{
+
+            time =
+                new Date(
                     timestamp
                 ).getTime();
 
+        }
+
+
+        // ========================================================
+        // INVALID DATE
+        // ========================================================
 
         if(
             !Number.isFinite(
@@ -59179,17 +59337,28 @@ function isElephantSightingWithinLast24Hours(
         }
 
 
+        // ========================================================
+        // 24-HOUR WINDOW
+        // ========================================================
+
+        const age =
+            Date.now() -
+            time;
+
+
         return (
-            Date.now() - time
-        ) <=
-        (
-            24 *
-            60 *
-            60 *
-            1000
+            age >= 0 &&
+            age <=
+            (
+                24 *
+                60 *
+                60 *
+                1000
+            )
         );
 
     }
+
     catch(err){
 
         console.warn(
@@ -59202,7 +59371,6 @@ function isElephantSightingWithinLast24Hours(
     }
 
 }
-
 
 // ============================================================
 // 🔑 CANONICAL SIGHTING KEY
