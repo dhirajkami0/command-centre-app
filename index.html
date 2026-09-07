@@ -131680,8 +131680,169 @@ await setDoc(
 
   { merge:true }
 );
-
 // =====================================================
+// 📍 INITIAL PATROL POINT — START DUTY GPS
+// -----------------------------------------------------
+// The Start Duty GPS has already been:
+//   • validated
+//   • accepted
+//   • written into patrol_tracks/{sessionId}
+//
+// Create the first patrol point immediately so the existing
+// central patrol listener can render the marker without
+// waiting for the first Android GPS update.
+//
+// IMPORTANT:
+// • Uses the SAME validated Start Duty GPS.
+// • Uses the SAME sessionId.
+// • Does NOT use live_staff GPS as marker authority.
+// • Does NOT create another listener.
+// • Does NOT create another marker system.
+// • Distance starts at 0.
+// =====================================================
+
+try {
+
+    const initialPointRef =
+        window.fb.doc(
+            window.db,
+            "patrol_tracks",
+            sessionId,
+            "points",
+            "START_" + sessionId
+        );
+
+
+    await window.fb.setDoc(
+        initialPointRef,
+        {
+
+            // =============================================
+            // 🔥 SESSION IDENTITY
+            // =============================================
+
+            sessionId:
+                sessionId,
+
+            cleanName:
+                cleanLeader,
+
+            name:
+                payload.leader || cleanLeader,
+
+
+            // =============================================
+            // 📍 START DUTY GPS
+            // =============================================
+
+            lat:
+                startLat,
+
+            lon:
+                startLon,
+
+            accuracy:
+                startAccuracy,
+
+
+            // =============================================
+            // 🕐 START TIME
+            // =============================================
+
+            time:
+                now.toISOString(),
+
+            timestamp:
+                now.toISOString(),
+
+            lastSeen:
+                Date.now(),
+
+
+            // =============================================
+            // 📏 INITIAL DISTANCE
+            // =============================================
+
+            distanceCoveredKm:
+                0,
+
+            distanceCoveredMeters:
+                0,
+
+
+            // =============================================
+            // 📊 INITIAL POINT COUNT
+            // =============================================
+
+            patrolPointCount:
+                1,
+
+
+            // =============================================
+            // 🛰 INITIAL GPS STATE
+            // =============================================
+
+            speed:
+                0,
+
+            heading:
+                null,
+
+
+            // =============================================
+            // 🔖 SOURCE
+            // =============================================
+
+            source:
+                "START_DUTY",
+
+            type:
+                "PatrolPoint"
+
+        },
+
+        {
+            merge:
+                true
+        }
+
+    );
+
+
+    console.log(
+        "📍 INITIAL PATROL POINT CREATED:",
+        {
+            sessionId:
+                sessionId,
+
+            lat:
+                startLat,
+
+            lon:
+                startLon,
+
+            accuracy:
+                startAccuracy
+        }
+    );
+
+}
+catch(initialPointErr){
+
+    // =====================================================
+    // IMPORTANT:
+    // Initial marker point failure MUST NOT cancel duty.
+    //
+    // The Android GPS pipeline remains responsible for
+    // subsequent patrol points.
+    // =====================================================
+
+    console.error(
+        "⚠ INITIAL PATROL POINT FAILED:",
+        initialPointErr
+    );
+
+}// =====================================================
 // 🔥 DUTY START CONFIRMED
 // -----------------------------------------------------
 // Both Firestore records have succeeded:
