@@ -119451,13 +119451,72 @@ async function submitEndDuty(event) {
 // Do NOT use the first GPS point as duty start.
 // ============================================================
 
-const dutyStartedAt =
+// ============================================================
+// 🕐 CAPTURE DUTY START TIME
+// ------------------------------------------------------------
+// PRIMARY:
+//   existing dedicated duty-start cache
+//
+// FALLBACK:
+//   authoritative timestamp embedded in sessionId
+//
+// Example:
+//   DHIRAJ KAMI_1788752599268
+//                     ↑
+//                duty start
+//
+// IMPORTANT:
+//   • Do NOT use first GPS point.
+//   • Do NOT query another point-count source.
+//   • sessionId is already the actual Start-Duty session identity.
+// ============================================================
+
+let dutyStartedAt =
   window.dutyStartedAt ||
   localStorage.getItem("dutyStartedAt") ||
   localStorage.getItem("dutyStartTime") ||
   "";
 
+
+// ============================================================
+// 🔒 SESSION ID START-TIME FALLBACK
+// ============================================================
+
+if (
+  !dutyStartedAt &&
+  sessionId
+) {
+
+  const sessionTimestamp =
+    Number(
+      String(sessionId)
+        .split("_")
+        .pop()
+    );
+
+  if (
+    Number.isFinite(
+      sessionTimestamp
+    ) &&
+    sessionTimestamp > 0
+  ) {
+
+    dutyStartedAt =
+      sessionTimestamp;
+
+    console.log(
+      "🕐 DUTY START RECOVERED FROM SESSION ID:",
+      dutyStartedAt
+    );
+
+  }
+}
+
+
 console.log(
+  "🕐 DUTY START:",
+  dutyStartedAt
+);console.log(
   "🕐 DUTY START:",
   dutyStartedAt
 );
@@ -121202,6 +121261,7 @@ async function ggBuildCompletedSessionReportSnapshot(
     distanceKm,
     pointCount
 ){
+
     const cleanSessionId =
         String(
             sessionId || ""
@@ -121250,45 +121310,118 @@ async function ggBuildCompletedSessionReportSnapshot(
 
 
     // ============================================================
-    // ONLY BTR_E / BTR_W
+    // REPORTING POSTING SCOPE
+    // ------------------------------------------------------------
+    // BTR_E / BTR_W staff:
+    //     GIS cell/beat ownership metrics are calculated.
+    //
+    // ADMIN / NO POSTING:
+    //     Division / Range / Beat remain blank.
+    //     The completed session is STILL recorded.
+    //
+    // IMPORTANT:
+    //     Lack of operational posting must NOT invalidate the
+    //     completed patrol session itself.
+    //
+    //     Session validity is determined independently by:
+    //         Duration >= 10 minutes
+    //         AND
+    //         Distance >= 0.10 km
     // ============================================================
 
-    if (
-        division !== "BTR_E" &&
-        division !== "BTR_W"
-    ){
+    const hasOperationalPosting =
+        division === "BTR_E" ||
+        division === "BTR_W";
 
-        return {
 
+    console.log(
+        "🏢 SESSION REPORT POSTING SCOPE:",
+        {
             sessionId:
                 cleanSessionId,
 
-            skipped:
-                true,
+            division,
 
-            reason:
-                "Outside BTR_E/BTR_W report scope."
+            range,
 
-        };
+            beat,
+
+            hasOperationalPosting
+        }
+    );
+
+
+    // ============================================================
+    // SESSION START TIME
+    // ------------------------------------------------------------
+    // Primary source remains the value supplied by End Duty.
+    //
+    // If that value is missing/invalid, recover the authoritative
+    // Start Duty timestamp already embedded in sessionId.
+    //
+    // Example:
+    //     DHIRAJ KAMI_1788752599268
+    //
+    //     1788752599268 = Start Duty timestamp
+    // ============================================================
+
+    let startMs =
+        new Date(
+            startedAt
+        ).getTime();
+
+
+    if (
+        !Number.isFinite(
+            startMs
+        ) ||
+        startMs <= 0
+    ){
+
+        const sessionTimestamp =
+            Number(
+                String(
+                    cleanSessionId
+                )
+                    .split("_")
+                    .pop()
+            );
+
+
+        if (
+            Number.isFinite(
+                sessionTimestamp
+            ) &&
+            sessionTimestamp > 0
+        ){
+
+            startMs =
+                sessionTimestamp;
+
+
+            console.log(
+                "🕐 SESSION START RECOVERED FROM SESSION ID:",
+                startMs
+            );
+
+        }
 
     }
 
 
     // ============================================================
-    // SESSION DURATION
+    // SESSION END TIME
     // ============================================================
-
-    const startMs =
-        new Date(
-            startedAt
-        ).getTime();
-
 
     const endMs =
         Number(
             endedAt
         );
 
+
+    // ============================================================
+    // SESSION DURATION
+    // ============================================================
 
     let durationMinutes =
         0;
@@ -121317,6 +121450,10 @@ async function ggBuildCompletedSessionReportSnapshot(
     }
 
 
+    // ============================================================
+    // FINAL DISTANCE
+    // ============================================================
+
     const finalDistanceKm =
         Number(
             distanceKm || 0
@@ -121325,6 +121462,9 @@ async function ggBuildCompletedSessionReportSnapshot(
 
     // ============================================================
     // OFFICIAL SESSION VALIDITY
+    // ------------------------------------------------------------
+    // IMPORTANT:
+    // This is independent of Division / Range / Beat posting.
     // ============================================================
 
     const validSession =
@@ -121333,344 +121473,378 @@ async function ggBuildCompletedSessionReportSnapshot(
 
 
     // ============================================================
-    // MASTER GIS
+    // GIS REPORT METRICS
+    // ------------------------------------------------------------
+    // Defaults are deliberately zero/empty.
     //
-    // Reporting ownership is the STAFF POSTING.
+    // ADMIN / NO POSTING:
+    //     These remain zero/empty.
     //
-    // If staff is posted at Beat A:
-    //
-    //     ONLY Beat A cells are reportable.
-    //
-    // GPS entering Beat B/C does NOT transfer ownership.
+    // BTR_E / BTR_W:
+    //     Existing master GIS ownership logic is executed.
     // ============================================================
-
-    const masterRows =
-        typeof ggReportGetMasterRows ===
-            "function"
-            ? ggReportGetMasterRows()
-            : [];
-
-
-    const beatRows =
-        masterRows.filter(
-            row => {
-
-                const rowDivision =
-                    String(
-                        row?.division ||
-                        ""
-                    )
-                    .trim()
-                    .toUpperCase();
-
-
-                const rowRange =
-                    String(
-                        row?.range ||
-                        ""
-                    )
-                    .trim();
-
-
-                const rowBeat =
-                    String(
-                        row?.beat ||
-                        ""
-                    )
-                    .trim();
-
-
-                return (
-
-                    rowDivision ===
-                        division &&
-
-                    rowRange ===
-                        range &&
-
-                    rowBeat ===
-                        beat
-
-                );
-
-            }
-        );
-
-
-    const allowedGridIds =
-        new Set();
-
-
-    const compartmentByGrid =
-        new Map();
-
-
-    let totalCells =
-        0;
-
-
-    beatRows.forEach(
-        row => {
-
-            const gridId =
-                String(
-                    row.gridId ||
-                    ""
-                ).trim();
-
-
-            if (
-                !gridId
-            ){
-
-                return;
-
-            }
-
-
-            allowedGridIds.add(
-                gridId
-            );
-
-
-            compartmentByGrid.set(
-                gridId,
-                String(
-                    row.compartment ||
-                    gridId
-                ).trim()
-            );
-
-
-            totalCells +=
-                Math.max(
-                    0,
-                    Math.round(
-                        Number(
-                            row.totalCells ||
-                            0
-                        )
-                    )
-                );
-
-        }
-    );
-
-
-    // ============================================================
-    // READ PERSISTED CELL OCCURRENCES
-    // ============================================================
-
-    const db =
-        await ggReportOpenDB();
-
-
-    const occurrenceRecords =
-        await new Promise(
-            (
-                resolve,
-                reject
-            ) => {
-
-                const tx =
-                    db.transaction(
-                        window.GG_REPORT.STORE_OCCURRENCES,
-                        "readonly"
-                    );
-
-
-                const request =
-                    tx
-                        .objectStore(
-                            window.GG_REPORT.STORE_OCCURRENCES
-                        )
-                        .getAll();
-
-
-                request.onsuccess =
-                    () => {
-
-                        resolve(
-                            Array.isArray(
-                                request.result
-                            )
-                                ? request.result
-                                : []
-                        );
-
-                    };
-
-
-                request.onerror =
-                    () => {
-
-                        reject(
-                            request.error
-                        );
-
-                    };
-
-            }
-        );
-
-
-    db.close();
-
-
-    // ============================================================
-    // SESSION OCCURRENCES
-    //
-    // IMPORTANT:
-    // ONLY:
-    //
-    //     this session
-    //     AND
-    //     this staff's posted Beat
-    //
-    // ============================================================
-
-    const sessionOccurrences =
-        occurrenceRecords.filter(
-            occurrence => {
-
-                return (
-
-                    String(
-                        occurrence?.sessionId ||
-                        ""
-                    ).trim() ===
-                        cleanSessionId &&
-
-                    allowedGridIds.has(
-                        String(
-                            occurrence?.gridId ||
-                            ""
-                        ).trim()
-                    )
-
-                );
-
-            }
-        );
-
-
-    const uniqueCellSet =
-        new Set();
-
-
-    const compartmentSet =
-        new Set();
-
 
     let cellVisitOccurrences =
         0;
 
+    let uniqueCellsVisited =
+        0;
 
-    sessionOccurrences.forEach(
-        occurrence => {
+    let visitedHa =
+        0;
 
-            const gridId =
-                String(
-                    occurrence?.gridId ||
-                    ""
-                ).trim();
+    let totalCells =
+        0;
+
+    let coveragePercent =
+        0;
+
+    let patrolIntensityPercent =
+        0;
+
+    let uniqueCellIds =
+        [];
+
+    let compartmentIds =
+        [];
 
 
-            const cellId =
-                String(
-                    occurrence?.cellId ||
-                    ""
-                ).trim();
+    if (
+        hasOperationalPosting
+    ){
+
+        // ============================================================
+        // MASTER GIS
+        //
+        // Reporting ownership is the STAFF POSTING.
+        //
+        // If staff is posted at Beat A:
+        //
+        //     ONLY Beat A cells are reportable.
+        //
+        // GPS entering Beat B/C does NOT transfer ownership.
+        // ============================================================
+
+        const masterRows =
+            typeof ggReportGetMasterRows ===
+                "function"
+                ? ggReportGetMasterRows()
+                : [];
 
 
-            if (
-                !gridId ||
-                !cellId
-            ){
+        const beatRows =
+            masterRows.filter(
+                row => {
 
-                return;
+                    const rowDivision =
+                        String(
+                            row?.division ||
+                            ""
+                        )
+                        .trim()
+                        .toUpperCase();
+
+
+                    const rowRange =
+                        String(
+                            row?.range ||
+                            ""
+                        )
+                        .trim();
+
+
+                    const rowBeat =
+                        String(
+                            row?.beat ||
+                            ""
+                        )
+                        .trim();
+
+
+                    return (
+
+                        rowDivision ===
+                            division &&
+
+                        rowRange ===
+                            range &&
+
+                        rowBeat ===
+                            beat
+
+                    );
+
+                }
+            );
+
+
+        const allowedGridIds =
+            new Set();
+
+
+        const compartmentByGrid =
+            new Map();
+
+
+        beatRows.forEach(
+            row => {
+
+                const gridId =
+                    String(
+                        row.gridId ||
+                        ""
+                    ).trim();
+
+
+                if (
+                    !gridId
+                ){
+
+                    return;
+
+                }
+
+
+                allowedGridIds.add(
+                    gridId
+                );
+
+
+                compartmentByGrid.set(
+                    gridId,
+                    String(
+                        row.compartment ||
+                        gridId
+                    ).trim()
+                );
+
+
+                totalCells +=
+                    Math.max(
+                        0,
+                        Math.round(
+                            Number(
+                                row.totalCells ||
+                                0
+                            )
+                        )
+                    );
 
             }
+        );
 
 
-            cellVisitOccurrences++;
+        // ============================================================
+        // READ PERSISTED CELL OCCURRENCES
+        // ============================================================
+
+        const db =
+            await ggReportOpenDB();
 
 
-            uniqueCellSet.add(
-                gridId +
-                "|" +
-                cellId
+        const occurrenceRecords =
+            await new Promise(
+                (
+                    resolve,
+                    reject
+                ) => {
+
+                    const tx =
+                        db.transaction(
+                            window.GG_REPORT.STORE_OCCURRENCES,
+                            "readonly"
+                        );
+
+
+                    const request =
+                        tx
+                            .objectStore(
+                                window.GG_REPORT.STORE_OCCURRENCES
+                            )
+                            .getAll();
+
+
+                    request.onsuccess =
+                        () => {
+
+                            resolve(
+                                Array.isArray(
+                                    request.result
+                                )
+                                    ? request.result
+                                    : []
+                            );
+
+                        };
+
+
+                    request.onerror =
+                        () => {
+
+                            reject(
+                                request.error
+                            );
+
+                        };
+
+                }
             );
 
 
-            compartmentSet.add(
-                compartmentByGrid.get(
+        db.close();
+
+
+        // ============================================================
+        // SESSION OCCURRENCES
+        //
+        // IMPORTANT:
+        // ONLY:
+        //
+        //     this session
+        //     AND
+        //     this staff's posted Beat
+        // ============================================================
+
+        const sessionOccurrences =
+            occurrenceRecords.filter(
+                occurrence => {
+
+                    return (
+
+                        String(
+                            occurrence?.sessionId ||
+                            ""
+                        ).trim() ===
+                            cleanSessionId &&
+
+                        allowedGridIds.has(
+                            String(
+                                occurrence?.gridId ||
+                                ""
+                            ).trim()
+                        )
+
+                    );
+
+                }
+            );
+
+
+        const uniqueCellSet =
+            new Set();
+
+
+        const compartmentSet =
+            new Set();
+
+
+        sessionOccurrences.forEach(
+            occurrence => {
+
+                const gridId =
+                    String(
+                        occurrence?.gridId ||
+                        ""
+                    ).trim();
+
+
+                const cellId =
+                    String(
+                        occurrence?.cellId ||
+                        ""
+                    ).trim();
+
+
+                if (
+                    !gridId ||
+                    !cellId
+                ){
+
+                    return;
+
+                }
+
+
+                cellVisitOccurrences++;
+
+
+                uniqueCellSet.add(
+                    gridId +
+                    "|" +
+                    cellId
+                );
+
+
+                compartmentSet.add(
+                    compartmentByGrid.get(
+                        gridId
+                    ) ||
                     gridId
-                ) ||
-                gridId
+                );
+
+            }
+        );
+
+
+        uniqueCellIds =
+            Array.from(
+                uniqueCellSet
             );
 
-        }
-    );
+
+        compartmentIds =
+            Array.from(
+                compartmentSet
+            );
 
 
-    const uniqueCellIds =
-        Array.from(
-            uniqueCellSet
-        );
+        uniqueCellsVisited =
+            uniqueCellIds.length;
 
 
-    const compartmentIds =
-        Array.from(
-            compartmentSet
-        );
-
-
-    const uniqueCellsVisited =
-        uniqueCellIds.length;
-
-
-    const visitedHa =
-        Number(
-            (
-                uniqueCellsVisited *
-                0.25
-            ).toFixed(
-                2
-            )
-        );
-
-
-    const coveragePercent =
-        totalCells > 0
-            ? Number(
+        visitedHa =
+            Number(
                 (
-                    (
-                        uniqueCellsVisited /
-                        totalCells
-                    ) *
-                    100
+                    uniqueCellsVisited *
+                    0.25
                 ).toFixed(
                     2
                 )
-            )
-            : 0;
+            );
 
 
-    const patrolIntensityPercent =
-        totalCells > 0
-            ? Number(
-                (
+        coveragePercent =
+            totalCells > 0
+                ? Number(
                     (
-                        cellVisitOccurrences /
-                        totalCells
-                    ) *
-                    100
-                ).toFixed(
-                    2
+                        (
+                            uniqueCellsVisited /
+                            totalCells
+                        ) *
+                        100
+                    ).toFixed(
+                        2
+                    )
                 )
-            )
-            : 0;
+                : 0;
+
+
+        patrolIntensityPercent =
+            totalCells > 0
+                ? Number(
+                    (
+                        (
+                            cellVisitOccurrences /
+                            totalCells
+                        ) *
+                        100
+                    ).toFixed(
+                        2
+                    )
+                )
+                : 0;
+
+    }
 
 
     // ============================================================
@@ -121684,70 +121858,90 @@ async function ggBuildCompletedSessionReportSnapshot(
     const elephantSightings =
         Number(
             window.__GG_SESSION_EVENT_COUNTS
-              ?.[
-                cleanSessionId
-              ]
-              ?.elephant || 0
+                ?.[
+                    cleanSessionId
+                ]
+                ?.elephant || 0
         );
 
 
     const wildlifeSightings =
         Number(
             window.__GG_SESSION_EVENT_COUNTS
-              ?.[
-                cleanSessionId
-              ]
-              ?.wildlife || 0
+                ?.[
+                    cleanSessionId
+                ]
+                ?.wildlife || 0
         );
 
 
     const offencesDetected =
         Number(
             window.__GG_SESSION_EVENT_COUNTS
-              ?.[
-                cleanSessionId
-              ]
-              ?.offences || 0
+                ?.[
+                    cleanSessionId
+                ]
+                ?.offences || 0
         );
 
+
+    // ============================================================
+    // FINAL COMPLETED SESSION SNAPSHOT
+    // ============================================================
 
     return {
 
         sessionId:
             cleanSessionId,
 
+
         startedAt:
             startMs,
+
 
         endedAt:
             endMs,
 
-        durationMinutes,
 
-        validSession,
+        durationMinutes:
+            durationMinutes,
+
+
+        validSession:
+            validSession,
+
 
         staffName:
             profile.cleanName ||
             profile.name ||
             "",
 
+
         phone:
             profile.phone ||
             "",
 
-        division,
 
-        range,
+        division:
+            division,
 
-        beat,
+
+        range:
+            range,
+
+
+        beat:
+            beat,
+
 
         pointCount:
-    Math.max(
-        0,
-        Number(
-            pointCount || 0
-        )
-    ),
+            Math.max(
+                0,
+                Number(
+                    pointCount || 0
+                )
+            ),
+
 
         distanceKm:
             Number(
@@ -121756,36 +121950,57 @@ async function ggBuildCompletedSessionReportSnapshot(
                 )
             ),
 
-        cellVisitOccurrences,
 
-        uniqueCellsVisited,
+        cellVisitOccurrences:
+            cellVisitOccurrences,
 
-        visitedHa,
 
-        totalCells,
+        uniqueCellsVisited:
+            uniqueCellsVisited,
 
-        coveragePercent,
 
-        patrolIntensityPercent,
+        visitedHa:
+            visitedHa,
 
-        elephantSightings,
+
+        totalCells:
+            totalCells,
+
+
+        coveragePercent:
+            coveragePercent,
+
+
+        patrolIntensityPercent:
+            patrolIntensityPercent,
+
+
+        elephantSightings:
+            elephantSightings,
+
 
         otherWildlifeSightings:
             wildlifeSightings,
 
-        offencesDetected,
+
+        offencesDetected:
+            offencesDetected,
+
 
         compartmentsVisited:
             compartmentIds.length,
 
-        uniqueCellIds,
 
-        compartmentIds
+        uniqueCellIds:
+            uniqueCellIds,
+
+
+        compartmentIds:
+            compartmentIds
 
     };
 
 }
-
 async function uploadPatrolKML(
     sessionId,
     points,
