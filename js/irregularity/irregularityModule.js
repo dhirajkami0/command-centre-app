@@ -346,7 +346,7 @@ function(){
 
         sessionId:
             GGIrregularity.text(
-                window.sessionId
+                window.currentSessionId
             )
 
     };
