@@ -120694,13 +120694,7 @@ console.log(
   "STEP C - uploadPatrolKML START"
 );
 
-const sessionReportSnapshot =
-  await ggBuildCompletedSessionReportSnapshot(
-    sessionId,
-    dutyStartedAt,
-    endedAt,
-    finalDistanceKm
-  );
+
 
 const kmlUrl = await uploadPatrolKML(
   sessionId,
