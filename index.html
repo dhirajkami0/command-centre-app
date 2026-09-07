@@ -83547,21 +83547,169 @@ function(s, currentSessionId, newPoints){
             return;
           }
 
-          // ==================================================
-          // 👤 CANONICAL STAFF NAME
-          // ==================================================
-          const cleanStaffName = cleanName(
-            s.cleanName ||
-            s.name ||
-            docSnap.id ||
+// ==================================================
+// 👤 CANONICAL STAFF NAME
+// ==================================================
+const cleanStaffName = cleanName(
+  s.cleanName ||
+  s.name ||
+  docSnap.id ||
+  ""
+);
+
+if(!cleanStaffName){
+  return;
+}
+
+
+// ============================================================
+// ⚡ SELF DUTY START FAST-PATH
+// ------------------------------------------------------------
+// Put this BEFORE fastPreviousState.
+// It only accelerates the current user's session startup.
+// ============================================================
+
+try {
+
+    const currentUserName =
+        cleanName(
+            window.userProfile?.cleanName ||
+            window.userProfile?.name ||
             ""
-          );
+        );
 
-          if(!cleanStaffName){
-            return;
-          }
+    if (
+        cleanStaffName &&
+        currentUserName &&
+        cleanStaffName === currentUserName &&
+        s.dutyActive === true &&
+        String(s.sessionId || "").trim()
+    ) {
 
-          const fastPreviousState = window.liveStaffPreviousState?.[cleanStaffName];
+        const fastStaffCache = {
+            ...s
+        };
+
+        // Never allow live_staff GPS to become marker GPS.
+        delete fastStaffCache.lat;
+        delete fastStaffCache.lon;
+        delete fastStaffCache.lng;
+        delete fastStaffCache.speed;
+        delete fastStaffCache.distanceCoveredKm;
+        delete fastStaffCache.distanceCoveredMeters;
+        delete fastStaffCache.heading;
+        delete fastStaffCache.accuracy;
+        delete fastStaffCache.lastSeen;
+        delete fastStaffCache.updatedAt;
+        delete fastStaffCache.time;
+        delete fastStaffCache.timestamp;
+
+        fastStaffCache.type =
+            "Staff";
+
+        fastStaffCache.cleanName =
+            cleanStaffName;
+
+        fastStaffCache.name =
+            String(
+                s.name ||
+                cleanStaffName
+            ).trim();
+
+        fastStaffCache.dutyActive =
+            true;
+
+        fastStaffCache.sessionId =
+            String(
+                s.sessionId ||
+                ""
+            ).trim();
+
+
+        window.liveStaffCache ??=
+            Object.create(null);
+
+        window.visibleStaffCache ??=
+            Object.create(null);
+
+
+        window.liveStaffCache[
+            cleanStaffName
+        ] = {
+            ...fastStaffCache
+        };
+
+
+        window.visibleStaffCache[
+            cleanStaffName
+        ] = {
+            ...fastStaffCache
+        };
+
+
+        window.patrolSessionStaff ??=
+            Object.create(null);
+
+        window.activeSessionMap ??=
+            Object.create(null);
+
+        window.patrolSessionRequired ??=
+            new Set();
+
+
+        const fastSessionId =
+            fastStaffCache.sessionId;
+
+
+        window.patrolSessionStaff[
+            fastSessionId
+        ] = {
+            ...fastStaffCache
+        };
+
+
+        window.activeSessionMap[
+            cleanStaffName
+        ] =
+            fastSessionId;
+
+
+        window.patrolSessionRequired.add(
+            fastSessionId
+        );
+
+
+        if (
+            typeof window.ensurePatrolSessionListener ===
+            "function"
+        ) {
+
+            window.ensurePatrolSessionListener(
+                fastSessionId,
+                fastStaffCache
+            );
+
+        }
+
+    }
+
+}
+catch (fastSelfErr) {
+
+    console.warn(
+        "⚠ SELF DUTY FAST-PATH FAILED:",
+        fastSelfErr
+    );
+
+}
+
+
+// ==================================================
+// EXISTING CODE — KEEP EXACTLY AS IT IS
+// ==================================================
+
+const fastPreviousState =
+    window.liveStaffPreviousState?.[cleanStaffName];
 
           // ==================================================
           // 🔴 ABSOLUTE DUTY-OFF BARRIER
@@ -131681,168 +131829,6 @@ await setDoc(
   { merge:true }
 );
 // =====================================================
-// 📍 INITIAL PATROL POINT — START DUTY GPS
-// -----------------------------------------------------
-// The Start Duty GPS has already been:
-//   • validated
-//   • accepted
-//   • written into patrol_tracks/{sessionId}
-//
-// Create the first patrol point immediately so the existing
-// central patrol listener can render the marker without
-// waiting for the first Android GPS update.
-//
-// IMPORTANT:
-// • Uses the SAME validated Start Duty GPS.
-// • Uses the SAME sessionId.
-// • Does NOT use live_staff GPS as marker authority.
-// • Does NOT create another listener.
-// • Does NOT create another marker system.
-// • Distance starts at 0.
-// =====================================================
-
-try {
-
-    const initialPointRef =
-        window.fb.doc(
-            window.db,
-            "patrol_tracks",
-            sessionId,
-            "points",
-            "START_" + sessionId
-        );
-
-
-    await window.fb.setDoc(
-        initialPointRef,
-        {
-
-            // =============================================
-            // 🔥 SESSION IDENTITY
-            // =============================================
-
-            sessionId:
-                sessionId,
-
-            cleanName:
-                cleanLeader,
-
-            name:
-                payload.leader || cleanLeader,
-
-
-            // =============================================
-            // 📍 START DUTY GPS
-            // =============================================
-
-            lat:
-                startLat,
-
-            lon:
-                startLon,
-
-            accuracy:
-                startAccuracy,
-
-
-            // =============================================
-            // 🕐 START TIME
-            // =============================================
-
-            time:
-                now.toISOString(),
-
-            timestamp:
-                now.toISOString(),
-
-            lastSeen:
-                Date.now(),
-
-
-            // =============================================
-            // 📏 INITIAL DISTANCE
-            // =============================================
-
-            distanceCoveredKm:
-                0,
-
-            distanceCoveredMeters:
-                0,
-
-
-            // =============================================
-            // 📊 INITIAL POINT COUNT
-            // =============================================
-
-            patrolPointCount:
-                1,
-
-
-            // =============================================
-            // 🛰 INITIAL GPS STATE
-            // =============================================
-
-            speed:
-                0,
-
-            heading:
-                null,
-
-
-            // =============================================
-            // 🔖 SOURCE
-            // =============================================
-
-            source:
-                "START_DUTY",
-
-            type:
-                "PatrolPoint"
-
-        },
-
-        {
-            merge:
-                true
-        }
-
-    );
-
-
-    console.log(
-        "📍 INITIAL PATROL POINT CREATED:",
-        {
-            sessionId:
-                sessionId,
-
-            lat:
-                startLat,
-
-            lon:
-                startLon,
-
-            accuracy:
-                startAccuracy
-        }
-    );
-
-}
-catch(initialPointErr){
-
-    // =====================================================
-    // IMPORTANT:
-    // Initial marker point failure MUST NOT cancel duty.
-    //
-    // The Android GPS pipeline remains responsible for
-    // subsequent patrol points.
-    // =====================================================
-
-    console.error(
-        "⚠ INITIAL PATROL POINT FAILED:",
-        initialPointErr
-    );
-
-}// =====================================================
 // 🔥 DUTY START CONFIRMED
 // -----------------------------------------------------
 // Both Firestore records have succeeded:
