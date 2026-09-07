@@ -122234,7 +122234,9 @@ async function ggBuildCompletedSessionReportSnapshot(
                 cleanSessionId,
 
             staffName,
-
+    /* Backward-compatible snapshot alias */
+    staff:
+        staffName,
             phone,
 
             division,
@@ -124105,8 +124107,9 @@ const snapshot = {
 
     otherWildlifeSightings:
         wildlifeSightings,
-
-
+    /* Backward-compatible snapshot alias */
+    wildlifeSightings:
+        wildlifeSightings,
     offencesDetected,
     /* ========================================================
        ACTUAL GIS BEAT-WISE OBSERVATION METRICS
