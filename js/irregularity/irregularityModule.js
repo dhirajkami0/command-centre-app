@@ -1498,6 +1498,10 @@ async function(
 
    ============================================================ */
 
+/* ============================================================
+   CREATE IRREGULARITY FIRESTORE DOCUMENT
+   ============================================================ */
+
 GGIrregularity.createDocument =
 async function(
     payload
@@ -2117,8 +2121,13 @@ async function(
                 //
                 // KEEP ...payload
                 //
-                // Therefore category/details/media/GPS/etc.
-                // remain exactly as created by buildPayload().
+                // session_id is explicitly preserved AFTER
+                // ...payload so the final Firestore object
+                // contains exactly the session carried by the
+                // completed payload.
+                //
+                // NO CURRENT-BROWSER SESSION FALLBACK IS USED.
+                // This is important for offline replay.
                 // ==================================================
 
                 transaction.set(
@@ -2128,6 +2137,14 @@ async function(
                     {
 
                         ...payload,
+
+
+                        // ==========================================
+                        // EXPLICIT SESSION ID PRESERVATION
+                        // ==========================================
+
+                        session_id:
+                            payload.session_id,
 
 
                         // ==========================================
@@ -2350,7 +2367,10 @@ async function(
                 result.rangeCount,
 
             divisionNo:
-                result.divisionCount
+                result.divisionCount,
+
+            sessionId:
+                payload.session_id
 
         }
 
