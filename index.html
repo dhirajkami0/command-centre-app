@@ -121462,6 +121462,23 @@ ${coordinates}
    BTRGUARD — BUILD ONE COMPLETED SESSION REPORT SNAPSHOT
    ================================================================ */
 
+/* ================================================================
+   BTRGUARD — BUILD ONE COMPLETED SESSION REPORT SNAPSHOT
+   ----------------------------------------------------------------
+   SURGICAL / NON-BREAKING VERSION
+
+   AUTHORITIES:
+   • Session identity      → patrolSessionStaff[sessionId]
+   • Profile               → fallback only
+   • Patrol points         → End Duty argument
+   • Distance              → End Duty authoritative distance
+   • GIS                   → existing ggReportGetMasterRows()
+   • Cell occurrences      → existing IndexedDB cell_occurrences
+   • Elephant             → existing sightingsCache
+   • Wildlife              → existing wildlifeCache
+   • Offence               → existing irregularityIDBIndex
+   ================================================================ */
+
 async function ggBuildCompletedSessionReportSnapshot(
     sessionId,
     startedAt,
@@ -121476,7 +121493,7 @@ async function ggBuildCompletedSessionReportSnapshot(
         ).trim();
 
 
-    if (
+    if(
         !cleanSessionId
     ){
 
@@ -121487,55 +121504,66 @@ async function ggBuildCompletedSessionReportSnapshot(
     }
 
 
+    /* ============================================================
+       1. SESSION-AUTHORITATIVE IDENTITY
+       ============================================================ */
+
     const profile =
         window.userProfile ||
         {};
 
 
-const division =
-    String(
-        profile.division ||
-        ""
-    )
-    .trim()
-    .toUpperCase();
+    const sessionStaff =
+        window.patrolSessionStaff?.[
+            cleanSessionId
+        ] ||
+        {};
 
-const range =
-    String(
-        profile.range ||
-        ""
-    )
-    .trim();
 
-const beat =
-    String(
-        document.getElementById(
-            "d-beat"
-        )?.value ||
-        profile.beat ||
-        ""
-    )
-    .trim();
+    const staffName =
+        String(
+            sessionStaff.cleanName ||
+            sessionStaff.staffName ||
+            sessionStaff.name ||
+            profile.cleanName ||
+            profile.name ||
+            ""
+        ).trim();
 
-    // ============================================================
-    // REPORTING POSTING SCOPE
-    // ------------------------------------------------------------
-    // BTR_E / BTR_W staff:
-    //     GIS cell/beat ownership metrics are calculated.
-    //
-    // ADMIN / NO POSTING:
-    //     Division / Range / Beat remain blank.
-    //     The completed session is STILL recorded.
-    //
-    // IMPORTANT:
-    //     Lack of operational posting must NOT invalidate the
-    //     completed patrol session itself.
-    //
-    //     Session validity is determined independently by:
-    //         Duration >= 10 minutes
-    //         AND
-    //         Distance >= 0.10 km
-    // ============================================================
+
+    const phone =
+        String(
+            sessionStaff.phone ||
+            profile.phone ||
+            ""
+        ).trim();
+
+
+    const division =
+        String(
+            sessionStaff.division ||
+            profile.division ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    const range =
+        String(
+            sessionStaff.range ||
+            profile.range ||
+            ""
+        ).trim();
+
+
+    const beat =
+        String(
+            sessionStaff.beat ||
+            profile.beat ||
+            ""
+        ).trim();
+
 
     const hasOperationalPosting =
         division === "BTR_E" ||
@@ -121548,30 +121576,29 @@ const beat =
             sessionId:
                 cleanSessionId,
 
+            staffName,
+
+            phone,
+
             division,
 
             range,
 
             beat,
 
-            hasOperationalPosting
+            hasOperationalPosting,
+
+            sessionStaffSource:
+                Object.keys(
+                    sessionStaff
+                ).length > 0
         }
     );
 
 
-    // ============================================================
-    // SESSION START TIME
-    // ------------------------------------------------------------
-    // Primary source remains the value supplied by End Duty.
-    //
-    // If that value is missing/invalid, recover the authoritative
-    // Start Duty timestamp already embedded in sessionId.
-    //
-    // Example:
-    //     DHIRAJ KAMI_1788752599268
-    //
-    //     1788752599268 = Start Duty timestamp
-    // ============================================================
+    /* ============================================================
+       2. START TIME
+       ============================================================ */
 
     let startMs =
         new Date(
@@ -121579,24 +121606,20 @@ const beat =
         ).getTime();
 
 
-    if (
-        !Number.isFinite(
-            startMs
-        ) ||
+    if(
+        !Number.isFinite(startMs) ||
         startMs <= 0
     ){
 
         const sessionTimestamp =
             Number(
-                String(
-                    cleanSessionId
-                )
+                cleanSessionId
                     .split("_")
                     .pop()
             );
 
 
-        if (
+        if(
             Number.isFinite(
                 sessionTimestamp
             ) &&
@@ -121605,7 +121628,6 @@ const beat =
 
             startMs =
                 sessionTimestamp;
-
 
             console.log(
                 "🕐 SESSION START RECOVERED FROM SESSION ID:",
@@ -121617,9 +121639,9 @@ const beat =
     }
 
 
-    // ============================================================
-    // SESSION END TIME
-    // ============================================================
+    /* ============================================================
+       3. END TIME
+       ============================================================ */
 
     const endMs =
         Number(
@@ -121627,22 +121649,18 @@ const beat =
         );
 
 
-    // ============================================================
-    // SESSION DURATION
-    // ============================================================
+    /* ============================================================
+       4. DURATION
+       ============================================================ */
 
     let durationMinutes =
         0;
 
 
-    if (
-        Number.isFinite(
-            startMs
-        ) &&
+    if(
+        Number.isFinite(startMs) &&
         startMs > 0 &&
-        Number.isFinite(
-            endMs
-        ) &&
+        Number.isFinite(endMs) &&
         endMs >= startMs
     ){
 
@@ -121658,9 +121676,9 @@ const beat =
     }
 
 
-    // ============================================================
-    // FINAL DISTANCE
-    // ============================================================
+    /* ============================================================
+       5. FINAL DISTANCE
+       ============================================================ */
 
     const finalDistanceKm =
         Number(
@@ -121668,74 +121686,47 @@ const beat =
         );
 
 
-    // ============================================================
-    // OFFICIAL SESSION VALIDITY
-    // ------------------------------------------------------------
-    // IMPORTANT:
-    // This is independent of Division / Range / Beat posting.
-    // ============================================================
+    /* ============================================================
+       6. VALID SESSION
+       ============================================================ */
 
     const validSession =
         durationMinutes >= 10 &&
         finalDistanceKm >= 0.1;
 
 
-    // ============================================================
-    // GIS REPORT METRICS
-    // ------------------------------------------------------------
-    // Defaults are deliberately zero/empty.
-    //
-    // ADMIN / NO POSTING:
-    //     These remain zero/empty.
-    //
-    // BTR_E / BTR_W:
-    //     Existing master GIS ownership logic is executed.
-    // ============================================================
+    /* ============================================================
+       7. GIS / CELL METRICS
+       ============================================================ */
 
-    let cellVisitOccurrences =
-        0;
+    let cellVisitOccurrences = 0;
 
-    let uniqueCellsVisited =
-        0;
+    let uniqueCellsVisited = 0;
 
-    let visitedHa =
-        0;
+    let visitedHa = 0;
 
-    let totalCells =
-        0;
+    let totalCells = 0;
 
-    let coveragePercent =
-        0;
+    let coveragePercent = 0;
 
-    let patrolIntensityPercent =
-        0;
+    let patrolIntensityPercent = 0;
 
-    let uniqueCellIds =
-        [];
+    let uniqueCellIds = [];
 
-    let compartmentIds =
-        [];
+    let compartmentIds = [];
 
 
-    if (
+    if(
         hasOperationalPosting
     ){
 
-        // ============================================================
-        // MASTER GIS
-        //
-        // Reporting ownership is the STAFF POSTING.
-        //
-        // If staff is posted at Beat A:
-        //
-        //     ONLY Beat A cells are reportable.
-        //
-        // GPS entering Beat B/C does NOT transfer ownership.
-        // ============================================================
+        /* ========================================================
+           MASTER GIS
+           ======================================================== */
 
         const masterRows =
             typeof ggReportGetMasterRows ===
-                "function"
+            "function"
                 ? ggReportGetMasterRows()
                 : [];
 
@@ -121772,13 +121763,17 @@ const beat =
                     return (
 
                         rowDivision ===
-                            division &&
+                        division
+
+                        &&
 
                         rowRange ===
-                            range &&
+                        range
+
+                        &&
 
                         rowBeat ===
-                            beat
+                        beat
 
                     );
 
@@ -121799,17 +121794,15 @@ const beat =
 
                 const gridId =
                     String(
-                        row.gridId ||
+                        row?.gridId ||
                         ""
                     ).trim();
 
 
-                if (
+                if(
                     !gridId
                 ){
-
                     return;
-
                 }
 
 
@@ -121821,7 +121814,7 @@ const beat =
                 compartmentByGrid.set(
                     gridId,
                     String(
-                        row.compartment ||
+                        row?.compartment ||
                         gridId
                     ).trim()
                 );
@@ -121832,7 +121825,7 @@ const beat =
                         0,
                         Math.round(
                             Number(
-                                row.totalCells ||
+                                row?.totalCells ||
                                 0
                             )
                         )
@@ -121842,9 +121835,30 @@ const beat =
         );
 
 
-        // ============================================================
-        // READ PERSISTED CELL OCCURRENCES
-        // ============================================================
+        console.log(
+            "🗺️ SESSION GIS:",
+            {
+                division,
+                range,
+                beat,
+
+                masterRows:
+                    masterRows.length,
+
+                beatRows:
+                    beatRows.length,
+
+                allowedGridCount:
+                    allowedGridIds.size,
+
+                totalCells
+            }
+        );
+
+
+        /* ========================================================
+           READ EXISTING CELL OCCURRENCES
+           ======================================================== */
 
         const db =
             await ggReportOpenDB();
@@ -121902,16 +121916,9 @@ const beat =
         db.close();
 
 
-        // ============================================================
-        // SESSION OCCURRENCES
-        //
-        // IMPORTANT:
-        // ONLY:
-        //
-        //     this session
-        //     AND
-        //     this staff's posted Beat
-        // ============================================================
+        /* ========================================================
+           EXACT SESSION + POSTED BEAT
+           ======================================================== */
 
         const sessionOccurrences =
             occurrenceRecords.filter(
@@ -121923,7 +121930,9 @@ const beat =
                             occurrence?.sessionId ||
                             ""
                         ).trim() ===
-                            cleanSessionId &&
+                        cleanSessionId
+
+                        &&
 
                         allowedGridIds.has(
                             String(
@@ -121963,13 +121972,11 @@ const beat =
                     ).trim();
 
 
-                if (
+                if(
                     !gridId ||
                     !cellId
                 ){
-
                     return;
-
                 }
 
 
@@ -122015,9 +122022,7 @@ const beat =
                 (
                     uniqueCellsVisited *
                     0.25
-                ).toFixed(
-                    2
-                )
+                ).toFixed(2)
             );
 
 
@@ -122030,9 +122035,7 @@ const beat =
                             totalCells
                         ) *
                         100
-                    ).toFixed(
-                        2
-                    )
+                    ).toFixed(2)
                 )
                 : 0;
 
@@ -122046,143 +122049,193 @@ const beat =
                             totalCells
                         ) *
                         100
-                    ).toFixed(
-                        2
-                    )
+                    ).toFixed(2)
                 )
                 : 0;
 
+
+        console.log(
+            "🧭 SESSION CELL METRICS:",
+            {
+                sessionId:
+                    cleanSessionId,
+
+                cellVisitOccurrences,
+
+                uniqueCellsVisited,
+
+                visitedHa,
+
+                totalCells,
+
+                coveragePercent,
+
+                patrolIntensityPercent,
+
+                compartmentsVisited:
+                    compartmentIds.length
+            }
+        );
+
     }
 
 
-// ============================================================
-// EVENT COUNTS
-// ------------------------------------------------------------
-// USE EXISTING LOCAL REPORT CACHES.
-// Do not create another event-count system.
-//
-// Existing sources:
-//   Elephant  → sightingsCache
-//   Wildlife  → wildlifeCache
-//   Offences  → irregularityIDBIndex
-//
-// The existing report functions already know how to match
-// hierarchy + event time.
-// ============================================================
+    /* ============================================================
+       8. EVENT COUNTS
+       ------------------------------------------------------------
+       IMPORTANT:
+       DO NOT use __GG_SESSION_EVENT_COUNTS.
 
-let elephantSightings =
-    0;
+       That object has no active writer in the current application.
 
-let wildlifeSightings =
-    0;
+       Use the EXISTING report event engines directly.
+       ============================================================ */
 
-let offencesDetected =
-    0;
+    let elephantSightings = 0;
 
-if (
-    hasOperationalPosting
-) {
+    let wildlifeSightings = 0;
 
-    const reportHierarchy = {
-        division:
-            division,
+    let offencesDetected = 0;
 
-        range:
-            range,
 
-        beat:
-            beat
-    };
+    if(
+        hasOperationalPosting &&
+        Number.isFinite(startMs) &&
+        Number.isFinite(endMs) &&
+        endMs >= startMs
+    ){
 
-    elephantSightings =
-        Number(
-            ggReportCountElephants(
-                reportHierarchy,
-                startMs,
-                endMs
-            )
-        ) || 0;
+        const eventHierarchy = {
 
-    wildlifeSightings =
-        Number(
-            ggReportCountWildlife(
-                reportHierarchy,
-                startMs,
-                endMs
-            )
-        ) || 0;
+            division:
+                division,
 
-    offencesDetected =
-        Number(
-            ggReportCountOffences(
-                reportHierarchy,
-                startMs,
-                endMs
-            )
-        ) || 0;
+            range:
+                range,
 
-}
+            beat:
+                beat
 
-console.log(
-    "🦣 SESSION EVENT COUNTS:",
-    {
-        sessionId:
-            cleanSessionId,
+        };
 
-        elephantSightings,
 
-        wildlifeSightings,
+        /* ========================================================
+           ELEPHANT
+           ======================================================== */
 
-        offencesDetected
+        if(
+            typeof ggReportCountElephants ===
+            "function"
+        ){
+
+            elephantSightings =
+                Math.max(
+                    0,
+                    Number(
+                        ggReportCountElephants(
+                            eventHierarchy,
+                            startMs,
+                            endMs
+                        ) || 0
+                    )
+                );
+
+        }
+
+
+        /* ========================================================
+           WILDLIFE
+           ======================================================== */
+
+        if(
+            typeof ggReportCountWildlife ===
+            "function"
+        ){
+
+            wildlifeSightings =
+                Math.max(
+                    0,
+                    Number(
+                        ggReportCountWildlife(
+                            eventHierarchy,
+                            startMs,
+                            endMs
+                        ) || 0
+                    )
+                );
+
+        }
+
+
+        /* ========================================================
+           OFFENCE / IRREGULARITY
+           ======================================================== */
+
+        if(
+            typeof ggReportCountOffences ===
+            "function"
+        ){
+
+            offencesDetected =
+                Math.max(
+                    0,
+                    Number(
+                        ggReportCountOffences(
+                            eventHierarchy,
+                            startMs,
+                            endMs
+                        ) || 0
+                    )
+                );
+
+        }
+
     }
-);    // ============================================================
-    // FINAL COMPLETED SESSION SNAPSHOT
-    // ============================================================
 
-    return {
+
+    console.log(
+        "🐘🦌⚠️ SESSION EVENT COUNTS:",
+        {
+            sessionId:
+                cleanSessionId,
+
+            elephantSightings,
+
+            wildlifeSightings,
+
+            offencesDetected
+        }
+    );
+
+
+    /* ============================================================
+       9. FINAL SNAPSHOT
+       ============================================================ */
+
+    const snapshot = {
 
         sessionId:
             cleanSessionId,
-
 
         startedAt:
             startMs,
 
-
         endedAt:
             endMs,
 
+        durationMinutes,
 
-        durationMinutes:
-            durationMinutes,
+        validSession,
 
+        staffName,
 
-        validSession:
-            validSession,
+        phone,
 
+        division,
 
-        staffName:
-            profile.cleanName ||
-            profile.name ||
-            "",
+        range,
 
-
-        phone:
-            profile.phone ||
-            "",
-
-
-        division:
-            division,
-
-
-        range:
-            range,
-
-
-        beat:
-            beat,
-
+        beat,
 
         pointCount:
             Math.max(
@@ -122192,71 +122245,55 @@ console.log(
                 )
             ),
 
-
         distanceKm:
             Number(
-                finalDistanceKm.toFixed(
-                    2
-                )
+                finalDistanceKm.toFixed(2)
             ),
 
+        cellVisitOccurrences,
 
-        cellVisitOccurrences:
-            cellVisitOccurrences,
+        uniqueCellsVisited,
 
+        visitedHa,
 
-        uniqueCellsVisited:
-            uniqueCellsVisited,
+        totalCells,
 
+        coveragePercent,
 
-        visitedHa:
-            visitedHa,
+        patrolIntensityPercent,
 
-
-        totalCells:
-            totalCells,
-
-
-        coveragePercent:
-            coveragePercent,
-
-
-        patrolIntensityPercent:
-            patrolIntensityPercent,
-
-
-        elephantSightings:
-            elephantSightings,
-
+        elephantSightings,
 
         otherWildlifeSightings:
             wildlifeSightings,
 
-
-        offencesDetected:
-            offencesDetected,
-
+        offencesDetected,
 
         compartmentsVisited:
             compartmentIds.length,
 
+        uniqueCellIds,
 
-        uniqueCellIds:
-            uniqueCellIds,
-
-
-        compartmentIds:
-            compartmentIds
+        compartmentIds
 
     };
 
-}
-async function uploadPatrolKML(
-    sessionId,
-    points,
-    authoritativeDistanceKm = null,
-    sessionReportSnapshot = null
+
+    console.log(
+        "📊 FINAL COMPLETED SESSION SNAPSHOT:",
+        snapshot
+    );
+
+
+    return snapshot;
+
+}async function uploadPatrolKML(
+  sessionId,
+  points,
+  authoritativeDistanceKm = null,
+  sessionReportSnapshot = null
 ) {
+
   try {
 
     // ==========================================================
@@ -122324,7 +122361,7 @@ async function uploadPatrolKML(
     // ----------------------------------------------------------
     // This is generated at End Duty.
     //
-    // PatrolKMLRegister is now the completed-session register
+    // PatrolKMLRegister is the completed-session register
     // for daily/monthly patrol reporting.
     //
     // The snapshot contains:
@@ -122338,8 +122375,8 @@ async function uploadPatrolKML(
     //   coveragePercent
     //   patrolIntensityPercent
     //   elephantSightings
-    //   wildlifeSightings
-    //   offencesIrregularities
+    //   otherWildlifeSightings
+    //   offencesDetected
     //   compartmentsVisited
     //   uniqueCellIds
     //   compartmentIds
@@ -122502,11 +122539,137 @@ async function uploadPatrolKML(
 
 
     // ==========================================================
-    // 👤 PROFILE
+    // 👤 CURRENT PROFILE
+    // ----------------------------------------------------------
+    // IMPORTANT:
+    // This is ONLY a final fallback.
+    //
+    // It MUST NOT be the primary authority for a completed
+    // session because the current browser may belong to a
+    // different user.
     // ==========================================================
 
     const profile =
       window.userProfile || {};
+
+
+    // ==========================================================
+    // 👤 SESSION-AUTHORITATIVE REGISTER IDENTITY
+    // ----------------------------------------------------------
+    // PRIMARY:
+    //     patrolSessionStaff[sessionId]
+    //
+    // SECONDARY:
+    //     completed session snapshot
+    //
+    // FINAL FALLBACK:
+    //     current browser profile
+    //
+    // This prevents the laptop/current viewer identity from
+    // overwriting the staff identity of the completed session.
+    // ==========================================================
+
+    const cleanSessionId =
+      String(
+        sessionId || ""
+      ).trim();
+
+
+    const registerSessionStaff =
+      window.patrolSessionStaff?.[
+        cleanSessionId
+      ] ||
+      {};
+
+
+    const registerStaffName =
+      String(
+        snapshot.staffName ||
+        registerSessionStaff.cleanName ||
+        registerSessionStaff.staffName ||
+        registerSessionStaff.name ||
+        profile.cleanName ||
+        profile.name ||
+        ""
+      ).trim();
+
+
+    const registerPhone =
+      String(
+        snapshot.phone ||
+        registerSessionStaff.phone ||
+        profile.phone ||
+        ""
+      ).trim();
+
+
+    const registerDivision =
+      String(
+        snapshot.division ||
+        registerSessionStaff.division ||
+        profile.division ||
+        ""
+      )
+      .trim()
+      .toUpperCase();
+
+
+    const registerRange =
+      String(
+        snapshot.range ||
+        registerSessionStaff.range ||
+        profile.range ||
+        ""
+      ).trim();
+
+
+    const registerBeat =
+      String(
+        snapshot.beat ||
+        registerSessionStaff.beat ||
+        profile.beat ||
+        ""
+      ).trim();
+
+
+    console.log(
+      "👤 COMPLETED SESSION REGISTER IDENTITY:",
+      {
+        sessionId:
+          cleanSessionId,
+
+        staffName:
+          registerStaffName,
+
+        phone:
+          registerPhone,
+
+        division:
+          registerDivision,
+
+        range:
+          registerRange,
+
+        beat:
+          registerBeat,
+
+        source:
+          registerSessionStaff &&
+          Object.keys(
+            registerSessionStaff
+          ).length
+            ? "patrolSessionStaff"
+            : (
+                snapshot.staffName ||
+                snapshot.phone ||
+                snapshot.division ||
+                snapshot.range ||
+                snapshot.beat
+              )
+                ? "sessionSnapshot"
+                : "currentProfileFallback"
+      }
+    );
 
 
     // ==========================================================
@@ -122522,6 +122685,7 @@ async function uploadPatrolKML(
       Number(
         snapshot.startedAt || 0
       );
+
 
     const endedAt =
       Number(
@@ -122585,6 +122749,7 @@ async function uploadPatrolKML(
           );
 
       }
+
       else {
 
         durationMinutes =
@@ -122615,8 +122780,8 @@ async function uploadPatrolKML(
     //
     // 100 metres = 0.10 km
     //
-    // Calculate this independently here rather than blindly
-    // trusting the frontend snapshot.
+    // Calculate independently here rather than blindly trusting
+    // the frontend snapshot.
     // ==========================================================
 
     const validSession =
@@ -122627,9 +122792,13 @@ async function uploadPatrolKML(
     console.log(
       "📋 SESSION VALIDITY:",
       {
-        sessionId,
+        sessionId:
+          cleanSessionId,
+
         durationMinutes,
+
         distanceKm,
+
         validSession
       }
     );
@@ -122740,47 +122909,58 @@ async function uploadPatrolKML(
       );
 
 
-// ============================================================
-// 🐘🦌⚠️ COMPLETED SESSION EVENT COUNTS
-// ------------------------------------------------------------
-// IMPORTANT:
-// ggBuildCompletedSessionReportSnapshot() currently returns:
-//
-//   elephantSightings
-//   otherWildlifeSightings
-//   offencesDetected
-//
-// Therefore uploadPatrolKML() MUST read those exact snapshot
-// field names.
-//
-// The secondary names below are retained only as backward-
-// compatibility fallbacks and do not change the existing flow.
-// ============================================================
+    // ==========================================================
+    // 🐘🦌⚠️ COMPLETED SESSION EVENT COUNTS
+    // ----------------------------------------------------------
+    // IMPORTANT:
+    //
+    // The updated
+    // ggBuildCompletedSessionReportSnapshot()
+    // returns:
+    //
+    //   elephantSightings
+    //   otherWildlifeSightings
+    //   offencesDetected
+    //
+    // Therefore uploadPatrolKML() reads those exact fields.
+    //
+    // Secondary names remain only as backward-compatible
+    // fallbacks.
+    // ==========================================================
 
-const elephantSightings = Math.max(
-  0,
-  Number(snapshot.elephantSightings || 0)
-);
+    const elephantSightings =
+      Math.max(
+        0,
+        Number(
+          snapshot.elephantSightings || 0
+        )
+      );
 
-const wildlifeSightings = Math.max(
-  0,
-  Number(
-    snapshot.otherWildlifeSightings ??
-    snapshot.wildlifeSightings ??
-    0
-  )
-);
 
-const offencesIrregularities = Math.max(
-  0,
-  Number(
-    snapshot.offencesDetected ??
-    snapshot.offencesIrregularities ??
-    snapshot.offences ??
-    snapshot.irregularities ??
-    0
-  )
-);
+    const wildlifeSightings =
+      Math.max(
+        0,
+        Number(
+          snapshot.otherWildlifeSightings ??
+          snapshot.wildlifeSightings ??
+          0
+        )
+      );
+
+
+    const offencesIrregularities =
+      Math.max(
+        0,
+        Number(
+          snapshot.offencesDetected ??
+          snapshot.offencesIrregularities ??
+          snapshot.offences ??
+          snapshot.irregularities ??
+          0
+        )
+      );
+
+
     const compartmentsVisited =
       Math.max(
         0,
@@ -122852,7 +123032,23 @@ const offencesIrregularities = Math.max(
       "📊 COMPLETED SESSION REPORT SNAPSHOT:",
       {
 
-        sessionId,
+        sessionId:
+          cleanSessionId,
+
+        staffName:
+          registerStaffName,
+
+        phone:
+          registerPhone,
+
+        division:
+          registerDivision,
+
+        range:
+          registerRange,
+
+        beat:
+          registerBeat,
 
         reportDate,
 
@@ -122991,6 +123187,7 @@ const offencesIrregularities = Math.max(
       );
 
     }
+
     catch (err) {
 
       console.warn(
@@ -123010,7 +123207,7 @@ const offencesIrregularities = Math.max(
 
         window.storage,
 
-        `patrol_kml/${monthKey}/${sessionId}.kml`
+        `patrol_kml/${monthKey}/${cleanSessionId}.kml`
 
       );
 
@@ -123064,36 +123261,36 @@ const offencesIrregularities = Math.max(
               action:
                 "SAVE_PATROL_KML",
 
+
               // ----------------------------------------------
               // REGISTER IDENTITY
+              // ----------------------------------------------
+              // IMPORTANT:
+              // These values belong to THIS completed session,
+              // not necessarily the current browser user.
               // ----------------------------------------------
 
               monthKey,
 
               reportDate,
 
-              sessionId,
+              sessionId:
+                cleanSessionId,
 
               staffName:
-                profile.cleanName || "",
+                registerStaffName,
 
               phone:
-                profile.phone || "",
+                registerPhone,
 
               division:
-                profile.division ||
-                profile.range ||
-                "",
+                registerDivision,
 
               range:
-                profile.range ||
-                "",
+                registerRange,
 
               beat:
-                profile.beat ||
-                profile.range ||
-                profile.division ||
-                "",
+                registerBeat,
 
 
               // ----------------------------------------------
@@ -123202,6 +123399,7 @@ const offencesIrregularities = Math.max(
         );
 
     }
+
     catch (err) {
 
       console.error(
@@ -123238,6 +123436,7 @@ const offencesIrregularities = Math.max(
 
 
   }
+
   catch (err) {
 
     console.error(
