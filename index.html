@@ -121124,11 +121124,605 @@ ${coordinates}
 </Document>
 
 </kml>`;
-}   async function uploadPatrolKML(
+} 
+
+/* ================================================================
+   BTRGUARD — BUILD ONE COMPLETED SESSION REPORT SNAPSHOT
+   ================================================================ */
+
+async function ggBuildCompletedSessionReportSnapshot(
+    sessionId,
+    startedAt,
+    endedAt,
+    distanceKm
+){
+
+    const cleanSessionId =
+        String(
+            sessionId || ""
+        ).trim();
+
+
+    if (
+        !cleanSessionId
+    ){
+
+        throw new Error(
+            "Missing sessionId for session report snapshot."
+        );
+
+    }
+
+
+    const profile =
+        window.userProfile ||
+        {};
+
+
+    const division =
+        String(
+            profile.division ||
+            ""
+        )
+        .trim()
+        .toUpperCase();
+
+
+    const range =
+        String(
+            profile.range ||
+            ""
+        )
+        .trim();
+
+
+    const beat =
+        String(
+            profile.beat ||
+            ""
+        )
+        .trim();
+
+
+    // ============================================================
+    // ONLY BTR_E / BTR_W
+    // ============================================================
+
+    if (
+        division !== "BTR_E" &&
+        division !== "BTR_W"
+    ){
+
+        return {
+
+            sessionId:
+                cleanSessionId,
+
+            skipped:
+                true,
+
+            reason:
+                "Outside BTR_E/BTR_W report scope."
+
+        };
+
+    }
+
+
+    // ============================================================
+    // SESSION DURATION
+    // ============================================================
+
+    const startMs =
+        new Date(
+            startedAt
+        ).getTime();
+
+
+    const endMs =
+        Number(
+            endedAt
+        );
+
+
+    let durationMinutes =
+        0;
+
+
+    if (
+        Number.isFinite(
+            startMs
+        ) &&
+        startMs > 0 &&
+        Number.isFinite(
+            endMs
+        ) &&
+        endMs >= startMs
+    ){
+
+        durationMinutes =
+            Math.floor(
+                (
+                    endMs -
+                    startMs
+                ) /
+                60000
+            );
+
+    }
+
+
+    const finalDistanceKm =
+        Number(
+            distanceKm || 0
+        );
+
+
+    // ============================================================
+    // OFFICIAL SESSION VALIDITY
+    // ============================================================
+
+    const validSession =
+        durationMinutes >= 10 &&
+        finalDistanceKm >= 0.1;
+
+
+    // ============================================================
+    // MASTER GIS
+    //
+    // Reporting ownership is the STAFF POSTING.
+    //
+    // If staff is posted at Beat A:
+    //
+    //     ONLY Beat A cells are reportable.
+    //
+    // GPS entering Beat B/C does NOT transfer ownership.
+    // ============================================================
+
+    const masterRows =
+        typeof ggReportGetMasterRows ===
+            "function"
+            ? ggReportGetMasterRows()
+            : [];
+
+
+    const beatRows =
+        masterRows.filter(
+            row => {
+
+                const rowDivision =
+                    String(
+                        row?.division ||
+                        ""
+                    )
+                    .trim()
+                    .toUpperCase();
+
+
+                const rowRange =
+                    String(
+                        row?.range ||
+                        ""
+                    )
+                    .trim();
+
+
+                const rowBeat =
+                    String(
+                        row?.beat ||
+                        ""
+                    )
+                    .trim();
+
+
+                return (
+
+                    rowDivision ===
+                        division &&
+
+                    rowRange ===
+                        range &&
+
+                    rowBeat ===
+                        beat
+
+                );
+
+            }
+        );
+
+
+    const allowedGridIds =
+        new Set();
+
+
+    const compartmentByGrid =
+        new Map();
+
+
+    let totalCells =
+        0;
+
+
+    beatRows.forEach(
+        row => {
+
+            const gridId =
+                String(
+                    row.gridId ||
+                    ""
+                ).trim();
+
+
+            if (
+                !gridId
+            ){
+
+                return;
+
+            }
+
+
+            allowedGridIds.add(
+                gridId
+            );
+
+
+            compartmentByGrid.set(
+                gridId,
+                String(
+                    row.compartment ||
+                    gridId
+                ).trim()
+            );
+
+
+            totalCells +=
+                Math.max(
+                    0,
+                    Math.round(
+                        Number(
+                            row.totalCells ||
+                            0
+                        )
+                    )
+                );
+
+        }
+    );
+
+
+    // ============================================================
+    // READ PERSISTED CELL OCCURRENCES
+    // ============================================================
+
+    const db =
+        await ggReportOpenDB();
+
+
+    const occurrenceRecords =
+        await new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+
+                const tx =
+                    db.transaction(
+                        window.GG_REPORT.STORE_OCCURRENCES,
+                        "readonly"
+                    );
+
+
+                const request =
+                    tx
+                        .objectStore(
+                            window.GG_REPORT.STORE_OCCURRENCES
+                        )
+                        .getAll();
+
+
+                request.onsuccess =
+                    () => {
+
+                        resolve(
+                            Array.isArray(
+                                request.result
+                            )
+                                ? request.result
+                                : []
+                        );
+
+                    };
+
+
+                request.onerror =
+                    () => {
+
+                        reject(
+                            request.error
+                        );
+
+                    };
+
+            }
+        );
+
+
+    db.close();
+
+
+    // ============================================================
+    // SESSION OCCURRENCES
+    //
+    // IMPORTANT:
+    // ONLY:
+    //
+    //     this session
+    //     AND
+    //     this staff's posted Beat
+    //
+    // ============================================================
+
+    const sessionOccurrences =
+        occurrenceRecords.filter(
+            occurrence => {
+
+                return (
+
+                    String(
+                        occurrence?.sessionId ||
+                        ""
+                    ).trim() ===
+                        cleanSessionId &&
+
+                    allowedGridIds.has(
+                        String(
+                            occurrence?.gridId ||
+                            ""
+                        ).trim()
+                    )
+
+                );
+
+            }
+        );
+
+
+    const uniqueCellSet =
+        new Set();
+
+
+    const compartmentSet =
+        new Set();
+
+
+    let cellVisitOccurrences =
+        0;
+
+
+    sessionOccurrences.forEach(
+        occurrence => {
+
+            const gridId =
+                String(
+                    occurrence?.gridId ||
+                    ""
+                ).trim();
+
+
+            const cellId =
+                String(
+                    occurrence?.cellId ||
+                    ""
+                ).trim();
+
+
+            if (
+                !gridId ||
+                !cellId
+            ){
+
+                return;
+
+            }
+
+
+            cellVisitOccurrences++;
+
+
+            uniqueCellSet.add(
+                gridId +
+                "|" +
+                cellId
+            );
+
+
+            compartmentSet.add(
+                compartmentByGrid.get(
+                    gridId
+                ) ||
+                gridId
+            );
+
+        }
+    );
+
+
+    const uniqueCellIds =
+        Array.from(
+            uniqueCellSet
+        );
+
+
+    const compartmentIds =
+        Array.from(
+            compartmentSet
+        );
+
+
+    const uniqueCellsVisited =
+        uniqueCellIds.length;
+
+
+    const visitedHa =
+        Number(
+            (
+                uniqueCellsVisited *
+                0.25
+            ).toFixed(
+                2
+            )
+        );
+
+
+    const coveragePercent =
+        totalCells > 0
+            ? Number(
+                (
+                    (
+                        uniqueCellsVisited /
+                        totalCells
+                    ) *
+                    100
+                ).toFixed(
+                    2
+                )
+            )
+            : 0;
+
+
+    const patrolIntensityPercent =
+        totalCells > 0
+            ? Number(
+                (
+                    (
+                        cellVisitOccurrences /
+                        totalCells
+                    ) *
+                    100
+                ).toFixed(
+                    2
+                )
+            )
+            : 0;
+
+
+    // ============================================================
+    // EVENT COUNTS
+    //
+    // IMPORTANT:
+    // These require events to carry this sessionId.
+    // Until that is implemented, do NOT silently guess.
+    // ============================================================
+
+    const elephantSightings =
+        Number(
+            window.__GG_SESSION_EVENT_COUNTS
+              ?.[
+                cleanSessionId
+              ]
+              ?.elephant || 0
+        );
+
+
+    const wildlifeSightings =
+        Number(
+            window.__GG_SESSION_EVENT_COUNTS
+              ?.[
+                cleanSessionId
+              ]
+              ?.wildlife || 0
+        );
+
+
+    const offencesDetected =
+        Number(
+            window.__GG_SESSION_EVENT_COUNTS
+              ?.[
+                cleanSessionId
+              ]
+              ?.offences || 0
+        );
+
+
+    return {
+
+        sessionId:
+            cleanSessionId,
+
+        startedAt:
+            startMs,
+
+        endedAt:
+            endMs,
+
+        durationMinutes,
+
+        validSession,
+
+        staffName:
+            profile.cleanName ||
+            profile.name ||
+            "",
+
+        phone:
+            profile.phone ||
+            "",
+
+        division,
+
+        range,
+
+        beat,
+
+        pointCount:
+            0,
+
+        distanceKm:
+            Number(
+                finalDistanceKm.toFixed(
+                    2
+                )
+            ),
+
+        cellVisitOccurrences,
+
+        uniqueCellsVisited,
+
+        visitedHa,
+
+        totalCells,
+
+        coveragePercent,
+
+        patrolIntensityPercent,
+
+        elephantSightings,
+
+        otherWildlifeSightings:
+            wildlifeSightings,
+
+        offencesDetected,
+
+        compartmentsVisited:
+            compartmentIds.length,
+
+        uniqueCellIds,
+
+        compartmentIds
+
+    };
+
+}
+
+async function uploadPatrolKML(
   sessionId,
   points,
-  authoritativeDistanceKm = null
+  authoritativeDistanceKm = null,
+  sessionReportSnapshot = null
 ) {
+
   try {
 
     // ==========================================================
@@ -121192,6 +121786,43 @@ ${coordinates}
 
 
     // ==========================================================
+    // 📊 SESSION REPORT SNAPSHOT
+    // ----------------------------------------------------------
+    // This is generated at End Duty.
+    //
+    // PatrolKMLRegister is now the completed-session register
+    // for daily/monthly patrol reporting.
+    //
+    // The snapshot contains:
+    //
+    //   startedAt
+    //   endedAt
+    //   durationMinutes
+    //   cellVisitOccurrences
+    //   uniqueCellsVisited
+    //   visitedHa
+    //   coveragePercent
+    //   patrolIntensityPercent
+    //   elephantSightings
+    //   wildlifeSightings
+    //   offencesIrregularities
+    //   compartmentsVisited
+    //   uniqueCellIds
+    //   compartmentIds
+    //
+    // Keep this optional so the existing KML function does not
+    // crash if an older End-Duty path temporarily calls it
+    // without the snapshot.
+    // ==========================================================
+
+    const snapshot =
+      sessionReportSnapshot &&
+      typeof sessionReportSnapshot === "object"
+        ? sessionReportSnapshot
+        : {};
+
+
+    // ==========================================================
     // 📏 AUTHORITATIVE DISTANCE
     // ----------------------------------------------------------
     // Normal source:
@@ -121202,8 +121833,8 @@ ${coordinates}
     //          ↓
     //     authoritativeDistanceKm
     //
-    // The existing point-by-point calculation below remains
-    // available as a FALLBACK only.
+    // Existing point-by-point calculation remains available
+    // strictly as FALLBACK.
     // ==========================================================
 
     let distanceKm =
@@ -121221,9 +121852,6 @@ ${coordinates}
 
     // ==========================================================
     // 🔄 FALLBACK DISTANCE CALCULATION
-    // ----------------------------------------------------------
-    // Only execute the old calculation when an authoritative
-    // distance was NOT supplied.
     // ==========================================================
 
     if (
@@ -121259,7 +121887,6 @@ ${coordinates}
             prev?.lon ??
             prev?.longitude
           );
-
 
         const currLat =
           Number(
@@ -121341,7 +121968,7 @@ ${coordinates}
 
 
     // ==========================================================
-    // PROFILE
+    // 👤 PROFILE
     // ==========================================================
 
     const profile =
@@ -121349,28 +121976,379 @@ ${coordinates}
 
 
     // ==========================================================
-    // DATE
+    // 🕐 SESSION TIMES
+    // ----------------------------------------------------------
+    // Prefer the completed-session snapshot.
+    //
+    // Fallback to current time only where necessary so the
+    // existing KML upload cannot break.
     // ==========================================================
 
-    const now =
+    const startedAt =
+      Number(
+        snapshot.startedAt || 0
+      );
+
+    const endedAt =
+      Number(
+        snapshot.endedAt ||
+        Date.now()
+      );
+
+
+    const normalizedStartedAt =
+      Number.isFinite(
+        startedAt
+      ) &&
+      startedAt > 0
+        ? startedAt
+        : "";
+
+
+    const normalizedEndedAt =
+      Number.isFinite(
+        endedAt
+      ) &&
+      endedAt > 0
+        ? endedAt
+        : Date.now();
+
+
+    // ==========================================================
+    // ⏱ DURATION
+    // ----------------------------------------------------------
+    // Prefer the snapshot value.
+    //
+    // If unavailable, derive it from Started At → Ended At.
+    // ==========================================================
+
+    let durationMinutes =
+      Number(
+        snapshot.durationMinutes
+      );
+
+
+    if (
+      !Number.isFinite(
+        durationMinutes
+      ) ||
+      durationMinutes < 0
+    ) {
+
+      if (
+        normalizedStartedAt !== "" &&
+        normalizedEndedAt >
+          normalizedStartedAt
+      ) {
+
+        durationMinutes =
+          Math.floor(
+            (
+              normalizedEndedAt -
+              normalizedStartedAt
+            ) /
+            60000
+          );
+
+      }
+      else {
+
+        durationMinutes =
+          0;
+
+      }
+
+    }
+
+
+    durationMinutes =
+      Math.max(
+        0,
+        Math.floor(
+          durationMinutes
+        )
+      );
+
+
+    // ==========================================================
+    // ✅ VALID SESSION
+    // ----------------------------------------------------------
+    // Approved reporting rule:
+    //
+    //     Duration >= 10 minutes
+    //                 AND
+    //     Distance >= 100 metres
+    //
+    // 100 metres = 0.10 km
+    //
+    // Calculate this independently here rather than blindly
+    // trusting the frontend snapshot.
+    // ==========================================================
+
+    const validSession =
+      durationMinutes >= 10 &&
+      distanceKm >= 0.10;
+
+
+    console.log(
+      "📋 SESSION VALIDITY:",
+      {
+        sessionId,
+        durationMinutes,
+        distanceKm,
+        validSession
+      }
+    );
+
+
+    // ==========================================================
+    // 📅 REPORT DATE / MONTH
+    // ----------------------------------------------------------
+    // Use Ended At because this represents the completed duty
+    // session and therefore determines the report day.
+    // ==========================================================
+
+    const reportDateMs =
+      normalizedEndedAt ||
       Date.now();
 
 
-    const d =
+    const reportDateObject =
       new Date(
-        now
+        reportDateMs
       );
 
 
     const monthKey =
-      `${d.getFullYear()}_${
+      `${reportDateObject.getFullYear()}_${
         String(
-          d.getMonth() + 1
+          reportDateObject.getMonth() + 1
         ).padStart(
           2,
           "0"
         )
       }`;
+
+
+    const reportDate =
+      `${reportDateObject.getFullYear()}-${
+        String(
+          reportDateObject.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )
+      }-${
+        String(
+          reportDateObject.getDate()
+        ).padStart(
+          2,
+          "0"
+        )
+      }`;
+
+
+    // ==========================================================
+    // 📊 REPORT METRICS
+    // ==========================================================
+    // All values come from the completed-session snapshot.
+    //
+    // The report engine will later aggregate valid sessions
+    // from PatrolKMLRegister.
+    // ==========================================================
+
+    const cellVisitOccurrences =
+      Math.max(
+        0,
+        Number(
+          snapshot.cellVisitOccurrences || 0
+        )
+      );
+
+
+    const uniqueCellsVisited =
+      Math.max(
+        0,
+        Number(
+          snapshot.uniqueCellsVisited || 0
+        )
+      );
+
+
+    const visitedHa =
+      Math.max(
+        0,
+        Number(
+          snapshot.visitedHa || 0
+        )
+      );
+
+
+    const coveragePercent =
+      Math.max(
+        0,
+        Number(
+          snapshot.coveragePercent ??
+          snapshot.coverage ??
+          0
+        )
+      );
+
+
+    const patrolIntensityPercent =
+      Math.max(
+        0,
+        Number(
+          snapshot.patrolIntensityPercent ??
+          snapshot.patrolIntensity ??
+          0
+        )
+      );
+
+
+    const elephantSightings =
+      Math.max(
+        0,
+        Number(
+          snapshot.elephantSightings || 0
+        )
+      );
+
+
+    const wildlifeSightings =
+      Math.max(
+        0,
+        Number(
+          snapshot.wildlifeSightings || 0
+        )
+      );
+
+
+    const offencesIrregularities =
+      Math.max(
+        0,
+        Number(
+          snapshot.offencesIrregularities ??
+          snapshot.offences ??
+          snapshot.irregularities ??
+          0
+        )
+      );
+
+
+    const compartmentsVisited =
+      Math.max(
+        0,
+        Number(
+          snapshot.compartmentsVisited || 0
+        )
+      );
+
+
+    // ==========================================================
+    // 🧭 UNIQUE CELL IDS
+    // ==========================================================
+    // Store the actual IDs so monthly/report processing can
+    // reconstruct unique-cell information without depending
+    // only on the numeric count.
+    // ==========================================================
+
+    const uniqueCellIds =
+      Array.isArray(
+        snapshot.uniqueCellIds
+      )
+        ? [
+            ...new Set(
+              snapshot.uniqueCellIds
+                .map(
+                  id =>
+                    String(
+                      id
+                    ).trim()
+                )
+                .filter(
+                  Boolean
+                )
+            )
+          ]
+        : [];
+
+
+    // ==========================================================
+    // 🗺 COMPARTMENT IDS
+    // ==========================================================
+
+    const compartmentIds =
+      Array.isArray(
+        snapshot.compartmentIds
+      )
+        ? [
+            ...new Set(
+              snapshot.compartmentIds
+                .map(
+                  id =>
+                    String(
+                      id
+                    ).trim()
+                )
+                .filter(
+                  Boolean
+                )
+            )
+          ]
+        : [];
+
+
+    // ==========================================================
+    // DEBUG REPORT SNAPSHOT
+    // ==========================================================
+
+    console.log(
+      "📊 COMPLETED SESSION REPORT SNAPSHOT:",
+      {
+
+        sessionId,
+
+        reportDate,
+
+        startedAt:
+          normalizedStartedAt,
+
+        endedAt:
+          normalizedEndedAt,
+
+        durationMinutes,
+
+        validSession,
+
+        distanceKm,
+
+        cellVisitOccurrences,
+
+        uniqueCellsVisited,
+
+        visitedHa,
+
+        coveragePercent,
+
+        patrolIntensityPercent,
+
+        elephantSightings,
+
+        wildlifeSightings,
+
+        offencesIrregularities,
+
+        compartmentsVisited,
+
+        uniqueCellIds:
+          uniqueCellIds.length,
+
+        compartmentIds:
+          compartmentIds.length
+
+      }
+    );
 
 
     // ==========================================================
@@ -121492,6 +122470,10 @@ ${coordinates}
       );
 
 
+    // ==========================================================
+    // FIREBASE STORAGE
+    // ==========================================================
+
     await window.fb.uploadString(
 
       storageRef,
@@ -121509,9 +122491,15 @@ ${coordinates}
       );
 
 
-
     // ==========================================================
     // APPS SCRIPT SYNC
+    // ----------------------------------------------------------
+    // PatrolKMLRegister becomes the completed-session master
+    // register for daily/monthly patrol reporting.
+    //
+    // IMPORTANT:
+    // No operational Firestore write is performed here.
+    // This is only the existing Apps Script register sync.
     // ==========================================================
 
     try {
@@ -121531,7 +122519,13 @@ ${coordinates}
               action:
                 "SAVE_PATROL_KML",
 
+              // ----------------------------------------------
+              // REGISTER IDENTITY
+              // ----------------------------------------------
+
               monthKey,
+
+              reportDate,
 
               sessionId,
 
@@ -121547,7 +122541,8 @@ ${coordinates}
                 "",
 
               range:
-                profile.range || "",
+                profile.range ||
+                "",
 
               beat:
                 profile.beat ||
@@ -121555,16 +122550,78 @@ ${coordinates}
                 profile.division ||
                 "",
 
+
+              // ----------------------------------------------
+              // SESSION TIME / VALIDITY
+              // ----------------------------------------------
+
+              startedAt:
+                normalizedStartedAt,
+
+              endedAt:
+                normalizedEndedAt,
+
+              durationMinutes,
+
+              validSession,
+
+
+              // ----------------------------------------------
+              // TRACK
+              // ----------------------------------------------
+
               pointCount:
                 points.length,
 
               distanceKm,
 
+
+              // ----------------------------------------------
+              // PATROL METRICS
+              // ----------------------------------------------
+
+              cellVisitOccurrences,
+
+              uniqueCellsVisited,
+
+              visitedHa,
+
+              coveragePercent,
+
+              patrolIntensityPercent,
+
+
+              // ----------------------------------------------
+              // INTELLIGENCE / OBSERVATIONS
+              // ----------------------------------------------
+
+              elephantSightings,
+
+              wildlifeSightings,
+
+              offencesIrregularities,
+
+
+              // ----------------------------------------------
+              // COMPARTMENTS / CELLS
+              // ----------------------------------------------
+
+              compartmentsVisited,
+
+              uniqueCellIds,
+
+              compartmentIds,
+
+
+              // ----------------------------------------------
+              // KML
+              // ----------------------------------------------
+
               kmlUrl:
                 downloadUrl,
 
               createdAt:
-                now
+                Date.now()
 
             })
 
@@ -121614,19 +122671,27 @@ ${coordinates}
     // DONE
     // ==========================================================
 
-console.log(
-  "✅ KML Stored:",
-  downloadUrl
-);
+    console.log(
+      "✅ KML Stored:",
+      downloadUrl
+    );
 
-// ==================================================
-// 🔥 SAVE FOR END-DUTY POPUP
-// ==================================================
 
-window.lastDutyKmlUrl =
-    downloadUrl;
+    // ==========================================================
+    // 🔥 SAVE FOR END-DUTY POPUP
+    // ==========================================================
 
-return downloadUrl;
+    window.lastDutyKmlUrl =
+      downloadUrl;
+
+
+    // ==========================================================
+    // RETURN
+    // ==========================================================
+
+    return downloadUrl;
+
+
   }
   catch (err) {
 
@@ -121648,8 +122713,8 @@ return downloadUrl;
     return null;
 
   }
-}
-async function shareDutyKMLReport(){
+
+}async function shareDutyKMLReport(){
 
   try{
 
