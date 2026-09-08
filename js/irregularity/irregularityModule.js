@@ -209,7 +209,169 @@ function(value){
 
 };
 
+/* ============================================================
+   🔒 AUTHORITATIVE IRREGULARITY SESSION RESOLVER
+   ============================================================
 
+   PURPOSE
+   ------------------------------------------------------------
+   Every NEW Irregularity / Offence / Observation created
+   during an active patrol MUST carry the exact patrol sessionId.
+
+   PRIORITY:
+       1. window.currentSessionId
+       2. existing localStorage sessionId
+       3. existing patrolSessionStaff owner map
+
+   IMPORTANT:
+   ------------------------------------------------------------
+   • Does NOT create a new session.
+   • Does NOT create a new cache.
+   • Does NOT change Firestore architecture.
+   • Does NOT change offline replay architecture.
+   • Existing edits are never reassigned.
+   ============================================================ */
+
+GGIrregularity.getAuthoritativeSessionId =
+function(){
+
+    /* ========================================================
+       1. CURRENT RUNTIME SESSION
+       ======================================================== */
+
+    const runtimeSessionId =
+        GGIrregularity.text(
+            window.currentSessionId
+        );
+
+    if(
+        runtimeSessionId
+    ){
+
+        return runtimeSessionId;
+
+    }
+
+
+    /* ========================================================
+       2. EXISTING LOCAL SESSION ID
+       ======================================================== */
+
+    try{
+
+        const localSessionId =
+            GGIrregularity.text(
+                localStorage.getItem(
+                    "sessionId"
+                )
+            );
+
+        if(
+            localSessionId
+        ){
+
+            return localSessionId;
+
+        }
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ IRREGULARITY sessionId localStorage read failed:",
+            error
+        );
+
+    }
+
+
+    /* ========================================================
+       3. EXISTING PATROL SESSION OWNER MAP
+       ======================================================== */
+
+    try{
+
+        const profile =
+            window.userProfile ||
+            {};
+
+        const currentStaff =
+            GGIrregularity.text(
+                profile.cleanName ||
+                profile.rawName ||
+                profile.name
+            )
+            .toUpperCase();
+
+
+        const sessionOwners =
+            window.patrolSessionStaff ||
+            {};
+
+
+        for(
+            const [
+                sessionId,
+                owner
+            ]
+            of Object.entries(
+                sessionOwners
+            )
+        ){
+
+            if(
+                !owner
+            ){
+                continue;
+            }
+
+
+            const ownerName =
+                GGIrregularity.text(
+                    owner.cleanName ||
+                    owner.staffName ||
+                    owner.name
+                )
+                .toUpperCase();
+
+
+            if(
+                currentStaff &&
+                ownerName &&
+                currentStaff === ownerName
+            ){
+
+                const resolvedSessionId =
+                    GGIrregularity.text(
+                        sessionId
+                    );
+
+                if(
+                    resolvedSessionId
+                ){
+
+                    return resolvedSessionId;
+
+                }
+
+            }
+
+        }
+
+    }
+    catch(error){
+
+        console.warn(
+            "⚠ IRREGULARITY patrol session owner lookup failed:",
+            error
+        );
+
+    }
+
+
+    return "";
+
+};
 /* ============================================================
    SAFE NUMBER
    ============================================================ */
@@ -292,12 +454,64 @@ async function(){
    USER PROFILE
    ============================================================ */
 
+/* ============================================================
+   USER PROFILE + AUTHORITATIVE SESSION
+   ============================================================ */
+
 GGIrregularity.getUserContext =
 function(){
 
     const profile =
         window.userProfile ||
         {};
+
+
+    const sessionId =
+        GGIrregularity.getAuthoritativeSessionId();
+
+
+    console.log(
+        "🔐 IRREGULARITY USER / SESSION CONTEXT:",
+        {
+            name:
+                GGIrregularity.text(
+                    profile.rawName ||
+                    profile.cleanName ||
+                    profile.name
+                ),
+
+            phone:
+                GGIrregularity.text(
+                    profile.phone
+                ),
+
+            division:
+                GGIrregularity.text(
+                    profile.division
+                ),
+
+            range:
+                GGIrregularity.text(
+                    profile.range
+                ),
+
+            beat:
+                GGIrregularity.text(
+                    profile.beat
+                ),
+
+            currentSessionId:
+                GGIrregularity.text(
+                    window.currentSessionId
+                ),
+
+            resolvedSessionId:
+                sessionId,
+
+            isDutyActive:
+                window.isDutyActive === true
+        }
+    );
 
 
     return {
@@ -345,14 +559,11 @@ function(){
             ),
 
         sessionId:
-            GGIrregularity.text(
-                window.currentSessionId
-            )
+            sessionId
 
     };
 
 };
-
 
 /* ============================================================
    GPS
@@ -1189,7 +1400,58 @@ async function(
     const user =
         GGIrregularity.getUserContext();
 
+/* ============================================================
+   🔒 SESSION OWNERSHIP IS MANDATORY FOR ACTIVE DUTY
+   ============================================================ */
 
+if(
+    window.isDutyActive === true
+){
+
+    if(
+        !user.sessionId
+    ){
+
+        console.error(
+            "❌ IRREGULARITY SAVE BLOCKED — NO PATROL SESSION ID",
+            {
+                currentSessionId:
+                    window.currentSessionId || "",
+
+                localStorageSessionId:
+                    (() => {
+                        try{
+                            return (
+                                localStorage.getItem(
+                                    "sessionId"
+                                ) || ""
+                            );
+                        }
+                        catch(error){
+                            return "";
+                        }
+                    })(),
+
+                user:
+                    window.userProfile || null
+            }
+        );
+
+
+        throw new Error(
+            "Active patrol session could not be determined. " +
+            "Irregularity was NOT saved."
+        );
+
+    }
+
+
+    console.log(
+        "✅ IRREGULARITY SESSION OWNERSHIP CONFIRMED:",
+        user.sessionId
+    );
+
+}
     /* ========================================================
        GPS
 
@@ -1272,7 +1534,57 @@ async function(
     const timestamp =
         window.fb.serverTimestamp();
 
+/* ============================================================
+   🔎 FINAL IRREGULARITY PAYLOAD AUTHORITY CHECK
+   ============================================================ */
 
+console.log(
+    "📦 FINAL IRREGULARITY PAYLOAD — BEFORE FIRESTORE:",
+    {
+        category:
+            category,
+
+        session_id:
+            user.sessionId,
+
+        reported_by:
+            user.name,
+
+        reported_by_phone:
+            user.phone,
+
+        division:
+            gis.division ||
+            user.division ||
+            "",
+
+        range:
+            gis.range ||
+            user.range ||
+            "",
+
+        beat:
+            gis.beat ||
+            user.beat ||
+            "",
+
+        compartment:
+            gis.compartment ||
+            "",
+
+        latitude:
+            gps.latitude,
+
+        longitude:
+            gps.longitude,
+
+        incident_date:
+            formData.incident_date,
+
+        incident_time:
+            formData.incident_time
+    }
+);
     /* ========================================================
        PAYLOAD
        ======================================================== */
@@ -4337,7 +4649,29 @@ async function(
                 );
 
             }
+/* ============================================================
+   🔒 OFFLINE SESSION OWNERSHIP CHECK
+   ============================================================ */
 
+if(
+    window.isDutyActive === true &&
+    !GGIrregularity.text(
+        payload.session_id
+    )
+){
+
+    console.error(
+        "❌ OFFLINE IRREGULARITY BLOCKED — session_id missing:",
+        payload
+    );
+
+
+    throw new Error(
+        "Active patrol session could not be determined. " +
+        "Irregularity was NOT queued."
+    );
+
+}
 
             /* =================================================
                PERSIST COMPLETE OFFLINE RECORD
