@@ -42006,36 +42006,299 @@ async function showMonthlyLiveStaff(){
 
   try{
 
+    // ==================================================
+    // 🔥 GET CURRENT LIVE DUTY STAFF
+    // ==================================================
+
     const staffList =
       getLiveStaffForCurrentPolygon();
 
 
     // ==================================================
-    // 🔽 SORT — MOST RECENT GPS FIRST
+    // 📍 RESOLVE AUTHORITATIVE CURRENT GPS
+    // --------------------------------------------------
+    // GPS MUST NOT come from:
+    //
+    //     staff.lat
+    //     staff.lng
+    //
+    // because liveStaffCache intentionally contains
+    // lifecycle / identity metadata only.
+    //
+    // AUTHORITATIVE GPS:
+    //
+    //     staff.sessionId
+    //          ↓
+    //     getLatestPatrolPointForSession()
+    //          ↓
+    //     patrol_tracks/{sessionId}/points
+    //          ↓
+    //     latest patrol point
     // ==================================================
 
-    staffList.sort(
-      (a,b) => {
+    const resolvedStaffList =
+      staffList.map(function(staff){
+
+        try{
+
+          const staffName =
+            String(
+              staff?.cleanName ||
+              staff?.name ||
+              ""
+            ).trim();
+
+
+          const sessionId =
+            String(
+              staff?.sessionId ||
+              window.activeSessionMap?.[
+                staffName
+              ] ||
+              ""
+            ).trim();
+
+
+          // ------------------------------------------------
+          // AUTHORITATIVE LATEST PATROL POINT
+          // ------------------------------------------------
+
+          let latestPoint = null;
+
+
+          if(
+            sessionId &&
+            typeof window.getLatestPatrolPointForSession ===
+              "function"
+          ){
+
+            latestPoint =
+              window.getLatestPatrolPointForSession(
+                sessionId
+              );
+
+          }
+
+
+          // ------------------------------------------------
+          // SECOND EXISTING CACHE BRIDGE
+          // ------------------------------------------------
+          // This is only a cache fallback.
+          // It does NOT read live_staff GPS.
+          // ------------------------------------------------
+
+          if(
+            !latestPoint &&
+            staffName &&
+            window.latestPatrolPointByStaff
+          ){
+
+            latestPoint =
+              window.latestPatrolPointByStaff[
+                staffName
+              ] || null;
+
+          }
+
+
+          // ------------------------------------------------
+          // AUTHORITATIVE GPS
+          // ------------------------------------------------
+
+          const lat =
+            Number(
+              latestPoint?.lat
+            );
+
+
+          const lng =
+            Number(
+              latestPoint?.lon ??
+              latestPoint?.lng
+            );
+
+
+          const hasGps =
+            Number.isFinite(lat) &&
+            Number.isFinite(lng) &&
+            lat !== 0 &&
+            lng !== 0;
+
+
+          // ------------------------------------------------
+          // AUTHORITATIVE GPS TIME
+          // ------------------------------------------------
+
+          let gpsTime =
+            0;
+
+
+          if(latestPoint){
+
+            gpsTime =
+              Number(
+                latestPoint.time
+              );
+
+
+            if(
+              !Number.isFinite(gpsTime) ||
+              gpsTime <= 0
+            ){
+
+              try{
+
+                if(
+                  latestPoint.timestamp
+                ){
+
+                  const parsed =
+                    Date.parse(
+                      String(
+                        latestPoint.timestamp
+                      )
+                    );
+
+
+                  if(
+                    Number.isFinite(parsed)
+                  ){
+
+                    gpsTime =
+                      parsed;
+
+                  }
+
+                }
+
+              }catch(e){}
+
+            }
+
+          }
+
+
+          return {
+
+            ...staff,
+
+            // --------------------------------------------
+            // DO NOT overwrite staff.lat/lng.
+            // Keep authoritative GPS separately.
+            // --------------------------------------------
+
+            __liveSessionId:
+              sessionId,
+
+            __latestPatrolPoint:
+              latestPoint,
+
+            __currentLat:
+              hasGps
+                ? lat
+                : null,
+
+            __currentLng:
+              hasGps
+                ? lng
+                : null,
+
+            __hasCurrentGps:
+              hasGps,
+
+            __gpsTime:
+              gpsTime
+
+          };
+
+
+        }catch(error){
+
+          console.warn(
+            "⚠ Live staff GPS resolution failed:",
+            staff?.name ||
+            staff?.cleanName ||
+            "Unknown",
+            error
+          );
+
+
+          return {
+
+            ...staff,
+
+            __liveSessionId:
+              String(
+                staff?.sessionId ||
+                ""
+              ).trim(),
+
+            __latestPatrolPoint:
+              null,
+
+            __currentLat:
+              null,
+
+            __currentLng:
+              null,
+
+            __hasCurrentGps:
+              false,
+
+            __gpsTime:
+              0
+
+          };
+
+        }
+
+      });
+
+
+    // ==================================================
+    // 🔽 SORT — MOST RECENT AUTHORITATIVE GPS FIRST
+    // ==================================================
+    // Previous code sorted staff.updatedAt / lastSeen.
+    // Those fields are intentionally removed from the
+    // live staff cache.
+    //
+    // Therefore sort using the actual patrol GPS time.
+    // ==================================================
+
+    resolvedStaffList.sort(
+      function(a,b){
 
         const ta =
           Number(
-            a.updatedAt ||
-            a.lastSeen ||
+            a.__gpsTime ||
             0
           );
 
+
         const tb =
           Number(
-            b.updatedAt ||
-            b.lastSeen ||
+            b.__gpsTime ||
             0
           );
+
 
         return tb - ta;
 
       }
     );
 
+
+    // ==================================================
+    // USE RESOLVED LIST
+    // ==================================================
+
+    const finalStaffList =
+      resolvedStaffList;
+
+
+    // ==================================================
+    // 🪟 MODAL CONTENT
+    // ==================================================
 
     let html =
 
@@ -42044,19 +42307,22 @@ async function showMonthlyLiveStaff(){
         style="
           max-height:70vh;
           overflow:auto;
-          padding:10px;
+          padding:12px;
           color:white;
         "
       >
 
         <h3
           style="
-            margin:0 0 12px 0;
+            margin:0 0 14px 0;
             text-align:center;
+            font-size:18px;
+            font-weight:800;
+            letter-spacing:.3px;
           "
         >
-          LIVE DUTY TEAM
-          (${staffList.length})
+          🟢 LIVE DUTY TEAM
+          (${finalStaffList.length})
         </h3>
       `;
 
@@ -42066,81 +42332,52 @@ async function showMonthlyLiveStaff(){
     // ==================================================
 
     for(
-      const staff of staffList
+      let staffIndex = 0;
+      staffIndex < finalStaffList.length;
+      staffIndex++
     ){
 
+      const staff =
+        finalStaffList[
+          staffIndex
+        ];
+
 
       // ==================================================
-      // 📍 CURRENT GIS LOCATION
-      // --------------------------------------------------
-      // Resolve ACTUAL CURRENT LOCATION from live GPS.
-      //
-      // IMPORTANT:
-      // This is separate from:
-      //     staff.division
-      //     staff.range
-      //     staff.beat
-      //     staff.compartment
-      //
-      // Those remain the STAFF ASSIGNMENT.
-      //
-      // resolveCurrentGIS() gives the actual GIS position.
+      // 🔑 STABLE STAFF CARD KEY
       // ==================================================
 
-      let currentGIS =
-        null;
+      const staffDistanceKey =
+        String(
+          staff.cleanName ||
+          staff.name ||
+          staff.__liveSessionId ||
+          staffIndex
+        ).trim();
 
 
-      try{
-
-        const currentLat =
-          Number(
-            staff.lat
-          );
-
-        const currentLng =
-          Number(
-            staff.lng
-          );
-
-
-        if(
-          Number.isFinite(
-            currentLat
-          ) &&
-          Number.isFinite(
-            currentLng
-          ) &&
-          currentLat !== 0 &&
-          currentLng !== 0 &&
-          typeof window.resolveCurrentGIS ===
-            "function"
-        ){
-
-          currentGIS =
-            window.resolveCurrentGIS(
-              currentLat,
-              currentLng
-            );
-
-        }
-
-      }
-
-      catch(err){
-
-        console.warn(
-          "⚠ Current GIS resolution failed:",
+      const safeStaffName =
+        String(
           staff.name ||
           staff.cleanName ||
-          "Unknown",
-          err
+          "Unknown"
         );
 
-        currentGIS =
-          null;
 
-      }
+      // ==================================================
+      // 📍 CURRENT GPS
+      // ==================================================
+
+      const currentLat =
+        staff.__currentLat;
+
+
+      const currentLng =
+        staff.__currentLng;
+
+
+      const hasCurrentGps =
+        staff.__hasCurrentGps === true;
 
 
       // ==================================================
@@ -42151,34 +42388,31 @@ async function showMonthlyLiveStaff(){
         "--";
 
 
-      try{
+      if(
+        Number(
+          staff.__gpsTime
+        ) > 0
+      ){
 
-        const ts =
-          Number(
-            staff.updatedAt ||
-            staff.lastSeen ||
-            0
-          );
-
-
-        if(ts){
+        try{
 
           lastTime =
-            new Date(ts)
-              .toLocaleTimeString(
-                "en-IN",
-                {
-                  hour:"2-digit",
-                  minute:"2-digit",
-                  hour12:true
-                }
-              );
+            new Date(
+              Number(
+                staff.__gpsTime
+              )
+            ).toLocaleTimeString(
+              "en-IN",
+              {
+                hour:"2-digit",
+                minute:"2-digit",
+                hour12:true
+              }
+            );
 
-        }
+        }catch(e){}
 
       }
-
-      catch(e){}
 
 
       // ==================================================
@@ -42196,18 +42430,16 @@ async function showMonthlyLiveStaff(){
       try{
 
         if(
-          staff.sessionId
+          staff.__liveSessionId
         ){
 
           dutyStartMs =
             Number(
-
               String(
-                staff.sessionId
+                staff.__liveSessionId
               )
               .split("_")
               .pop()
-
             );
 
 
@@ -42220,8 +42452,7 @@ async function showMonthlyLiveStaff(){
             dutyStarted =
               new Date(
                 dutyStartMs
-              )
-              .toLocaleString(
+              ).toLocaleString(
                 "en-IN",
                 {
                   day:"2-digit",
@@ -42237,9 +42468,7 @@ async function showMonthlyLiveStaff(){
 
         }
 
-      }
-
-      catch(e){
+      }catch(e){
 
         console.warn(
           "⚠ Duty start parse failed",
@@ -42300,9 +42529,7 @@ async function showMonthlyLiveStaff(){
             dutyDuration =
               `${hrs} hr ${mins} min`;
 
-          }
-
-          else{
+          }else{
 
             dutyDuration =
               `${mins} min`;
@@ -42311,14 +42538,55 @@ async function showMonthlyLiveStaff(){
 
         }
 
-      }
-
-      catch(e){
+      }catch(e){
 
         console.warn(
           "⚠ Duty duration failed",
           e
         );
+
+      }
+
+
+      // ==================================================
+      // 📍 CURRENT GIS LOCATION
+      // --------------------------------------------------
+      // IMPORTANT:
+      //
+      // GIS is resolved from the SAME CURRENT GPS that
+      // will be displayed and used for map navigation.
+      // ==================================================
+
+      let currentGIS =
+        null;
+
+
+      if(
+        hasCurrentGps &&
+        typeof window.resolveCurrentGIS ===
+          "function"
+      ){
+
+        try{
+
+          currentGIS =
+            window.resolveCurrentGIS(
+              currentLat,
+              currentLng
+            );
+
+        }catch(error){
+
+          console.warn(
+            "⚠ Current GIS resolution failed:",
+            safeStaffName,
+            error
+          );
+
+          currentGIS =
+            null;
+
+        }
 
       }
 
@@ -42335,9 +42603,9 @@ async function showMonthlyLiveStaff(){
         currentGIS
       ){
 
-        // ==================================================
+        // =================================================
         // 🌲 FOREST CURRENT LOCATION
-        // ==================================================
+        // =================================================
 
         if(
           currentGIS.compartment ||
@@ -42350,19 +42618,20 @@ async function showMonthlyLiveStaff(){
 
             <div
               style="
-                margin-top:8px;
-                padding:8px;
+                margin-top:10px;
+                padding:9px 10px;
                 background:rgba(0,180,120,.10);
-                border-left:3px solid #52e6a5;
-                border-radius:5px;
+                border:1px solid rgba(82,230,165,.28);
+                border-left:4px solid #52e6a5;
+                border-radius:7px;
               "
             >
 
               <div
                 style="
                   color:#52e6a5;
-                  font-weight:700;
-                  margin-bottom:4px;
+                  font-weight:800;
+                  margin-bottom:5px;
                 "
               >
                 📍 CURRENT LOCATION
@@ -42480,9 +42749,9 @@ async function showMonthlyLiveStaff(){
         }
 
 
-        // ==================================================
+        // =================================================
         // 🏡 VILLAGE CURRENT LOCATION
-        // ==================================================
+        // =================================================
 
         else if(
           currentGIS.village
@@ -42492,19 +42761,20 @@ async function showMonthlyLiveStaff(){
 
             <div
               style="
-                margin-top:8px;
-                padding:8px;
+                margin-top:10px;
+                padding:9px 10px;
                 background:rgba(255,193,7,.10);
-                border-left:3px solid #FFD166;
-                border-radius:5px;
+                border:1px solid rgba(255,209,102,.28);
+                border-left:4px solid #FFD166;
+                border-radius:7px;
               "
             >
 
               <div
                 style="
                   color:#FFD166;
-                  font-weight:700;
-                  margin-bottom:4px;
+                  font-weight:800;
+                  margin-bottom:5px;
                 "
               >
                 📍 CURRENT LOCATION
@@ -42566,9 +42836,9 @@ async function showMonthlyLiveStaff(){
         }
 
 
-        // ==================================================
+        // =================================================
         // 📌 GIS RESOLVED BUT OUTSIDE KNOWN POLYGONS
-        // ==================================================
+        // =================================================
 
         else{
 
@@ -42576,19 +42846,20 @@ async function showMonthlyLiveStaff(){
 
             <div
               style="
-                margin-top:8px;
-                padding:8px;
+                margin-top:10px;
+                padding:9px 10px;
                 background:rgba(127,223,255,.08);
-                border-left:3px solid #7fdfff;
-                border-radius:5px;
+                border:1px solid rgba(127,223,255,.24);
+                border-left:4px solid #7fdfff;
+                border-radius:7px;
               "
             >
 
               <div
                 style="
                   color:#7fdfff;
-                  font-weight:700;
-                  margin-bottom:4px;
+                  font-weight:800;
+                  margin-bottom:5px;
                 "
               >
                 📍 CURRENT LOCATION
@@ -42636,214 +42907,311 @@ async function showMonthlyLiveStaff(){
 
 
       // ==================================================
-      // 👤 STAFF CARD
+      // 📍 NO GPS AVAILABLE
       // ==================================================
-// ==================================================
-// 🔑 STABLE STAFF CARD KEY
-// --------------------------------------------------
-// Used only for the DOM IDs of Duty Started /
-// Duty Duration fields.
-//
-// Must be unique per live-duty staff/session.
-// ==================================================
 
-const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
+      if(
+        !hasCurrentGps
+      ){
 
+        currentLocationHtml = `
+
+          <div
+            style="
+              margin-top:10px;
+              padding:9px 10px;
+              background:rgba(255,193,7,.08);
+              border:1px solid rgba(255,193,7,.25);
+              border-left:4px solid #FFD166;
+              border-radius:7px;
+            "
+          >
+
+            <div
+              style="
+                color:#FFD166;
+                font-weight:800;
+              "
+            >
+              📍 CURRENT LOCATION
+            </div>
+
+            <div style="margin-top:3px;">
+              Waiting for latest patrol GPS...
+            </div>
+
+          </div>
+
+        `;
+
+      }
+
+
+      // ==================================================
+      // 👤 DISTINCT STAFF CARD
+      // --------------------------------------------------
+      // IMPORTANT:
+      // Each staff gets a COMPLETE independent box.
+      // ==================================================
 
       html += `
 
         <div
           style="
-            padding:10px;
-            border-bottom:
-              1px solid #444;
+            margin:0 0 12px 0;
+            padding:0;
+            background:
+              linear-gradient(
+                180deg,
+                rgba(31,41,55,.98),
+                rgba(17,24,39,.98)
+              );
+            border:
+              1px solid rgba(255,255,255,.24);
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:
+              0 3px 10px rgba(0,0,0,.28);
           "
         >
 
-          <div>
-            👤
-            <b>
-              ${
-                staff.name
-                ||
-                staff.cleanName
-                ||
-                "Unknown"
-              }
-            </b>
+          <!-- ========================================= -->
+          <!-- STAFF HEADER -->
+          <!-- ========================================= -->
+
+          <div
+            style="
+              padding:10px 12px;
+              background:rgba(255,255,255,.07);
+              border-bottom:
+                1px solid rgba(255,255,255,.18);
+            "
+          >
+
+            <div
+              style="
+                font-size:16px;
+                font-weight:800;
+                color:#ffffff;
+              "
+            >
+              👤
+              ${safeStaffName}
+            </div>
+
           </div>
 
 
-          ${
-            staff.division
-            ?
-            `
-            <div>
-              🏢 ${staff.division}
-            </div>
-            `
-            :
-            ""
-          }
+          <!-- ========================================= -->
+          <!-- STAFF DETAILS -->
+          <!-- ========================================= -->
+
+          <div
+            style="
+              padding:11px 12px 12px 12px;
+            "
+          >
+
+            ${
+              staff.division
+              ?
+              `
+              <div style="margin-bottom:3px;">
+                🏢 ${staff.division}
+              </div>
+              `
+              :
+              ""
+            }
 
 
-          ${
-            staff.range
-            ?
-            `
-            <div>
-              🌿 ${staff.range}
-            </div>
-            `
-            :
-            ""
-          }
+            ${
+              staff.range
+              ?
+              `
+              <div style="margin-bottom:3px;">
+                🌿 ${staff.range}
+              </div>
+              `
+              :
+              ""
+            }
 
 
-          ${
-            staff.beat
-            ?
-            `
-            <div>
-              📍 ${staff.beat}
-            </div>
-            `
-            :
-            ""
-          }
+            ${
+              staff.beat
+              ?
+              `
+              <div style="margin-bottom:3px;">
+                📍 ${staff.beat}
+              </div>
+              `
+              :
+              ""
+            }
 
 
-          ${
-            staff.compartment
-            ?
-            `
-            <div>
-              🎯 Assigned Area:
-              ${staff.compartment}
-            </div>
-            `
-            :
-            ""
-          }
+            ${
+              staff.compartment
+              ?
+              `
+              <div style="margin-bottom:3px;">
+                🎯 Assigned Area:
+                ${staff.compartment}
+              </div>
+              `
+              :
+              ""
+            }
 
 
-          ${
-            staff.dutyType
-            ?
-            `
-            <div>
-              🚨 Duty:
-              ${staff.dutyType}
-            </div>
-            `
-            :
-            ""
-          }
+            ${
+              staff.dutyType
+              ?
+              `
+              <div style="margin-bottom:7px;">
+                🚨 Duty:
+                ${staff.dutyType}
+              </div>
+              `
+              :
+              ""
+            }
 
 
-          <!-- ====================================== -->
-          <!-- 📍 CURRENT GIS LOCATION -->
-          <!-- ====================================== -->
+            <!-- ====================================== -->
+            <!-- CURRENT GIS -->
+            <!-- ====================================== -->
 
-          ${currentLocationHtml}
+            ${currentLocationHtml}
 
 
-// ================================================
-// 🟢 DUTY STARTED
-// ================================================
+            <!-- ====================================== -->
+            <!-- DUTY STARTED -->
+            <!-- ====================================== -->
 
-<div style="
-  margin-bottom:3px;
-">
-
-  🟢 Duty Started:
-
-  <b id="staffDutyStarted_${encodeURIComponent(staffDistanceKey)}">
-    ${dutyStarted}
-  </b>
-
-</div>
-
-// ================================================
-// ⏳ DUTY DURATION
-// ================================================
-
-<div style="
-  margin-bottom:3px;
-">
-
-  ⏳ Duty Duration:
-
-  <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">
-    ${dutyDuration}
-  </b>
-
-</div>
-
-          <!-- ====================================== -->
-          <!-- 📌 GPS -->
-          <!-- ====================================== -->
-
-          <div>
-
-            📌 GPS:
-
-            <span
-              onclick='
-                zoomToLiveStaff(
-                  ${JSON.stringify(
-                    staff.name ||
-                    staff.cleanName ||
-                    "Staff"
-                  )},
-                  ${Number(
-                    staff.lat ||
-                    0
-                  )},
-                  ${Number(
-                    staff.lng ||
-                    0
-                  )}
-                )
-              '
+            <div
               style="
-                cursor:pointer;
-                color:#7fdfff;
-                text-decoration:underline;
-                font-weight:700;
+                margin-top:9px;
+                margin-bottom:3px;
               "
-              title="Zoom to location"
             >
 
-              ${Number(
-                staff.lat ||
-                0
-              ).toFixed(6)},
+              🟢 Duty Started:
 
-              ${Number(
-                staff.lng ||
-                0
-              ).toFixed(6)}
+              <b
+                id="
+                  staffDutyStarted_${encodeURIComponent(
+                    staffDistanceKey
+                  )}
+                "
+              >
+                ${dutyStarted}
+              </b>
 
-            </span>
+            </div>
+
+
+            <!-- ====================================== -->
+            <!-- DUTY DURATION -->
+            <!-- ====================================== -->
+
+            <div
+              style="
+                margin-bottom:7px;
+              "
+            >
+
+              ⏳ Duty Duration:
+
+              <b
+                id="
+                  staffDutyDuration_${encodeURIComponent(
+                    staffDistanceKey
+                  )}
+                "
+              >
+                ${dutyDuration}
+              </b>
+
+            </div>
+
+
+            <!-- ====================================== -->
+            <!-- GPS -->
+            <!-- ====================================== -->
+
+            <div
+              style="
+                padding-top:7px;
+                border-top:
+                  1px solid rgba(255,255,255,.12);
+              "
+            >
+
+              📌 GPS:
+
+              ${
+                hasCurrentGps
+                ?
+                `
+                <span
+                  onclick="
+                    zoomToLiveStaff(
+                      ${JSON.stringify(
+                        safeStaffName
+                      )},
+                      ${currentLat},
+                      ${currentLng}
+                    )
+                  "
+                  style="
+                    cursor:pointer;
+                    color:#7fdfff;
+                    text-decoration:underline;
+                    font-weight:800;
+                  "
+                  title="Zoom to current staff location"
+                >
+                  ${currentLat.toFixed(6)},
+                  ${currentLng.toFixed(6)}
+                </span>
+                `
+                :
+                `
+                <span
+                  style="
+                    color:#FFD166;
+                    font-weight:700;
+                  "
+                >
+                  GPS unavailable
+                </span>
+                `
+              }
+
+            </div>
+
+
+            <!-- ====================================== -->
+            <!-- LAST GPS -->
+            <!-- ====================================== -->
+
+            <div
+              style="
+                margin-top:4px;
+              "
+            >
+
+              🕒 Last GPS Update:
+
+              <b>
+                ${lastTime}
+              </b>
+
+            </div>
 
           </div>
-
-
-          <!-- ====================================== -->
-          <!-- 🕒 LAST GPS -->
-          <!-- ====================================== -->
-
-          <div>
-
-            🕒 Last GPS Update:
-
-            <b>
-              ${lastTime}
-            </b>
-
-          </div>
-
 
         </div>
 
@@ -42899,15 +43267,22 @@ const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
           display:flex;
           justify-content:center;
           align-items:center;
+          padding:10px;
+          box-sizing:border-box;
         "
       >
 
         <div
           style="
             width:min(95vw,550px);
+            max-height:90vh;
             background:#1f2937;
-            border-radius:12px;
+            border:
+              1px solid rgba(255,255,255,.18);
+            border-radius:14px;
             overflow:hidden;
+            box-shadow:
+              0 10px 35px rgba(0,0,0,.45);
           "
         >
 
@@ -42915,6 +43290,10 @@ const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
             style="
               padding:10px;
               text-align:right;
+              background:
+                rgba(255,255,255,.04);
+              border-bottom:
+                1px solid rgba(255,255,255,.12);
             "
           >
 
@@ -42925,6 +43304,14 @@ const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
                     'liveDutyTeamModal'
                   )
                   ?.remove()
+              "
+              style="
+                cursor:pointer;
+                border:0;
+                border-radius:6px;
+                padding:5px 9px;
+                font-size:16px;
+                font-weight:800;
               "
             >
               ✖
@@ -42947,6 +43334,7 @@ const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
 
   }
 
+
   catch(err){
 
     console.error(
@@ -42956,8 +43344,7 @@ const staffDistanceKey = String(staff.cleanName || staff.name || "").trim();
 
   }
 
-}
-function clearLiveStaffMarker(){
+}function clearLiveStaffMarker(){
 
   if(
     window.liveStaffLocationMarker
