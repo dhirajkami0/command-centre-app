@@ -94842,7 +94842,154 @@ function createFirestoreSafeSightingPayload(
     // =====================================================
     // SUBMIT
     // =====================================================
+/* ============================================================
+   🔒 AUTHORITATIVE OBSERVATION SESSION RESOLVER
+   ------------------------------------------------------------
+   PURPOSE:
+   Every NEW Elephant/Wildlife observation created during
+   active duty MUST carry the exact patrol sessionId.
 
+   PRIORITY:
+     1. window.currentSessionId
+     2. localStorage.sessionId
+     3. session owner cache
+        matching current staff
+
+   IMPORTANT:
+     • Existing edits are NOT reassigned.
+     • No new Firestore system.
+     • No new cache.
+     • Existing session architecture is reused.
+   ============================================================ */
+
+function ggGetAuthoritativeObservationSessionId(){
+
+    /* ========================================================
+       1. RUNTIME SESSION
+       ======================================================== */
+
+    const runtimeSessionId =
+        String(
+            window.currentSessionId ||
+            ""
+        ).trim();
+
+    if(
+        runtimeSessionId
+    ){
+        return runtimeSessionId;
+    }
+
+
+    /* ========================================================
+       2. EXISTING LOCAL SESSION
+       ======================================================== */
+
+    let storedSessionId = "";
+
+    try{
+
+        storedSessionId =
+            String(
+                localStorage.getItem(
+                    "sessionId"
+                ) ||
+                ""
+            ).trim();
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Observation session localStorage read failed:",
+            err
+        );
+
+    }
+
+    if(
+        storedSessionId
+    ){
+
+        return storedSessionId;
+
+    }
+
+
+    /* ========================================================
+       3. EXISTING SESSION OWNER CACHE
+       --------------------------------------------------------
+       Reuse patrolSessionStaff only.
+       ======================================================== */
+
+    try{
+
+        const profile =
+            window.userProfile ||
+            {};
+
+        const cleanName =
+            String(
+                profile.cleanName ||
+                profile.name ||
+                ""
+            )
+            .trim()
+            .toUpperCase();
+
+        const owners =
+            window.patrolSessionStaff ||
+            {};
+
+        for(
+            const [sessionId, staff]
+            of Object.entries(owners)
+        ){
+
+            if(
+                !staff
+            ){
+                continue;
+            }
+
+            const ownerName =
+                String(
+                    staff.cleanName ||
+                    staff.staffName ||
+                    staff.name ||
+                    ""
+                )
+                .trim()
+                .toUpperCase();
+
+            if(
+                cleanName &&
+                ownerName &&
+                cleanName === ownerName
+            ){
+
+                return String(
+                    sessionId
+                ).trim();
+
+            }
+
+        }
+
+    }
+    catch(err){
+
+        console.warn(
+            "⚠ Observation session owner lookup failed:",
+            err
+        );
+
+    }
+
+
+    return "";
+
+}
 // ============================================================
 // 🚀 UNIVERSAL SIGHTING SUBMISSION
 // ============================================================
@@ -95021,33 +95168,102 @@ async function submitToServer(
 // • No new Firestore write is introduced here.
 // ========================================================
 
-if (
-    !window.isEditingSighting &&
-    window.isDutyActive === true
-) {
+/* ============================================================
+   🔒 AUTHORITATIVE NEW-OBSERVATION SESSION STAMP
+   ------------------------------------------------------------
+   NEW observation:
+       MUST receive the patrol sessionId.
 
-    const activeSessionId =
-        String(
-            window.currentSessionId ||
-            ""
-        ).trim();
+   EXISTING edit:
+       NEVER receives a new session assignment.
 
-    if (activeSessionId) {
+   This guarantees that the completed-session report can
+   later identify exactly which patrol session owns the
+   observation.
+   ============================================================ */
+
+if(
+    !window.isEditingSighting
+){
+
+    const observationSessionId =
+        ggGetAuthoritativeObservationSessionId();
+
+    console.log(
+        "🔎 OBSERVATION SESSION AUTHORITY:",
+        {
+            observationType,
+            isDutyActive:
+                window.isDutyActive === true,
+            currentSessionId:
+                window.currentSessionId || "",
+            localStorageSessionId:
+                (() => {
+                    try{
+                        return localStorage.getItem(
+                            "sessionId"
+                        ) || "";
+                    }
+                    catch(err){
+                        return "";
+                    }
+                })(),
+            resolvedSessionId:
+                observationSessionId
+        }
+    );
+
+
+    /* ========================================================
+       ACTIVE DUTY → SESSION ID IS REQUIRED
+       ======================================================== */
+
+    if(
+        window.isDutyActive === true
+    ){
+
+        if(
+            !observationSessionId
+        ){
+
+            console.error(
+                "❌ NEW OBSERVATION BLOCKED — NO AUTHORITATIVE SESSION ID",
+                {
+                    observationType,
+                    isDutyActive:
+                        window.isDutyActive,
+                    currentSessionId:
+                        window.currentSessionId || ""
+                }
+            );
+
+            throw new Error(
+                "Active patrol session could not be determined. " +
+                "Observation was NOT submitted."
+            );
+
+        }
+
 
         finalPayload.sessionId =
-            activeSessionId;
+            observationSessionId;
+
 
         console.log(
-            "🔗 SIGHTING SESSION STAMPED:",
+            "🔗 OBSERVATION SESSION STAMPED:",
             {
                 observationType,
                 sessionId:
-                    activeSessionId
+                    observationSessionId,
+                sightingId:
+                    finalPayload.sighting_id ||
+                    null
             }
         );
 
     }
-}    // ========================================================
+
+}   // ========================================================
     // DEBUG
     // ========================================================
 
@@ -95218,8 +95434,125 @@ if (
             finalPayload.firestore_id =
                 firestoreResult.firestoreId ||
                 firestoreResult.sightingId;
+/* ============================================================
+   🔒 IMMEDIATE LOCAL REPORT-CACHE UPSERT
+   ------------------------------------------------------------
+   PURPOSE:
+   Do not depend on realtime listener timing for End Duty.
+
+   Firestore remains the persistent source.
+   Existing RAM cache becomes immediately aligned.
+
+   NO new cache is created.
+   ============================================================ */
+
+try{
+
+    const cachedObservation = {
+        ...finalPayload,
+
+        firestore_id:
+            finalPayload.firestore_id ||
+            "",
+
+        sighting_id:
+            finalPayload.sighting_id ||
+            "",
+
+        sessionId:
+            String(
+                finalPayload.sessionId ||
+                ""
+            ).trim()
+    };
 
 
+    if(
+        observationType ===
+        "ELEPHANT"
+    ){
+
+        window.sightingsCache =
+            window.sightingsCache ||
+            Object.create(null);
+
+
+        const cacheKey =
+            String(
+                cachedObservation.firestore_id ||
+                cachedObservation.sighting_id ||
+                ""
+            ).trim();
+
+
+        if(
+            cacheKey
+        ){
+
+            window.sightingsCache[
+                cacheKey
+            ] =
+                cachedObservation;
+
+        }
+
+    }
+
+
+    else if(
+        observationType ===
+        "WILDLIFE"
+    ){
+
+        window.wildlifeCache =
+            window.wildlifeCache ||
+            Object.create(null);
+
+
+        const cacheKey =
+            String(
+                cachedObservation.firestore_id ||
+                cachedObservation.sighting_id ||
+                ""
+            ).trim();
+
+
+        if(
+            cacheKey
+        ){
+
+            window.wildlifeCache[
+                cacheKey
+            ] =
+                cachedObservation;
+
+        }
+
+    }
+
+
+    console.log(
+        "✅ OBSERVATION REPORT CACHE UPDATED:",
+        {
+            observationType,
+            sessionId:
+                cachedObservation.sessionId,
+            firestoreId:
+                cachedObservation.firestore_id,
+            sightingId:
+                cachedObservation.sighting_id
+        }
+    );
+
+}
+catch(cacheErr){
+
+    console.warn(
+        "⚠ Observation local report-cache update failed:",
+        cacheErr
+    );
+
+}
             finalPayload.financial_year =
                 firestoreResult.financialYear ||
                 "";
