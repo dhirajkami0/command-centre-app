@@ -125782,15 +125782,16 @@ console.log(
 
     }
 
-    catch (err) {
+catch (err) {
 
-      console.error(
+    console.error(
         "❌ Apps Script Launch Failed",
         err
-      );
+    );
 
-    }
+    throw err;
 
+}
     // ==========================================================
     // DONE
     // ==========================================================
