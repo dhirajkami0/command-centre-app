@@ -122776,6 +122776,29 @@ if(
                 totalCells
             }
         );
+
+
+// ============================================================
+// 🔒 COMPLETED SESSION OCCURRENCE WRITE BARRIER
+// ------------------------------------------------------------
+// All GPS/cell occurrence writes launched before End Duty
+// must be committed to IndexedDB before the completed-session
+// snapshot reads cell_occurrences.
+//
+// This is the authoritative final-session boundary.
+// ============================================================
+
+if(
+    typeof ggReportWaitForPendingOccurrenceWrites ===
+    "function"
+){
+    await ggReportWaitForPendingOccurrenceWrites();
+
+    console.log(
+        "✅ COMPLETED SESSION OCCURRENCE WRITE BARRIER PASSED:",
+        cleanSessionId
+    );
+}
         /* ========================================================
            READ EXISTING CELL OCCURRENCES
            ======================================================== */
@@ -122865,6 +122888,38 @@ if(
 
                 }
             );
+
+console.log(
+    "🔎 FINAL SESSION OCCURRENCE RECONCILIATION:",
+    {
+        sessionId: cleanSessionId,
+
+        totalIndexedDBOccurrences:
+            occurrenceRecords.length,
+
+        finalSessionOccurrences:
+            sessionOccurrences.length,
+
+        uniqueSessionCells:
+            new Set(
+                sessionOccurrences.map(
+                    occurrence =>
+                        String(
+                            occurrence?.gridId || ""
+                        ).trim()
+                        +
+                        "|" +
+                        String(
+                            occurrence?.cellId || ""
+                        ).trim()
+                )
+            ).size,
+
+        allowedGridCount:
+            allowedGridIds.size
+    }
+);
+
 
 
 /* ============================================================
@@ -125339,8 +125394,37 @@ console.log(
         offencesDetected:
           offencesIrregularities,
 
+// ==========================================================
+// 🗺 ACTUAL GIS BEAT-WISE PATROL METRICS
+// ----------------------------------------------------------
+// IMPORTANT:
+//
+// These are calculated from the completed-session snapshot
+// using actual GIS Beat attribution.
+//
+// Do NOT replace these with profile Beat.
+// ==========================================================
 
-        // ----------------------------------------------
+beatMetrics:
+  snapshot.beatMetrics ||
+  {},
+
+
+// ==========================================================
+// 🐘🦌⚠️ ACTUAL GIS BEAT-WISE OBSERVATION METRICS
+// ----------------------------------------------------------
+// Separate from the global observation counters above.
+//
+// These preserve:
+//
+// Elephant → actual GIS Beat
+// Wildlife → actual GIS Beat
+// Offence → actual GIS Beat
+// ==========================================================
+
+observationBeatMetrics:
+  snapshot.observationBeatMetrics ||
+  {},        // ----------------------------------------------
         // COMPARTMENTS / CELLS
         // ----------------------------------------------
 
@@ -125500,108 +125584,201 @@ console.log(
         registerJson
       );
 
+// ==========================================================
+// 🔎 DIAGNOSTIC 2D — BEAT-WISE PAYLOAD VERIFICATION
+// ==========================================================
 
-      // ==========================================================
+console.log(
+  "🗺 BEAT-WISE REGISTER PAYLOAD:",
+  {
+    sessionId:
+      registerPayload.sessionId,
+
+    beatMetrics:
+      registerPayload.beatMetrics,
+
+    observationBeatMetrics:
+      registerPayload.observationBeatMetrics,
+
+    beatCount:
+      registerPayload.beatMetrics &&
+      typeof registerPayload.beatMetrics === "object"
+        ? Object.keys(
+            registerPayload.beatMetrics
+          ).length
+        : 0,
+
+    observationBeatCount:
+      registerPayload.observationBeatMetrics &&
+      typeof registerPayload.observationBeatMetrics === "object"
+        ? Object.keys(
+            registerPayload.observationBeatMetrics
+          ).length
+        : 0
+  }
+);      // ==========================================================
       // 🚀 APPS SCRIPT POST
       // ==========================================================
 
-      fetch(
+      // ==========================================================
+      // 🚀 APPS SCRIPT POST — AUTHORITATIVE COMPLETED SESSION SYNC
+      // ----------------------------------------------------------
+      // IMPORTANT:
+      //
+      // This POST MUST be awaited.
+      //
+      // End Duty must NOT consider the completed session finished
+      // until Apps Script has responded successfully.
+      // ==========================================================
 
-        window.APPS_SCRIPT_URL,
+      const registerResponse =
+        await fetch(
 
+          window.APPS_SCRIPT_URL,
+
+          {
+
+            method:
+              "POST",
+
+            body:
+              registerJson
+
+          }
+
+        );
+
+
+      // ==========================================================
+      // 🔎 DIAGNOSTIC 3 — HTTP RESPONSE
+      // ==========================================================
+
+      console.log(
+        "🔎 DIAG 3 — APPS SCRIPT HTTP RESPONSE:",
         {
 
-          method:
-            "POST",
+          ok:
+            registerResponse.ok,
 
-          body:
-            registerJson
+          status:
+            registerResponse.status,
+
+          statusText:
+            registerResponse.statusText,
+
+          url:
+            registerResponse.url
 
         }
-
-      )
-
-        // ========================================================
-        // 🔎 DIAGNOSTIC 3 — HTTP RESPONSE
-        // ========================================================
-
-        .then(
-          async r => {
-
-            console.log(
-              "🔎 DIAG 3 — APPS SCRIPT HTTP RESPONSE:",
-              {
-                ok:
-                  r.ok,
-
-                status:
-                  r.status,
-
-                statusText:
-                  r.statusText,
-
-                url:
-                  r.url
-              }
-            );
+      );
 
 
-            const responseText =
-              await r.text();
+      // ==========================================================
+      // 📄 READ RESPONSE BODY
+      // ==========================================================
+
+      const registerResponseText =
+        await registerResponse.text();
 
 
-            return {
-
-              ok:
-                r.ok,
-
-              status:
-                r.status,
-
-              statusText:
-                r.statusText,
-
-              url:
-                r.url,
-
-              responseText
-
-            };
-
-          }
-        )
+      console.log(
+        "📄 DIAG 3A — APPS SCRIPT RESPONSE BODY:",
+        registerResponseText
+      );
 
 
-        // ========================================================
-        // 🔎 DIAGNOSTIC 3A — APPS SCRIPT RESPONSE BODY
-        // ========================================================
+      // ==========================================================
+      // ❌ HTTP FAILURE
+      // ==========================================================
 
-        .then(
-          result => {
+      if(
+        !registerResponse.ok
+      ){
 
-            console.log(
-              "📄 DIAG 3A — APPS SCRIPT RESPONSE BODY:",
-              result
-            );
-
-          }
-        )
-
-
-        // ========================================================
-        // ❌ NETWORK / FETCH ERROR
-        // ========================================================
-
-        .catch(
-          err => {
-
-            console.error(
-              "❌ Apps Script Sync Failed",
-              err
-            );
-
-          }
+        throw new Error(
+          "Apps Script HTTP failure: " +
+          registerResponse.status +
+          " " +
+          registerResponse.statusText
         );
+
+      }
+
+
+      // ==========================================================
+      // 🔎 PARSE APPS SCRIPT RESULT
+      // ==========================================================
+
+      let registerResult =
+        null;
+
+
+      try{
+
+        registerResult =
+          JSON.parse(
+            registerResponseText
+          );
+
+      }
+      catch(
+        parseErr
+      ){
+
+        console.error(
+          "❌ APPS SCRIPT RESPONSE IS NOT VALID JSON:",
+          parseErr,
+          registerResponseText
+        );
+
+        throw new Error(
+          "Apps Script returned an invalid response."
+        );
+
+      }
+
+
+      // ==========================================================
+      // ❌ APPLICATION-LEVEL FAILURE
+      // ==========================================================
+
+      if(
+        !registerResult ||
+        registerResult.success !== true
+      ){
+
+        console.error(
+          "❌ APPS SCRIPT SAVE_PATROL_KML FAILED:",
+          registerResult
+        );
+
+        throw new Error(
+          registerResult?.error ||
+          registerResult?.reason ||
+          "Apps Script did not confirm SAVE_PATROL_KML."
+        );
+
+      }
+
+
+      // ==========================================================
+      // ✅ SERVER CONFIRMED COMPLETED SESSION WRITE
+      // ==========================================================
+
+      console.log(
+        "✅ SAVE_PATROL_KML CONFIRMED BY APPS SCRIPT:",
+        registerResult
+      );
+
+
+      // ==========================================================
+      // 🔒 COMPLETED SESSION REGISTER BARRIER PASSED
+      // ==========================================================
+
+      console.log(
+        "🔒 COMPLETED SESSION REGISTER WRITE CONFIRMED:",
+        cleanSessionId
+      );
 
     }
 
