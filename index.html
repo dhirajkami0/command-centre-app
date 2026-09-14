@@ -86867,19 +86867,6 @@ window.activeSessionMap[
   staffName
 ] = currentSessionId;
 
-// ============================================================
-// ⚡ LATEST POINT FAST PATH
-// ============================================================
-
-if(
-  typeof window.loadLatestPatrolPointFast ===
-  "function"
-){
-  window.loadLatestPatrolPointFast(
-    currentSessionId,
-    s
-  );
-}
 
 // ============================================================
 // 🔒 ONE CENTRAL LISTENER PER SESSION
