@@ -83045,8 +83045,219 @@ function loadStaff(){
   window.patrolSessionStaff ??= Object.create(null);
   window.patrolSessionRequired ??= new Set();
   window.sessionPointCache ??= Object.create(null);
+// ============================================================
+// ⚡ NON-BLOCKING LATEST PATROL POINT FAST PATH
+// ------------------------------------------------------------
+// Purpose:
+//   Render the newest patrol position immediately after
+//   live_staff exposes a valid session.
+//
+// Important:
+//   • Does NOT create a listener.
+//   • Does NOT replace the central onSnapshot listener.
+//   • Does NOT await inside the live_staff session loop.
+//   • Seeds only the newest point into the existing cache.
+//   • Existing full-session listener remains authoritative
+//     for complete history, analytics, tracks and future updates.
+// ============================================================
 
-  // ============================================================
+window.loadLatestPatrolPointFast = function(sessionId, staff){
+
+  const run = async function(){
+
+    try {
+
+      sessionId =
+        String(sessionId || "").trim();
+
+      if(
+        !sessionId ||
+        !staff ||
+        !window.fb ||
+        !window.db
+      ){
+        return;
+      }
+
+      const {
+        collection: collFb,
+        query: queryFb,
+        orderBy: orderByFb,
+        limit: limitFb,
+        getDocs: getDocsFb
+      } = window.fb;
+
+      if(
+        typeof collFb !== "function" ||
+        typeof queryFb !== "function" ||
+        typeof orderByFb !== "function" ||
+        typeof getDocsFb !== "function"
+      ){
+        console.warn(
+          "⚠ Latest patrol fast path unavailable:",
+          sessionId
+        );
+        return;
+      }
+
+      const pointsCollection =
+        collFb(
+          window.db,
+          "patrol_tracks",
+          sessionId,
+          "points"
+        );
+
+      const queryParts = [
+        orderByFb("time", "desc")
+      ];
+
+      // Use limit(1) when the Firebase wrapper exposes it.
+      // If unavailable, the query still works with orderBy()
+      // and the first document is used below.
+      if(typeof limitFb === "function"){
+        queryParts.push(limitFb(1));
+      }
+
+      const latestPointQuery =
+        queryFb(
+          pointsCollection,
+          ...queryParts
+        );
+
+      // This is deliberately not awaited by the caller.
+      const pointSnap =
+        await getDocsFb(latestPointQuery);
+
+      if(
+        !pointSnap ||
+        pointSnap.empty ||
+        !pointSnap.docs ||
+        !pointSnap.docs.length
+      ){
+        return;
+      }
+
+      const pointDoc =
+        pointSnap.docs[0];
+
+      const rawPoint =
+        typeof pointDoc.data === "function"
+          ? pointDoc.data()
+          : null;
+
+      if(!rawPoint){
+        return;
+      }
+
+      const point = {
+        ...rawPoint,
+
+        id:
+          String(
+            rawPoint.id ||
+            rawPoint.pointId ||
+            pointDoc.id ||
+            ""
+          ).trim(),
+
+        sessionId:
+          String(
+            rawPoint.sessionId ||
+            sessionId
+          ).trim()
+      };
+
+      const lat =
+        Number(point.lat);
+
+      const lon =
+        Number(point.lon);
+
+      if(
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lon) ||
+        lat === 0 ||
+        lon === 0
+      ){
+        return;
+      }
+
+      // Ensure the existing marker path can find this point
+      // through its authoritative cache helper.
+      window.sessionPointCache ??=
+        Object.create(null);
+
+      window.sessionPointCache[sessionId] ??=
+        Object.create(null);
+
+      window.sessionPointCache[sessionId][point.id] =
+        point;
+
+      window.latestPatrolPointByStaff ??=
+        Object.create(null);
+
+      const staffName =
+        cleanName(
+          staff.cleanName ||
+          staff.name ||
+          ""
+        );
+
+      if(!staffName){
+        return;
+      }
+
+      // Render immediately using the existing authorization
+      // and marker-rendering function.
+      if(
+        typeof window.updateLiveMarkerFromPatrolPoint ===
+        "function"
+      ){
+        window.updateLiveMarkerFromPatrolPoint(
+          staff,
+          point
+        );
+      }
+
+      console.log(
+        "⚡ LATEST PATROL POINT FAST RENDERED:",
+        {
+          sessionId,
+          staffName,
+          pointId: point.id,
+          lat,
+          lon
+        }
+      );
+
+    } catch(error){
+
+      // Fast-path failure must never interrupt the normal
+      // central listener or the live_staff processing flow.
+      console.warn(
+        "⚠ Latest patrol point fast path failed:",
+        sessionId,
+        error
+      );
+
+    }
+
+  };
+
+  // Start independently. The caller never waits for this.
+  Promise.resolve()
+    .then(run)
+    .catch(error => {
+      console.warn(
+        "⚠ Latest patrol fast path unhandled failure:",
+        sessionId,
+        error
+      );
+    });
+
+  return true;
+};  // ============================================================
   // 🔒 1. ENSURE PATROL SESSION LISTENER (SINGLETON OWNER)
   // ============================================================
   window.ensurePatrolSessionListener = function(sessionId, staff){
@@ -86640,22 +86851,49 @@ for(
             currentSessionId;
 
 
-        // ====================================================
-        // 🔒 ONE CENTRAL LISTENER PER SESSION
-        // ====================================================
+// ============================================================
+// 🔒 SESSION → STAFF OWNER
+// ============================================================
 
-        if(
-            typeof window.ensurePatrolSessionListener ===
-            "function"
-        ){
+window.patrolSessionStaff[
+  currentSessionId
+] = s;
 
-            window.ensurePatrolSessionListener(
-                currentSessionId,
-                s
-            );
+// ============================================================
+// 🔒 STAFF → SESSION MAP
+// ============================================================
 
-        }
+window.activeSessionMap[
+  staffName
+] = currentSessionId;
 
+// ============================================================
+// ⚡ LATEST POINT FAST PATH
+// ============================================================
+
+if(
+  typeof window.loadLatestPatrolPointFast ===
+  "function"
+){
+  window.loadLatestPatrolPointFast(
+    currentSessionId,
+    s
+  );
+}
+
+// ============================================================
+// 🔒 ONE CENTRAL LISTENER PER SESSION
+// ============================================================
+
+if(
+  typeof window.ensurePatrolSessionListener ===
+  "function"
+){
+  window.ensurePatrolSessionListener(
+    currentSessionId,
+    s
+  );
+}
     }
     catch(error){
 
