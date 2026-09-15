@@ -125840,8 +125840,100 @@ console.log(
         )
       }`;
 
+// ============================================================
+// 🛡 SURGICAL GIS METRIC RECOVERY
+// ------------------------------------------------------------
+// Existing populated snapshots remain untouched.
+// Recovery runs only for valid sessions whose GIS metrics
+// were not populated.
+// ============================================================
 
-    // ==========================================================
+const snapshotHasUsableGISMetrics =
+  Number(snapshot?.uniqueCellsVisited || 0) > 0 ||
+  Number(snapshot?.cellVisitOccurrences || 0) > 0 ||
+  (
+    Array.isArray(snapshot?.uniqueCellIds) &&
+    snapshot.uniqueCellIds.length > 0
+  );
+
+if (
+  validSession &&
+  !snapshotHasUsableGISMetrics &&
+  Array.isArray(points) &&
+  points.length >= 2 &&
+  typeof getTouchedCells === "function"
+) {
+  try {
+    const recoveryResult = getTouchedCells([
+      points
+    ]);
+
+    const recoveredCellIds = [
+      ...(recoveryResult?.touchedCells || [])
+    ];
+
+    if (recoveredCellIds.length > 0) {
+      console.warn(
+        "🛠 GIS metric recovery applied",
+        {
+          sessionId: cleanSessionId,
+          recoveredCells: recoveredCellIds.length,
+          distanceMeters:
+            recoveryResult?.distanceMeters || 0
+        }
+      );
+
+      // Only populate missing GIS values.
+      // Existing non-zero snapshot values remain untouched.
+
+      if (
+        Number(snapshot.cellVisitOccurrences || 0) <= 0
+      ) {
+        snapshot.cellVisitOccurrences =
+          recoveredCellIds.length;
+      }
+
+      if (
+        Number(snapshot.uniqueCellsVisited || 0) <= 0
+      ) {
+        snapshot.uniqueCellsVisited =
+          recoveredCellIds.length;
+      }
+
+      if (
+        !Array.isArray(snapshot.uniqueCellIds) ||
+        snapshot.uniqueCellIds.length === 0
+      ) {
+        snapshot.uniqueCellIds =
+          recoveredCellIds;
+      }
+
+      if (
+        Number(snapshot.compartmentsVisited || 0) <= 0
+      ) {
+        snapshot.compartmentsVisited =
+          new Set(
+            recoveredCellIds
+              .map(cellId =>
+                String(cellId)
+                  .split("_")
+                  .slice(0, 4)
+                  .join("_")
+              )
+              .filter(Boolean)
+          ).size;
+      }
+    }
+  } catch (err) {
+    console.warn(
+      "⚠ GIS metric recovery skipped",
+      {
+        sessionId: cleanSessionId,
+        error: err
+      }
+    );
+  }
+}    // ==========================================================
     // 📊 REPORT METRICS
     // ==========================================================
     // All values come from the completed-session snapshot.
