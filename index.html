@@ -21648,7 +21648,9 @@ async function updateMonthlyAnalyticsRebuild(
 
     visitSessions,
 
-    sessionCellVisits
+    sessionCellVisits,
+
+    sessionDistanceMeters
 
 ){  // ============================================================
   // PURPOSE
@@ -22714,13 +22716,16 @@ const existingSessionDistances =
 
     : {};
 
-const safeDistance =
-
-    Number.isFinite(distanceMeters)
-
-    ? Math.max(0, distanceMeters)
-
-    : 0;
+// Distance is session-specific.  Never assign one grid-buffer total
+// to every session that happened to be present in that buffer.
+const suppliedSessionDistances =
+    (
+        sessionDistanceMeters &&
+        typeof sessionDistanceMeters === "object" &&
+        !Array.isArray(sessionDistanceMeters)
+    )
+    ? sessionDistanceMeters
+    : {};
 
 for(
 
@@ -22728,9 +22733,24 @@ for(
 
 ){
 
-    existingSessionDistances[
-        sessionKey
-    ] = safeDistance;
+    const sessionDistance =
+        Number(
+            suppliedSessionDistances[sessionKey]
+        );
+
+    if(
+        Number.isFinite(sessionDistance) &&
+        sessionDistance >= 0
+    ){
+
+        // Repeated flushes for the same session/grid are cumulative.
+        // The buffer contributes only its own new physical segments.
+        existingSessionDistances[sessionKey] =
+            Number(
+                existingSessionDistances[sessionKey] || 0
+            ) + sessionDistance;
+
+    }
 
 }
 
@@ -89262,6 +89282,10 @@ window.analyticsBuffer[gridId] = {
 
         }
 
+        // Per-session last point prevents a grid buffer from connecting
+        // the end of one patrol session to the start of another.
+        buffer.sessionLastPoints ??= Object.create(null);
+
 
         // ==========================================================
         // 🔥 REBUILD EXISTING KEYS
@@ -89569,13 +89593,8 @@ if (normalizedSessionId && cellId) {
 
 
                 const previous =
-
-                    coords.length
-
-                        ? coords[
-                            coords.length - 1
-                        ]
-
+                    normalizedSessionId
+                        ? buffer.sessionLastPoints[normalizedSessionId] || null
                         : null;
 
 
@@ -89997,6 +90016,11 @@ if (normalizedSessionId && cellId) {
                         ]
                     );
 
+                }
+
+                if(normalizedSessionId){
+                    buffer.sessionLastPoints[normalizedSessionId] =
+                        [pointLat, pointLon];
                 }
 
             }
@@ -90806,6 +90830,22 @@ console.log(
 // NO full recalculation here.
 // ====================================================
 
+const sessionDistanceMeters = {};
+
+for(const distanceSegment of (Array.isArray(data?.distanceSegments) ? data.distanceSegments : [])){
+  const segmentSessionId = String(distanceSegment?.sessionId || "").trim();
+  const segmentStaffName = String(distanceSegment?.staffName || "").trim().toUpperCase();
+  const meters = Number(distanceSegment?.distanceMeters);
+
+  if(!segmentSessionId || !segmentStaffName || !Number.isFinite(meters) || meters < 0){
+    continue;
+  }
+
+  const sessionKey = `${segmentStaffName}|${segmentSessionId}`;
+  sessionDistanceMeters[sessionKey] =
+    Number(sessionDistanceMeters[sessionKey] || 0) + meters;
+}
+
 const transactionResult =
   await updateMonthlyAnalyticsRebuild(
 
@@ -90823,7 +90863,9 @@ const transactionResult =
 
     visitSessions,
 
-    sessionCellVisits
+    sessionCellVisits,
+
+    sessionDistanceMeters
 
   );
 
