@@ -87904,7 +87904,44 @@ staff.forEach(s => {
         });
 
         console.log("✅ Stable live staff loaded:", staff.length);
+// ==================================================
+// 🔴 MONTHLY STATUS — REFRESH LIVE DUTY TEAM
+// --------------------------------------------------
+// liveStaffCache is now stable for this snapshot.
+// ==================================================
 
+try {
+
+  const liveStaffEl =
+    document.getElementById("msLiveStaff");
+
+  if (
+    liveStaffEl &&
+    typeof window.getLiveStaffCountForCurrentPolygon === "function"
+  ) {
+
+    const liveCount =
+      Number(
+        window.getLiveStaffCountForCurrentPolygon() || 0
+      );
+
+    liveStaffEl.textContent =
+      liveCount.toLocaleString();
+
+    console.log(
+      "👥 Monthly Live Duty Team updated:",
+      liveCount
+    );
+  }
+
+} catch (liveCountErr) {
+
+  console.warn(
+    "⚠ Monthly Live Duty Team refresh failed:",
+    liveCountErr
+  );
+
+}
       } catch(e){
         console.error("❌ loadStaff crash:", e);
       }
