@@ -84113,7 +84113,8 @@ if(
 
   window.updateLiveMarkerFromPatrolPoint(
     staffMember,
-    null
+    null,
+    sessionId
   );
 
 }
@@ -85450,8 +85451,420 @@ staff.push(s);
 // • Marker/popup GPS comes from latest session point
 // ============================================================
 
+// Shared marker presentation and synchronous construction; no duty workflow.
+window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lon){
+            const color = getUserColor(s.cleanName);
+
+            let team = "N/A";
+            try {
+              if (s.team && String(s.team).trim()) {
+                team = String(s.team).trim();
+              } else if (s.staff && String(s.staff).trim()) {
+                team = String(s.staff).trim();
+              } else if (Array.isArray(s.staffNames)) {
+                team = s.staffNames.join(", ");
+              }
+            } catch(e){
+              console.warn("⚠ Team parse failed", e);
+            }
+
+            const dutyType = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "Patrolling";
+
+            const postingBeat = String(s.beat || s.Beat || "").trim();
+            const postingRange = String(s.range || s.Range || "").trim();
+            const postingDivision = String(s.division || s.Division || "").trim();
+            const postingPlace = postingBeat || (postingRange ? "Range HQ" : "");
+
+            const postingDetails = [postingPlace, postingRange, postingDivision]
+              .filter((value, idx, array) => {
+                const v = String(value || "").trim();
+                if(!v) return false;
+                return array.findIndex(item => String(item || "").trim().toLowerCase() === v.toLowerCase()) === idx;
+              })
+              .join(", ");
+
+            const dutyArea = String(
+              s.dutyArea ||
+              s.duty_area ||
+              s.DutyArea ||
+              s["Duty Area"] ||
+              s.compartment ||
+              s.Compartment ||
+              ""
+            ).trim() || "N/A";
+
+            let dutyStarted = "Unknown";
+            try {
+              if(s.sessionId){
+                const startMs = Number(String(s.sessionId).split("_").pop());
+                if(!isNaN(startMs)){
+                  dutyStarted = new Date(startMs).toLocaleString();
+                }
+              }
+            } catch(e){
+              console.warn("⚠ Duty start parse failed");
+            }
+
+            let dutyDuration = "Unknown";
+            try {
+              if(s.sessionId){
+                const startMs = Number(String(s.sessionId).split("_").pop());
+                if(!isNaN(startMs)){
+                  const diffMs = Date.now() - startMs;
+                  const totalMin = Math.floor(diffMs / 60000);
+                  const hrs = Math.floor(totalMin / 60);
+                  const mins = totalMin % 60;
+                  dutyDuration = hrs > 0 ? `${hrs} hr ${mins} min` : `${mins} min`;
+                }
+              }
+            } catch(e){
+              console.warn("⚠ Duty duration failed");
+            }
+
+            let liveSpeed = 0;
+
+            try {
+              liveSpeed =
+                Number(
+                  patrolPoint.speed
+                );
+
+              if(
+                !Number.isFinite(liveSpeed) ||
+                liveSpeed < 0
+              ){
+                liveSpeed = 0;
+              }
+
+              liveSpeed =
+                Math.max(
+                  0,
+                  Math.round(
+                    liveSpeed * 10
+                  ) / 10
+                );
+
+            } catch(e){
+              liveSpeed = 0;
+            }
+
+            const lastSeen =
+              typeof getPointTime === "function"
+                ? Number(
+                    getPointTime(
+                      patrolPoint
+                    )
+                  ) || 0
+                : Number(
+                    patrolPoint.time ||
+                    patrolPoint.timestamp ||
+                    patrolPoint.lastSeen ||
+                    0
+                  );
+
+            const ageMs = Date.now() - lastSeen;
+            if(ageMs > 60000){
+              liveSpeed = 0;
+            }
+
+            const LIVE_MARKER_MAX_AGE = 30 * 60 * 1000;
+            const OFFLINE_MARKER_MAX_AGE = 3 * 60 * 60 * 1000;
+
+            let markerState = "LIVE";
+            if(!lastSeen || ageMs >= OFFLINE_MARKER_MAX_AGE){
+              markerState = "OFFLINE";
+            } else if(ageMs > LIVE_MARKER_MAX_AGE){
+              markerState = "STALE";
+            }
+
+            let markerColor = "#00ff00";
+            let markerOpacity = "1";
+            let radarHtml = `<div class="radarPulse"></div>`;
+
+            if(markerState === "STALE"){
+              markerColor = "#ffd600";
+              markerOpacity = "0.55";
+              radarHtml = "";
+            } else if(markerState === "OFFLINE"){
+              markerColor = "#ff0000";
+              markerOpacity = "0.35";
+              radarHtml = "";
+            }
+
+            const icon = L.divIcon({
+              html: `
+                <div class="markerWrap" style="opacity:${markerOpacity};">
+                  ${radarHtml}
+                  <div class="markerCore">
+                    <i class="fa-solid fa-person-military-pointing" style="color:${markerColor}; font-size:17px;"></i>
+                  </div>
+                </div>
+              `,
+              iconSize: [30, 30],
+              iconAnchor: [15, 15]
+            });
+
+            let liveTime = "Unknown";
+
+            try {
+              const patrolPointTime =
+                typeof getPointTime === "function"
+                  ? Number(
+                      getPointTime(
+                        patrolPoint
+                      )
+                    ) || 0
+                  : Number(
+                      patrolPoint.time ||
+                      patrolPoint.timestamp ||
+                      0
+                    );
+
+              if(
+                patrolPointTime > 0
+              ){
+                liveTime =
+                  new Date(
+                    patrolPointTime
+                  ).toLocaleString();
+              }
+
+            } catch(error){
+              console.warn(
+                "⚠ Patrol point time parse failed:",
+                s.cleanName,
+                error
+              );
+            }
+
+            const staffDistanceKey = cleanName(s.cleanName || s.name || "");
+
+            let currentLocation = {
+              type: "GPS",
+              gps: `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
+              compartment: "",
+              beat: "",
+              range: "",
+              division: "",
+              village: "",
+              block: "",
+              nearestPoint: "",
+              distanceMeters: null
+            };
+
+            if(typeof window.resolveCurrentGIS === "function"){
+              try {
+                const resolved = window.resolveCurrentGIS(lat, lon);
+                if(resolved){
+                  currentLocation = {
+                    ...currentLocation,
+                    compartment: resolved.compartment || "",
+                    beat: resolved.beat || "",
+                    range: resolved.range || "",
+                    division: resolved.division || "",
+                    village: resolved.village || "",
+                    block: resolved.block || "",
+                    nearestPoint: resolved.nearestPoint || "",
+                    distanceMeters: resolved.distanceMeters ?? null
+                  };
+
+                  if(currentLocation.compartment || currentLocation.beat || currentLocation.range || currentLocation.division){
+                    currentLocation.type = "FOREST";
+                  } else if(currentLocation.village){
+                    currentLocation.type = "VILLAGE";
+                  } else {
+                    currentLocation.type = "UNKNOWN";
+                  }
+                } else {
+                  currentLocation.type = "UNKNOWN";
+                }
+              } catch(err){
+                currentLocation.type = "UNKNOWN";
+              }
+            }
+
+            let currentLocationHtml = "";
+            if(currentLocation.type === "FOREST"){
+              currentLocationHtml = `
+                <div>🌲 Compartment: <b id="staffCompartment_${encodeURIComponent(staffDistanceKey)}">${currentLocation.compartment || "N/A"}</b></div>
+                <div>🧭 Beat: <b id="staffBeat_${encodeURIComponent(staffDistanceKey)}">${currentLocation.beat || "N/A"}</b></div>
+                <div>🏢 Range: <b id="staffRange_${encodeURIComponent(staffDistanceKey)}">${currentLocation.range || "N/A"}</b></div>
+              `;
+            } else if(currentLocation.type === "VILLAGE"){
+              currentLocationHtml = `
+                <div>🏡 Village: <b id="staffVillage_${encodeURIComponent(staffDistanceKey)}">${currentLocation.village || "N/A"}</b></div>
+                ${currentLocation.block ? `<div>🗺 Block: <b id="staffBlock_${encodeURIComponent(staffDistanceKey)}">${currentLocation.block}</b></div>` : ""}
+                ${currentLocation.nearestPoint ? `<div>📌 Near: <b id="staffNearestPoint_${encodeURIComponent(staffDistanceKey)}">${currentLocation.nearestPoint}</b> ${currentLocation.distanceMeters != null ? `<span id="staffNearestDistance_${encodeURIComponent(staffDistanceKey)}">(${currentLocation.distanceMeters} m)</span>` : ""}</div>` : ""}
+              `;
+            } else {
+              currentLocationHtml = `<div>📌 GIS: <b>Outside mapped forest/village boundary</b></div>`;
+            }
+
+            const popup = `
+            <div style="
+              font-family:Segoe UI;
+              min-width:200px;
+              max-width:210px;
+              color:#111;
+              font-size:12px;
+              height:66%;
+              overflow:hidden;
+              background:#ffffff;
+              border-radius:12px;
+              padding:10px;
+              box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+              border:1px solid #e0e0e0;
+            ">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#1b5e20; display:flex; align-items:center; justify-content:center; color:white; font-size:17px; box-shadow:0 0 8px rgba(0,255,0,0.35); flex-shrink:0;">
+                  👮
+                </div>
+                <div>
+                  <div style="font-size:14px; font-weight:700; color:#1b5e20; line-height:1.2;">
+                    ${s.name}
+                  </div>
+                  <div style="font-size:10px; color:#666; font-weight:600;">
+                    LIVE PATROL STAFF
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:#ffffff; border-left:4px solid #2e7d32; border:1px solid #d7e9d8; padding:6px; border-radius:7px; margin-bottom:8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
+                <div style="color:#1b5e20; font-weight:700; font-size:12px;">
+                  🟢 DUTY TYPE
+                </div>
+                <div style="margin-top:3px; font-size:12px; color:#222; line-height:1.35; font-weight:600;">
+                  ${dutyType}
+                </div>
+              </div>
+
+              <div style="margin-bottom:8px; font-size:12px; line-height:1.6; background:#ffffff; border:1px solid #eeeeee; border-radius:7px; padding:6px;">
+                <div style="margin-bottom:4px; color:#111; font-weight:600;">
+                  📞 ${s.phone ? `<a href="tel:${String(s.phone).trim()}" style="color:#00695c; text-decoration:none; font-weight:700;">${s.phone}</a>` : "N/A"}
+                </div>
+                <div style="margin-bottom:4px; color:#111;">
+                  🏢 Posting: <b>${postingDetails || "N/A"}</b>
+                </div>
+                <div style="color:#111;">
+                  📍 Duty Area: <b>${dutyArea}</b>
+                </div>
+              </div>
+
+              <div style="margin-bottom:8px; font-size:11px; line-height:1.6; background:#f7fbf7; border:1px solid #d7e9d8; border-radius:7px; padding:6px;">
+                <div style="font-weight:700; color:#1b5e20; margin-bottom:4px; font-size:12px;">
+                  📍 Current Location
+                </div>
+                <div id="staffCurrentLocation_${encodeURIComponent(staffDistanceKey)}">
+                  ${currentLocationHtml}
+                </div>
+                <div style="margin-top:3px; color:#555; font-size:10px;">
+                  🛰 GPS: <b id="staffGps_${encodeURIComponent(staffDistanceKey)}">${lat.toFixed(6)}, ${lon.toFixed(6)}</b>
+                </div>
+              </div>
+
+              <div style="background:#ffffff; border:1px solid #e0e0e0; border-radius:7px; padding:6px; margin-bottom:8px;">
+                <div style="font-weight:700; color:#37474f; margin-bottom:4px; font-size:12px;">
+                  👥 Patrol Team
+                </div>
+                <div style="font-size:11px; color:#333; line-height:1.4; max-height:65px; overflow-y:auto; white-space:pre-wrap; font-weight:500;">
+                  ${team}
+                </div>
+              </div>
+
+              <div style="background:#ffffff; border:1px solid #eeeeee; border-radius:7px; padding:6px; font-size:11px; line-height:1.7; color:#111;">
+                <div style="margin-bottom:3px;">
+                  📊 Speed: <b id="staffSpeed_${encodeURIComponent(staffDistanceKey)}">${liveSpeed < 1 ? "Stationary" : `${liveSpeed.toFixed(1)} km/h`}</b>
+                </div>
+                <div style="margin-bottom:3px;">
+                  📏 Distance Travelled: <b id="staffDistance_${encodeURIComponent(staffDistanceKey)}">${Number(
+                    patrolPoint.distanceCoveredKm ??
+                    (
+                      Number(
+                        patrolPoint.distanceCoveredMeters
+                      ) || 0
+                    ) / 1000
+                  ).toFixed(2)} km</b>
+                </div>
+                <div style="margin-bottom:3px;">
+                  📍 Patrol Points: <b id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}">${Number(
+                    patrolPoint.patrolPointCount ??
+                    Object.keys(
+                      window.sessionPointCache?.[
+                        renderSessionId
+                      ] || {}
+                    ).length
+                  ).toLocaleString()}</b>
+                </div>
+                <div style="margin-bottom:3px; font-weight:600; color:#1b5e20;">
+                  🛰 Live GPS Active
+                </div>
+                <div style="margin-bottom:3px;">
+                  🟢 Duty Started: <b>${dutyStarted}</b>
+                </div>
+                <div style="margin-bottom: 3px;">
+                  ⏳ Duty Duration: <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">${dutyDuration}</b>
+                </div>
+                <div>
+                  ⏱ Last GPS Update: <b id="staffUpdatedAt_${encodeURIComponent(staffDistanceKey)}">${liveTime}</b>
+                </div>
+              </div>
+
+              <div style="margin-top:10px; display:grid; grid-template-columns:1fr;">
+                <button onclick="navigateHEC('${lat}','${lon}')" style="padding:11px; background:#1565c0; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">
+                  🧭 NAVIGATE
+                </button>
+              </div>
+            </div>`;
+
+            if(!window.staffMarkers[s.cleanName]){
+              const createdMarker = L.marker(
+                [lat, lon],
+                {
+                  icon,
+                  zIndexOffset: 3000
+                }
+              )
+              .bindPopup(popup, { autoClose: false, closeOnClick: false })
+              ;
+              window.staffMarkers[s.cleanName] = createdMarker;
+              createdMarker.addTo(staffLayer);
+
+            }
+            const staffMarker = window.staffMarkers?.[s.cleanName];
+            if(staffMarker && staffMarker.__staffTrackClickBound !== true){
+              staffMarker.__staffTrackClickBound = true;
+              staffMarker.on("click", function(){
+                try {
+                  const clickedName = cleanName(s.cleanName || s.name || "");
+                  if(!clickedName) return;
+
+                  const currentUserName = cleanName(window.userProfile?.cleanName || window.userProfile?.name || "");
+                  if(clickedName === currentUserName) return;
+
+                  if(window.staffTrackState?.bulkEnabled === true) return;
+
+                  const selectedName = cleanName(window.staffTrackState?.selectedStaff || "");
+                  if(selectedName === clickedName){
+                    window.clearSelectedStaffTrack?.();
+                    return;
+                  }
+
+                  if(selectedName){
+                    window.clearSelectedStaffTrack?.();
+                  }
+
+                  window.loadIndividualStaffTrack?.(clickedName);
+                } catch(err){
+                  console.error("❌ Staff marker track click failed:", s.cleanName, err);
+                }
+              });
+            }
+
+            return { marker: window.staffMarkers[s.cleanName], icon, popup };
+};
+
 window.updateLiveMarkerFromPatrolPoint =
-function(staff, point){
+function(staff, point, originatingSessionId){
 
     try{
 
@@ -85875,14 +86288,53 @@ function(staff, point){
         // 13. FIND EXISTING MARKER
         // ========================================================
 
-        const marker =
-            window.staffMarkers?.[
-                staffName
-            ];
-
+        let marker = window.staffMarkers?.[staffName];
 
         if(!marker){
-            return;
+            // Captured listener metadata cannot authorize missing-marker creation.
+            const currentStaff = window.visibleStaffCache?.[staffName];
+            const originSession = String(originatingSessionId || "").trim();
+            if(!currentStaff || currentStaff.dutyActive !== true ||
+               cleanName(currentStaff.cleanName || currentStaff.name || "") !== staffName ||
+               String(currentStaff.cleanName || "").trim() !== staffName ||
+               String(currentStaff.sessionId || "").trim() !== sessionId ||
+               String(staff.sessionId || "").trim() !== sessionId ||
+               !originSession || originSession !== sessionId){
+                return;
+            }
+
+            // Match the existing render pass's five-decimal overlap grouping.
+            let markerLat = lat;
+            let markerLon = lon;
+            const coordinateKey = lat.toFixed(5) + "," + lon.toFixed(5);
+            let overlapCount = 0;
+            for(const candidate of Object.values(window.visibleStaffCache || {})){
+                if(!candidate || candidate.dutyActive !== true) continue;
+                const candidateName = cleanName(candidate.cleanName || candidate.name || "");
+                if(!candidateName) continue;
+                const candidateSession = String(candidate.sessionId ||
+                    window.activeSessionMap?.[candidateName] || "").trim();
+                if(!candidateSession) continue;
+                const candidatePoint = window.getLatestPatrolPointForSession(candidateSession);
+                if(!candidatePoint || String(candidatePoint.sessionId || candidateSession).trim() !== candidateSession) continue;
+                const candidateLat = Number(candidatePoint.lat);
+                const candidateLon = Number(candidatePoint.lon);
+                if(!Number.isFinite(candidateLat) || !Number.isFinite(candidateLon) ||
+                   candidateLat === 0 || candidateLon === 0) continue;
+                if(candidateLat.toFixed(5) + "," + candidateLon.toFixed(5) === coordinateKey) overlapCount++;
+            }
+            if(overlapCount > 1){
+                let hash = 0;
+                const stableId = String(currentStaff.cleanName || "");
+                for(let i = 0; i < stableId.length; i++) hash += stableId.charCodeAt(i);
+                const angle = (hash % 360) * Math.PI / 180;
+                markerLat += Math.cos(angle) * 0.00003;
+                markerLon += Math.sin(angle) * 0.00003;
+            }
+            marker = window.ensureLiveStaffMarker(
+                currentStaff, latestPoint, sessionId, markerLat, markerLon
+            ).marker;
+            if(!marker) return;
         }
 
 
@@ -87360,380 +87812,11 @@ staff.forEach(s => {
                 );
             }
 
-            const color = getUserColor(s.cleanName);
-
-            let team = "N/A";
-            try {
-              if (s.team && String(s.team).trim()) {
-                team = String(s.team).trim();
-              } else if (s.staff && String(s.staff).trim()) {
-                team = String(s.staff).trim();
-              } else if (Array.isArray(s.staffNames)) {
-                team = s.staffNames.join(", ");
-              }
-            } catch(e){
-              console.warn("⚠ Team parse failed", e);
-            }
-
-            const dutyType = (s.dutyType && String(s.dutyType).trim()) ? s.dutyType : "Patrolling";
-
-            const postingBeat = String(s.beat || s.Beat || "").trim();
-            const postingRange = String(s.range || s.Range || "").trim();
-            const postingDivision = String(s.division || s.Division || "").trim();
-            const postingPlace = postingBeat || (postingRange ? "Range HQ" : "");
-
-            const postingDetails = [postingPlace, postingRange, postingDivision]
-              .filter((value, idx, array) => {
-                const v = String(value || "").trim();
-                if(!v) return false;
-                return array.findIndex(item => String(item || "").trim().toLowerCase() === v.toLowerCase()) === idx;
-              })
-              .join(", ");
-
-            const dutyArea = String(
-              s.dutyArea ||
-              s.duty_area ||
-              s.DutyArea ||
-              s["Duty Area"] ||
-              s.compartment ||
-              s.Compartment ||
-              ""
-            ).trim() || "N/A";
-
-            let dutyStarted = "Unknown";
-            try {
-              if(s.sessionId){
-                const startMs = Number(String(s.sessionId).split("_").pop());
-                if(!isNaN(startMs)){
-                  dutyStarted = new Date(startMs).toLocaleString();
-                }
-              }
-            } catch(e){
-              console.warn("⚠ Duty start parse failed");
-            }
-
-            let dutyDuration = "Unknown";
-            try {
-              if(s.sessionId){
-                const startMs = Number(String(s.sessionId).split("_").pop());
-                if(!isNaN(startMs)){
-                  const diffMs = Date.now() - startMs;
-                  const totalMin = Math.floor(diffMs / 60000);
-                  const hrs = Math.floor(totalMin / 60);
-                  const mins = totalMin % 60;
-                  dutyDuration = hrs > 0 ? `${hrs} hr ${mins} min` : `${mins} min`;
-                }
-              }
-            } catch(e){
-              console.warn("⚠ Duty duration failed");
-            }
-
-            let liveSpeed = 0;
-
-            try {
-              liveSpeed =
-                Number(
-                  patrolPoint.speed
-                );
-
-              if(
-                !Number.isFinite(liveSpeed) ||
-                liveSpeed < 0
-              ){
-                liveSpeed = 0;
-              }
-
-              liveSpeed =
-                Math.max(
-                  0,
-                  Math.round(
-                    liveSpeed * 10
-                  ) / 10
-                );
-
-            } catch(e){
-              liveSpeed = 0;
-            }
-
-            const lastSeen =
-              typeof getPointTime === "function"
-                ? Number(
-                    getPointTime(
-                      patrolPoint
-                    )
-                  ) || 0
-                : Number(
-                    patrolPoint.time ||
-                    patrolPoint.timestamp ||
-                    patrolPoint.lastSeen ||
-                    0
-                  );
-
-            const ageMs = Date.now() - lastSeen;
-            if(ageMs > 60000){
-              liveSpeed = 0;
-            }
-
-            const LIVE_MARKER_MAX_AGE = 30 * 60 * 1000;
-            const OFFLINE_MARKER_MAX_AGE = 3 * 60 * 60 * 1000;
-
-            let markerState = "LIVE";
-            if(!lastSeen || ageMs >= OFFLINE_MARKER_MAX_AGE){
-              markerState = "OFFLINE";
-            } else if(ageMs > LIVE_MARKER_MAX_AGE){
-              markerState = "STALE";
-            }
-
-            let markerColor = "#00ff00";
-            let markerOpacity = "1";
-            let radarHtml = `<div class="radarPulse"></div>`;
-
-            if(markerState === "STALE"){
-              markerColor = "#ffd600";
-              markerOpacity = "0.55";
-              radarHtml = "";
-            } else if(markerState === "OFFLINE"){
-              markerColor = "#ff0000";
-              markerOpacity = "0.35";
-              radarHtml = "";
-            }
-
-            const icon = L.divIcon({
-              html: `
-                <div class="markerWrap" style="opacity:${markerOpacity};">
-                  ${radarHtml}
-                  <div class="markerCore">
-                    <i class="fa-solid fa-person-military-pointing" style="color:${markerColor}; font-size:17px;"></i>
-                  </div>
-                </div>
-              `,
-              iconSize: [30, 30],
-              iconAnchor: [15, 15]
-            });
-
-            let liveTime = "Unknown";
-
-            try {
-              const patrolPointTime =
-                typeof getPointTime === "function"
-                  ? Number(
-                      getPointTime(
-                        patrolPoint
-                      )
-                    ) || 0
-                  : Number(
-                      patrolPoint.time ||
-                      patrolPoint.timestamp ||
-                      0
-                    );
-
-              if(
-                patrolPointTime > 0
-              ){
-                liveTime =
-                  new Date(
-                    patrolPointTime
-                  ).toLocaleString();
-              }
-
-            } catch(error){
-              console.warn(
-                "⚠ Patrol point time parse failed:",
-                s.cleanName,
-                error
-              );
-            }
-
-            const staffDistanceKey = cleanName(s.cleanName || s.name || "");
-
-            let currentLocation = {
-              type: "GPS",
-              gps: `${lat.toFixed(6)}, ${lon.toFixed(6)}`,
-              compartment: "",
-              beat: "",
-              range: "",
-              division: "",
-              village: "",
-              block: "",
-              nearestPoint: "",
-              distanceMeters: null
-            };
-
-            if(typeof window.resolveCurrentGIS === "function"){
-              try {
-                const resolved = window.resolveCurrentGIS(lat, lon);
-                if(resolved){
-                  currentLocation = {
-                    ...currentLocation,
-                    compartment: resolved.compartment || "",
-                    beat: resolved.beat || "",
-                    range: resolved.range || "",
-                    division: resolved.division || "",
-                    village: resolved.village || "",
-                    block: resolved.block || "",
-                    nearestPoint: resolved.nearestPoint || "",
-                    distanceMeters: resolved.distanceMeters ?? null
-                  };
-
-                  if(currentLocation.compartment || currentLocation.beat || currentLocation.range || currentLocation.division){
-                    currentLocation.type = "FOREST";
-                  } else if(currentLocation.village){
-                    currentLocation.type = "VILLAGE";
-                  } else {
-                    currentLocation.type = "UNKNOWN";
-                  }
-                } else {
-                  currentLocation.type = "UNKNOWN";
-                }
-              } catch(err){
-                currentLocation.type = "UNKNOWN";
-              }
-            }
-
-            let currentLocationHtml = "";
-            if(currentLocation.type === "FOREST"){
-              currentLocationHtml = `
-                <div>🌲 Compartment: <b id="staffCompartment_${encodeURIComponent(staffDistanceKey)}">${currentLocation.compartment || "N/A"}</b></div>
-                <div>🧭 Beat: <b id="staffBeat_${encodeURIComponent(staffDistanceKey)}">${currentLocation.beat || "N/A"}</b></div>
-                <div>🏢 Range: <b id="staffRange_${encodeURIComponent(staffDistanceKey)}">${currentLocation.range || "N/A"}</b></div>
-              `;
-            } else if(currentLocation.type === "VILLAGE"){
-              currentLocationHtml = `
-                <div>🏡 Village: <b id="staffVillage_${encodeURIComponent(staffDistanceKey)}">${currentLocation.village || "N/A"}</b></div>
-                ${currentLocation.block ? `<div>🗺 Block: <b id="staffBlock_${encodeURIComponent(staffDistanceKey)}">${currentLocation.block}</b></div>` : ""}
-                ${currentLocation.nearestPoint ? `<div>📌 Near: <b id="staffNearestPoint_${encodeURIComponent(staffDistanceKey)}">${currentLocation.nearestPoint}</b> ${currentLocation.distanceMeters != null ? `<span id="staffNearestDistance_${encodeURIComponent(staffDistanceKey)}">(${currentLocation.distanceMeters} m)</span>` : ""}</div>` : ""}
-              `;
-            } else {
-              currentLocationHtml = `<div>📌 GIS: <b>Outside mapped forest/village boundary</b></div>`;
-            }
-
-            const popup = `
-            <div style="
-              font-family:Segoe UI;
-              min-width:200px;
-              max-width:210px;
-              color:#111;
-              font-size:12px;
-              height:66%;
-              overflow:hidden;
-              background:#ffffff;
-              border-radius:12px;
-              padding:10px;
-              box-shadow: 0 4px 14px rgba(0,0,0,0.15);
-              border:1px solid #e0e0e0;
-            ">
-              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <div style="width:36px; height:36px; border-radius:50%; background:#1b5e20; display:flex; align-items:center; justify-content:center; color:white; font-size:17px; box-shadow:0 0 8px rgba(0,255,0,0.35); flex-shrink:0;">
-                  👮
-                </div>
-                <div>
-                  <div style="font-size:14px; font-weight:700; color:#1b5e20; line-height:1.2;">
-                    ${s.name}
-                  </div>
-                  <div style="font-size:10px; color:#666; font-weight:600;">
-                    LIVE PATROL STAFF
-                  </div>
-                </div>
-              </div>
-
-              <div style="background:#ffffff; border-left:4px solid #2e7d32; border:1px solid #d7e9d8; padding:6px; border-radius:7px; margin-bottom:8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
-                <div style="color:#1b5e20; font-weight:700; font-size:12px;">
-                  🟢 DUTY TYPE
-                </div>
-                <div style="margin-top:3px; font-size:12px; color:#222; line-height:1.35; font-weight:600;">
-                  ${dutyType}
-                </div>
-              </div>
-
-              <div style="margin-bottom:8px; font-size:12px; line-height:1.6; background:#ffffff; border:1px solid #eeeeee; border-radius:7px; padding:6px;">
-                <div style="margin-bottom:4px; color:#111; font-weight:600;">
-                  📞 ${s.phone ? `<a href="tel:${String(s.phone).trim()}" style="color:#00695c; text-decoration:none; font-weight:700;">${s.phone}</a>` : "N/A"}
-                </div>
-                <div style="margin-bottom:4px; color:#111;">
-                  🏢 Posting: <b>${postingDetails || "N/A"}</b>
-                </div>
-                <div style="color:#111;">
-                  📍 Duty Area: <b>${dutyArea}</b>
-                </div>
-              </div>
-
-              <div style="margin-bottom:8px; font-size:11px; line-height:1.6; background:#f7fbf7; border:1px solid #d7e9d8; border-radius:7px; padding:6px;">
-                <div style="font-weight:700; color:#1b5e20; margin-bottom:4px; font-size:12px;">
-                  📍 Current Location
-                </div>
-                <div id="staffCurrentLocation_${encodeURIComponent(staffDistanceKey)}">
-                  ${currentLocationHtml}
-                </div>
-                <div style="margin-top:3px; color:#555; font-size:10px;">
-                  🛰 GPS: <b id="staffGps_${encodeURIComponent(staffDistanceKey)}">${lat.toFixed(6)}, ${lon.toFixed(6)}</b>
-                </div>
-              </div>
-
-              <div style="background:#ffffff; border:1px solid #e0e0e0; border-radius:7px; padding:6px; margin-bottom:8px;">
-                <div style="font-weight:700; color:#37474f; margin-bottom:4px; font-size:12px;">
-                  👥 Patrol Team
-                </div>
-                <div style="font-size:11px; color:#333; line-height:1.4; max-height:65px; overflow-y:auto; white-space:pre-wrap; font-weight:500;">
-                  ${team}
-                </div>
-              </div>
-
-              <div style="background:#ffffff; border:1px solid #eeeeee; border-radius:7px; padding:6px; font-size:11px; line-height:1.7; color:#111;">
-                <div style="margin-bottom:3px;">
-                  📊 Speed: <b id="staffSpeed_${encodeURIComponent(staffDistanceKey)}">${liveSpeed < 1 ? "Stationary" : `${liveSpeed.toFixed(1)} km/h`}</b>
-                </div>
-                <div style="margin-bottom:3px;">
-                  📏 Distance Travelled: <b id="staffDistance_${encodeURIComponent(staffDistanceKey)}">${Number(
-                    patrolPoint.distanceCoveredKm ??
-                    (
-                      Number(
-                        patrolPoint.distanceCoveredMeters
-                      ) || 0
-                    ) / 1000
-                  ).toFixed(2)} km</b>
-                </div>
-                <div style="margin-bottom:3px;">
-                  📍 Patrol Points: <b id="staffPatrolPoints_${encodeURIComponent(staffDistanceKey)}">${Number(
-                    patrolPoint.patrolPointCount ??
-                    Object.keys(
-                      window.sessionPointCache?.[
-                        renderSessionId
-                      ] || {}
-                    ).length
-                  ).toLocaleString()}</b>
-                </div>
-                <div style="margin-bottom:3px; font-weight:600; color:#1b5e20;">
-                  🛰 Live GPS Active
-                </div>
-                <div style="margin-bottom:3px;">
-                  🟢 Duty Started: <b>${dutyStarted}</b>
-                </div>
-                <div style="margin-bottom: 3px;">
-                  ⏳ Duty Duration: <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">${dutyDuration}</b>
-                </div>
-                <div>
-                  ⏱ Last GPS Update: <b id="staffUpdatedAt_${encodeURIComponent(staffDistanceKey)}">${liveTime}</b>
-                </div>
-              </div>
-
-              <div style="margin-top:10px; display:grid; grid-template-columns:1fr;">
-                <button onclick="navigateHEC('${lat}','${lon}')" style="padding:11px; background:#1565c0; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">
-                  🧭 NAVIGATE
-                </button>
-              </div>
-            </div>`;
-
-            if(!window.staffMarkers[s.cleanName]){
-              window.staffMarkers[s.cleanName] = L.marker(
-                [lat, lon],
-                {
-                  icon,
-                  zIndexOffset: 3000
-                }
-              )
-              .bindPopup(popup, { autoClose: false, closeOnClick: false })
-              .addTo(staffLayer);
-            } else {
+            const existingStaffMarker = window.staffMarkers[s.cleanName];
+            const { icon, popup } = window.ensureLiveStaffMarker(
+              s, patrolPoint, renderSessionId, lat, lon
+            );
+            if(existingStaffMarker){
               const marker = window.staffMarkers[s.cleanName];
               marker.setLatLng([lat, lon]);
               marker.setIcon(icon);
@@ -87745,36 +87828,6 @@ staff.forEach(s => {
                 marker.setPopupContent(popup);
               }
               marker._ggStaffPopupHtml = popup;
-            }
-
-            const staffMarker = window.staffMarkers?.[s.cleanName];
-            if(staffMarker && staffMarker.__staffTrackClickBound !== true){
-              staffMarker.__staffTrackClickBound = true;
-              staffMarker.on("click", function(){
-                try {
-                  const clickedName = cleanName(s.cleanName || s.name || "");
-                  if(!clickedName) return;
-
-                  const currentUserName = cleanName(window.userProfile?.cleanName || window.userProfile?.name || "");
-                  if(clickedName === currentUserName) return;
-
-                  if(window.staffTrackState?.bulkEnabled === true) return;
-
-                  const selectedName = cleanName(window.staffTrackState?.selectedStaff || "");
-                  if(selectedName === clickedName){
-                    window.clearSelectedStaffTrack?.();
-                    return;
-                  }
-
-                  if(selectedName){
-                    window.clearSelectedStaffTrack?.();
-                  }
-
-                  window.loadIndividualStaffTrack?.(clickedName);
-                } catch(err){
-                  console.error("❌ Staff marker track click failed:", s.cleanName, err);
-                }
-              });
             }
 
             if(cleanName(s.cleanName || "") === cleanName(window.userProfile?.cleanName || window.userProfile?.name || "")){
