@@ -16577,32 +16577,7 @@ L.control.zoom({
 // 🌍 BASE MAP SWITCHER
 // ======================================
 
-L.control.layers(
-
-  {
-
-    "🛰 ESRI Satellite":
-      esriSat,
-
-    "🌍 Google Hybrid":
-      googleHybrid,
-
-    "🛰 Mapbox Satellite":
-      mapboxSatellite
-
-  },
-
-  {},
-
-  {
-
-    collapsed:true,
-
-    position:'topright'
-
-  }
-
-).addTo(map);
+// Base maps are registered by initializeLayerControlSystem() below.
 // ======================================
 // 📜 HISTORY CANVAS RENDERER
 // ======================================
@@ -28998,6 +28973,7 @@ function showPlanetThumb(scene){
 if(window.mapAction === "HELP_LOCATION"){
 
     window.mapAction = null;
+    window.syncOperationalAssetInteraction?.();
 
     map.getContainer().style.cursor = "";
 
@@ -45423,6 +45399,7 @@ window.reporterLocationResolved = {
 };window.helpMarker = null;
 
 window.mapAction = null;
+window.syncOperationalAssetInteraction?.();
 
 // ============================================================
 // 📷 PHOTO
@@ -50092,6 +50069,8 @@ function (
         window.__offenceMapInteractionActive =
 
             offenceMode;
+
+        window.syncOperationalAssetInteraction?.();
 
 
         // ==================================================
@@ -107024,6 +107003,211 @@ async function loadVillageBoundaryLayer() {
 }
 
 /* ============================================================
+   OPERATIONAL ASSETS — PHASE A: STATIC, READ-ONLY MAP LAYERS
+============================================================ */
+
+function initializeOperationalAssetLayers() {
+    if (window.operationalAssetState) return;
+    const assetMap = window.map || map;
+    const roadPane = assetMap.createPane('operationalAssetsPane');
+    const markerPane = assetMap.createPane('operationalAssetMarkersPane');
+    roadPane.style.zIndex = '450';
+    markerPane.style.zIndex = '550';
+    roadPane.style.pointerEvents = markerPane.style.pointerEvents = 'none';
+    const renderer = L.svg({ pane: 'operationalAssetsPane' });
+    window.operationalAssetState = {};
+    const definitions = {
+        roads: { path: 'geojson/forest_roads.geojson', assetType: 'FOREST_ROAD', prefix: 'ROAD_BTR_' },
+        apc: { path: 'geojson/apc.geojson', assetType: 'ANTI_POACHING_CAMP', prefix: 'APC_BTR_' },
+        waterholes: { path: 'geojson/waterholes.geojson', assetType: 'WATERHOLE', prefix: 'WH_BTR_' }
+    };
+    Object.entries(definitions).forEach(([key, definition]) => {
+        const layer = L.geoJSON(null, {
+            pane: 'operationalAssetsPane', renderer,
+            bubblingMouseEvents: false,
+            style: { color: '#f4b942', weight: 3, opacity: 0.95 },
+            pointToLayer: createOperationalAssetPoint,
+            onEachFeature: bindOperationalAssetFeature
+        });
+        window.operationalAssetState[key] = { ...definition, layer, loaded: false, promise: null };
+    });
+}
+
+function validateOperationalAssetGeoJSON(assetKey, data) {
+    const state = window.operationalAssetState?.[assetKey];
+    if (!state || data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length) {
+        throw new Error('Invalid operational asset FeatureCollection');
+    }
+    const ids = new Set();
+    const position = p => Array.isArray(p) && p.length >= 2 && p.every(Number.isFinite) &&
+        Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
+    const line = coordinates => Array.isArray(coordinates) && coordinates.length >= 2 && coordinates.every(position);
+    data.features.forEach(feature => {
+        const p = feature?.properties;
+        const g = feature?.geometry;
+        const id = p?.assetId;
+        const validId = typeof id === 'string' && id.startsWith(state.prefix) && /^\d{3}$/.test(id.slice(state.prefix.length));
+        const validGeometry = assetKey === 'roads'
+            ? (g?.type === 'LineString' && line(g.coordinates)) ||
+              (g?.type === 'MultiLineString' && Array.isArray(g.coordinates) && g.coordinates.length > 0 && g.coordinates.every(line))
+            : g?.type === 'Point' && position(g.coordinates);
+        if (feature?.type !== 'Feature' || !validId || ids.has(id) || p.assetType !== state.assetType || !validGeometry) {
+            throw new Error('Invalid operational asset feature: ' + String(id || 'missing ID'));
+        }
+        ids.add(id);
+    });
+    return data;
+}
+
+async function loadOperationalAssetLayer(assetKey) {
+    const state = window.operationalAssetState?.[assetKey];
+    if (!state) return false;
+    if (state.loaded) { syncOperationalAssetInteraction(); return true; }
+    if (state.promise) return state.promise;
+    state.promise = (async () => {
+        try {
+            const response = await fetch(state.path);
+            if (!response.ok) throw new Error('Operational asset HTTP ' + response.status);
+            const data = validateOperationalAssetGeoJSON(assetKey, await response.json());
+            state.layer.addData(data);
+            state.loaded = true;
+            // Populate only the registered group. Never add it back to the map here.
+            syncOperationalAssetInteraction();
+            return true;
+        } catch (error) {
+            state.layer.clearLayers();
+            state.loaded = false;
+            console.error('Operational asset load failed:', assetKey, error);
+            return false;
+        } finally {
+            state.promise = null;
+        }
+    })();
+    return state.promise;
+}
+
+function createOperationalAssetPoint(feature, latlng) {
+    const apc = feature.properties.assetType === 'ANTI_POACHING_CAMP';
+    return L.marker(latlng, {
+        pane: 'operationalAssetMarkersPane', bubblingMouseEvents: false,
+        keyboard: true,
+        title: String(feature.properties.name || feature.properties.assetId),
+        icon: L.divIcon({
+            className: 'operational-asset-icon', iconSize: [28, 28], iconAnchor: [14, 14],
+            html: '<span style="display:block;width:28px;height:28px;line-height:28px;text-align:center;font-size:22px;background:white;border-radius:50%;box-shadow:0 1px 4px #0008">' + (apc ? '🛖' : '💧') + '</span>'
+        })
+    });
+}
+
+function bindOperationalAssetFeature(feature, layer) {
+    layer.on('click', e => {
+        if (!operationalAssetsCanInteract()) return;
+        const popup = L.popup({ maxWidth: 340 }).setLatLng(e.latlng || layer.getLatLng())
+            .setContent(buildOperationalAssetPopup(feature)).openOn(window.map || map);
+        window.operationalAssetPopup = popup;
+    });
+    layer.on('add', syncOperationalAssetInteraction);
+}
+
+function formatOperationalAssetValue(value, fallback = 'Unknown') {
+    if (value == null || (typeof value === 'string' && (!value.trim() || value.trim().toUpperCase() === 'UNKNOWN'))) return fallback;
+    if (Array.isArray(value)) return value.length ? value.map(v => formatOperationalAssetValue(v)).join(', ') : fallback;
+    return String(value);
+}
+
+function calculateOperationalRoadLengthKm(feature) {
+    const length = turf.length(feature, { units: 'kilometers' });
+    if (!Number.isFinite(length) || length < 0) throw new Error('Invalid calculated road length');
+    return length;
+}
+
+function buildOperationalAssetPopup(feature) {
+    const p = feature.properties;
+    const road = p.assetType === 'FOREST_ROAD';
+    const apc = p.assetType === 'ANTI_POACHING_CAMP';
+    const container = document.createElement('div');
+    container.style.cssText = 'min-width:230px;font:13px/1.5 Segoe UI,sans-serif;color:#202020';
+    const title = document.createElement('strong');
+    title.style.fontSize = '16px';
+    title.textContent = (road ? '🛣 ' : apc ? '🛖 ' : '💧 ') + formatOperationalAssetValue(p.name, p.assetId);
+    container.appendChild(title);
+    const section = label => {
+        const heading = document.createElement('div');
+        heading.style.cssText = 'font-weight:700;border-top:1px solid #bbb;margin-top:8px;padding-top:5px';
+        heading.textContent = label;
+        container.appendChild(heading);
+    };
+    const row = (label, value, fallback) => {
+        const element = document.createElement('div');
+        const caption = document.createElement('strong');
+        caption.textContent = label + ': ';
+        element.appendChild(caption);
+        element.appendChild(document.createTextNode(formatOperationalAssetValue(value, fallback)));
+        container.appendChild(element);
+    };
+    row('Asset ID', p.assetId);
+    row('Division', p.division);
+    row('Range', road ? p.ranges : p.range, road ? '—' : 'Unknown');
+    row('Beat', road ? p.beats : p.beat, road ? '—' : 'Unknown');
+    row(road ? 'Compartments' : 'Compartment', road ? p.compartments : p.compartment, road ? '—' : 'Unknown');
+    section(road ? 'ROAD INFORMATION' : apc ? 'APC INFORMATION' : 'WATERHOLE INFORMATION');
+    if (road) {
+        row('Length (calculated)', calculateOperationalRoadLengthKm(feature).toFixed(2) + ' km');
+        row('Surface', p.surface);
+        row('Status', p.status);
+        row('Vehicle Passage', p.vehicleAccess);
+    } else if (apc) {
+        row('Type', 'Anti-Poaching Camp');
+        row('Status', p.status);
+        row('Operational', p.operational);
+        row('Manning Status', p.manningStatus);
+        row('Staff Present', p.staffPresent, '—');
+        row('RT Set', p.rtSet);
+        row('Communication', p.communication);
+    } else {
+        row('Type', p.waterholeType);
+        row('Season', p.season);
+        row('Status', p.status);
+        row('Water Level', p.waterLevel);
+    }
+    const note = document.createElement('small');
+    note.textContent = 'Status is a static source value; not a recent field verification.';
+    container.appendChild(note);
+    section(road ? 'LAST VERIFIED PATROL' : 'LAST VERIFIED VISIT');
+    const empty = document.createElement('div');
+    empty.textContent = road ? 'No verified patrol data yet' : 'No verified visit data yet';
+    container.appendChild(empty);
+    if (!road) row('Verified Visits', p.totalVerifiedVisits, '—');
+    return container;
+}
+
+function operationalAssetsCanInteract() {
+    return window.__offenceMapInteractionActive !== true && !window.mapAction;
+}
+
+function syncOperationalAssetInteraction() {
+    const states = window.operationalAssetState;
+    if (!states) return;
+    const assetMap = window.map || map;
+    const allowed = operationalAssetsCanInteract();
+    const setInteraction = (layer, enabled) => {
+        if (layer._path) layer._path.style.setProperty('pointer-events', enabled ? 'stroke' : 'none', 'important');
+        const icon = layer._path ? null : layer.getElement?.();
+        if (icon) {
+            icon.style.setProperty('pointer-events', enabled ? 'auto' : 'none', 'important');
+            icon.tabIndex = enabled ? 0 : -1;
+            icon.setAttribute('aria-disabled', String(!enabled));
+        }
+        layer.eachLayer?.(child => setInteraction(child, enabled));
+    };
+    Object.values(states).forEach(state => setInteraction(state.layer, allowed && assetMap.hasLayer(state.layer)));
+    if (!allowed && window.operationalAssetPopup) {
+        assetMap.closePopup(window.operationalAssetPopup);
+        window.operationalAssetPopup = null;
+    }
+}
+
+/* ============================================================
     🎛 LAYER CONTROL INITIALIZATION (DEFERRED ARCHITECTURE)
     ------------------------------------------------------------
     Ensures userProfile and user role are fully resolved before
@@ -107044,6 +107228,7 @@ async function loadVillageBoundaryLayer() {
 
     // Initialization routine
     function initializeLayerControlSystem() {
+        initializeOperationalAssetLayers();
         const layerControlUserRole = getResolvedRole();
         const layerControlIsAdmin = (layerControlUserRole === "ADMIN");
 
@@ -107074,7 +107259,11 @@ async function loadVillageBoundaryLayer() {
             // ⚠️ IRREGULARITIES
             "⚠️ Irregularities":
                 window.irregularityLayer ||
-                irregularityLayer
+                irregularityLayer,
+
+            "🛣 Forest Roads": window.operationalAssetState.roads.layer,
+            "🛖 APCs": window.operationalAssetState.apc.layer,
+            "💧 Waterholes": window.operationalAssetState.waterholes.layer
         };
 
 
@@ -107165,7 +107354,8 @@ async function loadVillageBoundaryLayer() {
         ============================================================ */
         const baseMaps = {
             "🛰 Satellite": typeof window.esriSat !== 'undefined' ? window.esriSat : esriSat,
-            "🗺 Google Hybrid": typeof window.googleHybrid !== 'undefined' ? window.googleHybrid : googleHybrid
+            "🗺 Google Hybrid": typeof window.googleHybrid !== 'undefined' ? window.googleHybrid : googleHybrid,
+            "🛰 Mapbox Satellite": mapboxSatellite
         };
 
         // Prevent duplicate global control creation if already instantiated
@@ -107278,6 +107468,13 @@ if (typeof map !== 'undefined') {
                 if (!e || !e.name) return;
 
                 const layerName = String(e.name);
+
+                const assetEntry = Object.entries(window.operationalAssetState || {}).find(([, state]) => state.layer === e.layer);
+                if (assetEntry) {
+                    await loadOperationalAssetLayer(assetEntry[0]);
+                    syncOperationalAssetInteraction();
+                    return;
+                }
 
                 if (typeof GRID_DEBUG !== 'undefined' && GRID_DEBUG) {
                     console.log("🧭 Layer Enabled:", layerName);
@@ -107477,6 +107674,15 @@ if (layerName === "⚠️ Irregularities") {
                 if (!e || !e.name) return;
 
                 const layerName = String(e.name);
+
+                if (Object.values(window.operationalAssetState || {}).some(state => state.layer === e.layer)) {
+                    if (window.operationalAssetPopup) {
+                        map.closePopup(window.operationalAssetPopup);
+                        window.operationalAssetPopup = null;
+                    }
+                    syncOperationalAssetInteraction();
+                    return;
+                }
 
                 if (typeof GRID_DEBUG !== 'undefined' && GRID_DEBUG) {
                     console.log("🧹 Layer Disabled:", layerName);
@@ -108515,6 +108721,7 @@ function closeHelpForm(){
     // ============================================
 
     window.mapAction = null;
+    window.syncOperationalAssetInteraction?.();
 
     if(
 
@@ -109127,6 +109334,7 @@ function startHelpMapSelection(){
 
     window.mapAction =
         "HELP_LOCATION";
+    window.syncOperationalAssetInteraction?.();
 
     // ============================================
     // LOCATION MODE
@@ -109243,6 +109451,7 @@ function saveHelpLocation(latlng){
     // ============================================
 
     window.mapAction = null;
+    window.syncOperationalAssetInteraction?.();
 
     map.getContainer().style.cursor = "";
 
