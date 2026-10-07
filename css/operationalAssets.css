@@ -1,0 +1,20 @@
+.oa-content, .oa-content * { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
+.oa-content { min-width: 230px; font: 13px/1.5 'Segoe UI', sans-serif; color: #202020; }
+.oa-content h3 { font-size: 16px; margin: 0 0 6px; }
+.oa-content h4 { border-top: 1px solid #bbb; margin: 8px 0 4px; padding-top: 5px; }
+.oa-content button { margin: 5px 5px 0 0; padding: 7px; cursor: pointer; }
+.oa-condition { border-left: 3px solid #bc3c22; padding-left: 8px; }
+.oa-feedback { font-size: 12px; min-height: 18px; }
+.operational-asset-icon.oa-point { display: flex; align-items: center; justify-content: center; background: transparent; border: 0; }
+.oa-point-symbol { display: block; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 19px; background: white; border-radius: 50%; box-shadow: 0 1px 4px #0008; }
+.oa-problem { display: flex; align-items: center; justify-content: center; background: transparent; border: 0; }
+.oa-warning { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #bd301f; color: white; font: bold 8px/8px sans-serif; text-align: center; }
+.oa-warning::after { content: ''; position: absolute; inset: 0; border: 1px solid #bd301f; box-sizing: border-box; border-radius: 50%; pointer-events: none; animation: oa-problem-ring 2.4s ease-out infinite; }
+@keyframes oa-problem-ring { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .oa-warning::after { animation: none; transform: scale(2); opacity: .5; } }
+.oa-modal { position: fixed; inset: 0; z-index: 10000000; background: #0009; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; padding: 20px; box-sizing: border-box; }
+.oa-form-panel { background: white; border-radius: 8px; padding: 16px; width: 100%; max-width: 440px; }
+.oa-form-panel label { display: block; margin-top: 10px; font-weight: bold; }
+.oa-form-panel select, .oa-form-panel input, .oa-form-panel textarea { display: block; width: 100%; box-sizing: border-box; font: 16px sans-serif; padding: 8px; margin-top: 4px; }
+.oa-field-gps { margin: 12px 0; padding: 8px; background: #eef3ef; }
+.oa-problem[data-sync-state="PENDING"] .oa-warning { outline: 1px dashed #f4b942; outline-offset: 2px; }

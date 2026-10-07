@@ -11638,6 +11638,8 @@ setTimeout(() => {
       window.firebaseReady =
         true;
 
+      window.OperationalAssetConditions?.sync(); // Notify only the asset outbox when Firebase becomes ready.
+
 
       console.log(
         "🔥 FIREBASE READY"
@@ -137872,5 +137874,7 @@ Logout
 </div>
 
 </div>
+<link rel="stylesheet" href="css/operationalAssets.css">
+<script src="js/operationalAssets/conditions.js"></script>
 </body>
 </html>
