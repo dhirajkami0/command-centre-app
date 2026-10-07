@@ -1,0 +1,1579 @@
+{
+  "type": "FeatureCollection",
+  "name": "BTR Waterholes",
+  "metadata": {
+    "schemaVersion": "1.0",
+    "operationalFieldsNote": "Static GIS/master fields only. Condition history and GPS-verified visit/patrol history should be stored separately at runtime.",
+    "unknownPolicy": "Values not supported by the source KML are left null/UNKNOWN rather than inferred."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "WH_BTR_001",
+      "properties": {
+        "assetId": "WH_BTR_001",
+        "name": "Bhutanghat waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Mainabari",
+        "compartment": "Bhutanghat BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.725861",
+        "sourceLongitude": "89.747694"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.7476944444444,
+          26.7258611111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_002",
+      "properties": {
+        "assetId": "WH_BTR_002",
+        "name": "Karthika waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Kartik",
+        "compartment": "Rahima RF",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.663556",
+        "sourceLongitude": "89.726444"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.7264444444444,
+          26.6635555555556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_003",
+      "properties": {
+        "assetId": "WH_BTR_003",
+        "name": "Chunia waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Chuniajhora",
+        "compartment": "Jainti BL3B",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.666361",
+        "sourceLongitude": "89.661222"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6612222222222,
+          26.6663611111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_004",
+      "properties": {
+        "assetId": "WH_BTR_004",
+        "name": "Chunia tower waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Chuniajhora",
+        "compartment": "Jainti BL3B",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.655111",
+        "sourceLongitude": "89.669444"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6694444444445,
+          26.6551111111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_005",
+      "properties": {
+        "assetId": "WH_BTR_005",
+        "name": "Bhutia busthy waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Chuniajhora",
+        "compartment": "Jainti BL2B",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.672444",
+        "sourceLongitude": "89.654639"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6546388888889,
+          26.6724444444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_006",
+      "properties": {
+        "assetId": "WH_BTR_006",
+        "name": "KTPF waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Kartik",
+        "compartment": "Karthik BL.",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.654472",
+        "sourceLongitude": "89.702747"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.7027472222222,
+          26.6544722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_007",
+      "properties": {
+        "assetId": "WH_BTR_007",
+        "name": "P1",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "Jainti BL2A",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.683472",
+        "sourceLongitude": "89.632167"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6321666666667,
+          26.6834722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_008",
+      "properties": {
+        "assetId": "WH_BTR_008",
+        "name": "P2",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL7A",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.629806",
+        "sourceLongitude": "89.653000"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.653,
+          26.6298055555556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_009",
+      "properties": {
+        "assetId": "WH_BTR_009",
+        "name": "P3",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.629389",
+        "sourceLongitude": "89.609250"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.60925,
+          26.6293888888889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_010",
+      "properties": {
+        "assetId": "WH_BTR_010",
+        "name": "P4",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.629972",
+        "sourceLongitude": "89.595222"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5952222222222,
+          26.6299722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_011",
+      "properties": {
+        "assetId": "WH_BTR_011",
+        "name": "P5",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL 9",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.641194",
+        "sourceLongitude": "89.596611"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5966111111111,
+          26.6411944444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_012",
+      "properties": {
+        "assetId": "WH_BTR_012",
+        "name": "P6",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL4",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.663472",
+        "sourceLongitude": "89.600639"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6006388888889,
+          26.6634722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_013",
+      "properties": {
+        "assetId": "WH_BTR_013",
+        "name": "P7",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL4",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.671889",
+        "sourceLongitude": "89.602361"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6023611111111,
+          26.6718888888889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_014",
+      "properties": {
+        "assetId": "WH_BTR_014",
+        "name": "P8",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "N RVBK BL13",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.681472",
+        "sourceLongitude": "89.605611"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6056111111111,
+          26.6814722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_015",
+      "properties": {
+        "assetId": "WH_BTR_015",
+        "name": "P9",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "N RVBK BL13",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.675389",
+        "sourceLongitude": "89.591250"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.59125,
+          26.6753888888889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_016",
+      "properties": {
+        "assetId": "WH_BTR_016",
+        "name": "P10",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL4",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.659861",
+        "sourceLongitude": "89.576139"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5761388888889,
+          26.6598611111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_017",
+      "properties": {
+        "assetId": "WH_BTR_017",
+        "name": "P11",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "N RVBK BL14",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.671083",
+        "sourceLongitude": "89.579417"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5794166666667,
+          26.6710833333333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_018",
+      "properties": {
+        "assetId": "WH_BTR_018",
+        "name": "P12",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL4",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.659944",
+        "sourceLongitude": "89.582472"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5824722222222,
+          26.6599444444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_019",
+      "properties": {
+        "assetId": "WH_BTR_019",
+        "name": "P13",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "N RVBK BL6B",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.687056",
+        "sourceLongitude": "89.594000"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.594,
+          26.6870555555556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_020",
+      "properties": {
+        "assetId": "WH_BTR_020",
+        "name": "P14",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Phaskhawa",
+        "compartment": "Tashigaon BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.714472",
+        "sourceLongitude": "89.600000"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6,
+          26.7144722222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_021",
+      "properties": {
+        "assetId": "WH_BTR_021",
+        "name": "P15",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Bhutiabasti",
+        "compartment": "Phaskhawa BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.720583",
+        "sourceLongitude": "89.630528"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6305277777778,
+          26.7205833333333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_022",
+      "properties": {
+        "assetId": "WH_BTR_022",
+        "name": "P17",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Bhutiabasti",
+        "compartment": "Phaskhawa BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.694917",
+        "sourceLongitude": "89.632556"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6325555555556,
+          26.6949166666667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_023",
+      "properties": {
+        "assetId": "WH_BTR_023",
+        "name": "P19",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Kumargram",
+        "compartment": "Kumargram BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.698028",
+        "sourceLongitude": "89.811750"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.81175,
+          26.6980277777778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_024",
+      "properties": {
+        "assetId": "WH_BTR_024",
+        "name": "P20",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Newlands",
+        "compartment": "Newlands BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.703667",
+        "sourceLongitude": "89.799167"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.7991666666667,
+          26.7036666666667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_025",
+      "properties": {
+        "assetId": "WH_BTR_025",
+        "name": "Narathali Beel",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Narathali",
+        "compartment": "Narathali BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.516022",
+        "sourceLongitude": "89.732392"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.7323916666667,
+          26.5160222222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_026",
+      "properties": {
+        "assetId": "WH_BTR_026",
+        "name": "28th Mile waterhole",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Buxaroad",
+        "compartment": "N RVBK BL9",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.698833",
+        "sourceLongitude": "89.534444"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5344444444444,
+          26.6988333333333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_027",
+      "properties": {
+        "assetId": "WH_BTR_027",
+        "name": "P21",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Bhutri_2",
+        "compartment": "Bhutri BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.778333",
+        "sourceLongitude": "89.432778"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.4327777777778,
+          26.7783333333333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_028",
+      "properties": {
+        "assetId": "WH_BTR_028",
+        "name": "P22",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-South",
+        "compartment": "Panbari BL8",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.602194",
+        "sourceLongitude": "89.592889"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5928888888889,
+          26.6021944444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_029",
+      "properties": {
+        "assetId": "WH_BTR_029",
+        "name": "P23",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.622667",
+        "sourceLongitude": "89.590694"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5906944444444,
+          26.6226666666667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_030",
+      "properties": {
+        "assetId": "WH_BTR_030",
+        "name": "POKHRI",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Adma_2",
+        "compartment": "Adma BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.782778",
+        "sourceLongitude": "89.510111"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5101111111111,
+          26.7827777777778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_031",
+      "properties": {
+        "assetId": "WH_BTR_031",
+        "name": "P25",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-South",
+        "compartment": "Panbari BL8",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.602194",
+        "sourceLongitude": "89.592889"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5928888888889,
+          26.6021944444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_032",
+      "properties": {
+        "assetId": "WH_BTR_032",
+        "name": "P26",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.622667",
+        "sourceLongitude": "89.590694"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5906944444444,
+          26.6226666666667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_033",
+      "properties": {
+        "assetId": "WH_BTR_033",
+        "name": "P27",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL1",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.629278",
+        "sourceLongitude": "89.591417"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5914166666667,
+          26.6292777777778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_034",
+      "properties": {
+        "assetId": "WH_BTR_034",
+        "name": "P28",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "SouthRajabhatkhawa",
+        "compartment": "S RVBK BL14",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.618556",
+        "sourceLongitude": "89.556472"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5564722222222,
+          26.6185555555556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_035",
+      "properties": {
+        "assetId": "WH_BTR_035",
+        "name": "P29",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Garam-West",
+        "compartment": "Poro BL3",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.604333",
+        "sourceLongitude": "89.481278"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.4812777777778,
+          26.6043333333333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_036",
+      "properties": {
+        "assetId": "WH_BTR_036",
+        "name": "P30",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL7A",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.636056",
+        "sourceLongitude": "89.654194"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6541944444445,
+          26.6360555555556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_037",
+      "properties": {
+        "assetId": "WH_BTR_037",
+        "name": "P31",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL7A",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.635250",
+        "sourceLongitude": "89.653250"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.65325,
+          26.63525
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_038",
+      "properties": {
+        "assetId": "WH_BTR_038",
+        "name": "P32",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Panbari-North",
+        "compartment": "Panbari BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.628611",
+        "sourceLongitude": "89.630556"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.6305555555555,
+          26.6286111111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_039",
+      "properties": {
+        "assetId": "WH_BTR_039",
+        "name": "P33",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "WestRajabhatkhawa",
+        "compartment": "S RVBK BL10",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.632944",
+        "sourceLongitude": "89.546639"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5466388888889,
+          26.6329444444444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_040",
+      "properties": {
+        "assetId": "WH_BTR_040",
+        "name": "P35",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL5",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.643861",
+        "sourceLongitude": "89.592972"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5929722222222,
+          26.6438611111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_041",
+      "properties": {
+        "assetId": "WH_BTR_041",
+        "name": "P36",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-South",
+        "compartment": "Jainti BL5",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.643778",
+        "sourceLongitude": "89.592361"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5923611111111,
+          26.6437777777778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_042",
+      "properties": {
+        "assetId": "WH_BTR_042",
+        "name": "P37",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL4",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.654222",
+        "sourceLongitude": "89.585444"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5854444444444,
+          26.6542222222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_043",
+      "properties": {
+        "assetId": "WH_BTR_043",
+        "name": "P38",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL6",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.642167",
+        "sourceLongitude": "89.567111"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5671111111111,
+          26.6421666666667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_044",
+      "properties": {
+        "assetId": "WH_BTR_044",
+        "name": "P39",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL6",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.636722",
+        "sourceLongitude": "89.569528"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5695277777778,
+          26.6367222222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_045",
+      "properties": {
+        "assetId": "WH_BTR_045",
+        "name": "P40",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "CentralRajabhatkhawa",
+        "compartment": "S RVBK BL3",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.657361",
+        "sourceLongitude": "89.559806"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5598055555556,
+          26.6573611111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_046",
+      "properties": {
+        "assetId": "WH_BTR_046",
+        "name": "P41",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "NorthRajabhatkhawa",
+        "compartment": "N RVBK BL15",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.665222",
+        "sourceLongitude": "89.562750"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.56275,
+          26.6652222222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_047",
+      "properties": {
+        "assetId": "WH_BTR_047",
+        "name": "P42",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "NorthRajabhatkhawa",
+        "compartment": "S RVBK BL2",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.658389",
+        "sourceLongitude": "89.554806"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5548055555555,
+          26.6583888888889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_048",
+      "properties": {
+        "assetId": "WH_BTR_048",
+        "name": "P44",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "NorthRajabhatkhawa",
+        "compartment": "N RVBK BL15",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.664111",
+        "sourceLongitude": "89.551778"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5517777777778,
+          26.6641111111111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WH_BTR_049",
+      "properties": {
+        "assetId": "WH_BTR_049",
+        "name": "P46",
+        "assetType": "WATERHOLE",
+        "division": null,
+        "range": null,
+        "beat": "Jainti-North",
+        "compartment": "N RVBK BL12",
+        "waterholeType": "UNKNOWN",
+        "season": "UNKNOWN",
+        "status": "NORMAL",
+        "waterLevel": "UNKNOWN",
+        "actionRequired": false,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceLatitude": "26.678889",
+        "sourceLongitude": "89.571944"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.5719444444444,
+          26.6788888888889
+        ]
+      }
+    }
+  ]
+}

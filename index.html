@@ -107006,6 +107006,118 @@ async function loadVillageBoundaryLayer() {
    OPERATIONAL ASSETS — PHASE A: STATIC, READ-ONLY MAP LAYERS
 ============================================================ */
 
+const operationalAssetOverlayNames = { roads: '🛣 Forest Roads', apc: '🛖 APCs', waterholes: '💧 Waterholes' };
+const operationalAssetMasterCache = { data: null, promise: null };
+function operationalAssetDivision(value) {
+    return ({ BTRW: 'BTR_W', BUXATRWEST: 'BTR_W', BTRE: 'BTR_E', BUXATREAST: 'BTR_E' })[
+        String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '')] || '';
+}
+function operationalAssetRange(value) {
+    const key = String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return ({ ervk: 'eastrajabhatkhawa', jayanti: 'jainti' })[key] || key;
+}
+function operationalAssetProfileScope(profile) {
+    if (!profile || profile.active === false || String(profile.active).toLowerCase() === 'false') return null;
+    if ([profile.status, profile.accessStatus, profile.access, profile.code, profile.error].some(value =>
+        /blocked|inactive|disabled|denied|error|not.authorized|not.active|profile.not.found/i.test(String(value || '')))) return null;
+    const role = String(profile.role || '').trim().toUpperCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ');
+    const division = operationalAssetDivision(profile.division);
+    const range = operationalAssetRange(profile.range);
+    if (role === 'ADMIN') return { role };
+    if (role === 'CCF') return String(profile.circle || '').trim().toUpperCase() === 'BTR' ? { role } : null;
+    if (['DFO', 'ADFO'].includes(role) && division) return { role, division };
+    if (['TEAM LEADER', 'TEAMLEADER', 'STAFF'].includes(role) && division && range) return { role, division, range };
+    return null;
+}
+function getOperationalAssetOwnership(assetId) {
+    return operationalAssetMasterCache.data?.assets?.[assetId] || null;
+}
+function canViewOperationalAsset(feature, userProfile = window.userProfile) {
+    const scope = operationalAssetProfileScope(userProfile);
+    const ownership = getOperationalAssetOwnership(feature?.properties?.assetId || feature?.assetId);
+    if (!scope || !ownership) return false;
+    if (scope.role === 'ADMIN') return true;
+    if (ownership.ownershipStatus !== 'APPROVED') return false;
+    if (scope.role === 'CCF') return ownership.divisions.some(d => d === 'BTR_W' || d === 'BTR_E');
+    if (!ownership.divisions.includes(scope.division)) return false;
+    if (['DFO', 'ADFO'].includes(scope.role)) return true;
+    return ownership.rangeKeys.some(key => {
+        const [division, range] = key.split('/');
+        return division === scope.division && operationalAssetRange(range) === scope.range;
+    });
+}
+function canUpdateOperationalAsset() { return false; } // Phase A never enables B1 writes.
+async function loadOperationalAssetOwnership() {
+    if (operationalAssetMasterCache.data) return operationalAssetMasterCache.data;
+    if (operationalAssetMasterCache.promise) return operationalAssetMasterCache.promise;
+    operationalAssetMasterCache.promise = (async () => {
+        try {
+            const response = await fetch('geojson/operational_asset_ownership.json');
+            if (!response.ok) throw new Error('Ownership master HTTP ' + response.status);
+            const data = await response.json();
+            const records = Object.values(data.assets || {});
+            if (data.schemaVersion !== '1.0' || records.length !== 186 || records.some(a =>
+                !a.assetId || data.assets[a.assetId] !== a || !['APPROVED', 'UNRESOLVED'].includes(a.ownershipStatus) ||
+                !Array.isArray(a.divisions) || !Array.isArray(a.rangeKeys) || !Array.isArray(a.areas) ||
+                (a.ownershipStatus === 'UNRESOLVED' && (a.divisions.length || a.rangeKeys.length || a.areas.length)))) {
+                throw new Error('Invalid operational ownership master');
+            }
+            operationalAssetMasterCache.data = data;
+            return data;
+        } finally { operationalAssetMasterCache.promise = null; }
+    })();
+    return operationalAssetMasterCache.promise;
+}
+function operationalAssetVisibilitySignature() {
+    return JSON.stringify([window.userProfile || null, window.gisFilter || null]);
+}
+function operationalAssetMatchesGIS(feature) {
+    const ownership = getOperationalAssetOwnership(feature.properties.assetId);
+    const filter = window.gisFilter || {};
+    const divisionSelected = filter.division && filter.division !== 'ALL';
+    const division = divisionSelected ? operationalAssetDivision(filter.division) : '';
+    const range = filter.range && filter.range !== 'ALL' ? operationalAssetRange(filter.range) : '';
+    if (!ownership || (divisionSelected && !division)) return false;
+    if (!division && !range) return true;
+    const scope = operationalAssetProfileScope(window.userProfile);
+    if (!scope) return false;
+    return ownership.areas.some(area => {
+        const authorizedArea = ['ADMIN', 'CCF'].includes(scope.role) ||
+            (area.division === scope.division && (!scope.range || operationalAssetRange(area.range) === scope.range));
+        return authorizedArea && (!division || area.division === division) && (!range || operationalAssetRange(area.range) === range);
+    });
+}
+function renderOperationalAssetLayer(state) {
+    const signature = operationalAssetVisibilitySignature();
+    if (!state.data || state.visibilitySignature === signature) return;
+    state.visibilitySignature = signature;
+    state.layer.clearLayers();
+    state.layer.addData({ type: 'FeatureCollection', features: state.data.features.filter(feature =>
+        canViewOperationalAsset(feature, window.userProfile) && operationalAssetMatchesGIS(feature)) });
+}
+function refreshOperationalAssetVisibility() {
+    if (window.__refreshingOperationalAssets || !window.operationalAssetState) return;
+    window.__refreshingOperationalAssets = true;
+    try {
+        const permitted = !!operationalAssetProfileScope(window.userProfile);
+        const assetMap = window.map || map;
+        Object.entries(window.operationalAssetState).forEach(([key, state]) => {
+            if (window.layerControl && state.registered !== permitted) {
+                if (permitted) window.layerControl.addOverlay(state.layer, operationalAssetOverlayNames[key]);
+                else { assetMap.removeLayer(state.layer); window.layerControl.removeLayer(state.layer); }
+                state.registered = permitted;
+            }
+            renderOperationalAssetLayer(state);
+        });
+        const signature = operationalAssetVisibilitySignature();
+        if (window.operationalAssetPopup && window.__operationalAssetProfileSignature !== signature) {
+            assetMap.closePopup(window.operationalAssetPopup);
+            window.operationalAssetPopup = null;
+        }
+        window.__operationalAssetProfileSignature = signature;
+    } finally { window.__refreshingOperationalAssets = false; }
+}
+
 function initializeOperationalAssetLayers() {
     if (window.operationalAssetState) return;
     const assetMap = window.map || map;
@@ -107021,6 +107133,10 @@ function initializeOperationalAssetLayers() {
         apc: { path: 'geojson/apc.geojson', assetType: 'ANTI_POACHING_CAMP', prefix: 'APC_BTR_' },
         waterholes: { path: 'geojson/waterholes.geojson', assetType: 'WATERHOLE', prefix: 'WH_BTR_' }
     };
+    window.addEventListener('userProfileLoaded', refreshOperationalAssetVisibility);
+    window.operationalAssetVisibilityTimer = window.setInterval(() => {
+        if (window.__operationalAssetProfileSignature !== operationalAssetVisibilitySignature()) refreshOperationalAssetVisibility();
+    }, 1000);
     Object.entries(definitions).forEach(([key, definition]) => {
         const layer = L.geoJSON(null, {
             pane: 'operationalAssetsPane', renderer,
@@ -107062,14 +107178,17 @@ function validateOperationalAssetGeoJSON(assetKey, data) {
 async function loadOperationalAssetLayer(assetKey) {
     const state = window.operationalAssetState?.[assetKey];
     if (!state) return false;
-    if (state.loaded) { syncOperationalAssetInteraction(); return true; }
+    if (!operationalAssetProfileScope(window.userProfile)) return false;
+    if (state.loaded) { renderOperationalAssetLayer(state); syncOperationalAssetInteraction(); return true; }
     if (state.promise) return state.promise;
     state.promise = (async () => {
         try {
+            await loadOperationalAssetOwnership();
             const response = await fetch(state.path);
             if (!response.ok) throw new Error('Operational asset HTTP ' + response.status);
             const data = validateOperationalAssetGeoJSON(assetKey, await response.json());
-            state.layer.addData(data);
+            state.data = data;
+            renderOperationalAssetLayer(state);
             state.loaded = true;
             // Populate only the registered group. Never add it back to the map here.
             syncOperationalAssetInteraction();
@@ -107101,7 +107220,7 @@ function createOperationalAssetPoint(feature, latlng) {
 
 function bindOperationalAssetFeature(feature, layer) {
     layer.on('click', e => {
-        if (!operationalAssetsCanInteract()) return;
+        if (!operationalAssetsCanInteract() || !canViewOperationalAsset(feature, window.userProfile) || !operationalAssetMatchesGIS(feature)) return;
         const popup = L.popup({ maxWidth: 340 }).setLatLng(e.latlng || layer.getLatLng())
             .setContent(buildOperationalAssetPopup(feature)).openOn(window.map || map);
         window.operationalAssetPopup = popup;
@@ -107186,6 +107305,7 @@ function operationalAssetsCanInteract() {
 }
 
 function syncOperationalAssetInteraction() {
+    refreshOperationalAssetVisibility();
     const states = window.operationalAssetState;
     if (!states) return;
     const assetMap = window.map || map;
@@ -107259,12 +107379,15 @@ function syncOperationalAssetInteraction() {
             // ⚠️ IRREGULARITIES
             "⚠️ Irregularities":
                 window.irregularityLayer ||
-                irregularityLayer,
-
-            "🛣 Forest Roads": window.operationalAssetState.roads.layer,
-            "🛖 APCs": window.operationalAssetState.apc.layer,
-            "💧 Waterholes": window.operationalAssetState.waterholes.layer
+                irregularityLayer
         };
+
+        if (operationalAssetProfileScope(window.userProfile)) {
+            Object.entries(window.operationalAssetState).forEach(([key, state]) => {
+                layerControlOverlays[operationalAssetOverlayNames[key]] = state.layer;
+                state.registered = true;
+            });
+        }
 
 
         /* ============================================================

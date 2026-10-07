@@ -1,0 +1,1371 @@
+{
+  "type": "FeatureCollection",
+  "name": "BTR Anti-Poaching Camps",
+  "metadata": {
+    "schemaVersion": "1.0",
+    "operationalFieldsNote": "Static GIS/master fields only. Condition history and GPS-verified visit/patrol history should be stored separately at runtime.",
+    "unknownPolicy": "Values not supported by the source KML are left null/UNKNOWN rather than inferred."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "APC_BTR_001",
+      "properties": {
+        "assetId": "APC_BTR_001",
+        "name": "30th Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Pana",
+        "beat": "Gangutia",
+        "compartment": "RTG_4",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "1"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.52241111,
+          26.72713889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_002",
+      "properties": {
+        "assetId": "APC_BTR_002",
+        "name": "Adma",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Pana",
+        "beat": "Adma",
+        "compartment": "Adma_2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "2"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.49251667,
+          26.78226111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_003",
+      "properties": {
+        "assetId": "APC_BTR_003",
+        "name": "Panbari",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Pana",
+        "beat": "Adma",
+        "compartment": "Adma_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "3"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.51416667,
+          26.76613889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_004",
+      "properties": {
+        "assetId": "APC_BTR_004",
+        "name": "Phusley Jhora",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Pana",
+        "beat": "Raimatang",
+        "compartment": "RTG_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "4"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.524475,
+          26.75108056
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_005",
+      "properties": {
+        "assetId": "APC_BTR_005",
+        "name": "Thulokhop",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Pana",
+        "beat": "Pana",
+        "compartment": "Pana_2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.48464722,
+          26.78036944
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_006",
+      "properties": {
+        "assetId": "APC_BTR_006",
+        "name": "21 Mile Panbari",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "ERVK",
+        "beat": "South Panbari",
+        "compartment": "PAN_6",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "6"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.63486111,
+          26.60222222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_007",
+      "properties": {
+        "assetId": "APC_BTR_007",
+        "name": "22 Mile Panbari",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "ERVK",
+        "beat": "South Panbari",
+        "compartment": "PAN_7",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.61161111,
+          26.61411111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_008",
+      "properties": {
+        "assetId": "APC_BTR_008",
+        "name": "23 Mile PG",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "ERVK",
+        "beat": "North Panbari",
+        "compartment": "PAN_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "8"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.652625,
+          26.62823611
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_009",
+      "properties": {
+        "assetId": "APC_BTR_009",
+        "name": "21 Mile Nimati",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Nimati",
+        "beat": "West Poro",
+        "compartment": "PORO_1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "9"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.46061667,
+          26.60893889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_010",
+      "properties": {
+        "assetId": "APC_BTR_010",
+        "name": "3-Number Grass",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Nimati",
+        "beat": "East Nimati",
+        "compartment": "NMT_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "10"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.46731111,
+          26.63155833
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_011",
+      "properties": {
+        "assetId": "APC_BTR_011",
+        "name": "Rhino",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Nimati",
+        "beat": "East Nimati",
+        "compartment": "NMT_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "11"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.460075,
+          26.63956389
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_012",
+      "properties": {
+        "assetId": "APC_BTR_012",
+        "name": "23 Mile Wooden Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Nimati",
+        "beat": "East Nimati",
+        "compartment": "NMT_4",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "12"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.458425,
+          26.63812222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_013",
+      "properties": {
+        "assetId": "APC_BTR_013",
+        "name": "23 Mile Sanghai",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "West Rajabhatkhawa",
+        "beat": "Central Rajabhatkhawa",
+        "compartment": "SRVK_5",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "13"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.59183333,
+          26.63003333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_014",
+      "properties": {
+        "assetId": "APC_BTR_014",
+        "name": "23 Mile Temple",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "West Rajabhatkhawa",
+        "beat": "West Rajabhatkhawa",
+        "compartment": "SRVK_7",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "14"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.53408889,
+          26.63330278
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_015",
+      "properties": {
+        "assetId": "APC_BTR_015",
+        "name": "25 Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "West Rajabhatkhawa",
+        "beat": "North Rajabhatkhawa",
+        "compartment": "SRVK_2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "15"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.55221667,
+          26.66078333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_016",
+      "properties": {
+        "assetId": "APC_BTR_016",
+        "name": "26 Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "West Rajabhatkhawa",
+        "beat": "Dima",
+        "compartment": "Dima_2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "16"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.52533333,
+          26.68280556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_017",
+      "properties": {
+        "assetId": "APC_BTR_017",
+        "name": "18 Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "East Damanpur",
+        "beat": "Cheko",
+        "compartment": "CK_8",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "17"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.58569167,
+          26.56123333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_018",
+      "properties": {
+        "assetId": "APC_BTR_018",
+        "name": "19.5 Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "East Damanpur",
+        "beat": "Cheko",
+        "compartment": "CK_3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "18"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.59469722,
+          26.58035278
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_019",
+      "properties": {
+        "assetId": "APC_BTR_019",
+        "name": "22 Mile",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "East Damanpur",
+        "beat": "South Rajabhatkhawa",
+        "compartment": "SRVK_11",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "19"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.56041667,
+          26.61752778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_020",
+      "properties": {
+        "assetId": "APC_BTR_020",
+        "name": "Atiabari",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "West Damanpur",
+        "beat": "West Garam",
+        "compartment": "Poro_4",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "20"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.50661111,
+          26.56411111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_021",
+      "properties": {
+        "assetId": "APC_BTR_021",
+        "name": "Dakini",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Hamiltonganj",
+        "beat": "Gudamdabri",
+        "compartment": "GDB_1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "21"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.40949444,
+          26.73371944
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_022",
+      "properties": {
+        "assetId": "APC_BTR_022",
+        "name": "TGN Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Jayanti",
+        "beat": "North Jayanti",
+        "compartment": "PHK-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "22"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.59433056,
+          26.72335278
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_023",
+      "properties": {
+        "assetId": "APC_BTR_023",
+        "name": "Bhutiabusty Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Jayanti",
+        "beat": "Bhutiabusty",
+        "compartment": "PHK-2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "23"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.62960833,
+          26.69786389
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_024",
+      "properties": {
+        "assetId": "APC_BTR_024",
+        "name": "26th Mile Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Jayanti",
+        "beat": "North Jayanti",
+        "compartment": "NJNT-2A",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "24"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.63210278,
+          26.67901111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_025",
+      "properties": {
+        "assetId": "APC_BTR_025",
+        "name": "25th Mile Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Jayanti",
+        "beat": "South Jayanti",
+        "compartment": "SJNT-3A",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "25"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.64518889,
+          26.66066389
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_026",
+      "properties": {
+        "assetId": "APC_BTR_026",
+        "name": "Chuniajhora Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Hatipota",
+        "beat": "Chuniajhora",
+        "compartment": "JNT-3B",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "26"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.66691389,
+          26.65864722
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_027",
+      "properties": {
+        "assetId": "APC_BTR_027",
+        "name": "Chunia Checkpost",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Hatipota",
+        "beat": "Chuniajhora",
+        "compartment": "Outside TR",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "27"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.665824,
+          26.677955
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_028",
+      "properties": {
+        "assetId": "APC_BTR_028",
+        "name": "Tiamari Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "North Rydak",
+        "beat": "Tiamari",
+        "compartment": "CRD-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "27"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.76318889,
+          26.64605556
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_029",
+      "properties": {
+        "assetId": "APC_BTR_029",
+        "name": "Bagjhora Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "SRD",
+        "compartment": "SR-3",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "28"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.75507222,
+          26.56810833
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_030",
+      "properties": {
+        "assetId": "APC_BTR_030",
+        "name": "Singijhora Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "Chipra",
+        "compartment": "SR-7",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "29"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.75221111,
+          26.55172778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_031",
+      "properties": {
+        "assetId": "APC_BTR_031",
+        "name": "Thandajhora Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "SRD",
+        "compartment": "SR-4",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "30"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.72869722,
+          26.562575
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_032",
+      "properties": {
+        "assetId": "APC_BTR_032",
+        "name": "Murderjhora Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "Marakhata",
+        "compartment": "MKT-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "31"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.769575,
+          26.591275
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_033",
+      "properties": {
+        "assetId": "APC_BTR_033",
+        "name": "Narathali Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "Narathali",
+        "compartment": "NRT-2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "32"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.73188056,
+          26.51508889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_034",
+      "properties": {
+        "assetId": "APC_BTR_034",
+        "name": "Hatijhora Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "South Rydak",
+        "beat": "SRD",
+        "compartment": "SR-2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "33"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.76138889,
+          26.5925
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_035",
+      "properties": {
+        "assetId": "APC_BTR_035",
+        "name": "Ghoramara Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Bholka",
+        "beat": "Ghoramara",
+        "compartment": "SBH-3A",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "34"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.85041389,
+          26.52517778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_036",
+      "properties": {
+        "assetId": "APC_BTR_036",
+        "name": "Bhalka New",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Bholka",
+        "beat": "Ghoramara 2",
+        "compartment": "SBH-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "35"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.840278,
+          26.541111
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_037",
+      "properties": {
+        "assetId": "APC_BTR_037",
+        "name": "Chengmari Watctower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Bholka",
+        "beat": "Chengmari",
+        "compartment": "NBH-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "36"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.86337222,
+          26.58779167
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_038",
+      "properties": {
+        "assetId": "APC_BTR_038",
+        "name": "Central Tower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Kumargram",
+        "beat": "Newlands",
+        "compartment": "NLS-1",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "37"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.81037222,
+          26.69309444
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_039",
+      "properties": {
+        "assetId": "APC_BTR_039",
+        "name": "KG Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Kumargram",
+        "beat": "KG",
+        "compartment": "KG-2",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "38"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.84218333,
+          26.68092222
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "APC_BTR_040",
+      "properties": {
+        "assetId": "APC_BTR_040",
+        "name": "28th Mile Watchtower",
+        "assetType": "ANTI_POACHING_CAMP",
+        "division": null,
+        "range": "Buxaduar",
+        "beat": "Buxaroad",
+        "compartment": "NRVK-9",
+        "status": "NORMAL",
+        "operational": "UNKNOWN",
+        "manningStatus": "UNKNOWN",
+        "staffPresent": null,
+        "rtSet": "UNKNOWN",
+        "communication": "UNKNOWN",
+        "lastStatusUpdate": null,
+        "lastStatusUpdatedBy": null,
+        "currentCondition": null,
+        "lastVisitedAt": null,
+        "lastVisitedBy": null,
+        "lastVisit": null,
+        "totalVerifiedVisits": 0,
+        "sourceSerial": "39"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          89.53406667,
+          26.70177222
+        ]
+      }
+    }
+  ]
+}

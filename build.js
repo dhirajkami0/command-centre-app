@@ -57,6 +57,16 @@ const SKIP_FILES = new Set([
     "README.md"
 
 ]);
+
+// Exact repository-relative non-runtime paths. Source files remain intact.
+const PRODUCTION_EXCLUSIONS = new Set([
+    'tests', 'audit-input', 'Code.gs',
+    'index - backup2.html', 'index - backup3.html', 'index -backup.html',
+    'index_BACKUP_BEFORE_CCF_DEPLOY.html',
+    'geojson/operational_asset_ownership_review.json',
+    'operational_asset_ownership_review.csv',
+    'js/test.txt', 'css/text.text', 'css/images/text.text', 'icons/png'
+]);
 /*==================================================
   THIRD PARTY LIBRARIES
   (These are copied but NOT obfuscated)
@@ -131,6 +141,9 @@ function isVendor(file) {
 ==================================================*/
 
 function copyRecursive(src, dst) {
+
+    const relativePath = path.relative(ROOT, src).split(path.sep).join('/');
+    if (PRODUCTION_EXCLUSIONS.has(relativePath)) return;
 
     const stat = fs.statSync(src);
 
