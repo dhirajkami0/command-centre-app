@@ -1,0 +1,185 @@
+/* Presentation only: one reserved rail and a separate map-relative action. */
+#map .btr-map-control-rail {
+    --rail-width: 72px;
+    --compass-size: 72px;
+    position: absolute;
+    inset: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(76px + env(safe-area-inset-bottom)) auto;
+    width: var(--rail-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+    z-index: 1000; /* Existing Leaflet control level, not a collision workaround. */
+}
+#map .btr-map-control-rail > .leaflet-control {
+    float: none;
+    clear: none;
+    margin: 0;
+    flex: 0 0 auto;
+    pointer-events: auto;
+}
+#map .btr-map-control-rail > .leaflet-control-zoom { order: 0; }
+#map .btr-map-control-rail > .leaflet-control-zoom a {
+    width: 36px;
+    height: 30px;
+    line-height: 30px;
+    background: #15212b;
+    color: #e6edf3;
+    border-color: #384653;
+}
+#map .btr-map-control-rail > #tacticalCompass {
+    order: 1;
+    position: relative;
+    inset: auto;
+    width: var(--compass-size);
+    height: calc(var(--compass-size) + 20px);
+    flex: 0 0 auto;
+    transform: none;
+    border: 0;
+    border-radius: 8px;
+    background: #101820;
+    box-shadow: none;
+    opacity: 1;
+    overflow: visible;
+    pointer-events: none;
+    z-index: auto;
+}
+#map .btr-map-control-rail #compassRing {
+    inset: 0 auto auto 0;
+    width: var(--compass-size);
+    height: var(--compass-size);
+    border: 1px solid #384653;
+    box-sizing: border-box;
+    background: #101820;
+}
+#map .btr-map-control-rail #bearingLine { height: calc(var(--compass-size) * .35); }
+#map .btr-map-control-rail #curveArc { width: 65%; height: 65%; }
+#map .btr-map-control-rail #compassInfo { bottom: 1px; line-height: 1; }
+#map .btr-map-control-rail #headingText { font-size: 10px; }
+#map .btr-map-control-rail #gpsQuality { font-size: 7px; margin-top: 2px; }
+#map .btr-map-control-rail > .leaflet-control-layers {
+    order: 2;
+    position: static;
+    width: var(--rail-width);
+    height: 44px;
+    padding: 0;
+    border: 0;
+    box-sizing: border-box;
+    background: transparent;
+    box-shadow: none;
+}
+#map .btr-map-control-rail .leaflet-control-layers-toggle,
+#map .btr-map-control-rail .leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+    display: block;
+    width: 44px;
+    height: 44px;
+    margin-inline: auto;
+    box-sizing: border-box;
+    border: 1px solid #384653;
+    background-color: #e6edf3;
+    border-radius: 4px;
+}
+#map .btr-map-control-rail .leaflet-control-layers-list,
+#map .btr-map-control-rail #monthlyStatusBody {
+    position: absolute;
+    top: 0;
+    right: 100%;
+    width: min(300px, calc(100vw - var(--rail-width) - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    height: auto !important; /* Leaflet's native inline height must not constrain the leftward flyout. */
+    max-height: 100%;
+    padding: 12px;
+    margin: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    background: #15212b;
+    color: #e6edf3;
+    border: 1px solid #384653;
+    border-radius: 8px;
+    scrollbar-gutter: stable;
+}
+#map .btr-map-control-rail .leaflet-control-layers-list label {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: normal;
+}
+#map .btr-map-control-rail > #monthlyStatusCard,
+#map .btr-map-control-rail > #monthlyStatusCard.collapsed {
+    order: 3;
+    position: static;
+    width: var(--rail-width);
+    height: 44px;
+    padding: 0;
+    border: 1px solid #384653;
+    border-radius: 6px;
+    box-sizing: border-box;
+    overflow: visible;
+    background: #15212b;
+    box-shadow: none;
+    backdrop-filter: none;
+    transition: none;
+}
+#map .btr-map-control-rail #monthlyStatusHeader { height: 42px; }
+#map .btr-map-control-rail #monthlyStatusTitle,
+#map .btr-map-control-rail #monthlyStatusCard.collapsed #monthlyStatusTitle {
+    font-size: 9px;
+    line-height: 12px;
+    padding: 0 5px 0 14px;
+    margin: 0;
+    border: 0;
+    max-height: 36px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+#map .btr-map-control-rail #monthlyStatusToggle {
+    inset: 0;
+    padding: 0 3px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: 10px;
+}
+#map .btr-map-control-rail #monthlyStatusBody .monthlyStatusRow { gap: 12px; }
+#map .btr-map-operational-action {
+    position: absolute;
+    right: calc(16px + env(safe-area-inset-right));
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    pointer-events: auto;
+    z-index: 1000;
+}
+#map .btr-map-operational-action #gg-offence-main-button {
+    position: static;
+    inset: auto;
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    border-radius: 6px;
+    background: #192c3a;
+    color: #f3f7fb;
+    border: 1px solid #64849a;
+    box-shadow: none;
+    backdrop-filter: none;
+    transition: none;
+    transform: none;
+}
+@media (max-width: 600px) {
+    #map .btr-map-control-rail { --rail-width: 64px; --compass-size: 64px; gap: 8px; }
+    #map .btr-map-operational-action #gg-offence-main-button { width: 44px; min-width: 44px; max-width: 44px; padding: 0; }
+    #map .btr-map-operational-action #gg-offence-main-button > span:last-child { display: none; }
+}
+@media (max-height: 480px) {
+    #map .btr-map-control-rail { --compass-size: 48px; gap: 4px; }
+    #map .btr-map-control-rail > .leaflet-control-zoom a { height: 28px; line-height: 28px; }
+    #map .btr-map-control-rail #compassNorth { top: 3px; font-size: 9px; }
+    #map .btr-map-control-rail .south { bottom: 3px; }
+    #map .btr-map-control-rail .east { right: 3px; }
+    #map .btr-map-control-rail .west { left: 3px; }
+}

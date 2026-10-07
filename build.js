@@ -61,7 +61,7 @@ const SKIP_FILES = new Set([
 // Exact repository-relative non-runtime paths. Source files remain intact.
 const PRODUCTION_EXCLUSIONS = new Set([
     'tests', 'audit-input', 'Code.gs',
-    'index - backup2.html', 'index - backup3.html', 'index -backup.html',
+    'index - backup2.html', 'index - backup3.html', 'index - backup4.html', 'index -backup.html',
     'index_BACKUP_BEFORE_CCF_DEPLOY.html',
     'geojson/operational_asset_ownership_review.json',
     'operational_asset_ownership_review.csv',
