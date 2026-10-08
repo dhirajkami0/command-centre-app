@@ -1,0 +1,15 @@
+.btr-live-staff-popup .leaflet-popup-content {
+    margin: 12px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+.btr-live-staff-popup .leaflet-popup-content > div {
+    box-sizing: border-box;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+}

@@ -104,6 +104,10 @@
 ======================================================= -->
 <link rel="stylesheet" href="css/offence/offenceCascade.css">
 <script src="js/leaflet.js"></script>
+<script src="js/staffPopup.js"></script>
+<link rel="stylesheet" href="css/staffPopup.css">
+<script src="js/staffTrackNavigation.js"></script>
+<link rel="stylesheet" href="css/staffTrackNavigation.css">
 <!-- Leaflet Heat Plugin -->
 <script src="js/leaflet-heat.js"></script>
 
@@ -3861,73 +3865,7 @@ function(
         // Preserve existing selected-track map behavior.
         // ====================================================
 
-        try{
-
-            if(
-                typeof map !== "undefined" &&
-                map &&
-                typeof map.fitBounds ===
-                "function" &&
-                latLngs.length > 1
-            ){
-
-                const bounds =
-                    L.latLngBounds(
-                        latLngs
-                    );
-
-
-                if(
-                    bounds.isValid()
-                ){
-
-                    map.fitBounds(
-                        bounds,
-                        {
-                            padding:
-                                [
-                                    30,
-                                    30
-                                ],
-
-                            maxZoom:
-                                17
-                        }
-                    );
-
-                }
-
-            }
-
-        }
-        catch(err){
-
-            console.warn(
-                "⚠ Individual track map fit skipped:",
-                name,
-                err
-            );
-
-        }
-
-
-        // ====================================================
-        // ✅ FINAL STATUS
-        // ----------------------------------------------------
-        // Individual track is rendered entirely from the
-        // central session cache.
-        //
-        // NO:
-        //     onSnapshot()
-        //     getDocs()
-        //     patrol_tracks query
-        //     trackListeners ownership
-        //
-        // YES:
-        //     visibleStaffCache
-        //     sessionPointCache
-        //     staffTracks UI
-        // ====================================================
+        polyline.__ggStaffTrackSessionId = sessionId;
 
         console.log(
             "🟢 INDIVIDUAL TRACK FROM CACHE:",
@@ -3938,6 +3876,7 @@ function(
         );
 
 
+        return polyline;
     }
     catch(err){
 
@@ -16561,7 +16500,7 @@ esriSat.addTo(map);
 // 🖱 MAP CONTROLS
 // ======================================
 
-map.scrollWheelZoom.disable();
+map.scrollWheelZoom.enable();
 
 map.tap = true;
 
@@ -44142,6 +44081,8 @@ var locationActive = false;
 var bestLocation = null;
 var bestAccuracy = Infinity;
 var gpsTimer = null;
+var gpsRetryTimer = null;
+var gpsRequestId = 0;
 
 
 // 🔘 TOGGLE FUNCTION
@@ -44189,6 +44130,7 @@ function toggleLocation() {
 
 // 🚀 START GPS
 function startGPS() {
+  const requestId = ++gpsRequestId;
 
   const btn = document.getElementById("locBtn");
 
@@ -44200,7 +44142,7 @@ function startGPS() {
   bestAccuracy = Infinity;
 
   map.locate({
-    setView: true,
+    setView: false,
     maxZoom: 19,
     enableHighAccuracy: true,
     timeout: 20000,
@@ -44210,7 +44152,11 @@ function startGPS() {
 
   gpsTimer = setTimeout(() => {
     console.log("⏱ Stopping GPS after 10s");
+    if (requestId !== gpsRequestId) return;
     map.stopLocate();
+    gpsTimer = null;
+    clearTimeout(gpsRetryTimer);
+    gpsRetryTimer = null;
     showBestLocation();
   }, 10000);
 }
@@ -44218,6 +44164,9 @@ function startGPS() {
 
 // 🛑 STOP LOCATION CLEANLY
 function stopLocation() {
+  gpsRequestId++;
+  clearTimeout(gpsRetryTimer);
+  gpsRetryTimer = null;
 
   const btn = document.getElementById("locBtn");
 
@@ -44225,6 +44174,7 @@ function stopLocation() {
 
   try { map.stopLocate(); } catch(e){ console.warn(e); }
   try { clearTimeout(gpsTimer); } catch(e){ console.warn(e); }
+  gpsTimer = null;
 
   try { myLocationLayer.clearLayers(); } catch(e){ console.warn(e); }
 
@@ -44240,6 +44190,11 @@ function stopLocation() {
 
 // 🔄 RESET BUTTON
 function resetButton(){
+  gpsRequestId++;
+  map.stopLocate();
+  clearTimeout(gpsTimer);
+  clearTimeout(gpsRetryTimer);
+  gpsTimer = gpsRetryTimer = null;
   const btn = document.getElementById("locBtn");
   btn.innerText = "MY LOCATION";
   btn.disabled = false;
@@ -44543,11 +44498,15 @@ map.on(
     // ============================================
     // 🔥 RETRY
     // ============================================
-    setTimeout(() => {
+    const requestId = gpsRequestId;
+    clearTimeout(gpsRetryTimer);
+    gpsRetryTimer = setTimeout(() => {
+      gpsRetryTimer = null;
+      if (!locationActive || gpsTimer === null || requestId !== gpsRequestId) return;
 
       map.locate({
 
-        setView: true,
+        setView: false,
 
         maxZoom: 19,
 
@@ -85794,6 +85753,11 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                 <button onclick="navigateHEC('${lat}','${lon}')" style="padding:11px; background:#1565c0; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">
                   🧭 NAVIGATE
                 </button>
+                <div class="btr-staff-track-actions">
+                  <button type="button" data-staff-track-action="view">View Track</button>
+                  <button type="button" data-staff-track-action="zoom">Zoom to Track</button>
+                  <span data-staff-track-status role="status" aria-live="polite"></span>
+                </div>
               </div>
             </div>`;
 
@@ -85802,44 +85766,17 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                 [lat, lon],
                 {
                   icon,
-                  zIndexOffset: 3000
+                  zIndexOffset: 3000,
+                  autoPanOnFocus: false
                 }
               )
-              .bindPopup(popup, { autoClose: false, closeOnClick: false })
+              .bindPopup(window.StaffPopup.create(popup))
               ;
               window.staffMarkers[s.cleanName] = createdMarker;
               createdMarker.addTo(staffLayer);
 
             }
-            const staffMarker = window.staffMarkers?.[s.cleanName];
-            if(staffMarker && staffMarker.__staffTrackClickBound !== true){
-              staffMarker.__staffTrackClickBound = true;
-              staffMarker.on("click", function(){
-                try {
-                  const clickedName = cleanName(s.cleanName || s.name || "");
-                  if(!clickedName) return;
-
-                  const currentUserName = cleanName(window.userProfile?.cleanName || window.userProfile?.name || "");
-                  if(clickedName === currentUserName) return;
-
-                  if(window.staffTrackState?.bulkEnabled === true) return;
-
-                  const selectedName = cleanName(window.staffTrackState?.selectedStaff || "");
-                  if(selectedName === clickedName){
-                    window.clearSelectedStaffTrack?.();
-                    return;
-                  }
-
-                  if(selectedName){
-                    window.clearSelectedStaffTrack?.();
-                  }
-
-                  window.loadIndividualStaffTrack?.(clickedName);
-                } catch(err){
-                  console.error("❌ Staff marker track click failed:", s.cleanName, err);
-                }
-              });
-            }
+            window.StaffTrackNavigation.bindPopup(window.staffMarkers[s.cleanName], staffDistanceKey);
 
             return { marker: window.staffMarkers[s.cleanName], icon, popup };
 };
@@ -86356,10 +86293,7 @@ function(staff, point, originatingSessionId){
         // 15. MOVE MARKER
         // ========================================================
 
-        marker.setLatLng([
-            lat,
-            lon
-        ]);
+        window.StaffPopup.setPosition(marker, lat, lon);
 
 
         // ========================================================
@@ -86524,10 +86458,7 @@ function(staff, point, originatingSessionId){
                             : currentCachedPointCount;
 
 
-                    marker.setLatLng([
-                        lat,
-                        lon
-                    ]);
+                    window.StaffPopup.setPosition(marker, lat, lon);
 
 
                     // =================================================
@@ -86876,6 +86807,7 @@ if(
 
                     popupElement.dataset.pointId =
                         pointId;
+                    window.StaffPopup.place(marker);
 
 
                 }catch(error){
@@ -86930,7 +86862,8 @@ if(
 
 if(
     marker.__ggPopupRefreshTimer &&
-    typeof marker.__ggPopupRefreshTimer === "number"
+    typeof marker.__ggPopupRefreshTimer === "number" &&
+    !marker.isPopupOpen()
 ){
 
     try{
@@ -86954,7 +86887,7 @@ if(
 ){
 
     try{
-        refreshPopup();
+        window.StaffPopup.deferRefresh(marker, refreshPopup);
     }catch(error){
 
         console.warn(
@@ -87008,7 +86941,7 @@ if(
                 // Immediate authoritative refresh
                 // --------------------------------------------
 
-                refreshPopup();
+                window.StaffPopup.deferRefresh(marker, refreshPopup);
 
 
                 // --------------------------------------------
@@ -87143,6 +87076,7 @@ if(
     marker.on(
         "popupclose",
         function(){
+            window.StaffPopup.cancelRefresh(marker);
 
             try{
 
@@ -87799,8 +87733,8 @@ staff.forEach(s => {
             );
             if(existingStaffMarker){
               const marker = window.staffMarkers[s.cleanName];
-              marker.setLatLng([lat, lon]);
-              marker.setIcon(icon);
+              window.StaffPopup.setPosition(marker, lat, lon);
+              if (marker.options.icon.options.html !== icon.options.html) marker.setIcon(icon);
 
               const popupIsOpen = marker.isPopupOpen();
               const popupChanged = marker._ggStaffPopupHtml !== popup;

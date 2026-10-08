@@ -1,0 +1,21 @@
+.btr-live-staff-popup .btr-staff-track-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 8px;
+}
+.btr-live-staff-popup .btr-staff-track-actions button {
+    min-height: 44px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #1565c0;
+    border-radius: 8px;
+    background: white;
+    color: #1565c0;
+    font-weight: 700;
+    cursor: pointer;
+}
+.btr-live-staff-popup [data-staff-track-status] {
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
