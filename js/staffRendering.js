@@ -90,10 +90,16 @@
     const key = s => w.cleanName(s?.cleanName || s?.name || '');
     const coordinate = p => Number(p.lat).toFixed(5) + ',' + Number(p.lon).toFixed(5);
     function time(p) {
-        const n = typeof w.getPointTime === 'function' ? Number(w.getPointTime(p)) : Number(p?.time || 0);
-        if (Number.isFinite(n) && n > 0) return n;
-        const fallback = Date.parse(String(p?.timestamp || ''));
-        return Number.isFinite(fallback) ? fallback : 0;
+        // Match processPatrolSessionSnapshot's authoritative time normalization.
+        const raw = p?.time ?? p?.timestamp ?? '';
+        if (typeof raw === 'string') {
+            const parsed = Date.parse(raw);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+        if (typeof raw?.toDate === 'function') {
+            try { return raw.toDate().getTime(); } catch (_) { return 0; }
+        }
+        return Number.isFinite(Number(raw)) && Number(raw) > 0 ? Number(raw) : 0;
     }
     function valid(p, id) {
         const lat = Number(p?.lat), lon = Number(p?.lon);
@@ -369,7 +375,7 @@
         for (const [name, value] of Object.entries(w.staffLocationStates || {}))
             if (value.sessionId === id) delete w.staffLocationStates[name];
     }
-    w.StaffRendering = {latest, changed, count: id => index(id)?.count || 0, syncVisible,
+    w.StaffRendering = {latest, changed, pointTime: time, count: id => index(id)?.count || 0, syncVisible,
         overlapCount: c => groups.get(c)?.size || 0, ensure, refresh, fast, finishFast, release,
         beginHistory, completeHistory, selectFast, trackFastSeed, reconcileFastSeeds,
         historyPending: id => historyPending.has(id)};

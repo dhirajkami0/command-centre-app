@@ -83052,7 +83052,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       window.sessionPointCache ??= Object.create(null);
       const cache = window.sessionPointCache[sessionId] ??= Object.create(null);
       const existed = Object.prototype.hasOwnProperty.call(cache, point.id), cached = cache[point.id];
-      if (!cached || getPointTime(point) >= getPointTime(cached)) {
+      if (!cached || window.StaffRendering.pointTime(point) >= window.StaffRendering.pointTime(cached)) {
         cache[point.id] = point;
         if (!existed) window.StaffRendering.trackFastSeed(sessionId, point.id);
         window.StaffRendering.changed(sessionId, point.id, point, existed, false);
