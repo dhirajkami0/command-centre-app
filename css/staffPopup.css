@@ -1,4 +1,10 @@
+.btr-live-staff-popup .leaflet-popup-content-wrapper {
+    max-height: none;
+}
 .btr-live-staff-popup .leaflet-popup-content {
+    width: var(--btr-staff-popup-width) !important;
+    min-width: var(--btr-staff-popup-width) !important;
+    max-width: var(--btr-staff-popup-width) !important;
     margin: 12px;
     overflow-x: hidden;
     overflow-y: auto;
@@ -11,5 +17,6 @@
     max-width: 100% !important;
     height: auto !important;
     overflow: visible !important;
-    overflow-wrap: anywhere;
+    word-break: normal;
+    overflow-wrap: break-word;
 }

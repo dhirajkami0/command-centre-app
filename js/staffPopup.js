@@ -5,8 +5,10 @@
     const Popup = L.Popup.extend({
         _updateLayout() {
             const size = this._map.getSize();
-            this.options.maxWidth = Math.max(40, size.x - 48);
-            this.options.minWidth = Math.min(50, this.options.maxWidth);
+            const width = Math.max(40, Math.min(320, size.x - 56));
+            this.options.maxWidth = this.options.minWidth = width;
+            // Scope an explicit width above the inherited sighting-popup auto width.
+            this._contentNode.style.setProperty('--btr-staff-popup-width', width + 'px');
             this.options.maxHeight = Math.max(32, size.y - 64);
             L.Popup.prototype._updateLayout.call(this);
         },
