@@ -288,7 +288,7 @@
         if(!category) return null;
         if(!icons.has(type)) icons.set(type, w.L.divIcon({
             className: 'btr-tiger-team-icon', iconSize: [30, 30], iconAnchor: [15, 15],
-            html: `<div aria-hidden="true" style="width:30px;height:30px;box-sizing:border-box;border:2px solid white;border-radius:50%;background:${category.color};color:white;font:700 20px/26px Arial,sans-serif;text-align:center;box-shadow:0 0 0 2px rgba(255,255,255,.22),0 2px 4px rgba(0,0,0,.35)">${category.letter}</div>`
+            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${category.color}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}">${category.letter}</div></div>`
         }));
         return icons.get(type);
     }

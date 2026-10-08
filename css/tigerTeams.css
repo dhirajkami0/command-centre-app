@@ -1,0 +1,42 @@
+/* Match the normal 17px FA military glyph (18/16 em wide), in its 26px wrapper. */
+.btr-tiger-team-icon .btr-team-wrap {
+  width:26px;
+  height:26px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.btr-tiger-team-icon .btr-team-body {
+  position:relative;
+  width:19.125px;
+  height:17px;
+  box-sizing:border-box;
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:50%;
+  background:var(--btr-team-color);
+  color:#fff;
+  font:700 12px/15px Arial,sans-serif;
+  text-align:center;
+  white-space:nowrap;
+  box-shadow:0 0 3px 1px var(--btr-team-color);
+}
+.btr-tiger-team-icon .btr-team-monitoring::before {
+  content:"";
+  position:absolute;
+  width:19px;
+  height:19px;
+  box-sizing:border-box;
+  left:50%;
+  top:50%;
+  border:1px solid var(--btr-team-color);
+  border-radius:50%;
+  pointer-events:none;
+  animation:btr-team-monitoring-pulse 3s ease-out infinite;
+}
+@keyframes btr-team-monitoring-pulse {
+  0% { transform:translate(-50%,-50%) scale(1); opacity:.45; }
+  75%,100% { transform:translate(-50%,-50%) scale(1.25); opacity:0; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .btr-tiger-team-icon .btr-team-monitoring::before { animation:none; opacity:0; }
+}
