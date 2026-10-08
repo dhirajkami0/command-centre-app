@@ -62,6 +62,10 @@
                 const button=event.target.closest('[data-staff-track-action]');
                 if (!button || !root.contains(button) || !marker.isPopupOpen() || marker.getPopup()?.getElement() !== root) return;
                 event.preventDefault();event.stopPropagation();
+                if (button.dataset.staffTrackAction === 'close') {
+                    w.map.closePopup(marker.getPopup());
+                    return;
+                }
                 const result=button.dataset.staffTrackAction === 'view' ? view(name) :
                     button.dataset.staffTrackAction === 'zoom' ? zoom(name) : null;
                 if (result) {

@@ -5,7 +5,7 @@
     const Popup = L.Popup.extend({
         _updateLayout() {
             const size = this._map.getSize();
-            const width = Math.max(40, Math.min(320, size.x - 56));
+            const width = Math.max(40, Math.min(280, size.x - 56));
             this.options.maxWidth = this.options.minWidth = width;
             // Scope an explicit width above the inherited sighting-popup auto width.
             this._contentNode.style.setProperty('--btr-staff-popup-width', width + 'px');
