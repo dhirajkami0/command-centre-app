@@ -107,6 +107,7 @@
 <script src="js/staffPopup.js"></script>
 <link rel="stylesheet" href="css/staffPopup.css">
 <script src="js/staffTrackNavigation.js"></script>
+<script src="js/tigerTeams.js"></script>
 <script src="js/staffRendering.js"></script>
 <link rel="stylesheet" href="css/staffTrackNavigation.css">
 <!-- Leaflet Heat Plugin -->
@@ -85426,7 +85427,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
               radarHtml = "";
             }
 
-            const icon = L.divIcon({
+            const icon = window.TigerTeams?.iconForStaff(s) || L.divIcon({
               html: `
                 <div class="markerWrap" style="opacity:${markerOpacity};">
                   ${radarHtml}
@@ -85564,6 +85565,8 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                 </div>
               </div>
 
+              ${window.TigerTeams?.popupRow(s) || ""}
+
               <div style="background:#ffffff; border-left:4px solid #2e7d32; border:1px solid #d7e9d8; padding:6px; border-radius:7px; margin-bottom:8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
                 <div style="color:#1b5e20; font-weight:700; font-size:12px;">
                   🟢 DUTY TYPE
@@ -85672,6 +85675,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
               createdMarker.addTo(staffLayer);
 
             }
+            window.TigerTeams?.present(window.staffMarkers[s.cleanName], s, markerState);
             window.StaffTrackNavigation.bindPopup(window.staffMarkers[s.cleanName], staffDistanceKey);
 
             return { marker: window.staffMarkers[s.cleanName], icon, popup };

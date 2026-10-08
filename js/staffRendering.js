@@ -199,7 +199,9 @@
         const age = Date.now() - time(p);
         return !time(p) || age >= 3 * 60 * 60 * 1000 ? 'OFFLINE' : age > 30 * 60 * 1000 ? 'STALE' : 'LIVE';
     }
-    function icon(p) {
+    function icon(p, staff) {
+        const special = w.TigerTeams?.iconForStaff(staff);
+        if (special) return special;
         const status = state(p), opacity = status === 'LIVE' ? '1' : status === 'STALE' ? '0.55' : '0.35';
         const color = status === 'LIVE' ? '#00ff00' : status === 'STALE' ? '#ffd600' : '#ff0000';
         return w.L.divIcon({html: `
@@ -260,7 +262,13 @@
         const value = current(marker);
         if (!value) { if (marker.isPopupOpen()) marker.closePopup(); return; }
         const status = state(value.p);
-        if (marker.__staffState !== status) { marker.setIcon(icon(value.p)); marker.__staffState = status; }
+        const teamType = w.TigerTeams?.activeTeam(value.s)?.type || '';
+        if (marker.__staffState !== status || (marker.__tigerTeamType || '') !== teamType) {
+            const nextIcon = icon(value.p, value.s);
+            if (!teamType || marker.options.icon !== nextIcon) marker.setIcon(nextIcon);
+            marker.__staffState = status; marker.__tigerTeamType = teamType;
+        }
+        w.TigerTeams?.present(marker, value.s, status);
         w.StaffPopup.setPosition(marker, ...position(value.s, value.p));
         if (!marker.isPopupOpen()) return;
         const root = marker.getPopup().getElement(), signature = modelKey(value), version = gisVersion();
@@ -286,7 +294,8 @@
             return {marker: null, icon: null, popup: ''};
         let marker = w.staffMarkers[name];
         if (!marker) {
-            marker = w.L.marker([lat, lon], {icon: icon(p), zIndexOffset: 3000, autoPanOnFocus: false});
+            marker = w.L.marker([lat, lon], {icon: icon(p, s), zIndexOffset: 3000, autoPanOnFocus: false});
+            marker.__tigerTeamType = w.TigerTeams?.activeTeam(s)?.type || '';
             marker.__staffKey = name; marker.__staffSession = id; marker.__staffState = state(p);
             marker.__staffBuilder = builder;
             marker.__staffPopupFactory = () => {
