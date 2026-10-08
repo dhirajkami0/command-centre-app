@@ -2,7 +2,91 @@
 (function (w) {
     'use strict';
     const indexes = new WeakMap(), groups = new Map(), sessions = new Map();
-    const fastPending = new Map();
+    const fastPending = new Map(), fastRunning = new Map(), fastQueue = [];
+    const historyPending = new Set(), fastSeeds = new Map();
+    // Opt-in local diagnostics only. No telemetry, identifiers, or data are transmitted.
+    const diagnostic = w.location?.search && new URLSearchParams(w.location.search).get('staffStartup') === '1';
+    const stages = {T0: 0}, records = new Map(), longTasks = [];
+    let lastVisibility = {rendered: 0, onScreen: 0};
+    const now = () => w.performance?.now?.() || 0;
+    function mark(stage) { if (diagnostic && stages[stage] === undefined) stages[stage] = now(); }
+    function record(id, values) {
+        if (!diagnostic) return;
+        records.set(id, Object.assign(records.get(id) || {sessionId: id}, values));
+    }
+    function snapshot(id, snap, kind) {
+        if (!diagnostic) return;
+        const previous = records.get(id) || {};
+        const count = snap.size ?? snap.docs?.length ?? 0;
+        record(id, {[kind + 'SnapshotAt']: now(), [kind + 'SnapshotCount']: (previous[kind + 'SnapshotCount'] || 0) + 1,
+            [kind + 'InitialDocuments']: previous[kind + 'InitialDocuments'] ?? count,
+            [kind + 'FirstServerDocuments']: previous[kind + 'FirstServerDocuments'] ??
+                (snap.metadata?.fromCache === true ? null : count),
+            [kind + 'FromCache']: snap.metadata?.fromCache ?? null});
+        mark('T7');
+    }
+    function processing(id, values) {
+        if (!diagnostic) return;
+        const previous = records.get(id) || {};
+        const initial = {};
+        for (const [name, value] of Object.entries(values)) {
+            if (previous['initial' + name] === undefined) initial['initial' + name] = value;
+            if (previous.historyFromCache !== true && previous['firstServer' + name] === undefined)
+                initial['firstServer' + name] = value;
+        }
+        record(id, {...initial, ...values});
+    }
+    function eligible() {
+        return Object.values(w.visibleStaffCache || {}).filter(s => s?.dutyActive === true && String(s.sessionId || '').trim());
+    }
+    function visibleFrames() {
+        if (!diagnostic || !w.requestAnimationFrame) return;
+        w.requestAnimationFrame(() => w.requestAnimationFrame(() => {
+            const staff = eligible(), available = staff.filter(s => latest(String(s.sessionId).trim()));
+            if (available.length) mark('T8');
+            if (staff.length && available.length === staff.length) mark('T10');
+            const rendered = staff.filter(s => {
+                const marker = w.staffMarkers?.[key(s)], icon = marker?.getElement?.();
+                return marker?.__staffSession === String(s.sessionId).trim() && icon?.isConnected &&
+                    w.map?.hasLayer?.(marker) && icon.getBoundingClientRect().width > 0 &&
+                    w.getComputedStyle(icon).visibility !== 'hidden' && w.getComputedStyle(icon).display !== 'none';
+            });
+            const mapBox = w.map?.getContainer?.().getBoundingClientRect();
+            const onScreen = rendered.filter(s => {
+                const box = w.staffMarkers[key(s)].getElement().getBoundingClientRect();
+                return mapBox && box.right > Math.max(0, mapBox.left) && box.left < Math.min(w.innerWidth, mapBox.right) &&
+                    box.bottom > Math.max(0, mapBox.top) && box.top < Math.min(w.innerHeight, mapBox.bottom);
+            });
+            lastVisibility = {rendered: rendered.length, onScreen: onScreen.length};
+            if (onScreen.length) mark('T9');
+            if (staff.length && rendered.length === staff.length) mark('T11');
+        }));
+    }
+    if (diagnostic) {
+        try {
+            new w.PerformanceObserver(list => {
+                for (const entry of list.getEntries()) {
+                    if (longTasks.length < 500) longTasks.push({start: entry.startTime, duration: entry.duration});
+                }
+            }).observe({type: 'longtask', buffered: true});
+        } catch (_) { /* Not all WebViews expose long-task observations. */ }
+        w.StaffStartupDiagnostics = {
+            mark, record, snapshot, processing, now,
+            report() {
+                const staff = eligible();
+                return {timeOrigin: w.performance.timeOrigin, capturedAt: now(), stages: {...stages},
+                    firstMarkerMs: stages.T9 ?? null, allMarkersMs: stages.T11 ?? null,
+                    visibility: {...lastVisibility},
+                    authorizedActiveStaff: staff.length,
+                    awaitingSessions: staff.map(s => String(s.sessionId).trim()).filter(id => !latest(id)),
+                    sessions: [...records.values()].map(value => ({...value})), longTasks: [...longTasks],
+                    caveats: ['T9 checks an on-screen Leaflet icon after two animation frames, not a physical display measurement.',
+                        'T11 checks all eligible icons rendered in the layer; some may be outside the viewport.',
+                        'Snapshot wait includes SDK/cache/network/server scheduling; it is not pure network latency.',
+                        'Long tasks do not by themselves identify GIS or analytics as their cause.']};
+            }
+        };
+    }
     const key = s => w.cleanName(s?.cleanName || s?.name || '');
     const coordinate = p => Number(p.lat).toFixed(5) + ',' + Number(p.lon).toFixed(5);
     function time(p) {
@@ -138,6 +222,13 @@
         // Reuse the complete authoritative template; construction occurs only on demand.
         const html = marker.__staffBuilder(value.s, value.p, value.id, Number(value.p.lat), Number(value.p.lon)).popup;
         const template = w.document.createElement('template'); template.innerHTML = html;
+        if (historyPending.has(value.id)) {
+            const count = template.content.querySelector('[id^="staffPatrolPoints_"]');
+            if (count && value.p.patrolPointCount == null) count.textContent = 'History loading…';
+            const distance = template.content.querySelector('[id^="staffDistance_"]');
+            if (distance && value.p.distanceCoveredKm == null && value.p.distanceCoveredMeters == null)
+                distance.textContent = 'History loading…';
+        }
         const location = template.content.querySelector('[id^="staffCurrentLocation_"]');
         const ready = Array.isArray(w.__villageBoundaryGeoJSON?.features) && Array.isArray(w.allCompartmentFeatures);
         if (location && !ready && location.textContent.includes('Outside mapped forest/village boundary'))
@@ -148,7 +239,7 @@
         return template;
     }
     function modelKey(value) {
-        return JSON.stringify([value.s, value.p, Date.now() - time(value.p) > 60000]);
+        return JSON.stringify([value.s, value.p, Date.now() - time(value.p) > 60000, historyPending.has(value.id)]);
     }
     function clock(marker, value) {
         const root = marker.getPopup()?.getElement(), node = root?.querySelector('[id^="staffDutyDuration_"]');
@@ -183,6 +274,7 @@
         clock(marker, value);
     }
     function ensure(s, p, id, lat, lon, builder) {
+        const began = diagnostic ? now() : 0;
         const name = key(s), authorized = w.visibleStaffCache?.[name];
         if (!authorized || authorized.dutyActive !== true || String(authorized.sessionId || '').trim() !== id || !valid(p, id))
             return {marker: null, icon: null, popup: ''};
@@ -208,26 +300,83 @@
         refresh(marker);
         w.staffLocationStates ??= Object.create(null);
         w.staffLocationStates[name] = {state: 'POSITION_AVAILABLE', sessionId: id};
+        mark('T8'); processing(id, {markerMs: now() - began}); record(id, {markerUpdatedAt: now()}); visibleFrames();
         return {marker, icon: marker.options.icon, popup: marker.__staffPopupFactory};
+    }
+    function drainFast() {
+        for (let i = 0; i < fastQueue.length && fastRunning.size < 4;) {
+            const entry = fastQueue[i];
+            if (fastPending.get(entry.id) !== entry.staff) { fastQueue.splice(i, 1); continue; }
+            if (fastRunning.has(entry.id)) { i++; continue; }
+            fastQueue.splice(i, 1);
+            const authorized = owner(entry.id);
+            if (!authorized || latest(entry.id)) { fastPending.delete(entry.id); continue; }
+            fastRunning.set(entry.id, entry.staff);
+            record(entry.id, {fastStartedAt: now()});
+            if (w.loadLatestPatrolPointFast) w.loadLatestPatrolPointFast(entry.id, entry.staff);
+            else finishFast(entry.id, entry.staff);
+        }
     }
     function fast(id, staff) {
         if (fastPending.has(id) || latest(id)) return;
         w.staffLocationStates ??= Object.create(null);
         w.staffLocationStates[key(staff)] = {state: 'AWAITING_LOCATION', sessionId: id};
         fastPending.set(id, staff);
-        w.loadLatestPatrolPointFast?.(id, staff);
+        fastQueue.push({id, staff}); record(id, {fastQueuedAt: now()}); drainFast();
     }
-    function finishFast(id, staff) { if (fastPending.get(id) === staff) fastPending.delete(id); }
+    function finishFast(id, staff) {
+        if (fastPending.get(id) === staff) fastPending.delete(id);
+        if (fastRunning.get(id) === staff) fastRunning.delete(id);
+        drainFast();
+    }
+    function beginHistory(id) { historyPending.add(id); }
+    function trackFastSeed(id, pid) {
+        if (!fastSeeds.has(id)) fastSeeds.set(id, new Set());
+        fastSeeds.get(id).add(pid);
+    }
+    function reconcileFastSeeds(id, snap) {
+        // A late/deleted fast result must not survive a complete server snapshot.
+        if (snap.metadata?.fromCache === true || !Array.isArray(snap.docs)) return;
+        const cache = w.sessionPointCache?.[id], ids = new Set(snap.docs.map(doc => doc.id));
+        for (const pid of fastSeeds.get(id) || []) {
+            if (!ids.has(pid) && cache && Object.prototype.hasOwnProperty.call(cache, pid)) {
+                delete cache[pid]; changed(id, pid, null, true, true);
+            }
+        }
+        fastSeeds.delete(id);
+    }
+    function completeHistory(id, snap) {
+        if (snap?.metadata?.fromCache === true) return;
+        historyPending.delete(id);
+        const s = owner(id), marker = s && w.staffMarkers?.[key(s)];
+        if (marker?.isPopupOpen()) refresh(marker);
+        visibleFrames();
+    }
+    function selectFast(docs, id) {
+        let selected = null, selectedId = '';
+        for (const doc of docs) {
+            const raw = doc.data();
+            if (!raw) continue;
+            const point = {...raw, id: String(doc.id), sessionId: String(raw.sessionId || id).trim()};
+            if (valid(point, id) && (!selected || time(point) > time(selected) ||
+                (time(point) === time(selected) && point.id > selectedId))) { selected = point; selectedId = point.id; }
+        }
+        return selected;
+    }
     function release(id) {
-        ungroup(id); fastPending.delete(id);
+        ungroup(id); fastPending.delete(id); historyPending.delete(id); fastSeeds.delete(id);
+        for (let i = fastQueue.length - 1; i >= 0; i--) if (fastQueue[i].id === id) fastQueue.splice(i, 1);
         for (const [name, value] of Object.entries(w.staffLocationStates || {}))
             if (value.sessionId === id) delete w.staffLocationStates[name];
     }
     w.StaffRendering = {latest, changed, count: id => index(id)?.count || 0, syncVisible,
-        overlapCount: c => groups.get(c)?.size || 0, ensure, refresh, fast, finishFast, release};
+        overlapCount: c => groups.get(c)?.size || 0, ensure, refresh, fast, finishFast, release,
+        beginHistory, completeHistory, selectFast, trackFastSeed, reconcileFastSeeds,
+        historyPending: id => historyPending.has(id)};
     const start = () => {
         if (w.userProfile && w.fb && w.db) w.loadStaff?.();
     };
+    w.StaffRendering.start = start;
     if (w.document.readyState === 'loading') w.document.addEventListener('DOMContentLoaded', start, {once: true});
     else start();
     w.addEventListener('userProfileLoaded', () => {

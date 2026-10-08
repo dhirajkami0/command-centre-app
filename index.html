@@ -3489,6 +3489,8 @@ function(
         }
 
 
+        if (window.StaffRendering?.historyPending(sessionId)) return null;
+
         // ====================================================
         // 🧹 REMOVE PREVIOUS INDIVIDUAL VISUAL TRACK
         // ----------------------------------------------------
@@ -11407,6 +11409,8 @@ setTimeout(() => {
 
         orderBy,
 
+        limit,
+
         onSnapshot,
 
         serverTimestamp,
@@ -11536,6 +11540,8 @@ setTimeout(() => {
 
         orderBy,
 
+        limit,
+
         onSnapshot,
 
         serverTimestamp,
@@ -11577,6 +11583,8 @@ setTimeout(() => {
 
       window.firebaseReady =
         true;
+      // Start authorized staff independently of profile-directory/GIS bootstrap.
+      window.StaffRendering?.start();
 
       window.OperationalAssetConditions?.sync(); // Notify only the asset outbox when Firebase becomes ready.
 
@@ -16495,6 +16503,7 @@ var map = L.map('map', {
 // 🌍 DEFAULT BASE LAYER = ESRI
 // ======================================
 
+window.StaffStartupDiagnostics?.mark('T1');
 esriSat.addTo(map);
 
 // ======================================
@@ -83019,210 +83028,42 @@ function loadStaff(){
 // ============================================================
 
 window.loadLatestPatrolPointFast = function(sessionId, staff){
-
   const run = async function(){
-
+    const diagnostic = window.StaffStartupDiagnostics;
     try {
-
-      sessionId =
-        String(sessionId || "").trim();
-
-      if(
-        !sessionId ||
-        !staff ||
-        !window.fb ||
-        !window.db
-      ){
-        return;
-      }
-
-      const {
-        collection: collFb,
-        query: queryFb,
-        orderBy: orderByFb,
-        limit: limitFb,
-        getDocs: getDocsFb
-      } = window.fb;
-
-      if(
-        typeof collFb !== "function" ||
-        typeof queryFb !== "function" ||
-        typeof orderByFb !== "function" ||
-        typeof getDocsFb !== "function"
-      ){
-        console.warn(
-          "⚠ Latest patrol fast path unavailable:",
-          sessionId
-        );
-        return;
-      }
-
-      const pointsCollection =
-        collFb(
-          window.db,
-          "patrol_tracks",
-          sessionId,
-          "points"
-        );
-
-      const queryParts = [
-        orderByFb("time", "desc")
-      ];
-
-      // Use limit(1) when the Firebase wrapper exposes it.
-      // If unavailable, the query still works with orderBy()
-      // and the first document is used below.
-      if(typeof limitFb !== "function") return;
-      if(typeof limitFb === "function"){
-        queryParts.push(limitFb(1));
-      }
-
-      const latestPointQuery =
-        queryFb(
-          pointsCollection,
-          ...queryParts
-        );
-
-      // This is deliberately not awaited by the caller.
-      const pointSnap =
-        await getDocsFb(latestPointQuery);
-
-      if(
-        !pointSnap ||
-        pointSnap.empty ||
-        !pointSnap.docs ||
-        !pointSnap.docs.length
-      ){
-        return;
-      }
-
-      const pointDoc =
-        pointSnap.docs[0];
-
-      const rawPoint =
-        typeof pointDoc.data === "function"
-          ? pointDoc.data()
-          : null;
-
-      if(!rawPoint){
-        return;
-      }
-
-      const point = {
-        ...rawPoint,
-
-        id:
-          String(
-            rawPoint.id ||
-            rawPoint.pointId ||
-            pointDoc.id ||
-            ""
-          ).trim(),
-
-        sessionId:
-          String(
-            rawPoint.sessionId ||
-            sessionId
-          ).trim()
-      };
-
-      const lat =
-        Number(point.lat);
-
-      const lon =
-        Number(point.lon);
-
-      if(
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lon) ||
-        lat === 0 ||
-        lon === 0
-      ){
-        return;
-      }
-
-      // Ensure the existing marker path can find this point
-      // through its authoritative cache helper.
+      sessionId = String(sessionId || "").trim();
+      const {collection, query, orderBy, limit, getDocs} = window.fb || {};
+      if (!sessionId || !staff || !window.db ||
+          [collection, query, orderBy, limit, getDocs].some(fn => typeof fn !== "function")) return;
+      const started = diagnostic?.now();
+      const pointSnap = await getDocs(query(
+        collection(window.db, "patrol_tracks", sessionId, "points"), orderBy("time", "desc"), limit(8)
+      ));
+      diagnostic?.snapshot(sessionId, pointSnap, 'fast');
+      diagnostic?.record(sessionId, {fastQueryWaitMs: diagnostic.now() - started});
       const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];
       if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||
-          String(point.sessionId || '').trim() !== sessionId) return;
-      window.sessionPointCache ??=
-        Object.create(null);
-
-      window.sessionPointCache[sessionId] ??=
-        Object.create(null);
-
-      const existing = Object.prototype.hasOwnProperty.call(window.sessionPointCache[sessionId], point.id);
-      const cached = window.sessionPointCache[sessionId][point.id];
+          !window.patrolSessionListeners[sessionId]) return;
+      const indexedAt = diagnostic?.now();
+      const point = window.StaffRendering.selectFast(pointSnap?.docs || [], sessionId);
+      diagnostic?.record(sessionId, {fastIndexMs: diagnostic.now() - indexedAt, fastValidPoint: !!point});
+      // Invalid recent fixes never authorize a fabricated position. Full history remains the fallback.
+      if (!point) return;
+      window.sessionPointCache ??= Object.create(null);
+      const cache = window.sessionPointCache[sessionId] ??= Object.create(null);
+      const existed = Object.prototype.hasOwnProperty.call(cache, point.id), cached = cache[point.id];
       if (!cached || getPointTime(point) >= getPointTime(cached)) {
-        window.sessionPointCache[sessionId][point.id] = point;
-        window.StaffRendering?.changed(sessionId, point.id, point, existing, false);
+        cache[point.id] = point;
+        if (!existed) window.StaffRendering.trackFastSeed(sessionId, point.id);
+        window.StaffRendering.changed(sessionId, point.id, point, existed, false);
       }
-
-      window.latestPatrolPointByStaff ??=
-        Object.create(null);
-
-      const staffName =
-        cleanName(
-          staff.cleanName ||
-          staff.name ||
-          ""
-        );
-
-      if(!staffName){
-        return;
-      }
-
-      // Render immediately using the existing authorization
-      // and marker-rendering function.
-      if(
-        typeof window.updateLiveMarkerFromPatrolPoint ===
-        "function"
-      ){
-        window.updateLiveMarkerFromPatrolPoint(
-          current,
-          point,
-          sessionId
-        );
-      }
-
-      console.log(
-        "⚡ LATEST PATROL POINT FAST RENDERED:",
-        {
-          sessionId,
-          staffName,
-          pointId: point.id,
-          lat,
-          lon
-        }
-      );
-
-    } catch(error){
-
-      // Fast-path failure must never interrupt the normal
-      // central listener or the live_staff processing flow.
-      console.warn(
-        "⚠ Latest patrol point fast path failed:",
-        sessionId,
-        error
-      );
-
-    }
-
-    finally { window.StaffRendering?.finishFast(sessionId, staff); }
+      window.updateLiveMarkerFromPatrolPoint(current, point, sessionId);
+    } catch(error) {
+      window.StaffStartupDiagnostics?.record(sessionId, {fastError: String(error.code || error.message)});
+      console.warn("⚠ Latest patrol point fast path failed; full history remains active:", sessionId, error);
+    } finally { window.StaffRendering?.finishFast(sessionId, staff); }
   };
-
-  // Start independently. The caller never waits for this.
-  Promise.resolve()
-    .then(run)
-    .catch(error => {
-      console.warn(
-        "⚠ Latest patrol fast path unhandled failure:",
-        sessionId,
-        error
-      );
-    });
-
+  Promise.resolve().then(run);
   return true;
 };  // ============================================================
   // 🔒 1. ENSURE PATROL SESSION LISTENER (SINGLETON OWNER)
@@ -83266,12 +83107,24 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       // ------------------------------------------------------
       // 🔥 THE ONE AND ONLY PATROL POINT onSnapshot OWNER
       // ------------------------------------------------------
+      if (window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')]?.dutyActive === true)
+        window.StaffStartupDiagnostics?.mark('T5');
+      window.StaffRendering?.beginHistory(sessionId);
+      window.StaffStartupDiagnostics?.mark('T6');
+      window.StaffStartupDiagnostics?.record(sessionId, {historyAttachedAt: window.StaffStartupDiagnostics.now()});
       const unsubscribe = onSnapFb(
         pointsRef,
+        {includeMetadataChanges: true},
         pointSnap => {
           try {
             const ownerStaff = window.patrolSessionStaff[sessionId] || staff;
+            const diagnostic = window.StaffStartupDiagnostics;
+            diagnostic?.snapshot(sessionId, pointSnap, 'history');
+            const began = diagnostic?.now();
+            window.StaffRendering?.reconcileFastSeeds(sessionId, pointSnap);
             window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);
+            diagnostic?.processing(sessionId, {historyProcessingMs: diagnostic.now() - began});
+            window.StaffRendering?.completeHistory(sessionId, pointSnap);
           } catch(error){
             console.error("❌ PATROL SESSION SNAPSHOT PROCESSING ERROR:", sessionId, error);
           }
@@ -83547,6 +83400,8 @@ function(sessionId, pointSnap, staffMember){
 
   const changes =
     pointSnap.docChanges();
+  const indexBegan = window.StaffStartupDiagnostics?.now();
+  window.StaffStartupDiagnostics?.processing(sessionId, {historyChangedDocuments: changes.length});
 
 
   // ==========================================================
@@ -83737,12 +83592,14 @@ function(sessionId, pointSnap, staffMember){
   // DO NOT key it by cleanName.
   // ==========================================================
 
+  window.StaffStartupDiagnostics?.processing(sessionId, {historyIndexMs: window.StaffStartupDiagnostics.now() - indexBegan});
   if (window.StaffRendering) {
     const authorized = window.visibleStaffCache?.[cleanName(staffMember?.cleanName || staffMember?.name || '')];
     if (authorized?.dutyActive === true && String(authorized.sessionId || '').trim() === sessionId) {
       window.updateLiveMarkerFromPatrolPoint(authorized, null, sessionId);
     }
   }
+  window.StaffStartupDiagnostics?.record(sessionId, {historyIndexAndMarkerAt: window.StaffStartupDiagnostics.now()});
   // History and analytics retain their original synchronous completion.
   window.lastPatrolPoint ??=
     Object.create(null);
@@ -84177,11 +84034,13 @@ if(
     newPoints.length > 0
   ){
 
+    const analyticsBegan = window.StaffStartupDiagnostics?.now();
     window.processPatrolAnalyticsSnapshot(
       newPoints,
       staffMember,
       sessionId
     );
+    window.StaffStartupDiagnostics?.processing(sessionId, {analyticsMs: window.StaffStartupDiagnostics.now() - analyticsBegan});
 
   }
 
@@ -84475,9 +84334,12 @@ function(s, currentSessionId, newPoints){
   // ==========================================
   // 🔥 CREATE REALTIME LISTENER
   // ==========================================
+  if (window.userProfile) window.StaffStartupDiagnostics?.mark('T2');
+  window.StaffStartupDiagnostics?.mark('T3');
   window.staffUnsubscribe = onSnapshot(
     liveRef,
     async function processLiveStaff(snapshot){
+      window.StaffStartupDiagnostics?.mark('T4');
       try {
         window.refreshStaffAuthorization = () => processLiveStaff({
           docChanges: () => [], forEach: callback => snapshot.forEach(callback),
@@ -87407,6 +87269,7 @@ console.log(
 // No new visibility calculation.
 // ==================================================
 
+window.StaffStartupDiagnostics?.mark('T5');
 window.StaffRendering?.syncVisible();
 staff = Object.values(
   window.visibleStaffCache || {}

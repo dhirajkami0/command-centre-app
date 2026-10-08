@@ -23,6 +23,7 @@
     function view(name) {
         const id = ++requestId, p = profile(name);
         if (!p) return {ok:false,message:'Staff or active session unavailable.'};
+        if (w.StaffRendering?.historyPending(p.sessionId)) return {ok:false,message:'Patrol history loading. Try View Track when ready.'};
         let track = displayed(p);
         if (!track && !w.staffTrackState?.bulkEnabled &&
             p.key !== canonical(w.userProfile?.cleanName || w.userProfile?.name)) {
@@ -37,6 +38,7 @@
     function zoom(name) {
         const id = ++requestId, p = profile(name);
         if (!p) return {ok:false,message:'Staff or active session unavailable.'};
+        if (w.StaffRendering?.historyPending(p.sessionId)) return {ok:false,message:'Patrol history loading. Use View Track when ready.'};
         const track = displayed(p), map = w.map;
         const bounds = track?.getBounds?.();
         if (!bounds?.isValid?.()) return {ok:false,message:'Use View Track first; no valid displayed track is available.'};
