@@ -107,6 +107,7 @@
 <script src="js/staffPopup.js"></script>
 <link rel="stylesheet" href="css/staffPopup.css">
 <script src="js/staffTrackNavigation.js"></script>
+<script src="js/staffRendering.js"></script>
 <link rel="stylesheet" href="css/staffTrackNavigation.css">
 <!-- Leaflet Heat Plugin -->
 <script src="js/leaflet-heat.js"></script>
@@ -82886,11 +82887,8 @@ function loadStaff(){
   // Firestore itself filters the operational live_staff
   // source.
   //
-  // Older than 24 hours:
-  //      NOT QUERIED
-  //
-  // Last 24 hours:
-  //      QUERIED
+  // All active-duty records are queried.
+  // GPS freshness is evaluated from patrol points, not staff metadata time.
   //
   // Existing listener / docChanges() architecture remains
   // completely unchanged.
@@ -82904,20 +82902,18 @@ function loadStaff(){
   } = window.fb;
 
   // ======================================================
-  // ⏱ 24-HOUR STAFF WINDOW
+  // Active duty has no arbitrary metadata-age cutoff.
   // ======================================================
-  const cutoffTime = new Date(Date.now() - (24 * 60 * 60 * 1000)).toISOString();
 
   // ======================================================
   // 🔥 LIVE STAFF QUERY
   // ======================================================
   const liveRef = query(
     collection(window.db, "live_staff"),
-    where("dutyActive", "==", true),
-    where("time", ">=", cutoffTime)
+    where("dutyActive", "==", true)
   );
 
-  console.log("🕒 LIVE STAFF QUERY WINDOW:", { cutoffTime, hours: 24 });
+  console.log("🕒 LIVE STAFF QUERY: all active duty records; location freshness is displayed separately");
 
   // ==========================================
   // 🔥 PREVENT DUPLICATE LISTENERS
@@ -82956,7 +82952,8 @@ function loadStaff(){
       "compartment",
       "dutyType",
       "status",
-      "type"
+      "type", "phone", "staff", "staffNames", "dutyArea", "duty_area", "DutyArea", "Duty Area",
+      "Beat", "Range", "Division", "Compartment"
     ];
 
     for(const field of structuralFields){
@@ -83075,6 +83072,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       // Use limit(1) when the Firebase wrapper exposes it.
       // If unavailable, the query still works with orderBy()
       // and the first document is used below.
+      if(typeof limitFb !== "function") return;
       if(typeof limitFb === "function"){
         queryParts.push(limitFb(1));
       }
@@ -83145,14 +83143,21 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
 
       // Ensure the existing marker path can find this point
       // through its authoritative cache helper.
+      const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];
+      if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||
+          String(point.sessionId || '').trim() !== sessionId) return;
       window.sessionPointCache ??=
         Object.create(null);
 
       window.sessionPointCache[sessionId] ??=
         Object.create(null);
 
-      window.sessionPointCache[sessionId][point.id] =
-        point;
+      const existing = Object.prototype.hasOwnProperty.call(window.sessionPointCache[sessionId], point.id);
+      const cached = window.sessionPointCache[sessionId][point.id];
+      if (!cached || getPointTime(point) >= getPointTime(cached)) {
+        window.sessionPointCache[sessionId][point.id] = point;
+        window.StaffRendering?.changed(sessionId, point.id, point, existing, false);
+      }
 
       window.latestPatrolPointByStaff ??=
         Object.create(null);
@@ -83175,8 +83180,9 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         "function"
       ){
         window.updateLiveMarkerFromPatrolPoint(
-          staff,
-          point
+          current,
+          point,
+          sessionId
         );
       }
 
@@ -83203,6 +83209,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
 
     }
 
+    finally { window.StaffRendering?.finishFast(sessionId, staff); }
   };
 
   // Start independently. The caller never waits for this.
@@ -83276,6 +83283,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       );
 
       window.patrolSessionListeners[sessionId] = unsubscribe;
+      window.StaffRendering?.fast(sessionId, staff);
       console.log("🟢 PATROL SESSION LISTENER CREATED:", sessionId);
       return true;
 
@@ -83292,6 +83300,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
     try {
       sessionId = String(sessionId || "").trim();
       if(!sessionId) return;
+      window.StaffRendering?.release(sessionId);
 
       if(window.patrolSessionListeners[sessionId]){
         try {
@@ -83360,6 +83369,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
 // ============================================================
 window.getLatestPatrolPointForSession = function(sessionId){
 
+  if (window.StaffRendering) return window.StaffRendering.latest(sessionId);
   try {
 
     const id =
@@ -83554,9 +83564,11 @@ function(sessionId, pointSnap, staffMember){
       // ❌ REMOVED POINT
       // ======================================================
 
+      const existed = Object.prototype.hasOwnProperty.call(pointCache, pointId);
       if(change.type === "removed"){
 
         delete pointCache[pointId];
+        window.StaffRendering?.changed(sessionId, pointId, null, existed, true);
 
         return;
       }
@@ -83588,6 +83600,10 @@ function(sessionId, pointSnap, staffMember){
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
       ){
+        if(existed){
+          delete pointCache[pointId];
+          window.StaffRendering?.changed(sessionId, pointId, null, true, true);
+        }
         return;
       }
 
@@ -83691,6 +83707,7 @@ function(sessionId, pointSnap, staffMember){
 
       pointCache[pointId] =
         cachedPoint;
+      window.StaffRendering?.changed(sessionId, pointId, cachedPoint, existed, false);
 
 
       // ======================================================
@@ -83720,6 +83737,13 @@ function(sessionId, pointSnap, staffMember){
   // DO NOT key it by cleanName.
   // ==========================================================
 
+  if (window.StaffRendering) {
+    const authorized = window.visibleStaffCache?.[cleanName(staffMember?.cleanName || staffMember?.name || '')];
+    if (authorized?.dutyActive === true && String(authorized.sessionId || '').trim() === sessionId) {
+      window.updateLiveMarkerFromPatrolPoint(authorized, null, sessionId);
+    }
+  }
+  // History and analytics retain their original synchronous completion.
   window.lastPatrolPoint ??=
     Object.create(null);
 
@@ -84204,6 +84228,7 @@ if(
 
   }
 
+  // End of synchronous patrol snapshot processing.
 };
 // ============================================================
 // 🔥 HELPER: APPEND NEW POINTS TO LEAFLET TRACK
@@ -84452,8 +84477,12 @@ function(s, currentSessionId, newPoints){
   // ==========================================
   window.staffUnsubscribe = onSnapshot(
     liveRef,
-    async(snapshot)=>{
+    async function processLiveStaff(snapshot){
       try {
+        window.refreshStaffAuthorization = () => processLiveStaff({
+          docChanges: () => [], forEach: callback => snapshot.forEach(callback),
+          authorizationRefresh: true
+        });
         // ==================================================
         // ⚡ ONLY PROCESS DOCUMENTS THAT ACTUALLY CHANGED
         // ==================================================
@@ -84469,7 +84498,7 @@ function(s, currentSessionId, newPoints){
           console.log("⚡ LIVE STAFF CHANGE:", changeType, docSnap.id);
 
           // ==================================================
-          // ❌ REMOVED FROM 24-HOUR LIVE STAFF QUERY
+          // ❌ REMOVED FROM ACTIVE-DUTY LIVE STAFF QUERY
           // ==================================================
           if(changeType === "removed"){
             const removedStaffKey = cleanName(docSnap.id || "");
@@ -84814,7 +84843,7 @@ const fastPreviousState =
             if(!staffKey) return;
 
             const previous = window.liveStaffPreviousState[staffKey];
-            const heavyChange = isLiveStaffHeavyChange(previous, s);
+            const heavyChange = snapshot.authorizationRefresh === true || isLiveStaffHeavyChange(previous, s);
 
             const previousSessionId = String(previous?.sessionId || "").trim();
             const newSessionId = String(s.sessionId || "").trim();
@@ -85392,7 +85421,11 @@ staff.push(s);
 // ============================================================
 
 // Shared marker presentation and synchronous construction; no duty workflow.
-window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lon){
+window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lon, buildPopup = false){
+            if (window.StaffRendering && !buildPopup) {
+              return window.StaffRendering.ensure(s, patrolPoint, renderSessionId, lat, lon,
+                (staff, point, id, y, x) => window.ensureLiveStaffMarker(staff, point, id, y, x, true));
+            }
             const color = getUserColor(s.cleanName);
 
             let team = "N/A";
@@ -85661,7 +85694,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                 </div>
                 <div>
                   <div style="font-size:14px; font-weight:700; color:#1b5e20; line-height:1.2;">
-                    ${s.name}
+                    <span data-staff-field="name">${s.name}</span>
                   </div>
                   <div style="font-size:10px; color:#666; font-weight:600;">
                     LIVE PATROL STAFF
@@ -85674,19 +85707,19 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                   🟢 DUTY TYPE
                 </div>
                 <div style="margin-top:3px; font-size:12px; color:#222; line-height:1.35; font-weight:600;">
-                  ${dutyType}
+                  <span data-staff-field="dutyType">${dutyType}</span>
                 </div>
               </div>
 
               <div style="margin-bottom:8px; font-size:12px; line-height:1.6; background:#ffffff; border:1px solid #eeeeee; border-radius:7px; padding:6px;">
                 <div style="margin-bottom:4px; color:#111; font-weight:600;">
-                  📞 ${s.phone ? `<a href="tel:${String(s.phone).trim()}" style="color:#00695c; text-decoration:none; font-weight:700;">${s.phone}</a>` : "N/A"}
+                  <span data-staff-field="phone">📞 ${s.phone ? `<a href="tel:${String(s.phone).trim()}" style="color:#00695c; text-decoration:none; font-weight:700;">${s.phone}</a>` : "N/A"}</span>
                 </div>
                 <div style="margin-bottom:4px; color:#111;">
-                  🏢 Posting: <b>${postingDetails || "N/A"}</b>
+                  🏢 Posting: <b data-staff-field="posting">${postingDetails || "N/A"}</b>
                 </div>
                 <div style="color:#111;">
-                  📍 Duty Area: <b>${dutyArea}</b>
+                  📍 Duty Area: <b data-staff-field="dutyArea">${dutyArea}</b>
                 </div>
               </div>
 
@@ -85707,7 +85740,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                   👥 Patrol Team
                 </div>
                 <div style="font-size:11px; color:#333; line-height:1.4; max-height:65px; overflow-y:auto; white-space:pre-wrap; font-weight:500;">
-                  ${team}
+                  <span data-staff-field="team">${team}</span>
                 </div>
               </div>
 
@@ -85736,10 +85769,10 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                   ).toLocaleString()}</b>
                 </div>
                 <div style="margin-bottom:3px; font-weight:600; color:#1b5e20;">
-                  🛰 Live GPS Active
+                  <span data-staff-field="gpsStatus">🛰 Live GPS Active</span>
                 </div>
                 <div style="margin-bottom:3px;">
-                  🟢 Duty Started: <b>${dutyStarted}</b>
+                  🟢 Duty Started: <b data-staff-field="dutyStarted">${dutyStarted}</b>
                 </div>
                 <div style="margin-bottom: 3px;">
                   ⏳ Duty Duration: <b id="staffDutyDuration_${encodeURIComponent(staffDistanceKey)}">${dutyDuration}</b>
@@ -85750,7 +85783,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
               </div>
 
               <div style="margin-top:10px; display:grid; grid-template-columns:1fr;">
-                <button onclick="navigateHEC('${lat}','${lon}')" style="padding:11px; background:#1565c0; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">
+                <button data-staff-field="navigate" onclick="navigateHEC('${lat}','${lon}')" style="padding:11px; background:#1565c0; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">
                   🧭 NAVIGATE
                 </button>
                 <div class="btr-staff-track-actions">
@@ -86104,12 +86137,8 @@ function(staff, point, originatingSessionId){
             Object.create(null);
 
 
-        const cachedPointCount =
-            Object.keys(
-                window.sessionPointCache?.[
-                    sessionId
-                ] || {}
-            ).length;
+        const cachedPointCount = window.StaffRendering ? window.StaffRendering.count(sessionId) :
+            Object.keys(window.sessionPointCache?.[sessionId] || {}).length;
 
 
         const rawPointCount =
@@ -86227,6 +86256,8 @@ function(staff, point, originatingSessionId){
             let markerLon = lon;
             const coordinateKey = lat.toFixed(5) + "," + lon.toFixed(5);
             let overlapCount = 0;
+            if (window.StaffRendering) overlapCount = window.StaffRendering.overlapCount(coordinateKey);
+            else {
             for(const candidate of Object.values(window.visibleStaffCache || {})){
                 if(!candidate || candidate.dutyActive !== true) continue;
                 const candidateName = cleanName(candidate.cleanName || candidate.name || "");
@@ -86241,6 +86272,7 @@ function(staff, point, originatingSessionId){
                 if(!Number.isFinite(candidateLat) || !Number.isFinite(candidateLon) ||
                    candidateLat === 0 || candidateLon === 0) continue;
                 if(candidateLat.toFixed(5) + "," + candidateLon.toFixed(5) === coordinateKey) overlapCount++;
+            }
             }
             if(overlapCount > 1){
                 let hash = 0;
@@ -86295,6 +86327,7 @@ function(staff, point, originatingSessionId){
         // ========================================================
 
         window.StaffPopup.setPosition(marker, lat, lon);
+        if (window.StaffRendering) { window.StaffRendering.refresh(marker); return; }
 
 
         // ========================================================
@@ -87374,6 +87407,7 @@ console.log(
 // No new visibility calculation.
 // ==================================================
 
+window.StaffRendering?.syncVisible();
 staff = Object.values(
   window.visibleStaffCache || {}
 ).filter(function(staffMember){
