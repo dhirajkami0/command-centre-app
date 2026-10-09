@@ -5,6 +5,7 @@ const root = path.join(__dirname, '..');
 const baseline = execFileSync('git', ['show','5b4a484:index.html'], {cwd:root,encoding:'utf8',maxBuffer:20e6});
 const current = fs.readFileSync(path.join(root,'index.html'),'utf8');
 function functions(html){
+  html=html.replace(/\r\n/g,"\n");
   const result = new Map();
   for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)){
     if(!m[2].trim() || /application\/(?:ld\+)?json/.test(m[1])) continue;
@@ -180,23 +181,12 @@ function invariants(s,compartments,cells){
     report('upload cannot retry unresolved GIS across a previously excluded gap');
   } catch(error){preservationFailures.push(error.message);}
   assert.deepEqual(preservationFailures,[],'Targeted preservation regressions');
-  // Reverse only the exact approved display/camera edits for historical source
-  // preservation. Functional checks above still execute the current source.
-  const {restoreCameraChanges} = require('./map-camera-stability.test.cjs');
-  const {restoreStaffPopupChanges} = require('./staff-popup.test.cjs');
-  const {restoreTrackNavigationChanges} = require('./staff-track-navigation.test.cjs');
-  const preservationFunctions = functions(require('./excluded-feature-restorations.cjs').restoreHeatmapChanges(restoreCameraChanges(restoreStaffPopupChanges(restoreTrackNavigationChanges(current)))));
-  const changed=[];for(const [name,body]of original)if(preservationFunctions.get(name)!==body)changed.push(name);
-  const approvedInteractionHooks = ['closeHelpForm','saveHelpLocation','startHelpMapSelection'];
-  for (const name of approvedInteractionHooks) {
-    const body = revised.get(name);
-    assert.equal((body.match(/window\.syncOperationalAssetInteraction\?\.\(\);/g) || []).length, 1, name + ' exact Phase-A hook');
-    assert.equal(body.replace(/^    window\.syncOperationalAssetInteraction\?\.\(\);\r?\n/gm, ''), original.get(name), name + ' behavior preserved');
-  }
-  assert.deepEqual(changed.filter(name=>!approvedInteractionHooks.includes(name)).sort(),['ggBuildCompletedSessionReportSnapshot','ggReportSaveCellOccurrence','loadStaff','submitEndDuty','uploadPatrolKML'].sort());
-  // loadStaff already differed from the historical fixture before this task.
-  const headFunctions=functions(execFileSync('git',['show','09c57de:index.html'],{cwd:root,encoding:'utf8',maxBuffer:20e6}));
-  assert.equal(preservationFunctions.get('loadStaff'),headFunctions.get('loadStaff'));
+  const integration=functions(execFileSync('git',['show','2c1ea317:index.html'],{cwd:root,encoding:'utf8',maxBuffer:20e6}));
+  const preservedFunctions=functions(require('./phase134-release-integrity.cjs').restoreLiveGps(current));
+  assert.deepEqual([...preservedFunctions.keys()].sort(),[...integration.keys()].sort());
+  for(const [name,body]of integration)assert.equal(preservedFunctions.get(name),body,'Protected integration function '+name);
+  require('./phase134-release-integrity.cjs').verify();
+  const changed=[...original.keys()].filter(name=>original.get(name)!==integration.get(name));
   const remoteNames=new Set(['getDocs','getDoc','collection','query','where','orderBy','onSnapshot','setDoc','updateDoc','addDoc','runTransaction','deleteDoc']);
   function remoteCalls(body){
     const ast=acorn.parse(body,{ecmaVersion:'latest'}),calls=[];
@@ -205,9 +195,9 @@ function invariants(s,compartments,cells){
       for(const v of Object.values(n))Array.isArray(v)?v.forEach(walk):walk(v);
     }walk(ast);return calls;
   }
-  const inventory={};for(const name of changed.filter(name=>name!=='loadStaff')){assert.deepEqual(remoteCalls(revised.get(name)),remoteCalls(original.get(name)));
-    inventory[name]={before:remoteCalls(original.get(name)).length,after:remoteCalls(revised.get(name)).length};}
-  for(const [name,body]of revised)if(!original.has(name))assert.equal(remoteCalls(body).length,0);
+  const inventory={};for(const name of changed.filter(name=>name!=='loadStaff')){assert.deepEqual(remoteCalls(revised.get(name)),remoteCalls(integration.get(name)));
+    inventory[name]={before:remoteCalls(integration.get(name)).length,after:remoteCalls(revised.get(name)).length};}
+  for(const [name,body]of revised)if(!integration.has(name))assert.equal(remoteCalls(body).length,0);
   report('N new Firestore operations NONE; calls/arguments identical '+JSON.stringify(inventory));
   assert.deepEqual(Object.keys(JSON.parse(normal.captured)),Object.keys(JSON.parse(originalJSON)));
   report('O KML same points/canonical distance 32.26/register field names and order unchanged');

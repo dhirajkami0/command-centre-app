@@ -82896,6 +82896,41 @@ catch (
 // ======================================================
 // 🔥 LOAD STAFF
 // ======================================================
+// UI-only accepted GPS from the existing authorized live_staff snapshot.
+window.getLiveStaffPointForSession = function(id){
+  id=String(id||'').trim();
+  const name=cleanName(window.patrolSessionStaff?.[id]?.cleanName||window.patrolSessionStaff?.[id]?.name||'');
+  const staff=window.visibleStaffCache?.[name],point=staff?.__liveGpsPoint;
+  return staff?.dutyActive===true && String(staff.sessionId||'').trim()===id && point?.sessionId===id ? point : null;
+};
+window.applyLiveStaffGps = function(raw,key){
+  const staff=window.visibleStaffCache?.[key],id=String(staff?.sessionId||'').trim();
+  if(!staff || staff.dutyActive!==true || raw?.dutyActive===false || !id || String(raw?.sessionId||'').trim()!==id)return false;
+  if(raw.lat==null || raw.lon==null || raw.lat==='' || raw.lon==='')return false;
+  const lat=Number(raw.lat),lon=Number(raw.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0))return false;
+  const time=window.StaffRendering?.pointTime({time:raw.gpsTime??raw.time});
+  if(!Number.isFinite(time)||time<=0)return false;
+  // Existing session IDs end in duty-start milliseconds; retained prior-duty GPS is not current.
+  const sessionStart=Number(id.match(/_(\d{13})$/)?.[1]||0);
+  if(sessionStart && time<sessionStart)return false;
+  const old=staff.__liveGpsPoint;
+  if(old?.sessionId===id && time<old.time)return false;
+  const point={...raw,cleanName:key,id:'live:'+id+':'+time,sessionId:id,lat,lon,time};
+  staff.__liveGpsPoint=point;
+  if(window.liveStaffCache?.[key])window.liveStaffCache[key].__liveGpsPoint=point;
+  window.patrolSessionStaff ??= Object.create(null);
+  window.patrolSessionStaff[id]=staff;
+  window.StaffLiveGps?.ensure(id,staff); // UI bridge registration only; no subscription.
+  if(typeof window.updateLiveMarkerFromPatrolPoint==='function' && window.staffLayer)
+    window.updateLiveMarkerFromPatrolPoint(staff,point,id);
+  return true;
+};
+window.flushLiveStaffGps = function(){
+  for(const [key,staff]of Object.entries(window.visibleStaffCache||{}))
+    if(staff.__liveGpsPoint)window.applyLiveStaffGps(staff.__liveGpsPoint,key);
+};
+if(typeof map!=='undefined' && map?.whenReady)map.whenReady(()=>window.flushLiveStaffGps());
 function loadStaff(){
 
   if(!window.db || !window.fb){
@@ -84518,7 +84553,7 @@ try {
             ...s
         };
 
-        // Never allow live_staff GPS to become marker GPS.
+        // Keep raw GPS separate from metadata; validated __liveGpsPoint drives UI.
         delete fastStaffCache.lat;
         delete fastStaffCache.lon;
         delete fastStaffCache.lng;
@@ -84552,6 +84587,8 @@ try {
                 s.sessionId ||
                 ""
             ).trim();
+        fastStaffCache.__liveGpsPoint = window.visibleStaffCache?.[cleanStaffName]?.sessionId === fastStaffCache.sessionId
+            ? window.visibleStaffCache[cleanStaffName].__liveGpsPoint : null;
 
 
         window.liveStaffCache ??=
@@ -84607,17 +84644,7 @@ try {
         );
 
 
-        if (
-            typeof window.ensurePatrolSessionListener ===
-            "function"
-        ) {
-
-            window.ensurePatrolSessionListener(
-                fastSessionId,
-                fastStaffCache
-            );
-
-        }
+        // Continuous analytics owns history later; live GPS needs no history query.
 
     }
 
@@ -84673,45 +84700,8 @@ const fastPreviousState =
           }
 
           // ==================================================
-          // 🔒 LIVE STAFF FAST PASS
-          // --------------------------------------------------
-          // live_staff is lifecycle + staff metadata only.
-          //
-          // IMPORTANT:
-          // DO NOT use live_staff GPS fields here for:
-          //
-          //   ❌ marker position
-          //   ❌ popup GPS
-          //   ❌ popup speed
-          //   ❌ popup distance
-          //   ❌ patrol point count
-          //   ❌ live GIS position
-          //
-          // Continuous patrol position comes exclusively from:
-          //
-          // patrol_tracks/{sessionId}/points
-          //          ↓
-          // processPatrolSessionSnapshot()
-          //          ↓
-          // updateLiveMarkerFromPatrolPoint()
-          //
-          // Therefore this fast pass performs NO live marker
-          // or live GPS UI update.
-          // ==================================================
-
-          // live_staff remains available for:
-          //
-          //   • dutyActive
-          //   • sessionId
-          //   • staff identity
-          //   • division
-          //   • range
-          //   • beat
-          //   • compartment
-          //   • dutyType
-          //   • team
-          //
-          // Do not read s.lat / s.lon here for tracking.
+          // Authorized GPS is applied below after lifecycle and visibility processing.
+          // This fast pass retains duty/metadata responsibilities.
 
         }); // END fast-pass docChanges.forEach
 
@@ -84984,25 +84974,8 @@ if (
             }
 
 // ==================================================
-// ⚡ GPS-ONLY MODIFICATION (FAST PASS ESCAPE)
-// --------------------------------------------------
-// IMPORTANT:
-//
-// A GPS-only live_staff change MUST NOT:
-//   ❌ become marker GPS
-//   ❌ become popup GPS
-//   ❌ become overlap-group position
-//   ❌ update visibleStaffCache GPS
-//   ❌ update liveStaffCache GPS
-//   ❌ update speed/distance/heading/accuracy
-//
-// live_staff is lifecycle + identity + metadata.
-// patrol_tracks is the ONLY patrol GPS source.
-//
-// activeUsers means:
-//   duty-active AND already-visible staff.
-//
-// GPS alone must NEVER create visibility.
+// ⚡ GPS-ONLY MODIFICATION — existing authorization cache is retained.
+// Validated live_staff GPS updates the existing marker, without a GPS query.
 // ==================================================
 if (!heavyChange) {
 
@@ -85015,24 +84988,10 @@ if (!heavyChange) {
     fastVisibleStaff.dutyActive === true
   ) {
     activeUsers.add(staffKey);
+    window.applyLiveStaffGps(s,staffKey);
   }
 
-  // --------------------------------------------------
-  // DO NOT COPY ANY live_staff GPS FIELDS.
-  //
-  // No:
-  //   s.lat
-  //   s.lon
-  //   s.speed
-  //   s.distanceCoveredKm
-  //   s.distanceCoveredMeters
-  //   s.heading
-  //   s.accuracy
-  //   s.lastSeen
-  //   s.updatedAt
-  //
-  // The existing metadata/cache state remains intact.
-  // --------------------------------------------------
+  // Metadata stays unchanged; __liveGpsPoint holds validated GPS separately.
 
   window.liveStaffPreviousState[staffKey] = {
     dutyActive: s.dutyActive,
@@ -85273,8 +85232,11 @@ window.liveStaffCache[
 window.visibleStaffCache[
   staffCacheData.cleanName
 ] = {
-  ...staffCacheData
+  ...staffCacheData,
+  __liveGpsPoint: window.visibleStaffCache[staffCacheData.cleanName]?.sessionId === staffCacheData.sessionId
+    ? window.visibleStaffCache[staffCacheData.cleanName].__liveGpsPoint : null
 };
+window.applyLiveStaffGps(s,staffCacheData.cleanName);
 
 activeUsers.add(
   staffCacheData.cleanName
@@ -85311,7 +85273,7 @@ staff.push(s);
 //
 // IMPORTANT:
 // • NO Firestore access here
-// • NEVER use live_staff.lat/lon as patrol GPS authority
+// • Live marker GPS comes from validated live_staff; history remains analytics evidence
 // • NEVER use an arbitrary/old patrol point
 // • Marker exists ONLY when:
 //       dutyActive === true
@@ -85962,8 +85924,9 @@ function(staff, point, originatingSessionId){
         if(
             !Number.isFinite(lat) ||
             !Number.isFinite(lon) ||
-            lat === 0 ||
-            lon === 0
+            Math.abs(lat) > 90 ||
+            Math.abs(lon) > 180 ||
+            (lat === 0 && lon === 0)
         ){
             return;
         }
@@ -87056,6 +87019,7 @@ if(
     }
 
 };
+window.flushLiveStaffGps();
 // ============================================================
 // 🔥 CENTRAL PATROL SESSION RECONCILIATION
 // ------------------------------------------------------------
@@ -87074,8 +87038,8 @@ if(
 // ONE patrol_tracks listener / unique session
 //
 // IMPORTANT:
-// - live_staff remains metadata/lifecycle source.
-// - GPS points are NOT read from live_staff.
+// - live_staff supplies metadata/lifecycle and accepted live marker GPS.
+// - This history owner remains required for continuous analytics and complete evidence.
 // - GPS history comes only from patrol_tracks/{sessionId}/points.
 // - Do NOT create individual/bulk/analytics Firestore listeners.
 // - Do NOT remove staffTracks during reconciliation.

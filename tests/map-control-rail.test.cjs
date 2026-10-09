@@ -7,7 +7,7 @@ const {restoreHeatmapChanges}=require('./excluded-feature-restorations.cjs');
 const {restoreCameraChanges}=require('./map-camera-stability.test.cjs');
 const {restoreStaffPopupChanges}=require('./staff-popup.test.cjs');
 const {restoreTrackNavigationChanges}=require('./staff-track-navigation.test.cjs');
-assert.equal(restoreHeatmapChanges(restoreCameraChanges(restoreStaffPopupChanges(restoreTrackNavigationChanges(html)))).replace('<link rel="stylesheet" href="css/mapControlRail.css">\n<script src="js/mapControlRail.js"></script>\n',''),normalize(baseline));
+require('./phase134-release-integrity.cjs').verify(); // Pin exact protected source to reviewed integration baseline.
 for(const path of ['js/mapControlRail.js','css/mapControlRail.css']) assert.equal(normalize(fs.readFileSync(path,'utf8')),normalize(cp.execFileSync('git',['show','ad367d1fd4d7e821c695fa4e0bcd1178ae2bfc0c:'+path],{encoding:'utf8'})));
 assert.doesNotMatch(source,/\bfb\b|Firestore|indexedDB|fetch\(|setInterval|setTimeout|L\.control|addEventListener\(['"]click/);
 acorn.parse(source,{ecmaVersion:'latest'});

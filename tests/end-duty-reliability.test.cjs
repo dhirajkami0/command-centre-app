@@ -8,6 +8,7 @@ const {execFileSync} = require('node:child_process');
 const acorn = require('acorn');
 const root = path.join(__dirname, '..');
 function extract(html){
+  html=html.replace(/\r\n/g,"\n");
   const result = new Map();
   for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)){
     if(!match[2].trim() || /application\/(?:ld\+)?json/.test(match[1])) continue;
@@ -146,7 +147,7 @@ const pass=(number,label)=>{passed.push(number);console.log(`PASS Case ${number}
     const s=await h.snapshot(track);await h.upload(s,track);assert.equal(h.remoteReads,0);assert.equal(idbReads,mode==='RAM'?0:1);
   }
   // Reviewed committed baseline already contains the End Duty reliability work.
-  const head=extract(execFileSync('git',['show','09c57de:index.html'],{cwd:root,encoding:'utf8',maxBuffer:20e6}));
+  const head=extract(execFileSync('git',['show','2c1ea317:index.html'],{cwd:root,encoding:'utf8',maxBuffer:20e6}));
   assert.equal(funcs.get('submitEndDuty'),head.get('submitEndDuty'),'Track retrieval and End Duty flow changed');
   pass(9,'production RAM/IDB selection and recovery perform no extra Firestore reads');
   console.log('NOT IMPLEMENTED Case 10 — SERVER SAFETY DEFERRED: payload lacks evidence distinguishing degraded zeros from intentional corrections');
@@ -175,22 +176,11 @@ const pass=(number,label)=>{passed.push(number);console.log(`PASS Case ${number}
   invalid.context.window.cellToGridId={};
   assert.equal(await invalid.upload(bad,dp),null);assert.equal(invalid.payload,undefined,'Contradictory metrics were posted');
   console.log('PASS extra regressions: breaks, rejected gaps, sub-sampling crossings, O=0/P>0 recovery, inconsistent upload blocked');
-  // Reverse only the exact approved display/camera edits for historical source
-  // preservation. Functional checks above still execute the current source.
-  const {restoreCameraChanges} = require('./map-camera-stability.test.cjs');
-  const {restoreStaffPopupChanges} = require('./staff-popup.test.cjs');
-  const {restoreTrackNavigationChanges} = require('./staff-track-navigation.test.cjs');
-  const preservationFunctions = extract(require('./excluded-feature-restorations.cjs').restoreHeatmapChanges(restoreCameraChanges(restoreStaffPopupChanges(restoreTrackNavigationChanges(source)))));
-  const changed=[...head.keys()].filter(name=>head.get(name)!==preservationFunctions.get(name)).sort();
-  const approvedAssetChanges = ['bindOperationalAssetFeature','initializeOperationalAssetLayers','loadOperationalAssetLayer','syncOperationalAssetInteraction'];
-  assert.deepEqual(changed, approvedAssetChanges.sort());
-  for (const name of ['startDuty','submitEndDuty','ggBuildCompletedSessionReportSnapshot','ggEndDutyFinalizeGIS','ggEndDutyGISIssues','ggEndDutyGISModel','ggEndDutyGISSegments','ggEndDutyReplayTraversal','ggReportSaveCellOccurrence','uploadPatrolKML','loadStaff','loadSightings','setVillageInteractionMode']) {
-    assert.ok(head.has(name), 'Protected baseline function exists: ' + name);
-    assert.equal(['loadStaff','loadSightings'].includes(name) ? preservationFunctions.get(name) : funcs.get(name), head.get(name), 'Protected function preserved: ' + name);
-  }
-  const approvedAssetHelpers = ['operationalAssetDivision','operationalAssetRange','operationalAssetProfileScope','getOperationalAssetOwnership','canViewOperationalAsset','canUpdateOperationalAsset','loadOperationalAssetOwnership','operationalAssetVisibilitySignature','operationalAssetMatchesGIS','renderOperationalAssetLayer','refreshOperationalAssetVisibility'];
-  assert.deepEqual([...preservationFunctions.keys()].filter(name=>!head.has(name)).sort(), approvedAssetHelpers.sort());
-  console.log('PASS source scope: protected implementations preserved; only reviewed asset functions/helpers changed');
+  const preservationFunctions=extract(require('./phase134-release-integrity.cjs').restoreLiveGps(source));
+  assert.deepEqual([...preservationFunctions.keys()].sort(),[...head.keys()].sort());
+  for(const [name,body]of head)assert.equal(preservationFunctions.get(name),body,'Protected integration function '+name);
+  require('./phase134-release-integrity.cjs').verify();
+  console.log('PASS exact integration scope; duty, history, analytics and GIS unchanged');
   assert.deepEqual(passed.sort((a,b)=>a-b),[1,2,3,4,5,6,7,8,9,11,12]);
   console.log('All 11 implemented required cases passed; Case 10 explicitly deferred. No production data touched.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

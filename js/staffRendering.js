@@ -148,9 +148,11 @@
     }
     function latest(id) {
         id = String(id || '').trim();
-        const entry = index(id), p = entry?.point;
+        const entry = typeof w.getLiveStaffPointForSession === 'function' ? null : index(id);
+        const p = typeof w.getLiveStaffPointForSession === 'function'
+            ? w.getLiveStaffPointForSession(id) : entry?.point;
         group(id, p);
-        return p ? {...p, id: String(p.id || entry.pointId), sessionId: id} : null;
+        return p ? {...p, id: String(p.id || entry?.pointId || ''), sessionId: id} : null;
     }
     function changed(id, pid, p, existed, removed) {
         const cache = w.sessionPointCache?.[id];
