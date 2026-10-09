@@ -64,9 +64,8 @@ if(require.main===module){
     const styles=fs.readFileSync('css/tigerTeams.css','utf8');
     assert.match(styles,/width:19\.125px;/);assert.match(styles,/height:17px;/);
     assert.match(styles,/width:26px;/);assert.match(styles,/height:26px;/);
-    assert.match(styles,/animation:btr-team-monitoring-pulse 3s ease-out infinite/);
-    assert.match(styles,/pointer-events:none/);assert.match(styles,/prefers-reduced-motion:reduce/);
-    assert.match(styles,/animation:none; opacity:0/);
+    assert.doesNotMatch(styles,/animation:|@keyframes|::before/);
+    assert(styles.includes('box-shadow:0 0 3px 1px var(--btr-team-color);'));
     assert(!/will-change|setInterval|setTimeout/.test(styles));
     assert.match(teams.popupRow({cleanName:'SANJIB KHARIA',dutyActive:true}),/TEAM: <b>SBMT-1<\/b>/);
     assert.match(teams.popupRow({cleanName:'SANJIB KHARIA',dutyActive:true}),/ROLE: TIGER MONITORING/);

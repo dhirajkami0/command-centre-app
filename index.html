@@ -16518,6 +16518,35 @@ esriSat.addTo(map);
 
 map.scrollWheelZoom.enable();
 
+// Temporary local camera diagnostics. No listeners or wrappers until start().
+window.BTRMapInteractionDiagnostics = (function(map){
+  let enabled=false; const records=[], originals=new Map();
+  const events='dragstart dragend click dblclick boxzoomstart boxzoomend movestart moveend zoomstart zoomend';
+  function record(type,e,stack){
+    if(!enabled)return;
+    const event=e?.originalEvent||e,center=map.getCenter();
+    if(records.length===500)records.shift();
+    records.push({at:performance.now(),type,zoom:map.getZoom(),center:{lat:center.lat,lng:center.lng},
+      detail:event?.detail,button:event?.button,shiftKey:event?.shiftKey,deltaY:event?.deltaY,
+      pointerType:event?.pointerType,target:event?.target?.tagName,stack});
+  }
+  const onMap=e=>record(e.type,e),onWheel=e=>record('wheel',e);
+  function stop(){
+    if(!enabled)return;enabled=false;map.off(events,onMap);
+    map.getContainer().removeEventListener('wheel',onWheel,true);
+    for(const [name,pair]of originals)if(map[name]===pair.wrapper)map[name]=pair.original;
+    originals.clear();
+  }
+  return {start(){if(enabled)return;enabled=true;records.length=0;map.on(events,onMap);
+    map.getContainer().addEventListener('wheel',onWheel,{capture:true,passive:true});
+    for(const name of ['setView','setZoom','setZoomAround','fitBounds','flyTo','flyToBounds','panTo','panBy','panInside','zoomIn','zoomOut']){
+      const original=map[name];if(typeof original!=='function')continue;
+      const wrapper=function(...args){record('camera:'+name,null,new Error().stack);return original.apply(this,args);};
+      originals.set(name,{original,wrapper});map[name]=wrapper;
+    }record('started');
+  },stop,report(){return records.map(row=>({...row,center:{...row.center}}));},clear(){records.length=0;}};
+})(map);
+
 map.tap = true;
 
 // ======================================
@@ -61629,16 +61658,6 @@ data.forEach(
               style="opacity:${opacity};"
             >
 
-              ${
-                showPulse
-                  ? `
-                    <div class="radarPulse ${pulseClass}"></div>
-                    <div class="radarPulse delay1 ${pulseClass}"></div>
-                    <div class="radarPulse delay2 ${pulseClass}"></div>
-                  `
-                  : ""
-              }
-
               <div class="markerCore">
 
                 <span
@@ -62975,17 +62994,17 @@ marker.on(
 
       else{
 
-        marker.setLatLng(
-          [
-            lat,
-            lon
-          ]
-        );
-
-
-        marker.setIcon(
-          icon
-        );
+        const previousPosition = marker.getLatLng();
+        if (previousPosition.lat !== lat || previousPosition.lng !== lon) {
+          marker.setLatLng([lat, lon]);
+        }
+        const previousIcon = marker.options.icon?.options;
+        const nextIcon = icon.options;
+        if (!previousIcon || previousIcon.html !== nextIcon.html ||
+            JSON.stringify([previousIcon.iconSize, previousIcon.iconAnchor, previousIcon.className]) !==
+            JSON.stringify([nextIcon.iconSize, nextIcon.iconAnchor, nextIcon.className])) {
+          marker.setIcon(icon);
+        }
 
       }
 
@@ -85413,7 +85432,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
 
             let markerColor = "#00ff00";
             let markerOpacity = "1";
-            let radarHtml = `<div class="radarPulse"></div>`;
+            let radarHtml = "";
 
             if(markerState === "STALE"){
               markerColor = "#ffd600";
@@ -86193,8 +86212,9 @@ function(staff, point, originatingSessionId){
         // 15. MOVE MARKER
         // ========================================================
 
-        window.StaffPopup.setPosition(marker, lat, lon);
+        // The renderer owns the final overlap-adjusted display position.
         if (window.StaffRendering) { window.StaffRendering.refresh(marker); return; }
+        window.StaffPopup.setPosition(marker, lat, lon);
 
 
         // ========================================================

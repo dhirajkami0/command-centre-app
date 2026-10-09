@@ -1,0 +1,36 @@
+{
+  "js/staffRendering.js": [
+    {
+      "before": "                  ${status === 'LIVE' ? '<div class=\"radarPulse\"></div>' : ''}\n",
+      "after": ""
+    }
+  ],
+  "index.html": [
+    {
+      "before": "let radarHtml = `<div class=\"radarPulse\"></div>`;",
+      "after": "let radarHtml = \"\";"
+    },
+    {
+      "before": "              ${\n                showPulse\n                  ? `\n                    <div class=\"radarPulse ${pulseClass}\"></div>\n                    <div class=\"radarPulse delay1 ${pulseClass}\"></div>\n                    <div class=\"radarPulse delay2 ${pulseClass}\"></div>\n                  `\n                  : \"\"\n              }\n\n",
+      "after": ""
+    },
+    {
+      "before": "        window.StaffPopup.setPosition(marker, lat, lon);\n        if (window.StaffRendering) { window.StaffRendering.refresh(marker); return; }",
+      "after": "        // The renderer owns the final overlap-adjusted display position.\n        if (window.StaffRendering) { window.StaffRendering.refresh(marker); return; }\n        window.StaffPopup.setPosition(marker, lat, lon);"
+    },
+    {
+      "before": "        marker.setLatLng(\n          [\n            lat,\n            lon\n          ]\n        );\n\n\n        marker.setIcon(\n          icon\n        );",
+      "after": "        const previousPosition = marker.getLatLng();\n        if (previousPosition.lat !== lat || previousPosition.lng !== lon) {\n          marker.setLatLng([lat, lon]);\n        }\n        const previousIcon = marker.options.icon?.options;\n        const nextIcon = icon.options;\n        if (!previousIcon || previousIcon.html !== nextIcon.html ||\n            JSON.stringify([previousIcon.iconSize, previousIcon.iconAnchor, previousIcon.className]) !==\n            JSON.stringify([nextIcon.iconSize, nextIcon.iconAnchor, nextIcon.className])) {\n          marker.setIcon(icon);\n        }"
+    },
+    {
+      "before": "map.scrollWheelZoom.enable();\n",
+      "after": "map.scrollWheelZoom.enable();\n\n// Temporary local camera diagnostics. No listeners or wrappers until start().\nwindow.BTRMapInteractionDiagnostics = (function(map){\n  let enabled=false; const records=[], originals=new Map();\n  const events='dragstart dragend click dblclick boxzoomstart boxzoomend movestart moveend zoomstart zoomend';\n  function record(type,e,stack){\n    if(!enabled)return;\n    const event=e?.originalEvent||e,center=map.getCenter();\n    if(records.length===500)records.shift();\n    records.push({at:performance.now(),type,zoom:map.getZoom(),center:{lat:center.lat,lng:center.lng},\n      detail:event?.detail,button:event?.button,shiftKey:event?.shiftKey,deltaY:event?.deltaY,\n      pointerType:event?.pointerType,target:event?.target?.tagName,stack});\n  }\n  const onMap=e=>record(e.type,e),onWheel=e=>record('wheel',e);\n  function stop(){\n    if(!enabled)return;enabled=false;map.off(events,onMap);\n    map.getContainer().removeEventListener('wheel',onWheel,true);\n    for(const [name,pair]of originals)if(map[name]===pair.wrapper)map[name]=pair.original;\n    originals.clear();\n  }\n  return {start(){if(enabled)return;enabled=true;records.length=0;map.on(events,onMap);\n    map.getContainer().addEventListener('wheel',onWheel,{capture:true,passive:true});\n    for(const name of ['setView','setZoom','setZoomAround','fitBounds','flyTo','flyToBounds','panTo','panBy','panInside','zoomIn','zoomOut']){\n      const original=map[name];if(typeof original!=='function')continue;\n      const wrapper=function(...args){record('camera:'+name,null,new Error().stack);return original.apply(this,args);};\n      originals.set(name,{original,wrapper});map[name]=wrapper;\n    }record('started');\n  },stop,report(){return records.map(row=>({...row,center:{...row.center}}));},clear(){records.length=0;}};\n})(map);\n"
+    }
+  ],
+  "css/tigerTeams.css": [
+    {
+      "before": ".btr-tiger-team-icon .btr-team-monitoring::before {\n  content:\"\";\n  position:absolute;\n  width:19px;\n  height:19px;\n  box-sizing:border-box;\n  left:50%;\n  top:50%;\n  border:1px solid var(--btr-team-color);\n  border-radius:50%;\n  pointer-events:none;\n  animation:btr-team-monitoring-pulse 3s ease-out infinite;\n}\n@keyframes btr-team-monitoring-pulse {\n  0% { transform:translate(-50%,-50%) scale(1); opacity:.45; }\n  75%,100% { transform:translate(-50%,-50%) scale(1.25); opacity:0; }\n}\n@media (prefers-reduced-motion:reduce) {\n  .btr-tiger-team-icon .btr-team-monitoring::before { animation:none; opacity:0; }\n}\n",
+      "after": "/* Monitoring retains its static teal glow; no radar ring or animation. */\n"
+    }
+  ]
+}

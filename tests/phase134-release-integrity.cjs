@@ -5,13 +5,16 @@ const normalize=s=>s.replace(/\r\n/g,'\n');
 const before=file=>normalize(cp.execFileSync('git',['show',baseline+':'+file],{encoding:'utf8',maxBuffer:20e6}));
 function restoreLiveGps(source,file='index.html'){
  source=normalize(source);
+ for(const p of [...(require("./map-ui-optimization-preservation.json")[file]||[])].reverse()){
+  assert.equal(source.split(p.after).length-1,1,"Exact reviewed map UI hunk occurs once");source=source.replace(p.after,p.before);
+ }
  for(const p of [...require('./live-staff-location-patch.json')[file]].reverse()){
   assert.equal(source.split(p.after).length-1,1,'Exact reviewed GPS hunk occurs once');source=source.replace(p.after,p.before);
  }return source;
 }
 function verify(){
  for(const f of ['index.html','js/staffRendering.js'])assert.equal(restoreLiveGps(fs.readFileSync(f,'utf8'),f),before(f),'Only reviewed live GPS changes: '+f);
- for(const f of ['js/staffPopup.js','css/staffPopup.css','js/staffTrackNavigation.js','css/staffTrackNavigation.css','js/tigerTeams.js','css/tigerTeams.css','js/staffLiveGps.js','js/analytics/staffProfile.js','js/analytics/staffGPS.js','js/analytics/staffFormatter.js','build.js','.github/workflows/deploy.yml'])assert.equal(normalize(fs.readFileSync(f,'utf8')),before(f),'Protected baseline file '+f);
+ for(const f of ['js/staffPopup.js','css/staffPopup.css','js/staffTrackNavigation.js','css/staffTrackNavigation.css','js/tigerTeams.js','css/tigerTeams.css','js/staffLiveGps.js','js/analytics/staffProfile.js','js/analytics/staffGPS.js','js/analytics/staffFormatter.js','build.js','.github/workflows/deploy.yml'])assert.equal(f==='css/tigerTeams.css' ? require('./map-ui-optimization-preservation.json')[f].reduceRight((source,p)=>{assert.equal(source.split(p.after).length-1,1);return source.replace(p.after,p.before);},normalize(fs.readFileSync(f,'utf8'))) : normalize(fs.readFileSync(f,'utf8')),before(f),'Protected baseline file '+f);
 }
 function verifyFirebaseReady(html){
  let found;

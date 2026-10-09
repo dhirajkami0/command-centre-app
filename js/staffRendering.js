@@ -208,7 +208,6 @@
         const color = status === 'LIVE' ? '#00ff00' : status === 'STALE' ? '#ffd600' : '#ff0000';
         return w.L.divIcon({html: `
                 <div class="markerWrap" style="opacity:${opacity};">
-                  ${status === 'LIVE' ? '<div class="radarPulse"></div>' : ''}
                   <div class="markerCore">
                     <i class="fa-solid fa-person-military-pointing" style="color:${color}; font-size:17px;"></i>
                   </div>
