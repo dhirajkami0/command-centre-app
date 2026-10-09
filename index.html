@@ -112,6 +112,7 @@
 <script src="js/startupCoordinator.js"></script>
 <script src="js/firestoreRecovery.js"></script>
 <script src="js/staffRendering.js"></script>
+<script src="js/staffLiveGps.js"></script>
 <link rel="stylesheet" href="css/staffTrackNavigation.css">
 <!-- Leaflet Heat Plugin -->
 <script src="js/leaflet-heat.js"></script>
@@ -83041,51 +83042,43 @@ function loadStaff(){
 //     for complete history, analytics, tracks and future updates.
 // ============================================================
 
+// October 7 used the central history listener for active-session GPS.
+// Keep the compatibility entry point cache-only; never query for marker enrichment.
 window.loadLatestPatrolPointFast = function(sessionId, staff){
-  const run = async function(){
-    const diagnostic = window.StaffStartupDiagnostics;
-    try {
-      sessionId = String(sessionId || "").trim();
-      const {collection, query, orderBy, limit, getDocs} = window.fb || {};
-      if (!sessionId || !staff || !window.db ||
-          [collection, query, orderBy, limit, getDocs].some(fn => typeof fn !== "function")) return;
-      const started = diagnostic?.now();
-      const pointSnap = await getDocs(query(
-        collection(window.db, "patrol_tracks", sessionId, "points"), orderBy("time", "desc"), limit(8)
-      ));
-      diagnostic?.snapshot(sessionId, pointSnap, 'fast');
-      diagnostic?.record(sessionId, {fastQueryWaitMs: diagnostic.now() - started});
-      const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];
-      if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||
-          !window.StaffRendering.isFastCurrent(sessionId, staff)) return;
-      const indexedAt = diagnostic?.now();
-      const point = window.StaffRendering.selectFast(pointSnap?.docs || [], sessionId);
-      diagnostic?.record(sessionId, {fastIndexMs: diagnostic.now() - indexedAt, fastValidPoint: !!point});
-      // Invalid recent fixes never authorize a fabricated position. Full history remains the fallback.
-      if (!point) return;
-      window.sessionPointCache ??= Object.create(null);
-      const cache = window.sessionPointCache[sessionId] ??= Object.create(null);
-      const existed = Object.prototype.hasOwnProperty.call(cache, point.id), cached = cache[point.id];
-      if (!cached || window.StaffRendering.pointTime(point) >= window.StaffRendering.pointTime(cached)) {
-        cache[point.id] = point;
-        if (!existed) window.StaffRendering.trackFastSeed(sessionId, point.id);
-        window.StaffRendering.changed(sessionId, point.id, point, existed, false);
-      }
-      window.updateLiveMarkerFromPatrolPoint(current, point, sessionId);
-    } catch(error) {
-      window.StaffStartupDiagnostics?.record(sessionId, {fastError: String(error.code || error.message)});
-      console.warn("⚠ Latest patrol point fast path failed; full history remains active:", sessionId, error);
-    } finally { window.StaffRendering?.finishFast(sessionId, staff); }
-  };
-  Promise.resolve().then(run);
-  return true;
-};  // ============================================================
+  try {
+    const current = window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')];
+    if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId) return false;
+    const point = window.StaffRendering?.latest(sessionId);
+    if (point) window.updateLiveMarkerFromPatrolPoint(current, point, sessionId);
+    return !!point;
+  } finally {
+    window.StaffRendering?.finishFast(sessionId, staff);
+  }
+};
+  // ============================================================
   // 🔒 1. ENSURE PATROL SESSION LISTENER (SINGLETON OWNER)
   // ============================================================
   window.ensurePatrolSessionListener = function(sessionId, staff){
     try {
       sessionId = String(sessionId || "").trim();
       if(!sessionId) return false;
+
+      // A failed history listener is terminal in the SDK. Bound reattachment
+      // through existing startup/reconnect calls, without polling or extra reads.
+      window.patrolSessionRecovery ??= Object.create(null);
+      const scope = JSON.stringify([window.userProfile?.cleanName || window.userProfile?.name || '',
+        window.userProfile?.role || '', window.userProfile?.division || '', window.userProfile?.range || '']);
+      let recovery = window.patrolSessionRecovery[sessionId];
+      if (!recovery || recovery.scope !== scope || recovery.db !== window.db) {
+        if (recovery) recovery.generation = null;
+        try { window.patrolSessionListeners[sessionId]?.(); } catch (_) {}
+        delete window.patrolSessionListeners[sessionId];
+        recovery = window.patrolSessionRecovery[sessionId] = {scope, db: window.db, failures: 0, until: 0, blocked: false};
+      }
+      const authorized = window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')];
+      if (authorized?.dutyActive !== true || String(authorized.sessionId || '').trim() !== sessionId) return false;
+      window.StaffLiveGps?.ensure(sessionId, authorized);
+      if (recovery.blocked || recovery.failures >= 3 || Date.now() < recovery.until) return false;
 
       // ------------------------------------------------------
       // ALREADY OWNED
@@ -83126,10 +83119,32 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       window.StaffRendering?.beginHistory(sessionId);
       window.StaffStartupDiagnostics?.mark('T6');
       window.StaffStartupDiagnostics?.record(sessionId, {historyAttachedAt: window.StaffStartupDiagnostics.now()});
-      const unsubscribe = onSnapFb(
+      const generation = {};
+      recovery.generation = generation;
+      const stillOwned = () => window.patrolSessionRecovery?.[sessionId] === recovery &&
+        recovery.generation === generation && recovery.db === window.db &&
+        recovery.scope === JSON.stringify([window.userProfile?.cleanName || window.userProfile?.name || '',
+          window.userProfile?.role || '', window.userProfile?.division || '', window.userProfile?.range || '']) &&
+        window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')]?.dutyActive === true &&
+        String(window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')]?.sessionId || '').trim() === sessionId;
+      let unsubscribe;
+      const failed = error => {
+        if (recovery.generation !== generation) return;
+        recovery.generation = null;
+        try { unsubscribe?.(); } catch (_) {}
+        delete window.patrolSessionListeners[sessionId];
+        const code = window.FirestoreRecovery?.classify(error) || String(error?.code || 'unknown').replace(/^firestore\//, '');
+        recovery.failures++;
+        recovery.blocked = code === 'permission-denied';
+        recovery.until = Date.now() + Math.min(300000, (code === 'resource-exhausted' ? 60000 : 15000) * 2 ** (recovery.failures - 1));
+        console.error('PATROL SESSION LISTENER ERROR:', sessionId, error);
+      };
+      try { unsubscribe = onSnapFb(
         pointsRef,
         {includeMetadataChanges: true},
         pointSnap => {
+          if (!stillOwned()) return;
+          if (pointSnap.metadata?.fromCache === false) { recovery.failures = 0; recovery.until = 0; }
           try {
             const ownerStaff = window.patrolSessionStaff[sessionId] || staff;
             const diagnostic = window.StaffStartupDiagnostics;
@@ -83143,11 +83158,9 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
             console.error("❌ PATROL SESSION SNAPSHOT PROCESSING ERROR:", sessionId, error);
           }
         },
-        error => {
-          console.error("❌ PATROL SESSION LISTENER ERROR:", sessionId, error);
-          delete window.patrolSessionListeners[sessionId];
-        }
-      );
+        failed
+      ); } catch (error) { failed(error); return false; }
+      if (recovery.generation !== generation) { unsubscribe?.(); return false; }
 
       window.patrolSessionListeners[sessionId] = unsubscribe;
       window.StaffRendering?.fast(sessionId, staff);
@@ -83167,6 +83180,11 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
     try {
       sessionId = String(sessionId || "").trim();
       if(!sessionId) return;
+      window.StaffLiveGps?.release(sessionId);
+      if (window.patrolSessionRecovery?.[sessionId]) {
+        window.patrolSessionRecovery[sessionId].generation = null;
+        delete window.patrolSessionRecovery[sessionId];
+      }
       window.StaffRendering?.release(sessionId);
 
       if(window.patrolSessionListeners[sessionId]){
@@ -83208,7 +83226,9 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
   // ============================================================
   window.reconcilePatrolSessionListeners = function(){
     try {
-      const activeOwnedSessions = Object.keys(window.patrolSessionListeners || {});
+      window.StaffLiveGps?.reconcile();
+      const activeOwnedSessions = new Set([...Object.keys(window.patrolSessionListeners || {}),
+        ...Object.keys(window.patrolSessionRecovery || {})]);
       const requiredSet = window.patrolSessionRequired || new Set();
 
       for(const activeSessionId of activeOwnedSessions){
@@ -83607,10 +83627,12 @@ function(sessionId, pointSnap, staffMember){
   // ==========================================================
 
   window.StaffStartupDiagnostics?.processing(sessionId, {historyIndexMs: window.StaffStartupDiagnostics.now() - indexBegan});
+  let liveMarkerUpdated = false;
   if (window.StaffRendering) {
     const authorized = window.visibleStaffCache?.[cleanName(staffMember?.cleanName || staffMember?.name || '')];
     if (authorized?.dutyActive === true && String(authorized.sessionId || '').trim() === sessionId) {
       window.updateLiveMarkerFromPatrolPoint(authorized, null, sessionId);
+      liveMarkerUpdated = true;
     }
   }
   window.StaffStartupDiagnostics?.record(sessionId, {historyIndexAndMarkerAt: window.StaffStartupDiagnostics.now()});
@@ -83941,6 +83963,7 @@ function(sessionId, pointSnap, staffMember){
 // ==========================================================
 
 if(
+  !liveMarkerUpdated &&
   staffMember &&
   typeof window.updateLiveMarkerFromPatrolPoint ===
   "function"

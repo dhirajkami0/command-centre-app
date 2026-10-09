@@ -367,7 +367,7 @@
         if (fastPending.get(id) === staff) fastPending.delete(id);
         if (fastRunning.get(id) === staff) fastRunning.delete(id);
         drainFast();
-        w.StartupCoordinator?.settled(fastPending.size);
+        w.StartupCoordinator?.settled(historyPending.size + fastPending.size);
     }
     function beginHistory(id) { historyPending.add(id); }
     function trackFastSeed(id, pid) {
@@ -388,6 +388,7 @@
     function completeHistory(id, snap) {
         if (snap?.metadata?.fromCache === true) return;
         historyPending.delete(id);
+        w.StartupCoordinator?.settled(historyPending.size + fastPending.size);
         const s = owner(id), marker = s && w.staffMarkers?.[key(s)];
         if (marker?.isPopupOpen()) refresh(marker);
         visibleFrames();
@@ -411,7 +412,7 @@
     }
     w.StaffRendering = {latest, changed, pointTime: time, count: id => index(id)?.count || 0, syncVisible,
         overlapCount: c => groups.get(c)?.size || 0, ensure, refresh, fast, finishFast, release,
-        fastPendingCount: () => fastPending.size,
+        fastPendingCount: () => historyPending.size + fastPending.size,
         isFastCurrent: (id, staff) => fastPending.get(id) === staff && fastRunning.get(id) === staff,
         beginHistory, completeHistory, selectFast, trackFastSeed, reconcileFastSeeds,
         historyPending: id => historyPending.has(id)};
@@ -427,7 +428,7 @@
     });
     const resume = () => {
         for (const s of Object.values(w.visibleStaffCache || {}))
-            if (s?.dutyActive === true && s.sessionId) fast(String(s.sessionId).trim(), s);
+            if (s?.dutyActive === true && s.sessionId) w.ensurePatrolSessionListener?.(String(s.sessionId).trim(), s);
     };
     w.addEventListener('online', resume);
     w.document.addEventListener('visibilitychange', () => { if (w.document.visibilityState === 'visible') resume(); });

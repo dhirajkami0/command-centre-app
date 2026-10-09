@@ -6085,7 +6085,7 @@ StaffFormatter.formatStaffLocation = function (
     ----------------------------------*/
 
     const profile =
-        response.data;
+        window.StaffLiveGps?.displayProfile(response.data) || response.data;
 
     const identity =
         profile.identity ||

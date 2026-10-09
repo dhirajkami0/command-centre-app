@@ -519,6 +519,8 @@ StaffGPS.buildGPS = function (
 
     }
 
+    staff = window.StaffLiveGps?.displayProfile(staff) || staff;
+
     return {
 
         /*----------------------------------
