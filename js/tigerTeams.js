@@ -267,9 +267,9 @@
     }
 };
     const categories = Object.freeze({
-        SBMT: Object.freeze({letter: 'M', color: '#0D9488', role: 'TIGER MONITORING', tooltip: 'Tiger Monitoring'}),
-        STPF: Object.freeze({letter: 'S', color: '#F59E0B', role: 'TIGER PROTECTION', tooltip: 'Tiger Protection'}),
-        RRT: Object.freeze({letter: 'R', color: '#DC3545', role: 'HUMAN–ANIMAL CONFLICT RESPONSE', tooltip: 'Human–Animal Conflict Response'})
+        SBMT: Object.freeze({letter: 'M', color: '#0284C7', role: 'TIGER MONITORING', tooltip: 'Tiger Monitoring'}),
+        STPF: Object.freeze({letter: 'S', color: '#166534', role: 'TIGER PROTECTION', tooltip: 'Tiger Protection'}),
+        RRT: Object.freeze({letter: 'R', color: '#F59E0B', role: 'HUMAN–ANIMAL CONFLICT RESPONSE', tooltip: 'Human–Animal Conflict Response'})
     });
     const assignments = new Map(Object.entries(roster).map(([key, value]) => [key, Object.freeze({...value, ...categories[value.type]})]));
     const icons = new Map();
@@ -283,12 +283,18 @@
         if(typeof identity === 'object' && identity.documentId != null && String(identity.documentId) !== team.documentId) return null;
         return team;
     }
+    // Compact, ID-free operational symbols. Cached once per existing team category.
+    const symbols = Object.freeze({
+        SBMT: '<g data-symbol="telemetry" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v10m-3 0h6M12 11l-3 7m3-7 3 7"/><circle cx="12" cy="7" r="1" fill="white"/><path d="M8.5 5a5 5 0 0 0 0 5m7-5a5 5 0 0 1 0 5M6 3a8 8 0 0 0 0 9m12-9a8 8 0 0 1 0 9"/></g>',
+        STPF: '<g data-symbol="tiger-paw" fill="white"><ellipse data-pad="toe" cx="6.7" cy="9.3" rx="1.6" ry="2.1" transform="rotate(-25 6.7 9.3)"/><ellipse data-pad="toe" cx="10.2" cy="7.5" rx="1.6" ry="2.1"/><ellipse data-pad="toe" cx="13.8" cy="7.5" rx="1.6" ry="2.1"/><ellipse data-pad="toe" cx="17.3" cy="9.3" rx="1.6" ry="2.1" transform="rotate(25 17.3 9.3)"/><path data-pad="central" d="M8 13c1-1 2-2 4-2s3 1 4 2c1 1 2 3 1 4-1 2-3 0-5 0s-4 2-5 0c-1-1 0-3 1-4z"/></g>',
+        RRT: '<path data-symbol="response-bolt" fill="white" d="M13 4 7 13h4l-1 7 7-11h-4z"/>'
+    });
     function getTigerTeamIcon(type){
         const category = categories[type];
         if(!category) return null;
         if(!icons.has(type)) icons.set(type, w.L.divIcon({
             className: 'btr-tiger-team-icon', iconSize: [30, 30], iconAnchor: [15, 15],
-            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${category.color}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}">${category.letter}</div></div>`
+            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${category.color}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${category.color}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
         }));
         return icons.get(type);
     }

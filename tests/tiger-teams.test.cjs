@@ -52,12 +52,12 @@ if(require.main===module){
     assert.equal(teams.iconForStaff({cleanName:'SANJIB KHARIA',dutyActive:false}),null);
     assert.equal(teams.iconForStaff({cleanName:'SANJIB KHARIA',dutyActive:'true'}),null);
     assert.equal(teams.popupRow({cleanName:'NORMAL',dutyActive:true}), '');
-    for(const [type,color,letter]of [['SBMT','#0D9488','M'],['STPF','#F59E0B','S'],['RRT','#DC3545','R']]){
+    for(const [type,color,letter]of [['SBMT','#0284C7','telemetry'],['STPF','#166534','tiger-paw'],['RRT','#F59E0B','response-bolt']]){
         const icon=teams.getTigerTeamIcon(type);assert.equal(icon,teams.getTigerTeamIcon(type));
-        assert(icon.options.html.includes(color));assert(icon.options.html.includes('>'+letter+'</div>'));
+        assert(icon.options.html.includes(color));assert(icon.options.html.includes('data-symbol="'+letter+'"'));
         assert(icon.options.html.includes('btr-team-body'));
         assert.equal(icon.options.html.includes('btr-team-monitoring'),type==='SBMT');
-        assert(!/setInterval|setTimeout|<svg/.test(helper));
+        assert(!/setInterval|setTimeout|<animate|id=/.test(helper));
         assert.equal(JSON.stringify(icon.options.iconSize),'[30,30]');assert.equal(JSON.stringify(icon.options.iconAnchor),'[15,15]');
     }
     assert.equal(iconCount,3,'Exactly three cached category icons');
@@ -65,7 +65,9 @@ if(require.main===module){
     assert.match(styles,/width:19\.125px;/);assert.match(styles,/height:17px;/);
     assert.match(styles,/width:26px;/);assert.match(styles,/height:26px;/);
     assert.doesNotMatch(styles,/animation:|@keyframes|::before/);
-    assert(styles.includes('box-shadow:0 0 3px 1px var(--btr-team-color);'));
+    assert(styles.includes('filter:drop-shadow'));
+    assert.equal((teams.getTigerTeamIcon('STPF').options.html.match(/data-pad="toe"/g)||[]).length,4);
+    assert.equal((teams.getTigerTeamIcon('STPF').options.html.match(/data-pad="central"/g)||[]).length,1);
     assert(!/will-change|setInterval|setTimeout/.test(styles));
     assert.match(teams.popupRow({cleanName:'SANJIB KHARIA',dutyActive:true}),/TEAM: <b>SBMT-1<\/b>/);
     assert.match(teams.popupRow({cleanName:'SANJIB KHARIA',dutyActive:true}),/ROLE: TIGER MONITORING/);
